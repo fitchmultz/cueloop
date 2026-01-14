@@ -25,6 +25,7 @@ type logsView struct {
 	viewport   viewport.Model
 	logPath    string
 	logErr     string
+	lastStamp  fileStamp
 	debugLines []string
 	loopLines  []string
 	specsLines []string
@@ -42,7 +43,13 @@ func newLogsView(logPath string) *logsView {
 }
 
 func (l *logsView) SetLogPath(path string) {
+	if l.logPath == path {
+		return
+	}
 	l.logPath = path
+	l.logErr = ""
+	l.lastStamp = fileStamp{}
+	l.debugLines = nil
 }
 
 func (l *logsView) SetError(err error) {
@@ -94,15 +101,22 @@ func (l *logsView) Refresh(loopLines []string, specsLines []string) {
 
 	l.loopLines = tailLines(loopLines, logsTailLines)
 	l.specsLines = tailLines(specsLines, logsTailLines)
-	l.debugLines = nil
 
-	if strings.TrimSpace(l.logPath) != "" {
-		lines, err := tailFileLines(l.logPath, logsTailLines)
+	if strings.TrimSpace(l.logPath) == "" {
+		l.debugLines = nil
+	} else {
+		stamp, changed, err := fileChanged(l.logPath, l.lastStamp)
 		if err != nil {
 			l.logErr = err.Error()
-		} else {
-			l.logErr = ""
-			l.debugLines = lines
+		} else if changed || l.logErr != "" {
+			lines, err := tailFileLines(l.logPath, logsTailLines)
+			if err != nil {
+				l.logErr = err.Error()
+			} else {
+				l.logErr = ""
+				l.debugLines = lines
+				l.lastStamp = stamp
+			}
 		}
 	}
 

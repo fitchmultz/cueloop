@@ -5,7 +5,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
@@ -35,7 +34,7 @@ const (
 type pinReloadMsg struct {
 	items       []pin.QueueItem
 	rows        []table.Row
-	modTime     time.Time
+	queueStamp  fileStamp
 	err         error
 	resetScroll bool
 }
@@ -57,7 +56,7 @@ type pinView struct {
 	locations   paths.Locations
 	width       int
 	height      int
-	queueMTime  time.Time
+	queueStamp  fileStamp
 }
 
 func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) {
@@ -106,9 +105,7 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		p.err = ""
 		p.items = reloadMsg.items
 		p.table.SetRows(reloadMsg.rows)
-		if !reloadMsg.modTime.IsZero() {
-			p.queueMTime = reloadMsg.modTime
-		}
+		p.queueStamp = reloadMsg.queueStamp
 		p.syncDetail(reloadMsg.resetScroll)
 		if p.reloadAgain {
 			p.reloadAgain = false
@@ -257,8 +254,8 @@ func (p *pinView) reload() error {
 		rows = append(rows, table.Row{status, item.ID, trimTitle(item.Header)})
 	}
 	p.table.SetRows(rows)
-	if modTime, err := fileModTime(p.files.QueuePath); err == nil {
-		p.queueMTime = modTime
+	if stamp, err := getFileStamp(p.files.QueuePath); err == nil {
+		p.queueStamp = stamp
 	}
 	p.syncDetail(true)
 	return nil
@@ -286,11 +283,11 @@ func (p *pinView) reloadAsync(resetScroll bool) tea.Cmd {
 			}
 			rows = append(rows, table.Row{status, item.ID, trimTitle(item.Header)})
 		}
-		var modTime time.Time
-		if mod, err := fileModTime(files.QueuePath); err == nil {
-			modTime = mod
+		var stamp fileStamp
+		if current, err := getFileStamp(files.QueuePath); err == nil {
+			stamp = current
 		}
-		return pinReloadMsg{items: items, rows: rows, modTime: modTime, resetScroll: resetScroll}
+		return pinReloadMsg{items: items, rows: rows, queueStamp: stamp, resetScroll: resetScroll}
 	}
 }
 
@@ -405,12 +402,12 @@ func (p *pinView) RefreshIfNeeded() tea.Cmd {
 	if p.mode != pinModeTable {
 		return nil
 	}
-	modTime, changed, err := fileChanged(p.files.QueuePath, p.queueMTime)
+	stamp, changed, err := fileChanged(p.files.QueuePath, p.queueStamp)
 	if err != nil {
 		return nil
 	}
 	if changed {
-		p.queueMTime = modTime
+		p.queueStamp = stamp
 		return p.reloadAsync(false)
 	}
 	return nil

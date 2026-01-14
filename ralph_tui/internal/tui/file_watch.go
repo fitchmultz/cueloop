@@ -7,24 +7,44 @@ import (
 	"time"
 )
 
-func fileModTime(path string) (time.Time, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return info.ModTime(), nil
+type fileStamp struct {
+	Exists  bool
+	ModTime time.Time
+	Size    int64
 }
 
-func fileChanged(path string, last time.Time) (time.Time, bool, error) {
-	modTime, err := fileModTime(path)
+func getFileStamp(path string) (fileStamp, error) {
+	info, err := os.Stat(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			if last.IsZero() {
-				return time.Time{}, false, nil
-			}
-			return time.Time{}, true, nil
+			return fileStamp{Exists: false}, nil
 		}
-		return time.Time{}, false, err
+		return fileStamp{}, err
 	}
-	return modTime, modTime.After(last), nil
+	return fileStamp{
+		Exists:  true,
+		ModTime: info.ModTime(),
+		Size:    info.Size(),
+	}, nil
+}
+
+func fileChanged(path string, last fileStamp) (fileStamp, bool, error) {
+	stamp, err := getFileStamp(path)
+	if err != nil {
+		return fileStamp{}, false, err
+	}
+	return stamp, !sameFileStamp(stamp, last), nil
+}
+
+func sameFileStamp(left fileStamp, right fileStamp) bool {
+	if left.Exists != right.Exists {
+		return false
+	}
+	if !left.Exists {
+		return true
+	}
+	if left.Size != right.Size {
+		return false
+	}
+	return left.ModTime.Equal(right.ModTime)
 }

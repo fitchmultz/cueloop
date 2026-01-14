@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -44,8 +43,8 @@ type specsView struct {
 	lastRunOutput     string
 	logCh             chan string
 	pendingResult     *specsBuildResultMsg
-	queueMTime        time.Time
-	promptMTime       time.Time
+	queueStamp        fileStamp
+	promptStamp       fileStamp
 	logger            *tuiLogger
 }
 
@@ -84,11 +83,11 @@ func newSpecsView(cfg config.Config, locations paths.Locations) (*specsView, err
 		previewWidth:    80,
 		previewDirty:    true,
 	}
-	if modTime, err := fileModTime(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
-		view.queueMTime = modTime
+	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
+		view.queueStamp = stamp
 	}
-	if modTime, err := fileModTime(filepath.Join(cfg.Paths.PinDir, "specs_builder.md")); err == nil {
-		view.promptMTime = modTime
+	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "specs_builder.md")); err == nil {
+		view.promptStamp = stamp
 	}
 	return view, nil
 }
@@ -357,11 +356,11 @@ func (s *specsView) SetConfig(cfg config.Config, locations paths.Locations) {
 	if !s.autofillExplicit {
 		s.autofillScout = cfg.Specs.AutofillScout
 	}
-	if modTime, err := fileModTime(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
-		s.queueMTime = modTime
+	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
+		s.queueStamp = stamp
 	}
-	if modTime, err := fileModTime(filepath.Join(cfg.Paths.PinDir, "specs_builder.md")); err == nil {
-		s.promptMTime = modTime
+	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "specs_builder.md")); err == nil {
+		s.promptStamp = stamp
 	}
 	if !s.running {
 		s.previewDirty = true
@@ -376,20 +375,20 @@ func (s *specsView) RefreshIfNeeded() tea.Cmd {
 		return s.refreshPreviewAsync()
 	}
 	queuePath := filepath.Join(s.cfg.Paths.PinDir, "implementation_queue.md")
-	queueTime, queueChanged, queueErr := fileChanged(queuePath, s.queueMTime)
+	queueStamp, queueChanged, queueErr := fileChanged(queuePath, s.queueStamp)
 	if queueErr != nil {
 		return nil
 	}
 	promptPath := filepath.Join(s.cfg.Paths.PinDir, "specs_builder.md")
-	promptTime, promptChanged, promptErr := fileChanged(promptPath, s.promptMTime)
+	promptStamp, promptChanged, promptErr := fileChanged(promptPath, s.promptStamp)
 	if promptErr != nil {
 		return nil
 	}
 	if queueChanged {
-		s.queueMTime = queueTime
+		s.queueStamp = queueStamp
 	}
 	if promptChanged {
-		s.promptMTime = promptTime
+		s.promptStamp = promptStamp
 	}
 	if queueChanged || promptChanged {
 		return s.refreshPreviewAsync()
