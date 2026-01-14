@@ -25,6 +25,13 @@ const (
 	pinModeBlockForm
 )
 
+type pinFocus int
+
+const (
+	pinFocusTable pinFocus = iota
+	pinFocusDetail
+)
+
 type pinView struct {
 	files       pin.Files
 	items       []pin.QueueItem
@@ -33,6 +40,7 @@ type pinView struct {
 	status      string
 	err         string
 	mode        pinMode
+	focus       pinFocus
 	blockForm   *huh.Form
 	blockReason string
 	config      config.Config
@@ -47,6 +55,7 @@ func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) 
 	view := &pinView{
 		files:     files,
 		mode:      pinModeTable,
+		focus:     pinFocusTable,
 		config:    cfg,
 		locations: locations,
 	}
@@ -83,6 +92,15 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch {
+		case key.Matches(keyMsg, keys.TogglePane):
+			if p.mode == pinModeTable {
+				if p.focus == pinFocusTable {
+					p.setFocus(pinFocusDetail)
+				} else {
+					p.setFocus(pinFocusTable)
+				}
+			}
+			return nil
 		case key.Matches(keyMsg, keys.ValidatePin):
 			p.runValidate()
 			return nil
@@ -93,6 +111,12 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			p.startBlock()
 			return nil
 		}
+	}
+
+	if p.focus == pinFocusDetail {
+		updated, cmd := p.detail.Update(msg)
+		p.detail = updated
+		return cmd
 	}
 
 	prevCursor := p.table.Cursor()
@@ -342,11 +366,24 @@ func (p *pinView) RefreshIfNeeded() {
 }
 
 func (p *pinView) Focus() {
-	p.table.Focus()
+	if p.focus == pinFocusTable {
+		p.table.Focus()
+	} else {
+		p.table.Blur()
+	}
 }
 
 func (p *pinView) Blur() {
 	p.table.Blur()
+}
+
+func (p *pinView) setFocus(focus pinFocus) {
+	p.focus = focus
+	if focus == pinFocusTable {
+		p.table.Focus()
+	} else {
+		p.table.Blur()
+	}
 }
 
 func trimTitle(header string) string {

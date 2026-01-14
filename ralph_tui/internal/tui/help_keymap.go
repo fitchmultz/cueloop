@@ -23,11 +23,11 @@ type pinKeyMap struct {
 }
 
 func (p pinKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{p.keys.ValidatePin, p.keys.MoveChecked, p.keys.BlockItem}
+	return []key.Binding{p.keys.ValidatePin, p.keys.MoveChecked, p.keys.BlockItem, p.keys.TogglePane}
 }
 
 func (p pinKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{p.keys.ValidatePin, p.keys.MoveChecked, p.keys.BlockItem}}
+	return [][]key.Binding{{p.keys.ValidatePin, p.keys.MoveChecked, p.keys.BlockItem, p.keys.TogglePane}}
 }
 
 type specsKeyMap struct {

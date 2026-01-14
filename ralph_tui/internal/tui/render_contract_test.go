@@ -8,19 +8,10 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
-	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 )
 
 func TestRenderContract(t *testing.T) {
-	locs, err := paths.Resolve("")
-	if err != nil {
-		t.Fatalf("resolve paths: %v", err)
-	}
-	cfg, err := config.LoadFromLocations(config.LoadOptions{Locations: locs})
-	if err != nil {
-		t.Fatalf("load config: %v", err)
-	}
+	_, locs, cfg := newHermeticModel(t)
 
 	sizes := []struct {
 		w int

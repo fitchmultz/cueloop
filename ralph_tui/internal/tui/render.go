@@ -5,7 +5,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // withFinalNewline preserves leading/trailing spaces but ensures exactly one trailing newline.
@@ -22,9 +22,8 @@ func clampToSize(s string, width int, height int) string {
 		lines = lines[:height]
 	}
 	if width > 0 {
-		clampStyle := lipgloss.NewStyle().Width(width)
 		for i, line := range lines {
-			lines[i] = clampStyle.Render(line)
+			lines[i] = ansi.Truncate(line, width, "")
 		}
 	}
 	return strings.Join(lines, "\n")

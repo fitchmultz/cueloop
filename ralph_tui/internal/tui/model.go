@@ -320,21 +320,25 @@ func computeLayoutWithBody(width int, bodyHeight int) layoutSpec {
 }
 
 func (m model) panelStyles() (lipgloss.Style, lipgloss.Style) {
-	navBorder := lipgloss.HiddenBorder()
-	contentBorder := lipgloss.HiddenBorder()
-	if m.navFocused {
-		navBorder = lipgloss.RoundedBorder()
-	} else {
-		contentBorder = lipgloss.RoundedBorder()
-	}
+	border := lipgloss.RoundedBorder()
+	focused := lipgloss.AdaptiveColor{Light: "63", Dark: "75"}
+	unfocused := lipgloss.AdaptiveColor{Light: "245", Dark: "238"}
 
 	navStyle := lipgloss.NewStyle().
 		Padding(1, 1, 0, 1).
-		Border(navBorder)
+		Border(border)
 
 	contentStyle := lipgloss.NewStyle().
 		Padding(1, 1, 0, 1).
-		Border(contentBorder)
+		Border(border)
+
+	if m.navFocused {
+		navStyle = navStyle.BorderForeground(focused)
+		contentStyle = contentStyle.BorderForeground(unfocused)
+	} else {
+		navStyle = navStyle.BorderForeground(unfocused)
+		contentStyle = contentStyle.BorderForeground(focused)
+	}
 
 	return navStyle, contentStyle
 }

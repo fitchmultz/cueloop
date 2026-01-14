@@ -6,19 +6,10 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
-	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 )
 
 func TestModelScreenTransition(t *testing.T) {
-	locs, err := paths.Resolve("")
-	if err != nil {
-		t.Fatalf("resolve paths: %v", err)
-	}
-	cfg, err := config.LoadFromLocations(config.LoadOptions{Locations: locs})
-	if err != nil {
-		t.Fatalf("load config: %v", err)
-	}
+	_, locs, cfg := newHermeticModel(t)
 	m := newModel(cfg, locs)
 	m.nav.Select(4)
 	m.navFocused = true
