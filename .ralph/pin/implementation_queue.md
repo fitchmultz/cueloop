@@ -1,9 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0308 [ui]: Make Logs screen readable and optionally raw. (ralph_tui/internal/tui/logs_view.go)
-  - Evidence: Logs format toggle exists but renderContent always returns raw JSONL; no formatted view is applied to debug/loop/specs sections.
-  - Plan: Parse JSONL entries into concise, human-readable lines; keep raw/formatted toggle; preserve status line with resolved log path.
 - [ ] RQ-0400 [code]: Improve TUI observability and add an integration test harness to reduce manual debugging. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/logging.go, ralph_tui/internal/tui/*_test.go)
   - Evidence: Users report there is no usable debug signal for agents; the log path is not obvious (and tui.start logs cfg.Logging.File, which is often blank when using default resolution); loop/specs output is only held in in-memory slices; several refresh/file errors are silently ignored (return nil), making failures invisible.
   - Plan: Log and display the resolved log path (not just cfg.Logging.File); persist loop/specs run output to cache files so agents can inspect after exit; plumb refresh/file errors into screen status plus debug log; add a model driver test helper to simulate WindowSizeMsg and key flows (start/stop loop, run specs, toggle logs format) and assert View() fits within bounds.

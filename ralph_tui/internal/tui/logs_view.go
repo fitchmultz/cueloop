@@ -2,9 +2,14 @@
 package tui
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -140,13 +145,13 @@ func (l *logsView) statusLine() string {
 func (l *logsView) renderContent() string {
 	sections := []string{
 		"Debug Log (tail)",
-		linesOrFallback(l.debugLines, "No log entries yet."),
+		l.renderLines(l.debugLines, "No log entries yet."),
 		"",
 		"Loop Output (tail)",
-		linesOrFallback(l.loopLines, "No loop output yet."),
+		l.renderLines(l.loopLines, "No loop output yet."),
 		"",
 		"Specs Output (tail)",
-		linesOrFallback(l.specsLines, "No specs output yet."),
+		l.renderLines(l.specsLines, "No specs output yet."),
 	}
 	return strings.Join(sections, "\n")
 }
@@ -183,9 +188,110 @@ func tailLines(lines []string, limit int) []string {
 	return append([]string{}, lines[len(lines)-limit:]...)
 }
 
-func linesOrFallback(lines []string, fallback string) string {
+func (l *logsView) renderLines(lines []string, fallback string) string {
 	if len(lines) == 0 {
 		return fallback
 	}
-	return strings.Join(lines, "\n")
+	if l.format == logsFormatRaw {
+		return strings.Join(lines, "\n")
+	}
+	formatted := formatLogLines(lines)
+	if len(formatted) == 0 {
+		return fallback
+	}
+	return strings.Join(formatted, "\n")
+}
+
+func formatLogLines(lines []string) []string {
+	formatted := make([]string, 0, len(lines))
+	for _, line := range lines {
+		formatted = append(formatted, formatLogLine(line))
+	}
+	return formatted
+}
+
+func formatLogLine(line string) string {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return line
+	}
+	var entry logEntry
+	if err := json.Unmarshal([]byte(trimmed), &entry); err != nil {
+		return line
+	}
+	if entry.Message == "" && entry.Level == "" && entry.Timestamp == "" {
+		return line
+	}
+	timestamp := formatLogTimestamp(entry.Timestamp)
+	level := strings.ToUpper(strings.TrimSpace(entry.Level))
+	message := strings.TrimSpace(entry.Message)
+	fields := formatLogFields(entry.Fields)
+
+	parts := make([]string, 0, 4)
+	if timestamp != "" {
+		parts = append(parts, timestamp)
+	}
+	if level != "" {
+		parts = append(parts, level)
+	}
+	if message != "" {
+		parts = append(parts, message)
+	}
+	lineOut := strings.Join(parts, " ")
+	if fields != "" {
+		if lineOut == "" {
+			lineOut = fields
+		} else {
+			lineOut = lineOut + " | " + fields
+		}
+	}
+	if lineOut == "" {
+		return line
+	}
+	return lineOut
+}
+
+func formatLogTimestamp(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return raw
+	}
+	return parsed.UTC().Format("2006-01-02 15:04:05Z")
+}
+
+func formatLogFields(fields map[string]any) string {
+	if len(fields) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		value := formatLogFieldValue(fields[key])
+		if value == "" {
+			parts = append(parts, key+"=")
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s=%s", key, value))
+	}
+	return strings.Join(parts, " ")
+}
+
+func formatLogFieldValue(value any) string {
+	switch typed := value.(type) {
+	case string:
+		if strings.ContainsAny(typed, " \t\n") {
+			return strconv.Quote(typed)
+		}
+		return typed
+	default:
+		return fmt.Sprint(value)
+	}
 }
