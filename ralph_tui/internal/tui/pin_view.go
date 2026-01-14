@@ -43,6 +43,7 @@ type pinView struct {
 	files       pin.Files
 	items       []pin.QueueItem
 	table       table.Model
+	tableStyles table.Styles
 	detail      viewport.Model
 	status      string
 	err         string
@@ -59,6 +60,11 @@ type pinView struct {
 	queueStamp  fileStamp
 }
 
+const (
+	defaultPinViewWidth = 80
+	pinViewChromeHeight = 4
+)
+
 func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) {
 	files := pin.ResolveFiles(cfg.Paths.PinDir)
 	view := &pinView{
@@ -68,14 +74,11 @@ func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) 
 		config:    cfg,
 		locations: locations,
 	}
-	columns := []table.Column{
-		{Title: "Status", Width: 6},
-		{Title: "ID", Width: 10},
-		{Title: "Title", Width: 60},
-	}
-	view.table = table.New(table.WithColumns(columns), table.WithFocused(true))
+	view.tableStyles = table.DefaultStyles()
+	columns := pinTableColumns(defaultPinViewWidth, nil, view.tableStyles)
+	view.table = table.New(table.WithColumns(columns), table.WithFocused(true), table.WithStyles(view.tableStyles))
 	view.detail = viewport.New(80, 10)
-	view.detail.Style = lipgloss.NewStyle().Padding(0, 1)
+	view.detail.Style = lipgloss.NewStyle()
 	return view, nil
 }
 
@@ -100,12 +103,14 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		if reloadMsg.err != nil {
 			p.err = reloadMsg.err.Error()
 			p.status = ""
+			p.reloadAgain = false
 			return nil
 		}
 		p.err = ""
 		p.items = reloadMsg.items
 		p.table.SetRows(reloadMsg.rows)
 		p.queueStamp = reloadMsg.queueStamp
+		p.setTableColumns(p.width)
 		p.syncDetail(reloadMsg.resetScroll)
 		if p.reloadAgain {
 			p.reloadAgain = false
@@ -154,29 +159,20 @@ func (p *pinView) View() string {
 	if p.mode == pinModeBlockForm && p.blockForm != nil {
 		return withFinalNewline("Block item\n\n" + p.blockForm.View())
 	}
+	header := "Pin"
 	status := p.statusLine()
-	return withFinalNewline(status + "\n\n" + p.tableWithDetail())
+	if status == "" {
+		return withFinalNewline(header + "\n\n" + p.tableWithDetail())
+	}
+	return withFinalNewline(header + "\n" + status + "\n\n" + p.tableWithDetail())
 }
 
 func (p *pinView) Resize(width int, height int) {
 	p.width = width
 	p.height = height
 
-	statusWidth := 6
-	idWidth := 10
-	titleWidth := width - statusWidth - idWidth - 6
-	if titleWidth < 0 {
-		titleWidth = 0
-	}
-	if width >= statusWidth+idWidth+6+20 && titleWidth < 20 {
-		titleWidth = 20
-	}
-	p.table.SetColumns([]table.Column{
-		{Title: "Status", Width: statusWidth},
-		{Title: "ID", Width: idWidth},
-		{Title: "Title", Width: titleWidth},
-	})
-	available := height - 3
+	p.setTableColumns(width)
+	available := height - pinViewChromeHeight
 	if available < 0 {
 		available = 0
 	}
@@ -254,6 +250,7 @@ func (p *pinView) reload() error {
 		rows = append(rows, table.Row{status, item.ID, trimTitle(item.Header)})
 	}
 	p.table.SetRows(rows)
+	p.setTableColumns(p.width)
 	if stamp, err := getFileStamp(p.files.QueuePath); err == nil {
 		p.queueStamp = stamp
 	}
@@ -267,6 +264,7 @@ func (p *pinView) reloadAsync(resetScroll bool) tea.Cmd {
 		return nil
 	}
 	p.loading = true
+	p.reloadAgain = false
 	p.status = ""
 	p.err = ""
 	files := p.files
@@ -453,6 +451,37 @@ func joinStatus(primary string, secondary string) string {
 func trimTitle(header string) string {
 	trimmed := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(header, "- [ ]"), "- [x]"))
 	return trimmed
+}
+
+func (p *pinView) setTableColumns(width int) {
+	columns := pinTableColumns(width, p.items, p.tableStyles)
+	p.table.SetColumns(columns)
+}
+
+func pinTableColumns(width int, items []pin.QueueItem, styles table.Styles) []table.Column {
+	statusWidth := max(lipgloss.Width("Status"), lipgloss.Width("[x]"))
+	idWidth := lipgloss.Width("ID")
+	for _, item := range items {
+		idWidth = max(idWidth, lipgloss.Width(item.ID))
+	}
+	minTitleWidth := lipgloss.Width("Title")
+	cellFrameW, _ := styles.Cell.GetFrameSize()
+	headerFrameW, _ := styles.Header.GetFrameSize()
+	frameW := max(cellFrameW, headerFrameW)
+	titleWidth := minTitleWidth
+	if width > 0 {
+		available := width - frameW*3 - statusWidth - idWidth
+		if available < minTitleWidth {
+			titleWidth = max(0, available)
+		} else {
+			titleWidth = available
+		}
+	}
+	return []table.Column{
+		{Title: "Status", Width: statusWidth},
+		{Title: "ID", Width: idWidth},
+		{Title: "Title", Width: titleWidth},
+	}
 }
 
 func requireNonEmpty(label string) func(string) error {

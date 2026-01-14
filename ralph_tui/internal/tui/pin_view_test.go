@@ -35,3 +35,38 @@ func TestPinReloadAsyncQueuesWhenBusy(t *testing.T) {
 		t.Fatalf("expected reloadAgain to be set when already loading")
 	}
 }
+
+func TestPinReloadAsyncClearsReloadAgainOnStart(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+	view, err := newPinView(cfg, locs)
+	if err != nil {
+		t.Fatalf("newPinView failed: %v", err)
+	}
+
+	view.reloadAgain = true
+	cmd := view.reloadAsync(true)
+	if cmd == nil {
+		t.Fatalf("expected reloadAsync to return a command")
+	}
+	if view.reloadAgain {
+		t.Fatalf("expected reloadAgain to clear when starting reload")
+	}
+}
+
+func TestPinReloadAsyncClearsReloadAgainOnError(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+	view, err := newPinView(cfg, locs)
+	if err != nil {
+		t.Fatalf("newPinView failed: %v", err)
+	}
+
+	view.loading = true
+	view.reloadAgain = true
+	_ = view.Update(pinReloadMsg{err: errSentinel}, newTestKeyMap())
+	if view.reloadAgain {
+		t.Fatalf("expected reloadAgain to clear on reload error")
+	}
+	if view.loading {
+		t.Fatalf("expected loading to clear on reload error")
+	}
+}

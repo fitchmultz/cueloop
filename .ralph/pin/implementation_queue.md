@@ -1,9 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0304 [ui]: Fix pin view layout and reload lifecycle. (ralph_tui/internal/tui/pin_view.go)
-  - Evidence: No Pin header; detail viewport padding causes overflow; magic column widths; reloadAgain sticks on error.
-  - Plan: Add header line; remove/size padding correctly; compute table widths from styles; clear reloadAgain on error/start; add pin_view_reload_again_test.
 - [ ] RQ-0305 [code]: Add run IDs + batched log streaming; remove busy tick. (ralph_tui/internal/tui/async_lines.go, ralph_tui/internal/tui/loop_view.go)
   - Evidence: tickCmd wakes every 500ms; log channels can drop lines; stale messages can corrupt current run.
   - Plan: Add runID + listenLineBatches helper; batch log lines; ignore stale run messages; remove tick loop; add loop_view_async_test.

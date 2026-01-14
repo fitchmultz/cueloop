@@ -1,6 +1,9 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0304 [ui]: Fix pin view layout and reload lifecycle. (ralph_tui/internal/tui/pin_view.go)
+  - Evidence: No Pin header; detail viewport padding causes overflow; magic column widths; reloadAgain sticks on error.
+  - Plan: Add header line; remove/size padding correctly; compute table widths from styles; clear reloadAgain on error/start; add pin_view_reload_again_test.
 - [x] RQ-0303 [code]: Introduce fileStamp change detection and gate refreshes. (ralph_tui/internal/tui/file_watch.go, ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/model.go)
   - Evidence: fileChanged only uses modtime; Logs refresh runs unconditionally and re-reads entire file.
   - Plan: Replace modtime-only API with fileStamp (modtime+size+exists); use it to skip log tailing if unchanged; reduce refresh churn.

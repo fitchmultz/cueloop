@@ -2,6 +2,7 @@
 package tui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,4 +63,10 @@ func writeTestFile(t *testing.T, path string, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+var errSentinel = errors.New("sentinel error")
+
+func newTestKeyMap() keyMap {
+	return newKeyMap()
 }
