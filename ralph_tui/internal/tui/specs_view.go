@@ -36,6 +36,8 @@ type specsView struct {
 	previewDirty      bool
 	status            string
 	err               string
+	refreshErr        string
+	persistErr        string
 	previewViewport   viewport.Model
 	logViewport       viewport.Model
 	previewWidth      int
@@ -49,6 +51,7 @@ type specsView struct {
 	queueStamp        fileStamp
 	promptStamp       fileStamp
 	logger            *tuiLogger
+	output            *outputFileWriter
 }
 
 type specsBuildResultMsg struct {
@@ -114,6 +117,7 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		}
 		if msg.batch.Done {
 			s.logCh = nil
+			s.stopPersistingOutput()
 			s.finalizeRunOutput()
 			if s.pendingResult != nil {
 				cmd := s.applyBuildResult(*s.pendingResult)
@@ -132,6 +136,7 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		s.previewLoading = false
 		if msg.err != nil {
 			s.previewErr = msg.err.Error()
+			s.setRefreshError("render preview", msg.err)
 			s.preview = ""
 			if s.previewDirty && !s.running {
 				return s.refreshPreviewAsync()
@@ -139,6 +144,7 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			return nil
 		}
 		s.previewErr = ""
+		s.clearRefreshError()
 		s.preview = msg.preview
 		s.effectiveInnovate = msg.effective
 		s.autoEnabled = msg.auto
@@ -168,6 +174,7 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			s.running = true
 			s.status = "Running specs build..."
 			s.err = ""
+			s.persistErr = ""
 			return s.runBuildCmd()
 		case msg.String() == "j":
 			s.activeViewport().LineDown(1)
@@ -199,6 +206,12 @@ func (s *specsView) View() string {
 func (s *specsView) statusLine() string {
 	if s.err != "" {
 		return fmt.Sprintf("Error: %s", s.err)
+	}
+	if s.refreshErr != "" {
+		return fmt.Sprintf("Error: %s", s.refreshErr)
+	}
+	if s.persistErr != "" {
+		return fmt.Sprintf("Persist error: %s", s.persistErr)
 	}
 	if s.status != "" {
 		return s.status
@@ -297,6 +310,7 @@ func (s *specsView) requestPreviewRefresh() tea.Cmd {
 
 func (s *specsView) runBuildCmd() tea.Cmd {
 	s.resetRunLogs()
+	s.startPersistingOutput()
 	logCh := make(chan string, 1024)
 	s.logCh = logCh
 	s.logRunID++
@@ -412,12 +426,17 @@ func (s *specsView) RefreshIfNeeded() tea.Cmd {
 	queuePath := filepath.Join(s.cfg.Paths.PinDir, "implementation_queue.md")
 	queueStamp, queueChanged, queueErr := fileChanged(queuePath, s.queueStamp)
 	if queueErr != nil {
+		s.setRefreshError("watch implementation_queue.md", queueErr)
 		return nil
 	}
 	promptPath := filepath.Join(s.cfg.Paths.PinDir, "specs_builder.md")
 	promptStamp, promptChanged, promptErr := fileChanged(promptPath, s.promptStamp)
 	if promptErr != nil {
+		s.setRefreshError("watch specs_builder.md", promptErr)
 		return nil
+	}
+	if s.previewErr == "" && s.refreshErr != "" {
+		s.clearRefreshError()
 	}
 	if queueChanged {
 		s.queueStamp = queueStamp
@@ -463,6 +482,7 @@ func (s *specsView) appendRunLogs(lines []string) {
 	if len(lines) == 0 {
 		return
 	}
+	s.persistSpecsLines(lines)
 	const maxLines = 500
 	s.runLogs = append(s.runLogs, lines...)
 	if len(s.runLogs) > maxLines {
@@ -516,6 +536,76 @@ func (s *specsView) applyBuildResult(msg specsBuildResultMsg) tea.Cmd {
 		})
 	}
 	return s.RefreshPreviewCmd()
+}
+
+func (s *specsView) specsOutputPath() string {
+	if strings.TrimSpace(s.cfg.Paths.CacheDir) == "" {
+		return ""
+	}
+	return filepath.Join(s.cfg.Paths.CacheDir, "specs_output.log")
+}
+
+func (s *specsView) startPersistingOutput() {
+	path := s.specsOutputPath()
+	if path == "" {
+		return
+	}
+	if s.output == nil {
+		s.output = &outputFileWriter{}
+	}
+	if err := s.output.Reset(path); err != nil {
+		s.persistErr = err.Error()
+		s.logOutputError("specs.output.persist.error", err, path)
+		return
+	}
+	s.persistErr = ""
+}
+
+func (s *specsView) stopPersistingOutput() {
+	if s.output == nil {
+		return
+	}
+	if err := s.output.Close(); err != nil {
+		if s.persistErr == "" {
+			s.persistErr = err.Error()
+		}
+		s.logOutputError("specs.output.persist.error", err, s.specsOutputPath())
+	}
+}
+
+func (s *specsView) persistSpecsLines(lines []string) {
+	if s.output == nil {
+		return
+	}
+	if err := s.output.AppendLines(lines); err != nil {
+		s.persistErr = err.Error()
+		s.logOutputError("specs.output.persist.error", err, s.specsOutputPath())
+		_ = s.output.Close()
+		s.output = nil
+	}
+}
+
+func (s *specsView) setRefreshError(context string, err error) {
+	if err == nil {
+		return
+	}
+	message := context + ": " + err.Error()
+	s.refreshErr = message
+	s.logOutputError("specs.refresh.error", err, context)
+}
+
+func (s *specsView) clearRefreshError() {
+	s.refreshErr = ""
+}
+
+func (s *specsView) logOutputError(event string, err error, detail string) {
+	if s.logger == nil || err == nil {
+		return
+	}
+	s.logger.Error(event, map[string]any{
+		"error":  err.Error(),
+		"detail": detail,
+	})
 }
 
 func summarizeDiffStat(stat string) string {

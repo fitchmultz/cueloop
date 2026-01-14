@@ -5,6 +5,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -24,6 +25,7 @@ type loopView struct {
 	mode      loopMode
 	status    string
 	err       string
+	outputErr string
 	logs      []string
 	cancel    context.CancelFunc
 	editForm  *huh.Form
@@ -31,6 +33,7 @@ type loopView struct {
 	logCh     chan string
 	logRunID  int
 	logger    *tuiLogger
+	output    *outputFileWriter
 	width     int
 	height    int
 }
@@ -138,6 +141,7 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 				l.logger.Info("loop.stop", map[string]any{"status": "completed"})
 			}
 		}
+		l.stopPersistingOutput()
 		l.cancel = nil
 		return nil
 	case loopLogBatchMsg:
@@ -149,6 +153,7 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		}
 		if msg.batch.Done {
 			l.logCh = nil
+			l.stopPersistingOutput()
 			return nil
 		}
 		if l.logCh != nil {
@@ -200,6 +205,9 @@ func (l *loopView) statusLine() string {
 	if l.err != "" {
 		return fmt.Sprintf("Error: %s", l.err)
 	}
+	if l.outputErr != "" {
+		return l.status + " | Persist error: " + l.outputErr
+	}
 	return l.status
 }
 
@@ -223,8 +231,10 @@ func (l *loopView) controlsView() string {
 
 func (l *loopView) start(runOnce bool) tea.Cmd {
 	l.err = ""
+	l.outputErr = ""
 	l.status = "Running"
 	l.mode = loopRunning
+	l.startPersistingOutput()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	l.cancel = cancel
@@ -485,6 +495,7 @@ func (l *loopView) appendLogLines(lines []string) {
 	if len(lines) == 0 {
 		return
 	}
+	l.persistLoopLines(lines)
 	atBottom := l.viewport.AtBottom()
 	l.logs = append(l.logs, lines...)
 	if len(l.logs) > 2000 {
@@ -500,4 +511,61 @@ func listenLoopLogs(logCh <-chan string, runID int) tea.Cmd {
 	return func() tea.Msg {
 		return loopLogBatchMsg{batch: drainLogChannel(runID, logCh, 64)}
 	}
+}
+
+func (l *loopView) loopOutputPath() string {
+	if strings.TrimSpace(l.cfg.Paths.CacheDir) == "" {
+		return ""
+	}
+	return filepath.Join(l.cfg.Paths.CacheDir, "loop_output.log")
+}
+
+func (l *loopView) startPersistingOutput() {
+	path := l.loopOutputPath()
+	if path == "" {
+		return
+	}
+	if l.output == nil {
+		l.output = &outputFileWriter{}
+	}
+	if err := l.output.Reset(path); err != nil {
+		l.outputErr = err.Error()
+		l.logOutputError(err, path)
+		return
+	}
+	l.outputErr = ""
+}
+
+func (l *loopView) stopPersistingOutput() {
+	if l.output == nil {
+		return
+	}
+	if err := l.output.Close(); err != nil {
+		if l.outputErr == "" {
+			l.outputErr = err.Error()
+		}
+		l.logOutputError(err, l.loopOutputPath())
+	}
+}
+
+func (l *loopView) persistLoopLines(lines []string) {
+	if l.output == nil {
+		return
+	}
+	if err := l.output.AppendLines(lines); err != nil {
+		l.outputErr = err.Error()
+		l.logOutputError(err, l.loopOutputPath())
+		_ = l.output.Close()
+		l.output = nil
+	}
+}
+
+func (l *loopView) logOutputError(err error, path string) {
+	if l.logger == nil || err == nil {
+		return
+	}
+	l.logger.Error("loop.output.persist.error", map[string]any{
+		"error": err.Error(),
+		"path":  path,
+	})
 }

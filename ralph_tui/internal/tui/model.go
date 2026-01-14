@@ -119,11 +119,22 @@ func newModel(cfg config.Config, locations paths.Locations) model {
 }
 
 func (m model) Init() tea.Cmd {
-	m.logInfo("tui.start", map[string]any{
-		"refresh_seconds": m.cfg.UI.RefreshSeconds,
-		"log_level":       m.cfg.Logging.Level,
-		"log_file":        m.cfg.Logging.File,
-	})
+	resolvedLogPath := ""
+	if m.logger != nil {
+		resolvedLogPath = m.logger.Path()
+	} else if path, err := resolveLogPath(m.cfg); err == nil {
+		resolvedLogPath = path
+	}
+	fields := map[string]any{
+		"refresh_seconds":   m.cfg.UI.RefreshSeconds,
+		"log_level":         m.cfg.Logging.Level,
+		"log_file":          m.cfg.Logging.File,
+		"resolved_log_path": resolvedLogPath,
+	}
+	if m.logErr != nil {
+		fields["logger_error"] = m.logErr.Error()
+	}
+	m.logInfo("tui.start", fields)
 	cmds := []tea.Cmd{refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen)}
 	if m.pinView != nil {
 		if cmd := m.pinView.reloadAsync(true); cmd != nil {
