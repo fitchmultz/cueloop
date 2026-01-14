@@ -21,6 +21,8 @@ type specsView struct {
 	cfg               config.Config
 	locations         paths.Locations
 	runner            specs.Runner
+	runnerArgs        []string
+	reasoningEffort   string
 	interactive       bool
 	innovate          bool
 	innovateExplicit  bool
@@ -75,7 +77,9 @@ func newSpecsView(cfg config.Config, locations paths.Locations) (*specsView, err
 	view := &specsView{
 		cfg:             cfg,
 		locations:       locations,
-		runner:          specs.RunnerCodex,
+		runner:          specs.Runner(cfg.Specs.Runner),
+		runnerArgs:      cfg.Specs.RunnerArgs,
+		reasoningEffort: cfg.Specs.ReasoningEffort,
 		autofillScout:   cfg.Specs.AutofillScout,
 		previewViewport: vp,
 		logViewport:     logViewport,
@@ -215,10 +219,12 @@ func (s *specsView) optionsView() string {
 	}
 	lines := []string{
 		fmt.Sprintf("Runner: %s", s.runner),
+		fmt.Sprintf("Runner args: %d", len(s.runnerArgs)),
+		fmt.Sprintf("Reasoning effort: %s", displayReasoningEffort(s.reasoningEffort)),
 		fmt.Sprintf("Interactive: %s", yesNo(s.interactive)),
 		fmt.Sprintf("Innovate: %s", innovate),
 		fmt.Sprintf("Autofill scout: %s", yesNo(s.autofillScout)),
-		"Keys: e settings | i interactive | n innovate | a autofill | r run build",
+		"Keys: e settings (runner/args/effort) | i interactive | n innovate | a autofill | r run build",
 		"Scroll: \u2191/\u2193 PgUp/PgDn (Tab to focus)",
 	}
 	return strings.Join(lines, "\n")
@@ -299,11 +305,14 @@ func (s *specsView) runBuildCmd() tea.Cmd {
 	s.logViewport.SetContent("")
 	s.logViewport.GotoTop()
 	if s.logger != nil {
+		appliedArgs := applyReasoningEffort(string(s.runner), s.runnerArgs, s.reasoningEffort, "medium")
 		s.logger.Info("specs.run.start", map[string]any{
-			"runner":        s.runner,
-			"interactive":   s.interactive,
-			"innovate":      s.innovate,
-			"autofillScout": s.autofillScout,
+			"runner":            s.runner,
+			"runner_args_count": len(appliedArgs),
+			"reasoning_effort":  displayReasoningEffort(s.reasoningEffort),
+			"interactive":       s.interactive,
+			"innovate":          s.innovate,
+			"autofillScout":     s.autofillScout,
 		})
 	}
 
@@ -316,7 +325,7 @@ func (s *specsView) runBuildCmd() tea.Cmd {
 			RepoRoot:         s.locations.RepoRoot,
 			PinDir:           s.cfg.Paths.PinDir,
 			Runner:           s.runner,
-			RunnerArgs:       []string{},
+			RunnerArgs:       applyReasoningEffort(string(s.runner), s.runnerArgs, s.reasoningEffort, "medium"),
 			Interactive:      s.interactive,
 			Innovate:         s.innovate,
 			InnovateExplicit: s.innovateExplicit,
@@ -376,6 +385,11 @@ func (s *specsView) SetConfig(cfg config.Config, locations paths.Locations) {
 	s.locations = locations
 	if !s.autofillExplicit {
 		s.autofillScout = cfg.Specs.AutofillScout
+	}
+	if !s.running {
+		s.runner = specs.Runner(cfg.Specs.Runner)
+		s.runnerArgs = cfg.Specs.RunnerArgs
+		s.reasoningEffort = cfg.Specs.ReasoningEffort
 	}
 	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
 		s.queueStamp = stamp

@@ -49,19 +49,25 @@ type RunnerConfig struct {
 
 // SpecsConfig controls spec-building features.
 type SpecsConfig struct {
-	AutofillScout bool `json:"autofill_scout"`
+	AutofillScout   bool     `json:"autofill_scout"`
+	Runner          string   `json:"runner"`
+	RunnerArgs      []string `json:"runner_args"`
+	ReasoningEffort string   `json:"reasoning_effort"`
 }
 
 // LoopConfig controls loop scheduling knobs.
 type LoopConfig struct {
-	Workers           int    `json:"workers"`
-	PollSeconds       int    `json:"poll_seconds"`
-	SleepSeconds      int    `json:"sleep_seconds"`
-	MaxIterations     int    `json:"max_iterations"`
-	MaxStalled        int    `json:"max_stalled"`
-	MaxRepairAttempts int    `json:"max_repair_attempts"`
-	OnlyTags          string `json:"only_tags"`
-	RequireMain       bool   `json:"require_main"`
+	Workers           int      `json:"workers"`
+	PollSeconds       int      `json:"poll_seconds"`
+	SleepSeconds      int      `json:"sleep_seconds"`
+	MaxIterations     int      `json:"max_iterations"`
+	MaxStalled        int      `json:"max_stalled"`
+	MaxRepairAttempts int      `json:"max_repair_attempts"`
+	OnlyTags          string   `json:"only_tags"`
+	RequireMain       bool     `json:"require_main"`
+	Runner            string   `json:"runner"`
+	RunnerArgs        []string `json:"runner_args"`
+	ReasoningEffort   string   `json:"reasoning_effort"`
 }
 
 // GitConfig controls Git behaviors invoked by Ralph.
@@ -110,6 +116,15 @@ func (c Config) Validate() error {
 	if c.Runner.MaxWorkers <= 0 {
 		return fmt.Errorf("runner.max_workers must be > 0")
 	}
+	if strings.TrimSpace(c.Specs.Runner) == "" {
+		return fmt.Errorf("specs.runner must be set")
+	}
+	if !ValidRunner(c.Specs.Runner) {
+		return fmt.Errorf("specs.runner must be codex or opencode (got: %s)", c.Specs.Runner)
+	}
+	if !ValidReasoningEffort(c.Specs.ReasoningEffort) {
+		return fmt.Errorf("specs.reasoning_effort must be auto, low, medium, high, or off")
+	}
 	if c.Loop.Workers <= 0 {
 		return fmt.Errorf("loop.workers must be > 0")
 	}
@@ -128,10 +143,39 @@ func (c Config) Validate() error {
 	if c.Loop.MaxRepairAttempts < 0 {
 		return fmt.Errorf("loop.max_repair_attempts must be >= 0")
 	}
+	if strings.TrimSpace(c.Loop.Runner) == "" {
+		return fmt.Errorf("loop.runner must be set")
+	}
+	if !ValidRunner(c.Loop.Runner) {
+		return fmt.Errorf("loop.runner must be codex or opencode (got: %s)", c.Loop.Runner)
+	}
+	if !ValidReasoningEffort(c.Loop.ReasoningEffort) {
+		return fmt.Errorf("loop.reasoning_effort must be auto, low, medium, high, or off")
+	}
 	if strings.TrimSpace(c.Git.CommitPrefix) == "" {
 		return fmt.Errorf("git.commit_prefix must be set")
 	}
 	return nil
+}
+
+// ValidRunner returns true when the runner value is supported by Ralph.
+func ValidRunner(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "codex", "opencode":
+		return true
+	default:
+		return false
+	}
+}
+
+// ValidReasoningEffort returns true when the reasoning effort value is supported.
+func ValidReasoningEffort(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "auto", "low", "medium", "high", "off":
+		return true
+	default:
+		return false
+	}
 }
 
 func validLogLevel(level string) bool {
@@ -182,19 +226,25 @@ type RunnerPartial struct {
 
 // SpecsPartial overrides SpecsConfig fields when set.
 type SpecsPartial struct {
-	AutofillScout *bool `json:"autofill_scout,omitempty"`
+	AutofillScout   *bool    `json:"autofill_scout,omitempty"`
+	Runner          *string  `json:"runner,omitempty"`
+	RunnerArgs      []string `json:"runner_args,omitempty"`
+	ReasoningEffort *string  `json:"reasoning_effort,omitempty"`
 }
 
 // LoopPartial overrides LoopConfig fields when set.
 type LoopPartial struct {
-	Workers           *int    `json:"workers,omitempty"`
-	PollSeconds       *int    `json:"poll_seconds,omitempty"`
-	SleepSeconds      *int    `json:"sleep_seconds,omitempty"`
-	MaxIterations     *int    `json:"max_iterations,omitempty"`
-	MaxStalled        *int    `json:"max_stalled,omitempty"`
-	MaxRepairAttempts *int    `json:"max_repair_attempts,omitempty"`
-	OnlyTags          *string `json:"only_tags,omitempty"`
-	RequireMain       *bool   `json:"require_main,omitempty"`
+	Workers           *int     `json:"workers,omitempty"`
+	PollSeconds       *int     `json:"poll_seconds,omitempty"`
+	SleepSeconds      *int     `json:"sleep_seconds,omitempty"`
+	MaxIterations     *int     `json:"max_iterations,omitempty"`
+	MaxStalled        *int     `json:"max_stalled,omitempty"`
+	MaxRepairAttempts *int     `json:"max_repair_attempts,omitempty"`
+	OnlyTags          *string  `json:"only_tags,omitempty"`
+	RequireMain       *bool    `json:"require_main,omitempty"`
+	Runner            *string  `json:"runner,omitempty"`
+	RunnerArgs        []string `json:"runner_args,omitempty"`
+	ReasoningEffort   *string  `json:"reasoning_effort,omitempty"`
 }
 
 // GitPartial overrides GitConfig fields when set.

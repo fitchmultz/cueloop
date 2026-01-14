@@ -138,6 +138,43 @@ func TestLoggingFileResolvesRelative(t *testing.T) {
 	}
 }
 
+func TestApplyPartialNormalizesRunnerSettings(t *testing.T) {
+	base, err := DefaultConfig()
+	if err != nil {
+		t.Fatalf("default config: %v", err)
+	}
+
+	partial := PartialConfig{
+		Specs: &SpecsPartial{
+			Runner:          stringPtr("codex"),
+			RunnerArgs:      []string{"  -c", "model_reasoning_effort=\"high\" ", " ", ""},
+			ReasoningEffort: stringPtr(" High "),
+		},
+		Loop: &LoopPartial{
+			Runner:          stringPtr("opencode"),
+			RunnerArgs:      []string{" --flag", "value ", "", "  "},
+			ReasoningEffort: stringPtr(" AUTO "),
+		},
+	}
+
+	cfg, err := ApplyPartial(base, partial, ".")
+	if err != nil {
+		t.Fatalf("ApplyPartial failed: %v", err)
+	}
+	if got := cfg.Specs.ReasoningEffort; got != "high" {
+		t.Fatalf("expected specs.reasoning_effort to be normalized, got %q", got)
+	}
+	if got := cfg.Loop.ReasoningEffort; got != "auto" {
+		t.Fatalf("expected loop.reasoning_effort to be normalized, got %q", got)
+	}
+	if len(cfg.Specs.RunnerArgs) != 2 {
+		t.Fatalf("expected specs.runner_args to trim blanks, got %#v", cfg.Specs.RunnerArgs)
+	}
+	if len(cfg.Loop.RunnerArgs) != 2 {
+		t.Fatalf("expected loop.runner_args to trim blanks, got %#v", cfg.Loop.RunnerArgs)
+	}
+}
+
 func writeJSON(t *testing.T, path string, payload any) {
 	t.Helper()
 	data, err := json.Marshal(payload)

@@ -18,7 +18,10 @@
     "dry_run": false
   },
   "specs": {
-    "autofill_scout": true
+    "autofill_scout": true,
+    "runner": "codex",
+    "runner_args": [],
+    "reasoning_effort": "auto"
   },
   "loop": {
     "workers": 12,
@@ -28,7 +31,10 @@
     "max_stalled": 3,
     "max_repair_attempts": 2,
     "only_tags": "",
-    "require_main": true
+    "require_main": true,
+    "runner": "codex",
+    "runner_args": [],
+    "reasoning_effort": "auto"
   },
   "git": {
     "auto_commit": true,

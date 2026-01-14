@@ -204,6 +204,15 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 		if partial.Specs.AutofillScout != nil {
 			base.Specs.AutofillScout = *partial.Specs.AutofillScout
 		}
+		if partial.Specs.Runner != nil {
+			base.Specs.Runner = strings.TrimSpace(*partial.Specs.Runner)
+		}
+		if partial.Specs.RunnerArgs != nil {
+			base.Specs.RunnerArgs = normalizeRunnerArgs(partial.Specs.RunnerArgs)
+		}
+		if partial.Specs.ReasoningEffort != nil {
+			base.Specs.ReasoningEffort = strings.ToLower(strings.TrimSpace(*partial.Specs.ReasoningEffort))
+		}
 	}
 	if partial.Loop != nil {
 		if partial.Loop.Workers != nil {
@@ -230,6 +239,15 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 		if partial.Loop.RequireMain != nil {
 			base.Loop.RequireMain = *partial.Loop.RequireMain
 		}
+		if partial.Loop.Runner != nil {
+			base.Loop.Runner = strings.TrimSpace(*partial.Loop.Runner)
+		}
+		if partial.Loop.RunnerArgs != nil {
+			base.Loop.RunnerArgs = normalizeRunnerArgs(partial.Loop.RunnerArgs)
+		}
+		if partial.Loop.ReasoningEffort != nil {
+			base.Loop.ReasoningEffort = strings.ToLower(strings.TrimSpace(*partial.Loop.ReasoningEffort))
+		}
 	}
 	if partial.Git != nil {
 		if partial.Git.AutoCommit != nil {
@@ -247,6 +265,21 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 	}
 
 	return base, nil
+}
+
+func normalizeRunnerArgs(args []string) []string {
+	trimmed := make([]string, 0, len(args))
+	for _, arg := range args {
+		value := strings.TrimSpace(arg)
+		if value == "" {
+			continue
+		}
+		trimmed = append(trimmed, value)
+	}
+	if len(trimmed) == 0 {
+		return nil
+	}
+	return trimmed
 }
 
 func resolveConfigPaths(cfg Config, basePath string) Config {

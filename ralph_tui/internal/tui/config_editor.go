@@ -38,6 +38,9 @@ type configFormData struct {
 	RunnerMaxWorkers  string
 	RunnerDryRun      bool
 	SpecsAutofill     bool
+	SpecsRunner       string
+	SpecsRunnerArgs   string
+	SpecsEffort       string
 	LoopWorkers       string
 	LoopPollSeconds   string
 	LoopSleepSeconds  string
@@ -46,6 +49,9 @@ type configFormData struct {
 	LoopMaxRepair     string
 	LoopOnlyTags      string
 	LoopRequireMain   bool
+	LoopRunner        string
+	LoopRunnerArgs    string
+	LoopEffort        string
 	GitAutoCommit     bool
 	GitAutoPush       bool
 	GitRequireClean   bool
@@ -381,6 +387,24 @@ func (e *configEditor) buildForm() *huh.Form {
 		),
 		huh.NewGroup(
 			huh.NewConfirm().Title("Specs Autofill Scout").Value(&e.data.SpecsAutofill),
+			huh.NewSelect[string]().
+				Title("Specs Runner").
+				Options(
+					huh.NewOption("codex", "codex"),
+					huh.NewOption("opencode", "opencode"),
+				).
+				Value(&e.data.SpecsRunner),
+			huh.NewText().Title("Specs Runner Args (one per line)").Value(&e.data.SpecsRunnerArgs).Lines(3),
+			huh.NewSelect[string]().
+				Title("Specs Reasoning Effort").
+				Options(
+					huh.NewOption("auto", "auto"),
+					huh.NewOption("low", "low"),
+					huh.NewOption("medium", "medium"),
+					huh.NewOption("high", "high"),
+					huh.NewOption("off", "off"),
+				).
+				Value(&e.data.SpecsEffort),
 		),
 		huh.NewGroup(
 			huh.NewInput().Title("Loop Workers").Value(&e.data.LoopWorkers).Validate(positiveInt("loop.workers")),
@@ -391,6 +415,24 @@ func (e *configEditor) buildForm() *huh.Form {
 			huh.NewInput().Title("Max Repair Attempts").Value(&e.data.LoopMaxRepair).Validate(nonNegativeInt("loop.max_repair_attempts")),
 			huh.NewInput().Title("Only Tags").Value(&e.data.LoopOnlyTags),
 			huh.NewConfirm().Title("Require Main Branch").Value(&e.data.LoopRequireMain),
+			huh.NewSelect[string]().
+				Title("Loop Runner").
+				Options(
+					huh.NewOption("codex", "codex"),
+					huh.NewOption("opencode", "opencode"),
+				).
+				Value(&e.data.LoopRunner),
+			huh.NewText().Title("Loop Runner Args (one per line)").Value(&e.data.LoopRunnerArgs).Lines(3),
+			huh.NewSelect[string]().
+				Title("Loop Reasoning Effort").
+				Options(
+					huh.NewOption("auto", "auto"),
+					huh.NewOption("low", "low"),
+					huh.NewOption("medium", "medium"),
+					huh.NewOption("high", "high"),
+					huh.NewOption("off", "off"),
+				).
+				Value(&e.data.LoopEffort),
 		),
 		huh.NewGroup(
 			huh.NewConfirm().Title("Git Auto Commit").Value(&e.data.GitAutoCommit),
@@ -424,6 +466,9 @@ func formDataFromConfig(cfg config.Config) configFormData {
 		RunnerMaxWorkers:  strconv.Itoa(cfg.Runner.MaxWorkers),
 		RunnerDryRun:      cfg.Runner.DryRun,
 		SpecsAutofill:     cfg.Specs.AutofillScout,
+		SpecsRunner:       cfg.Specs.Runner,
+		SpecsRunnerArgs:   formatArgsLines(cfg.Specs.RunnerArgs),
+		SpecsEffort:       displayReasoningEffort(cfg.Specs.ReasoningEffort),
 		LoopWorkers:       strconv.Itoa(cfg.Loop.Workers),
 		LoopPollSeconds:   strconv.Itoa(cfg.Loop.PollSeconds),
 		LoopSleepSeconds:  strconv.Itoa(cfg.Loop.SleepSeconds),
@@ -432,6 +477,9 @@ func formDataFromConfig(cfg config.Config) configFormData {
 		LoopMaxRepair:     strconv.Itoa(cfg.Loop.MaxRepairAttempts),
 		LoopOnlyTags:      cfg.Loop.OnlyTags,
 		LoopRequireMain:   cfg.Loop.RequireMain,
+		LoopRunner:        cfg.Loop.Runner,
+		LoopRunnerArgs:    formatArgsLines(cfg.Loop.RunnerArgs),
+		LoopEffort:        displayReasoningEffort(cfg.Loop.ReasoningEffort),
 		GitAutoCommit:     cfg.Git.AutoCommit,
 		GitAutoPush:       cfg.Git.AutoPush,
 		GitRequireClean:   cfg.Git.RequireClean,
@@ -477,6 +525,34 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 		return config.PartialConfig{}, fmt.Errorf("logging.level must be one of debug, info, warn, or error")
 	}
 	logFile := strings.TrimSpace(data.LogFile)
+	specsRunner := strings.TrimSpace(data.SpecsRunner)
+	if specsRunner == "" {
+		return config.PartialConfig{}, fmt.Errorf("specs.runner must be set")
+	}
+	if !config.ValidRunner(specsRunner) {
+		return config.PartialConfig{}, fmt.Errorf("specs.runner must be codex or opencode")
+	}
+	loopRunner := strings.TrimSpace(data.LoopRunner)
+	if loopRunner == "" {
+		return config.PartialConfig{}, fmt.Errorf("loop.runner must be set")
+	}
+	if !config.ValidRunner(loopRunner) {
+		return config.PartialConfig{}, fmt.Errorf("loop.runner must be codex or opencode")
+	}
+	specsEffort := strings.ToLower(strings.TrimSpace(data.SpecsEffort))
+	if specsEffort == "" {
+		specsEffort = "auto"
+	}
+	if !config.ValidReasoningEffort(specsEffort) {
+		return config.PartialConfig{}, fmt.Errorf("specs.reasoning_effort must be auto, low, medium, high, or off")
+	}
+	loopEffort := strings.ToLower(strings.TrimSpace(data.LoopEffort))
+	if loopEffort == "" {
+		loopEffort = "auto"
+	}
+	if !config.ValidReasoningEffort(loopEffort) {
+		return config.PartialConfig{}, fmt.Errorf("loop.reasoning_effort must be auto, low, medium, high, or off")
+	}
 
 	uiTheme := strings.TrimSpace(data.UITheme)
 	dataDir := strings.TrimSpace(data.DataDir)
@@ -501,7 +577,10 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 			DryRun:     &data.RunnerDryRun,
 		},
 		Specs: &config.SpecsPartial{
-			AutofillScout: &data.SpecsAutofill,
+			AutofillScout:   &data.SpecsAutofill,
+			Runner:          &specsRunner,
+			RunnerArgs:      parseArgsLines(data.SpecsRunnerArgs),
+			ReasoningEffort: &specsEffort,
 		},
 		Loop: &config.LoopPartial{
 			Workers:           &loopWorkers,
@@ -512,6 +591,9 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 			MaxRepairAttempts: &maxRepair,
 			OnlyTags:          &data.LoopOnlyTags,
 			RequireMain:       &data.LoopRequireMain,
+			Runner:            &loopRunner,
+			RunnerArgs:        parseArgsLines(data.LoopRunnerArgs),
+			ReasoningEffort:   &loopEffort,
 		},
 		Git: &config.GitPartial{
 			AutoCommit:   &data.GitAutoCommit,

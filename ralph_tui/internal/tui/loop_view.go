@@ -44,6 +44,9 @@ type loopOverrides struct {
 	RequireMain       bool
 	AutoCommit        bool
 	AutoPush          bool
+	Runner            string
+	RunnerArgs        []string
+	ReasoningEffort   string
 }
 
 type loopMode int
@@ -88,6 +91,9 @@ func newLoopView(cfg config.Config, locations paths.Locations) *loopView {
 			RequireMain:       cfg.Loop.RequireMain,
 			AutoCommit:        cfg.Git.AutoCommit,
 			AutoPush:          cfg.Git.AutoPush,
+			Runner:            cfg.Loop.Runner,
+			RunnerArgs:        cfg.Loop.RunnerArgs,
+			ReasoningEffort:   cfg.Loop.ReasoningEffort,
 		},
 		mode:   loopIdle,
 		status: "Idle",
@@ -207,6 +213,9 @@ func (l *loopView) controlsView() string {
 		fmt.Sprintf("Require main: %s", yesNo(l.overrides.RequireMain)),
 		fmt.Sprintf("Auto commit: %s", yesNo(l.overrides.AutoCommit)),
 		fmt.Sprintf("Auto push: %s", yesNo(l.overrides.AutoPush)),
+		fmt.Sprintf("Runner: %s", l.overrides.Runner),
+		fmt.Sprintf("Runner args: %d", len(l.overrides.RunnerArgs)),
+		fmt.Sprintf("Reasoning effort: %s", displayReasoningEffort(l.overrides.ReasoningEffort)),
 		"Keys: r run once | c continuous | s stop | e edit overrides",
 	}
 	return strings.Join(lines, "\n")
@@ -225,6 +234,7 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 	l.logRunID++
 	runID := l.logRunID
 	if l.logger != nil {
+		appliedArgs := applyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort, "")
 		l.logger.Info("loop.start", map[string]any{
 			"mode":              loopModeLabel(runOnce),
 			"sleep_seconds":     l.overrides.SleepSeconds,
@@ -235,8 +245,9 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 			"require_main":      l.overrides.RequireMain,
 			"auto_commit":       l.overrides.AutoCommit,
 			"auto_push":         l.overrides.AutoPush,
-			"runner":            "codex",
-			"runner_args_count": 0,
+			"runner":            l.overrides.Runner,
+			"runner_args_count": len(appliedArgs),
+			"reasoning_effort":  displayReasoningEffort(l.overrides.ReasoningEffort),
 		})
 	}
 
@@ -254,8 +265,8 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 			PinDir:            l.cfg.Paths.PinDir,
 			PromptPath:        "",
 			SupervisorPrompt:  "",
-			Runner:            "codex",
-			RunnerArgs:        []string{},
+			Runner:            l.overrides.Runner,
+			RunnerArgs:        applyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort, ""),
 			SleepSeconds:      l.overrides.SleepSeconds,
 			MaxIterations:     l.overrides.MaxIterations,
 			MaxStalled:        l.overrides.MaxStalled,
@@ -311,6 +322,26 @@ func (l *loopView) buildEditForm() *huh.Form {
 			huh.NewConfirm().Title("Auto Commit").Value(&l.editData.AutoCommit),
 			huh.NewConfirm().Title("Auto Push").Value(&l.editData.AutoPush),
 		),
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Loop Runner").
+				Options(
+					huh.NewOption("codex", "codex"),
+					huh.NewOption("opencode", "opencode"),
+				).
+				Value(&l.editData.Runner),
+			huh.NewText().Title("Loop Runner Args (one per line)").Value(&l.editData.RunnerArgs).Lines(3),
+			huh.NewSelect[string]().
+				Title("Loop Reasoning Effort").
+				Options(
+					huh.NewOption("auto", "auto"),
+					huh.NewOption("low", "low"),
+					huh.NewOption("medium", "medium"),
+					huh.NewOption("high", "high"),
+					huh.NewOption("off", "off"),
+				).
+				Value(&l.editData.ReasoningEffort),
+		),
 	).WithShowHelp(false)
 }
 
@@ -339,6 +370,13 @@ func (l *loopView) applyEditData() error {
 	l.overrides.RequireMain = l.editData.RequireMain
 	l.overrides.AutoCommit = l.editData.AutoCommit
 	l.overrides.AutoPush = l.editData.AutoPush
+	l.overrides.Runner = strings.TrimSpace(l.editData.Runner)
+	l.overrides.RunnerArgs = parseArgsLines(l.editData.RunnerArgs)
+	reasoningEffort := strings.ToLower(strings.TrimSpace(l.editData.ReasoningEffort))
+	if reasoningEffort == "" {
+		reasoningEffort = "auto"
+	}
+	l.overrides.ReasoningEffort = reasoningEffort
 	return nil
 }
 
@@ -351,6 +389,9 @@ type loopFormData struct {
 	RequireMain       bool
 	AutoCommit        bool
 	AutoPush          bool
+	Runner            string
+	RunnerArgs        string
+	ReasoningEffort   string
 }
 
 func loopFormDataFromOverrides(overrides loopOverrides) loopFormData {
@@ -363,6 +404,9 @@ func loopFormDataFromOverrides(overrides loopOverrides) loopFormData {
 		RequireMain:       overrides.RequireMain,
 		AutoCommit:        overrides.AutoCommit,
 		AutoPush:          overrides.AutoPush,
+		Runner:            overrides.Runner,
+		RunnerArgs:        formatArgsLines(overrides.RunnerArgs),
+		ReasoningEffort:   displayReasoningEffort(overrides.ReasoningEffort),
 	}
 }
 
@@ -423,6 +467,9 @@ func (l *loopView) SetConfig(cfg config.Config, locations paths.Locations) {
 		RequireMain:       cfg.Loop.RequireMain,
 		AutoCommit:        cfg.Git.AutoCommit,
 		AutoPush:          cfg.Git.AutoPush,
+		Runner:            cfg.Loop.Runner,
+		RunnerArgs:        cfg.Loop.RunnerArgs,
+		ReasoningEffort:   cfg.Loop.ReasoningEffort,
 	}
 }
 
