@@ -5,12 +5,12 @@ Entrypoint: main.
 
 EXAMPLES
 --------
-  ralph_legacy/bin/legacy/pin_ops.py move-checked \
+  ralph_legacy/legacy/pin_ops.py move-checked \
     --queue ralph_legacy/specs/implementation_queue.md \
     --done ralph_legacy/specs/implementation_done.md \
     --prepend
 
-  ralph_legacy/bin/legacy/pin_ops.py block-item \
+  ralph_legacy/legacy/pin_ops.py block-item \
     --queue ralph_legacy/specs/implementation_queue.md \
     --item-id IDFQ-0123 \
     --reason "make ci failed after 2 supervisor attempts" \
@@ -245,7 +245,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Move checked queue items into the done log.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=cli_examples(
-            "ralph_legacy/bin/legacy/pin_ops.py move-checked --queue ralph_legacy/specs/implementation_queue.md \\",
+            "ralph_legacy/legacy/pin_ops.py move-checked --queue ralph_legacy/specs/implementation_queue.md \\",
             "  --done ralph_legacy/specs/implementation_done.md --prepend",
         ),
     )
@@ -266,7 +266,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Move a queue item into Blocked with metadata.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=cli_examples(
-            "ralph_legacy/bin/legacy/pin_ops.py block-item --queue ralph_legacy/specs/implementation_queue.md \\",
+            "ralph_legacy/legacy/pin_ops.py block-item --queue ralph_legacy/specs/implementation_queue.md \\",
             '  --item-id IDFQ-0123 --reason "make ci failed after 2 attempts" \\',
             "  --wip-branch ralph/wip/IDFQ-0123/20260112_031122 --known-good 1234abcd",
         ),

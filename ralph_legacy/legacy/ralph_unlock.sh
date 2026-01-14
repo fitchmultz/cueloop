@@ -14,15 +14,15 @@ usage() {
 Remove the Ralph lock directory if a previous run crashed.
 
 Usage:
-  ralph_legacy/bin/legacy/ralph_unlock.sh [options]
+  ralph_legacy/legacy/ralph_unlock.sh [options]
 
 Options:
   --force              Remove the lock even if the owner PID is running
   -h, --help           Show this help message
 
 Examples:
-  ralph_legacy/bin/legacy/ralph_unlock.sh
-  ralph_legacy/bin/legacy/ralph_unlock.sh --force
+  ralph_legacy/legacy/ralph_unlock.sh
+  ralph_legacy/legacy/ralph_unlock.sh --force
 USAGE
 }
 

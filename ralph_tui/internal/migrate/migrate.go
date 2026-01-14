@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/config"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 )
 
 // Result captures migration outcomes.

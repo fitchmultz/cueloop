@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/config"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 )
 
 func TestModelScreenTransition(t *testing.T) {

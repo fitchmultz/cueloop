@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/pin"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/specs"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
 )
 
 // Options controls loop execution.
@@ -65,10 +65,10 @@ func NewRunner(opts Options) (*Runner, error) {
 		if opts.Runner == "opencode" {
 			promptName = "prompt_opencode.md"
 		}
-		opts.PromptPath = filepath.Join(opts.RepoRoot, "ralph", promptName)
+		opts.PromptPath = filepath.Join(opts.RepoRoot, "ralph_legacy", promptName)
 	}
 	if opts.SupervisorPrompt == "" {
-		opts.SupervisorPrompt = filepath.Join(opts.RepoRoot, "ralph", "supervisor_prompt.md")
+		opts.SupervisorPrompt = filepath.Join(opts.RepoRoot, "ralph_legacy", "supervisor_prompt.md")
 	}
 
 	r := &Runner{

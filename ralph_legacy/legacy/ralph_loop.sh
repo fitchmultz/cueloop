@@ -16,7 +16,7 @@ usage() {
 Run the Ralph loop for Codex (default) or opencode (fresh agent each iteration).
 
 Usage:
-  ralph_legacy/bin/legacy/ralph_loop.sh [options] [-- <runner args>]
+  ralph_legacy/legacy/ralph_loop.sh [options] [-- <runner args>]
 
 Options:
   --runner NAME              Runner to use: codex or opencode (default: codex)
@@ -31,14 +31,14 @@ Options:
   -h, --help                 Show this help message
 
 Examples:
-  ralph_legacy/bin/legacy/ralph_loop.sh --once
-  ralph_legacy/bin/legacy/ralph_loop.sh --max-iterations 10 --sleep 2
-  ralph_legacy/bin/legacy/ralph_loop.sh --max-stalled 2
-  ralph_legacy/bin/legacy/ralph_loop.sh --max-repair-attempts 1
-  ralph_legacy/bin/legacy/ralph_loop.sh --only-tag db
-  ralph_legacy/bin/legacy/ralph_loop.sh --only-tag db,ui
-  ralph_legacy/bin/legacy/ralph_loop.sh --runner opencode
-  ralph_legacy/bin/legacy/ralph_loop.sh --runner opencode -- --agent default
+  ralph_legacy/legacy/ralph_loop.sh --once
+  ralph_legacy/legacy/ralph_loop.sh --max-iterations 10 --sleep 2
+  ralph_legacy/legacy/ralph_loop.sh --max-stalled 2
+  ralph_legacy/legacy/ralph_loop.sh --max-repair-attempts 1
+  ralph_legacy/legacy/ralph_loop.sh --only-tag db
+  ralph_legacy/legacy/ralph_loop.sh --only-tag db,ui
+  ralph_legacy/legacy/ralph_loop.sh --runner opencode
+  ralph_legacy/legacy/ralph_loop.sh --runner opencode -- --agent default
 USAGE
 }
 
@@ -165,7 +165,7 @@ acquire_lock() {
       fi
     fi
   else
-    die "Ralph lock exists but owner pid file is missing. Run ralph_legacy/bin/legacy/ralph_unlock.sh."
+    die "Ralph lock exists but owner pid file is missing. Run ralph_legacy/legacy/ralph_unlock.sh."
   fi
 
   die "Another Ralph process is running (lock: $lock_dir)."
@@ -220,17 +220,17 @@ if [[ ! -f "$done_path" ]]; then
   die "Implementation done log not found: $done_path"
 fi
 
-if [[ ! -f "${repo_root}/ralph_legacy/bin/legacy/pin_ops.py" ]]; then
-  die "pin_ops.py not found at ${repo_root}/ralph_legacy/bin/legacy/pin_ops.py"
+if [[ ! -f "${repo_root}/ralph_legacy/legacy/pin_ops.py" ]]; then
+  die "pin_ops.py not found at ${repo_root}/ralph_legacy/legacy/pin_ops.py"
 fi
 
 pin_ops_cmd=()
 if command -v uv >/dev/null 2>&1; then
-  pin_ops_cmd=(uv run --project "${repo_root}/ralph_legacy" python "${repo_root}/ralph_legacy/bin/legacy/pin_ops.py")
+  pin_ops_cmd=(uv run --project "${repo_root}/ralph_legacy" python "${repo_root}/ralph_legacy/legacy/pin_ops.py")
 elif command -v python3 >/dev/null 2>&1; then
-  pin_ops_cmd=(python3 "${repo_root}/ralph_legacy/bin/legacy/pin_ops.py")
+  pin_ops_cmd=(python3 "${repo_root}/ralph_legacy/legacy/pin_ops.py")
 else
-  die "python is not on PATH; required for ralph_legacy/bin/legacy/pin_ops.py"
+  die "python is not on PATH; required for ralph_legacy/legacy/pin_ops.py"
 fi
 
 MAIN_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
@@ -332,7 +332,7 @@ run_validate_pin() {
   local out_file
   out_file=$(mktemp)
   LAST_VALIDATE_PIN_OUTPUT="$out_file"
-  if ! run_may_fail "${repo_root}/ralph_legacy/bin/legacy/validate_pin.sh" >"$out_file" 2>&1; then
+  if ! run_may_fail "${repo_root}/ralph_legacy/legacy/validate_pin.sh" >"$out_file" 2>&1; then
     return 1
   fi
   return 0

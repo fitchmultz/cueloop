@@ -12,8 +12,8 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/config"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 )
 
 // Start launches the TUI and blocks until it exits.

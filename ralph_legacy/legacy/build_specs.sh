@@ -16,7 +16,7 @@ usage() {
 Generate or refresh Ralph specs using Codex (default) with a prompt template.
 
 Usage:
-  ralph_legacy/bin/legacy/build_specs.sh [options] [-- <runner args>]
+  ralph_legacy/legacy/build_specs.sh [options] [-- <runner args>]
 
 Options:
   --runner NAME          Runner to use: codex or opencode (default: codex)
@@ -29,13 +29,13 @@ Options:
   -h, --help             Show this help message
 
 Examples:
-  ralph_legacy/bin/legacy/build_specs.sh
-  ralph_legacy/bin/legacy/build_specs.sh --print-prompt
-  ralph_legacy/bin/legacy/build_specs.sh --interactive
-  ralph_legacy/bin/legacy/build_specs.sh --innovate
-  ralph_legacy/bin/legacy/build_specs.sh --runner opencode
-  ralph_legacy/bin/legacy/build_specs.sh --runner opencode -- --agent default
-  ralph_legacy/bin/legacy/build_specs.sh --no-autofill-scout
+  ralph_legacy/legacy/build_specs.sh
+  ralph_legacy/legacy/build_specs.sh --print-prompt
+  ralph_legacy/legacy/build_specs.sh --interactive
+  ralph_legacy/legacy/build_specs.sh --innovate
+  ralph_legacy/legacy/build_specs.sh --runner opencode
+  ralph_legacy/legacy/build_specs.sh --runner opencode -- --agent default
+  ralph_legacy/legacy/build_specs.sh --no-autofill-scout
 USAGE
 }
 
@@ -203,7 +203,7 @@ acquire_lock() {
       fi
     fi
   else
-    die "Ralph lock exists but owner pid file is missing. Run ralph_legacy/bin/legacy/ralph_unlock.sh."
+    die "Ralph lock exists but owner pid file is missing. Run ralph_legacy/legacy/ralph_unlock.sh."
   fi
 
   die "Another Ralph process is running (lock: $lock_dir)."
@@ -274,7 +274,7 @@ if innovate:
         "This repo intentionally avoids TODO/TBD placeholders. You must rely on 'AI vibes' grounded in real repo signals:\\n"
         "- duplicated logic across tools/backends\\n"
         "- inconsistent CLI contracts / help/docstring standards\\n"
-        "- missing shared helpers that should live under backend/idf/\\n"
+        "- missing shared helpers that should live under shared modules (e.g., internal/ or lib/)\\n"
         "- workflow gaps in Makefile/composite pipelines\\n"
         "- missing regression coverage for brittle logic\\n"
         "\\n"

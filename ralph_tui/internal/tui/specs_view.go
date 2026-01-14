@@ -12,10 +12,10 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/config"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/paths"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/pin"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/specs"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
 )
 
 type specsView struct {

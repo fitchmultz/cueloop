@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 )
 
 func TestLoadPrecedence(t *testing.T) {

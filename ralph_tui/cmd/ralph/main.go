@@ -10,13 +10,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/config"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/loop"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/migrate"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/paths"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/pin"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/specs"
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/tui"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/loop"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/migrate"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/tui"
 	"github.com/spf13/cobra"
 )
 

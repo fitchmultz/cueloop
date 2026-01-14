@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 - `cmd/ralph/`: CLI entrypoint (Cobra) for the Ralph CLI/TUI.
 - `internal/`: Application packages (`config`, `loop`, `pin`, `specs`, `tui`, etc.).
-- `ralph_legacy/`: Legacy prompts and scripts (see `ralph_legacy/bin/legacy/`).
+- `ralph_legacy/`: Legacy prompts and scripts (see `ralph_legacy/legacy/`).
 - Tests live alongside code as `*_test.go` (no separate test directory).
 - Repo configuration defaults and runtime config live under `.ralph/` (e.g., `.ralph/ralph.json`, `.ralph/pin/`, `.ralph/cache/`).
 

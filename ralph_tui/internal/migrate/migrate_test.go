@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 )
 
 func TestRunMigratesPinAndUpdatesConfig(t *testing.T) {

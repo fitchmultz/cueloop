@@ -17,11 +17,11 @@ Additionally, this validates that any top-level items in `## Queue` follow the
 required format, including `Evidence:` and `Plan:` sub-bullets.
 
 Usage:
-  ralph_legacy/bin/legacy/validate_pin.sh [--help]
+  ralph_legacy/legacy/validate_pin.sh [--help]
 
 Examples:
-  ralph_legacy/bin/legacy/validate_pin.sh
-  ralph_legacy/bin/legacy/validate_pin.sh --help
+  ralph_legacy/legacy/validate_pin.sh
+  ralph_legacy/legacy/validate_pin.sh --help
 
 Required Queue item format (template):
   - [ ] IDFQ-0135 [code]: Short actionable title. (path/to/file.py, Makefile)

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mitchfultz/idaho-fraud/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 )
 
 // LoadOptions controls how configuration is resolved.

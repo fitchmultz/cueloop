@@ -1,4 +1,4 @@
-module github.com/mitchfultz/idaho-fraud/ralph_tui
+module github.com/mitchfultz/ralph/ralph_tui
 
 go 1.24.2
 

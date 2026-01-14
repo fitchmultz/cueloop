@@ -3,9 +3,9 @@ You are an autonomous engineer working in this repo.
 
 # CONTEXT (READ IN ORDER)
 1. `AGENTS.md`
-2. `.ralph/pin/README.md`
-3. `.ralph/pin/implementation_queue.md`
-4. `.ralph/pin/lookup_table.md`
+2. `ralph_legacy/specs/README.md`
+3. `ralph_legacy/specs/implementation_queue.md`
+4. `ralph_legacy/specs/lookup_table.md`
 
 # INSTRUCTIONS
 ## OPERATING RULES
@@ -21,14 +21,14 @@ You are an autonomous engineer working in this repo.
 - Prefer central shared helpers when logic repeats.
 - Validate with tests/data checks; CI is necessary but not sufficient.
 
-1. Pick the highest-priority unchecked item in the `## Queue` section of `.ralph/pin/implementation_queue.md` (Queue is the only executable section). Each queue item must start with an ID like `IDFQ-0123:`.
+1. Pick the highest-priority unchecked item in the `## Queue` section of `ralph_legacy/specs/implementation_queue.md` (Queue is the only executable section). Each queue item must start with an ID like `IDFQ-0123:`.
 2. Execute exactly one queue item per iteration (no batching).
 3. Use the repo prompt `context_builder` to gather relevant project context and generate a plan for EVERY item. This is mandatory for opencode runs.
 4. Execute the plan it generated.
-5. Before coding: if the task touches a new area not represented in `.ralph/pin/lookup_table.md`, or materially changes workflow/architecture, run `ralph specs build` and re-read the refreshed specs.
+5. Before coding: if the task touches a new area not represented in `ralph_legacy/specs/lookup_table.md`, or materially changes workflow/architecture, run `ralph specs build` and re-read the refreshed specs.
 6. Implement the correct, durable solution. Fix root causes. If the correct solution requires refactoring or touching multiple files, do it. Standardize and centralize patterns so the same bug class cannot reappear elsewhere.
 7. Use repo tooling (`uv run python`, Makefile targets) and shared helpers.
-8. Mark completion by checking the item in `.ralph/pin/implementation_queue.md` (`- [x]`). Do not move items to Done or Blocked; the runner will reconcile queue state.
+8. Mark completion by checking the item in `ralph_legacy/specs/implementation_queue.md` (`- [x]`). Do not move items to Done or Blocked; the runner will reconcile queue state.
    - Add any *new* items directly to the `## Queue` section (not a separate follow-on section).
    - Any new queue item MUST include:
      - A unique ID (e.g., `IDFQ-0135`)
@@ -37,16 +37,16 @@ You are an autonomous engineer working in this repo.
      - Two metadata sub-bullets: `Evidence:` and `Plan:`
    - New queue items MUST follow this format (use this as the template):
 
-     - [ ] IDFQ-0135 [code]: Fix AI SOS adjudication report writer crash when summary keys (confirmed/rejected/etc.) are missing; standardize summary schema + defaults. (tools/ai/ai_adjudicate_vendor_sos_link_reviews.py, Makefile)
-       - Evidence: `KeyError: 'confirmed'` while writing report after `make ai-adjudicate-sos RUN_ID=ai_20260112_213001 APPLY=1`.
+     - [ ] IDFQ-0135 [code]: Fix report writer crash when summary keys are missing; standardize summary schema + defaults. (src/report_writer.py, Makefile)
+       - Evidence: `KeyError: 'confirmed'` while writing report after `make reports RUN_ID=run_20260112_213001 APPLY=1`.
        - Plan: normalize summary keys to a defined schema, default missing counters to zero, and add a guard test for empty/partial summaries.
 
 9. Treat investigation tasks the same as any other: investigate and implement the fix in the same iteration. No standalone investigation artifact is required.
-10. If the task touches a new area, add or update a lookup entry in `.ralph/pin/lookup_table.md`.
+10. If the task touches a new area, add or update a lookup entry in `ralph_legacy/specs/lookup_table.md`.
 11. Run `make ci` and fix any errors before ending your turn.
 12. Do not commit or push; the runner owns all commits.
 Definition of done:
-- The queue item is checked off in `.ralph/pin/implementation_queue.md`.
+- The queue item is checked off in `ralph_legacy/specs/implementation_queue.md`.
 - `make ci` passed.
 - If the change affects behavior, at least one regression test or validation check exists to prevent the bug from coming back.
 13. Do not add inline task markers outside the plan; track next steps in the plan only.

@@ -35,7 +35,7 @@ const innovateInstructions = "AUTOFILL/SCOUT MODE ENABLED (AGGRESSIVE).\n" +
 	"This repo intentionally avoids TODO/TBD placeholders. You must rely on 'AI vibes' grounded in real repo signals:\n" +
 	"- duplicated logic across tools/backends\n" +
 	"- inconsistent CLI contracts / help/docstring standards\n" +
-	"- missing shared helpers that should live under backend/idf/\n" +
+	"- missing shared helpers that should live under shared modules (e.g., internal/ or lib/)\n" +
 	"- workflow gaps in Makefile/composite pipelines\n" +
 	"- missing regression coverage for brittle logic\n" +
 	"\n" +
