@@ -117,7 +117,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return fmt.Errorf("Queue item is missing an ID prefix (expected something like ABC-0123).")
 		}
 
-		effort := "low"
+		effort := "medium"
 		if strings.Contains(firstItem.Header, "[P1]") {
 			effort = "high"
 		}
@@ -145,7 +145,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.currentItemBlock = block
 
 		if err := r.reconcileCheckedQueueItems(); err != nil {
-			r.handleIterationFailure(itemID, firstItem.Header, headBefore, "pin-ops", "Failed to move checked queue items.")
+			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "pin-ops", "Failed to move checked queue items.")
 			continue
 		}
 
@@ -159,12 +159,12 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 		if dirty != "" {
-			r.handleIterationFailure(itemID, firstItem.Header, headBefore, "preflight", fmt.Sprintf("Working tree is dirty before iteration %d.", iterations))
+			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "preflight", fmt.Sprintf("Working tree is dirty before iteration %d.", iterations))
 			continue
 		}
 
 		if err := r.runValidatePin(); err != nil {
-			r.handleIterationFailure(itemID, firstItem.Header, headBefore, "pin-validate", fmt.Sprintf("validate_pin failed before iteration %d.", iterations))
+			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "pin-validate", fmt.Sprintf("validate_pin failed before iteration %d.", iterations))
 			continue
 		}
 
@@ -182,15 +182,15 @@ func (r *Runner) Run(ctx context.Context) error {
 			Redactor:   r.redactor,
 			Logger:     r.opts.Logger,
 		}
-		if err := runner.RunPrompt(promptFile); err != nil {
+		if err := runner.RunPrompt(ctx, promptFile); err != nil {
 			cleanup()
-			r.handleIterationFailure(itemID, firstItem.Header, headBefore, "runner", fmt.Sprintf("%s failed on iteration %d.", r.opts.Runner, iterations))
+			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "runner", fmt.Sprintf("%s failed on iteration %d.", r.opts.Runner, iterations))
 			continue
 		}
 		cleanup()
 
 		if err := r.finalizeIteration(itemID, firstItem.Header, headBefore); err != nil {
-			r.handleIterationFailure(itemID, firstItem.Header, headBefore, r.lastFailureStage, r.lastFailureMessage)
+			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, r.lastFailureStage, r.lastFailureMessage)
 			continue
 		}
 
@@ -199,7 +199,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 		if dirty != "" {
-			r.handleIterationFailure(itemID, firstItem.Header, headBefore, "post-commit", fmt.Sprintf("Working tree is dirty after iteration %d.", iterations))
+			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "post-commit", fmt.Sprintf("Working tree is dirty after iteration %d.", iterations))
 			continue
 		}
 
@@ -220,7 +220,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		if r.opts.MaxStalled > 0 && stalled >= r.opts.MaxStalled {
-			r.handleIterationFailure(itemID, firstItem.Header, headBefore, "stall", fmt.Sprintf("Stalled for %d iterations (head and first queue item unchanged).", stalled))
+			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "stall", fmt.Sprintf("Stalled for %d iterations (head and first queue item unchanged).", stalled))
 			continue
 		}
 
@@ -510,13 +510,13 @@ func (r *Runner) cleanupIterationArtifacts() {
 	r.lastCIOutput = ""
 }
 
-func (r *Runner) handleIterationFailure(itemID string, itemLine string, headBefore string, stage string, message string) {
+func (r *Runner) handleIterationFailure(ctx context.Context, itemID string, itemLine string, headBefore string, stage string, message string) {
 	r.logf(">> [RALPH] Iteration failure (%s): %s", stage, message)
 
 	attempt := 1
 	for attempt <= r.opts.MaxRepairAttempts {
 		r.logf(">> [RALPH] Supervisor attempt %d/%d...", attempt, r.opts.MaxRepairAttempts)
-		r.runSupervisor(stage, message)
+		r.runSupervisor(ctx, stage, message)
 		if r.lastFailureStage == "" {
 			if err := r.finalizeIteration(itemID, itemLine, headBefore); err == nil {
 				r.cleanupIterationArtifacts()
@@ -540,7 +540,7 @@ func (r *Runner) handleIterationFailure(itemID string, itemLine string, headBefo
 	r.cleanupIterationArtifacts()
 }
 
-func (r *Runner) runSupervisor(stage string, message string) {
+func (r *Runner) runSupervisor(ctx context.Context, stage string, message string) {
 	contextFile, cleanup, err := r.buildSupervisorContext(stage, message)
 	if err != nil {
 		r.lastFailureStage = "supervisor"
@@ -555,7 +555,7 @@ func (r *Runner) runSupervisor(stage string, message string) {
 		Redactor:   r.redactor,
 		Logger:     r.opts.Logger,
 	}
-	if err := runner.RunPrompt(contextFile); err != nil {
+	if err := runner.RunPrompt(ctx, contextFile); err != nil {
 		r.lastFailureStage = "supervisor"
 		r.lastFailureMessage = "Supervisor runner failed."
 		return

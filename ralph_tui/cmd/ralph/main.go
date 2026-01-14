@@ -59,6 +59,7 @@ func newRootCommand() *cobra.Command {
 	cmd.PersistentFlags().String("ui-theme", "", "UI theme name")
 	cmd.PersistentFlags().Int("refresh-seconds", 0, "UI refresh interval in seconds")
 	cmd.PersistentFlags().String("log-level", "", "Log level (debug, info, warn, error)")
+	cmd.PersistentFlags().String("log-file", "", "Log file path")
 	cmd.PersistentFlags().String("data-dir", "", "Data directory path")
 	cmd.PersistentFlags().String("cache-dir", "", "Cache directory path")
 	cmd.PersistentFlags().String("pin-dir", "", "Pin directory path")
@@ -173,6 +174,14 @@ func buildCLIOverrides(cmd *cobra.Command) (config.PartialConfig, error) {
 		}
 		logging := ensureLoggingPartial(&overrides)
 		logging.Level = &value
+	}
+	if flags.Changed("log-file") {
+		value, err := flags.GetString("log-file")
+		if err != nil {
+			return overrides, err
+		}
+		logging := ensureLoggingPartial(&overrides)
+		logging.File = &value
 	}
 	if flags.Changed("data-dir") {
 		value, err := flags.GetString("data-dir")

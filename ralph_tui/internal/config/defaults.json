@@ -5,7 +5,8 @@
     "refresh_seconds": 5
   },
   "logging": {
-    "level": "info"
+    "level": "info",
+    "file": ""
   },
   "paths": {
     "data_dir": "data",

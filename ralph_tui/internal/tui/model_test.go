@@ -21,3 +21,17 @@ func TestModelScreenTransition(t *testing.T) {
 		t.Fatalf("expected screenConfig, got %v", next.screen)
 	}
 }
+
+func TestConfigReloadBumpsRefreshGeneration(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+	m := newModel(cfg, locs)
+	before := m.refreshGen
+
+	cfg.UI.RefreshSeconds = cfg.UI.RefreshSeconds + 1
+	updated, _ := m.Update(configReloadMsg{cfg: cfg})
+	next := updated.(model)
+
+	if next.refreshGen != before+1 {
+		t.Fatalf("expected refreshGen to increment, got %d", next.refreshGen)
+	}
+}

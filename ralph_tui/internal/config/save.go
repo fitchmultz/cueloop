@@ -52,6 +52,12 @@ func preparePartialForSave(partial PartialConfig, relativeRoot string) PartialCo
 			partial.Paths.PinDir = &value
 		}
 	}
+	if partial.Logging != nil {
+		if partial.Logging.File != nil {
+			value := maybeRelativizePath(*partial.Logging.File, relativeRoot)
+			partial.Logging.File = &value
+		}
+	}
 
 	return partial
 }

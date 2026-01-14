@@ -31,6 +31,7 @@ type configFormData struct {
 	UITheme           string
 	RefreshSeconds    string
 	LogLevel          string
+	LogFile           string
 	DataDir           string
 	CacheDir          string
 	PinDir            string
@@ -367,6 +368,7 @@ func (e *configEditor) buildForm() *huh.Form {
 			huh.NewInput().Title("UI Theme").Value(&e.data.UITheme).Validate(nonEmptyString("ui.theme")),
 			huh.NewInput().Title("Refresh Seconds").Value(&e.data.RefreshSeconds).Validate(positiveInt("ui.refresh_seconds")),
 			huh.NewInput().Title("Log Level").Value(&e.data.LogLevel).Validate(logLevelValidator()),
+			huh.NewInput().Title("Log File").Value(&e.data.LogFile),
 		),
 		huh.NewGroup(
 			huh.NewInput().Title("Data Dir").Value(&e.data.DataDir).Validate(nonEmptyString("paths.data_dir")),
@@ -415,6 +417,7 @@ func formDataFromConfig(cfg config.Config) configFormData {
 		UITheme:           cfg.UI.Theme,
 		RefreshSeconds:    strconv.Itoa(cfg.UI.RefreshSeconds),
 		LogLevel:          cfg.Logging.Level,
+		LogFile:           cfg.Logging.File,
 		DataDir:           cfg.Paths.DataDir,
 		CacheDir:          cfg.Paths.CacheDir,
 		PinDir:            cfg.Paths.PinDir,
@@ -473,6 +476,7 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 	if !isValidLogLevel(logLevel) {
 		return config.PartialConfig{}, fmt.Errorf("logging.level must be one of debug, info, warn, or error")
 	}
+	logFile := strings.TrimSpace(data.LogFile)
 
 	uiTheme := strings.TrimSpace(data.UITheme)
 	dataDir := strings.TrimSpace(data.DataDir)
@@ -486,7 +490,7 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 			Theme:          &uiTheme,
 			RefreshSeconds: &refreshSeconds,
 		},
-		Logging: &config.LoggingPartial{Level: &logLevel},
+		Logging: &config.LoggingPartial{Level: &logLevel, File: &logFile},
 		Paths: &config.PathsPartial{
 			DataDir:  &dataDir,
 			CacheDir: &cacheDir,

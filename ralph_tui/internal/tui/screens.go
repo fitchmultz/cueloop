@@ -35,3 +35,24 @@ func navigationItems() []navItem {
 		{title: "Help", desc: "Help and shortcuts", screen: screenHelp},
 	}
 }
+
+func screenName(value screen) string {
+	switch value {
+	case screenDashboard:
+		return "dashboard"
+	case screenRunLoop:
+		return "runloop"
+	case screenBuildSpecs:
+		return "buildspecs"
+	case screenPin:
+		return "pin"
+	case screenConfig:
+		return "config"
+	case screenLogs:
+		return "logs"
+	case screenHelp:
+		return "help"
+	default:
+		return "unknown"
+	}
+}

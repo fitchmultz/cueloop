@@ -34,6 +34,10 @@ type model struct {
 	pinView    *pinView
 	specsView  *specsView
 	loopView   *loopView
+	logsView   *logsView
+	logger     *tuiLogger
+	logErr     error
+	refreshGen int
 	width      int
 	height     int
 	layout     layoutSpec
@@ -72,6 +76,7 @@ func newModel(cfg config.Config, locations paths.Locations) model {
 	}
 
 	loopView := newLoopView(cfg, locations)
+	logsView := newLogsView("")
 
 	m := model{
 		nav:        l,
@@ -84,8 +89,22 @@ func newModel(cfg config.Config, locations paths.Locations) model {
 		pinView:    pinView,
 		specsView:  specsView,
 		loopView:   loopView,
+		logsView:   logsView,
+		refreshGen: 1,
 		initErr:    err,
 		locations:  locations,
+	}
+	m.setLogger(cfg)
+	if m.logsView != nil {
+		var loopLines []string
+		if m.loopView != nil {
+			loopLines = m.loopView.logs
+		}
+		var specsLines []string
+		if m.specsView != nil {
+			specsLines = m.specsView.runLogs
+		}
+		m.logsView.Refresh(loopLines, specsLines)
 	}
 	m.layout = computeLayoutWithBody(0, 0)
 	m.resizeViews(0, 0)
@@ -94,7 +113,7 @@ func newModel(cfg config.Config, locations paths.Locations) model {
 }
 
 func (m model) Init() tea.Cmd {
-	cmds := []tea.Cmd{refreshCmd(m.cfg.UI.RefreshSeconds)}
+	cmds := []tea.Cmd{refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen)}
 	if m.pinView != nil {
 		if cmd := m.pinView.reloadAsync(true); cmd != nil {
 			cmds = append(cmds, cmd)
@@ -114,17 +133,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		m.logDebug("window.resize", map[string]any{"width": msg.Width, "height": msg.Height})
 		m.width = msg.Width
 		m.height = msg.Height
 		m.relayout()
 		cmds = append(cmds, m.postResizeCmds()...)
 		handled = true
 	case refreshMsg:
+		if msg.gen != m.refreshGen {
+			m.logDebug("refresh.stale", map[string]any{"gen": msg.gen, "current_gen": m.refreshGen})
+			handled = true
+			break
+		}
+		m.logDebug("refresh.tick", map[string]any{"gen": msg.gen})
 		cmds = append(cmds, m.refreshViews()...)
-		cmds = append(cmds, refreshCmd(m.cfg.UI.RefreshSeconds))
+		cmds = append(cmds, refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen))
 		handled = true
 	case configReloadMsg:
 		if msg.err != nil {
+			m.logError("config.reload.error", msg.err)
 			if m.configView != nil {
 				m.configView.saveError = msg.err.Error()
 				m.configView.saveNote = ""
@@ -136,9 +163,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.cfg = msg.cfg
 		m.applyConfig()
-		cmds = append(cmds, refreshCmd(m.cfg.UI.RefreshSeconds))
+		m.refreshGen++
+		cmds = append(cmds, refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen))
+		m.logInfo("config.reload", map[string]any{
+			"refresh_seconds": m.cfg.UI.RefreshSeconds,
+			"log_level":       m.cfg.Logging.Level,
+			"log_file":        m.cfg.Logging.File,
+			"refresh_gen":     m.refreshGen,
+		})
 		handled = true
 	case tea.KeyMsg:
+		keyFields := keyEventSummary(msg)
+		keyFields["screen"] = screenName(m.screen)
+		keyFields["nav_focused"] = m.navFocused
+		m.logDebug("key.event", keyFields)
 		if key.Matches(msg, m.keys.Quit) {
 			return m, tea.Quit
 		}
@@ -174,9 +212,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if key.Matches(msg, m.keys.Select) {
 				if item, ok := m.nav.SelectedItem().(navItem); ok {
+					prev := m.screen
 					m.screen = item.screen
 					m.applyFocus()
 					m.relayout()
+					m.logInfo("screen.change", map[string]any{"from": screenName(prev), "to": screenName(m.screen)})
 				}
 			}
 		} else {
@@ -262,7 +302,10 @@ func (m model) contentView() string {
 		}
 		return m.configView.View()
 	case screenLogs:
-		return "Logs\n\nLogs viewer will land here."
+		if m.logsView == nil {
+			return "Logs\n\nLogs view unavailable."
+		}
+		return m.logsView.View()
 	case screenHelp:
 		return "Help\n\nUse the left menu to navigate and Ctrl+F to switch focus."
 	default:
@@ -404,6 +447,9 @@ func (m *model) resizeViews(contentInnerW int, contentInnerH int) {
 	if m.loopView != nil {
 		m.loopView.Resize(contentInnerW, contentInnerH)
 	}
+	if m.logsView != nil {
+		m.logsView.Resize(contentInnerW, contentInnerH)
+	}
 }
 
 func (m *model) postResizeCmds() []tea.Cmd {
@@ -416,19 +462,21 @@ func (m *model) postResizeCmds() []tea.Cmd {
 	return cmds
 }
 
-type refreshMsg struct{}
+type refreshMsg struct {
+	gen int
+}
 
 type configReloadMsg struct {
 	cfg config.Config
 	err error
 }
 
-func refreshCmd(seconds int) tea.Cmd {
+func refreshCmd(seconds int, gen int) tea.Cmd {
 	if seconds <= 0 {
 		return nil
 	}
 	return tea.Tick(time.Duration(seconds)*time.Second, func(time.Time) tea.Msg {
-		return refreshMsg{}
+		return refreshMsg{gen: gen}
 	})
 }
 
@@ -452,6 +500,18 @@ func (m *model) applyConfig() {
 	if m.loopView != nil {
 		m.loopView.SetConfig(m.cfg, m.locations)
 	}
+	m.setLogger(m.cfg)
+	if m.logsView != nil {
+		var loopLines []string
+		if m.loopView != nil {
+			loopLines = m.loopView.logs
+		}
+		var specsLines []string
+		if m.specsView != nil {
+			specsLines = m.specsView.runLogs
+		}
+		m.logsView.Refresh(loopLines, specsLines)
+	}
 }
 
 func (m *model) refreshViews() []tea.Cmd {
@@ -466,6 +526,17 @@ func (m *model) refreshViews() []tea.Cmd {
 			cmds = append(cmds, cmd)
 		}
 	}
+	if m.logsView != nil {
+		var loopLines []string
+		if m.loopView != nil {
+			loopLines = m.loopView.logs
+		}
+		var specsLines []string
+		if m.specsView != nil {
+			specsLines = m.specsView.runLogs
+		}
+		m.logsView.Refresh(loopLines, specsLines)
+	}
 	return cmds
 }
 
@@ -474,6 +545,10 @@ func (m *model) updateActiveView(msg tea.Msg) tea.Cmd {
 	case screenConfig:
 		if m.configView != nil {
 			return m.configView.Update(msg)
+		}
+	case screenLogs:
+		if m.logsView != nil {
+			return m.logsView.Update(msg)
 		}
 	case screenPin:
 		if m.pinView != nil {
@@ -489,6 +564,53 @@ func (m *model) updateActiveView(msg tea.Msg) tea.Cmd {
 		}
 	}
 	return nil
+}
+
+func (m *model) setLogger(cfg config.Config) {
+	logger, err := newTUILogger(cfg)
+	if err != nil {
+		m.logErr = err
+		m.logger = nil
+	} else {
+		m.logErr = nil
+		m.logger = logger
+	}
+
+	logPath, pathErr := resolveLogPath(cfg)
+	if pathErr != nil {
+		logPath = ""
+	}
+	if m.logger != nil {
+		logPath = m.logger.Path()
+	}
+	if m.logsView != nil {
+		m.logsView.SetLogPath(logPath)
+		m.logsView.SetError(m.logErr)
+	}
+	if m.loopView != nil {
+		m.loopView.logger = m.logger
+	}
+	if m.specsView != nil {
+		m.specsView.logger = m.logger
+	}
+}
+
+func (m *model) logDebug(message string, fields map[string]any) {
+	if m.logger != nil {
+		m.logger.Debug(message, fields)
+	}
+}
+
+func (m *model) logInfo(message string, fields map[string]any) {
+	if m.logger != nil {
+		m.logger.Info(message, fields)
+	}
+}
+
+func (m *model) logError(message string, err error) {
+	if m.logger != nil && err != nil {
+		m.logger.Error(message, map[string]any{"error": err.Error()})
+	}
 }
 
 func (m *model) helpKeyMap() help.KeyMap {

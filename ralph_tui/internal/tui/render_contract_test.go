@@ -38,7 +38,7 @@ func TestRenderContract(t *testing.T) {
 		for _, showAll := range []bool{false, true} {
 			for _, navFocused := range []bool{true, false} {
 				for _, screen := range screens {
-					name := fmt.Sprintf("w%dxh%d-help%t-focus%t-%s", size.w, size.h, showAll, navFocused, screenLabel(screen))
+					name := fmt.Sprintf("w%dxh%d-help%t-focus%t-%s", size.w, size.h, showAll, navFocused, screenName(screen))
 					t.Run(name, func(t *testing.T) {
 						m := newModel(cfg, locs)
 						m.screen = screen
@@ -69,26 +69,5 @@ func assertRenderFits(t *testing.T, m model, w, h int) {
 	}
 	if len(lines) > h {
 		t.Fatalf("output exceeds height %d: %d (bodyH=%d footerH=%d)", h, len(lines), m.layout.bodyHeight, footerH)
-	}
-}
-
-func screenLabel(value screen) string {
-	switch value {
-	case screenDashboard:
-		return "dashboard"
-	case screenRunLoop:
-		return "runloop"
-	case screenBuildSpecs:
-		return "buildspecs"
-	case screenPin:
-		return "pin"
-	case screenConfig:
-		return "config"
-	case screenLogs:
-		return "logs"
-	case screenHelp:
-		return "help"
-	default:
-		return "unknown"
 	}
 }

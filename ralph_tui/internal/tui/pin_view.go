@@ -40,8 +40,6 @@ type pinReloadMsg struct {
 	resetScroll bool
 }
 
-type pinReloadStartMsg struct{}
-
 type pinView struct {
 	files       pin.Files
 	items       []pin.QueueItem
@@ -118,13 +116,6 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		}
 		return nil
 	}
-	if _, ok := msg.(pinReloadStartMsg); ok {
-		p.loading = true
-		p.status = ""
-		p.err = ""
-		return nil
-	}
-
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch {
 		case key.Matches(keyMsg, keys.TogglePane):
@@ -286,29 +277,29 @@ func (p *pinView) reloadAsync(resetScroll bool) tea.Cmd {
 		p.reloadAgain = true
 		return nil
 	}
+	p.loading = true
+	p.status = ""
+	p.err = ""
 	files := p.files
-	return tea.Batch(
-		func() tea.Msg { return pinReloadStartMsg{} },
-		func() tea.Msg {
-			items, err := pin.ReadQueueItems(files.QueuePath)
-			if err != nil {
-				return pinReloadMsg{err: err, resetScroll: resetScroll}
+	return func() tea.Msg {
+		items, err := pin.ReadQueueItems(files.QueuePath)
+		if err != nil {
+			return pinReloadMsg{err: err, resetScroll: resetScroll}
+		}
+		rows := make([]table.Row, 0, len(items))
+		for _, item := range items {
+			status := "[ ]"
+			if item.Checked {
+				status = "[x]"
 			}
-			rows := make([]table.Row, 0, len(items))
-			for _, item := range items {
-				status := "[ ]"
-				if item.Checked {
-					status = "[x]"
-				}
-				rows = append(rows, table.Row{status, item.ID, trimTitle(item.Header)})
-			}
-			var modTime time.Time
-			if mod, err := fileModTime(files.QueuePath); err == nil {
-				modTime = mod
-			}
-			return pinReloadMsg{items: items, rows: rows, modTime: modTime, resetScroll: resetScroll}
-		},
-	)
+			rows = append(rows, table.Row{status, item.ID, trimTitle(item.Header)})
+		}
+		var modTime time.Time
+		if mod, err := fileModTime(files.QueuePath); err == nil {
+			modTime = mod
+		}
+		return pinReloadMsg{items: items, rows: rows, modTime: modTime, resetScroll: resetScroll}
+	}
 }
 
 func (p *pinView) runValidate() {

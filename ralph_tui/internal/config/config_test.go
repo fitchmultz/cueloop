@@ -113,6 +113,31 @@ func TestLoadValidationFailure(t *testing.T) {
 	}
 }
 
+func TestLoggingFileResolvesRelative(t *testing.T) {
+	tmpDir := t.TempDir()
+	base, err := DefaultConfig()
+	if err != nil {
+		t.Fatalf("default config: %v", err)
+	}
+	base = ResolvePaths(base, tmpDir)
+
+	partial := PartialConfig{
+		Logging: &LoggingPartial{File: stringPtr("logs/ralph_tui.log")},
+	}
+	cfg, err := ApplyPartial(base, partial, tmpDir)
+	if err != nil {
+		t.Fatalf("ApplyPartial failed: %v", err)
+	}
+
+	expected := filepath.Join(tmpDir, "logs", "ralph_tui.log")
+	if cfg.Logging.File != expected {
+		t.Fatalf("expected logging.file to resolve to %q, got %q", expected, cfg.Logging.File)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected config to validate, got %v", err)
+	}
+}
+
 func writeJSON(t *testing.T, path string, payload any) {
 	t.Helper()
 	data, err := json.Marshal(payload)

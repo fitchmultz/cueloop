@@ -31,6 +31,7 @@ type loopView struct {
 	editForm  *huh.Form
 	editData  loopFormData
 	logCh     chan string
+	logger    *tuiLogger
 	width     int
 	height    int
 }
@@ -51,6 +52,7 @@ type loopMode int
 const (
 	loopIdle loopMode = iota
 	loopRunning
+	loopStopping
 	loopEditing
 )
 
@@ -125,9 +127,15 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		if msg.err != nil {
 			l.err = msg.err.Error()
 			l.status = "Stopped with error"
+			if l.logger != nil {
+				l.logger.Error("loop.stop", map[string]any{"error": msg.err.Error()})
+			}
 		} else {
 			l.err = ""
 			l.status = "Stopped"
+			if l.logger != nil {
+				l.logger.Info("loop.stop", map[string]any{"status": "completed"})
+			}
 		}
 		l.cancel = nil
 		return nil
@@ -151,12 +159,15 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			return l.start(true)
 		case key.Matches(msg, keys.RunLoopContinuous) && l.mode == loopIdle:
 			return l.start(false)
-		case key.Matches(msg, keys.StopLoop):
+		case key.Matches(msg, keys.StopLoop) && l.mode == loopRunning:
 			l.stop()
-			l.mode = loopIdle
+			l.mode = loopStopping
 			l.status = "Stopping..."
 			l.err = ""
 			l.appendLogLine(">> [RALPH] Stop requested.")
+			if l.logger != nil {
+				l.logger.Info("loop.stop.request", map[string]any{"status": l.status})
+			}
 			return nil
 		case key.Matches(msg, keys.EditLoopConfig) && l.mode == loopIdle:
 			l.beginEdit()
@@ -222,6 +233,21 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 
 	logCh := make(chan string, 1024)
 	l.logCh = logCh
+	if l.logger != nil {
+		l.logger.Info("loop.start", map[string]any{
+			"mode":              loopModeLabel(runOnce),
+			"sleep_seconds":     l.overrides.SleepSeconds,
+			"max_iterations":    l.overrides.MaxIterations,
+			"max_stalled":       l.overrides.MaxStalled,
+			"max_repair":        l.overrides.MaxRepairAttempts,
+			"only_tags":         l.overrides.OnlyTags,
+			"require_main":      l.overrides.RequireMain,
+			"auto_commit":       l.overrides.AutoCommit,
+			"auto_push":         l.overrides.AutoPush,
+			"runner":            "codex",
+			"runner_args_count": 0,
+		})
+	}
 
 	runCmd := func() tea.Msg {
 		logger := loopLogger{
@@ -362,6 +388,13 @@ func splitTags(value string) []string {
 		}
 	}
 	return result
+}
+
+func loopModeLabel(runOnce bool) string {
+	if runOnce {
+		return "once"
+	}
+	return "continuous"
 }
 
 func (l *loopView) Resize(width int, height int) {

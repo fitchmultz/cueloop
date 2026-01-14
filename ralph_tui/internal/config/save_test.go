@@ -17,6 +17,7 @@ func TestSavePartialRepoRelativePaths(t *testing.T) {
 	dataDir := filepath.Join(repoRoot, "data")
 	cacheDir := filepath.Join(repoRoot, ".ralph", "cache")
 	pinDir := filepath.Join(repoRoot, ".ralph", "pin")
+	logFile := filepath.Join(repoRoot, ".ralph", "cache", "ralph_tui.log")
 	partial := PartialConfig{
 		Paths: &PathsPartial{
 			DataDir:  stringPtr(dataDir),
@@ -28,7 +29,7 @@ func TestSavePartialRepoRelativePaths(t *testing.T) {
 		Runner:  &RunnerPartial{MaxWorkers: intPtr(1)},
 		Specs:   &SpecsPartial{AutofillScout: boolPtr(true)},
 		UI:      &UIPartial{Theme: stringPtr("classic"), RefreshSeconds: intPtr(5)},
-		Logging: &LoggingPartial{Level: stringPtr("info")},
+		Logging: &LoggingPartial{Level: stringPtr("info"), File: stringPtr(logFile)},
 		Version: intPtr(1),
 	}
 
@@ -51,6 +52,14 @@ func TestSavePartialRepoRelativePaths(t *testing.T) {
 	if got := pathsValue["pin_dir"]; got != filepath.Join(".ralph", "pin") {
 		t.Fatalf("expected relative pin_dir, got %#v", got)
 	}
+
+	loggingValue, ok := payload["logging"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected logging map")
+	}
+	if got := loggingValue["file"]; got != filepath.Join(".ralph", "cache", "ralph_tui.log") {
+		t.Fatalf("expected relative logging.file, got %#v", got)
+	}
 }
 
 func TestSavePartialGlobalKeepsAbsolute(t *testing.T) {
@@ -59,6 +68,7 @@ func TestSavePartialGlobalKeepsAbsolute(t *testing.T) {
 	mustMkdirAll(t, homeDir)
 
 	dataDir := filepath.Join(tmpDir, "external", "data")
+	logFile := filepath.Join(tmpDir, "external", "logs", "ralph_tui.log")
 	partial := PartialConfig{
 		Paths: &PathsPartial{
 			DataDir: stringPtr(dataDir),
@@ -69,7 +79,7 @@ func TestSavePartialGlobalKeepsAbsolute(t *testing.T) {
 		Runner:  &RunnerPartial{MaxWorkers: intPtr(1)},
 		Specs:   &SpecsPartial{AutofillScout: boolPtr(true)},
 		UI:      &UIPartial{Theme: stringPtr("classic"), RefreshSeconds: intPtr(5)},
-		Logging: &LoggingPartial{Level: stringPtr("info")},
+		Logging: &LoggingPartial{Level: stringPtr("info"), File: stringPtr(logFile)},
 		Version: intPtr(1),
 	}
 
@@ -85,6 +95,14 @@ func TestSavePartialGlobalKeepsAbsolute(t *testing.T) {
 	}
 	if got := pathsValue["data_dir"]; got != dataDir {
 		t.Fatalf("expected absolute data_dir, got %#v", got)
+	}
+
+	loggingValue, ok := payload["logging"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected logging map")
+	}
+	if got := loggingValue["file"]; got != logFile {
+		t.Fatalf("expected absolute logging.file, got %#v", got)
 	}
 }
 

@@ -156,6 +156,18 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 		if partial.Logging.Level != nil {
 			base.Logging.Level = strings.ToLower(strings.TrimSpace(*partial.Logging.Level))
 		}
+		if partial.Logging.File != nil {
+			trimmed := strings.TrimSpace(*partial.Logging.File)
+			if trimmed == "" {
+				base.Logging.File = ""
+			} else {
+				resolved, err := resolvePath(basePath, trimmed)
+				if err != nil {
+					return base, err
+				}
+				base.Logging.File = resolved
+			}
+		}
 	}
 	if partial.Paths != nil {
 		if partial.Paths.DataDir != nil {
@@ -246,6 +258,11 @@ func resolveConfigPaths(cfg Config, basePath string) Config {
 	}
 	if resolved, err := resolvePath(basePath, cfg.Paths.PinDir); err == nil {
 		cfg.Paths.PinDir = resolved
+	}
+	if strings.TrimSpace(cfg.Logging.File) != "" {
+		if resolved, err := resolvePath(basePath, cfg.Logging.File); err == nil {
+			cfg.Logging.File = resolved
+		}
 	}
 
 	return cfg

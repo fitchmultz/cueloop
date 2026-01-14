@@ -3,6 +3,7 @@
 package loop
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,12 +18,12 @@ type RunnerInvoker struct {
 }
 
 // RunPrompt runs the runner using the provided prompt file.
-func (r RunnerInvoker) RunPrompt(promptPath string) error {
+func (r RunnerInvoker) RunPrompt(ctx context.Context, promptPath string) error {
 	switch r.Runner {
 	case "codex":
 		args := append([]string{"exec"}, r.RunnerArgs...)
 		args = append(args, "-")
-		cmd := exec.Command("codex", args...)
+		cmd := exec.CommandContext(ctx, "codex", args...)
 		file, err := os.Open(promptPath)
 		if err != nil {
 			return err
@@ -30,15 +31,15 @@ func (r RunnerInvoker) RunPrompt(promptPath string) error {
 		defer file.Close()
 		cmd.Stdin = file
 		if err := RunCommand(cmd, r.Redactor, r.Logger); err != nil {
-			return fmt.Errorf("codex failed while running loop.")
+			return fmt.Errorf("codex failed while running loop: %w", err)
 		}
 		return nil
 	case "opencode":
 		args := append([]string{"run"}, r.RunnerArgs...)
 		args = append(args, "--file", promptPath, "--", "Follow the attached prompt file verbatim.")
-		cmd := exec.Command("opencode", args...)
+		cmd := exec.CommandContext(ctx, "opencode", args...)
 		if err := RunCommand(cmd, r.Redactor, r.Logger); err != nil {
-			return fmt.Errorf("opencode failed while running loop.")
+			return fmt.Errorf("opencode failed while running loop: %w", err)
 		}
 		return nil
 	default:

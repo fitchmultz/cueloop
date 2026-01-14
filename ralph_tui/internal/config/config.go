@@ -30,6 +30,7 @@ type UIConfig struct {
 // LoggingConfig controls log verbosity.
 type LoggingConfig struct {
 	Level string `json:"level"`
+	File  string `json:"file"`
 }
 
 // PathsConfig declares filesystem locations used by Ralph.
@@ -84,6 +85,9 @@ func (c Config) Validate() error {
 	}
 	if !validLogLevel(c.Logging.Level) {
 		return fmt.Errorf("logging.level must be one of debug, info, warn, or error")
+	}
+	if strings.TrimSpace(c.Logging.File) != "" && !filepath.IsAbs(c.Logging.File) {
+		return fmt.Errorf("logging.file must be absolute when set")
 	}
 	if strings.TrimSpace(c.Paths.DataDir) == "" {
 		return fmt.Errorf("paths.data_dir must be set")
@@ -160,6 +164,7 @@ type UIPartial struct {
 // LoggingPartial overrides LoggingConfig fields when set.
 type LoggingPartial struct {
 	Level *string `json:"level,omitempty"`
+	File  *string `json:"file,omitempty"`
 }
 
 // PathsPartial overrides PathsConfig fields when set.
