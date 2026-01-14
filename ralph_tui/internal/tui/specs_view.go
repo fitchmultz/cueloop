@@ -42,6 +42,7 @@ type specsView struct {
 	runLogs           []string
 	lastRunOutput     string
 	logCh             chan string
+	logRunID          int
 	pendingResult     *specsBuildResultMsg
 	queueStamp        fileStamp
 	promptStamp       fileStamp
@@ -55,11 +56,9 @@ type specsBuildResultMsg struct {
 	effective bool
 }
 
-type specsLogMsg struct {
-	line string
+type specsLogBatchMsg struct {
+	batch logBatch
 }
-
-type specsLogDoneMsg struct{}
 
 type specsPreviewMsg struct {
 	preview   string
@@ -102,28 +101,37 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			return cmd
 		}
 		return nil
-	case specsLogMsg:
-		s.appendRunLog(msg.line)
-		if s.logCh != nil {
-			return listenSpecsLogs(s.logCh)
+	case specsLogBatchMsg:
+		if msg.batch.RunID != s.logRunID {
+			return nil
 		}
-		return nil
-	case specsLogDoneMsg:
-		s.logCh = nil
-		s.finalizeRunOutput()
-		if s.pendingResult != nil {
-			cmd := s.applyBuildResult(*s.pendingResult)
-			s.pendingResult = nil
+		if len(msg.batch.Lines) > 0 {
+			s.appendRunLogs(msg.batch.Lines)
+		}
+		if msg.batch.Done {
+			s.logCh = nil
+			s.finalizeRunOutput()
+			if s.pendingResult != nil {
+				cmd := s.applyBuildResult(*s.pendingResult)
+				s.pendingResult = nil
+				s.running = false
+				return cmd
+			}
 			s.running = false
-			return cmd
+			return nil
 		}
-		s.running = false
+		if s.logCh != nil {
+			return listenSpecsLogs(s.logCh, s.logRunID)
+		}
 		return nil
 	case specsPreviewMsg:
 		s.previewLoading = false
 		if msg.err != nil {
 			s.previewErr = msg.err.Error()
 			s.preview = ""
+			if s.previewDirty && !s.running {
+				return s.refreshPreviewAsync()
+			}
 			return nil
 		}
 		s.previewErr = ""
@@ -132,20 +140,23 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		s.autoEnabled = msg.auto
 		s.previewViewport.SetContent(msg.preview)
 		s.previewViewport.GotoTop()
+		if s.previewDirty && !s.running {
+			return s.refreshPreviewAsync()
+		}
 		return nil
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.ToggleInteractive) && !s.running:
 			s.interactive = !s.interactive
-			return s.refreshPreviewAsync()
+			return s.requestPreviewRefresh()
 		case key.Matches(msg, keys.ToggleInnovate) && !s.running:
 			s.innovate = !s.innovate
 			s.innovateExplicit = true
-			return s.refreshPreviewAsync()
+			return s.requestPreviewRefresh()
 		case key.Matches(msg, keys.ToggleAutofill) && !s.running:
 			s.autofillScout = !s.autofillScout
 			s.autofillExplicit = true
-			return s.refreshPreviewAsync()
+			return s.requestPreviewRefresh()
 		case key.Matches(msg, keys.RunSpecs):
 			if s.running {
 				return nil
@@ -270,10 +281,20 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 	}
 }
 
+func (s *specsView) requestPreviewRefresh() tea.Cmd {
+	if s.previewLoading {
+		s.previewDirty = true
+		return nil
+	}
+	return s.refreshPreviewAsync()
+}
+
 func (s *specsView) runBuildCmd() tea.Cmd {
 	s.resetRunLogs()
 	logCh := make(chan string, 1024)
 	s.logCh = logCh
+	s.logRunID++
+	runID := s.logRunID
 	s.pendingResult = nil
 	s.logViewport.SetContent("")
 	s.logViewport.GotoTop()
@@ -316,7 +337,7 @@ func (s *specsView) runBuildCmd() tea.Cmd {
 		return specsBuildResultMsg{pinErr: pinErr, diffStat: diffStat, effective: result.EffectiveInnovate}
 	}
 
-	return tea.Batch(runCmd, listenSpecsLogs(logCh))
+	return tea.Batch(runCmd, listenSpecsLogs(logCh, runID))
 }
 
 func yesNo(value bool) string {
@@ -372,7 +393,7 @@ func (s *specsView) RefreshIfNeeded() tea.Cmd {
 		return nil
 	}
 	if s.previewDirty {
-		return s.refreshPreviewAsync()
+		return s.requestPreviewRefresh()
 	}
 	queuePath := filepath.Join(s.cfg.Paths.PinDir, "implementation_queue.md")
 	queueStamp, queueChanged, queueErr := fileChanged(queuePath, s.queueStamp)
@@ -391,14 +412,14 @@ func (s *specsView) RefreshIfNeeded() tea.Cmd {
 		s.promptStamp = promptStamp
 	}
 	if queueChanged || promptChanged {
-		return s.refreshPreviewAsync()
+		return s.requestPreviewRefresh()
 	}
 	return nil
 }
 
 func (s *specsView) RefreshPreviewCmd() tea.Cmd {
 	if s.previewDirty {
-		return s.refreshPreviewAsync()
+		return s.requestPreviewRefresh()
 	}
 	return nil
 }
@@ -421,8 +442,15 @@ func (s *specsView) resetRunLogs() {
 }
 
 func (s *specsView) appendRunLog(line string) {
+	s.appendRunLogs([]string{line})
+}
+
+func (s *specsView) appendRunLogs(lines []string) {
+	if len(lines) == 0 {
+		return
+	}
 	const maxLines = 500
-	s.runLogs = append(s.runLogs, line)
+	s.runLogs = append(s.runLogs, lines...)
 	if len(s.runLogs) > maxLines {
 		s.runLogs = s.runLogs[len(s.runLogs)-maxLines:]
 	}
@@ -498,12 +526,8 @@ func (s logChannelSink) PushLine(line string) {
 	}
 }
 
-func listenSpecsLogs(logCh <-chan string) tea.Cmd {
+func listenSpecsLogs(logCh <-chan string, runID int) tea.Cmd {
 	return func() tea.Msg {
-		line, ok := <-logCh
-		if !ok {
-			return specsLogDoneMsg{}
-		}
-		return specsLogMsg{line: line}
+		return specsLogBatchMsg{batch: drainLogChannel(runID, logCh, 64)}
 	}
 }
