@@ -31,6 +31,8 @@ type loopView struct {
 	editForm  *huh.Form
 	editData  loopFormData
 	logCh     chan string
+	width     int
+	height    int
 }
 
 type loopOverrides struct {
@@ -161,7 +163,7 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		}
 	}
 
-	if l.mode == loopIdle {
+	if l.mode != loopEditing {
 		updated, cmd := l.viewport.Update(msg)
 		l.viewport = updated
 		return cmd
@@ -174,10 +176,10 @@ func (l *loopView) View() string {
 	status := l.statusLine()
 	controls := l.controlsView()
 	if l.mode == loopEditing && l.editForm != nil {
-		return strings.TrimSpace(head+"\n"+status+"\n\n"+l.editForm.View()) + "\n"
+		return withFinalNewline(head + "\n" + status + "\n\n" + l.editForm.View())
 	}
 	logs := l.viewport.View()
-	return strings.TrimSpace(head+"\n"+status+"\n\n"+controls+"\n\n"+logs) + "\n"
+	return withFinalNewline(head + "\n" + status + "\n\n" + controls + "\n\n" + logs)
 }
 
 func (l *loopView) statusLine() string {
@@ -272,6 +274,7 @@ func (l *loopView) beginEdit() {
 	l.editData = loopFormDataFromOverrides(l.overrides)
 	l.editForm = l.buildEditForm()
 	l.mode = loopEditing
+	l.Resize(l.width, l.height)
 }
 
 func (l *loopView) buildEditForm() *huh.Form {
@@ -361,9 +364,29 @@ func splitTags(value string) []string {
 }
 
 func (l *loopView) Resize(width int, height int) {
+	l.width = width
+	l.height = height
+	controlsLines := strings.Count(l.controlsView(), "\n") + 1
+	logHeight := height - (controlsLines + 4)
+	if logHeight < 5 {
+		logHeight = 5
+	}
 	l.viewport.Width = max(10, width)
-	l.viewport.Height = max(5, height)
+	l.viewport.Height = max(5, logHeight)
 	l.viewport.Style = lipgloss.NewStyle().Padding(0, 1)
+
+	if l.editForm != nil {
+		formHeight := height - 3
+		if formHeight < 1 {
+			formHeight = 1
+		}
+		if width > 0 {
+			l.editForm = l.editForm.WithWidth(width)
+		}
+		if height > 0 {
+			l.editForm = l.editForm.WithHeight(formHeight)
+		}
+	}
 }
 
 func (l *loopView) SetConfig(cfg config.Config, locations paths.Locations) {

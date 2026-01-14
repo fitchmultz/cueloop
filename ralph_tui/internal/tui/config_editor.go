@@ -23,6 +23,8 @@ type configEditor struct {
 	form      *huh.Form
 	saveError string
 	saveNote  string
+	width     int
+	height    int
 }
 
 type configFormData struct {
@@ -130,18 +132,24 @@ func (e *configEditor) Update(msg tea.Msg) tea.Cmd {
 func (e *configEditor) View() string {
 	header := fmt.Sprintf("Config (editing: %s)", layerLabel(e.layer))
 	status := e.statusLine()
-	return strings.TrimSpace(header+"\n"+status+"\n\n"+e.form.View()) + "\n"
+	return withFinalNewline(header + "\n" + status + "\n\n" + e.form.View())
 }
 
 func (e *configEditor) Resize(width int, height int) {
+	e.width = width
+	e.height = height
 	if e.form == nil {
 		return
 	}
+	formHeight := height - 3
+	if formHeight < 1 {
+		formHeight = 1
+	}
 	if width > 0 {
-		e.form.WithWidth(width)
+		e.form = e.form.WithWidth(width)
 	}
 	if height > 0 {
-		e.form.WithHeight(height)
+		e.form = e.form.WithHeight(formHeight)
 	}
 }
 
@@ -156,12 +164,10 @@ func (e *configEditor) statusLine() string {
 }
 
 func (e *configEditor) SaveGlobal() {
-	_ = e.commitDraft(e.layer)
 	e.handleAction(actionSaveGlobal)
 }
 
 func (e *configEditor) SaveRepo() {
-	_ = e.commitDraft(e.layer)
 	e.handleAction(actionSaveRepo)
 }
 
@@ -173,7 +179,11 @@ func (e *configEditor) handleAction(action string) {
 	if action == "" {
 		return
 	}
-	_ = e.commitDraft(e.layer)
+	if err := e.commitDraft(e.layer); err != nil {
+		e.saveError = err.Error()
+		e.saveNote = ""
+		return
+	}
 	switch action {
 	case actionSaveGlobal:
 		e.saveLayer(layerGlobal)
@@ -248,6 +258,7 @@ func (e *configEditor) resetLayer(layer string) error {
 	}
 	e.data = formDataFromConfig(cfg)
 	e.form = e.buildForm()
+	e.Resize(e.width, e.height)
 	return nil
 }
 

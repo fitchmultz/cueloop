@@ -87,8 +87,8 @@ func newModel(cfg config.Config, locations paths.Locations) model {
 		initErr:    err,
 		locations:  locations,
 	}
-	m.layout = computeLayout(0, 0)
-	m.resizeViews()
+	m.layout = computeLayoutWithBody(0, 0)
+	m.resizeViews(0, 0)
 	m.applyFocus()
 	return m
 }
@@ -105,10 +105,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.layout = computeLayout(m.width, m.height)
-		m.help.Width = m.width
-		m.nav.SetSize(max(10, m.layout.navWidth-4), max(6, m.layout.contentHeight))
-		m.resizeViews()
+		m.relayout()
 		handled = true
 	case refreshMsg:
 		m.refreshViews()
@@ -135,11 +132,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if key.Matches(msg, m.keys.Help) {
 			m.help.ShowAll = !m.help.ShowAll
+			m.relayout()
 			return m, nil
 		}
 		if key.Matches(msg, m.keys.Focus) {
 			m.navFocused = !m.navFocused
 			m.applyFocus()
+			m.relayout()
 			return m, nil
 		}
 		if m.screen == screenConfig {
@@ -165,6 +164,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if item, ok := m.nav.SelectedItem().(navItem); ok {
 					m.screen = item.screen
 					m.applyFocus()
+					m.relayout()
 				}
 			}
 		} else {
@@ -186,40 +186,33 @@ func (m model) View() string {
 		return fmt.Sprintf("Error: %v\n", m.initErr)
 	}
 
-	navView := m.nav.View()
-	contentView := m.contentView()
+	navView := strings.TrimRight(m.nav.View(), "\n")
+	contentView := strings.TrimRight(m.contentView(), "\n")
 
-	navWidth := m.layout.navWidth
-	if navWidth == 0 {
-		navWidth = defaultNavWidth
-	}
-	contentWidth := m.layout.contentWidth
-	if contentWidth == 0 {
-		contentWidth = defaultContentWidth
-	}
+	navStyle, contentStyle := m.panelStyles()
+	navFrameW, navFrameH := navStyle.GetFrameSize()
+	contentFrameW, contentFrameH := contentStyle.GetFrameSize()
 
-	navBorder := lipgloss.HiddenBorder()
-	contentBorder := lipgloss.HiddenBorder()
-	if m.navFocused {
-		navBorder = lipgloss.RoundedBorder()
-	} else {
-		contentBorder = lipgloss.RoundedBorder()
-	}
-	navStyle := lipgloss.NewStyle().
-		Width(max(10, navWidth-4)).
-		Padding(1, 1, 0, 1).
-		Border(navBorder)
-	contentStyle := lipgloss.NewStyle().
-		Width(max(10, contentWidth-4)).
-		Padding(1, 1, 0, 1).
-		Border(contentBorder)
+	navInnerW := max(10, m.layout.navWidth-navFrameW)
+	contentInnerW := max(10, m.layout.contentWidth-contentFrameW)
+	navInnerH := max(6, m.layout.bodyHeight-navFrameH)
+	contentInnerH := max(6, m.layout.bodyHeight-contentFrameH)
+
+	navStyle = navStyle.Width(navInnerW).Height(navInnerH)
+	contentStyle = contentStyle.Width(contentInnerW).Height(contentInnerH)
 
 	left := navStyle.Render(navView)
 	right := contentStyle.Render(contentView)
 	body := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+	body = strings.TrimRight(body, "\n")
+	body = clampToSize(body, m.width, m.layout.bodyHeight)
 
-	footer := m.help.View(m.helpKeyMap())
-	return strings.TrimSpace(body+"\n\n"+footer) + "\n"
+	m.help.Width = m.width
+	footer := strings.TrimRight(m.help.View(m.helpKeyMap()), "\n")
+	footer = clampToSize(footer, m.width, 0)
+	rendered := body + "\n" + strings.Repeat("\n", footerGapBlankLines) + footer
+	rendered = clampToSize(rendered, m.width, m.height)
+	return withFinalNewline(rendered)
 }
 
 func max(a, b int) int {
@@ -263,9 +256,9 @@ func (m model) contentView() string {
 }
 
 type layoutSpec struct {
-	navWidth      int
-	contentWidth  int
-	contentHeight int
+	navWidth     int
+	contentWidth int
+	bodyHeight   int
 }
 
 const (
@@ -273,53 +266,120 @@ const (
 	defaultContentWidth = 80
 	minNavWidth         = 20
 	minContentWidth     = 30
+	footerGapBlankLines = 1
 )
 
-func computeLayout(width int, height int) layoutSpec {
+func computeLayoutWithBody(width int, bodyHeight int) layoutSpec {
+	if bodyHeight < 0 {
+		bodyHeight = 0
+	}
+	if width <= 0 {
+		return layoutSpec{
+			navWidth:     defaultNavWidth,
+			contentWidth: defaultContentWidth,
+			bodyHeight:   bodyHeight,
+		}
+	}
+
 	navWidth := defaultNavWidth
-	if width > 0 {
-		maxNav := width / 3
-		if maxNav < minNavWidth {
-			maxNav = minNavWidth
-		}
-		if navWidth > maxNav {
-			navWidth = maxNav
-		}
+	maxNav := width / 3
+	if maxNav < minNavWidth {
+		maxNav = minNavWidth
+	}
+	if navWidth > maxNav {
+		navWidth = maxNav
 	}
 
-	contentWidth := width - navWidth - 4
-	if contentWidth < minContentWidth {
-		contentWidth = minContentWidth
-	}
-	if width == 0 {
-		contentWidth = defaultContentWidth
-	}
-
-	contentHeight := height - 6
-	if contentHeight < 5 {
-		contentHeight = 5
+	contentWidth := width - navWidth
+	if width >= minNavWidth+minContentWidth {
+		if contentWidth < minContentWidth {
+			navWidth = width - minContentWidth
+			if navWidth < minNavWidth {
+				navWidth = minNavWidth
+			}
+			contentWidth = width - navWidth
+		}
+	} else {
+		if navWidth > width {
+			navWidth = width
+		}
+		if navWidth < 0 {
+			navWidth = 0
+		}
+		contentWidth = width - navWidth
+		if contentWidth < 0 {
+			contentWidth = 0
+		}
 	}
 
 	return layoutSpec{
-		navWidth:      navWidth,
-		contentWidth:  contentWidth,
-		contentHeight: contentHeight,
+		navWidth:     navWidth,
+		contentWidth: contentWidth,
+		bodyHeight:   bodyHeight,
 	}
 }
 
-func (m *model) resizeViews() {
-	contentWidth := max(10, m.layout.contentWidth-4)
+func (m model) panelStyles() (lipgloss.Style, lipgloss.Style) {
+	navBorder := lipgloss.HiddenBorder()
+	contentBorder := lipgloss.HiddenBorder()
+	if m.navFocused {
+		navBorder = lipgloss.RoundedBorder()
+	} else {
+		contentBorder = lipgloss.RoundedBorder()
+	}
+
+	navStyle := lipgloss.NewStyle().
+		Padding(1, 1, 0, 1).
+		Border(navBorder)
+
+	contentStyle := lipgloss.NewStyle().
+		Padding(1, 1, 0, 1).
+		Border(contentBorder)
+
+	return navStyle, contentStyle
+}
+
+func (m *model) relayout() {
+	if m.width <= 0 || m.height <= 0 {
+		return
+	}
+
+	m.help.Width = m.width
+	footer := m.help.View(m.helpKeyMap())
+	footerH := lipgloss.Height(footer)
+
+	bodyH := m.height - footerH - footerGapBlankLines
+	if bodyH < 0 {
+		bodyH = 0
+	}
+
+	m.layout = computeLayoutWithBody(m.width, bodyH)
+
+	navStyle, contentStyle := m.panelStyles()
+	navFrameW, navFrameH := navStyle.GetFrameSize()
+	contentFrameW, contentFrameH := contentStyle.GetFrameSize()
+
+	navInnerW := max(10, m.layout.navWidth-navFrameW)
+	contentInnerW := max(10, m.layout.contentWidth-contentFrameW)
+	navInnerH := max(6, m.layout.bodyHeight-navFrameH)
+	contentInnerH := max(6, m.layout.bodyHeight-contentFrameH)
+
+	m.nav.SetSize(navInnerW, navInnerH)
+	m.resizeViews(contentInnerW, contentInnerH)
+}
+
+func (m *model) resizeViews(contentInnerW int, contentInnerH int) {
 	if m.configView != nil {
-		m.configView.Resize(contentWidth, m.layout.contentHeight)
+		m.configView.Resize(contentInnerW, contentInnerH)
 	}
 	if m.pinView != nil {
-		m.pinView.Resize(contentWidth, m.layout.contentHeight)
+		m.pinView.Resize(contentInnerW, contentInnerH)
 	}
 	if m.specsView != nil {
-		m.specsView.Resize(contentWidth, m.layout.contentHeight)
+		m.specsView.Resize(contentInnerW, contentInnerH)
 	}
 	if m.loopView != nil {
-		m.loopView.Resize(contentWidth, m.layout.contentHeight)
+		m.loopView.Resize(contentInnerW, contentInnerH)
 	}
 }
 

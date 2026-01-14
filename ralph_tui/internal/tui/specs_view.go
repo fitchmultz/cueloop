@@ -150,8 +150,7 @@ func (s *specsView) View() string {
 	status := s.statusLine()
 	options := s.optionsView()
 	preview := s.previewView()
-	body := strings.TrimSpace(header + "\n" + status + "\n\n" + options + "\n\n" + preview)
-	return body + "\n"
+	return withFinalNewline(header + "\n" + status + "\n\n" + options + "\n\n" + preview)
 }
 
 func (s *specsView) statusLine() string {
@@ -294,8 +293,8 @@ func (s *specsView) Resize(width int, height int) {
 	s.logViewport.Width = width
 	s.previewWidth = width
 
-	const optionsLines = 6
-	reserved := 1 + 1 + 2 + optionsLines + 1
+	optionsLines := strings.Count(s.optionsView(), "\n") + 1
+	reserved := 1 + 1 + 1 + optionsLines + 1
 	previewHeight := height - reserved
 	if previewHeight < 5 {
 		previewHeight = 5

@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -28,6 +29,7 @@ type pinView struct {
 	files       pin.Files
 	items       []pin.QueueItem
 	table       table.Model
+	detail      viewport.Model
 	status      string
 	err         string
 	mode        pinMode
@@ -54,9 +56,12 @@ func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) 
 		{Title: "Title", Width: 60},
 	}
 	view.table = table.New(table.WithColumns(columns), table.WithFocused(true))
+	view.detail = viewport.New(80, 10)
+	view.detail.Style = lipgloss.NewStyle().Padding(0, 1)
 	if err := view.reload(); err != nil {
 		return nil, err
 	}
+	view.syncDetail(true)
 	return view, nil
 }
 
@@ -90,17 +95,21 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		}
 	}
 
+	prevCursor := p.table.Cursor()
 	updated, cmd := p.table.Update(msg)
 	p.table = updated
+	if p.table.Cursor() != prevCursor {
+		p.syncDetail(true)
+	}
 	return cmd
 }
 
 func (p *pinView) View() string {
 	if p.mode == pinModeBlockForm && p.blockForm != nil {
-		return strings.TrimSpace("Block item\n\n"+p.blockForm.View()) + "\n"
+		return withFinalNewline("Block item\n\n" + p.blockForm.View())
 	}
 	status := p.statusLine()
-	return strings.TrimSpace(status+"\n\n"+p.tableWithDetail()) + "\n"
+	return withFinalNewline(status + "\n\n" + p.tableWithDetail())
 }
 
 func (p *pinView) Resize(width int, height int) {
@@ -121,7 +130,45 @@ func (p *pinView) Resize(width int, height int) {
 		{Title: "ID", Width: idWidth},
 		{Title: "Title", Width: titleWidth},
 	})
-	p.table.SetHeight(max(5, height/2))
+	available := height - 3
+	if available < 0 {
+		available = 0
+	}
+	tableHeight := available * 2 / 5
+	if tableHeight < 5 {
+		tableHeight = 5
+	}
+	detailHeight := available - tableHeight
+	if detailHeight < 5 {
+		detailHeight = 5
+	}
+	if available >= 10 && tableHeight+detailHeight > available {
+		over := tableHeight + detailHeight - available
+		if tableHeight-over >= 5 {
+			tableHeight -= over
+		} else {
+			tableHeight = 5
+		}
+		detailHeight = available - tableHeight
+		if detailHeight < 5 {
+			detailHeight = 5
+		}
+	}
+	p.table.SetHeight(max(5, tableHeight))
+	p.detail.Width = width
+	p.detail.Height = max(5, detailHeight)
+	if p.mode == pinModeBlockForm && p.blockForm != nil {
+		formHeight := height - 2
+		if formHeight < 1 {
+			formHeight = 1
+		}
+		if width > 0 {
+			p.blockForm = p.blockForm.WithWidth(width)
+		}
+		if height > 0 {
+			p.blockForm = p.blockForm.WithHeight(formHeight)
+		}
+	}
 }
 
 func (p *pinView) statusLine() string {
@@ -136,19 +183,8 @@ func (p *pinView) statusLine() string {
 
 func (p *pinView) tableWithDetail() string {
 	left := p.table.View()
-	detail := p.detailView()
-	if p.width > 0 {
-		detail = lipgloss.NewStyle().Width(p.width).Render(detail)
-	}
+	detail := p.detail.View()
 	return left + "\n\n" + detail
-}
-
-func (p *pinView) detailView() string {
-	item := p.selectedItem()
-	if item == nil {
-		return "No item selected."
-	}
-	return strings.Join(item.Lines, "\n")
 }
 
 func (p *pinView) selectedItem() *pin.QueueItem {
@@ -180,6 +216,7 @@ func (p *pinView) reload() error {
 	if modTime, err := fileModTime(p.files.QueuePath); err == nil {
 		p.queueMTime = modTime
 	}
+	p.syncDetail(true)
 	return nil
 }
 
@@ -229,6 +266,7 @@ func (p *pinView) startBlock() {
 	p.mode = pinModeBlockForm
 	p.status = ""
 	p.err = ""
+	p.Resize(p.width, p.height)
 }
 
 func (p *pinView) finishBlock() {
@@ -268,6 +306,18 @@ func (p *pinView) finishBlock() {
 	p.err = ""
 	p.mode = pinModeTable
 	_ = p.reload()
+}
+
+func (p *pinView) syncDetail(resetScroll bool) {
+	item := p.selectedItem()
+	content := "No item selected."
+	if item != nil {
+		content = strings.Join(item.Lines, "\n")
+	}
+	p.detail.SetContent(content)
+	if resetScroll {
+		p.detail.GotoTop()
+	}
 }
 
 func (p *pinView) SetConfig(cfg config.Config, locations paths.Locations) error {
