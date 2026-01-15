@@ -5,6 +5,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 )
 
 type dashboardQueueSummary struct {
@@ -60,22 +62,28 @@ func dashboardQueueSummaryFor(p *pinView) dashboardQueueSummary {
 		return dashboardQueueSummary{summary: "error"}
 	}
 
-	total := len(p.items)
+	items := p.allItems
+	if len(items) == 0 {
+		items = p.items
+	}
+	total := len(items)
 	checked := 0
 	nextID := ""
 	lastID := ""
-	for _, item := range p.items {
+	for _, item := range items {
 		if item.Checked {
 			checked++
-			lastID = item.ID
 			continue
 		}
 		if nextID == "" {
 			nextID = item.ID
 		}
 	}
+	if summary, err := pin.ReadDoneSummary(p.files.DonePath); err == nil {
+		lastID = summary.LastID
+	}
 	unchecked := total - checked
-	summary := fmt.Sprintf("%d total | %d unchecked | %d blocked", total, unchecked, p.blockedCount)
+	summary := fmt.Sprintf("%d queued | %d unchecked | %d blocked", total, unchecked, p.blockedCount)
 	return dashboardQueueSummary{summary: summary, nextID: nextID, lastID: lastID}
 }
 

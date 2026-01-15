@@ -175,6 +175,21 @@ func TestReadQueueSummaryFixtures(t *testing.T) {
 	}
 }
 
+func TestReadDoneSummaryFixtures(t *testing.T) {
+	fixture := mustLocateFixtures(t)
+
+	summary, err := ReadDoneSummary(fixture.done)
+	if err != nil {
+		t.Fatalf("ReadDoneSummary failed: %v", err)
+	}
+	if summary.Total != 1 {
+		t.Fatalf("expected 1 done item, got %d", summary.Total)
+	}
+	if summary.LastID != "RQ-0005" {
+		t.Fatalf("expected last done ID RQ-0005, got %q", summary.LastID)
+	}
+}
+
 func TestReadBlockedItemsFixtures(t *testing.T) {
 	fixture := mustLocateFixtures(t)
 

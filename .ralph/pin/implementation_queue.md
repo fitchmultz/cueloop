@@ -1,18 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0443 [P1] [ui]: Correct Dashboard queue summary accuracy (unfiltered counts, true "last done" from implementation_done.md, and better "next item" semantics). (ralph_tui/internal/tui/dashboard_view.go, ralph_tui/internal/pin/pin.go, ralph_tui/internal/tui/pin_view.go)
-  - Evidence: `dashboardQueueSummaryFor` uses `pinView.items` (which can be filtered by search) and derives "Last done" from checked queue items, but checked items are not the done log and may never be moved; dashboard can report misleading queue stats.
-  - Plan: Compute dashboard queue stats from the real queue/done files (or `pinView.allItems` plus done-tail parsing), ensure filtering doesn’t affect dashboard, and add unit tests for summary correctness.
-
-  - Findings:
-    - `ralph_tui/internal/tui/dashboard_view.go`: "Last done" is derived from checked queue items instead of `.ralph/pin/implementation_done.md`.
-    - Dashboard queue "total" excludes blocked items but the label is ambiguous.
-
-- [ ] RQ-0453 [ui]: Correct Run Loop info panel "Max iterations" display for single execution mode. (ralph_tui/internal/tui/loop_view.go)
-  - Evidence: When pressing 'r' for single execution, the info panel can show "Max iterations: unlimited" (or the configured limit) even though it will only run once; this is misleading.
-  - Plan: Update the info panel display logic to reflect "1" (or "single run") when a single execution is triggered, regardless of the persistent MaxIterations setting.
-
 - [ ] RQ-0444 [ui]: Make Run Loop settings UX runner-aware (opencode vs codex): hide/disable irrelevant reasoning-effort + context_builder controls; clarify behavior in the view. (ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/loop/loop.go, ralph_tui/internal/prompts/defaults/prompt_opencode.md)
   - Evidence: `loopView.controlsView` shows reasoning effort "effective: n/a" for non-codex runners and allows toggling "Force context_builder" even though the code-only context builder policy block is codex-specific; this is confusing, especially when using opencode.
   - Plan: Make the Run Loop screen adapt its controls/help text based on the selected runner, and add tests to ensure the view does not present no-op toggles or misleading "mandatory" labels.
@@ -48,6 +36,10 @@
 - [ ] RQ-0452 [docs]: Align on-screen key hints and help output with actual bindings (remove misleading hints, document new shortcuts, add guard tests). (ralph_tui/internal/tui/dashboard_view.go, ralph_tui/internal/tui/help_keymap.go, ralph_tui/internal/tui/keymap.go)
   - Evidence: Several screens embed hard-coded "Keys:" lines that can drift from `keymap.go` (e.g., Dashboard advertises fixup blocked). This breaks discoverability and causes user confusion.
   - Plan: Centralize key-hint rendering (or derive from `keyMap`), update view strings, and add tests that assert advertised keys exist and are handled.
+
+- [ ] RQ-0453 [ui]: Correct Run Loop info panel "Max iterations" display for single execution mode. (ralph_tui/internal/tui/loop_view.go)
+  - Evidence: When pressing 'r' for single execution, the info panel can show "Max iterations: unlimited" (or the configured limit) even though it will only run once; this is misleading.
+  - Plan: Update the info panel display logic to reflect "1" (or "single run") when a single execution is triggered, regardless of the persistent MaxIterations setting.
 
 ## Blocked
 

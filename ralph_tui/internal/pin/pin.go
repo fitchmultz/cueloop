@@ -250,6 +250,12 @@ type QueueItem struct {
 	Checked bool
 }
 
+// DoneSummary captures the Done section overview.
+type DoneSummary struct {
+	LastID string
+	Total  int
+}
+
 // BlockedItem represents a queue block in the Blocked section.
 type BlockedItem struct {
 	Header        string
@@ -258,6 +264,50 @@ type BlockedItem struct {
 	Metadata      Metadata
 	FixupAttempts int
 	FixupLast     string
+}
+
+// ReadDoneSummary returns the Done section summary.
+//
+// LastID is the most recent done item, which is expected to be at the top
+// of the Done section (prepend semantics).
+func ReadDoneSummary(donePath string) (DoneSummary, error) {
+	lines, err := readLines(donePath)
+	if err != nil {
+		return DoneSummary{}, err
+	}
+
+	blocks := splitBlocks(lines)
+	summary := DoneSummary{}
+	inDone := false
+	for _, block := range blocks {
+		if len(block) == 0 {
+			continue
+		}
+		header := block[0]
+		switch {
+		case strings.TrimSpace(header) == "## Done":
+			inDone = true
+			continue
+		case strings.HasPrefix(header, "## "):
+			if inDone {
+				inDone = false
+			}
+			continue
+		}
+
+		if !inDone {
+			continue
+		}
+		if !strings.HasPrefix(header, "- [") {
+			continue
+		}
+		summary.Total++
+		if summary.LastID == "" {
+			summary.LastID = extractID(header)
+		}
+	}
+
+	return summary, nil
 }
 
 // ReadQueueSummary returns queue items plus the blocked item count.
