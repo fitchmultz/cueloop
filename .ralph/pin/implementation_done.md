@@ -1,6 +1,10 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0446 [code]: Reduce file-watch disk IO by hashing small files only when needed (size/modtime/inode unchanged) while preserving same-size/modtime content-change detection. (ralph_tui/internal/tui/file_watch.go, ralph_tui/internal/tui/file_watch_test.go)
+  - Evidence: `getFileStamp` hashes contents for any file ≤64KB every time it is stamped, even when modtime/size are unchanged; this causes repeated disk reads on every refresh tick.
+  - Plan: Implement a two-phase stamp compare (stat first; only hash when stat matches prior stamp but change detection needs it), update tests (including the "same size + same modtime" case), and confirm the TUI remains responsive on frequent refresh.
+
 - [x] RQ-0451 [code]: Reduce Dashboard repo-status sampling cost (avoid running many git commands every refresh tick); add caching/throttling and better error surfacing. (ralph_tui/internal/tui/repo_status.go, ralph_tui/internal/tui/model.go)
   - Evidence: `repoStatusCmd` runs every UI refresh (default 5s) and executes several git commands sequentially (`CurrentBranch`, `ShortHeadSHA`, `StatusSummary`, `AheadCount`, `LastCommitSummary`, `LastCommitDiffStat`), which can become expensive and contribute to UI lag.
   - Plan: Cache repo status for a longer interval, consolidate git calls where possible, and add tests/benchmarks to keep dashboard refresh time bounded.

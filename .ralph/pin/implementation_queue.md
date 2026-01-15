@@ -1,10 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0446 [code]: Reduce file-watch disk IO by hashing small files only when needed (size/modtime/inode unchanged) while preserving same-size/modtime content-change detection. (ralph_tui/internal/tui/file_watch.go, ralph_tui/internal/tui/file_watch_test.go)
-  - Evidence: `getFileStamp` hashes contents for any file ≤64KB every time it is stamped, even when modtime/size are unchanged; this causes repeated disk reads on every refresh tick.
-  - Plan: Implement a two-phase stamp compare (stat first; only hash when stat matches prior stamp but change detection needs it), update tests (including the "same size + same modtime" case), and confirm the TUI remains responsive on frequent refresh.
-
 - [ ] RQ-0445 [code]: Fix specs preview performance lag by removing full log output strings from preview signature hashing; use stable versions/hashes instead. (ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/log_line_buffer.go, ralph_tui/internal/tui/render_perf_test.go)
   - Evidence: `previewInputSignature` incorporates `lastRunOutput` and `diffStat` directly, so signature computation becomes O(size of output) and can lag after large runs.
   - Plan: Replace signature inputs with cheap stable identifiers (e.g., log buffer version + diffStat hash/len), keep correctness (skip render only when truly unchanged), and add a perf/regression test to prevent reintroducing O(n) signature work.

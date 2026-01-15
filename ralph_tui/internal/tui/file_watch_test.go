@@ -112,6 +112,11 @@ func TestFileChangedDetectsSameSizeSameModtimeContentChange(t *testing.T) {
 	if !changed {
 		t.Fatalf("expected initial stat to be a change from empty stamp")
 	}
+	if !stamp.HasHash {
+		t.Fatalf("expected initial stamp to capture hash for small file")
+	}
+	stamp.HasCtime = false
+	stamp.Ctime = time.Time{}
 
 	if err := os.WriteFile(path, []byte("two"), 0o600); err != nil {
 		t.Fatalf("rewrite file: %v", err)

@@ -27,52 +27,48 @@ type fileStamp struct {
 const fileStampHashMaxBytes int64 = 64 * 1024
 
 func getFileStamp(path string) (fileStamp, error) {
-	handle, err := os.Open(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return fileStamp{Exists: false}, nil
-		}
-		return fileStamp{}, err
-	}
-	defer handle.Close()
-
-	info, err := handle.Stat()
+	stamp, err := statFileStamp(path)
 	if err != nil {
 		return fileStamp{}, err
 	}
-	stamp := fileStamp{
-		Exists:  true,
-		ModTime: info.ModTime(),
-		Size:    info.Size(),
+	if !stamp.Exists {
+		return stamp, nil
 	}
-	if details, ok := readFileStatDetails(info); ok {
-		stamp.Inode = details.inode
-		stamp.HasInode = details.hasInode
-		stamp.Ctime = details.ctime
-		stamp.HasCtime = details.hasCtime
-	}
-	if info.Size() <= fileStampHashMaxBytes {
-		hash, bytesRead, err := hashFilePrefixAt(handle, info.Size())
-		if err != nil {
-			return fileStamp{}, err
-		}
-		if bytesRead == info.Size() {
-			stamp.Hash = hash
-			stamp.HasHash = true
-		}
-	}
-	return stamp, nil
+	return addFileHash(path, stamp)
 }
 
 func fileChanged(path string, last fileStamp) (fileStamp, bool, error) {
-	stamp, err := getFileStamp(path)
+	stamp, err := statFileStamp(path)
 	if err != nil {
 		return fileStamp{}, false, err
 	}
-	return stamp, !sameFileStamp(stamp, last), nil
+	if !sameFileStampStat(stamp, last) {
+		if needsContentHash(stamp, last) {
+			updated, err := addFileHash(path, stamp)
+			if err != nil {
+				return fileStamp{}, false, err
+			}
+			stamp = updated
+		}
+		return stamp, true, nil
+	}
+	if !stamp.Exists {
+		return stamp, false, nil
+	}
+	if !needsContentHash(stamp, last) {
+		return stamp, false, nil
+	}
+	updated, err := addFileHash(path, stamp)
+	if err != nil {
+		return fileStamp{}, false, err
+	}
+	if last.HasHash && updated.HasHash && last.Hash != updated.Hash {
+		return updated, true, nil
+	}
+	return updated, false, nil
 }
 
-func sameFileStamp(left fileStamp, right fileStamp) bool {
+func sameFileStampStat(left fileStamp, right fileStamp) bool {
 	if left.Exists != right.Exists {
 		return false
 	}
@@ -89,6 +85,13 @@ func sameFileStamp(left fileStamp, right fileStamp) bool {
 		return false
 	}
 	if left.HasCtime && right.HasCtime && !left.Ctime.Equal(right.Ctime) {
+		return false
+	}
+	return true
+}
+
+func sameFileStamp(left fileStamp, right fileStamp) bool {
+	if !sameFileStampStat(left, right) {
 		return false
 	}
 	if left.HasHash && right.HasHash && left.Hash != right.Hash {
@@ -115,6 +118,59 @@ func fileStampSignature(stamp fileStamp) string {
 		parts = append(parts, "hash="+stamp.Hash)
 	}
 	return strings.Join(parts, ";")
+}
+
+func statFileStamp(path string) (fileStamp, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fileStamp{Exists: false}, nil
+		}
+		return fileStamp{}, err
+	}
+	stamp := fileStamp{
+		Exists:  true,
+		ModTime: info.ModTime(),
+		Size:    info.Size(),
+	}
+	if details, ok := readFileStatDetails(info); ok {
+		stamp.Inode = details.inode
+		stamp.HasInode = details.hasInode
+		stamp.Ctime = details.ctime
+		stamp.HasCtime = details.hasCtime
+	}
+	return stamp, nil
+}
+
+func needsContentHash(stamp fileStamp, last fileStamp) bool {
+	if !stamp.Exists || stamp.Size > fileStampHashMaxBytes {
+		return false
+	}
+	if stamp.Size <= 0 {
+		return false
+	}
+	return !(stamp.HasCtime && last.HasCtime)
+}
+
+func addFileHash(path string, stamp fileStamp) (fileStamp, error) {
+	if !stamp.Exists || stamp.Size > fileStampHashMaxBytes || stamp.Size <= 0 {
+		return stamp, nil
+	}
+	handle, err := os.Open(path)
+	if err != nil {
+		return fileStamp{}, err
+	}
+	defer handle.Close()
+
+	hash, bytesRead, err := hashFilePrefixAt(handle, stamp.Size)
+	if err != nil {
+		return fileStamp{}, err
+	}
+	if bytesRead == stamp.Size {
+		stamp.Hash = hash
+		stamp.HasHash = true
+	}
+	return stamp, nil
 }
 
 func hashFilePrefixAt(reader io.ReaderAt, size int64) (string, int64, error) {
