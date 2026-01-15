@@ -2,6 +2,7 @@ PY_PROJECT := ralph_legacy
 GO_PROJECT := ralph_tui
 GO_CMD := $(GO_PROJECT)/cmd/ralph
 GO_FILES := $(shell find $(GO_PROJECT) -name '*.go')
+GO_TEST := go test -count=1
 PY_TESTS := $(shell find $(PY_PROJECT) -name 'test_*.py' -o -name '*_test.py')
 
 .PHONY: install update lint type-check format clean test generate build ci
@@ -20,7 +21,7 @@ lint:
 
 type-check:
 	uv run --project $(PY_PROJECT) ty check
-	cd $(GO_PROJECT) && go test ./... -run=^$$
+	cd $(GO_PROJECT) && $(GO_TEST) ./... -run=^$$
 
 format:
 	uv run --project $(PY_PROJECT) ruff format
@@ -34,7 +35,7 @@ clean:
 	cd $(GO_PROJECT) && go clean -cache -testcache
 
 test:
-	cd $(GO_PROJECT) && go test ./...
+	cd $(GO_PROJECT) && $(GO_TEST) ./...
 ifneq ($(strip $(PY_TESTS)),)
 	uv run --project $(PY_PROJECT) pytest
 else
