@@ -352,6 +352,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.syncSessionOverridesFromEditor()
 				return m, m.reloadConfigCmd()
 			}
+			if key.Matches(msg, m.keys.ResetField) && m.configView != nil {
+				m.configView.ResetField()
+				return m, nil
+			}
+			if key.Matches(msg, m.keys.ResetLayer) && m.configView != nil {
+				m.configView.ResetLayer()
+				return m, nil
+			}
 		}
 		if m.navFocused && !m.navCollapsed {
 			if m.searchActive {

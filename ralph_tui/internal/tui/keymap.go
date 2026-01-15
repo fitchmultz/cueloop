@@ -19,6 +19,8 @@ type keyMap struct {
 	SaveGlobal                key.Binding
 	SaveRepo                  key.Binding
 	Discard                   key.Binding
+	ResetField                key.Binding
+	ResetLayer                key.Binding
 	ValidatePin               key.Binding
 	MoveChecked               key.Binding
 	BlockItem                 key.Binding
@@ -91,6 +93,14 @@ func newKeyMap() keyMap {
 		Discard: key.NewBinding(
 			key.WithKeys("ctrl+d"),
 			key.WithHelp("ctrl+d", "discard session"),
+		),
+		ResetField: key.NewBinding(
+			key.WithKeys("ctrl+u"),
+			key.WithHelp("ctrl+u", "reset field"),
+		),
+		ResetLayer: key.NewBinding(
+			key.WithKeys("ctrl+o"),
+			key.WithHelp("ctrl+o", "reset layer"),
 		),
 		ValidatePin: key.NewBinding(
 			key.WithKeys("v"),
@@ -186,8 +196,7 @@ func (k keyMap) ShortHelp() []key.Binding {
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Quit, k.ToggleNav, k.Focus, k.Help, k.RefreshNow, k.Search, k.Select},
-		{k.EditSpecsSettings, k.ToggleLogsFormat, k.SaveGlobal, k.SaveRepo},
-		{k.Discard},
+		{k.EditSpecsSettings, k.ToggleLogsFormat, k.SaveGlobal, k.SaveRepo, k.Discard, k.ResetField, k.ResetLayer},
 		{k.ValidatePin, k.MoveChecked, k.BlockItem},
 		{k.ToggleInteractive, k.ToggleInnovate, k.ToggleAutofill, k.ToggleScoutWorkflow, k.EditUserFocus, k.RunSpecs, k.StopSpecs},
 		{k.RunLoopOnce, k.RunLoopContinuous, k.StopLoop, k.EditLoopConfig, k.ToggleForceContextBuilder, k.JumpToPin, k.JumpToLogs},

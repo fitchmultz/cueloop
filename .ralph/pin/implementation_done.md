@@ -1,6 +1,14 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0426 [ui]: Make Config editor less confusing: show per-field source (default/global/repo/session/cli), simplify Save actions, and add 'reset layer/field' controls. (ralph_tui/internal/tui/config_editor.go, ralph_tui/internal/config/load.go, ralph_tui/internal/tui/help_keymap.go)
+  - Evidence:
+    - The config editor supports layers but does not show where each effective value came from (defaults vs global vs repo vs session/CLI), which makes it hard to reason about changes.
+    - Saving requires selecting an "Action" and then toggling "Apply action" (two-step), which is easy to miss and feels unintuitive compared to typical config UIs.
+  - Plan:
+    - Add per-field/source indicators (even if approximate) so users can see which layer is providing each value.
+    - Replace the "Apply action" toggle with clearer explicit actions (key-driven save + on-screen hints) and add reset operations (reset field, reset layer/session).
+    - Add tests ensuring session overrides remain correct and UI reflects effective config + sources.
 - [x] RQ-0440 [ops]: Add "fixup blocked items" workflow (re-attempt quarantined WIP branches safely; prevent cascading dependency failures). (ralph_tui/internal/loop/loop.go, ralph_tui/internal/pin/pin.go, ralph_tui/internal/loop/git.go, ralph_tui/cmd/ralph/main.go, ralph_tui/internal/tui/dashboard_view.go)
   - Evidence: When the supervisor quarantines and auto-blocks an item, the WIP branch + known-good SHA are recorded, but there is no first-class way to re-run repairs on that WIP and safely promote it back to main; this can leave a run "complete" but everything blocked and can cause follow-up queue items to run on main without prerequisite changes, compounding wasted effort.
   - Plan: Add a `ralph loop fixup` command (and optional TUI entry point) that scans Blocked items for WIP metadata, runs validation/CI in an isolated worktree, and (only when green) promotes changes back to main via a conservative strategy (e.g., cherry-pick or merge) with an additional CI gate; add a policy engine to limit attempts and only auto-fix mechanical failures while skipping obvious "needs human" blocks; optionally incorporate lightweight dependency metadata (e.g., `Depends-on:`) so the loop can pause or prioritize fixup when downstream items would be invalid without upstream WIP changes; add hermetic tests covering quarantine -> blocked -> fixup -> promote -> unblock/requeue while guaranteeing main stays green.

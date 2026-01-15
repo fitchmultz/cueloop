@@ -108,3 +108,36 @@ func TestConfigEditorSessionLayerIncludesCLIAndSessionOverrides(t *testing.T) {
 		t.Fatalf("expected session layer log level %q, got %q", sessionLevel, editor.data.LogLevel)
 	}
 }
+
+func TestConfigEditorSessionLayerSourcesReflectOverrides(t *testing.T) {
+	_, locs, _ := newHermeticModel(t)
+
+	cliTheme := "cli-theme"
+	cliOverrides := config.PartialConfig{
+		UI: &config.UIPartial{
+			Theme: &cliTheme,
+		},
+	}
+	sessionLevel := "error"
+	sessionOverrides := config.PartialConfig{
+		Logging: &config.LoggingPartial{
+			Level: &sessionLevel,
+		},
+	}
+
+	editor, err := newConfigEditor(locs, cliOverrides, sessionOverrides)
+	if err != nil {
+		t.Fatalf("new config editor: %v", err)
+	}
+
+	if err := editor.resetLayer(layerSession); err != nil {
+		t.Fatalf("reset session layer: %v", err)
+	}
+
+	if got := editor.sourceForKey(fieldUITheme); got != config.SourceCLI {
+		t.Fatalf("expected ui.theme source cli, got %q", got)
+	}
+	if got := editor.sourceForKey(fieldLogLevel); got != config.SourceSession {
+		t.Fatalf("expected logging.level source session, got %q", got)
+	}
+}

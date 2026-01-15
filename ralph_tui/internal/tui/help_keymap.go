@@ -71,11 +71,11 @@ type configKeyMap struct {
 }
 
 func (c configKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{c.keys.SaveGlobal, c.keys.SaveRepo, c.keys.Discard}
+	return []key.Binding{c.keys.SaveGlobal, c.keys.SaveRepo, c.keys.Discard, c.keys.ResetField, c.keys.ResetLayer}
 }
 
 func (c configKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{c.keys.SaveGlobal, c.keys.SaveRepo, c.keys.Discard}}
+	return [][]key.Binding{{c.keys.SaveGlobal, c.keys.SaveRepo, c.keys.Discard, c.keys.ResetField, c.keys.ResetLayer}}
 }
 
 type logsKeyMap struct {

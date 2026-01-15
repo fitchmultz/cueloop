@@ -1,14 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0426 [ui]: Make Config editor less confusing: show per-field source (default/global/repo/session/cli), simplify Save actions, and add 'reset layer/field' controls. (ralph_tui/internal/tui/config_editor.go, ralph_tui/internal/config/load.go, ralph_tui/internal/tui/help_keymap.go)
-  - Evidence:
-    - The config editor supports layers but does not show where each effective value came from (defaults vs global vs repo vs session/CLI), which makes it hard to reason about changes.
-    - Saving requires selecting an "Action" and then toggling "Apply action" (two-step), which is easy to miss and feels unintuitive compared to typical config UIs.
-  - Plan:
-    - Add per-field/source indicators (even if approximate) so users can see which layer is providing each value.
-    - Replace the "Apply action" toggle with clearer explicit actions (key-driven save + on-screen hints) and add reset operations (reset field, reset layer/session).
-    - Add tests ensuring session overrides remain correct and UI reflects effective config + sources.
 - [ ] RQ-0427 [code]: Improve git helper error reporting + surface failures in the UI/logs instead of swallowing details. (ralph_tui/internal/loop/git.go, ralph_tui/internal/loop/loop.go, ralph_tui/internal/tui/logs_view.go)
   - Evidence:
     - `ralph_tui/internal/loop/git.go` `CurrentBranch()` returns `fmt.Errorf("Unable to detect current git branch.")` without the underlying error or stderr, making failures opaque.
