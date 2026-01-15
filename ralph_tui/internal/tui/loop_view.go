@@ -15,6 +15,7 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/loop"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
 
@@ -31,6 +32,9 @@ type loopView struct {
 	cancel               context.CancelFunc
 	editForm             *huh.Form
 	editData             loopFormData
+	guardForm            *huh.Form
+	guardData            loopGuardData
+	guardRunOnce         bool
 	logCh                chan string
 	logRunID             int
 	stateCh              chan loop.State
@@ -57,6 +61,10 @@ type loopOverrides struct {
 	RunnerArgs          []string
 	ReasoningEffort     string
 	ForceContextBuilder bool
+	DirtyRepoStart      string
+	DirtyRepoDuring     string
+	AllowUntracked      bool
+	QuarantineClean     bool
 }
 
 type loopMode int
@@ -66,7 +74,23 @@ const (
 	loopRunning
 	loopStopping
 	loopEditing
+	loopGuarding
 )
+
+type loopGuardAction string
+
+const (
+	guardActionProceed    loopGuardAction = "proceed"
+	guardActionCancel     loopGuardAction = "cancel"
+	guardActionShowStatus loopGuardAction = "show_status"
+	guardActionShowDiff   loopGuardAction = "show_diff"
+	guardActionCommitPin  loopGuardAction = "commit_pin"
+	guardActionStash      loopGuardAction = "stash"
+)
+
+type loopGuardData struct {
+	Action loopGuardAction
+}
 
 type loopResultMsg struct {
 	err error
@@ -112,6 +136,10 @@ func newLoopView(cfg config.Config, locations paths.Locations) *loopView {
 			RunnerArgs:          cfg.Loop.RunnerArgs,
 			ReasoningEffort:     cfg.Loop.ReasoningEffort,
 			ForceContextBuilder: false,
+			DirtyRepoStart:      cfg.Loop.DirtyRepo.StartPolicy,
+			DirtyRepoDuring:     cfg.Loop.DirtyRepo.DuringPolicy,
+			AllowUntracked:      cfg.Loop.DirtyRepo.AllowUntracked,
+			QuarantineClean:     cfg.Loop.DirtyRepo.QuarantineCleanUntracked,
 		},
 		mode:   loopIdle,
 		status: "Idle",
@@ -120,6 +148,21 @@ func newLoopView(cfg config.Config, locations paths.Locations) *loopView {
 }
 
 func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
+	if l.mode == loopGuarding && l.guardForm != nil {
+		model, cmd := l.guardForm.Update(msg)
+		if form, ok := model.(*huh.Form); ok {
+			l.guardForm = form
+		}
+		if l.guardForm.State == huh.StateCompleted {
+			return l.applyGuardAction()
+		}
+		if l.guardForm.State == huh.StateAborted {
+			l.guardForm = nil
+			l.mode = loopIdle
+			l.status = "Run cancelled"
+		}
+		return cmd
+	}
 	if l.mode == loopEditing && l.editForm != nil {
 		model, cmd := l.editForm.Update(msg)
 		if form, ok := model.(*huh.Form); ok {
@@ -193,9 +236,9 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.RunLoopOnce) && l.mode == loopIdle:
-			return l.start(true)
+			return l.startWithGuard(true)
 		case key.Matches(msg, keys.RunLoopContinuous) && l.mode == loopIdle:
-			return l.start(false)
+			return l.startWithGuard(false)
 		case key.Matches(msg, keys.StopLoop) && l.mode == loopRunning:
 			l.stop()
 			l.mode = loopStopping
@@ -232,11 +275,11 @@ func (l *loopView) StartOnce() tea.Cmd {
 	if l == nil || l.mode != loopIdle {
 		return nil
 	}
-	return l.start(true)
+	return l.startWithGuard(true)
 }
 
 func (l *loopView) HandlesTabNavigation() bool {
-	return l.mode == loopEditing && l.editForm != nil
+	return (l.mode == loopEditing && l.editForm != nil) || (l.mode == loopGuarding && l.guardForm != nil)
 }
 
 func (l *loopView) ActiveItemID() string {
@@ -250,6 +293,9 @@ func (l *loopView) View() string {
 	head := "Run Loop"
 	status := l.statusLine()
 	controls := l.controlsView()
+	if l.mode == loopGuarding && l.guardForm != nil {
+		return withFinalNewline(head + "\n" + status + "\n\n" + l.guardForm.View())
+	}
 	if l.mode == loopEditing && l.editForm != nil {
 		return withFinalNewline(head + "\n" + status + "\n\n" + l.editForm.View())
 	}
@@ -288,6 +334,8 @@ func (l *loopView) controlsView() string {
 		fmt.Sprintf("Require main: %s", yesNo(l.overrides.RequireMain)),
 		fmt.Sprintf("Auto commit: %s", yesNo(l.overrides.AutoCommit)),
 		fmt.Sprintf("Auto push: %s", yesNo(l.overrides.AutoPush)),
+		fmt.Sprintf("Dirty repo start/during: %s/%s", l.overrides.DirtyRepoStart, l.overrides.DirtyRepoDuring),
+		fmt.Sprintf("Allow untracked: %s | Quarantine clean: %s", yesNo(l.overrides.AllowUntracked), yesNo(l.overrides.QuarantineClean)),
 		fmt.Sprintf("Runner: %s", l.overrides.Runner),
 		fmt.Sprintf("Runner args: %d", len(l.overrides.RunnerArgs)),
 		fmt.Sprintf("Reasoning effort: %s (effective: %s)", runnerargs.DisplayEffort(l.overrides.ReasoningEffort), effectiveLabel),
@@ -302,6 +350,7 @@ func (l *loopView) runControlsView() string {
 		fmt.Sprintf("Runner: %s (%s)", l.overrides.Runner, runnerargs.DisplayEffort(l.overrides.ReasoningEffort)),
 		fmt.Sprintf("Sleep: %ds | Max iterations: %s | Max stalled: %d", l.overrides.SleepSeconds, iterationLimitLabel(l.overrides.MaxIterations), l.overrides.MaxStalled),
 		fmt.Sprintf("Only tags: %s | Require main: %s | Auto commit/push: %s/%s", l.overrides.OnlyTags, yesNo(l.overrides.RequireMain), yesNo(l.overrides.AutoCommit), yesNo(l.overrides.AutoPush)),
+		fmt.Sprintf("Dirty repo start/during: %s/%s | Allow untracked: %s | Quarantine clean: %s", l.overrides.DirtyRepoStart, l.overrides.DirtyRepoDuring, yesNo(l.overrides.AllowUntracked), yesNo(l.overrides.QuarantineClean)),
 		"Keys: s stop | e edit overrides | p force ctx builder | shift+p pin | shift+l logs",
 	}
 	return strings.Join(lines, "\n")
@@ -341,7 +390,37 @@ func (l *loopView) stateView() string {
 	return strings.Join(lines, "\n")
 }
 
-func (l *loopView) start(runOnce bool) tea.Cmd {
+func (l *loopView) startWithGuard(runOnce bool) tea.Cmd {
+	ctx := context.Background()
+	policy, err := loop.ParseDirtyRepoPolicy(l.overrides.DirtyRepoStart)
+	if err != nil {
+		l.err = err.Error()
+		l.status = "Start failed"
+		return nil
+	}
+	if policy == "" {
+		policy = loop.DirtyRepoPolicyError
+	}
+	status, err := loop.StatusDetails(ctx, l.locations.RepoRoot)
+	if err != nil {
+		l.err = err.Error()
+		l.status = "Start failed"
+		return nil
+	}
+	if status.IsClean(l.overrides.AllowUntracked) {
+		return l.startRun(runOnce)
+	}
+	if policy == loop.DirtyRepoPolicyError {
+		l.err = "Dirty repo detected; start policy blocks the loop."
+		l.status = "Start blocked"
+		l.appendGitStatusSummary(ctx)
+		return nil
+	}
+	l.beginDirtyGuard(runOnce, status)
+	return nil
+}
+
+func (l *loopView) startRun(runOnce bool) tea.Cmd {
 	l.err = ""
 	l.outputErr = ""
 	l.status = "Running"
@@ -377,6 +456,10 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 			"require_main":          l.overrides.RequireMain,
 			"auto_commit":           l.overrides.AutoCommit,
 			"auto_push":             l.overrides.AutoPush,
+			"dirty_start_policy":    l.overrides.DirtyRepoStart,
+			"dirty_during_policy":   l.overrides.DirtyRepoDuring,
+			"allow_untracked":       l.overrides.AllowUntracked,
+			"quarantine_clean":      l.overrides.QuarantineClean,
 			"runner":                l.overrides.Runner,
 			"runner_args_count":     len(applied.Args),
 			"reasoning_effort":      runnerargs.DisplayEffort(l.overrides.ReasoningEffort),
@@ -410,6 +493,10 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 			RequireMain:         l.overrides.RequireMain,
 			AutoCommit:          l.overrides.AutoCommit,
 			AutoPush:            l.overrides.AutoPush,
+			DirtyRepoStart:      loop.DirtyRepoPolicy(l.overrides.DirtyRepoStart),
+			DirtyRepoDuring:     loop.DirtyRepoPolicy(l.overrides.DirtyRepoDuring),
+			AllowUntracked:      l.overrides.AllowUntracked,
+			QuarantineClean:     l.overrides.QuarantineClean,
 			ForceContextBuilder: l.overrides.ForceContextBuilder,
 			RedactionMode:       l.cfg.Logging.RedactionMode,
 			Logger:              logger,
@@ -431,6 +518,162 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 	}
 
 	return tea.Batch(runCmd, listenLoopLogs(logCh, runID), listenLoopState(stateCh, stateRunID), loopRunModeCmd(true))
+}
+
+func (l *loopView) beginDirtyGuard(runOnce bool, status loop.GitStatus) {
+	l.guardRunOnce = runOnce
+	l.guardData = loopGuardData{Action: guardActionShowStatus}
+	l.guardForm = l.buildGuardForm()
+	l.mode = loopGuarding
+	l.err = ""
+	trackedCount := len(status.TrackedEntries())
+	untrackedCount := len(status.UntrackedEntries())
+	l.status = fmt.Sprintf("Dirty repo: %d tracked, %d untracked", trackedCount, untrackedCount)
+	l.Resize(l.width, l.height)
+}
+
+func (l *loopView) buildGuardForm() *huh.Form {
+	return huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[loopGuardAction]().
+				Title("Dirty repo detected. Choose an action.").
+				Options(
+					huh.NewOption("Show git status", guardActionShowStatus),
+					huh.NewOption("Show git diff --stat", guardActionShowDiff),
+					huh.NewOption("Commit pin-only changes", guardActionCommitPin),
+					huh.NewOption("Stash changes", guardActionStash),
+					huh.NewOption("Proceed (start anyway)", guardActionProceed),
+					huh.NewOption("Cancel", guardActionCancel),
+				).
+				Value(&l.guardData.Action),
+		),
+	).WithShowHelp(false)
+}
+
+func (l *loopView) applyGuardAction() tea.Cmd {
+	action := l.guardData.Action
+	runOnce := l.guardRunOnce
+	l.guardForm = nil
+	l.guardData = loopGuardData{}
+
+	switch action {
+	case guardActionProceed:
+		l.mode = loopIdle
+		return l.startRun(runOnce)
+	case guardActionCancel:
+		l.mode = loopIdle
+		l.status = "Run cancelled"
+		l.err = ""
+		return nil
+	case guardActionShowStatus:
+		l.appendGitStatusSummary(context.Background())
+		return l.refreshDirtyGuard(runOnce)
+	case guardActionShowDiff:
+		l.appendGitDiffSummary(context.Background())
+		return l.refreshDirtyGuard(runOnce)
+	case guardActionCommitPin:
+		committed, err := l.commitPinOnly(context.Background())
+		if err != nil {
+			l.err = err.Error()
+			l.status = "Pin commit failed"
+			return l.refreshDirtyGuard(runOnce)
+		}
+		if committed {
+			l.status = "Committed pin changes"
+		} else {
+			l.status = "No pin changes to commit"
+		}
+		return l.refreshDirtyGuard(runOnce)
+	case guardActionStash:
+		if err := loop.Stash(context.Background(), l.locations.RepoRoot, true, "ralph pre-run stash"); err != nil {
+			l.err = err.Error()
+			l.status = "Stash failed"
+			return l.refreshDirtyGuard(runOnce)
+		}
+		l.status = "Stashed changes"
+		return l.refreshDirtyGuard(runOnce)
+	default:
+		l.mode = loopIdle
+		l.status = "Run cancelled"
+		return nil
+	}
+}
+
+func (l *loopView) refreshDirtyGuard(runOnce bool) tea.Cmd {
+	status, err := loop.StatusDetails(context.Background(), l.locations.RepoRoot)
+	if err != nil {
+		l.err = err.Error()
+		l.status = "Guard failed"
+		l.mode = loopIdle
+		return nil
+	}
+	if status.IsClean(l.overrides.AllowUntracked) {
+		l.mode = loopIdle
+		return l.startRun(runOnce)
+	}
+	l.beginDirtyGuard(runOnce, status)
+	return nil
+}
+
+func (l *loopView) appendGitStatusSummary(ctx context.Context) {
+	summary, err := loop.StatusSummary(ctx, l.locations.RepoRoot)
+	if err != nil {
+		l.err = err.Error()
+		l.status = "Status check failed"
+		return
+	}
+	l.appendLogLine(">> [RALPH] git status -sb")
+	for _, line := range strings.Split(summary, "\n") {
+		l.appendLogLine(">> [RALPH] " + line)
+	}
+}
+
+func (l *loopView) appendGitDiffSummary(ctx context.Context) {
+	stat, err := loop.DiffStat(ctx, l.locations.RepoRoot)
+	if err != nil {
+		l.err = err.Error()
+		l.status = "Diff check failed"
+		return
+	}
+	l.appendLogLine(">> [RALPH] git diff --stat")
+	for _, line := range strings.Split(stat, "\n") {
+		l.appendLogLine(">> [RALPH] " + line)
+	}
+	names, err := loop.DiffNameOnly(ctx, l.locations.RepoRoot)
+	if err != nil {
+		l.err = err.Error()
+		l.status = "Diff check failed"
+		return
+	}
+	if len(names) > 0 {
+		l.appendLogLine(">> [RALPH] git diff --name-only")
+		for _, name := range names {
+			l.appendLogLine(">> [RALPH] " + name)
+		}
+	}
+}
+
+func (l *loopView) commitPinOnly(ctx context.Context) (bool, error) {
+	files := pin.ResolveFiles(l.cfg.Paths.PinDir)
+	changed, err := loop.DiffNameOnly(ctx, l.locations.RepoRoot)
+	if err != nil {
+		return false, err
+	}
+	pinSet := pinRelativePaths(l.locations.RepoRoot, files)
+	hasPinChanges := false
+	for _, path := range changed {
+		if _, ok := pinSet[path]; ok {
+			hasPinChanges = true
+			break
+		}
+	}
+	if !hasPinChanges {
+		return false, nil
+	}
+	if err := loop.CommitPaths(ctx, l.locations.RepoRoot, "chore: commit pin changes (pre-loop)", files.QueuePath, files.DonePath, files.LookupPath, files.ReadmePath, files.SpecsPath); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (l *loopView) stop() {
@@ -569,6 +812,25 @@ func splitTags(value string) []string {
 	return result
 }
 
+func pinRelativePaths(repoRoot string, files pin.Files) map[string]struct{} {
+	paths := []string{
+		files.QueuePath,
+		files.DonePath,
+		files.LookupPath,
+		files.ReadmePath,
+		files.SpecsPath,
+	}
+	relatives := make(map[string]struct{}, len(paths))
+	for _, path := range paths {
+		rel, err := filepath.Rel(repoRoot, path)
+		if err != nil {
+			continue
+		}
+		relatives[filepath.ToSlash(rel)] = struct{}{}
+	}
+	return relatives
+}
+
 func loopModeLabel(runOnce bool) string {
 	if runOnce {
 		return "once"
@@ -621,6 +883,10 @@ func (l *loopView) SetConfig(cfg config.Config, locations paths.Locations) {
 		RunnerArgs:          cfg.Loop.RunnerArgs,
 		ReasoningEffort:     cfg.Loop.ReasoningEffort,
 		ForceContextBuilder: l.overrides.ForceContextBuilder,
+		DirtyRepoStart:      cfg.Loop.DirtyRepo.StartPolicy,
+		DirtyRepoDuring:     cfg.Loop.DirtyRepo.DuringPolicy,
+		AllowUntracked:      cfg.Loop.DirtyRepo.AllowUntracked,
+		QuarantineClean:     cfg.Loop.DirtyRepo.QuarantineCleanUntracked,
 	}
 }
 

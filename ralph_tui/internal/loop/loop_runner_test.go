@@ -51,6 +51,10 @@ func TestRunnerEffortAutoUsesQueuePriority(t *testing.T) {
 		RequireMain:       false,
 		AutoCommit:        false,
 		AutoPush:          false,
+		DirtyRepoStart:    DirtyRepoPolicyError,
+		DirtyRepoDuring:   DirtyRepoPolicyQuarantine,
+		AllowUntracked:    true,
+		QuarantineClean:   false,
 		RedactionMode:     redaction.ModeSecretsOnly,
 		Logger:            logger,
 	})
@@ -103,6 +107,10 @@ func TestRunnerStopsOnEmptyQueue(t *testing.T) {
 		RequireMain:       false,
 		AutoCommit:        false,
 		AutoPush:          false,
+		DirtyRepoStart:    DirtyRepoPolicyError,
+		DirtyRepoDuring:   DirtyRepoPolicyQuarantine,
+		AllowUntracked:    true,
+		QuarantineClean:   false,
 		RedactionMode:     redaction.ModeSecretsOnly,
 		Logger:            logger,
 	})
@@ -151,6 +159,10 @@ func TestRunnerLogsGitErrors(t *testing.T) {
 		RequireMain:       true,
 		AutoCommit:        false,
 		AutoPush:          false,
+		DirtyRepoStart:    DirtyRepoPolicyError,
+		DirtyRepoDuring:   DirtyRepoPolicyQuarantine,
+		AllowUntracked:    true,
+		QuarantineClean:   false,
 		RedactionMode:     redaction.ModeSecretsOnly,
 		Logger:            logger,
 	})

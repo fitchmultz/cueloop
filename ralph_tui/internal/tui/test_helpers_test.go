@@ -4,6 +4,7 @@ package tui
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -37,6 +38,22 @@ func newHermeticModel(t *testing.T) (model, paths.Locations, config.Config) {
 	writeTestFile(t, filepath.Join(pinDir, "lookup_table.md"), "## Lookup\n")
 	writeTestFile(t, filepath.Join(pinDir, "README.md"), "Ralph pin fixtures.\n")
 	writeTestFile(t, filepath.Join(pinDir, "specs_builder.md"), "Use AGENTS.md for instructions.\n\n{{INTERACTIVE_INSTRUCTIONS}}\n\n{{INNOVATE_INSTRUCTIONS}}\n")
+
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("missing git: %v", err)
+	}
+	runGit := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoRoot
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, string(output))
+		}
+	}
+	runGit("init", "-b", "main")
+	runGit("config", "user.email", "test@example.com")
+	runGit("config", "user.name", "Test User")
+	runGit("add", ".")
+	runGit("commit", "-m", "init")
 
 	base, err := config.DefaultConfig()
 	if err != nil {

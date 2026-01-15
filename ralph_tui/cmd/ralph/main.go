@@ -548,6 +548,67 @@ func newLoopRunCommand() *cobra.Command {
 				onlyTags = value
 			}
 
+			startPolicy := cfg.Loop.DirtyRepo.StartPolicy
+			if flags.Changed("dirty-start-policy") {
+				value, err := flags.GetString("dirty-start-policy")
+				if err != nil {
+					return err
+				}
+				startPolicy = value
+			}
+			duringPolicy := cfg.Loop.DirtyRepo.DuringPolicy
+			if flags.Changed("dirty-during-policy") {
+				value, err := flags.GetString("dirty-during-policy")
+				if err != nil {
+					return err
+				}
+				duringPolicy = value
+			}
+			dirtyStartPolicy, err := loop.ParseDirtyRepoPolicy(startPolicy)
+			if err != nil {
+				return err
+			}
+			dirtyDuringPolicy, err := loop.ParseDirtyRepoPolicy(duringPolicy)
+			if err != nil {
+				return err
+			}
+
+			allowUntracked := cfg.Loop.DirtyRepo.AllowUntracked
+			allowUntrackedFlag, err := flags.GetBool("allow-untracked")
+			if err != nil {
+				return err
+			}
+			noAllowUntrackedFlag, err := flags.GetBool("no-allow-untracked")
+			if err != nil {
+				return err
+			}
+			if allowUntrackedFlag && noAllowUntrackedFlag {
+				return fmt.Errorf("cannot set both --allow-untracked and --no-allow-untracked")
+			}
+			if allowUntrackedFlag {
+				allowUntracked = true
+			} else if noAllowUntrackedFlag {
+				allowUntracked = false
+			}
+
+			quarantineClean := cfg.Loop.DirtyRepo.QuarantineCleanUntracked
+			quarantineCleanFlag, err := flags.GetBool("quarantine-clean-untracked")
+			if err != nil {
+				return err
+			}
+			noQuarantineCleanFlag, err := flags.GetBool("no-quarantine-clean-untracked")
+			if err != nil {
+				return err
+			}
+			if quarantineCleanFlag && noQuarantineCleanFlag {
+				return fmt.Errorf("cannot set both --quarantine-clean-untracked and --no-quarantine-clean-untracked")
+			}
+			if quarantineCleanFlag {
+				quarantineClean = true
+			} else if noQuarantineCleanFlag {
+				quarantineClean = false
+			}
+
 			runOnce, _ := flags.GetBool("once")
 			forceContextBuilder, _ := flags.GetBool("force-context-builder")
 
@@ -584,6 +645,10 @@ func newLoopRunCommand() *cobra.Command {
 				RequireMain:         cfg.Loop.RequireMain,
 				AutoCommit:          cfg.Git.AutoCommit,
 				AutoPush:            cfg.Git.AutoPush,
+				DirtyRepoStart:      dirtyStartPolicy,
+				DirtyRepoDuring:     dirtyDuringPolicy,
+				AllowUntracked:      allowUntracked,
+				QuarantineClean:     quarantineClean,
 				RedactionMode:       cfg.Logging.RedactionMode,
 				Logger:              logger,
 			})
@@ -605,6 +670,12 @@ func newLoopRunCommand() *cobra.Command {
 	cmd.Flags().Bool("once", false, "Run exactly one iteration and exit")
 	cmd.Flags().String("reasoning-effort", "", "Codex reasoning effort override (auto/low/medium/high/off)")
 	cmd.Flags().Bool("force-context-builder", false, "Force context_builder even when reasoning effort is medium/high")
+	cmd.Flags().String("dirty-start-policy", "", "Dirty repo policy before starting: error, warn, or quarantine")
+	cmd.Flags().String("dirty-during-policy", "", "Dirty repo policy after iterations: error, warn, or quarantine")
+	cmd.Flags().Bool("allow-untracked", false, "Allow untracked files when checking for dirtiness")
+	cmd.Flags().Bool("no-allow-untracked", false, "Treat untracked files as dirty for preflight checks")
+	cmd.Flags().Bool("quarantine-clean-untracked", false, "Allow quarantine to delete untracked files")
+	cmd.Flags().Bool("no-quarantine-clean-untracked", false, "Prevent quarantine from deleting untracked files")
 
 	return cmd
 }

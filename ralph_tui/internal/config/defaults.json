@@ -31,7 +31,13 @@
     "require_main": true,
     "runner": "codex",
     "runner_args": [],
-    "reasoning_effort": "auto"
+    "reasoning_effort": "auto",
+    "dirty_repo": {
+      "start_policy": "error",
+      "during_policy": "quarantine",
+      "allow_untracked": true,
+      "quarantine_clean_untracked": false
+    }
   },
   "git": {
     "auto_commit": true,

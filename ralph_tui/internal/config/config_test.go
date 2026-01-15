@@ -209,6 +209,17 @@ func TestApplyPartialNormalizesRedactionMode(t *testing.T) {
 	}
 }
 
+func TestDirtyRepoPolicyValidation(t *testing.T) {
+	base, err := DefaultConfig()
+	if err != nil {
+		t.Fatalf("default config: %v", err)
+	}
+	base.Loop.DirtyRepo.StartPolicy = "bad"
+	if err := base.Validate(); err == nil {
+		t.Fatalf("expected validation error for loop.dirty_repo.start_policy")
+	}
+}
+
 func TestLoadIgnoresDeprecatedFields(t *testing.T) {
 	tmpDir := t.TempDir()
 	repoDir := filepath.Join(tmpDir, "repo")

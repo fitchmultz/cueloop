@@ -53,17 +53,26 @@ type SpecsConfig struct {
 	ReasoningEffort string   `json:"reasoning_effort"`
 }
 
+// DirtyRepoConfig controls how the loop responds to dirty working trees.
+type DirtyRepoConfig struct {
+	StartPolicy              string `json:"start_policy"`
+	DuringPolicy             string `json:"during_policy"`
+	AllowUntracked           bool   `json:"allow_untracked"`
+	QuarantineCleanUntracked bool   `json:"quarantine_clean_untracked"`
+}
+
 // LoopConfig controls loop scheduling knobs.
 type LoopConfig struct {
-	SleepSeconds      int      `json:"sleep_seconds"`
-	MaxIterations     int      `json:"max_iterations"`
-	MaxStalled        int      `json:"max_stalled"`
-	MaxRepairAttempts int      `json:"max_repair_attempts"`
-	OnlyTags          string   `json:"only_tags"`
-	RequireMain       bool     `json:"require_main"`
-	Runner            string   `json:"runner"`
-	RunnerArgs        []string `json:"runner_args"`
-	ReasoningEffort   string   `json:"reasoning_effort"`
+	SleepSeconds      int             `json:"sleep_seconds"`
+	MaxIterations     int             `json:"max_iterations"`
+	MaxStalled        int             `json:"max_stalled"`
+	MaxRepairAttempts int             `json:"max_repair_attempts"`
+	OnlyTags          string          `json:"only_tags"`
+	RequireMain       bool            `json:"require_main"`
+	Runner            string          `json:"runner"`
+	RunnerArgs        []string        `json:"runner_args"`
+	ReasoningEffort   string          `json:"reasoning_effort"`
+	DirtyRepo         DirtyRepoConfig `json:"dirty_repo"`
 }
 
 // GitConfig controls Git behaviors invoked by Ralph.
@@ -140,6 +149,12 @@ func (c Config) Validate() error {
 	if !ValidReasoningEffort(c.Loop.ReasoningEffort) {
 		return fmt.Errorf("loop.reasoning_effort must be auto, low, medium, high, or off")
 	}
+	if !validDirtyRepoPolicy(c.Loop.DirtyRepo.StartPolicy) {
+		return fmt.Errorf("loop.dirty_repo.start_policy must be error, warn, or quarantine")
+	}
+	if !validDirtyRepoPolicy(c.Loop.DirtyRepo.DuringPolicy) {
+		return fmt.Errorf("loop.dirty_repo.during_policy must be error, warn, or quarantine")
+	}
 	return nil
 }
 
@@ -166,6 +181,15 @@ func ValidReasoningEffort(value string) bool {
 func validLogLevel(level string) bool {
 	switch strings.ToLower(level) {
 	case "debug", "info", "warn", "error":
+		return true
+	default:
+		return false
+	}
+}
+
+func validDirtyRepoPolicy(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "error", "warn", "quarantine":
 		return true
 	default:
 		return false
@@ -213,17 +237,26 @@ type SpecsPartial struct {
 	ReasoningEffort *string  `json:"reasoning_effort,omitempty"`
 }
 
+// DirtyRepoPartial overrides DirtyRepoConfig fields when set.
+type DirtyRepoPartial struct {
+	StartPolicy              *string `json:"start_policy,omitempty"`
+	DuringPolicy             *string `json:"during_policy,omitempty"`
+	AllowUntracked           *bool   `json:"allow_untracked,omitempty"`
+	QuarantineCleanUntracked *bool   `json:"quarantine_clean_untracked,omitempty"`
+}
+
 // LoopPartial overrides LoopConfig fields when set.
 type LoopPartial struct {
-	SleepSeconds      *int     `json:"sleep_seconds,omitempty"`
-	MaxIterations     *int     `json:"max_iterations,omitempty"`
-	MaxStalled        *int     `json:"max_stalled,omitempty"`
-	MaxRepairAttempts *int     `json:"max_repair_attempts,omitempty"`
-	OnlyTags          *string  `json:"only_tags,omitempty"`
-	RequireMain       *bool    `json:"require_main,omitempty"`
-	Runner            *string  `json:"runner,omitempty"`
-	RunnerArgs        []string `json:"runner_args,omitempty"`
-	ReasoningEffort   *string  `json:"reasoning_effort,omitempty"`
+	SleepSeconds      *int              `json:"sleep_seconds,omitempty"`
+	MaxIterations     *int              `json:"max_iterations,omitempty"`
+	MaxStalled        *int              `json:"max_stalled,omitempty"`
+	MaxRepairAttempts *int              `json:"max_repair_attempts,omitempty"`
+	OnlyTags          *string           `json:"only_tags,omitempty"`
+	RequireMain       *bool             `json:"require_main,omitempty"`
+	Runner            *string           `json:"runner,omitempty"`
+	RunnerArgs        []string          `json:"runner_args,omitempty"`
+	ReasoningEffort   *string           `json:"reasoning_effort,omitempty"`
+	DirtyRepo         *DirtyRepoPartial `json:"dirty_repo,omitempty"`
 }
 
 // GitPartial overrides GitConfig fields when set.

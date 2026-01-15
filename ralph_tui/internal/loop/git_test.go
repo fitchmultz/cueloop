@@ -49,3 +49,37 @@ func TestAheadCountReturnsErrorWhenNoUpstream(t *testing.T) {
 		t.Fatalf("expected GitCommandError, got %T", err)
 	}
 }
+
+func TestStatusDetailsClassifiesTrackedAndUntracked(t *testing.T) {
+	requireTool(t, "git")
+	repoRoot := t.TempDir()
+	runCmd(t, repoRoot, "git", "init", "-b", "main")
+	runCmd(t, repoRoot, "git", "config", "user.email", "test@example.com")
+	runCmd(t, repoRoot, "git", "config", "user.name", "Test User")
+	if err := os.WriteFile(filepath.Join(repoRoot, "README.md"), []byte("base"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	runCmd(t, repoRoot, "git", "add", ".")
+	runCmd(t, repoRoot, "git", "commit", "-m", "init")
+
+	if err := os.WriteFile(filepath.Join(repoRoot, "README.md"), []byte("changed"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, "notes.txt"), []byte("untracked"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	status, err := StatusDetails(context.Background(), repoRoot)
+	if err != nil {
+		t.Fatalf("StatusDetails failed: %v", err)
+	}
+	if !status.HasTrackedChanges() {
+		t.Fatalf("expected tracked changes to be detected")
+	}
+	if !status.HasUntrackedChanges() {
+		t.Fatalf("expected untracked changes to be detected")
+	}
+	if status.IsClean(true) {
+		t.Fatalf("expected IsClean(true) to be false with tracked changes")
+	}
+}

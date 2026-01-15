@@ -1,6 +1,15 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0429 [ops]: Make dirty-repo handling nuanced (don’t nuke uncommitted queue edits; avoid `git clean -fd` surprises; pause/abort with guidance). (ralph_tui/internal/loop/loop.go, ralph_tui/internal/loop/git.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/cmd/ralph/main.go)
+  - Evidence:
+    - Preflight in `loop.Run()` calls `handleIterationFailure(..., "preflight", ...)` whenever `git status --porcelain` is non-empty, and failure handling ultimately calls `quarantine()` which does `git reset --hard` + `git clean -fd` on `main`, wiping local edits without warning.
+    - This can destroy manual edits to `.ralph/pin/implementation_queue.md` (or any uncommitted work) just because the loop was started from a dirty state.
+    - The same "dirty => quarantine" path can be triggered by incidental background changes while the loop is running (e.g., user editing pin files mid-run).
+  - Plan:
+    - Introduce an explicit dirty-policy (abort with message, auto-commit pin-only changes, stash, or quarantine) and default to a non-destructive mode for preflight.
+    - In the TUI, add a pre-run guard that detects dirtiness and offers safe actions (show status/diff, commit pin-only, stash, or cancel start).
+    - Add tests to ensure dirty preflight never hard-resets/cleans unless the user explicitly opted into destructive behavior.
 - [x] RQ-0428 [code]: Harden loop end-of-turn finalization + cancellation handling (ensure queue->done, commit/push, and no quarantine on user stop). (ralph_tui/internal/loop/loop.go, ralph_tui/internal/loop/exec.go, ralph_tui/internal/loop/git.go)
   - Evidence:
     - `handleIterationFailure()` runs supervisor + quarantine even when the underlying error is `context.Canceled`, so a user stop can unexpectedly create WIP branches/auto-block items.

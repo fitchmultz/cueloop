@@ -38,6 +38,10 @@ type Options struct {
 	RequireMain         bool
 	AutoCommit          bool
 	AutoPush            bool
+	DirtyRepoStart      DirtyRepoPolicy
+	DirtyRepoDuring     DirtyRepoPolicy
+	AllowUntracked      bool
+	QuarantineClean     bool
 	RedactionMode       redaction.Mode
 	Logger              Logger
 	StateSink           StateSink
@@ -88,6 +92,18 @@ func NewRunner(opts Options) (*Runner, error) {
 	}
 	if opts.PinDir == "" {
 		return nil, fmt.Errorf("pin dir required")
+	}
+	if opts.DirtyRepoStart == "" {
+		opts.DirtyRepoStart = DirtyRepoPolicyError
+	}
+	if opts.DirtyRepoDuring == "" {
+		opts.DirtyRepoDuring = DirtyRepoPolicyQuarantine
+	}
+	if _, err := ParseDirtyRepoPolicy(string(opts.DirtyRepoStart)); err != nil {
+		return nil, err
+	}
+	if _, err := ParseDirtyRepoPolicy(string(opts.DirtyRepoDuring)); err != nil {
+		return nil, err
 	}
 	r := &Runner{
 		opts: opts,
@@ -212,7 +228,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		dirty, err := StatusPorcelain(ctx, r.opts.RepoRoot)
+		status, err := StatusDetails(ctx, r.opts.RepoRoot)
 		if err != nil {
 			if isCancellation(ctx, err) {
 				r.finalizeOnCancel(ctx)
@@ -221,11 +237,33 @@ func (r *Runner) Run(ctx context.Context) error {
 			logGitError(r.redactor, r.opts.Logger, "status", err)
 			return err
 		}
-		if dirty != "" {
-			if r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "preflight", fmt.Sprintf("Working tree is dirty before iteration %d.", iterations), nil) {
-				return nil
+		if !status.IsClean(r.opts.AllowUntracked) {
+			switch r.opts.DirtyRepoStart {
+			case DirtyRepoPolicyWarn:
+				summary, err := StatusSummary(ctx, r.opts.RepoRoot)
+				if err != nil {
+					logGitError(r.redactor, r.opts.Logger, "status summary", err)
+				}
+				r.logf(">> [RALPH] Warning: working tree is dirty before iteration %d.", iterations)
+				if summary != "" {
+					r.logf(">> [RALPH] %s", summary)
+				}
+			case DirtyRepoPolicyQuarantine:
+				wipBranch, err := r.quarantine(ctx, itemID, headBefore, fmt.Sprintf("Dirty repo before iteration %d.", iterations))
+				if err != nil {
+					r.logf("Error: %s", err.Error())
+					return err
+				}
+				r.logf(">> [RALPH] Quarantined dirty preflight changes to %s.", wipBranch)
+				continue
+			default:
+				return &DirtyRepoError{
+					RepoRoot:       r.opts.RepoRoot,
+					Stage:          "preflight",
+					AllowUntracked: r.opts.AllowUntracked,
+					Status:         status,
+				}
 			}
-			continue
 		}
 
 		if err := r.runValidatePin(); err != nil {
@@ -275,7 +313,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return nil
 		}
 
-		dirty, err = StatusPorcelain(ctx, r.opts.RepoRoot)
+		status, err = StatusDetails(ctx, r.opts.RepoRoot)
 		if err != nil {
 			if isCancellation(ctx, err) {
 				r.finalizeOnCancel(ctx)
@@ -284,11 +322,38 @@ func (r *Runner) Run(ctx context.Context) error {
 			logGitError(r.redactor, r.opts.Logger, "status", err)
 			return err
 		}
-		if dirty != "" {
-			if r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "post-commit", fmt.Sprintf("Working tree is dirty after iteration %d.", iterations), nil) {
-				return nil
+		if !status.IsClean(r.opts.AllowUntracked) {
+			if !r.opts.AutoCommit && r.opts.DirtyRepoDuring != DirtyRepoPolicyWarn {
+				return &DirtyRepoError{
+					RepoRoot:       r.opts.RepoRoot,
+					Stage:          "post-commit",
+					AllowUntracked: r.opts.AllowUntracked,
+					Status:         status,
+				}
 			}
-			continue
+			switch r.opts.DirtyRepoDuring {
+			case DirtyRepoPolicyWarn:
+				summary, err := StatusSummary(ctx, r.opts.RepoRoot)
+				if err != nil {
+					logGitError(r.redactor, r.opts.Logger, "status summary", err)
+				}
+				r.logf(">> [RALPH] Warning: working tree is dirty after iteration %d.", iterations)
+				if summary != "" {
+					r.logf(">> [RALPH] %s", summary)
+				}
+			case DirtyRepoPolicyQuarantine:
+				if r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "post-commit", fmt.Sprintf("Working tree is dirty after iteration %d.", iterations), nil) {
+					return nil
+				}
+				continue
+			default:
+				return &DirtyRepoError{
+					RepoRoot:       r.opts.RepoRoot,
+					Stage:          "post-commit",
+					AllowUntracked: r.opts.AllowUntracked,
+					Status:         status,
+				}
+			}
 		}
 
 		r.cleanupIterationArtifacts()
@@ -474,14 +539,14 @@ func (r *Runner) finalizeIteration(ctx context.Context, itemID string, itemLine 
 		completed = true
 	}
 
-	dirty, err := StatusPorcelain(ctx, r.opts.RepoRoot)
+	status, err := StatusDetails(ctx, r.opts.RepoRoot)
 	if err != nil {
 		logGitError(r.redactor, r.opts.Logger, "status", err)
 		return err
 	}
 
 	if !completed {
-		if dirty != "" {
+		if !status.IsClean(r.opts.AllowUntracked) {
 			r.lastFailureStage = "incomplete"
 			r.lastFailureMessage = fmt.Sprintf("Working tree changed but %s was not marked complete.", itemID)
 			return errors.New(r.lastFailureMessage)
@@ -494,7 +559,7 @@ func (r *Runner) finalizeIteration(ctx context.Context, itemID string, itemLine 
 		return nil
 	}
 
-	if dirty == "" {
+	if status.IsClean(r.opts.AllowUntracked) {
 		r.lastFailureStage = "complete"
 		r.lastFailureMessage = "Queue head moved but no changes detected."
 		return errors.New(r.lastFailureMessage)
@@ -558,12 +623,12 @@ func (r *Runner) reconcileCheckedQueueItems(ctx context.Context) error {
 	}
 	summary := pin.SummarizeIDs(movedIDs)
 	if summary != "" {
-		dirty, err := StatusPorcelain(ctx, r.opts.RepoRoot)
+		status, err := StatusDetails(ctx, r.opts.RepoRoot)
 		if err != nil {
 			logGitError(r.redactor, r.opts.Logger, "status", err)
 			return err
 		}
-		if dirty != "" && r.opts.AutoCommit {
+		if status.HasTrackedChanges() && r.opts.AutoCommit {
 			commitCtx, cancel := withTimeout(ctx, gitCommitTimeout)
 			defer cancel()
 			if err := CommitPaths(commitCtx, r.opts.RepoRoot, fmt.Sprintf("chore: move completed queue items (%s)", summary), r.pinFiles.QueuePath, r.pinFiles.DonePath); err != nil {
@@ -817,12 +882,12 @@ func (r *Runner) quarantine(ctx context.Context, itemID string, headBefore strin
 		}
 	}
 
-	dirty, err := StatusPorcelain(ctx, r.opts.RepoRoot)
+	status, err := StatusDetails(ctx, r.opts.RepoRoot)
 	if err != nil {
 		logGitError(r.redactor, r.opts.Logger, "status", err)
 		return "", err
 	}
-	if dirty != "" {
+	if status.HasTrackedChanges() || status.HasUntrackedChanges() {
 		shortReason := CommitMessageShort(reason)
 		commitCtx, cancel := withTimeout(ctx, gitCommitTimeout)
 		defer cancel()
@@ -838,8 +903,10 @@ func (r *Runner) quarantine(ctx context.Context, itemID string, headBefore strin
 	if err := ResetHard(ctx, r.opts.RepoRoot, headBefore); err != nil {
 		return "", err
 	}
-	if err := Clean(ctx, r.opts.RepoRoot); err != nil {
-		return "", err
+	if r.opts.QuarantineClean {
+		if err := Clean(ctx, r.opts.RepoRoot); err != nil {
+			return "", err
+		}
 	}
 
 	return wipBranch, nil

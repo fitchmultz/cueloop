@@ -1,5 +1,5 @@
 // Package loop provides git helpers for the Ralph loop.
-// Entrypoint: CurrentBranch, HeadSHA, StatusPorcelain.
+// Entrypoint: CurrentBranch, HeadSHA, StatusDetails.
 package loop
 
 import (
@@ -160,6 +160,107 @@ func StatusPorcelain(ctx context.Context, repoRoot string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+// GitStatusEntry represents a single porcelain status entry.
+type GitStatusEntry struct {
+	XY       string
+	Path     string
+	OrigPath string
+}
+
+func (e GitStatusEntry) IsUntracked() bool {
+	return e.XY == "??"
+}
+
+func (e GitStatusEntry) IsTracked() bool {
+	return e.XY != "" && e.XY != "??"
+}
+
+// GitStatus provides structured status inspection.
+type GitStatus struct {
+	Entries []GitStatusEntry
+}
+
+func (s GitStatus) TrackedEntries() []GitStatusEntry {
+	result := make([]GitStatusEntry, 0)
+	for _, entry := range s.Entries {
+		if entry.IsTracked() {
+			result = append(result, entry)
+		}
+	}
+	return result
+}
+
+func (s GitStatus) UntrackedEntries() []GitStatusEntry {
+	result := make([]GitStatusEntry, 0)
+	for _, entry := range s.Entries {
+		if entry.IsUntracked() {
+			result = append(result, entry)
+		}
+	}
+	return result
+}
+
+func (s GitStatus) HasTrackedChanges() bool {
+	for _, entry := range s.Entries {
+		if entry.IsTracked() {
+			return true
+		}
+	}
+	return false
+}
+
+func (s GitStatus) HasUntrackedChanges() bool {
+	for _, entry := range s.Entries {
+		if entry.IsUntracked() {
+			return true
+		}
+	}
+	return false
+}
+
+// IsClean returns true when there are no tracked changes, and untracked are allowed or absent.
+func (s GitStatus) IsClean(allowUntracked bool) bool {
+	if s.HasTrackedChanges() {
+		return false
+	}
+	if allowUntracked {
+		return true
+	}
+	return !s.HasUntrackedChanges()
+}
+
+// StatusDetails returns parsed porcelain output with null delimiters for safe parsing.
+func StatusDetails(ctx context.Context, repoRoot string) (GitStatus, error) {
+	out, err := gitOutput(ctx, repoRoot, "status", "--porcelain=v1", "-z")
+	if err != nil {
+		return GitStatus{}, err
+	}
+	if out == "" {
+		return GitStatus{}, nil
+	}
+	parts := strings.Split(out, "\x00")
+	entries := make([]GitStatusEntry, 0, len(parts))
+	for i := 0; i < len(parts); i++ {
+		part := parts[i]
+		if part == "" {
+			continue
+		}
+		if len(part) < 3 {
+			continue
+		}
+		xy := part[:2]
+		path := strings.TrimLeft(part[2:], " ")
+		entry := GitStatusEntry{XY: xy, Path: path}
+		if strings.ContainsAny(xy, "RC") && i+1 < len(parts) {
+			entry.OrigPath = path
+			entry.Path = parts[i+1]
+			i++
+		}
+		entries = append(entries, entry)
+	}
+	return GitStatus{Entries: entries}, nil
+}
+
 func DiffNameOnly(ctx context.Context, repoRoot string) ([]string, error) {
 	out, err := gitOutput(ctx, repoRoot, "diff", "--name-only")
 	if err != nil {
@@ -257,6 +358,17 @@ func WorktreeRemove(ctx context.Context, repoRoot string, path string) error {
 
 func Clean(ctx context.Context, repoRoot string) error {
 	return gitRun(ctx, repoRoot, "clean", "-fd")
+}
+
+func Stash(ctx context.Context, repoRoot string, includeUntracked bool, message string) error {
+	args := []string{"stash", "push"}
+	if includeUntracked {
+		args = append(args, "-u")
+	}
+	if strings.TrimSpace(message) != "" {
+		args = append(args, "-m", message)
+	}
+	return gitRun(ctx, repoRoot, args...)
 }
 
 func AheadCount(ctx context.Context, repoRoot string) (int, error) {

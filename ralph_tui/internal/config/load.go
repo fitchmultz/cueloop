@@ -250,6 +250,20 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 		if partial.Loop.ReasoningEffort != nil {
 			base.Loop.ReasoningEffort = strings.ToLower(strings.TrimSpace(*partial.Loop.ReasoningEffort))
 		}
+		if partial.Loop.DirtyRepo != nil {
+			if partial.Loop.DirtyRepo.StartPolicy != nil {
+				base.Loop.DirtyRepo.StartPolicy = strings.ToLower(strings.TrimSpace(*partial.Loop.DirtyRepo.StartPolicy))
+			}
+			if partial.Loop.DirtyRepo.DuringPolicy != nil {
+				base.Loop.DirtyRepo.DuringPolicy = strings.ToLower(strings.TrimSpace(*partial.Loop.DirtyRepo.DuringPolicy))
+			}
+			if partial.Loop.DirtyRepo.AllowUntracked != nil {
+				base.Loop.DirtyRepo.AllowUntracked = *partial.Loop.DirtyRepo.AllowUntracked
+			}
+			if partial.Loop.DirtyRepo.QuarantineCleanUntracked != nil {
+				base.Loop.DirtyRepo.QuarantineCleanUntracked = *partial.Loop.DirtyRepo.QuarantineCleanUntracked
+			}
+		}
 	}
 	if partial.Git != nil {
 		if partial.Git.AutoCommit != nil {

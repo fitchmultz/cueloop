@@ -2,6 +2,9 @@
 package tui
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -108,6 +111,45 @@ func TestLoopStateIgnoresStaleRun(t *testing.T) {
 	}
 }
 
+func TestLoopStartBlocksOnDirtyRepoPolicyError(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("missing git: %v", err)
+	}
+	repoRoot := t.TempDir()
+	runCmd := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoRoot
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, string(output))
+		}
+	}
+	runCmd("init", "-b", "main")
+	runCmd("config", "user.email", "test@example.com")
+	runCmd("config", "user.name", "Test User")
+	if err := os.WriteFile(filepath.Join(repoRoot, "README.md"), []byte("base\n"), 0o600); err != nil {
+		t.Fatalf("write readme: %v", err)
+	}
+	runCmd("add", ".")
+	runCmd("commit", "-m", "init")
+	if err := os.WriteFile(filepath.Join(repoRoot, "README.md"), []byte("dirty\n"), 0o600); err != nil {
+		t.Fatalf("write readme: %v", err)
+	}
+
+	cfg := testLoopConfig()
+	cfg.Loop.DirtyRepo.StartPolicy = "error"
+	cfg.Loop.DirtyRepo.AllowUntracked = true
+	view := newLoopView(cfg, paths.Locations{RepoRoot: repoRoot})
+
+	_ = view.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}, newKeyMap())
+
+	if view.mode != loopIdle {
+		t.Fatalf("expected loop to remain idle, got %v", view.mode)
+	}
+	if view.err == "" {
+		t.Fatalf("expected error to be set for dirty repo")
+	}
+}
+
 func testLoopConfig() config.Config {
 	return config.Config{
 		Loop: config.LoopConfig{
@@ -117,6 +159,12 @@ func testLoopConfig() config.Config {
 			MaxRepairAttempts: 0,
 			OnlyTags:          "",
 			RequireMain:       false,
+			DirtyRepo: config.DirtyRepoConfig{
+				StartPolicy:              "error",
+				DuringPolicy:             "quarantine",
+				AllowUntracked:           true,
+				QuarantineCleanUntracked: false,
+			},
 		},
 		Git: config.GitConfig{
 			AutoCommit: false,
