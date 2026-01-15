@@ -384,6 +384,18 @@ func (l *loopView) stateView() string {
 			lines = append(lines, fmt.Sprintf("Iteration: %d (%s)", l.state.Iteration, l.state.Mode))
 		}
 	}
+	if l.state.LastFailureStage != "" || l.state.LastFailureMessage != "" {
+		stage := strings.TrimSpace(l.state.LastFailureStage)
+		message := strings.TrimSpace(l.state.LastFailureMessage)
+		if stage == "" {
+			stage = "unknown"
+		}
+		if message == "" {
+			lines = append(lines, fmt.Sprintf("Last failure: %s", stage))
+		} else {
+			lines = append(lines, fmt.Sprintf("Last failure: %s — %s", stage, message))
+		}
+	}
 	if len(lines) == 0 {
 		return ""
 	}

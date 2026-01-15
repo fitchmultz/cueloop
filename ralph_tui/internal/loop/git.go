@@ -152,6 +152,18 @@ func HeadSHA(ctx context.Context, repoRoot string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+func ShortHeadSHA(ctx context.Context, repoRoot string) (string, error) {
+	out, err := gitOutput(ctx, repoRoot, "rev-parse", "--short", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	short := strings.TrimSpace(out)
+	if short == "" {
+		return "", fmt.Errorf("git rev-parse --short returned empty output")
+	}
+	return short, nil
+}
+
 func StatusPorcelain(ctx context.Context, repoRoot string) (string, error) {
 	out, err := gitOutput(ctx, repoRoot, "status", "--porcelain")
 	if err != nil {
@@ -308,6 +320,37 @@ func StatusSummary(ctx context.Context, repoRoot string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(out), nil
+}
+
+func LastCommitSummary(ctx context.Context, repoRoot string) (string, error) {
+	out, err := gitOutput(ctx, repoRoot, "log", "-1", "--pretty=format:%h %s")
+	if err != nil {
+		return "", err
+	}
+	summary := strings.TrimSpace(out)
+	if summary == "" {
+		return "", fmt.Errorf("git log returned empty output")
+	}
+	return summary, nil
+}
+
+func LastCommitDiffStat(ctx context.Context, repoRoot string) (string, error) {
+	out, err := gitOutput(ctx, repoRoot, "show", "--stat", "--pretty=format:", "-1")
+	if err != nil {
+		return "", err
+	}
+	trimmed := strings.TrimSpace(out)
+	if trimmed == "" {
+		return "", fmt.Errorf("git show returned empty output")
+	}
+	lines := strings.Split(trimmed, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line != "" {
+			return line, nil
+		}
+	}
+	return "", fmt.Errorf("git show returned empty diffstat")
 }
 
 func CommitAll(ctx context.Context, repoRoot string, message string) error {

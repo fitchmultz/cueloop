@@ -56,6 +56,8 @@ type model struct {
 	specsView           *specsView
 	loopView            *loopView
 	logsView            *logsView
+	repoStatus          repoStatusSnapshot
+	repoStatusErr       string
 	logger              *tuiLogger
 	logErr              error
 	cliOverrides        config.PartialConfig
@@ -196,6 +198,7 @@ func (m model) Init() tea.Cmd {
 	}
 	m.logInfo("tui.start", fields)
 	cmds := []tea.Cmd{refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen)}
+	cmds = append(cmds, repoStatusCmd(m.locations.RepoRoot))
 	if m.pinView != nil {
 		if cmd := m.pinView.reloadAsync(true); cmd != nil {
 			cmds = append(cmds, cmd)
@@ -256,6 +259,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			"log_file":        m.cfg.Logging.File,
 			"refresh_gen":     m.refreshGen,
 		})
+		handled = true
+	case repoStatusMsg:
+		if msg.err != nil {
+			m.repoStatusErr = msg.err.Error()
+		} else {
+			m.repoStatusErr = ""
+			m.repoStatus = msg.status
+		}
 		handled = true
 	case tea.KeyMsg:
 		keyFields := keyEventSummary(msg)
@@ -863,6 +874,7 @@ func (m *model) refreshViews() []tea.Cmd {
 			cmds = append(cmds, cmd)
 		}
 	}
+	cmds = append(cmds, repoStatusCmd(m.locations.RepoRoot))
 	m.refreshLogsView()
 	return cmds
 }
@@ -870,6 +882,8 @@ func (m *model) refreshViews() []tea.Cmd {
 func (m *model) refreshScreen(target screen, force bool) []tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	switch target {
+	case screenDashboard:
+		cmds = append(cmds, repoStatusCmd(m.locations.RepoRoot))
 	case screenPin:
 		if m.pinView == nil {
 			return cmds

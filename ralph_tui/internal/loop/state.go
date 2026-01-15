@@ -13,10 +13,12 @@ const (
 
 // State describes the current loop status for UI consumers.
 type State struct {
-	Mode            Mode
-	Iteration       int
-	ActiveItemID    string
-	ActiveItemTitle string
+	Mode               Mode
+	Iteration          int
+	ActiveItemID       string
+	ActiveItemTitle    string
+	LastFailureStage   string
+	LastFailureMessage string
 }
 
 // StateSink receives loop state updates.

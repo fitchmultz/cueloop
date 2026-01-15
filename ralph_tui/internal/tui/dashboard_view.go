@@ -29,6 +29,13 @@ func (m model) dashboardView() string {
 	lines = append(lines, fmt.Sprintf("Specs: %s", dashboardSpecsState(m.specsView)))
 	lines = append(lines, fmt.Sprintf("Log path: %s", dashboardLogPath(m)))
 
+	repoLines := dashboardRepoLines(m)
+	if len(repoLines) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, "Repo:")
+		lines = append(lines, repoLines...)
+	}
+
 	statusLines := dashboardStatusLines(m.pinView, m.loopView, m.specsView)
 	if len(statusLines) > 0 {
 		lines = append(lines, "")
@@ -119,6 +126,9 @@ func dashboardStatusLines(p *pinView, l *loopView, s *specsView) []string {
 	if status := dashboardLoopStatus(l); status != "" {
 		lines = append(lines, "Loop: "+status)
 	}
+	if status := dashboardLoopFailure(l); status != "" {
+		lines = append(lines, "Loop failure: "+status)
+	}
 	if status := dashboardSpecsStatus(s); status != "" {
 		lines = append(lines, "Specs: "+status)
 	}
@@ -151,6 +161,24 @@ func dashboardLoopStatus(l *loopView) string {
 	return l.status
 }
 
+func dashboardLoopFailure(l *loopView) string {
+	if l == nil {
+		return ""
+	}
+	stage := strings.TrimSpace(l.state.LastFailureStage)
+	message := strings.TrimSpace(l.state.LastFailureMessage)
+	if stage == "" && message == "" {
+		return ""
+	}
+	if stage == "" {
+		stage = "unknown"
+	}
+	if message == "" {
+		return stage
+	}
+	return fmt.Sprintf("%s — %s", stage, message)
+}
+
 func dashboardSpecsStatus(s *specsView) string {
 	if s == nil {
 		return ""
@@ -171,4 +199,93 @@ func dashboardSpecsStatus(s *specsView) string {
 		return "Rendering preview..."
 	}
 	return ""
+}
+
+func dashboardRepoLines(m model) []string {
+	if strings.TrimSpace(m.locations.RepoRoot) == "" {
+		return []string{"Unavailable: repo root unknown"}
+	}
+	if m.repoStatusErr != "" {
+		return []string{"Unavailable: " + m.repoStatusErr}
+	}
+	if isRepoStatusEmpty(m.repoStatus) {
+		return []string{"Loading repo status..."}
+	}
+
+	lines := make([]string, 0, 6)
+
+	branch := m.repoStatus.Branch
+	if strings.TrimSpace(branch) == "" {
+		branch = "unknown"
+	}
+	if m.repoStatus.BranchNote != "" {
+		branch = fmt.Sprintf("%s (%s)", branch, m.repoStatus.BranchNote)
+	}
+	head := strings.TrimSpace(m.repoStatus.ShortHead)
+	if head == "" && m.repoStatus.ShortHeadNote != "" {
+		head = m.repoStatus.ShortHeadNote
+	}
+	if head != "" {
+		lines = append(lines, fmt.Sprintf("Branch: %s | HEAD: %s", branch, head))
+	} else {
+		lines = append(lines, fmt.Sprintf("Branch: %s", branch))
+	}
+
+	statusLine := strings.TrimSpace(m.repoStatus.StatusSummary)
+	if statusLine == "" {
+		if m.repoStatus.StatusSummaryNote != "" {
+			statusLine = "unavailable (" + m.repoStatus.StatusSummaryNote + ")"
+		} else {
+			statusLine = "unknown"
+		}
+	}
+	lines = append(lines, "Status: "+statusLine)
+
+	if m.repoStatus.StatusSummary != "" {
+		lines = append(lines, fmt.Sprintf("Dirty: %d file(s)", m.repoStatus.DirtyCount))
+	} else if m.repoStatus.StatusSummaryNote != "" {
+		lines = append(lines, fmt.Sprintf("Dirty: unavailable (%s)", m.repoStatus.StatusSummaryNote))
+	} else {
+		lines = append(lines, "Dirty: unknown")
+	}
+
+	if m.repoStatus.AheadNote != "" {
+		lines = append(lines, fmt.Sprintf("Ahead: unavailable (%s)", m.repoStatus.AheadNote))
+	} else {
+		lines = append(lines, fmt.Sprintf("Ahead: %d", m.repoStatus.AheadCount))
+	}
+
+	if m.repoStatus.LastCommit != "" {
+		lines = append(lines, "Last commit: "+m.repoStatus.LastCommit)
+	} else if m.repoStatus.LastCommitNote != "" {
+		lines = append(lines, "Last commit: unavailable ("+m.repoStatus.LastCommitNote+")")
+	} else {
+		lines = append(lines, "Last commit: unknown")
+	}
+
+	if m.repoStatus.LastCommitStat != "" {
+		lines = append(lines, "Last diffstat: "+m.repoStatus.LastCommitStat)
+	} else if m.repoStatus.LastCommitStatNote != "" {
+		lines = append(lines, "Last diffstat: unavailable ("+m.repoStatus.LastCommitStatNote+")")
+	} else {
+		lines = append(lines, "Last diffstat: unknown")
+	}
+
+	return lines
+}
+
+func isRepoStatusEmpty(status repoStatusSnapshot) bool {
+	return strings.TrimSpace(status.Branch) == "" &&
+		strings.TrimSpace(status.BranchNote) == "" &&
+		strings.TrimSpace(status.ShortHead) == "" &&
+		strings.TrimSpace(status.ShortHeadNote) == "" &&
+		strings.TrimSpace(status.StatusSummary) == "" &&
+		strings.TrimSpace(status.StatusSummaryNote) == "" &&
+		status.DirtyCount == 0 &&
+		status.AheadCount == 0 &&
+		strings.TrimSpace(status.AheadNote) == "" &&
+		strings.TrimSpace(status.LastCommit) == "" &&
+		strings.TrimSpace(status.LastCommitNote) == "" &&
+		strings.TrimSpace(status.LastCommitStat) == "" &&
+		strings.TrimSpace(status.LastCommitStatNote) == ""
 }

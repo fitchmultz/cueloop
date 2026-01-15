@@ -2,6 +2,7 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -157,5 +158,22 @@ func TestModelDriver_AllScreens_RenderWithinBounds(t *testing.T) {
 		driver.SelectScreen(item.screen)
 		driver.AssertScreen(item.screen)
 		driver.AssertViewWithinBounds()
+	}
+}
+
+func TestDashboardRepoStatusDegradesWithoutGit(t *testing.T) {
+	m, _, _ := newHermeticModel(t)
+	driver := newModelDriver(t, m)
+	driver.Resize(40, 10)
+	driver.SelectScreen(screenDashboard)
+
+	driver.Send(repoStatusMsg{err: errors.New("git missing")})
+
+	view := driver.m.contentView()
+	if !strings.Contains(view, "Repo:") {
+		t.Fatalf("expected repo section in dashboard, got %q", view)
+	}
+	if !strings.Contains(view, "git missing") {
+		t.Fatalf("expected repo status to show git missing, got %q", view)
 	}
 }

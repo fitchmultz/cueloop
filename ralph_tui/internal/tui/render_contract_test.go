@@ -97,6 +97,42 @@ func TestDashboardRenderContractNarrowSizes(t *testing.T) {
 	}
 }
 
+func TestDashboardRepoPanelFitsNarrowSizes(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+
+	sizes := []struct {
+		w int
+		h int
+	}{
+		{w: 12, h: 5},
+		{w: 18, h: 6},
+		{w: 24, h: 8},
+	}
+
+	for _, size := range sizes {
+		t.Run(fmt.Sprintf("repo-narrow-w%dxh%d", size.w, size.h), func(t *testing.T) {
+			m := newModel(cfg, locs, StartOptions{})
+			m.screen = screenDashboard
+			m.navCollapsed = true
+			m.navFocused = false
+			m.repoStatus = repoStatusSnapshot{
+				Branch:         "very-long-branch-name-to-truncate",
+				ShortHead:      "abcdef123456",
+				StatusSummary:  "## main...origin/main [ahead 12, behind 3]",
+				DirtyCount:     42,
+				AheadCount:     12,
+				LastCommit:     "abcdef1 This is a deliberately long commit subject line to force truncation",
+				LastCommitStat: "15 files changed, 123 insertions(+), 45 deletions(-)",
+			}
+			m.applyFocus()
+			m.width = size.w
+			m.height = size.h
+			m.relayout()
+			assertRenderFits(t, m, size.w, size.h)
+		})
+	}
+}
+
 func assertRenderFits(t *testing.T, m model, w, h int) {
 	t.Helper()
 	out := m.View()

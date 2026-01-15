@@ -141,8 +141,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.opts.Once {
 		runMode = ModeOnce
 	}
-	r.publishState(State{Mode: runMode, Iteration: 0})
-	defer r.publishState(State{Mode: ModeIdle})
+	r.lastFailureStage = ""
+	r.lastFailureMessage = ""
+	r.publishState(r.stateWithFailure(State{Mode: runMode, Iteration: 0}))
+	defer r.publishState(r.stateWithFailure(State{Mode: ModeIdle}))
 
 	for {
 		select {
@@ -162,7 +164,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			} else {
 				r.logf(">> [RALPH] No unchecked items found in Queue. Exiting cleanly.")
 			}
-			r.publishState(State{Mode: ModeIdle})
+			r.publishState(r.stateWithFailure(State{Mode: ModeIdle}))
 			r.logPushFailed()
 			return nil
 		}
@@ -274,12 +276,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		iterations++
-		r.publishState(State{
+		r.publishState(r.stateWithFailure(State{
 			Mode:            runMode,
 			Iteration:       iterations,
 			ActiveItemID:    itemID,
 			ActiveItemTitle: ExtractItemTitle(firstItem.Header),
-		})
+		}))
 		r.logf(">> [RALPH] Iteration %d", iterations)
 
 		promptFile, cleanup, err := r.writePromptFile(firstItem.Header)
@@ -719,6 +721,9 @@ func (r *Runner) finalizeCanceledIteration(ctx context.Context, itemID string, i
 
 func (r *Runner) handleIterationFailure(ctx context.Context, itemID string, itemLine string, headBefore string, stage string, message string, cause error) bool {
 	r.logf(">> [RALPH] Iteration failure (%s): %s", stage, message)
+	if stage != "" || message != "" {
+		r.recordFailure(stage, message)
+	}
 	if isCancellation(ctx, cause) {
 		r.finalizeCanceledIteration(ctx, itemID, itemLine, headBefore, stage, cause)
 		return true
@@ -1036,6 +1041,18 @@ func (r *Runner) publishState(state State) {
 	if r.opts.StateSink != nil {
 		r.opts.StateSink.Update(state)
 	}
+}
+
+func (r *Runner) stateWithFailure(state State) State {
+	state.LastFailureStage = r.lastFailureStage
+	state.LastFailureMessage = r.lastFailureMessage
+	return state
+}
+
+func (r *Runner) recordFailure(stage string, message string) {
+	r.lastFailureStage = stage
+	r.lastFailureMessage = message
+	r.publishState(r.stateWithFailure(r.state))
 }
 
 func contextBuilderPolicyBlock(effort string, mandatory bool, forced bool) string {

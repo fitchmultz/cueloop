@@ -1,6 +1,14 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0434 [ui]: Surface repo/git status in the TUI (branch, dirty summary, ahead count, last commit) to make loop behavior transparent and debuggable. (ralph_tui/internal/tui/dashboard_view.go, ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/loop/git.go)
+  - Evidence:
+    - The Dashboard currently shows queue counts + loop/specs state but hides the repo state (branch, dirty files, ahead commits), even though the loop runner enforces `RequireMain` and a clean tree and may auto-push.
+    - `ralph_tui/internal/loop/git.go` already provides `StatusSummary()` and `AheadCount()`, but the TUI doesn’t display them, making "why did it block/quarantine?" hard to answer.
+  - Plan:
+    - Add a "Repo" section to the Dashboard (and/or Logs) with: current branch, short HEAD, `git status -sb` summary, ahead count, and last diffstat.
+    - Show the loop’s last failure stage/message in the UI so "hung at end of turn" is visible.
+    - Add render contract + model driver tests to ensure the repo panel fits narrow terminals and degrades gracefully when git isn’t available.
 - [x] RQ-0433 [code]: Improve file change detection so the UI doesn’t miss fast edits (same-size/same-modtime changes; atomic-save editors) and reduce "stale until refresh" bugs. (ralph_tui/internal/tui/file_watch.go, ralph_tui/internal/tui/file_watch_test.go, ralph_tui/internal/tui/pin_view.go)
   - Evidence:
     - `fileStamp` only tracks `ModTime` + `Size`; if content changes without changing either (possible with quick edits or coarse filesystem timestamp resolution), `fileChanged()` will report no change.
