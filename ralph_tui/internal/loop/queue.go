@@ -23,7 +23,7 @@ func FirstUncheckedItem(queuePath string, onlyTags []string) (*QueueItem, error)
 		if item.Checked {
 			continue
 		}
-		if hasTag(item.Header, onlyTags) {
+		if pin.MatchesAnyTag(item.Header, onlyTags) {
 			return &item, nil
 		}
 	}
@@ -70,23 +70,6 @@ func ExtractItemTitle(line string) string {
 	}
 	trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, ":"))
 	return strings.TrimSpace(trimmed)
-}
-
-func hasTag(line string, tags []string) bool {
-	if len(tags) == 0 {
-		return true
-	}
-	for _, tag := range tags {
-		tag = strings.TrimSpace(tag)
-		tag = strings.TrimPrefix(strings.TrimSuffix(tag, "]"), "[")
-		if tag == "" {
-			continue
-		}
-		if strings.Contains(line, "["+tag+"]") {
-			return true
-		}
-	}
-	return false
 }
 
 func readQueueItems(queuePath string) ([]QueueItem, error) {

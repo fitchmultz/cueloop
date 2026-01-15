@@ -16,10 +16,126 @@ import (
 )
 
 var (
-	tagPattern    = regexp.MustCompile(`\[(db|ui|code|ops|docs)\]`)
-	scopePattern  = regexp.MustCompile(`\([^()]+\)\s*$`)
-	queueItemLine = regexp.MustCompile(`^- \[[ x]\] `)
+	tagPattern      = regexp.MustCompile(`\[(db|ui|code|ops|docs)\]`)
+	scopePattern    = regexp.MustCompile(`\([^()]+\)\s*$`)
+	queueItemLine   = regexp.MustCompile(`^- \[[ x]\] `)
+	supportedTags   = []string{"db", "ui", "code", "ops", "docs"}
+	supportedTagSet = map[string]struct{}{
+		"db":   {},
+		"ui":   {},
+		"code": {},
+		"ops":  {},
+		"docs": {},
+	}
 )
+
+// TagList captures parsed tags plus any unknown values.
+type TagList struct {
+	Tags    []string
+	Unknown []string
+}
+
+// SupportedTags returns the supported routing tags in display order.
+func SupportedTags() []string {
+	return append([]string{}, supportedTags...)
+}
+
+// NormalizeTag trims, unbrackets, and lowercases a tag value.
+func NormalizeTag(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	trimmed = strings.TrimPrefix(trimmed, "[")
+	trimmed = strings.TrimSuffix(trimmed, "]")
+	return strings.ToLower(strings.TrimSpace(trimmed))
+}
+
+// ExtractTags returns the normalized routing tags from a queue item header.
+func ExtractTags(header string) []string {
+	search := header
+	if idx := strings.Index(header, ":"); idx != -1 {
+		search = header[:idx]
+	}
+	matches := tagPattern.FindAllStringSubmatch(search, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	tags := make([]string, 0, len(matches))
+	seen := make(map[string]struct{}, len(matches))
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+		tag := NormalizeTag(match[1])
+		if tag == "" {
+			continue
+		}
+		if _, ok := seen[tag]; ok {
+			continue
+		}
+		seen[tag] = struct{}{}
+		tags = append(tags, tag)
+	}
+	return tags
+}
+
+// ParseTagList parses a tag list from a comma/space separated string.
+func ParseTagList(input string) TagList {
+	if strings.TrimSpace(input) == "" {
+		return TagList{Tags: []string{}, Unknown: []string{}}
+	}
+	normalized := strings.ReplaceAll(input, ",", " ")
+	fields := strings.Fields(normalized)
+	tags := make([]string, 0, len(fields))
+	unknown := make([]string, 0)
+	seen := make(map[string]struct{}, len(fields))
+	unknownSeen := make(map[string]struct{}, len(fields))
+	for _, field := range fields {
+		tag := NormalizeTag(field)
+		if tag == "" {
+			continue
+		}
+		if _, ok := supportedTagSet[tag]; !ok {
+			if _, dup := unknownSeen[tag]; !dup {
+				unknownSeen[tag] = struct{}{}
+				unknown = append(unknown, tag)
+			}
+			continue
+		}
+		if _, ok := seen[tag]; ok {
+			continue
+		}
+		seen[tag] = struct{}{}
+		tags = append(tags, tag)
+	}
+	return TagList{Tags: tags, Unknown: unknown}
+}
+
+// MatchesAnyTag returns true if the header contains any of the provided tags.
+func MatchesAnyTag(header string, tags []string) bool {
+	if len(tags) == 0 {
+		return true
+	}
+	headerTags := ExtractTags(header)
+	if len(headerTags) == 0 {
+		return false
+	}
+	tagSet := make(map[string]struct{}, len(headerTags))
+	for _, tag := range headerTags {
+		tagSet[tag] = struct{}{}
+	}
+	for _, tag := range tags {
+		normalized := NormalizeTag(tag)
+		if normalized == "" {
+			continue
+		}
+		if _, ok := tagSet[normalized]; ok {
+			return true
+		}
+	}
+	return false
+}
 
 // Files describes the Ralph pin/spec files on disk.
 type Files struct {

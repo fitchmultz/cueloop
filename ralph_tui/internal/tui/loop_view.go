@@ -433,6 +433,13 @@ func (l *loopView) startWithGuard(runOnce bool) tea.Cmd {
 }
 
 func (l *loopView) startRun(runOnce bool) tea.Cmd {
+	onlyTags, err := parseOnlyTags(l.overrides.OnlyTags)
+	if err != nil {
+		l.err = err.Error()
+		l.status = "Start failed"
+		return nil
+	}
+
 	l.err = ""
 	l.outputErr = ""
 	l.status = "Running"
@@ -500,7 +507,7 @@ func (l *loopView) startRun(runOnce bool) tea.Cmd {
 			MaxIterations:       l.overrides.MaxIterations,
 			MaxStalled:          l.overrides.MaxStalled,
 			MaxRepairAttempts:   l.overrides.MaxRepairAttempts,
-			OnlyTags:            splitTags(l.overrides.OnlyTags),
+			OnlyTags:            onlyTags,
 			Once:                runOnce,
 			RequireMain:         l.overrides.RequireMain,
 			AutoCommit:          l.overrides.AutoCommit,
@@ -758,6 +765,9 @@ func (l *loopView) applyEditData() error {
 	if err != nil {
 		return err
 	}
+	if _, err := parseOnlyTags(l.editData.OnlyTags); err != nil {
+		return err
+	}
 	l.overrides.SleepSeconds = sleepSeconds
 	l.overrides.MaxIterations = maxIterations
 	l.overrides.MaxStalled = maxStalled
@@ -809,19 +819,16 @@ func loopFormDataFromOverrides(overrides loopOverrides) loopFormData {
 	}
 }
 
-func splitTags(value string) []string {
-	if strings.TrimSpace(value) == "" {
-		return []string{}
+func parseOnlyTags(value string) ([]string, error) {
+	parsed := pin.ParseTagList(value)
+	if len(parsed.Unknown) > 0 {
+		return nil, fmt.Errorf(
+			"loop.only_tags has unsupported tag(s): %s (supported: %s)",
+			strings.Join(parsed.Unknown, ", "),
+			strings.Join(pin.SupportedTags(), ", "),
+		)
 	}
-	parts := strings.Split(value, ",")
-	result := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	return result
+	return parsed.Tags, nil
 }
 
 func pinRelativePaths(repoRoot string, files pin.Files) map[string]struct{} {

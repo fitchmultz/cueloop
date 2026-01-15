@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
 )
 
@@ -139,6 +140,16 @@ func (c Config) Validate() error {
 	}
 	if c.Loop.MaxRepairAttempts < 0 {
 		return fmt.Errorf("loop.max_repair_attempts must be >= 0")
+	}
+	if strings.TrimSpace(c.Loop.OnlyTags) != "" {
+		parsed := pin.ParseTagList(c.Loop.OnlyTags)
+		if len(parsed.Unknown) > 0 {
+			return fmt.Errorf(
+				"loop.only_tags has unsupported tag(s): %s (supported: %s)",
+				strings.Join(parsed.Unknown, ", "),
+				strings.Join(pin.SupportedTags(), ", "),
+			)
+		}
 	}
 	if strings.TrimSpace(c.Loop.Runner) == "" {
 		return fmt.Errorf("loop.runner must be set")

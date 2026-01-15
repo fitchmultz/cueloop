@@ -1,6 +1,14 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0435 [code]: Unify queue tag parsing/filtering across loop + TUI (validate only_tags, avoid substring quirks, and reuse one tag parser). (ralph_tui/internal/loop/queue.go, ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/pin/pin.go)
+  - Evidence:
+    - The loop runner’s `hasTag()` uses a raw substring check for `"[tag]"`, while the Pin view extracts tags via `pinTagPattern`; this duplication can drift and produce inconsistent behavior.
+    - `loop.only_tags` is a free-form string; typos silently result in "no items found" exits, which feels like a broken loop.
+  - Plan:
+    - Introduce a shared tag parsing helper (single regex + supported tag set) and use it in both loop selection and Pin search/tag extraction.
+    - Validate `only_tags` early (config validation and/or loop start) and surface a clear warning/error for unknown tags.
+    - Add tests ensuring tag filtering behavior matches between loop and Pin view and that unknown tags are reported cleanly.
 - [x] RQ-0434 [ui]: Surface repo/git status in the TUI (branch, dirty summary, ahead count, last commit) to make loop behavior transparent and debuggable. (ralph_tui/internal/tui/dashboard_view.go, ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/loop/git.go)
   - Evidence:
     - The Dashboard currently shows queue counts + loop/specs state but hides the repo state (branch, dirty files, ahead commits), even though the loop runner enforces `RequireMain` and a clean tree and may auto-push.

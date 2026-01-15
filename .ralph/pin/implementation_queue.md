@@ -1,14 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0435 [code]: Unify queue tag parsing/filtering across loop + TUI (validate only_tags, avoid substring quirks, and reuse one tag parser). (ralph_tui/internal/loop/queue.go, ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/pin/pin.go)
-  - Evidence:
-    - The loop runner’s `hasTag()` uses a raw substring check for `"[tag]"`, while the Pin view extracts tags via `pinTagPattern`; this duplication can drift and produce inconsistent behavior.
-    - `loop.only_tags` is a free-form string; typos silently result in "no items found" exits, which feels like a broken loop.
-  - Plan:
-    - Introduce a shared tag parsing helper (single regex + supported tag set) and use it in both loop selection and Pin search/tag extraction.
-    - Validate `only_tags` early (config validation and/or loop start) and surface a clear warning/error for unknown tags.
-    - Add tests ensuring tag filtering behavior matches between loop and Pin view and that unknown tags are reported cleanly.
 - [ ] RQ-0436 [docs]: Make worker/supervisor prompts more prescriptive for fragile edge cases (stop/cancel, dirty repo, and end-of-turn checklist). (ralph_tui/internal/prompts/defaults/prompt_codex.md, ralph_tui/internal/prompts/defaults/prompt_opencode.md, ralph_tui/internal/prompts/defaults/supervisor_prompt.md)
   - Evidence:
     - The prompts emphasize "run make ci" and "check the queue item", but they don’t explicitly cover what to do when the loop is stopped mid-iteration or when the repo is dirty before starting (both of which currently trigger quarantine behavior in code).

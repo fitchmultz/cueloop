@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
@@ -242,6 +243,23 @@ func TestDirtyRepoPolicyValidation(t *testing.T) {
 	base.Loop.DirtyRepo.StartPolicy = "bad"
 	if err := base.Validate(); err == nil {
 		t.Fatalf("expected validation error for loop.dirty_repo.start_policy")
+	}
+}
+
+func TestOnlyTagsValidation(t *testing.T) {
+	base, err := DefaultConfig()
+	if err != nil {
+		t.Fatalf("default config: %v", err)
+	}
+	tmpDir := t.TempDir()
+	base = ResolvePaths(base, tmpDir, tmpDir)
+	base.Loop.OnlyTags = "unknown"
+	err = base.Validate()
+	if err == nil {
+		t.Fatalf("expected validation error for loop.only_tags")
+	}
+	if !strings.Contains(err.Error(), "loop.only_tags") {
+		t.Fatalf("expected loop.only_tags error, got %v", err)
 	}
 }
 

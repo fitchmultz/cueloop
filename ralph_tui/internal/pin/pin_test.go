@@ -30,6 +30,33 @@ func TestValidatePinFixtures(t *testing.T) {
 	}
 }
 
+func TestExtractTags(t *testing.T) {
+	header := "- [ ] RQ-0001 [code] [ui]: Example"
+	tags := ExtractTags(header)
+	if len(tags) != 2 {
+		t.Fatalf("expected 2 tags, got %#v", tags)
+	}
+	if tags[0] != "code" || tags[1] != "ui" {
+		t.Fatalf("unexpected tags: %#v", tags)
+	}
+}
+
+func TestParseTagList(t *testing.T) {
+	result := ParseTagList(" ui, [code] docs,unknown,[bad] ")
+	if len(result.Tags) != 3 {
+		t.Fatalf("expected 3 tags, got %#v", result.Tags)
+	}
+	if result.Tags[0] != "ui" || result.Tags[1] != "code" || result.Tags[2] != "docs" {
+		t.Fatalf("unexpected tags: %#v", result.Tags)
+	}
+	if len(result.Unknown) != 2 {
+		t.Fatalf("expected 2 unknown tags, got %#v", result.Unknown)
+	}
+	if result.Unknown[0] != "unknown" || result.Unknown[1] != "bad" {
+		t.Fatalf("unexpected unknown tags: %#v", result.Unknown)
+	}
+}
+
 func TestInitLayoutCreatesValidPin(t *testing.T) {
 	tmpDir := t.TempDir()
 	pinDir := filepath.Join(tmpDir, ".ralph", "pin")

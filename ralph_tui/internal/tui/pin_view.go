@@ -4,7 +4,6 @@ package tui
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -73,8 +72,6 @@ const (
 	defaultPinViewWidth = 80
 	pinViewChromeHeight = 4
 )
-
-var pinTagPattern = regexp.MustCompile(`\[(db|ui|code|ops|docs)\]`)
 
 func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) {
 	files := pin.ResolveFiles(cfg.Paths.PinDir)
@@ -753,7 +750,7 @@ func matchesQueueItem(item pin.QueueItem, parts []string) bool {
 	if len(parts) == 0 {
 		return true
 	}
-	tags := strings.Join(extractPinTags(item.Header), " ")
+	tags := strings.Join(pin.ExtractTags(item.Header), " ")
 	haystack := strings.ToLower(strings.Join([]string{item.ID, trimTitle(item.Header), tags}, " "))
 	for _, part := range parts {
 		if !strings.Contains(haystack, part) {
@@ -761,19 +758,4 @@ func matchesQueueItem(item pin.QueueItem, parts []string) bool {
 		}
 	}
 	return true
-}
-
-func extractPinTags(header string) []string {
-	matches := pinTagPattern.FindAllStringSubmatch(header, -1)
-	if len(matches) == 0 {
-		return nil
-	}
-	tags := make([]string, 0, len(matches))
-	for _, match := range matches {
-		if len(match) < 2 {
-			continue
-		}
-		tags = append(tags, match[1])
-	}
-	return tags
 }
