@@ -4,6 +4,8 @@ package tui
 import (
 	"fmt"
 	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 type fakePreviewRenderer struct {
@@ -137,5 +139,54 @@ func TestSpecsPreviewSkipsRenderWhenInputsUnchanged(t *testing.T) {
 
 	if renderer.renderCalls != 1 {
 		t.Fatalf("expected renderer to skip re-render, got %d", renderer.renderCalls)
+	}
+}
+
+func TestSpecsViewTogglesMarkExplicit(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+	view, err := newSpecsView(cfg, locs)
+	if err != nil {
+		t.Fatalf("newSpecsView failed: %v", err)
+	}
+	keys := newTestKeyMap()
+
+	view.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")}, keys)
+	if !view.autofillScout || !view.autofillExplicit {
+		t.Fatalf("expected autofill toggle to set explicit state")
+	}
+
+	view.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")}, keys)
+	if !view.innovate || !view.innovateExplicit {
+		t.Fatalf("expected innovate toggle to set explicit state")
+	}
+}
+
+func TestSpecsViewConfigReloadResetsExplicitAutofill(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+	view, err := newSpecsView(cfg, locs)
+	if err != nil {
+		t.Fatalf("newSpecsView failed: %v", err)
+	}
+	keys := newTestKeyMap()
+
+	view.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")}, keys)
+	if !view.autofillExplicit {
+		t.Fatalf("expected autofill to be explicit after toggle")
+	}
+
+	sameCfg := cfg
+	view.SetConfig(sameCfg, locs)
+	if !view.autofillExplicit {
+		t.Fatalf("expected explicit autofill to remain when config unchanged")
+	}
+
+	updatedCfg := cfg
+	updatedCfg.Specs.AutofillScout = !cfg.Specs.AutofillScout
+	view.SetConfig(updatedCfg, locs)
+	if view.autofillExplicit {
+		t.Fatalf("expected explicit autofill to clear after config change")
+	}
+	if view.autofillScout != updatedCfg.Specs.AutofillScout {
+		t.Fatalf("expected autofill to match updated config")
 	}
 }

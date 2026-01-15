@@ -1,15 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0419 [code]: Disable autofill-scout by default; fix/clarify auto-scout toggle semantics and make it reliably reflected across TUI/CLI/specs runs. (ralph_tui/internal/config/defaults.json, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/specs/specs.go, ralph_tui/cmd/ralph/main.go)
-  - Evidence:
-    - `ralph_tui/internal/config/defaults.json` sets `specs.autofill_scout` to `true` by default; you want it disabled by default.
-    - `ralph_tui/internal/tui/specs_view.go` has `autofillScout` + `autofillExplicit` behavior (config updates only apply when not explicit), which can make the toggle feel "broken" when switching between Config and Specs screens.
-    - `specs.ResolveInnovate()` auto-enables innovate when `uncheckedQueueCount()==0`, which can surprise users if they don’t understand the "empty queue == auto innovate" rule.
-  - Plan:
-    - Change defaults so `specs.autofill_scout` is `false` by default; ensure config editor, CLI, and TUI reflect this consistently.
-    - Make the Specs screen show clearer state: (1) autofill scout on/off, (2) innovate on/off, (3) whether innovate was auto-enabled (and why).
-    - Add tests for `ResolveInnovate()` and for Specs view state transitions when toggling autofill/innovate and when config reloads occur.
 - [ ] RQ-0420 [ui]: Replace empty Dashboard with a real status overview (queue counts, running state, last results, log path) + quick actions. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/screens.go, ralph_tui/internal/tui/help_keymap.go)
   - Evidence:
     - `ralph_tui/internal/tui/model.go` currently returns a placeholder for `screenDashboard`: "Dashboard\n\nSummary panels will land here." (no actionable information).

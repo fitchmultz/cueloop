@@ -89,3 +89,82 @@ func TestResolveInnovateAutoEnable(t *testing.T) {
 		t.Fatalf("expected innovate auto-enabled when queue empty")
 	}
 }
+
+func TestResolveInnovateDetailsEmptyQueueReason(t *testing.T) {
+	tmpDir := t.TempDir()
+	queuePath := filepath.Join(tmpDir, "implementation_queue.md")
+	queueContent := "## Queue\n\n## Blocked\n\n## Parking Lot\n"
+	if err := os.WriteFile(queuePath, []byte(queueContent), 0o600); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	resolution, err := ResolveInnovateDetails(queuePath, false, false, true)
+	if err != nil {
+		t.Fatalf("ResolveInnovateDetails failed: %v", err)
+	}
+	if !resolution.Effective || !resolution.AutoEnabled {
+		t.Fatalf("expected auto-enabled innovate for empty queue")
+	}
+	if resolution.AutoReason != "empty queue" {
+		t.Fatalf("expected auto reason to be empty queue, got %q", resolution.AutoReason)
+	}
+}
+
+func TestResolveInnovateDetailsMissingQueue(t *testing.T) {
+	tmpDir := t.TempDir()
+	queuePath := filepath.Join(tmpDir, "implementation_queue.md")
+
+	resolution, err := ResolveInnovateDetails(queuePath, false, false, true)
+	if err != nil {
+		t.Fatalf("ResolveInnovateDetails failed: %v", err)
+	}
+	if !resolution.Effective || !resolution.AutoEnabled {
+		t.Fatalf("expected auto-enabled innovate for missing queue")
+	}
+	if resolution.AutoReason != "missing queue file" {
+		t.Fatalf("expected auto reason to be missing queue file, got %q", resolution.AutoReason)
+	}
+}
+
+func TestResolveInnovateRespectsExplicit(t *testing.T) {
+	tmpDir := t.TempDir()
+	queuePath := filepath.Join(tmpDir, "implementation_queue.md")
+	queueContent := "## Queue\n\n## Blocked\n\n## Parking Lot\n"
+	if err := os.WriteFile(queuePath, []byte(queueContent), 0o600); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	resolution, err := ResolveInnovateDetails(queuePath, false, true, true)
+	if err != nil {
+		t.Fatalf("ResolveInnovateDetails failed: %v", err)
+	}
+	if resolution.Effective {
+		t.Fatalf("expected explicit innovate false to remain false")
+	}
+	if resolution.AutoEnabled {
+		t.Fatalf("expected auto disabled when innovate explicit")
+	}
+}
+
+func TestResolveInnovateDetailsNonEmptyQueue(t *testing.T) {
+	tmpDir := t.TempDir()
+	queuePath := filepath.Join(tmpDir, "implementation_queue.md")
+	queueContent := "## Queue\n- [ ] RQ-0001 [ui]: Item\n\n## Blocked\n\n## Parking Lot\n"
+	if err := os.WriteFile(queuePath, []byte(queueContent), 0o600); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	resolution, err := ResolveInnovateDetails(queuePath, false, false, true)
+	if err != nil {
+		t.Fatalf("ResolveInnovateDetails failed: %v", err)
+	}
+	if resolution.Effective {
+		t.Fatalf("expected innovate to remain false when queue has items")
+	}
+	if resolution.AutoEnabled {
+		t.Fatalf("expected auto disabled when queue has items")
+	}
+	if resolution.AutoReason != "" {
+		t.Fatalf("expected empty auto reason, got %q", resolution.AutoReason)
+	}
+}

@@ -1,6 +1,15 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0419 [code]: Disable autofill-scout by default; fix/clarify auto-scout toggle semantics and make it reliably reflected across TUI/CLI/specs runs. (ralph_tui/internal/config/defaults.json, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/specs/specs.go, ralph_tui/cmd/ralph/main.go)
+  - Evidence:
+    - `ralph_tui/internal/config/defaults.json` sets `specs.autofill_scout` to `true` by default; you want it disabled by default.
+    - `ralph_tui/internal/tui/specs_view.go` has `autofillScout` + `autofillExplicit` behavior (config updates only apply when not explicit), which can make the toggle feel "broken" when switching between Config and Specs screens.
+    - `specs.ResolveInnovate()` auto-enables innovate when `uncheckedQueueCount()==0`, which can surprise users if they don’t understand the "empty queue == auto innovate" rule.
+  - Plan:
+    - Change defaults so `specs.autofill_scout` is `false` by default; ensure config editor, CLI, and TUI reflect this consistently.
+    - Make the Specs screen show clearer state: (1) autofill scout on/off, (2) innovate on/off, (3) whether innovate was auto-enabled (and why).
+    - Add tests for `ResolveInnovate()` and for Specs view state transitions when toggling autofill/innovate and when config reloads occur.
 - [x] RQ-0418 [code]: Upgrade Specs builder prompt to be bug-hunt oriented + add an interactive "scout" workflow that accepts a user focus prompt and seeds queue items for specific areas. (.ralph/pin/specs_builder.md, ralph_tui/internal/specs/specs.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/cmd/ralph/main.go)
   - Evidence:
     - `.ralph/pin/specs_builder.md` is currently generic and does not guide targeted bug-finding runs the way your "identify 10-20 bugs" prompt does.

@@ -23,50 +23,54 @@ import (
 )
 
 type specsView struct {
-	cfg               config.Config
-	locations         paths.Locations
-	runner            specs.Runner
-	runnerArgs        []string
-	reasoningEffort   string
-	interactive       bool
-	innovate          bool
-	innovateExplicit  bool
-	autofillScout     bool
-	autofillExplicit  bool
-	scoutWorkflow     bool
-	scoutExplicit     bool
-	userFocus         string
-	userFocusExplicit bool
-	editUserFocus     bool
-	userFocusInput    textinput.Model
-	effectiveInnovate bool
-	autoEnabled       bool
-	preview           string
-	previewErr        string
-	previewLoading    bool
-	previewDirty      bool
-	previewSignature  string
-	status            string
-	err               string
-	refreshErr        string
-	persistErr        string
-	previewViewport   viewport.Model
-	logViewport       viewport.Model
-	previewWidth      int
-	rendererBuilder   func(int) (previewRenderer, error)
-	previewRenderers  map[int]previewRenderer
-	running           bool
-	diffStat          string
-	runLogs           []string
-	lastRunOutput     string
-	buildCancel       context.CancelFunc
-	logCh             chan string
-	logRunID          int
-	pendingResult     *specsBuildResultMsg
-	queueStamp        fileStamp
-	promptStamp       fileStamp
-	logger            *tuiLogger
-	output            *outputFileWriter
+	cfg                     config.Config
+	locations               paths.Locations
+	runner                  specs.Runner
+	runnerArgs              []string
+	reasoningEffort         string
+	interactive             bool
+	innovate                bool
+	innovateExplicit        bool
+	autofillScout           bool
+	autofillExplicit        bool
+	scoutWorkflow           bool
+	scoutExplicit           bool
+	userFocus               string
+	userFocusExplicit       bool
+	editUserFocus           bool
+	userFocusInput          textinput.Model
+	effectiveInnovate       bool
+	autoEnabled             bool
+	autoEnabledReason       string
+	preview                 string
+	previewErr              string
+	previewLoading          bool
+	previewDirty            bool
+	previewSignature        string
+	status                  string
+	err                     string
+	refreshErr              string
+	persistErr              string
+	previewViewport         viewport.Model
+	logViewport             viewport.Model
+	previewWidth            int
+	rendererBuilder         func(int) (previewRenderer, error)
+	previewRenderers        map[int]previewRenderer
+	running                 bool
+	diffStat                string
+	runLogs                 []string
+	lastRunOutput           string
+	buildCancel             context.CancelFunc
+	logCh                   chan string
+	logRunID                int
+	pendingResult           *specsBuildResultMsg
+	queueStamp              fileStamp
+	promptStamp             fileStamp
+	logger                  *tuiLogger
+	output                  *outputFileWriter
+	lastConfigAutofillScout bool
+	lastConfigScoutWorkflow bool
+	lastConfigUserFocus     string
 }
 
 type specsBuildResultMsg struct {
@@ -81,12 +85,13 @@ type specsLogBatchMsg struct {
 }
 
 type specsPreviewMsg struct {
-	preview   string
-	err       error
-	effective bool
-	auto      bool
-	signature string
-	unchanged bool
+	preview    string
+	err        error
+	effective  bool
+	auto       bool
+	autoReason string
+	signature  string
+	unchanged  bool
 }
 
 func newSpecsView(cfg config.Config, locations paths.Locations) (*specsView, error) {
@@ -101,21 +106,24 @@ func newSpecsView(cfg config.Config, locations paths.Locations) (*specsView, err
 	userFocusInput.Width = 60
 	userFocusInput.SetValue(cfg.Specs.UserFocus)
 	view := &specsView{
-		cfg:              cfg,
-		locations:        locations,
-		runner:           specs.Runner(cfg.Specs.Runner),
-		runnerArgs:       cfg.Specs.RunnerArgs,
-		reasoningEffort:  cfg.Specs.ReasoningEffort,
-		autofillScout:    cfg.Specs.AutofillScout,
-		scoutWorkflow:    cfg.Specs.ScoutWorkflow,
-		userFocus:        cfg.Specs.UserFocus,
-		userFocusInput:   userFocusInput,
-		previewViewport:  vp,
-		logViewport:      logViewport,
-		previewWidth:     80,
-		previewDirty:     true,
-		rendererBuilder:  buildRenderer,
-		previewRenderers: map[int]previewRenderer{},
+		cfg:                     cfg,
+		locations:               locations,
+		runner:                  specs.Runner(cfg.Specs.Runner),
+		runnerArgs:              cfg.Specs.RunnerArgs,
+		reasoningEffort:         cfg.Specs.ReasoningEffort,
+		autofillScout:           cfg.Specs.AutofillScout,
+		scoutWorkflow:           cfg.Specs.ScoutWorkflow,
+		userFocus:               cfg.Specs.UserFocus,
+		lastConfigAutofillScout: cfg.Specs.AutofillScout,
+		lastConfigScoutWorkflow: cfg.Specs.ScoutWorkflow,
+		lastConfigUserFocus:     cfg.Specs.UserFocus,
+		userFocusInput:          userFocusInput,
+		previewViewport:         vp,
+		logViewport:             logViewport,
+		previewWidth:            80,
+		previewDirty:            true,
+		rendererBuilder:         buildRenderer,
+		previewRenderers:        map[int]previewRenderer{},
 	}
 	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
 		view.queueStamp = stamp
@@ -175,6 +183,7 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			s.previewSignature = msg.signature
 			s.effectiveInnovate = msg.effective
 			s.autoEnabled = msg.auto
+			s.autoEnabledReason = msg.autoReason
 			if s.previewDirty && !s.running {
 				return s.refreshPreviewAsync()
 			}
@@ -185,6 +194,7 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		s.preview = msg.preview
 		s.effectiveInnovate = msg.effective
 		s.autoEnabled = msg.auto
+		s.autoEnabledReason = msg.autoReason
 		s.previewSignature = msg.signature
 		s.previewViewport.SetContent(msg.preview)
 		s.previewViewport.GotoTop()
@@ -294,12 +304,18 @@ func (s *specsView) statusLine() string {
 }
 
 func (s *specsView) optionsView() string {
-	innovate := "off"
-	if s.effectiveInnovate {
-		innovate = "on"
-		if s.autoEnabled {
-			innovate += " (auto)"
+	innovate := yesNo(s.innovate)
+	effectiveInnovate := yesNo(s.effectiveInnovate)
+	innovateLine := fmt.Sprintf("Innovate: %s", innovate)
+	if s.effectiveInnovate != s.innovate {
+		innovateLine = fmt.Sprintf("Innovate: %s (effective: %s)", innovate, effectiveInnovate)
+	}
+	if s.autoEnabled {
+		reason := "auto"
+		if s.autoEnabledReason != "" {
+			reason = "auto: " + s.autoEnabledReason
 		}
+		innovateLine = innovateLine + " (" + reason + ")"
 	}
 	userFocusLine := fmt.Sprintf("User focus: %s", formatUserFocus(s.userFocus))
 	if s.editUserFocus {
@@ -312,7 +328,7 @@ func (s *specsView) optionsView() string {
 		fmt.Sprintf("Runner args: %d", len(s.runnerArgs)),
 		fmt.Sprintf("Reasoning effort: %s (effective: %s)", runnerargs.DisplayEffort(s.reasoningEffort), effectiveLabel),
 		fmt.Sprintf("Interactive: %s", yesNo(s.interactive)),
-		fmt.Sprintf("Innovate: %s", innovate),
+		innovateLine,
 		fmt.Sprintf("Autofill scout: %s", yesNo(s.autofillScout)),
 		fmt.Sprintf("Scout workflow: %s", yesNo(s.scoutWorkflow)),
 		userFocusLine,
@@ -358,11 +374,18 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 	priorSignature := s.previewSignature
 	priorEffective := s.effectiveInnovate
 	priorAuto := s.autoEnabled
+	priorAutoReason := s.autoEnabledReason
 
 	signature := previewInputSignature(previewWidth, promptStamp, queueStamp, interactive, innovate, innovateExplicit, autofillScout, scoutWorkflow, userFocus, lastRunOutput, diffStat)
 	if s.previewErr == "" && s.preview != "" && signature == priorSignature {
 		return func() tea.Msg {
-			return specsPreviewMsg{signature: signature, effective: priorEffective, auto: priorAuto, unchanged: true}
+			return specsPreviewMsg{
+				signature:  signature,
+				effective:  priorEffective,
+				auto:       priorAuto,
+				autoReason: priorAutoReason,
+				unchanged:  true,
+			}
 		}
 	}
 	renderer, err := s.previewRenderer(previewWidth)
@@ -373,16 +396,15 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 	}
 	return func() tea.Msg {
 		queuePath := filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")
-		effective, err := specs.ResolveInnovate(queuePath, innovate, innovateExplicit, autofillScout)
+		resolution, err := specs.ResolveInnovateDetails(queuePath, innovate, innovateExplicit, autofillScout)
 		if err != nil {
 			return specsPreviewMsg{err: err}
 		}
-		autoEnabled := !innovateExplicit && autofillScout && !innovate && effective
 
 		promptPath := filepath.Join(cfg.Paths.PinDir, "specs_builder.md")
 		prompt, err := specs.FillPrompt(promptPath, specs.FillPromptOptions{
 			Interactive:   interactive,
-			Innovate:      effective,
+			Innovate:      resolution.Effective,
 			ScoutWorkflow: scoutWorkflow,
 			UserFocus:     userFocus,
 		})
@@ -399,7 +421,13 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 		if diffStat != "" {
 			rendered = rendered + "\n\nDiff stat:\n" + diffStat
 		}
-		return specsPreviewMsg{preview: rendered, effective: effective, auto: autoEnabled, signature: signature}
+		return specsPreviewMsg{
+			preview:    rendered,
+			effective:  resolution.Effective,
+			auto:       resolution.AutoEnabled,
+			autoReason: resolution.AutoReason,
+			signature:  signature,
+		}
 	}
 }
 
@@ -574,16 +602,29 @@ func fileStampSignature(stamp fileStamp) string {
 func (s *specsView) SetConfig(cfg config.Config, locations paths.Locations) {
 	s.cfg = cfg
 	s.locations = locations
-	if !s.autofillExplicit {
+	if s.lastConfigAutofillScout != cfg.Specs.AutofillScout {
+		s.autofillScout = cfg.Specs.AutofillScout
+		s.autofillExplicit = false
+	} else if !s.autofillExplicit {
 		s.autofillScout = cfg.Specs.AutofillScout
 	}
-	if !s.scoutExplicit {
+	if s.lastConfigScoutWorkflow != cfg.Specs.ScoutWorkflow {
+		s.scoutWorkflow = cfg.Specs.ScoutWorkflow
+		s.scoutExplicit = false
+	} else if !s.scoutExplicit {
 		s.scoutWorkflow = cfg.Specs.ScoutWorkflow
 	}
-	if !s.userFocusExplicit {
+	if s.lastConfigUserFocus != cfg.Specs.UserFocus {
+		s.userFocus = cfg.Specs.UserFocus
+		s.userFocusExplicit = false
+		s.userFocusInput.SetValue(s.userFocus)
+	} else if !s.userFocusExplicit {
 		s.userFocus = cfg.Specs.UserFocus
 		s.userFocusInput.SetValue(s.userFocus)
 	}
+	s.lastConfigAutofillScout = cfg.Specs.AutofillScout
+	s.lastConfigScoutWorkflow = cfg.Specs.ScoutWorkflow
+	s.lastConfigUserFocus = cfg.Specs.UserFocus
 	if !s.running {
 		s.runner = specs.Runner(cfg.Specs.Runner)
 		s.runnerArgs = cfg.Specs.RunnerArgs

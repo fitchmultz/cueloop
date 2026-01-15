@@ -15,7 +15,7 @@
     "pin_dir": ".ralph/pin"
   },
   "specs": {
-    "autofill_scout": true,
+    "autofill_scout": false,
     "scout_workflow": false,
     "user_focus": "",
     "runner": "codex",

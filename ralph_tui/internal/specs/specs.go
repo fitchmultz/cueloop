@@ -103,6 +103,13 @@ type BuildResult struct {
 	EffectiveInnovate bool
 }
 
+// InnovateResolution captures the effective innovate state and any auto-enable reason.
+type InnovateResolution struct {
+	Effective   bool
+	AutoEnabled bool
+	AutoReason  string
+}
+
 // RunnerBackend abstracts runner execution for hermetic tests.
 type RunnerBackend interface {
 	LookPath(file string) (string, error)
@@ -164,20 +171,47 @@ func FillPrompt(templatePath string, opts FillPromptOptions) (string, error) {
 
 // ResolveInnovate applies the autofill scout rules to determine the effective innovate mode.
 func ResolveInnovate(queuePath string, innovate bool, innovateExplicit bool, autofillScout bool) (bool, error) {
+	resolution, err := ResolveInnovateDetails(queuePath, innovate, innovateExplicit, autofillScout)
+	if err != nil {
+		return false, err
+	}
+	return resolution.Effective, nil
+}
+
+// ResolveInnovateDetails returns the effective innovate state plus any auto-enable reason.
+func ResolveInnovateDetails(queuePath string, innovate bool, innovateExplicit bool, autofillScout bool) (InnovateResolution, error) {
 	if innovateExplicit || !autofillScout {
-		return innovate, nil
+		return InnovateResolution{Effective: innovate}, nil
 	}
 	count, err := uncheckedQueueCount(queuePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return true, nil
+			autoEnabled := !innovateExplicit && autofillScout && !innovate
+			reason := ""
+			if autoEnabled {
+				reason = "missing queue file"
+			}
+			return InnovateResolution{
+				Effective:   true,
+				AutoEnabled: autoEnabled,
+				AutoReason:  reason,
+			}, nil
 		}
-		return false, err
+		return InnovateResolution{}, err
 	}
 	if count == 0 {
-		return true, nil
+		autoEnabled := !innovateExplicit && autofillScout && !innovate
+		reason := ""
+		if autoEnabled {
+			reason = "empty queue"
+		}
+		return InnovateResolution{
+			Effective:   true,
+			AutoEnabled: autoEnabled,
+			AutoReason:  reason,
+		}, nil
 	}
-	return innovate, nil
+	return InnovateResolution{Effective: innovate}, nil
 }
 
 // Build runs the specs builder with the given options.
