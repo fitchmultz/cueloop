@@ -50,6 +50,34 @@ func TestAheadCountReturnsErrorWhenNoUpstream(t *testing.T) {
 	}
 }
 
+func TestBranchExistsReturnsFalseForMissingBranch(t *testing.T) {
+	requireTool(t, "git")
+	repoRoot := t.TempDir()
+	runCmd(t, repoRoot, "git", "init", "-b", "main")
+	runCmd(t, repoRoot, "git", "config", "user.email", "test@example.com")
+	runCmd(t, repoRoot, "git", "config", "user.name", "Test User")
+	if err := os.WriteFile(filepath.Join(repoRoot, "README.md"), []byte("base"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	runCmd(t, repoRoot, "git", "add", ".")
+	runCmd(t, repoRoot, "git", "commit", "-m", "init")
+
+	exists, err := BranchExists(context.Background(), repoRoot, "missing-branch")
+	if err != nil {
+		t.Fatalf("BranchExists failed: %v", err)
+	}
+	if exists {
+		t.Fatalf("expected missing branch to return false")
+	}
+}
+
+func TestParseAheadCountRejectsNonNumericOutput(t *testing.T) {
+	_, err := parseAheadCount("not-a-number")
+	if err == nil {
+		t.Fatalf("expected parseAheadCount to return an error for non-numeric output")
+	}
+}
+
 func TestStatusDetailsClassifiesTrackedAndUntracked(t *testing.T) {
 	requireTool(t, "git")
 	repoRoot := t.TempDir()

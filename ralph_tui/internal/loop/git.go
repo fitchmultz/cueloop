@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -379,8 +380,11 @@ func CheckoutNewBranch(ctx context.Context, repoRoot string, branch string) erro
 func BranchExists(ctx context.Context, repoRoot string, branch string) (bool, error) {
 	err := gitRun(ctx, repoRoot, "rev-parse", "--verify", "--quiet", branch+"^{commit}")
 	if err != nil {
-		if _, ok := err.(*exec.ExitError); ok {
-			return false, nil
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			if exitErr.ExitCode() == 1 {
+				return false, nil
+			}
 		}
 		return false, err
 	}
@@ -426,8 +430,14 @@ func AheadCount(ctx context.Context, repoRoot string) (int, error) {
 	if trimmed == "" {
 		return 0, fmt.Errorf("git rev-list returned empty output")
 	}
-	count := 0
-	fmt.Sscanf(trimmed, "%d", &count)
+	return parseAheadCount(trimmed)
+}
+
+func parseAheadCount(output string) (int, error) {
+	count, err := strconv.Atoi(output)
+	if err != nil {
+		return 0, fmt.Errorf("git rev-list returned non-numeric output: %q", output)
+	}
 	return count, nil
 }
 
