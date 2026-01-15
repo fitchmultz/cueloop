@@ -1,7 +1,7 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0423 [code]: Fix process-group cancellation reliability (stop/cancel should kill ALL child procs) for loop + specs runners across platforms. (ralph_tui/internal/procgroup/procgroup_unix.go, ralph_tui/internal/loop/exec.go, ralph_tui/internal/specs/specs.go)
+- [x] RQ-0423 [code]: Fix process-group cancellation reliability (stop/cancel should kill ALL child procs) for loop + specs runners across platforms. (ralph_tui/internal/procgroup/procgroup_unix.go, ralph_tui/internal/loop/exec.go, ralph_tui/internal/specs/specs.go)
   - Evidence:
     - `ralph_tui/internal/procgroup/procgroup_unix.go` only overrides `cmd.Cancel` when `cmd.Cancel != nil`; if it is nil (or doesn’t kill the process group), child processes may survive cancel.
     - Both loop and specs rely on context cancellation to stop runner processes; lingering children are a common "hang/lag" failure mode.
