@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -122,6 +123,18 @@ func TestLoopStateIgnoresStaleRun(t *testing.T) {
 
 	if view.state.ActiveItemID != "" {
 		t.Fatalf("expected stale loop state to be ignored")
+	}
+}
+
+func TestLoopRunControlsShowSingleIterationWhenOnce(t *testing.T) {
+	view := newLoopView(testLoopConfig(), paths.Locations{})
+	view.mode = loopRunning
+	view.state = loop.State{Mode: loop.ModeOnce}
+	view.overrides.MaxIterations = 9
+
+	controls := view.controlsView()
+	if !strings.Contains(controls, "Max iterations: 1") {
+		t.Fatalf("expected single-run controls to show max iterations 1, got %q", controls)
 	}
 }
 

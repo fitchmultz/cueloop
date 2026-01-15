@@ -376,12 +376,19 @@ func (l *loopView) autoTargetEffort() string {
 func (l *loopView) runControlsView() string {
 	lines := []string{
 		fmt.Sprintf("Runner: %s (%s)", l.overrides.Runner, runnerargs.DisplayEffort(l.overrides.ReasoningEffort)),
-		fmt.Sprintf("Sleep: %ds | Max iterations: %s | Max stalled: %d", l.overrides.SleepSeconds, iterationLimitLabel(l.overrides.MaxIterations), l.overrides.MaxStalled),
+		fmt.Sprintf("Sleep: %ds | Max iterations: %s | Max stalled: %d", l.overrides.SleepSeconds, l.iterationLimitLabel(), l.overrides.MaxStalled),
 		fmt.Sprintf("Only tags: %s | Require main: %s | Auto commit/push: %s/%s", l.overrides.OnlyTags, yesNo(l.overrides.RequireMain), yesNo(l.overrides.AutoCommit), yesNo(l.overrides.AutoPush)),
 		fmt.Sprintf("Dirty repo start/during: %s/%s | Allow untracked: %s | Quarantine clean: %s", l.overrides.DirtyRepoStart, l.overrides.DirtyRepoDuring, yesNo(l.overrides.AllowUntracked), yesNo(l.overrides.QuarantineClean)),
 		"Keys: s stop | e edit overrides | p force ctx builder | shift+p pin | shift+l logs",
 	}
 	return strings.Join(lines, "\n")
+}
+
+func (l *loopView) iterationLimitLabel() string {
+	if l.state.Mode == loop.ModeOnce {
+		return "1"
+	}
+	return iterationLimitLabel(l.overrides.MaxIterations)
 }
 
 func iterationLimitLabel(limit int) string {
@@ -405,7 +412,7 @@ func (l *loopView) stateView() string {
 		}
 	}
 	if l.state.Iteration > 0 {
-		maxLabel := iterationLimitLabel(l.overrides.MaxIterations)
+		maxLabel := l.iterationLimitLabel()
 		if maxLabel != "unlimited" {
 			lines = append(lines, fmt.Sprintf("Iteration: %d of %s (%s)", l.state.Iteration, maxLabel, l.state.Mode))
 		} else {
