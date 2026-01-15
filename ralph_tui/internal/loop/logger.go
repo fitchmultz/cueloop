@@ -69,11 +69,19 @@ func (r *Redactor) Redact(line string) string {
 
 func redactKeyValue(line string, key string) string {
 	needle := key + "="
+	if !strings.Contains(line, needle) {
+		return line
+	}
+	var builder strings.Builder
+	builder.Grow(len(line))
+	cursor := 0
 	for {
-		idx := strings.Index(line, needle)
+		idx := strings.Index(line[cursor:], needle)
 		if idx == -1 {
-			return line
+			builder.WriteString(line[cursor:])
+			return builder.String()
 		}
+		idx += cursor
 		start := idx + len(needle)
 		end := start
 		for end < len(line) {
@@ -83,6 +91,8 @@ func redactKeyValue(line string, key string) string {
 			}
 			end++
 		}
-		line = line[:start] + "[REDACTED]" + line[end:]
+		builder.WriteString(line[cursor:start])
+		builder.WriteString("[REDACTED]")
+		cursor = end
 	}
 }

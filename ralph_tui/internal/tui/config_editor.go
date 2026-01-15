@@ -15,17 +15,18 @@ import (
 )
 
 type configEditor struct {
-	locations paths.Locations
-	drafts    map[string]config.PartialConfig
-	layer     string
-	action    string
-	apply     bool
-	data      configFormData
-	form      *huh.Form
-	saveError string
-	saveNote  string
-	width     int
-	height    int
+	locations    paths.Locations
+	drafts       map[string]config.PartialConfig
+	layer        string
+	action       string
+	apply        bool
+	cliOverrides config.PartialConfig
+	data         configFormData
+	form         *huh.Form
+	saveError    string
+	saveNote     string
+	width        int
+	height       int
 }
 
 type configFormData struct {
@@ -72,12 +73,17 @@ const (
 	actionDiscard    = "discard_session"
 )
 
-func newConfigEditor(locations paths.Locations) (*configEditor, error) {
+func newConfigEditor(
+	locations paths.Locations,
+	cliOverrides config.PartialConfig,
+	sessionOverrides config.PartialConfig,
+) (*configEditor, error) {
 	editor := &configEditor{
-		locations: locations,
-		drafts:    map[string]config.PartialConfig{},
-		layer:     layerRepo,
-		action:    actionSaveRepo,
+		locations:    locations,
+		drafts:       map[string]config.PartialConfig{},
+		layer:        layerRepo,
+		action:       actionSaveRepo,
+		cliOverrides: cliOverrides,
 	}
 
 	var globalPartial *config.PartialConfig
@@ -104,7 +110,7 @@ func newConfigEditor(locations paths.Locations) (*configEditor, error) {
 	if repoPartial != nil {
 		editor.drafts[layerRepo] = *repoPartial
 	}
-	editor.drafts[layerSession] = config.PartialConfig{}
+	editor.drafts[layerSession] = sessionOverrides
 
 	if err := editor.resetLayer(editor.layer); err != nil {
 		return nil, err
@@ -182,6 +188,10 @@ func (e *configEditor) SaveRepo() {
 
 func (e *configEditor) DiscardSession() {
 	e.handleAction(actionDiscard)
+}
+
+func (e *configEditor) SessionOverrides() config.PartialConfig {
+	return e.drafts[layerSession]
 }
 
 func (e *configEditor) handleAction(action string) {
@@ -285,7 +295,11 @@ func (e *configEditor) effectiveConfig(layer string) (config.Config, error) {
 	if err != nil {
 		return config.Config{}, err
 	}
-	defaults = config.ResolvePaths(defaults, e.locations.RepoRoot)
+	repoRoot := e.locations.RepoRoot
+	if repoRoot == "" {
+		repoRoot = e.locations.CWD
+	}
+	defaults = config.ResolvePaths(defaults, repoRoot)
 
 	globalDraft := e.drafts[layerGlobal]
 	globalCfg, err := config.ApplyPartial(defaults, globalDraft, e.locations.HomeDir)
@@ -294,13 +308,18 @@ func (e *configEditor) effectiveConfig(layer string) (config.Config, error) {
 	}
 
 	repoDraft := e.drafts[layerRepo]
-	repoCfg, err := config.ApplyPartial(globalCfg, repoDraft, e.locations.RepoRoot)
+	repoCfg, err := config.ApplyPartial(globalCfg, repoDraft, repoRoot)
+	if err != nil {
+		return config.Config{}, err
+	}
+
+	cliCfg, err := config.ApplyPartial(repoCfg, e.cliOverrides, e.locations.CWD)
 	if err != nil {
 		return config.Config{}, err
 	}
 
 	sessionDraft := e.drafts[layerSession]
-	sessionCfg, err := config.ApplyPartial(repoCfg, sessionDraft, e.locations.CWD)
+	sessionCfg, err := config.ApplyPartial(cliCfg, sessionDraft, e.locations.CWD)
 	if err != nil {
 		return config.Config{}, err
 	}
@@ -322,7 +341,11 @@ func (e *configEditor) validatePartial(layer string, partial config.PartialConfi
 	if err != nil {
 		return err
 	}
-	defaults = config.ResolvePaths(defaults, e.locations.RepoRoot)
+	repoRoot := e.locations.RepoRoot
+	if repoRoot == "" {
+		repoRoot = e.locations.CWD
+	}
+	defaults = config.ResolvePaths(defaults, repoRoot)
 
 	var base config.Config
 	switch layer {
@@ -338,7 +361,11 @@ func (e *configEditor) validatePartial(layer string, partial config.PartialConfi
 		if err != nil {
 			return err
 		}
-		base, err = config.ApplyPartial(base, e.drafts[layerRepo], e.locations.RepoRoot)
+		base, err = config.ApplyPartial(base, e.drafts[layerRepo], repoRoot)
+		if err != nil {
+			return err
+		}
+		base, err = config.ApplyPartial(base, e.cliOverrides, e.locations.CWD)
 		if err != nil {
 			return err
 		}
@@ -350,7 +377,7 @@ func (e *configEditor) validatePartial(layer string, partial config.PartialConfi
 	if layer == layerGlobal {
 		basePath = e.locations.HomeDir
 	} else if layer == layerRepo {
-		basePath = e.locations.RepoRoot
+		basePath = repoRoot
 	}
 
 	cfg, err := config.ApplyPartial(base, partial, basePath)

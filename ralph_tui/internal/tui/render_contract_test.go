@@ -44,7 +44,7 @@ func TestRenderContract(t *testing.T) {
 				for _, screen := range screens {
 					name := fmt.Sprintf("w%dxh%d-help%t-focus%t-%s", size.w, size.h, showAll, navFocused, screenName(screen))
 					t.Run(name, func(t *testing.T) {
-						m := newModel(cfg, locs)
+						m := newModel(cfg, locs, StartOptions{})
 						m.screen = screen
 						m.navFocused = navFocused
 						m.help.ShowAll = showAll
@@ -104,7 +104,7 @@ func TestBorderContract(t *testing.T) {
 				for _, screen := range screens {
 					name := fmt.Sprintf("border-w%dxh%d-help%t-focus%t-%s", size.w, size.h, showAll, navFocused, screenName(screen))
 					t.Run(name, func(t *testing.T) {
-						m := newModel(cfg, locs)
+						m := newModel(cfg, locs, StartOptions{})
 						m.screen = screen
 						m.navFocused = navFocused
 						m.help.ShowAll = showAll
@@ -161,7 +161,7 @@ func assertBodyBordersIntact(t *testing.T, out string, w int, bodyH int) {
 
 func TestHelpScreenMentionsTabFocus(t *testing.T) {
 	_, locs, cfg := newHermeticModel(t)
-	m := newModel(cfg, locs)
+	m := newModel(cfg, locs, StartOptions{})
 	m.screen = screenHelp
 	view := m.contentView()
 	if !strings.Contains(view, "Tab") {

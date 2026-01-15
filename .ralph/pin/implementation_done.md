@@ -1,6 +1,9 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0402 [code]: Preserve CLI/session overrides on config reload; reflect effective config in editor. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/config_editor.go, ralph_tui/internal/config/load.go)
+  - Evidence: reloadConfigCmd calls LoadFromLocations without SessionOverrides/CLIOverrides; config editor reconstructs from files/defaults instead of active runtime config, so session changes are lost or invisible.
+  - Plan: Track session overrides in model; pass both SessionOverrides and CLIOverrides into LoadFromLocations on reload; seed config editor from the effective config instead of file-only layers; add regression tests for reload preserving overrides.
 - [x] RQ-0401 [code]: Relax overly aggressive redaction; make it configurable. (ralph_tui/internal/loop/logger.go, ralph_tui/internal/loop/line_writer.go, ralph_tui/internal/loop/loop.go, ralph_tui/internal/config/config.go, ralph_tui/internal/config/defaults.json, ralph_tui/internal/tui/config_editor.go)
   - Evidence: loop.Redactor redacts all environment values (>=4 chars) and key=value patterns; this hides non-secret paths and makes logs hard to use; user does not require strict env redaction.
   - Plan: Add a redaction mode setting (off, secrets_only, all_env) with secrets_only as default; only redact env keys that look sensitive by name; avoid redacting common path-like vars by default; add unit tests covering each mode.

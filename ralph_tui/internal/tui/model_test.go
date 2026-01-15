@@ -10,7 +10,7 @@ import (
 
 func TestModelScreenTransition(t *testing.T) {
 	_, locs, cfg := newHermeticModel(t)
-	m := newModel(cfg, locs)
+	m := newModel(cfg, locs, StartOptions{})
 	m.nav.Select(4)
 	m.navFocused = true
 
@@ -27,7 +27,7 @@ func TestModelScreenTransition(t *testing.T) {
 
 func TestConfigReloadBumpsRefreshGeneration(t *testing.T) {
 	_, locs, cfg := newHermeticModel(t)
-	m := newModel(cfg, locs)
+	m := newModel(cfg, locs, StartOptions{})
 	before := m.refreshGen
 
 	cfg.UI.RefreshSeconds = cfg.UI.RefreshSeconds + 1

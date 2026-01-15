@@ -53,7 +53,9 @@ func newRootCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return tui.Start(cfg, locs)
+			return tui.Start(cfg, locs, tui.StartOptions{
+				CLIOverrides: cliOverrides,
+			})
 		},
 	}
 

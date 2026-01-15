@@ -55,7 +55,7 @@ func newHermeticModel(t *testing.T) (model, paths.Locations, config.Config) {
 		RepoConfigPath:   "",
 	}
 
-	return newModel(cfg, locs), locs, cfg
+	return newModel(cfg, locs, StartOptions{}), locs, cfg
 }
 
 func writeTestFile(t *testing.T, path string, content string) {

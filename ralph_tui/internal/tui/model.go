@@ -16,9 +16,15 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 )
 
+// StartOptions provides override layers that should be preserved during reloads.
+type StartOptions struct {
+	CLIOverrides     config.PartialConfig
+	SessionOverrides config.PartialConfig
+}
+
 // Start launches the TUI and blocks until it exits.
-func Start(cfg config.Config, locations paths.Locations) error {
-	program := tea.NewProgram(newModel(cfg, locations), tea.WithAltScreen())
+func Start(cfg config.Config, locations paths.Locations, opts StartOptions) error {
+	program := tea.NewProgram(newModel(cfg, locations, opts), tea.WithAltScreen())
 	finalModel, err := program.Run()
 	switch m := finalModel.(type) {
 	case model:
@@ -30,28 +36,30 @@ func Start(cfg config.Config, locations paths.Locations) error {
 }
 
 type model struct {
-	nav        list.Model
-	screen     screen
-	help       help.Model
-	keys       keyMap
-	navFocused bool
-	cfg        config.Config
-	configView *configEditor
-	pinView    *pinView
-	specsView  *specsView
-	loopView   *loopView
-	logsView   *logsView
-	logger     *tuiLogger
-	logErr     error
-	refreshGen int
-	width      int
-	height     int
-	layout     layoutSpec
-	initErr    error
-	locations  paths.Locations
+	nav              list.Model
+	screen           screen
+	help             help.Model
+	keys             keyMap
+	navFocused       bool
+	cfg              config.Config
+	configView       *configEditor
+	pinView          *pinView
+	specsView        *specsView
+	loopView         *loopView
+	logsView         *logsView
+	logger           *tuiLogger
+	logErr           error
+	cliOverrides     config.PartialConfig
+	sessionOverrides config.PartialConfig
+	refreshGen       int
+	width            int
+	height           int
+	layout           layoutSpec
+	initErr          error
+	locations        paths.Locations
 }
 
-func newModel(cfg config.Config, locations paths.Locations) model {
+func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) model {
 	items := make([]list.Item, 0)
 	for _, item := range navigationItems() {
 		items = append(items, item)
@@ -66,7 +74,7 @@ func newModel(cfg config.Config, locations paths.Locations) model {
 
 	var err error
 
-	configView, configErr := newConfigEditor(locations)
+	configView, configErr := newConfigEditor(locations, opts.CLIOverrides, opts.SessionOverrides)
 	if err == nil {
 		err = configErr
 	}
@@ -85,20 +93,22 @@ func newModel(cfg config.Config, locations paths.Locations) model {
 	logsView := newLogsView("")
 
 	m := model{
-		nav:        l,
-		screen:     screenDashboard,
-		help:       help.New(),
-		keys:       newKeyMap(),
-		navFocused: true,
-		cfg:        cfg,
-		configView: configView,
-		pinView:    pinView,
-		specsView:  specsView,
-		loopView:   loopView,
-		logsView:   logsView,
-		refreshGen: 1,
-		initErr:    err,
-		locations:  locations,
+		nav:              l,
+		screen:           screenDashboard,
+		help:             help.New(),
+		keys:             newKeyMap(),
+		navFocused:       true,
+		cfg:              cfg,
+		configView:       configView,
+		pinView:          pinView,
+		specsView:        specsView,
+		loopView:         loopView,
+		logsView:         logsView,
+		cliOverrides:     opts.CLIOverrides,
+		sessionOverrides: opts.SessionOverrides,
+		refreshGen:       1,
+		initErr:          err,
+		locations:        locations,
 	}
 	m.setLogger(cfg)
 	if m.logsView != nil {
@@ -226,14 +236,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.screen == screenConfig {
 			if key.Matches(msg, m.keys.SaveGlobal) && m.configView != nil {
 				m.configView.SaveGlobal()
+				m.syncSessionOverridesFromEditor()
 				return m, m.reloadConfigCmd()
 			}
 			if key.Matches(msg, m.keys.SaveRepo) && m.configView != nil {
 				m.configView.SaveRepo()
+				m.syncSessionOverridesFromEditor()
 				return m, m.reloadConfigCmd()
 			}
 			if key.Matches(msg, m.keys.Discard) && m.configView != nil {
 				m.configView.DiscardSession()
+				m.syncSessionOverridesFromEditor()
 				return m, m.reloadConfigCmd()
 			}
 		}
@@ -567,10 +580,23 @@ func refreshCmd(seconds int, gen int) tea.Cmd {
 
 func (m model) reloadConfigCmd() tea.Cmd {
 	locations := m.locations
+	cliOverrides := m.cliOverrides
+	sessionOverrides := m.sessionOverrides
 	return func() tea.Msg {
-		cfg, err := config.LoadFromLocations(config.LoadOptions{Locations: locations})
+		cfg, err := config.LoadFromLocations(config.LoadOptions{
+			Locations:        locations,
+			CLIOverrides:     cliOverrides,
+			SessionOverrides: sessionOverrides,
+		})
 		return configReloadMsg{cfg: cfg, err: err}
 	}
+}
+
+func (m *model) syncSessionOverridesFromEditor() {
+	if m.configView == nil {
+		return
+	}
+	m.sessionOverrides = m.configView.SessionOverrides()
 }
 
 func (m *model) applyConfig() {
