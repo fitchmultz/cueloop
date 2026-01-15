@@ -52,7 +52,7 @@ func BenchmarkSpecsViewAppendRunLogs(b *testing.B) {
 		b.Fatalf("default config: %v", err)
 	}
 	repoRoot := b.TempDir()
-	cfg = config.ResolvePaths(cfg, repoRoot)
+	cfg = config.ResolvePaths(cfg, repoRoot, repoRoot)
 	if err := cfg.Validate(); err != nil {
 		b.Fatalf("validate config: %v", err)
 	}

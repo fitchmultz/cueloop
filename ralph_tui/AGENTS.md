@@ -4,7 +4,7 @@
 - `cmd/ralph/`: Cobra-based CLI/TUI entrypoint (`go run ./cmd/ralph`).
 - `internal/`: Core application packages (`config`, `loop`, `pin`, `prompts`, `specs`, `tui`, etc.).
 - `ralph_legacy/`: Legacy scripts and prompt/spec templates (`bin/`, `specs/`), not required for the TUI.
-- `.ralph/`: Runtime/config defaults, cache, and pin files (`.ralph/ralph.json`, `.ralph/pin/`, `.ralph/cache/`).
+- `.ralph/`: Runtime/config defaults and pin files (`.ralph/ralph.json`, `.ralph/pin/`); cache defaults to `~/.ralph/cache/{repo}` unless overridden.
 - Tests live alongside code as `*_test.go` (no separate test directory).
 
 ## Build, Test, and Development Commands

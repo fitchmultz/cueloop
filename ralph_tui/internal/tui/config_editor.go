@@ -395,21 +395,21 @@ func (e *configEditor) layerConfigs() (config.Config, config.Config, config.Conf
 	if repoRoot == "" {
 		repoRoot = e.locations.CWD
 	}
-	defaults = config.ResolvePaths(defaults, repoRoot)
+	defaults = config.ResolvePaths(defaults, repoRoot, repoRoot)
 
-	globalCfg, err := config.ApplyPartial(defaults, e.drafts[layerGlobal], e.locations.HomeDir)
+	globalCfg, err := config.ApplyPartial(defaults, e.drafts[layerGlobal], e.locations.HomeDir, repoRoot)
 	if err != nil {
 		return config.Config{}, config.Config{}, config.Config{}, config.Config{}, config.Config{}, err
 	}
-	repoCfg, err := config.ApplyPartial(globalCfg, e.drafts[layerRepo], repoRoot)
+	repoCfg, err := config.ApplyPartial(globalCfg, e.drafts[layerRepo], repoRoot, repoRoot)
 	if err != nil {
 		return config.Config{}, config.Config{}, config.Config{}, config.Config{}, config.Config{}, err
 	}
-	cliCfg, err := config.ApplyPartial(repoCfg, e.cliOverrides, e.locations.CWD)
+	cliCfg, err := config.ApplyPartial(repoCfg, e.cliOverrides, e.locations.CWD, repoRoot)
 	if err != nil {
 		return config.Config{}, config.Config{}, config.Config{}, config.Config{}, config.Config{}, err
 	}
-	sessionCfg, err := config.ApplyPartial(cliCfg, e.drafts[layerSession], e.locations.CWD)
+	sessionCfg, err := config.ApplyPartial(cliCfg, e.drafts[layerSession], e.locations.CWD, repoRoot)
 	if err != nil {
 		return config.Config{}, config.Config{}, config.Config{}, config.Config{}, config.Config{}, err
 	}
@@ -442,7 +442,7 @@ func (e *configEditor) layerConfigsForSources() (config.Config, config.Config, c
 	}
 
 	if partial, err := partialFromForm(e.data); err == nil {
-		if currentCfg, err := config.ApplyPartial(baseCfg, partial, basePath); err == nil {
+		if currentCfg, err := config.ApplyPartial(baseCfg, partial, basePath, repoRoot); err == nil {
 			switch e.layer {
 			case layerGlobal:
 				globalCfg = currentCfg
@@ -713,7 +713,7 @@ func (e *configEditor) validatePartial(layer string, partial config.PartialConfi
 		basePath = repoRoot
 	}
 
-	cfg, err := config.ApplyPartial(base, partial, basePath)
+	cfg, err := config.ApplyPartial(base, partial, basePath, repoRoot)
 	if err != nil {
 		return err
 	}

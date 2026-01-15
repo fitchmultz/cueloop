@@ -47,7 +47,7 @@ func LoadFromLocations(opts LoadOptions) (Config, error) {
 	if repoRoot == "" {
 		repoRoot = opts.Locations.CWD
 	}
-	base = resolveConfigPaths(base, repoRoot)
+	base = resolveConfigPaths(base, repoRoot, repoRoot)
 
 	merged := base
 
@@ -57,7 +57,7 @@ func LoadFromLocations(opts LoadOptions) (Config, error) {
 			return Config{}, err
 		}
 		if partial != nil {
-			merged, err = applyPartial(merged, *partial, opts.Locations.HomeDir)
+			merged, err = applyPartial(merged, *partial, opts.Locations.HomeDir, repoRoot)
 			if err != nil {
 				return Config{}, err
 			}
@@ -70,7 +70,7 @@ func LoadFromLocations(opts LoadOptions) (Config, error) {
 			return Config{}, err
 		}
 		if partial != nil {
-			merged, err = applyPartial(merged, *partial, repoRoot)
+			merged, err = applyPartial(merged, *partial, repoRoot, repoRoot)
 			if err != nil {
 				return Config{}, err
 			}
@@ -78,14 +78,14 @@ func LoadFromLocations(opts LoadOptions) (Config, error) {
 	}
 
 	if !isEmptyPartial(opts.CLIOverrides) {
-		merged, err = applyPartial(merged, opts.CLIOverrides, opts.Locations.CWD)
+		merged, err = applyPartial(merged, opts.CLIOverrides, opts.Locations.CWD, repoRoot)
 		if err != nil {
 			return Config{}, err
 		}
 	}
 
 	if !isEmptyPartial(opts.SessionOverrides) {
-		merged, err = applyPartial(merged, opts.SessionOverrides, opts.Locations.CWD)
+		merged, err = applyPartial(merged, opts.SessionOverrides, opts.Locations.CWD, repoRoot)
 		if err != nil {
 			return Config{}, err
 		}
@@ -103,14 +103,14 @@ func LoadPartial(path string) (*PartialConfig, error) {
 	return loadPartialFromFile(path)
 }
 
-// ApplyPartial merges a partial config onto a base config using the supplied basePath.
-func ApplyPartial(base Config, partial PartialConfig, basePath string) (Config, error) {
-	return applyPartial(base, partial, basePath)
+// ApplyPartial merges a partial config onto a base config using the supplied basePath and repoRoot.
+func ApplyPartial(base Config, partial PartialConfig, basePath string, repoRoot string) (Config, error) {
+	return applyPartial(base, partial, basePath, repoRoot)
 }
 
-// ResolvePaths resolves relative paths in a base config using the supplied basePath.
-func ResolvePaths(cfg Config, basePath string) Config {
-	return resolveConfigPaths(cfg, basePath)
+// ResolvePaths resolves relative paths in a base config using the supplied basePath and repoRoot.
+func ResolvePaths(cfg Config, basePath string, repoRoot string) Config {
+	return resolveConfigPaths(cfg, basePath, repoRoot)
 }
 
 func loadPartialFromFile(path string) (*PartialConfig, error) {
@@ -147,7 +147,7 @@ func isEmptyPartial(partial PartialConfig) bool {
 	return true
 }
 
-func applyPartial(base Config, partial PartialConfig, basePath string) (Config, error) {
+func applyPartial(base Config, partial PartialConfig, basePath string, repoRoot string) (Config, error) {
 	if partial.Version != nil {
 		base.Version = *partial.Version
 	}
@@ -168,7 +168,7 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 			if trimmed == "" {
 				base.Logging.File = ""
 			} else {
-				resolved, err := resolvePath(basePath, trimmed)
+				resolved, err := resolvePathWithRepo(basePath, repoRoot, trimmed)
 				if err != nil {
 					return base, err
 				}
@@ -181,21 +181,21 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 	}
 	if partial.Paths != nil {
 		if partial.Paths.DataDir != nil {
-			resolved, err := resolvePath(basePath, *partial.Paths.DataDir)
+			resolved, err := resolvePathWithRepo(basePath, repoRoot, *partial.Paths.DataDir)
 			if err != nil {
 				return base, err
 			}
 			base.Paths.DataDir = resolved
 		}
 		if partial.Paths.CacheDir != nil {
-			resolved, err := resolvePath(basePath, *partial.Paths.CacheDir)
+			resolved, err := resolvePathWithRepo(basePath, repoRoot, *partial.Paths.CacheDir)
 			if err != nil {
 				return base, err
 			}
 			base.Paths.CacheDir = resolved
 		}
 		if partial.Paths.PinDir != nil {
-			resolved, err := resolvePath(basePath, *partial.Paths.PinDir)
+			resolved, err := resolvePathWithRepo(basePath, repoRoot, *partial.Paths.PinDir)
 			if err != nil {
 				return base, err
 			}
@@ -308,18 +308,18 @@ func stripDeprecatedConfigFields(data []byte) ([]byte, error) {
 	return cleaned, nil
 }
 
-func resolveConfigPaths(cfg Config, basePath string) Config {
-	if resolved, err := resolvePath(basePath, cfg.Paths.DataDir); err == nil {
+func resolveConfigPaths(cfg Config, basePath string, repoRoot string) Config {
+	if resolved, err := resolvePathWithRepo(basePath, repoRoot, cfg.Paths.DataDir); err == nil {
 		cfg.Paths.DataDir = resolved
 	}
-	if resolved, err := resolvePath(basePath, cfg.Paths.CacheDir); err == nil {
+	if resolved, err := resolvePathWithRepo(basePath, repoRoot, cfg.Paths.CacheDir); err == nil {
 		cfg.Paths.CacheDir = resolved
 	}
-	if resolved, err := resolvePath(basePath, cfg.Paths.PinDir); err == nil {
+	if resolved, err := resolvePathWithRepo(basePath, repoRoot, cfg.Paths.PinDir); err == nil {
 		cfg.Paths.PinDir = resolved
 	}
 	if strings.TrimSpace(cfg.Logging.File) != "" {
-		if resolved, err := resolvePath(basePath, cfg.Logging.File); err == nil {
+		if resolved, err := resolvePathWithRepo(basePath, repoRoot, cfg.Logging.File); err == nil {
 			cfg.Logging.File = resolved
 		}
 	}
@@ -327,10 +327,20 @@ func resolveConfigPaths(cfg Config, basePath string) Config {
 	return cfg
 }
 
-func resolvePath(basePath string, value string) (string, error) {
+func resolvePathWithRepo(basePath string, repoRoot string, value string) (string, error) {
 	clean := strings.TrimSpace(value)
 	if clean == "" {
 		return "", fmt.Errorf("path cannot be empty")
+	}
+	if strings.Contains(clean, "{repo}") {
+		repoName := strings.TrimSpace(filepath.Base(strings.TrimSpace(repoRoot)))
+		if repoName == "" || repoName == "." || repoName == string(filepath.Separator) {
+			repoName = strings.TrimSpace(filepath.Base(strings.TrimSpace(basePath)))
+		}
+		if repoName == "" || repoName == "." {
+			return "", fmt.Errorf("path contains {repo} but repo root is unknown")
+		}
+		clean = strings.ReplaceAll(clean, "{repo}", repoName)
 	}
 	if strings.HasPrefix(clean, "~") {
 		home, err := os.UserHomeDir()

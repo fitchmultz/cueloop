@@ -5,3 +5,4 @@
 **/.pytest_cache/
 **/.ty_cache/
 ralph_tui/ralph
+.ralph/cache/

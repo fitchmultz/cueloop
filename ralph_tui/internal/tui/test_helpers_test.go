@@ -39,27 +39,18 @@ func newHermeticModel(t *testing.T) (model, paths.Locations, config.Config) {
 	writeTestFile(t, filepath.Join(pinDir, "README.md"), "Ralph pin fixtures.\n")
 	writeTestFile(t, filepath.Join(pinDir, "specs_builder.md"), "Use AGENTS.md for instructions.\n\n{{INTERACTIVE_INSTRUCTIONS}}\n\n{{INNOVATE_INSTRUCTIONS}}\n")
 
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skipf("missing git: %v", err)
-	}
-	runGit := func(args ...string) {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = repoRoot
-		if output, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v failed: %v\n%s", args, err, string(output))
-		}
-	}
-	runGit("init", "-b", "main")
-	runGit("config", "user.email", "test@example.com")
-	runGit("config", "user.name", "Test User")
-	runGit("add", ".")
-	runGit("commit", "-m", "init")
+	ensureGit(t)
+	runGit(t, repoRoot, "init", "-b", "main")
+	runGit(t, repoRoot, "config", "user.email", "test@example.com")
+	runGit(t, repoRoot, "config", "user.name", "Test User")
+	runGit(t, repoRoot, "add", ".")
+	runGit(t, repoRoot, "commit", "-m", "init")
 
 	base, err := config.DefaultConfig()
 	if err != nil {
 		t.Fatalf("default config: %v", err)
 	}
-	cfg := config.ResolvePaths(base, repoRoot)
+	cfg := config.ResolvePaths(base, repoRoot, repoRoot)
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("validate config: %v", err)
 	}
@@ -80,6 +71,24 @@ func writeTestFile(t *testing.T, path string, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+func ensureGit(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("missing git: %v", err)
+	}
+}
+
+func runGit(t *testing.T, repoRoot string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = repoRoot
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v failed: %v\n%s", args, err, string(output))
+	}
+	return string(output)
 }
 
 var errSentinel = errors.New("sentinel error")

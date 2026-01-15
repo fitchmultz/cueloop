@@ -11,7 +11,7 @@
   },
   "paths": {
     "data_dir": "data",
-    "cache_dir": ".ralph/cache",
+    "cache_dir": "~/.ralph/cache/{repo}",
     "pin_dir": ".ralph/pin"
   },
   "specs": {

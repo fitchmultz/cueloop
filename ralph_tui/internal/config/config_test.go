@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
@@ -120,12 +121,12 @@ func TestLoggingFileResolvesRelative(t *testing.T) {
 	if err != nil {
 		t.Fatalf("default config: %v", err)
 	}
-	base = ResolvePaths(base, tmpDir)
+	base = ResolvePaths(base, tmpDir, tmpDir)
 
 	partial := PartialConfig{
 		Logging: &LoggingPartial{File: stringPtr("logs/ralph_tui.log")},
 	}
-	cfg, err := ApplyPartial(base, partial, tmpDir)
+	cfg, err := ApplyPartial(base, partial, tmpDir, tmpDir)
 	if err != nil {
 		t.Fatalf("ApplyPartial failed: %v", err)
 	}
@@ -136,6 +137,30 @@ func TestLoggingFileResolvesRelative(t *testing.T) {
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("expected config to validate, got %v", err)
+	}
+}
+
+func TestResolvePathsExpandsRepoToken(t *testing.T) {
+	tmpDir := t.TempDir()
+	homeDir := filepath.Join(tmpDir, "home")
+	if err := os.MkdirAll(homeDir, 0o755); err != nil {
+		t.Fatalf("create home dir: %v", err)
+	}
+	t.Setenv("HOME", homeDir)
+	if runtime.GOOS == "windows" {
+		t.Setenv("USERPROFILE", homeDir)
+	}
+
+	repoRoot := filepath.Join(tmpDir, "repo")
+	base, err := DefaultConfig()
+	if err != nil {
+		t.Fatalf("default config: %v", err)
+	}
+	cfg := ResolvePaths(base, repoRoot, repoRoot)
+
+	expected := filepath.Join(homeDir, ".ralph", "cache", filepath.Base(repoRoot))
+	if cfg.Paths.CacheDir != expected {
+		t.Fatalf("expected cache_dir %q, got %q", expected, cfg.Paths.CacheDir)
 	}
 }
 
@@ -158,7 +183,7 @@ func TestApplyPartialNormalizesRunnerSettings(t *testing.T) {
 		},
 	}
 
-	cfg, err := ApplyPartial(base, partial, ".")
+	cfg, err := ApplyPartial(base, partial, ".", ".")
 	if err != nil {
 		t.Fatalf("ApplyPartial failed: %v", err)
 	}
@@ -200,7 +225,7 @@ func TestApplyPartialNormalizesRedactionMode(t *testing.T) {
 			RedactionMode: &mode,
 		},
 	}
-	cfg, err := ApplyPartial(base, partial, ".")
+	cfg, err := ApplyPartial(base, partial, ".", ".")
 	if err != nil {
 		t.Fatalf("ApplyPartial failed: %v", err)
 	}

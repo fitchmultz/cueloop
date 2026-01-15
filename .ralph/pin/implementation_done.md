@@ -1,6 +1,15 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0430 [ops]: Stop Ralph-generated cache/log/output files from dirtying the repo (gitignore cache dir + update defaults). (.gitignore, .repo_ignore, ralph_tui/internal/config/defaults.json, ralph_tui/internal/tui/logging.go, ralph_tui/internal/tui/output_persistence.go)
+  - Evidence:
+    - Default config sets `paths.cache_dir` to `.ralph/cache`, and the TUI writes `ralph_tui.log`, `loop_output.log`, and `specs_output.log` under that directory.
+    - `.gitignore` does not ignore `.ralph/cache/`, so simply running the TUI can make the repo "dirty" and trip the loop’s strict clean-tree requirement.
+    - `.repo_ignore` currently ignores only `.ralph/cache/loop_output.log`, so other generated artifacts can leak into context_builder runs or confuse diffs.
+  - Plan:
+    - Add `.ralph/cache/` (and/or `*.log`/`*_output.log`) to `.gitignore` and update `.repo_ignore` to exclude all generated cache/log/output files.
+    - Consider moving the default cache dir outside the repo (e.g., under `~/.ralph/cache/<repo>`), with a small migration + docs update.
+    - Add a regression test that starts the TUI/loop output writers and asserts `git status --porcelain` remains clean afterwards (given default ignores).
 - [x] RQ-0429 [ops]: Make dirty-repo handling nuanced (don’t nuke uncommitted queue edits; avoid `git clean -fd` surprises; pause/abort with guidance). (ralph_tui/internal/loop/loop.go, ralph_tui/internal/loop/git.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/cmd/ralph/main.go)
   - Evidence:
     - Preflight in `loop.Run()` calls `handleIterationFailure(..., "preflight", ...)` whenever `git status --porcelain` is non-empty, and failure handling ultimately calls `quarantine()` which does `git reset --hard` + `git clean -fd` on `main`, wiping local edits without warning.
