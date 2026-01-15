@@ -1,7 +1,7 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0462 [code]: Ensure spawned codex/opencode processes are terminated when stopping runs or exiting the TUI (e.g., Ctrl+C). (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/loop/runner.go, ralph_tui/internal/loop/exec.go)
+- [ ] RQ-0463 [code]: Ensure spawned codex/opencode processes are terminated when stopping runs or exiting the TUI (e.g., Ctrl+C). (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/loop/runner.go, ralph_tui/internal/loop/exec.go)
   - Evidence: TUI quit (`ctrl+c`/`q`) in `model.Update` exits via `tea.Quit` without calling `loopView.stop()` or `specsView.cancelBuild()`; both actions are the only paths that cancel runner contexts. Runner processes are started via `RunnerInvoker.RunPrompt` and `RunCommand` with procgroup cancellation, so without cancel the codex/opencode subprocess can linger.
   - Plan: Add a centralized shutdown path in `model` that calls loop/specs cancel hooks, invoke it on quit and on program exit (safety net in `Start` after `Run`), and add a regression test (e.g., using helper process runner in `loop_helper_process_test.go`) that asserts the runner process group is terminated when quitting.
 
