@@ -1,6 +1,9 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0411 [code]: Stop dropping loop/specs output under load (channel overflow) and make output capture lossless. (ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/stream_writer.go, ralph_tui/internal/tui/output_persistence.go)
+  - Evidence: loopView/specsView use non-blocking channel sends with a default drop path when buffers fill (loopLogger.write and logChannelSink.PushLine), which silently loses output on noisy runs. Because persistence writes happen from the same batches, the on-disk output files also miss lines.
+  - Plan: Replace drop-on-overflow with a lossless strategy (backpressure, larger buffering, or a dedicated writer goroutine that always persists to disk and only batches UI updates); add a stress/regression test that emits thousands of lines and asserts the persisted output contains expected markers.
 - [x] RQ-0410 [code]: Reduce Specs preview lag by caching the glamour renderer + skipping re-render when prompt inputs are unchanged. (ralph_tui/internal/tui/specs_view.go)
   - Evidence: refreshPreviewAsync() rebuilds a glamour.TermRenderer and renders the full prompt on every refresh/toggle; this is CPU-heavy and contributes to sluggish UI when toggling innovate/autofill/interactive or resizing.
   - Plan: Cache the renderer keyed by preview width; track an input signature (template stamp + flags + lastRunOutput/diffStat) and skip Render/viewport.SetContent if unchanged; add tests that width changes invalidate the cache and redundant refreshes do not re-render.

@@ -352,7 +352,7 @@ func (s *specsView) requestPreviewRefresh() tea.Cmd {
 func (s *specsView) runBuildCmd() tea.Cmd {
 	s.resetRunLogs()
 	s.startPersistingOutput()
-	logCh := make(chan string, 1024)
+	logCh := newLogChannel()
 	s.logCh = logCh
 	s.logRunID++
 	runID := s.logRunID
@@ -732,13 +732,7 @@ type logChannelSink struct {
 }
 
 func (s logChannelSink) PushLine(line string) {
-	if s.ch == nil {
-		return
-	}
-	select {
-	case s.ch <- line:
-	default:
-	}
+	sendLineBlocking(s.ch, line)
 }
 
 func listenSpecsLogs(logCh <-chan string, runID int) tea.Cmd {

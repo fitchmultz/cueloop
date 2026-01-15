@@ -243,7 +243,7 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	l.cancel = cancel
 
-	logCh := make(chan string, 1024)
+	logCh := newLogChannel()
 	l.logCh = logCh
 	l.logRunID++
 	runID := l.logRunID
@@ -268,10 +268,7 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 	runCmd := func() tea.Msg {
 		logger := loopLogger{
 			write: func(line string) {
-				select {
-				case logCh <- line:
-				default:
-				}
+				sendLineBlocking(logCh, line)
 			},
 		}
 		runner, err := loop.NewRunner(loop.Options{

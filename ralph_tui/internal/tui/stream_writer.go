@@ -3,6 +3,8 @@ package tui
 
 import "strings"
 
+const logChannelBufferSize = 4096
+
 type lineSink interface {
 	PushLine(line string)
 }
@@ -20,6 +22,17 @@ type logBatch struct {
 
 func newStreamWriter(sink lineSink) *streamWriter {
 	return &streamWriter{sink: sink}
+}
+
+func newLogChannel() chan string {
+	return make(chan string, logChannelBufferSize)
+}
+
+func sendLineBlocking(ch chan<- string, line string) {
+	if ch == nil {
+		return
+	}
+	ch <- line
 }
 
 func (w *streamWriter) Write(p []byte) (int, error) {
