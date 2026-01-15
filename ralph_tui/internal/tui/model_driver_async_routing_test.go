@@ -27,7 +27,7 @@ func TestModelDriver_BackgroundAsyncUpdatesNotDropped(t *testing.T) {
 		t.Fatalf("expected specs view to be initialized")
 	}
 
-	driver.Send(pinReloadMsg{items: []pin.QueueItem{item}})
+	driver.Send(pinReloadMsg{queueItems: []pin.QueueItem{item}})
 	driver.Send(specsPreviewMsg{preview: "Preview content", effective: true, auto: true})
 
 	if len(driver.m.pinView.items) != 1 {

@@ -28,6 +28,7 @@ type keyMap struct {
 	MoveChecked               key.Binding
 	BlockItem                 key.Binding
 	ToggleChecked             key.Binding
+	TogglePinSection          key.Binding
 	TogglePane                key.Binding
 	ToggleInteractive         key.Binding
 	ToggleInnovate            key.Binding
@@ -134,6 +135,10 @@ func newKeyMap() keyMap {
 			key.WithKeys("x"),
 			key.WithHelp("x", "toggle checked"),
 		),
+		TogglePinSection: key.NewBinding(
+			key.WithKeys("B"),
+			key.WithHelp("shift+b", "toggle queue/blocked"),
+		),
 		TogglePane: key.NewBinding(
 			key.WithKeys("ctrl+t"),
 			key.WithHelp("ctrl+t", "toggle pane"),
@@ -217,7 +222,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Quit, k.ToggleNav, k.Focus, k.Help, k.RefreshNow, k.Search, k.Select},
 		{k.EditSpecsSettings, k.ToggleLogsFormat, k.SaveGlobal, k.SaveRepo, k.Discard, k.ResetField, k.ResetLayer},
-		{k.ValidatePin, k.EditQueue, k.MoveChecked, k.BlockItem},
+		{k.ValidatePin, k.EditQueue, k.TogglePinSection, k.MoveChecked, k.BlockItem, k.ToggleChecked},
 		{k.ToggleInteractive, k.ToggleInnovate, k.ToggleAutofill, k.ToggleScoutWorkflow, k.EditUserFocus, k.RunSpecs, k.StopSpecs},
 		{k.RunLoopOnce, k.RunLoopContinuous, k.StopLoop, k.EditLoopConfig, k.ToggleForceContextBuilder, k.JumpToPin, k.JumpToLogs},
 	}

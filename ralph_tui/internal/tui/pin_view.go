@@ -25,6 +25,7 @@ type pinMode int
 const (
 	pinModeTable pinMode = iota
 	pinModeBlockForm
+	pinModeMoveCheckedForm
 )
 
 type pinFocus int
@@ -34,13 +35,74 @@ const (
 	pinFocusDetail
 )
 
+type pinSection int
+
+const (
+	pinSectionQueue pinSection = iota
+	pinSectionBlocked
+)
+
+func (s pinSection) Label() string {
+	switch s {
+	case pinSectionBlocked:
+		return "Blocked"
+	case pinSectionQueue:
+		fallthrough
+	default:
+		return "Queue"
+	}
+}
+
+type pinTableEntry struct {
+	Section       pinSection
+	ID            string
+	Header        string
+	Lines         []string
+	Checked       bool
+	FixupAttempts int
+}
+
+func queueEntry(item pin.QueueItem) pinTableEntry {
+	return pinTableEntry{
+		Section: pinSectionQueue,
+		ID:      item.ID,
+		Header:  item.Header,
+		Lines:   item.Lines,
+		Checked: item.Checked,
+	}
+}
+
+func blockedEntry(item pin.BlockedItem) pinTableEntry {
+	return pinTableEntry{
+		Section:       pinSectionBlocked,
+		ID:            item.ID,
+		Header:        item.Header,
+		Lines:         item.Lines,
+		FixupAttempts: item.FixupAttempts,
+	}
+}
+
+func (e pinTableEntry) StatusCell() string {
+	if e.Section == pinSectionBlocked {
+		if e.FixupAttempts > 0 {
+			return fmt.Sprintf("b%d", e.FixupAttempts)
+		}
+		return "blk"
+	}
+	if e.Checked {
+		return "[x]"
+	}
+	return "[ ]"
+}
+
 type pinReloadMsg struct {
-	items       []pin.QueueItem
-	queueStamp  fileStamp
-	blocked     int
-	err         error
-	stampErr    error
-	resetScroll bool
+	queueItems   []pin.QueueItem
+	blockedItems []pin.BlockedItem
+	queueStamp   fileStamp
+	blockedCount int
+	err          error
+	stampErr     error
+	resetScroll  bool
 }
 
 type pinQueueEditDoneMsg struct {
@@ -48,32 +110,42 @@ type pinQueueEditDoneMsg struct {
 }
 
 type pinView struct {
-	files               pin.Files
-	items               []pin.QueueItem
-	allItems            []pin.QueueItem
-	blockedCount        int
-	table               table.Model
-	tableStyles         table.Styles
-	detail              viewport.Model
-	status              string
-	err                 string
-	mode                pinMode
-	focus               pinFocus
-	loading             bool
-	reloadAgain         bool
-	blockForm           *huh.Form
-	blockReason         string
-	config              config.Config
-	locations           paths.Locations
-	logger              *tuiLogger
-	width               int
-	height              int
-	queueStamp          fileStamp
-	searchTerm          string
-	searchAnchor        string
-	searchOffset        int
-	pendingSelectID     string
-	validateAfterReload bool
+	files                 pin.Files
+	items                 []pinTableEntry
+	allItems              []pinTableEntry
+	queueAll              []pinTableEntry
+	blockedAll            []pinTableEntry
+	blockedCount          int
+	section               pinSection
+	table                 table.Model
+	tableStyles           table.Styles
+	detail                viewport.Model
+	status                string
+	err                   string
+	mode                  pinMode
+	focus                 pinFocus
+	loading               bool
+	reloadAgain           bool
+	blockForm             *huh.Form
+	blockReason           string
+	moveForm              *huh.Form
+	movePrepend           bool
+	config                config.Config
+	locations             paths.Locations
+	logger                *tuiLogger
+	width                 int
+	height                int
+	queueStamp            fileStamp
+	searchTerm            string
+	searchAnchor          string
+	searchOffset          int
+	searchAnchorSection   pinSection
+	pendingSelectID       string
+	validateAfterReload   bool
+	queueSelectedID       string
+	queueSelectedOffset   int
+	blockedSelectedID     string
+	blockedSelectedOffset int
 }
 
 const (
@@ -87,6 +159,7 @@ func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) 
 		files:     files,
 		mode:      pinModeTable,
 		focus:     pinFocusTable,
+		section:   pinSectionQueue,
 		config:    cfg,
 		locations: locations,
 	}
@@ -99,9 +172,10 @@ func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) 
 }
 
 func (p *pinView) Update(msg tea.Msg, keys keyMap, loopMode loopMode) tea.Cmd {
-	if pinCommandsBlocked(loopMode) && p.mode == pinModeBlockForm {
+	if pinCommandsBlocked(loopMode) && (p.mode == pinModeBlockForm || p.mode == pinModeMoveCheckedForm) {
 		p.blockForm = nil
 		p.blockReason = ""
+		p.moveForm = nil
 		p.mode = pinModeTable
 		p.err = ""
 		p.status = "Pin updates disabled while loop is running."
@@ -121,6 +195,26 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap, loopMode loopMode) tea.Cmd {
 		}
 		return cmd
 	}
+	if p.mode == pinModeMoveCheckedForm {
+		if p.moveForm == nil {
+			p.mode = pinModeTable
+			p.status = "Move cancelled"
+			p.err = ""
+			return nil
+		}
+		model, cmd := p.moveForm.Update(msg)
+		if form, ok := model.(*huh.Form); ok {
+			p.moveForm = form
+		}
+		if p.moveForm.State == huh.StateCompleted {
+			return p.finishMoveChecked()
+		} else if p.moveForm.State == huh.StateAborted {
+			p.status = "Move cancelled"
+			p.err = ""
+			p.mode = pinModeTable
+		}
+		return cmd
+	}
 
 	if reloadMsg, ok := msg.(pinReloadMsg); ok {
 		prevSelectedID := p.selectedItemID()
@@ -134,8 +228,8 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap, loopMode loopMode) tea.Cmd {
 			return nil
 		}
 		p.err = ""
-		p.setQueueItems(reloadMsg.items, prevSelectedID, prevDetailOffset, reloadMsg.resetScroll)
-		p.blockedCount = reloadMsg.blocked
+		p.setItems(reloadMsg.queueItems, reloadMsg.blockedItems, prevSelectedID, prevDetailOffset, reloadMsg.resetScroll)
+		p.blockedCount = reloadMsg.blockedCount
 		if reloadMsg.stampErr == nil {
 			p.queueStamp = reloadMsg.queueStamp
 		}
@@ -185,11 +279,17 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap, loopMode loopMode) tea.Cmd {
 				return nil
 			}
 			return p.editQueueCmd()
+		case key.Matches(keyMsg, keys.TogglePinSection):
+			if p.mode == pinModeTable {
+				p.toggleSection(true)
+			}
+			return nil
 		case key.Matches(keyMsg, keys.MoveChecked):
 			if p.commandsBlocked(loopMode) {
 				return nil
 			}
-			return p.runMoveChecked()
+			p.startMoveChecked()
+			return nil
 		case key.Matches(keyMsg, keys.BlockItem):
 			if p.commandsBlocked(loopMode) {
 				return nil
@@ -220,12 +320,18 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap, loopMode loopMode) tea.Cmd {
 }
 
 func (p *pinView) HandlesTabNavigation() bool {
-	return p.mode == pinModeBlockForm && p.blockForm != nil
+	if p.mode == pinModeBlockForm && p.blockForm != nil {
+		return true
+	}
+	return p.mode == pinModeMoveCheckedForm && p.moveForm != nil
 }
 
 func (p *pinView) View() string {
 	if p.mode == pinModeBlockForm && p.blockForm != nil {
 		return withFinalNewline("Block item\n\n" + p.blockForm.View())
+	}
+	if p.mode == pinModeMoveCheckedForm && p.moveForm != nil {
+		return withFinalNewline("Move checked items\n\n" + p.moveForm.View())
 	}
 	header := "Pin"
 	status := p.statusLine()
@@ -270,6 +376,14 @@ func (p *pinView) Resize(width int, height int) {
 		p.blockForm = p.blockForm.WithWidth(max(1, width))
 		p.blockForm = p.blockForm.WithHeight(max(1, formHeight))
 	}
+	if p.mode == pinModeMoveCheckedForm && p.moveForm != nil {
+		formHeight := height - 2
+		if formHeight < 1 {
+			formHeight = 1
+		}
+		p.moveForm = p.moveForm.WithWidth(max(1, width))
+		p.moveForm = p.moveForm.WithHeight(max(1, formHeight))
+	}
 }
 
 func (p *pinView) statusLine() string {
@@ -283,10 +397,11 @@ func (p *pinView) statusLine() string {
 	if p.status != "" {
 		return joinStatus(p.status, focusNote)
 	}
-	if p.searchTerm != "" {
-		return joinStatus(fmt.Sprintf("Filter: %s", p.searchTerm), focusNote)
+	status := p.contextStatus()
+	if status == "" {
+		return focusNote
 	}
-	return focusNote
+	return joinStatus(status, focusNote)
 }
 
 func (p *pinView) tableWithDetail() string {
@@ -295,7 +410,7 @@ func (p *pinView) tableWithDetail() string {
 	return left + "\n\n" + detail
 }
 
-func (p *pinView) selectedItem() *pin.QueueItem {
+func (p *pinView) selectedItem() *pinTableEntry {
 	if len(p.items) == 0 {
 		return nil
 	}
@@ -355,12 +470,16 @@ func (p *pinView) setRefreshError(prefix string, err error) {
 }
 
 func (p *pinView) reload() error {
-	items, blocked, err := pin.ReadQueueSummary(p.files.QueuePath)
+	items, blockedCount, err := pin.ReadQueueSummary(p.files.QueuePath)
 	if err != nil {
 		return err
 	}
-	p.setQueueItems(items, p.selectedItemID(), p.detail.YOffset, true)
-	p.blockedCount = blocked
+	blockedItems, err := pin.ReadBlockedItems(p.files.QueuePath)
+	if err != nil {
+		return err
+	}
+	p.setItems(items, blockedItems, p.selectedItemID(), p.detail.YOffset, true)
+	p.blockedCount = blockedCount
 	if stamp, err := getFileStamp(p.files.QueuePath); err == nil {
 		p.queueStamp = stamp
 	} else {
@@ -380,7 +499,11 @@ func (p *pinView) reloadAsync(resetScroll bool) tea.Cmd {
 	p.err = ""
 	files := p.files
 	return func() tea.Msg {
-		items, blocked, err := pin.ReadQueueSummary(files.QueuePath)
+		items, blockedCount, err := pin.ReadQueueSummary(files.QueuePath)
+		if err != nil {
+			return pinReloadMsg{err: err, resetScroll: resetScroll}
+		}
+		blockedItems, err := pin.ReadBlockedItems(files.QueuePath)
 		if err != nil {
 			return pinReloadMsg{err: err, resetScroll: resetScroll}
 		}
@@ -392,11 +515,12 @@ func (p *pinView) reloadAsync(resetScroll bool) tea.Cmd {
 			stampErr = err
 		}
 		return pinReloadMsg{
-			items:       items,
-			queueStamp:  stamp,
-			blocked:     blocked,
-			stampErr:    stampErr,
-			resetScroll: resetScroll,
+			queueItems:   items,
+			blockedItems: blockedItems,
+			queueStamp:   stamp,
+			blockedCount: blockedCount,
+			stampErr:     stampErr,
+			resetScroll:  resetScroll,
 		}
 	}
 }
@@ -426,8 +550,35 @@ func (p *pinView) editQueueCmd() tea.Cmd {
 	})
 }
 
-func (p *pinView) runMoveChecked() tea.Cmd {
-	ids, err := pin.MoveCheckedToDone(p.files.QueuePath, p.files.DonePath, false)
+func (p *pinView) startMoveChecked() {
+	if p.section != pinSectionQueue {
+		p.status = "Switch to Queue to move checked items."
+		p.err = ""
+		return
+	}
+	if p.queueCheckedCount(p.queueAll) == 0 {
+		p.status = "No checked items to move."
+		p.err = ""
+		return
+	}
+	p.movePrepend = true
+	p.moveForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Prepend moved items to Done? (recommended)").
+				Value(&p.movePrepend),
+		),
+	).WithShowHelp(false)
+	p.mode = pinModeMoveCheckedForm
+	p.status = ""
+	p.err = ""
+	p.Resize(p.width, p.height)
+}
+
+func (p *pinView) finishMoveChecked() tea.Cmd {
+	p.mode = pinModeTable
+	p.moveForm = nil
+	ids, err := pin.MoveCheckedToDone(p.files.QueuePath, p.files.DonePath, p.movePrepend)
 	if err != nil {
 		p.err = err.Error()
 		p.status = ""
@@ -445,7 +596,7 @@ func (p *pinView) runMoveChecked() tea.Cmd {
 
 func (p *pinView) startBlock() {
 	item := p.selectedItem()
-	if item == nil || item.ID == "" {
+	if item == nil || item.ID == "" || item.Section != pinSectionQueue {
 		p.err = "No queue item selected."
 		p.status = ""
 		return
@@ -467,7 +618,7 @@ func (p *pinView) startBlock() {
 
 func (p *pinView) finishBlock() tea.Cmd {
 	item := p.selectedItem()
-	if item == nil {
+	if item == nil || item.Section != pinSectionQueue {
 		p.err = "No queue item selected."
 		p.status = ""
 		p.mode = pinModeTable
@@ -506,7 +657,7 @@ func (p *pinView) finishBlock() tea.Cmd {
 
 func (p *pinView) toggleChecked() tea.Cmd {
 	item := p.selectedItem()
-	if item == nil || item.ID == "" {
+	if item == nil || item.ID == "" || item.Section != pinSectionQueue {
 		p.err = "No queue item selected."
 		p.status = ""
 		return nil
@@ -616,6 +767,63 @@ func (p *pinView) focusLabel() string {
 	return "Focus: table (ctrl+t)"
 }
 
+func (p *pinView) cacheSelection() {
+	selectedID := p.selectedItemID()
+	offset := p.detail.YOffset
+	if p.section == pinSectionBlocked {
+		p.blockedSelectedID = selectedID
+		p.blockedSelectedOffset = offset
+		return
+	}
+	p.queueSelectedID = selectedID
+	p.queueSelectedOffset = offset
+}
+
+func (p *pinView) toggleSection(resetScroll bool) {
+	p.cacheSelection()
+	if p.section == pinSectionBlocked {
+		p.section = pinSectionQueue
+		p.applyActiveItems(p.queueSelectedID, p.queueSelectedOffset, resetScroll)
+	} else {
+		p.section = pinSectionBlocked
+		p.applyActiveItems(p.blockedSelectedID, p.blockedSelectedOffset, resetScroll)
+	}
+	p.status = ""
+	p.err = ""
+}
+
+func (p *pinView) contextStatus() string {
+	if p.mode != pinModeTable {
+		return ""
+	}
+	parts := []string{
+		fmt.Sprintf("View: %s", p.section.Label()),
+		fmt.Sprintf("Queue: %d (checked %d)", len(p.queueAll), p.queueCheckedCount(p.queueAll)),
+		fmt.Sprintf("Blocked: %d", p.blockedItemsCount()),
+	}
+	if p.searchTerm != "" {
+		parts = append(parts, fmt.Sprintf("Filter: %s (%d/%d)", p.searchTerm, len(p.items), len(p.allItems)))
+	}
+	return strings.Join(parts, " | ")
+}
+
+func (p *pinView) blockedItemsCount() int {
+	if p.blockedCount > 0 {
+		return p.blockedCount
+	}
+	return len(p.blockedAll)
+}
+
+func (p *pinView) queueCheckedCount(items []pinTableEntry) int {
+	count := 0
+	for _, item := range items {
+		if item.Checked {
+			count++
+		}
+	}
+	return count
+}
+
 func joinStatus(primary string, secondary string) string {
 	if primary == "" {
 		return secondary
@@ -636,10 +844,11 @@ func (p *pinView) setTableColumns(width int) {
 	p.table.SetColumns(columns)
 }
 
-func pinTableColumns(width int, items []pin.QueueItem, styles table.Styles) []table.Column {
+func pinTableColumns(width int, items []pinTableEntry, styles table.Styles) []table.Column {
 	statusWidth := max(lipgloss.Width("Status"), lipgloss.Width("[x]"))
 	idWidth := lipgloss.Width("ID")
 	for _, item := range items {
+		statusWidth = max(statusWidth, lipgloss.Width(item.StatusCell()))
 		idWidth = max(idWidth, lipgloss.Width(item.ID))
 	}
 	minTitleWidth := lipgloss.Width("Title")
@@ -671,11 +880,33 @@ func requireNonEmpty(label string) func(string) error {
 	}
 }
 
-func (p *pinView) setQueueItems(items []pin.QueueItem, prevSelectedID string, prevDetailOffset int, resetScroll bool) {
-	p.allItems = items
-	displayItems := items
+func (p *pinView) setItems(
+	queueItems []pin.QueueItem,
+	blockedItems []pin.BlockedItem,
+	prevSelectedID string,
+	prevDetailOffset int,
+	resetScroll bool,
+) {
+	p.queueAll = make([]pinTableEntry, 0, len(queueItems))
+	for _, item := range queueItems {
+		p.queueAll = append(p.queueAll, queueEntry(item))
+	}
+	p.blockedAll = make([]pinTableEntry, 0, len(blockedItems))
+	for _, item := range blockedItems {
+		p.blockedAll = append(p.blockedAll, blockedEntry(item))
+	}
+	p.applyActiveItems(prevSelectedID, prevDetailOffset, resetScroll)
+}
+
+func (p *pinView) applyActiveItems(prevSelectedID string, prevDetailOffset int, resetScroll bool) {
+	if p.section == pinSectionBlocked {
+		p.allItems = p.blockedAll
+	} else {
+		p.allItems = p.queueAll
+	}
+	displayItems := p.allItems
 	if p.searchTerm != "" {
-		displayItems = filterQueueItems(items, p.searchTerm)
+		displayItems = filterPinEntries(p.allItems, p.searchTerm)
 	}
 	p.items = displayItems
 	p.table.SetRows(makePinRows(displayItems))
@@ -683,7 +914,7 @@ func (p *pinView) setQueueItems(items []pin.QueueItem, prevSelectedID string, pr
 	if prevSelectedID != "" {
 		p.restoreSelection(prevSelectedID)
 	}
-	if p.pendingSelectID != "" {
+	if p.pendingSelectID != "" && p.section == pinSectionQueue {
 		p.restoreSelection(p.pendingSelectID)
 		if p.selectedItemID() == p.pendingSelectID {
 			p.pendingSelectID = ""
@@ -696,10 +927,16 @@ func (p *pinView) setQueueItems(items []pin.QueueItem, prevSelectedID string, pr
 	} else {
 		p.syncDetail(resetScroll || !sameSelection)
 	}
+	p.cacheSelection()
 }
 
 func (p *pinView) SelectItemByID(itemID string) bool {
 	if p == nil {
+		return false
+	}
+	if p.section != pinSectionQueue {
+		p.status = "Switch to Queue to select by ID."
+		p.err = ""
 		return false
 	}
 	itemID = strings.TrimSpace(itemID)
@@ -709,15 +946,14 @@ func (p *pinView) SelectItemByID(itemID string) bool {
 	p.pendingSelectID = itemID
 	if p.searchTerm != "" {
 		p.searchTerm = ""
-		p.items = p.allItems
-		p.table.SetRows(makePinRows(p.items))
-		p.setTableColumns(p.width)
+		p.applyActiveItems("", 0, true)
 	}
 	p.restoreSelection(itemID)
 	p.clampCursor()
 	if p.selectedItemID() == itemID {
 		p.pendingSelectID = ""
 		p.syncDetail(true)
+		p.cacheSelection()
 		return true
 	}
 	return false
@@ -733,25 +969,28 @@ func (p *pinView) ApplySearch(term string) error {
 	if p.searchTerm == "" && term != "" {
 		p.searchAnchor = prevSelectedID
 		p.searchOffset = prevDetailOffset
+		p.searchAnchorSection = p.section
 	}
 	p.searchTerm = term
-	p.items = filterQueueItems(p.allItems, term)
+	p.items = filterPinEntries(p.allItems, term)
 	p.table.SetRows(makePinRows(p.items))
 	p.setTableColumns(p.width)
 	if term == "" {
-		if p.searchAnchor != "" {
+		if p.searchAnchor != "" && p.searchAnchorSection == p.section {
 			p.restoreSelection(p.searchAnchor)
 		} else if prevSelectedID != "" {
 			p.restoreSelection(prevSelectedID)
 		}
 		p.clampCursor()
-		if p.searchAnchor != "" && p.searchAnchor == p.selectedItemID() {
+		if p.searchAnchor != "" && p.searchAnchorSection == p.section && p.searchAnchor == p.selectedItemID() {
 			p.syncDetailWithOffset(false, p.searchOffset)
 		} else {
 			p.syncDetail(true)
 		}
 		p.searchAnchor = ""
 		p.searchOffset = 0
+		p.searchAnchorSection = p.section
+		p.cacheSelection()
 		return nil
 	}
 	if prevSelectedID != "" {
@@ -759,6 +998,7 @@ func (p *pinView) ApplySearch(term string) error {
 	}
 	p.clampCursor()
 	p.syncDetail(true)
+	p.cacheSelection()
 	return nil
 }
 
@@ -770,17 +1010,19 @@ func (p *pinView) CancelSearch() {
 	p.items = p.allItems
 	p.table.SetRows(makePinRows(p.items))
 	p.setTableColumns(p.width)
-	if p.searchAnchor != "" {
+	if p.searchAnchor != "" && p.searchAnchorSection == p.section {
 		p.restoreSelection(p.searchAnchor)
 	}
 	p.clampCursor()
-	if p.searchAnchor != "" && p.searchAnchor == p.selectedItemID() {
+	if p.searchAnchor != "" && p.searchAnchorSection == p.section && p.searchAnchor == p.selectedItemID() {
 		p.syncDetailWithOffset(false, p.searchOffset)
 	} else {
 		p.syncDetail(true)
 	}
 	p.searchAnchor = ""
 	p.searchOffset = 0
+	p.searchAnchorSection = p.section
+	p.cacheSelection()
 }
 
 func (p *pinView) FinalizeSearch() {
@@ -790,36 +1032,33 @@ func (p *pinView) FinalizeSearch() {
 	}
 	p.searchAnchor = ""
 	p.searchOffset = 0
+	p.searchAnchorSection = p.section
 }
 
-func makePinRows(items []pin.QueueItem) []table.Row {
+func makePinRows(items []pinTableEntry) []table.Row {
 	rows := make([]table.Row, 0, len(items))
 	for _, item := range items {
-		status := "[ ]"
-		if item.Checked {
-			status = "[x]"
-		}
-		rows = append(rows, table.Row{status, item.ID, trimTitle(item.Header)})
+		rows = append(rows, table.Row{item.StatusCell(), item.ID, trimTitle(item.Header)})
 	}
 	return rows
 }
 
-func filterQueueItems(items []pin.QueueItem, term string) []pin.QueueItem {
+func filterPinEntries(items []pinTableEntry, term string) []pinTableEntry {
 	term = strings.ToLower(strings.TrimSpace(term))
 	if term == "" {
 		return items
 	}
 	parts := strings.Fields(term)
-	filtered := make([]pin.QueueItem, 0, len(items))
+	filtered := make([]pinTableEntry, 0, len(items))
 	for _, item := range items {
-		if matchesQueueItem(item, parts) {
+		if matchesPinEntry(item, parts) {
 			filtered = append(filtered, item)
 		}
 	}
 	return filtered
 }
 
-func matchesQueueItem(item pin.QueueItem, parts []string) bool {
+func matchesPinEntry(item pinTableEntry, parts []string) bool {
 	if len(parts) == 0 {
 		return true
 	}

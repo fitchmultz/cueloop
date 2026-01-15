@@ -24,12 +24,12 @@ func TestDashboardQueueSummaryUsesUnfilteredItemsAndDoneFile(t *testing.T) {
 		t.Fatalf("write done fixture: %v", err)
 	}
 
-	allItems := []pin.QueueItem{
-		{ID: "RQ-0001", Checked: true},
-		{ID: "RQ-0002", Checked: false},
-		{ID: "RQ-0003", Checked: false},
+	allItems := []pinTableEntry{
+		queueEntry(pin.QueueItem{ID: "RQ-0001", Checked: true}),
+		queueEntry(pin.QueueItem{ID: "RQ-0002", Checked: false}),
+		queueEntry(pin.QueueItem{ID: "RQ-0003", Checked: false}),
 	}
-	filtered := []pin.QueueItem{allItems[2]}
+	filtered := []pinTableEntry{allItems[2]}
 
 	view := &pinView{
 		files:        pin.Files{DonePath: donePath},

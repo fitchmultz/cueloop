@@ -40,11 +40,20 @@ type pinKeyMap struct {
 }
 
 func (p pinKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{p.keys.ValidatePin, p.keys.MoveChecked, p.keys.BlockItem, p.keys.ToggleChecked}
+	return []key.Binding{
+		p.keys.TogglePinSection,
+		p.keys.ValidatePin,
+		p.keys.MoveChecked,
+		p.keys.BlockItem,
+		p.keys.ToggleChecked,
+	}
 }
 
 func (p pinKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{p.keys.ValidatePin, p.keys.MoveChecked, p.keys.BlockItem, p.keys.ToggleChecked}, {p.keys.TogglePane}}
+	return [][]key.Binding{
+		{p.keys.TogglePinSection, p.keys.ValidatePin, p.keys.MoveChecked, p.keys.BlockItem, p.keys.ToggleChecked},
+		{p.keys.TogglePane},
+	}
 }
 
 type specsKeyMap struct {
