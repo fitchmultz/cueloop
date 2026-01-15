@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
@@ -72,6 +73,33 @@ func BenchmarkSpecsViewAppendRunLogs(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		view.appendRunLogs(batch)
+	}
+}
+
+func BenchmarkSpecsPreviewSignature(b *testing.B) {
+	b.ReportAllocs()
+
+	buffer := newLogLineBuffer(0, 0)
+	buffer.AppendLines(makeBenchmarkLines("spec", 5000))
+	runSignature := buffer.Signature()
+	diffStat := strings.Repeat("1 file changed, 1 insertion(+)\n", 2000) + "2000 files changed, 2000 insertions(+)"
+	diffSignature := diffStatSignature(diffStat)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = previewInputSignature(
+			80,
+			fileStamp{Exists: false},
+			fileStamp{Exists: false},
+			false,
+			false,
+			false,
+			false,
+			false,
+			"",
+			runSignature,
+			diffSignature,
+		)
 	}
 }
 

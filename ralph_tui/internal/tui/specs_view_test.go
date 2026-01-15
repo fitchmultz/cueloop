@@ -21,6 +21,12 @@ func (f *fakePreviewRenderer) Render(input string) (string, error) {
 	return f.output, nil
 }
 
+func setSpecsRunOutput(view *specsView, lines []string) {
+	view.runLogBuf.Reset()
+	view.runLogBuf.AppendLines(lines)
+	view.finalizeRunOutput()
+}
+
 func TestSpecsPreviewRefreshSetsLoading(t *testing.T) {
 	_, locs, cfg := newHermeticModel(t)
 	view, err := newSpecsView(cfg, locs)
@@ -58,7 +64,7 @@ func TestSpecsPreviewRendererCachesByWidth(t *testing.T) {
 	}
 
 	view.previewWidth = 80
-	view.lastRunOutput = "first"
+	setSpecsRunOutput(view, []string{"first"})
 	cmd := view.refreshPreviewAsync()
 	if cmd == nil {
 		t.Fatalf("expected refresh command")
@@ -72,7 +78,7 @@ func TestSpecsPreviewRendererCachesByWidth(t *testing.T) {
 		t.Fatalf("expected renderer to render once, got %d", renderers[80].renderCalls)
 	}
 
-	view.lastRunOutput = "second"
+	setSpecsRunOutput(view, []string{"second"})
 	cmd = view.refreshPreviewAsync()
 	if cmd == nil {
 		t.Fatalf("expected refresh command")
@@ -87,7 +93,7 @@ func TestSpecsPreviewRendererCachesByWidth(t *testing.T) {
 	}
 
 	view.previewWidth = 120
-	view.lastRunOutput = "third"
+	setSpecsRunOutput(view, []string{"third"})
 	cmd = view.refreshPreviewAsync()
 	if cmd == nil {
 		t.Fatalf("expected refresh command")
@@ -115,7 +121,7 @@ func TestSpecsPreviewSkipsRenderWhenInputsUnchanged(t *testing.T) {
 	}
 
 	view.previewWidth = 80
-	view.lastRunOutput = "first"
+	setSpecsRunOutput(view, []string{"first"})
 	cmd := view.refreshPreviewAsync()
 	if cmd == nil {
 		t.Fatalf("expected refresh command")

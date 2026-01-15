@@ -14,6 +14,12 @@ type logLineBuffer struct {
 	version  uint64
 }
 
+type logBufferSignature struct {
+	version   uint64
+	lineCount int
+	byteCount int
+}
+
 func newLogLineBuffer(maxLines int, trimTo int) logLineBuffer {
 	buffer := logLineBuffer{maxLines: maxLines}
 	if maxLines <= 0 {
@@ -90,6 +96,14 @@ func (b *logLineBuffer) ContentString() string {
 
 func (b *logLineBuffer) Version() uint64 {
 	return b.version
+}
+
+func (b *logLineBuffer) Signature() logBufferSignature {
+	return logBufferSignature{
+		version:   b.version,
+		lineCount: len(b.lines),
+		byteCount: len(b.joined),
+	}
 }
 
 func bytesToImmutableString(buf []byte) string {

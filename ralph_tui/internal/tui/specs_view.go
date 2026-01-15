@@ -59,8 +59,11 @@ type specsView struct {
 	previewRenderers        map[int]previewRenderer
 	running                 bool
 	diffStat                string
+	diffStatSummary         string
+	diffStatSignature       string
 	runLogBuf               logLineBuffer
 	lastRunOutput           string
+	lastRunSignature        logBufferSignature
 	parentCtx               context.Context
 	buildCancel             context.CancelFunc
 	buildDone               chan struct{}
@@ -387,7 +390,9 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 	scoutWorkflow := s.scoutWorkflow
 	userFocus := s.userFocus
 	lastRunOutput := s.lastRunOutput
+	runSignature := s.lastRunSignature
 	diffStat := s.diffStat
+	diffStatSignature := s.diffStatSignature
 	previewWidth := s.previewWidth
 	promptStamp := s.promptStamp
 	queueStamp := s.queueStamp
@@ -396,7 +401,7 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 	priorAuto := s.autoEnabled
 	priorAutoReason := s.autoEnabledReason
 
-	signature := previewInputSignature(previewWidth, promptStamp, queueStamp, interactive, innovate, innovateExplicit, autofillScout, scoutWorkflow, userFocus, lastRunOutput, diffStat)
+	signature := previewInputSignature(previewWidth, promptStamp, queueStamp, interactive, innovate, innovateExplicit, autofillScout, scoutWorkflow, userFocus, runSignature, diffStatSignature)
 	if s.previewErr == "" && s.preview != "" && signature == priorSignature {
 		return func() tea.Msg {
 			return specsPreviewMsg{
@@ -607,15 +612,17 @@ func previewInputSignature(
 	autofillScout bool,
 	scoutWorkflow bool,
 	userFocus string,
-	lastRunOutput string,
-	diffStat string,
+	runSignature logBufferSignature,
+	diffStatSignature string,
 ) string {
 	hash := fnv.New64a()
 	_, _ = fmt.Fprintf(hash, "width=%d;", previewWidth)
 	_, _ = fmt.Fprintf(hash, "prompt=%s;", fileStampSignature(promptStamp))
 	_, _ = fmt.Fprintf(hash, "queue=%s;", fileStampSignature(queueStamp))
 	_, _ = fmt.Fprintf(hash, "interactive=%t;innovate=%t;innovateExplicit=%t;autofillScout=%t;", interactive, innovate, innovateExplicit, autofillScout)
-	_, _ = fmt.Fprintf(hash, "scout=%t;focus=%s;run=%s;diff=%s;", scoutWorkflow, userFocus, lastRunOutput, diffStat)
+	_, _ = fmt.Fprintf(hash, "scout=%t;focus=%s;", scoutWorkflow, userFocus)
+	_, _ = fmt.Fprintf(hash, "run_version=%d;run_lines=%d;run_bytes=%d;", runSignature.version, runSignature.lineCount, runSignature.byteCount)
+	_, _ = fmt.Fprintf(hash, "diff=%s;", diffStatSignature)
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
@@ -717,6 +724,9 @@ func (s *specsView) resetRunLogs() {
 	s.runLogBuf.Reset()
 	s.lastRunOutput = ""
 	s.diffStat = ""
+	s.diffStatSummary = ""
+	s.diffStatSignature = ""
+	s.lastRunSignature = s.runLogBuf.Signature()
 	s.pendingLogViewportLines = 0
 	s.lastLogViewportVersion = 0
 	s.lastLogViewportFlush = time.Time{}
@@ -745,6 +755,7 @@ func (s *specsView) appendRunLogs(lines []string) {
 
 func (s *specsView) finalizeRunOutput() {
 	s.lastRunOutput = s.runLogBuf.ContentString()
+	s.lastRunSignature = s.runLogBuf.Signature()
 }
 
 func (s *specsView) RunLogLines() []string {
@@ -808,6 +819,8 @@ func (s *specsView) applyBuildResult(msg specsBuildResultMsg) tea.Cmd {
 		s.status = s.status + " | Diff: " + summary
 	}
 	s.diffStat = msg.diffStat
+	s.diffStatSummary = summarizeDiffStat(msg.diffStat)
+	s.diffStatSignature = diffStatSignature(msg.diffStat)
 	s.previewDirty = true
 	if s.logger != nil {
 		s.logger.Info("specs.run.complete", map[string]any{
@@ -902,6 +915,15 @@ func summarizeDiffStat(stat string) string {
 	}
 	lines := strings.Split(strings.TrimSpace(stat), "\n")
 	return lines[len(lines)-1]
+}
+
+func diffStatSignature(stat string) string {
+	if strings.TrimSpace(stat) == "" {
+		return ""
+	}
+	hash := fnv.New64a()
+	_, _ = hash.Write([]byte(stat))
+	return fmt.Sprintf("len=%d;hash=%x", len(stat), hash.Sum(nil))
 }
 
 type logChannelSink struct {

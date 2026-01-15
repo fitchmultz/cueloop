@@ -1,10 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0445 [code]: Fix specs preview performance lag by removing full log output strings from preview signature hashing; use stable versions/hashes instead. (ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/log_line_buffer.go, ralph_tui/internal/tui/render_perf_test.go)
-  - Evidence: `previewInputSignature` incorporates `lastRunOutput` and `diffStat` directly, so signature computation becomes O(size of output) and can lag after large runs.
-  - Plan: Replace signature inputs with cheap stable identifiers (e.g., log buffer version + diffStat hash/len), keep correctness (skip render only when truly unchanged), and add a perf/regression test to prevent reintroducing O(n) signature work.
-
 - [ ] RQ-0449 [ui]: Close Pin screen feature gaps: provide access to blocked items, add prepend/append choice for Move Checked, and improve status/affordances. (ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/pin/pin.go, ralph_tui/internal/tui/pin_view_test.go)
   - Evidence: Pin view shows `blockedCount` but provides no way to inspect blocked items from the UI; Move Checked always appends to Done (CLI supports `--prepend`), and status messages don't guide the user to next actions.
   - Plan: Add blocked-item browsing and move-checked options (default to prepend for recency), update key hints/help, and add tests covering the new UX paths.
