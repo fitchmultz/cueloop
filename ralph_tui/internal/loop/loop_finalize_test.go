@@ -92,6 +92,43 @@ func TestFinalizeIterationRejectsNonPinHeadAdvance(t *testing.T) {
 	}
 }
 
+func TestFinalizeIterationKeepsIncompleteWhenNewItemInserted(t *testing.T) {
+	requireTool(t, "git")
+	repoRoot := t.TempDir()
+	pinDir := filepath.Join(repoRoot, ".ralph", "pin")
+	writePinFiles(t, pinDir, queueWithInsertedItem(), "## Done\n", "lookup\n", "readme\n")
+
+	runCmd(t, repoRoot, "git", "init", "-b", "main")
+	runCmd(t, repoRoot, "git", "config", "user.email", "test@example.com")
+	runCmd(t, repoRoot, "git", "config", "user.name", "Test User")
+	runCmd(t, repoRoot, "git", "add", ".")
+	runCmd(t, repoRoot, "git", "commit", "-m", "init")
+
+	headBefore, err := HeadSHA(context.Background(), repoRoot)
+	if err != nil {
+		t.Fatalf("HeadSHA failed: %v", err)
+	}
+
+	runner, err := NewRunner(Options{
+		RepoRoot:        repoRoot,
+		PinDir:          pinDir,
+		Runner:          "codex",
+		ReasoningEffort: "auto",
+		DirtyRepoStart:  DirtyRepoPolicyError,
+		DirtyRepoDuring: DirtyRepoPolicyQuarantine,
+		AllowUntracked:  true,
+		RedactionMode:   redaction.ModeSecretsOnly,
+	})
+	if err != nil {
+		t.Fatalf("NewRunner failed: %v", err)
+	}
+
+	err = runner.finalizeIteration(context.Background(), "RQ-0001", "- [ ] RQ-0001 [code]: Test item. (x)", headBefore, FinalizeOptions{Mode: FinalizeModeNormal})
+	if err != nil {
+		t.Fatalf("expected incomplete item to be allowed, got error: %v", err)
+	}
+}
+
 func writePinFiles(t *testing.T, pinDir string, queue string, done string, lookup string, readme string) {
 	t.Helper()
 	if err := os.MkdirAll(pinDir, 0o700); err != nil {
@@ -113,6 +150,17 @@ func queueWithItem() string {
 
 func queueEmpty() string {
 	return "## Queue\n\n## Blocked\n\n## Parking Lot\n"
+}
+
+func queueWithInsertedItem() string {
+	return "## Queue\n" +
+		"- [ ] RQ-0002 [code]: Inserted item. (y)\n" +
+		"  - Evidence: test evidence.\n" +
+		"  - Plan: test plan.\n" +
+		"- [ ] RQ-0001 [code]: Test item. (x)\n" +
+		"  - Evidence: test evidence.\n" +
+		"  - Plan: test plan.\n" +
+		"\n## Blocked\n\n## Parking Lot\n"
 }
 
 func doneWithItem() string {

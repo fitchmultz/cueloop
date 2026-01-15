@@ -1,10 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0457 [code]: Make loop finalize completion detection item-ID based (avoid false completion when new unchecked items are inserted). (ralph_tui/internal/loop/loop.go, ralph_tui/internal/loop/queue.go, ralph_tui/internal/loop/loop_test.go)
-  - Evidence: `Runner.finalizeIteration()` currently decides `completed` via `firstAfter == nil || firstAfter.ID != itemID`. If a runner adds a new unchecked item at the top of the queue (or tag filters shift what's "first"), this can misclassify the current item as "completed" even if it remains unchecked elsewhere, which risks committing/validating the wrong thing.
-  - Plan: Introduce an explicit "item completion" check by scanning queue+done for `itemID` and verifying either (a) it moved to Done, or (b) it is checked and no longer eligible as the active unchecked item; then update finalize logic + add tests covering the "new item inserted above" case.
-
 - [ ] RQ-0458 [code]: Fix git helper semantics (BranchExists error handling + AheadCount parsing) and unblock fixup reliability. (ralph_tui/internal/loop/git.go, ralph_tui/internal/loop/fixup.go, ralph_tui/internal/loop/git_test.go)
   - Evidence: `BranchExists()` checks `err.(*exec.ExitError)` but `gitRun()` wraps failures in `*loop.GitCommandError`, so a missing branch can incorrectly return an error instead of `(false, nil)`. This affects fixup (`validateWipBranchInWorktree` calls `BranchExists` and can abort the whole fixup run). Also `AheadCount()` uses `fmt.Sscanf` without checking the scan error, so invalid output can silently report `0`.
   - Plan: (1) Update `BranchExists` to use `errors.As` to detect the underlying `*exec.ExitError` inside `*GitCommandError` and treat "verify failed" as "branch does not exist", (2) harden `AheadCount` parsing to return an error if the count can't be parsed, and (3) add focused unit tests for both behaviors.

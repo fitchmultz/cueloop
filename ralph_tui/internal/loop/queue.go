@@ -1,5 +1,5 @@
 // Package loop provides queue parsing helpers.
-// Entrypoint: FirstUncheckedItem, ExtractItemID.
+// Entrypoint: FirstUncheckedItem, ItemCompletionStatus, ExtractItemID.
 package loop
 
 import (
@@ -28,6 +28,31 @@ func FirstUncheckedItem(queuePath string, onlyTags []string) (*QueueItem, error)
 		}
 	}
 	return nil, nil
+}
+
+// ItemCompletionStatus returns true when the item is completed (checked or in Done).
+func ItemCompletionStatus(queuePath string, donePath string, itemID string) (bool, error) {
+	items, err := readQueueItems(queuePath)
+	if err != nil {
+		return false, err
+	}
+	for _, item := range items {
+		if item.ID == itemID {
+			return item.Checked, nil
+		}
+	}
+
+	doneItems, err := readDoneItems(donePath)
+	if err != nil {
+		return false, err
+	}
+	for _, item := range doneItems {
+		if item.ID == itemID {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // CurrentItemBlock returns the block for the given item ID.
@@ -74,4 +99,8 @@ func ExtractItemTitle(line string) string {
 
 func readQueueItems(queuePath string) ([]QueueItem, error) {
 	return pin.ReadQueueItems(queuePath)
+}
+
+func readDoneItems(donePath string) ([]QueueItem, error) {
+	return pin.ReadDoneItems(donePath)
 }

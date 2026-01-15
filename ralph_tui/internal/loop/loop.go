@@ -571,14 +571,9 @@ func (r *Runner) finalizeIteration(ctx context.Context, itemID string, itemLine 
 		return err
 	}
 	_ = movedIDs
-
-	firstAfter, err := FirstUncheckedItem(r.pinFiles.QueuePath, r.opts.OnlyTags)
+	completed, err := ItemCompletionStatus(r.pinFiles.QueuePath, r.pinFiles.DonePath, itemID)
 	if err != nil {
 		return err
-	}
-	completed := false
-	if firstAfter == nil || firstAfter.ID != itemID {
-		completed = true
 	}
 
 	status, err := StatusDetails(ctx, r.opts.RepoRoot)

@@ -1,5 +1,5 @@
 // Package pin provides validation and deterministic operations for Ralph pin files.
-// Entrypoint: ValidatePin, MoveCheckedToDone, BlockItem.
+// Entrypoint: ValidatePin, MoveCheckedToDone, ReadQueueItems, ReadDoneItems, BlockItem.
 package pin
 
 import (
@@ -308,6 +308,44 @@ func ReadDoneSummary(donePath string) (DoneSummary, error) {
 	}
 
 	return summary, nil
+}
+
+// ReadDoneItems returns done items from the Done section.
+func ReadDoneItems(donePath string) ([]QueueItem, error) {
+	lines, err := readLines(donePath)
+	if err != nil {
+		return nil, err
+	}
+
+	blocks := splitBlocks(lines)
+	items := make([]QueueItem, 0)
+	inDone := false
+	for _, block := range blocks {
+		if len(block) == 0 {
+			continue
+		}
+		header := block[0]
+		switch {
+		case strings.TrimSpace(header) == "## Done":
+			inDone = true
+			continue
+		case strings.HasPrefix(header, "## "):
+			inDone = false
+			continue
+		}
+
+		if !inDone || !strings.HasPrefix(header, "- [") {
+			continue
+		}
+		items = append(items, QueueItem{
+			Header:  header,
+			Lines:   block,
+			ID:      extractID(header),
+			Checked: strings.HasPrefix(header, "- [x]"),
+		})
+	}
+
+	return items, nil
 }
 
 // ReadQueueSummary returns queue items plus the blocked item count.
