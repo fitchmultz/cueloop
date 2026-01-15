@@ -9,4 +9,5 @@
 | procgroup | Shared process-group cancellation helpers live in `ralph_tui/internal/procgroup/`. |
 | redaction | Redaction modes and env key classification live in `ralph_tui/internal/redaction/`. |
 | queueid | Shared queue item ID parsing lives in `ralph_tui/internal/queueid/`. |
+| runnerargs | Shared runner argument parsing and reasoning-effort helpers live in `ralph_tui/internal/runnerargs/`. |
 | specs | Specs builder, prompt filling, and runner invocation live in `ralph_tui/internal/specs/` and legacy specs templates in `ralph_legacy/specs/`. |

@@ -17,6 +17,7 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
 )
 
@@ -257,10 +258,12 @@ func (s *specsView) optionsView() string {
 			innovate += " (auto)"
 		}
 	}
+	effortResult := runnerargs.ApplyReasoningEffort(string(s.runner), s.runnerArgs, s.reasoningEffort)
+	effectiveLabel := runnerargs.DisplayEffortResult(effortResult)
 	lines := []string{
 		fmt.Sprintf("Runner: %s", s.runner),
 		fmt.Sprintf("Runner args: %d", len(s.runnerArgs)),
-		fmt.Sprintf("Reasoning effort: %s", displayReasoningEffort(s.reasoningEffort)),
+		fmt.Sprintf("Reasoning effort: %s (effective: %s)", runnerargs.DisplayEffort(s.reasoningEffort), effectiveLabel),
 		fmt.Sprintf("Interactive: %s", yesNo(s.interactive)),
 		fmt.Sprintf("Innovate: %s", innovate),
 		fmt.Sprintf("Autofill scout: %s", yesNo(s.autofillScout)),
@@ -362,11 +365,11 @@ func (s *specsView) runBuildCmd() tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.buildCancel = cancel
 	if s.logger != nil {
-		appliedArgs := applyReasoningEffort(string(s.runner), s.runnerArgs, s.reasoningEffort, "medium")
+		applied := runnerargs.ApplyReasoningEffort(string(s.runner), s.runnerArgs, s.reasoningEffort)
 		s.logger.Info("specs.run.start", map[string]any{
 			"runner":            s.runner,
-			"runner_args_count": len(appliedArgs),
-			"reasoning_effort":  displayReasoningEffort(s.reasoningEffort),
+			"runner_args_count": len(applied.Args),
+			"reasoning_effort":  runnerargs.DisplayEffort(s.reasoningEffort),
 			"interactive":       s.interactive,
 			"innovate":          s.innovate,
 			"autofillScout":     s.autofillScout,
@@ -383,7 +386,7 @@ func (s *specsView) runBuildCmd() tea.Cmd {
 			RepoRoot:         s.locations.RepoRoot,
 			PinDir:           s.cfg.Paths.PinDir,
 			Runner:           s.runner,
-			RunnerArgs:       applyReasoningEffort(string(s.runner), s.runnerArgs, s.reasoningEffort, "medium"),
+			RunnerArgs:       runnerargs.ApplyReasoningEffort(string(s.runner), s.runnerArgs, s.reasoningEffort).Args,
 			Interactive:      s.interactive,
 			Innovate:         s.innovate,
 			InnovateExplicit: s.innovateExplicit,

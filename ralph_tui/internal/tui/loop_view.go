@@ -15,6 +15,7 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/loop"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
 
 type loopView struct {
@@ -216,6 +217,8 @@ func (l *loopView) statusLine() string {
 }
 
 func (l *loopView) controlsView() string {
+	effortResult := runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort)
+	effectiveLabel := runnerargs.DisplayEffortResult(effortResult)
 	lines := []string{
 		fmt.Sprintf("Sleep seconds: %d", l.overrides.SleepSeconds),
 		fmt.Sprintf("Max iterations: %d", l.overrides.MaxIterations),
@@ -227,7 +230,7 @@ func (l *loopView) controlsView() string {
 		fmt.Sprintf("Auto push: %s", yesNo(l.overrides.AutoPush)),
 		fmt.Sprintf("Runner: %s", l.overrides.Runner),
 		fmt.Sprintf("Runner args: %d", len(l.overrides.RunnerArgs)),
-		fmt.Sprintf("Reasoning effort: %s", displayReasoningEffort(l.overrides.ReasoningEffort)),
+		fmt.Sprintf("Reasoning effort: %s (effective: %s)", runnerargs.DisplayEffort(l.overrides.ReasoningEffort), effectiveLabel),
 		"Keys: r run once | c continuous | s stop | e edit overrides",
 	}
 	return strings.Join(lines, "\n")
@@ -248,7 +251,7 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 	l.logRunID++
 	runID := l.logRunID
 	if l.logger != nil {
-		appliedArgs := applyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort, "")
+		applied := runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort)
 		l.logger.Info("loop.start", map[string]any{
 			"mode":              loopModeLabel(runOnce),
 			"sleep_seconds":     l.overrides.SleepSeconds,
@@ -260,8 +263,8 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 			"auto_commit":       l.overrides.AutoCommit,
 			"auto_push":         l.overrides.AutoPush,
 			"runner":            l.overrides.Runner,
-			"runner_args_count": len(appliedArgs),
-			"reasoning_effort":  displayReasoningEffort(l.overrides.ReasoningEffort),
+			"runner_args_count": len(applied.Args),
+			"reasoning_effort":  runnerargs.DisplayEffort(l.overrides.ReasoningEffort),
 		})
 	}
 
@@ -277,7 +280,8 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 			PromptPath:        "",
 			SupervisorPrompt:  "",
 			Runner:            l.overrides.Runner,
-			RunnerArgs:        applyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort, ""),
+			RunnerArgs:        runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort).Args,
+			ReasoningEffort:   l.overrides.ReasoningEffort,
 			SleepSeconds:      l.overrides.SleepSeconds,
 			MaxIterations:     l.overrides.MaxIterations,
 			MaxStalled:        l.overrides.MaxStalled,
@@ -418,7 +422,7 @@ func loopFormDataFromOverrides(overrides loopOverrides) loopFormData {
 		AutoPush:          overrides.AutoPush,
 		Runner:            overrides.Runner,
 		RunnerArgs:        formatArgsLines(overrides.RunnerArgs),
-		ReasoningEffort:   displayReasoningEffort(overrides.ReasoningEffort),
+		ReasoningEffort:   runnerargs.DisplayEffort(overrides.ReasoningEffort),
 	}
 }
 

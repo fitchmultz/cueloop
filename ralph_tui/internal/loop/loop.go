@@ -15,6 +15,7 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/prompts"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
 )
 
@@ -26,6 +27,7 @@ type Options struct {
 	SupervisorPrompt  string
 	Runner            string
 	RunnerArgs        []string
+	ReasoningEffort   string
 	SleepSeconds      int
 	MaxIterations     int
 	MaxStalled        int
@@ -126,17 +128,24 @@ func (r *Runner) Run(ctx context.Context) error {
 		if strings.Contains(firstItem.Header, "[P1]") {
 			effort = "high"
 		}
-		r.currentRunArgs = append([]string{}, r.opts.RunnerArgs...)
-		if r.opts.Runner == "codex" {
-			if !containsEffort(r.currentRunArgs) {
-				r.currentRunArgs = append([]string{"-c", fmt.Sprintf("model_reasoning_effort=\"%s\"", effort)}, r.currentRunArgs...)
-			}
-			r.effectiveEffort = detectEffort(r.currentRunArgs, effort)
-			r.contextBuilderMandatory = r.effectiveEffort == "low" || r.effectiveEffort == "off"
-		} else {
-			r.effectiveEffort = ""
-			r.contextBuilderMandatory = false
+		effectiveSetting := effort
+		if runnerargs.NormalizeEffort(r.opts.ReasoningEffort) != "" {
+			effectiveSetting = r.opts.ReasoningEffort
 		}
+		r.currentRunArgs = append([]string{}, r.opts.RunnerArgs...)
+		effectiveEffort := ""
+		if r.opts.Runner == "codex" {
+			if detected, ok := runnerargs.DetectEffort(r.currentRunArgs); ok {
+				effectiveEffort = detected
+			} else if runnerargs.NormalizeEffort(effectiveSetting) == "auto" {
+				effectiveEffort = effort
+			} else {
+				effectiveEffort = runnerargs.NormalizeEffort(effectiveSetting)
+			}
+		}
+		r.currentRunArgs = runnerargs.ApplyReasoningEffort(r.opts.Runner, r.currentRunArgs, effectiveSetting).Args
+		r.effectiveEffort = effectiveEffort
+		r.contextBuilderMandatory = effectiveEffort == "low" || effectiveEffort == "off"
 
 		headBefore, err := HeadSHA(r.opts.RepoRoot)
 		if err != nil {
@@ -752,52 +761,6 @@ func contextBuilderPolicyBlock(effort string, mandatory bool) string {
 		builder.WriteString("OPTIONAL: You MAY use the repo_prompt context_builder to gather context and generate a plan. It is recommended for complex items or difficult root-cause triage.\n")
 	}
 	return builder.String()
-}
-
-func containsEffort(args []string) bool {
-	for _, token := range args {
-		if strings.Contains(token, "model_reasoning_effort") {
-			return true
-		}
-	}
-	return false
-}
-
-func detectEffort(args []string, defaultEffort string) string {
-	detected := defaultEffort
-	for idx := 0; idx < len(args); idx++ {
-		token := args[idx]
-		if token == "-c" && idx+1 < len(args) {
-			if value, ok := extractEffort(args[idx+1]); ok {
-				detected = value
-			}
-			idx++
-			continue
-		}
-		if strings.Contains(token, "model_reasoning_effort") {
-			if value, ok := extractEffort(token); ok {
-				detected = value
-			}
-		}
-	}
-	return detected
-}
-
-func extractEffort(config string) (string, bool) {
-	idx := strings.Index(config, "model_reasoning_effort")
-	if idx == -1 {
-		return "", false
-	}
-	parts := strings.SplitN(config[idx:], "=", 2)
-	if len(parts) != 2 {
-		return "", false
-	}
-	value := strings.Trim(parts[1], "\"'")
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "", false
-	}
-	return strings.ToLower(value), true
 }
 
 func pinPathPrefix(repoRoot string, pinDir string) string {

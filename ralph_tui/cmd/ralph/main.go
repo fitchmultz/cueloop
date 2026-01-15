@@ -471,6 +471,14 @@ func newLoopRunCommand() *cobra.Command {
 			}
 
 			logger := loop.StdLogger{Writer: cmd.OutOrStdout()}
+			effort := cfg.Loop.ReasoningEffort
+			if flags.Changed("reasoning-effort") {
+				value, err := flags.GetString("reasoning-effort")
+				if err != nil {
+					return err
+				}
+				effort = value
+			}
 			runner, err := loop.NewRunner(loop.Options{
 				RepoRoot:          locs.RepoRoot,
 				PinDir:            cfg.Paths.PinDir,
@@ -478,6 +486,7 @@ func newLoopRunCommand() *cobra.Command {
 				SupervisorPrompt:  supervisorPrompt,
 				Runner:            runnerName,
 				RunnerArgs:        cmd.Flags().Args(),
+				ReasoningEffort:   effort,
 				SleepSeconds:      sleepSeconds,
 				MaxIterations:     maxIterations,
 				MaxStalled:        maxStalled,
@@ -506,6 +515,7 @@ func newLoopRunCommand() *cobra.Command {
 	cmd.Flags().Int("max-repair-attempts", 2, "Supervisor repair attempts before auto-block")
 	cmd.Flags().String("only-tag", "", "Only execute queue items tagged with [tag] (comma-separated)")
 	cmd.Flags().Bool("once", false, "Run exactly one iteration and exit")
+	cmd.Flags().String("reasoning-effort", "", "Codex reasoning effort override (auto/low/medium/high/off)")
 
 	return cmd
 }

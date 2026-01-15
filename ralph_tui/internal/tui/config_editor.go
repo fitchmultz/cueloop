@@ -12,6 +12,7 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
 
 type configEditor struct {
@@ -510,7 +511,7 @@ func formDataFromConfig(cfg config.Config) configFormData {
 		SpecsAutofill:     cfg.Specs.AutofillScout,
 		SpecsRunner:       cfg.Specs.Runner,
 		SpecsRunnerArgs:   formatArgsLines(cfg.Specs.RunnerArgs),
-		SpecsEffort:       displayReasoningEffort(cfg.Specs.ReasoningEffort),
+		SpecsEffort:       runnerargs.DisplayEffort(cfg.Specs.ReasoningEffort),
 		LoopWorkers:       strconv.Itoa(cfg.Loop.Workers),
 		LoopPollSeconds:   strconv.Itoa(cfg.Loop.PollSeconds),
 		LoopSleepSeconds:  strconv.Itoa(cfg.Loop.SleepSeconds),
@@ -521,7 +522,7 @@ func formDataFromConfig(cfg config.Config) configFormData {
 		LoopRequireMain:   cfg.Loop.RequireMain,
 		LoopRunner:        cfg.Loop.Runner,
 		LoopRunnerArgs:    formatArgsLines(cfg.Loop.RunnerArgs),
-		LoopEffort:        displayReasoningEffort(cfg.Loop.ReasoningEffort),
+		LoopEffort:        runnerargs.DisplayEffort(cfg.Loop.ReasoningEffort),
 		GitAutoCommit:     cfg.Git.AutoCommit,
 		GitAutoPush:       cfg.Git.AutoPush,
 		GitRequireClean:   cfg.Git.RequireClean,
