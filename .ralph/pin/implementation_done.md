@@ -1,6 +1,10 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0451 [code]: Reduce Dashboard repo-status sampling cost (avoid running many git commands every refresh tick); add caching/throttling and better error surfacing. (ralph_tui/internal/tui/repo_status.go, ralph_tui/internal/tui/model.go)
+  - Evidence: `repoStatusCmd` runs every UI refresh (default 5s) and executes several git commands sequentially (`CurrentBranch`, `ShortHeadSHA`, `StatusSummary`, `AheadCount`, `LastCommitSummary`, `LastCommitDiffStat`), which can become expensive and contribute to UI lag.
+  - Plan: Cache repo status for a longer interval, consolidate git calls where possible, and add tests/benchmarks to keep dashboard refresh time bounded.
+
 - [x] RQ-0447 [code]: Improve loop/specs output persistence (buffering + fewer flushes) to avoid laggy UI while keeping lossless capture guarantees. (ralph_tui/internal/tui/output_persistence.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/output_capture_test.go)
   - Evidence: `outputFileWriter.AppendLines` flushes on every call; loop/specs write frequently, which can introduce IO stalls and degrade perceived streaming performance.
   - Plan: Add buffered/periodic flushing (or larger buffered batches), ensure Close always flushes, keep lossless test coverage, and add a benchmark/contract test to keep per-line overhead bounded.

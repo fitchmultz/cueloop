@@ -115,14 +115,16 @@ func TestDashboardRepoPanelFitsNarrowSizes(t *testing.T) {
 			m.screen = screenDashboard
 			m.navCollapsed = true
 			m.navFocused = false
-			m.repoStatus = repoStatusSnapshot{
-				Branch:         "very-long-branch-name-to-truncate",
-				ShortHead:      "abcdef123456",
-				StatusSummary:  "## main...origin/main [ahead 12, behind 3]",
-				DirtyCount:     42,
-				AheadCount:     12,
-				LastCommit:     "abcdef1 This is a deliberately long commit subject line to force truncation",
-				LastCommitStat: "15 files changed, 123 insertions(+), 45 deletions(-)",
+			m.repoStatus = repoStatusResult{
+				Snapshot: repoStatusSnapshot{
+					Branch:         "very-long-branch-name-to-truncate",
+					ShortHead:      "abcdef123456",
+					StatusSummary:  "## main...origin/main [ahead 12, behind 3]",
+					DirtyCount:     42,
+					AheadCount:     12,
+					LastCommit:     "abcdef1 This is a deliberately long commit subject line to force truncation",
+					LastCommitStat: "15 files changed, 123 insertions(+), 45 deletions(-)",
+				},
 			}
 			m.applyFocus()
 			m.width = size.w

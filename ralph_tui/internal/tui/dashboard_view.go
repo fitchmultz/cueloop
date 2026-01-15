@@ -5,6 +5,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 )
@@ -232,25 +233,32 @@ func dashboardRepoLines(m model) []string {
 	if strings.TrimSpace(m.locations.RepoRoot) == "" {
 		return []string{"Unavailable: repo root unknown"}
 	}
-	if m.repoStatusErr != "" {
-		return []string{"Unavailable: " + m.repoStatusErr}
+	if m.repoStatus.Err != nil {
+		line := "Unavailable: " + m.repoStatus.Err.Error()
+		if !m.repoStatus.NextAllowedAt.IsZero() {
+			remaining := time.Until(m.repoStatus.NextAllowedAt)
+			if remaining > 0 {
+				line = fmt.Sprintf("%s (retry in %s)", line, remaining.Round(time.Second))
+			}
+		}
+		return []string{line}
 	}
-	if isRepoStatusEmpty(m.repoStatus) {
+	if isRepoStatusEmpty(m.repoStatus.Snapshot) {
 		return []string{"Loading repo status..."}
 	}
 
 	lines := make([]string, 0, 6)
 
-	branch := m.repoStatus.Branch
+	branch := m.repoStatus.Snapshot.Branch
 	if strings.TrimSpace(branch) == "" {
 		branch = "unknown"
 	}
-	if m.repoStatus.BranchNote != "" {
-		branch = fmt.Sprintf("%s (%s)", branch, m.repoStatus.BranchNote)
+	if m.repoStatus.Snapshot.BranchNote != "" {
+		branch = fmt.Sprintf("%s (%s)", branch, m.repoStatus.Snapshot.BranchNote)
 	}
-	head := strings.TrimSpace(m.repoStatus.ShortHead)
-	if head == "" && m.repoStatus.ShortHeadNote != "" {
-		head = m.repoStatus.ShortHeadNote
+	head := strings.TrimSpace(m.repoStatus.Snapshot.ShortHead)
+	if head == "" && m.repoStatus.Snapshot.ShortHeadNote != "" {
+		head = m.repoStatus.Snapshot.ShortHeadNote
 	}
 	if head != "" {
 		lines = append(lines, fmt.Sprintf("Branch: %s | HEAD: %s", branch, head))
@@ -258,42 +266,42 @@ func dashboardRepoLines(m model) []string {
 		lines = append(lines, fmt.Sprintf("Branch: %s", branch))
 	}
 
-	statusLine := strings.TrimSpace(m.repoStatus.StatusSummary)
+	statusLine := strings.TrimSpace(m.repoStatus.Snapshot.StatusSummary)
 	if statusLine == "" {
-		if m.repoStatus.StatusSummaryNote != "" {
-			statusLine = "unavailable (" + m.repoStatus.StatusSummaryNote + ")"
+		if m.repoStatus.Snapshot.StatusSummaryNote != "" {
+			statusLine = "unavailable (" + m.repoStatus.Snapshot.StatusSummaryNote + ")"
 		} else {
 			statusLine = "unknown"
 		}
 	}
 	lines = append(lines, "Status: "+statusLine)
 
-	if m.repoStatus.StatusSummary != "" {
-		lines = append(lines, fmt.Sprintf("Dirty: %d file(s)", m.repoStatus.DirtyCount))
-	} else if m.repoStatus.StatusSummaryNote != "" {
-		lines = append(lines, fmt.Sprintf("Dirty: unavailable (%s)", m.repoStatus.StatusSummaryNote))
+	if m.repoStatus.Snapshot.StatusSummary != "" {
+		lines = append(lines, fmt.Sprintf("Dirty: %d file(s)", m.repoStatus.Snapshot.DirtyCount))
+	} else if m.repoStatus.Snapshot.StatusSummaryNote != "" {
+		lines = append(lines, fmt.Sprintf("Dirty: unavailable (%s)", m.repoStatus.Snapshot.StatusSummaryNote))
 	} else {
 		lines = append(lines, "Dirty: unknown")
 	}
 
-	if m.repoStatus.AheadNote != "" {
-		lines = append(lines, fmt.Sprintf("Ahead: unavailable (%s)", m.repoStatus.AheadNote))
+	if m.repoStatus.Snapshot.AheadNote != "" {
+		lines = append(lines, fmt.Sprintf("Ahead: unavailable (%s)", m.repoStatus.Snapshot.AheadNote))
 	} else {
-		lines = append(lines, fmt.Sprintf("Ahead: %d", m.repoStatus.AheadCount))
+		lines = append(lines, fmt.Sprintf("Ahead: %d", m.repoStatus.Snapshot.AheadCount))
 	}
 
-	if m.repoStatus.LastCommit != "" {
-		lines = append(lines, "Last commit: "+m.repoStatus.LastCommit)
-	} else if m.repoStatus.LastCommitNote != "" {
-		lines = append(lines, "Last commit: unavailable ("+m.repoStatus.LastCommitNote+")")
+	if m.repoStatus.Snapshot.LastCommit != "" {
+		lines = append(lines, "Last commit: "+m.repoStatus.Snapshot.LastCommit)
+	} else if m.repoStatus.Snapshot.LastCommitNote != "" {
+		lines = append(lines, "Last commit: unavailable ("+m.repoStatus.Snapshot.LastCommitNote+")")
 	} else {
 		lines = append(lines, "Last commit: unknown")
 	}
 
-	if m.repoStatus.LastCommitStat != "" {
-		lines = append(lines, "Last diffstat: "+m.repoStatus.LastCommitStat)
-	} else if m.repoStatus.LastCommitStatNote != "" {
-		lines = append(lines, "Last diffstat: unavailable ("+m.repoStatus.LastCommitStatNote+")")
+	if m.repoStatus.Snapshot.LastCommitStat != "" {
+		lines = append(lines, "Last diffstat: "+m.repoStatus.Snapshot.LastCommitStat)
+	} else if m.repoStatus.Snapshot.LastCommitStatNote != "" {
+		lines = append(lines, "Last diffstat: unavailable ("+m.repoStatus.Snapshot.LastCommitStatNote+")")
 	} else {
 		lines = append(lines, "Last diffstat: unknown")
 	}

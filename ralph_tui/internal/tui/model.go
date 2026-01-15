@@ -65,8 +65,8 @@ type model struct {
 	fixupLogCh          chan string
 	fixupLogRunID       int
 	fixupRunner         fixupRunner
-	repoStatus          repoStatusSnapshot
-	repoStatusErr       string
+	repoStatusSampler   *RepoStatusSampler
+	repoStatus          repoStatusResult
 	logger              *tuiLogger
 	logErr              error
 	runCtx              context.Context
@@ -165,29 +165,30 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 	runCtx, runCancel := context.WithCancel(context.Background())
 
 	m := model{
-		nav:              l,
-		screen:           screenDashboard,
-		help:             help.New(),
-		keys:             newKeyMap(),
-		searchInput:      searchInput,
-		priorNavSelected: l.Index(),
-		navFocused:       true,
-		navCollapsed:     false,
-		cfg:              cfg,
-		configView:       configView,
-		pinView:          pinView,
-		specsView:        specsView,
-		loopView:         loopView,
-		logsView:         logsView,
-		runCtx:           runCtx,
-		runCancel:        runCancel,
-		cliOverrides:     opts.CLIOverrides,
-		sessionOverrides: opts.SessionOverrides,
-		refreshGen:       1,
-		initErr:          err,
-		pinFixPrompt:     pinFix,
-		locations:        locations,
-		fixupRunner:      loop.FixupBlockedItems,
+		nav:               l,
+		screen:            screenDashboard,
+		help:              help.New(),
+		keys:              newKeyMap(),
+		searchInput:       searchInput,
+		priorNavSelected:  l.Index(),
+		navFocused:        true,
+		navCollapsed:      false,
+		cfg:               cfg,
+		configView:        configView,
+		pinView:           pinView,
+		specsView:         specsView,
+		loopView:          loopView,
+		logsView:          logsView,
+		runCtx:            runCtx,
+		runCancel:         runCancel,
+		cliOverrides:      opts.CLIOverrides,
+		sessionOverrides:  opts.SessionOverrides,
+		refreshGen:        1,
+		initErr:           err,
+		pinFixPrompt:      pinFix,
+		locations:         locations,
+		fixupRunner:       loop.FixupBlockedItems,
+		repoStatusSampler: NewRepoStatusSampler(locations.RepoRoot, RepoStatusSamplerOptions{}),
 	}
 	if m.loopView != nil {
 		m.loopView.parentCtx = m.runCtx
@@ -231,7 +232,7 @@ func (m model) Init() tea.Cmd {
 	}
 	m.logInfo("tui.start", fields)
 	cmds := []tea.Cmd{refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen)}
-	cmds = append(cmds, repoStatusCmd(m.locations.RepoRoot))
+	cmds = append(cmds, repoStatusCmd(m.runCtx, m.repoStatusSampler, false))
 	if m.pinView != nil {
 		if cmd := m.pinView.reloadAsync(true); cmd != nil {
 			cmds = append(cmds, cmd)
@@ -378,12 +379,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		handled = true
 	case repoStatusMsg:
-		if msg.err != nil {
-			m.repoStatusErr = msg.err.Error()
-		} else {
-			m.repoStatusErr = ""
-			m.repoStatus = msg.status
-		}
+		m.repoStatus = msg.result
 		handled = true
 	case tea.KeyMsg:
 		keyFields := keyEventSummary(msg)
@@ -1117,7 +1113,7 @@ func (m *model) refreshViews() []tea.Cmd {
 			cmds = append(cmds, cmd)
 		}
 	}
-	cmds = append(cmds, repoStatusCmd(m.locations.RepoRoot))
+	cmds = append(cmds, repoStatusCmd(m.runCtx, m.repoStatusSampler, false))
 	m.refreshLogsView()
 	return cmds
 }
@@ -1126,7 +1122,7 @@ func (m *model) refreshScreen(target screen, force bool) []tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	switch target {
 	case screenDashboard:
-		cmds = append(cmds, repoStatusCmd(m.locations.RepoRoot))
+		cmds = append(cmds, repoStatusCmd(m.runCtx, m.repoStatusSampler, force))
 	case screenPin:
 		if m.pinView == nil {
 			return cmds

@@ -169,7 +169,7 @@ func TestDashboardRepoStatusDegradesWithoutGit(t *testing.T) {
 	driver.Resize(40, 10)
 	driver.SelectScreen(screenDashboard)
 
-	driver.Send(repoStatusMsg{err: errors.New("git missing")})
+	driver.Send(repoStatusMsg{result: repoStatusResult{Err: errors.New("git missing")}})
 
 	view := driver.m.contentView()
 	if !strings.Contains(view, "Repo:") {

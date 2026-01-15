@@ -6,7 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/loop"
@@ -28,16 +33,254 @@ type repoStatusSnapshot struct {
 	LastCommitStatNote string
 }
 
-type repoStatusMsg struct {
-	status repoStatusSnapshot
-	err    error
+type repoStatusResult struct {
+	Snapshot       repoStatusSnapshot
+	Err            error
+	SampledAt      time.Time
+	FromCache      bool
+	Throttled      bool
+	ThrottleReason string // cooldown | in-flight | error-cooldown
+	NextAllowedAt  time.Time
 }
 
-func repoStatusCmd(repoRoot string) tea.Cmd {
+type repoStatusMsg struct {
+	result repoStatusResult
+}
+
+func repoStatusCmd(ctx context.Context, sampler *RepoStatusSampler, force bool) tea.Cmd {
 	return func() tea.Msg {
-		status, err := fetchRepoStatus(context.Background(), repoRoot)
-		return repoStatusMsg{status: status, err: err}
+		if sampler == nil {
+			return repoStatusMsg{result: repoStatusResult{Err: fmt.Errorf("repo status sampler not configured")}}
+		}
+		return repoStatusMsg{result: sampler.Sample(ctx, force)}
 	}
+}
+
+type RepoStatusSamplerOptions struct {
+	Cooldown           time.Duration
+	NotGitRepoCooldown time.Duration
+	GitMissingCooldown time.Duration
+	Fetch              func(context.Context, string) (repoStatusSnapshot, error)
+	TimeNow            func() time.Time
+	LookPath           func(string) (string, error)
+}
+
+type RepoStatusSampler struct {
+	repoRoot string
+
+	cooldown           time.Duration
+	notGitRepoCooldown time.Duration
+	gitMissingCooldown time.Duration
+
+	fetch    func(context.Context, string) (repoStatusSnapshot, error)
+	now      func() time.Time
+	lookPath func(string) (string, error)
+
+	mu            sync.Mutex
+	last          repoStatusResult
+	nextAllowedAt time.Time
+
+	lastHeadStamp fileStamp
+	lastIdxStamp  fileStamp
+
+	inFlight bool
+}
+
+func NewRepoStatusSampler(repoRoot string, opts RepoStatusSamplerOptions) *RepoStatusSampler {
+	cooldown := opts.Cooldown
+	if cooldown <= 0 {
+		cooldown = 30 * time.Second
+	}
+	notGitCooldown := opts.NotGitRepoCooldown
+	if notGitCooldown <= 0 {
+		notGitCooldown = 5 * time.Minute
+	}
+	gitMissingCooldown := opts.GitMissingCooldown
+	if gitMissingCooldown <= 0 {
+		gitMissingCooldown = 5 * time.Minute
+	}
+	fetch := opts.Fetch
+	if fetch == nil {
+		fetch = fetchRepoStatus
+	}
+	now := opts.TimeNow
+	if now == nil {
+		now = time.Now
+	}
+	lookPath := opts.LookPath
+	if lookPath == nil {
+		lookPath = exec.LookPath
+	}
+	return &RepoStatusSampler{
+		repoRoot:           repoRoot,
+		cooldown:           cooldown,
+		notGitRepoCooldown: notGitCooldown,
+		gitMissingCooldown: gitMissingCooldown,
+		fetch:              fetch,
+		now:                now,
+		lookPath:           lookPath,
+		last:               repoStatusResult{},
+		nextAllowedAt:      time.Time{},
+		lastHeadStamp:      fileStamp{},
+		lastIdxStamp:       fileStamp{},
+	}
+}
+
+func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusResult {
+	now := s.now()
+
+	s.mu.Lock()
+	if strings.TrimSpace(s.repoRoot) == "" {
+		s.mu.Unlock()
+		return repoStatusResult{Err: fmt.Errorf("repo root unavailable")}
+	}
+
+	if !force && s.last.Err != nil && !s.nextAllowedAt.IsZero() && now.Before(s.nextAllowedAt) {
+		res := s.last
+		res.FromCache = true
+		res.Throttled = true
+		res.ThrottleReason = "error-cooldown"
+		res.NextAllowedAt = s.nextAllowedAt
+		s.mu.Unlock()
+		return res
+	}
+
+	if !force && s.inFlight {
+		res := s.last
+		res.FromCache = true
+		res.Throttled = true
+		res.ThrottleReason = "in-flight"
+		res.NextAllowedAt = s.nextAllowedAt
+		s.mu.Unlock()
+		return res
+	}
+
+	gitDir, err := resolveGitDir(s.repoRoot)
+	if err != nil {
+		res := repoStatusResult{
+			Err:       err,
+			SampledAt: now,
+		}
+		s.last = res
+		s.nextAllowedAt = now.Add(s.notGitRepoCooldown)
+		res.NextAllowedAt = s.nextAllowedAt
+		s.mu.Unlock()
+		return res
+	}
+
+	headPath := filepath.Join(gitDir, "HEAD")
+	idxPath := filepath.Join(gitDir, "index")
+
+	headStamp, headChanged, headErr := fileChanged(headPath, s.lastHeadStamp)
+	if headErr != nil {
+		res := repoStatusResult{Err: headErr, SampledAt: now}
+		s.last = res
+		s.nextAllowedAt = now.Add(s.cooldown)
+		res.NextAllowedAt = s.nextAllowedAt
+		s.mu.Unlock()
+		return res
+	}
+	idxStamp, idxChanged, idxErr := fileChanged(idxPath, s.lastIdxStamp)
+	if idxErr != nil {
+		res := repoStatusResult{Err: idxErr, SampledAt: now}
+		s.last = res
+		s.nextAllowedAt = now.Add(s.cooldown)
+		res.NextAllowedAt = s.nextAllowedAt
+		s.mu.Unlock()
+		return res
+	}
+
+	filesChanged := headChanged || idxChanged
+	if !force && !filesChanged && !s.last.SampledAt.IsZero() && !s.nextAllowedAt.IsZero() && now.Before(s.nextAllowedAt) {
+		res := s.last
+		res.FromCache = true
+		res.Throttled = true
+		res.ThrottleReason = "cooldown"
+		res.NextAllowedAt = s.nextAllowedAt
+		s.mu.Unlock()
+		return res
+	}
+
+	if _, lookErr := s.lookPath("git"); lookErr != nil {
+		res := repoStatusResult{
+			Err:       fmt.Errorf("git missing"),
+			SampledAt: now,
+		}
+		s.last = res
+		s.nextAllowedAt = now.Add(s.gitMissingCooldown)
+		res.NextAllowedAt = s.nextAllowedAt
+		s.mu.Unlock()
+		return res
+	}
+
+	s.inFlight = true
+	s.mu.Unlock()
+
+	snapshot, fetchErr := s.fetch(ctx, s.repoRoot)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.inFlight = false
+
+	res := repoStatusResult{
+		Snapshot:  snapshot,
+		Err:       fetchErr,
+		SampledAt: now,
+	}
+
+	s.lastHeadStamp = headStamp
+	s.lastIdxStamp = idxStamp
+
+	cooldown := s.cooldown
+	if fetchErr != nil {
+		msg := strings.ToLower(fetchErr.Error())
+		if strings.Contains(msg, "not a git repo") || strings.Contains(msg, "not a git repository") {
+			cooldown = s.notGitRepoCooldown
+		}
+		if strings.Contains(msg, "git missing") {
+			cooldown = s.gitMissingCooldown
+		}
+	}
+	s.nextAllowedAt = now.Add(cooldown)
+	res.NextAllowedAt = s.nextAllowedAt
+
+	s.last = res
+	return res
+}
+
+func resolveGitDir(repoRoot string) (string, error) {
+	dotGit := filepath.Join(repoRoot, ".git")
+	info, err := os.Stat(dotGit)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("not a git repo")
+		}
+		return "", err
+	}
+	if info.IsDir() {
+		return dotGit, nil
+	}
+
+	data, err := os.ReadFile(dotGit)
+	if err != nil {
+		return "", err
+	}
+	content := strings.TrimSpace(string(data))
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(strings.ToLower(line), "gitdir:") {
+			path := strings.TrimSpace(line[len("gitdir:"):])
+			if path == "" {
+				break
+			}
+			if !filepath.IsAbs(path) {
+				path = filepath.Clean(filepath.Join(repoRoot, path))
+			}
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("not a git repo")
 }
 
 func fetchRepoStatus(ctx context.Context, repoRoot string) (repoStatusSnapshot, error) {
@@ -48,7 +291,11 @@ func fetchRepoStatus(ctx context.Context, repoRoot string) (repoStatusSnapshot, 
 
 	branch, err := loop.CurrentBranch(ctx, repoRoot)
 	if err != nil {
-		snapshot.BranchNote = repoNoteFromError(err, "unavailable")
+		note := repoNoteFromError(err, "unavailable")
+		snapshot.BranchNote = note
+		if note == "not a git repo" || note == "git missing" {
+			return snapshot, errors.New(note)
+		}
 	} else {
 		snapshot.Branch = branch
 	}
