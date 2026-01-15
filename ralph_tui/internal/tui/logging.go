@@ -180,7 +180,13 @@ func (l *tuiLogger) ensureFileLocked() error {
 	if l.file == nil {
 		return l.openFileLocked()
 	}
-	return l.rotateIfNeededLocked()
+	if err := l.rotateIfNeededLocked(); err != nil {
+		return err
+	}
+	if l.file == nil {
+		return l.openFileLocked()
+	}
+	return nil
 }
 
 func (l *tuiLogger) rotateIfNeededLocked() error {
@@ -209,7 +215,8 @@ func (l *tuiLogger) rotateIfNeededLocked() error {
 	if err := os.Rename(l.path, backup); err != nil {
 		return err
 	}
-	return l.openFileLocked()
+	l.fileSize = 0
+	return nil
 }
 
 func parseLogLevel(level string) logLevel {
