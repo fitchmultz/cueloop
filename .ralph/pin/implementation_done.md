@@ -1,6 +1,14 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0436 [docs]: Make worker/supervisor prompts more prescriptive for fragile edge cases (stop/cancel, dirty repo, and end-of-turn checklist). (ralph_tui/internal/prompts/defaults/prompt_codex.md, ralph_tui/internal/prompts/defaults/prompt_opencode.md, ralph_tui/internal/prompts/defaults/supervisor_prompt.md)
+  - Evidence:
+    - The prompts emphasize "run make ci" and "check the queue item", but they don’t explicitly cover what to do when the loop is stopped mid-iteration or when the repo is dirty before starting (both of which currently trigger quarantine behavior in code).
+    - This gap increases the chance that the agent loop ends in a half-finished state (checked item not moved, no commit/push) and requires manual intervention.
+  - Plan:
+    - Add an explicit end-of-turn checklist section (queue checkbox, validate pin, ensure clean git status) and a "stop/cancel semantics" section (exit cleanly; do not trigger quarantine; how to resume).
+    - Update the supervisor prompt to prioritize mechanical repairs (move checked items, commit/push, validate pin) before escalating to quarantine/auto-block.
+    - Keep prompt changes minimal and add a small prompt-focused test (string contains required checklist headings) to prevent regressions.
 - [x] RQ-0435 [code]: Unify queue tag parsing/filtering across loop + TUI (validate only_tags, avoid substring quirks, and reuse one tag parser). (ralph_tui/internal/loop/queue.go, ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/pin/pin.go)
   - Evidence:
     - The loop runner’s `hasTag()` uses a raw substring check for `"[tag]"`, while the Pin view extracts tags via `pinTagPattern`; this duplication can drift and produce inconsistent behavior.

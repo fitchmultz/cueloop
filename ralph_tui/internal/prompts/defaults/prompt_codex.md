@@ -15,6 +15,21 @@ You are an autonomous engineer working in this repo.
 - If you fix a bug, search for the same bug pattern across the repo and fix all occurrences in the same iteration.
 - Never claim "complete" unless `make ci` passed and you checked the queue item; the runner handles commits and Done log updates.
 
+## PRE-FLIGHT SAFETY (DIRTY REPO)
+- If the repo is dirty before starting, stop and clean it: do not proceed with a new queue item on top of unrelated changes.
+- If the dirtiness is from pin files or prior iteration artifacts, reconcile those first (move checked items if needed, re-validate pin, and make sure the working tree is clean) before starting a new item.
+- If you cannot clean safely, explain the situation in your response and exit cleanly.
+
+## STOP/CANCEL SEMANTICS
+- If you must stop mid-iteration, exit cleanly: do not mark the queue item as done and do not leave partial changes unreported.
+- Say explicitly that the iteration was stopped/canceled, summarize the current state, and note the exact next step to resume.
+
+## END-OF-TURN CHECKLIST
+- Queue item is checked off in `.ralph/pin/implementation_queue.md` when complete (leave unchecked if not complete).
+- Pin files validate cleanly (no `validate_pin` errors).
+- Working tree is clean (no uncommitted changes).
+- `make ci` passed.
+
 ## DECISION HEURISTICS
 - Delete or consolidate before adding new parts.
 - Add components only if they reduce total risk/maintenance or increase measurable signal.
