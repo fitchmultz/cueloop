@@ -291,7 +291,7 @@ func Build(ctx context.Context, opts BuildOptions) (BuildResult, error) {
 func AcquireLock(repoRoot string) (*Lock, error) {
 	lockBase := os.Getenv("TMPDIR")
 	if lockBase == "" {
-		lockBase = "/tmp"
+		lockBase = os.TempDir()
 	}
 
 	lockID := lockChecksum(repoRoot)

@@ -4,7 +4,6 @@ package lockfile
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -107,13 +106,6 @@ func readOwnerPID(path string) (int, error) {
 	return pid, nil
 }
 
-func isPIDRunning(pid int) bool {
-	cmd := exec.Command("ps", "-p", strconv.Itoa(pid))
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Run() == nil
-}
-
 func isAncestorPID(ancestorPID int) bool {
 	currentPID := os.Getpid()
 	for currentPID > 1 {
@@ -127,17 +119,4 @@ func isAncestorPID(ancestorPID int) bool {
 		currentPID = ppid
 	}
 	return false
-}
-
-func parentPID(pid int) (int, error) {
-	cmd := exec.Command("ps", "-o", "ppid=", "-p", strconv.Itoa(pid))
-	output, err := cmd.Output()
-	if err != nil {
-		return 0, err
-	}
-	trimmed := strings.TrimSpace(string(output))
-	if trimmed == "" {
-		return 0, nil
-	}
-	return strconv.Atoi(trimmed)
 }
