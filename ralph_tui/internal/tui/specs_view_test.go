@@ -1,7 +1,23 @@
 // Package tui provides tests for specs view preview refresh behavior.
 package tui
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
+
+type fakePreviewRenderer struct {
+	renderCalls int
+	output      string
+}
+
+func (f *fakePreviewRenderer) Render(input string) (string, error) {
+	f.renderCalls++
+	if f.output == "" {
+		return "rendered:" + input, nil
+	}
+	return f.output, nil
+}
 
 func TestSpecsPreviewRefreshSetsLoading(t *testing.T) {
 	_, locs, cfg := newHermeticModel(t)
@@ -20,5 +36,106 @@ func TestSpecsPreviewRefreshSetsLoading(t *testing.T) {
 	}
 	if view.previewDirty {
 		t.Fatalf("expected previewDirty to be false")
+	}
+}
+
+func TestSpecsPreviewRendererCachesByWidth(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+	view, err := newSpecsView(cfg, locs)
+	if err != nil {
+		t.Fatalf("newSpecsView failed: %v", err)
+	}
+
+	buildCalls := 0
+	renderers := map[int]*fakePreviewRenderer{}
+	view.rendererBuilder = func(width int) (previewRenderer, error) {
+		buildCalls++
+		renderer := &fakePreviewRenderer{output: fmt.Sprintf("rendered-%d", width)}
+		renderers[width] = renderer
+		return renderer, nil
+	}
+
+	view.previewWidth = 80
+	view.lastRunOutput = "first"
+	cmd := view.refreshPreviewAsync()
+	if cmd == nil {
+		t.Fatalf("expected refresh command")
+	}
+	view.Update(cmd().(specsPreviewMsg), newTestKeyMap())
+
+	if buildCalls != 1 {
+		t.Fatalf("expected 1 renderer build, got %d", buildCalls)
+	}
+	if renderers[80].renderCalls != 1 {
+		t.Fatalf("expected renderer to render once, got %d", renderers[80].renderCalls)
+	}
+
+	view.lastRunOutput = "second"
+	cmd = view.refreshPreviewAsync()
+	if cmd == nil {
+		t.Fatalf("expected refresh command")
+	}
+	view.Update(cmd().(specsPreviewMsg), newTestKeyMap())
+
+	if buildCalls != 1 {
+		t.Fatalf("expected cached renderer reuse, got %d builds", buildCalls)
+	}
+	if renderers[80].renderCalls != 2 {
+		t.Fatalf("expected renderer to render twice, got %d", renderers[80].renderCalls)
+	}
+
+	view.previewWidth = 120
+	view.lastRunOutput = "third"
+	cmd = view.refreshPreviewAsync()
+	if cmd == nil {
+		t.Fatalf("expected refresh command")
+	}
+	view.Update(cmd().(specsPreviewMsg), newTestKeyMap())
+
+	if buildCalls != 2 {
+		t.Fatalf("expected second renderer build after width change, got %d", buildCalls)
+	}
+	if renderers[120].renderCalls != 1 {
+		t.Fatalf("expected new renderer to render once, got %d", renderers[120].renderCalls)
+	}
+}
+
+func TestSpecsPreviewSkipsRenderWhenInputsUnchanged(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+	view, err := newSpecsView(cfg, locs)
+	if err != nil {
+		t.Fatalf("newSpecsView failed: %v", err)
+	}
+
+	renderer := &fakePreviewRenderer{output: "rendered"}
+	view.rendererBuilder = func(width int) (previewRenderer, error) {
+		return renderer, nil
+	}
+
+	view.previewWidth = 80
+	view.lastRunOutput = "first"
+	cmd := view.refreshPreviewAsync()
+	if cmd == nil {
+		t.Fatalf("expected refresh command")
+	}
+	msg := cmd().(specsPreviewMsg)
+	view.Update(msg, newTestKeyMap())
+
+	if renderer.renderCalls != 1 {
+		t.Fatalf("expected renderer to render once, got %d", renderer.renderCalls)
+	}
+
+	cmd = view.refreshPreviewAsync()
+	if cmd == nil {
+		t.Fatalf("expected refresh command")
+	}
+	msg = cmd().(specsPreviewMsg)
+	if !msg.unchanged {
+		t.Fatalf("expected unchanged preview message")
+	}
+	view.Update(msg, newTestKeyMap())
+
+	if renderer.renderCalls != 1 {
+		t.Fatalf("expected renderer to skip re-render, got %d", renderer.renderCalls)
 	}
 }

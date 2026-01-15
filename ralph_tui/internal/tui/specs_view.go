@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"path/filepath"
 	"strings"
 
@@ -36,6 +37,7 @@ type specsView struct {
 	previewErr        string
 	previewLoading    bool
 	previewDirty      bool
+	previewSignature  string
 	status            string
 	err               string
 	refreshErr        string
@@ -43,6 +45,8 @@ type specsView struct {
 	previewViewport   viewport.Model
 	logViewport       viewport.Model
 	previewWidth      int
+	rendererBuilder   func(int) (previewRenderer, error)
+	previewRenderers  map[int]previewRenderer
 	running           bool
 	diffStat          string
 	runLogs           []string
@@ -73,6 +77,8 @@ type specsPreviewMsg struct {
 	err       error
 	effective bool
 	auto      bool
+	signature string
+	unchanged bool
 }
 
 func newSpecsView(cfg config.Config, locations paths.Locations) (*specsView, error) {
@@ -81,16 +87,18 @@ func newSpecsView(cfg config.Config, locations paths.Locations) (*specsView, err
 	vp.Style = paddedViewportStyle
 	logViewport.Style = paddedViewportStyle
 	view := &specsView{
-		cfg:             cfg,
-		locations:       locations,
-		runner:          specs.Runner(cfg.Specs.Runner),
-		runnerArgs:      cfg.Specs.RunnerArgs,
-		reasoningEffort: cfg.Specs.ReasoningEffort,
-		autofillScout:   cfg.Specs.AutofillScout,
-		previewViewport: vp,
-		logViewport:     logViewport,
-		previewWidth:    80,
-		previewDirty:    true,
+		cfg:              cfg,
+		locations:        locations,
+		runner:           specs.Runner(cfg.Specs.Runner),
+		runnerArgs:       cfg.Specs.RunnerArgs,
+		reasoningEffort:  cfg.Specs.ReasoningEffort,
+		autofillScout:    cfg.Specs.AutofillScout,
+		previewViewport:  vp,
+		logViewport:      logViewport,
+		previewWidth:     80,
+		previewDirty:     true,
+		rendererBuilder:  buildRenderer,
+		previewRenderers: map[int]previewRenderer{},
 	}
 	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
 		view.queueStamp = stamp
@@ -146,11 +154,21 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			}
 			return nil
 		}
+		if msg.unchanged {
+			s.previewSignature = msg.signature
+			s.effectiveInnovate = msg.effective
+			s.autoEnabled = msg.auto
+			if s.previewDirty && !s.running {
+				return s.refreshPreviewAsync()
+			}
+			return nil
+		}
 		s.previewErr = ""
 		s.clearRefreshError()
 		s.preview = msg.preview
 		s.effectiveInnovate = msg.effective
 		s.autoEnabled = msg.auto
+		s.previewSignature = msg.signature
 		s.previewViewport.SetContent(msg.preview)
 		s.previewViewport.GotoTop()
 		if s.previewDirty && !s.running {
@@ -278,6 +296,24 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 	lastRunOutput := s.lastRunOutput
 	diffStat := s.diffStat
 	previewWidth := s.previewWidth
+	promptStamp := s.promptStamp
+	queueStamp := s.queueStamp
+	priorSignature := s.previewSignature
+	priorEffective := s.effectiveInnovate
+	priorAuto := s.autoEnabled
+
+	signature := previewInputSignature(previewWidth, promptStamp, queueStamp, interactive, innovate, innovateExplicit, autofillScout, lastRunOutput, diffStat)
+	if s.previewErr == "" && s.preview != "" && signature == priorSignature {
+		return func() tea.Msg {
+			return specsPreviewMsg{signature: signature, effective: priorEffective, auto: priorAuto, unchanged: true}
+		}
+	}
+	renderer, err := s.previewRenderer(previewWidth)
+	if err != nil {
+		return func() tea.Msg {
+			return specsPreviewMsg{err: err}
+		}
+	}
 	return func() tea.Msg {
 		queuePath := filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")
 		effective, err := specs.ResolveInnovate(queuePath, innovate, innovateExplicit, autofillScout)
@@ -291,10 +327,6 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 		if err != nil {
 			return specsPreviewMsg{err: err}
 		}
-		renderer, err := buildRenderer(previewWidth)
-		if err != nil {
-			return specsPreviewMsg{err: err}
-		}
 		rendered, err := renderer.Render(prompt)
 		if err != nil {
 			return specsPreviewMsg{err: err}
@@ -305,7 +337,7 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 		if diffStat != "" {
 			rendered = rendered + "\n\nDiff stat:\n" + diffStat
 		}
-		return specsPreviewMsg{preview: rendered, effective: effective, auto: autoEnabled}
+		return specsPreviewMsg{preview: rendered, effective: effective, auto: autoEnabled, signature: signature}
 	}
 }
 
@@ -395,7 +427,11 @@ func (s *specsView) Resize(width int, height int) {
 	s.previewDirty = true
 }
 
-func buildRenderer(previewWidth int) (*glamour.TermRenderer, error) {
+type previewRenderer interface {
+	Render(string) (string, error)
+}
+
+func buildRenderer(previewWidth int) (previewRenderer, error) {
 	wrapWidth := previewWidth
 	if wrapWidth <= 0 {
 		wrapWidth = 80
@@ -404,6 +440,51 @@ func buildRenderer(previewWidth int) (*glamour.TermRenderer, error) {
 		glamour.WithAutoStyle(),
 		glamour.WithWordWrap(wrapWidth),
 	)
+}
+
+func (s *specsView) previewRenderer(width int) (previewRenderer, error) {
+	if s.previewRenderers == nil {
+		s.previewRenderers = map[int]previewRenderer{}
+	}
+	if renderer, ok := s.previewRenderers[width]; ok {
+		return renderer, nil
+	}
+	if s.rendererBuilder == nil {
+		s.rendererBuilder = buildRenderer
+	}
+	renderer, err := s.rendererBuilder(width)
+	if err != nil {
+		return nil, err
+	}
+	s.previewRenderers[width] = renderer
+	return renderer, nil
+}
+
+func previewInputSignature(
+	previewWidth int,
+	promptStamp fileStamp,
+	queueStamp fileStamp,
+	interactive bool,
+	innovate bool,
+	innovateExplicit bool,
+	autofillScout bool,
+	lastRunOutput string,
+	diffStat string,
+) string {
+	hash := fnv.New64a()
+	_, _ = fmt.Fprintf(hash, "width=%d;", previewWidth)
+	_, _ = fmt.Fprintf(hash, "prompt=%s;", fileStampSignature(promptStamp))
+	_, _ = fmt.Fprintf(hash, "queue=%s;", fileStampSignature(queueStamp))
+	_, _ = fmt.Fprintf(hash, "interactive=%t;innovate=%t;innovateExplicit=%t;autofillScout=%t;", interactive, innovate, innovateExplicit, autofillScout)
+	_, _ = fmt.Fprintf(hash, "run=%s;diff=%s;", lastRunOutput, diffStat)
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func fileStampSignature(stamp fileStamp) string {
+	if !stamp.Exists {
+		return "missing"
+	}
+	return fmt.Sprintf("%d:%d", stamp.Size, stamp.ModTime.UnixNano())
 }
 
 func (s *specsView) SetConfig(cfg config.Config, locations paths.Locations) {
