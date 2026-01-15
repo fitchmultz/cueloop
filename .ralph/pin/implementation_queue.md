@@ -1,6 +1,14 @@
 # Implementation Queue
 
 ## Queue
+- [ ] RQ-0454 [code]: Allow pin-only commits under .ralph during loop finalize without auto-blocking. (ralph_tui/internal/loop/loop.go, ralph_tui/internal/loop/git.go, ralph_tui/internal/loop/loop_test.go)
+  - Evidence: The loop auto-blocks when HEAD changes before finalize; this currently treats intentional queue edits under `.ralph/` as failures even though they are expected during a run.
+  - Plan: If HEAD changed, diff the commit range and permit only `.ralph/` (pin) changes; refresh queue state and continue. Add regression tests for pin-only commits vs non-pin changes.
+
+- [ ] RQ-0453 [ui]: Correct Run Loop info panel "Max iterations" display for single execution mode. (ralph_tui/internal/tui/loop_view.go)
+  - Evidence: When pressing 'r' for single execution, the info panel can show "Max iterations: unlimited" (or the configured limit) even though it will only run once; this is misleading.
+  - Plan: Update the info panel display logic to reflect "1" (or "single run") when a single execution is triggered, regardless of the persistent MaxIterations setting.
+
 - [ ] RQ-0444 [ui]: Make Run Loop settings UX runner-aware (opencode vs codex): hide/disable irrelevant reasoning-effort + context_builder controls; clarify behavior in the view. (ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/loop/loop.go, ralph_tui/internal/prompts/defaults/prompt_opencode.md)
   - Evidence: `loopView.controlsView` shows reasoning effort "effective: n/a" for non-codex runners and allows toggling "Force context_builder" even though the code-only context builder policy block is codex-specific; this is confusing, especially when using opencode.
   - Plan: Make the Run Loop screen adapt its controls/help text based on the selected runner, and add tests to ensure the view does not present no-op toggles or misleading "mandatory" labels.
@@ -36,10 +44,6 @@
 - [ ] RQ-0452 [docs]: Align on-screen key hints and help output with actual bindings (remove misleading hints, document new shortcuts, add guard tests). (ralph_tui/internal/tui/dashboard_view.go, ralph_tui/internal/tui/help_keymap.go, ralph_tui/internal/tui/keymap.go)
   - Evidence: Several screens embed hard-coded "Keys:" lines that can drift from `keymap.go` (e.g., Dashboard advertises fixup blocked). This breaks discoverability and causes user confusion.
   - Plan: Centralize key-hint rendering (or derive from `keyMap`), update view strings, and add tests that assert advertised keys exist and are handled.
-
-- [ ] RQ-0453 [ui]: Correct Run Loop info panel "Max iterations" display for single execution mode. (ralph_tui/internal/tui/loop_view.go)
-  - Evidence: When pressing 'r' for single execution, the info panel can show "Max iterations: unlimited" (or the configured limit) even though it will only run once; this is misleading.
-  - Plan: Update the info panel display logic to reflect "1" (or "single run") when a single execution is triggered, regardless of the persistent MaxIterations setting.
 
 ## Blocked
 
