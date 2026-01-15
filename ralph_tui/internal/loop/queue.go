@@ -4,19 +4,14 @@ package loop
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/queueid"
 )
 
 // QueueItem captures a parsed queue item header and block.
-type QueueItem struct {
-	Header  string
-	Block   []string
-	ID      string
-	Checked bool
-}
+type QueueItem = pin.QueueItem
 
 // FirstUncheckedItem returns the first unchecked queue item matching tags.
 func FirstUncheckedItem(queuePath string, onlyTags []string) (*QueueItem, error) {
@@ -43,7 +38,7 @@ func CurrentItemBlock(queuePath string, itemID string) (string, error) {
 	}
 	for _, item := range items {
 		if item.ID == itemID {
-			return strings.Join(item.Block, "\n"), nil
+			return strings.Join(item.Lines, "\n"), nil
 		}
 	}
 	return "", fmt.Errorf("item %s not found", itemID)
@@ -95,54 +90,5 @@ func hasTag(line string, tags []string) bool {
 }
 
 func readQueueItems(queuePath string) ([]QueueItem, error) {
-	data, err := os.ReadFile(queuePath)
-	if err != nil {
-		return nil, err
-	}
-	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
-	inQueue := false
-	items := make([]QueueItem, 0)
-
-	var current []string
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "## Queue" {
-			flushQueueItem(&items, current)
-			current = nil
-			inQueue = true
-			continue
-		}
-		if strings.HasPrefix(line, "## ") {
-			flushQueueItem(&items, current)
-			current = nil
-			inQueue = false
-			continue
-		}
-		if !inQueue {
-			continue
-		}
-		if strings.HasPrefix(line, "- [") {
-			flushQueueItem(&items, current)
-			current = []string{line}
-			continue
-		}
-		if len(current) > 0 {
-			current = append(current, line)
-		}
-	}
-	flushQueueItem(&items, current)
-
-	return items, nil
-}
-
-func flushQueueItem(items *[]QueueItem, block []string) {
-	if len(block) == 0 {
-		return
-	}
-	header := block[0]
-	*items = append(*items, QueueItem{
-		Header:  header,
-		Block:   block,
-		ID:      ExtractItemID(header),
-		Checked: strings.HasPrefix(strings.TrimSpace(header), "- [x]"),
-	})
+	return pin.ReadQueueItems(queuePath)
 }

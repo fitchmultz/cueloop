@@ -53,6 +53,20 @@ func DiffNameOnly(repoRoot string) ([]string, error) {
 	return strings.Split(trimmed, "\n"), nil
 }
 
+func DiffNameOnlyRange(repoRoot string, from string, to string) ([]string, error) {
+	rangeSpec := fmt.Sprintf("%s..%s", from, to)
+	cmd := exec.Command("git", "-C", repoRoot, "diff", "--name-only", rangeSpec)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	trimmed := strings.TrimSpace(string(out))
+	if trimmed == "" {
+		return []string{}, nil
+	}
+	return strings.Split(trimmed, "\n"), nil
+}
+
 func DiffStat(repoRoot string) (string, error) {
 	cmd := exec.Command("git", "-C", repoRoot, "diff", "--stat")
 	out, err := cmd.Output()
@@ -113,8 +127,29 @@ func CheckoutNewBranch(repoRoot string, branch string) error {
 	return cmd.Run()
 }
 
+func BranchExists(repoRoot string, branch string) (bool, error) {
+	cmd := exec.Command("git", "-C", repoRoot, "rev-parse", "--verify", "--quiet", branch+"^{commit}")
+	if err := cmd.Run(); err != nil {
+		if _, ok := err.(*exec.ExitError); ok {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 func ResetHard(repoRoot string, sha string) error {
 	cmd := exec.Command("git", "-C", repoRoot, "reset", "--hard", sha)
+	return cmd.Run()
+}
+
+func WorktreeAddDetach(repoRoot string, path string, ref string) error {
+	cmd := exec.Command("git", "-C", repoRoot, "worktree", "add", "--detach", path, ref)
+	return cmd.Run()
+}
+
+func WorktreeRemove(repoRoot string, path string) error {
+	cmd := exec.Command("git", "-C", repoRoot, "worktree", "remove", "--force", path)
 	return cmd.Run()
 }
 

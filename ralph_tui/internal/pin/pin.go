@@ -98,6 +98,16 @@ type QueueItem struct {
 	Checked bool
 }
 
+// BlockedItem represents a queue block in the Blocked section.
+type BlockedItem struct {
+	Header        string
+	Lines         []string
+	ID            string
+	Metadata      Metadata
+	FixupAttempts int
+	FixupLast     string
+}
+
 // ReadQueueSummary returns queue items plus the blocked item count.
 func ReadQueueSummary(queuePath string) ([]QueueItem, int, error) {
 	lines, err := readLines(queuePath)
@@ -148,6 +158,39 @@ func ReadQueueSummary(queuePath string) ([]QueueItem, int, error) {
 	}
 
 	return items, blockedCount, nil
+}
+
+// ReadBlockedItems returns blocked items from the Blocked section with metadata.
+func ReadBlockedItems(queuePath string) ([]BlockedItem, error) {
+	lines, err := readLines(queuePath)
+	if err != nil {
+		return nil, err
+	}
+
+	blocks := splitBlocks(lines)
+	items := make([]BlockedItem, 0)
+	inBlocked := false
+
+	for _, block := range blocks {
+		if len(block) == 0 {
+			continue
+		}
+		header := block[0]
+		switch {
+		case strings.TrimSpace(header) == "## Blocked":
+			inBlocked = true
+			continue
+		case strings.HasPrefix(header, "## "):
+			inBlocked = false
+			continue
+		}
+
+		if inBlocked && strings.HasPrefix(header, "- [") {
+			items = append(items, parseBlockedItem(block))
+		}
+	}
+
+	return items, nil
 }
 
 // ReadQueueItems returns queue items from the Queue section.
@@ -314,6 +357,123 @@ func BlockItem(queuePath string, itemID string, reasonLines []string, metadata M
 	return true, nil
 }
 
+// RequeueBlockedItem moves a Blocked item back to the Queue section.
+func RequeueBlockedItem(queuePath string, itemID string, opts RequeueOptions) (bool, error) {
+	if err := requireFile(queuePath); err != nil {
+		return false, err
+	}
+
+	lines, err := readLines(queuePath)
+	if err != nil {
+		return false, err
+	}
+
+	blocks := splitBlocks(lines)
+	newBlocks := make([][]string, 0, len(blocks))
+	inBlocked := false
+	queueIndex := -1
+	var itemBlock []string
+
+	for _, block := range blocks {
+		header := firstLine(block)
+		switch {
+		case strings.TrimSpace(header) == "## Queue":
+			inBlocked = false
+			queueIndex = len(newBlocks)
+			newBlocks = append(newBlocks, block)
+			continue
+		case strings.TrimSpace(header) == "## Blocked":
+			inBlocked = true
+			newBlocks = append(newBlocks, block)
+			continue
+		case strings.HasPrefix(header, "## "):
+			inBlocked = false
+			newBlocks = append(newBlocks, block)
+			continue
+		}
+
+		if inBlocked && strings.HasPrefix(header, "- [") && extractID(header) == itemID {
+			itemBlock = block
+			continue
+		}
+		newBlocks = append(newBlocks, block)
+	}
+
+	if itemBlock == nil {
+		return false, nil
+	}
+	if queueIndex < 0 {
+		return false, fmt.Errorf("Queue section not found while requeueing item.")
+	}
+
+	itemBlock = stripBlockedMetadata(itemBlock)
+	itemBlock[0] = setHeaderUnchecked(itemBlock[0])
+
+	insertPos := queueIndex + 1
+	if !opts.InsertAtTop {
+		insertPos = findSectionEnd(newBlocks, queueIndex)
+	}
+	newBlocks = insertBlocks(newBlocks, insertPos, itemBlock)
+
+	flattened := flattenBlocks(newBlocks)
+	if err := writeLines(queuePath, flattened); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// RecordFixupAttempt increments the fixup attempt counter for a blocked item.
+func RecordFixupAttempt(queuePath string, itemID string, last string) (bool, int, error) {
+	if err := requireFile(queuePath); err != nil {
+		return false, 0, err
+	}
+
+	lines, err := readLines(queuePath)
+	if err != nil {
+		return false, 0, err
+	}
+
+	blocks := splitBlocks(lines)
+	newBlocks := make([][]string, 0, len(blocks))
+	inBlocked := false
+	updated := false
+	attempts := 0
+
+	for _, block := range blocks {
+		header := firstLine(block)
+		switch {
+		case strings.TrimSpace(header) == "## Blocked":
+			inBlocked = true
+			newBlocks = append(newBlocks, block)
+			continue
+		case strings.HasPrefix(header, "## "):
+			inBlocked = false
+			newBlocks = append(newBlocks, block)
+			continue
+		}
+
+		if inBlocked && strings.HasPrefix(header, "- [") && extractID(header) == itemID {
+			item := parseBlockedItem(block)
+			attempts = item.FixupAttempts + 1
+			block = updateFixupMetadata(block, attempts, last)
+			updated = true
+		}
+		newBlocks = append(newBlocks, block)
+	}
+
+	if !updated {
+		return false, 0, nil
+	}
+
+	flattened := flattenBlocks(newBlocks)
+	if err := writeLines(queuePath, flattened); err != nil {
+		return false, 0, err
+	}
+
+	return true, attempts, nil
+}
+
 // ToggleQueueItemChecked flips the checked state for a queue item by ID.
 func ToggleQueueItemChecked(queuePath string, itemID string) (bool, bool, error) {
 	if err := requireFile(queuePath); err != nil {
@@ -394,6 +554,11 @@ func appendMetadata(block []string, reasonLines []string, metadata Metadata) []s
 		block = append(block, fmt.Sprintf("%s- Unblock hint: %s", indent, metadata.UnblockHint))
 	}
 	return block
+}
+
+// RequeueOptions controls how a blocked item is requeued.
+type RequeueOptions struct {
+	InsertAtTop bool
 }
 
 func ensureQueueSections(lines []string) error {
@@ -685,6 +850,117 @@ func firstLine(block []string) string {
 		return ""
 	}
 	return block[0]
+}
+
+func parseBlockedItem(block []string) BlockedItem {
+	item := BlockedItem{
+		Header: firstLine(block),
+		Lines:  block,
+		ID:     extractID(firstLine(block)),
+	}
+	metadata := Metadata{}
+	attempts := 0
+	last := ""
+
+	for _, line := range block[1:] {
+		trimmed := strings.TrimLeft(line, " \t")
+		switch {
+		case strings.HasPrefix(trimmed, "- WIP branch:"):
+			metadata.WIPBranch = strings.TrimSpace(strings.TrimPrefix(trimmed, "- WIP branch:"))
+		case strings.HasPrefix(trimmed, "- Known-good:"):
+			metadata.KnownGood = strings.TrimSpace(strings.TrimPrefix(trimmed, "- Known-good:"))
+		case strings.HasPrefix(trimmed, "- Unblock hint:"):
+			metadata.UnblockHint = strings.TrimSpace(strings.TrimPrefix(trimmed, "- Unblock hint:"))
+		case strings.HasPrefix(trimmed, "- Fixup attempts:"):
+			if value, ok := parseFixupAttempts(trimmed); ok {
+				attempts = value
+			}
+		case strings.HasPrefix(trimmed, "- Fixup last:"):
+			last = strings.TrimSpace(strings.TrimPrefix(trimmed, "- Fixup last:"))
+		}
+	}
+
+	item.Metadata = metadata
+	item.FixupAttempts = attempts
+	item.FixupLast = last
+	return item
+}
+
+func parseFixupAttempts(trimmed string) (int, bool) {
+	value := strings.TrimSpace(strings.TrimPrefix(trimmed, "- Fixup attempts:"))
+	if value == "" {
+		return 0, false
+	}
+	var attempts int
+	if _, err := fmt.Sscanf(value, "%d", &attempts); err != nil {
+		return 0, false
+	}
+	return attempts, true
+}
+
+func updateFixupMetadata(block []string, attempts int, last string) []string {
+	indent := "  "
+	attemptLine := fmt.Sprintf("%s- Fixup attempts: %d", indent, attempts)
+	lastLine := fmt.Sprintf("%s- Fixup last: %s", indent, last)
+
+	updatedAttempts := false
+	updatedLast := false
+	for i, line := range block {
+		trimmed := strings.TrimLeft(line, " \t")
+		switch {
+		case strings.HasPrefix(trimmed, "- Fixup attempts:"):
+			block[i] = attemptLine
+			updatedAttempts = true
+		case strings.HasPrefix(trimmed, "- Fixup last:"):
+			if last != "" {
+				block[i] = lastLine
+				updatedLast = true
+			}
+		}
+	}
+
+	if !updatedAttempts {
+		block = append(block, attemptLine)
+	}
+	if last != "" && !updatedLast {
+		block = append(block, lastLine)
+	}
+	return block
+}
+
+func stripBlockedMetadata(block []string) []string {
+	cleaned := make([]string, 0, len(block))
+	for i, line := range block {
+		if i == 0 {
+			cleaned = append(cleaned, line)
+			continue
+		}
+		trimmed := strings.TrimLeft(line, " \t")
+		if strings.HasPrefix(trimmed, "- Blocked reason:") ||
+			strings.HasPrefix(trimmed, "- WIP branch:") ||
+			strings.HasPrefix(trimmed, "- Known-good:") ||
+			strings.HasPrefix(trimmed, "- Unblock hint:") ||
+			strings.HasPrefix(trimmed, "- Fixup attempts:") ||
+			strings.HasPrefix(trimmed, "- Fixup last:") {
+			continue
+		}
+		cleaned = append(cleaned, line)
+	}
+	return cleaned
+}
+
+func setHeaderUnchecked(header string) string {
+	trimmed := strings.TrimLeft(header, " \t")
+	if strings.HasPrefix(trimmed, "- [x]") {
+		return strings.Replace(header, "- [x]", "- [ ]", 1)
+	}
+	if strings.HasPrefix(trimmed, "- [ ]") {
+		return header
+	}
+	if strings.HasPrefix(trimmed, "- [") {
+		return strings.Replace(header, "- [", "- [ ]", 1)
+	}
+	return header
 }
 
 func readLines(path string) ([]string, error) {

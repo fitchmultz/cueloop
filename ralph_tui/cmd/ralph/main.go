@@ -457,6 +457,7 @@ func newLoopCommand() *cobra.Command {
 	}
 
 	loopCmd.AddCommand(newLoopRunCommand())
+	loopCmd.AddCommand(newLoopFixupCommand())
 
 	return loopCmd
 }
@@ -604,6 +605,72 @@ func newLoopRunCommand() *cobra.Command {
 	cmd.Flags().Bool("once", false, "Run exactly one iteration and exit")
 	cmd.Flags().String("reasoning-effort", "", "Codex reasoning effort override (auto/low/medium/high/off)")
 	cmd.Flags().Bool("force-context-builder", false, "Force context_builder even when reasoning effort is medium/high")
+
+	return cmd
+}
+
+func newLoopFixupCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "fixup",
+		Short:   "Re-attempt blocked items with WIP metadata",
+		Long:    "Scan blocked items with WIP metadata, validate in an isolated worktree, and requeue when safe.",
+		Example: "  ralph loop fixup\n  ralph loop fixup --max-attempts 2 --max-items 3",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+			locs, err := paths.Resolve("")
+			if err != nil {
+				return err
+			}
+
+			flags := cmd.Flags()
+			maxAttempts, err := flags.GetInt("max-attempts")
+			if err != nil {
+				return err
+			}
+			maxItems, err := flags.GetInt("max-items")
+			if err != nil {
+				return err
+			}
+			if maxAttempts < 0 || maxItems < 0 {
+				return fmt.Errorf("fixup numeric values must be non-negative")
+			}
+
+			logger := loop.StdLogger{Writer: cmd.OutOrStdout()}
+			result, err := loop.FixupBlockedItems(context.Background(), loop.FixupOptions{
+				RepoRoot:      locs.RepoRoot,
+				PinDir:        cfg.Paths.PinDir,
+				MaxAttempts:   maxAttempts,
+				MaxItems:      maxItems,
+				RequireMain:   cfg.Loop.RequireMain,
+				AutoCommit:    cfg.Git.AutoCommit,
+				AutoPush:      cfg.Git.AutoPush,
+				RedactionMode: cfg.Logging.RedactionMode,
+				Logger:        logger,
+			})
+			if err != nil {
+				return err
+			}
+
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Scanned blocked: %d\n", result.ScannedBlocked)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Eligible: %d\n", result.Eligible)
+			if len(result.RequeuedIDs) > 0 {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Requeued: %s\n", strings.Join(result.RequeuedIDs, ", "))
+			}
+			if len(result.SkippedMax) > 0 {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Skipped max attempts: %s\n", strings.Join(result.SkippedMax, ", "))
+			}
+			if len(result.FailedIDs) > 0 {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Failed: %s\n", strings.Join(result.FailedIDs, ", "))
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().Int("max-attempts", 3, "Max fixup attempts per blocked item (0 = unlimited)")
+	cmd.Flags().Int("max-items", 0, "Max blocked items to process per run (0 = unlimited)")
 
 	return cmd
 }

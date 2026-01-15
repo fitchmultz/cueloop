@@ -1,6 +1,9 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0440 [ops]: Add "fixup blocked items" workflow (re-attempt quarantined WIP branches safely; prevent cascading dependency failures). (ralph_tui/internal/loop/loop.go, ralph_tui/internal/pin/pin.go, ralph_tui/internal/loop/git.go, ralph_tui/cmd/ralph/main.go, ralph_tui/internal/tui/dashboard_view.go)
+  - Evidence: When the supervisor quarantines and auto-blocks an item, the WIP branch + known-good SHA are recorded, but there is no first-class way to re-run repairs on that WIP and safely promote it back to main; this can leave a run "complete" but everything blocked and can cause follow-up queue items to run on main without prerequisite changes, compounding wasted effort.
+  - Plan: Add a `ralph loop fixup` command (and optional TUI entry point) that scans Blocked items for WIP metadata, runs validation/CI in an isolated worktree, and (only when green) promotes changes back to main via a conservative strategy (e.g., cherry-pick or merge) with an additional CI gate; add a policy engine to limit attempts and only auto-fix mechanical failures while skipping obvious "needs human" blocks; optionally incorporate lightweight dependency metadata (e.g., `Depends-on:`) so the loop can pause or prioritize fixup when downstream items would be invalid without upstream WIP changes; add hermetic tests covering quarantine -> blocked -> fixup -> promote -> unblock/requeue while guaranteeing main stays green.
 - [x] RQ-0425 [ui]: Improve Run Loop screen UX: show active queue item/progress, add jump-to-Pin/logs shortcuts, and reduce wasted space while running. (ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/model.go, ralph_tui/internal/loop/loop.go)
   - Evidence:
     - The Run Loop screen currently shows static override values + a log viewport, but not the active queue item ID/title (even though the loop runner knows `firstItem.ID` and `currentItemBlock`).
