@@ -1,9 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0407 [ui]: Refresh screens immediately on entry + add a manual "refresh now" shortcut to reduce perceived lag/staleness. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/tui/keymap.go, ralph_tui/internal/tui/help_keymap.go)
-  - Evidence: most data updates rely on the periodic refresh tick; switching to Logs/Pin/Build Specs can show stale content until the next tick (and can be effectively "frozen" if ui.refresh_seconds is set high). logsView.SetLogPath resets stamps but does not re-render until Refresh runs.
-  - Plan: Trigger targeted refresh work when switchScreen changes the active screen (pin reload, specs preview refresh, logs refresh) instead of waiting for the next tick; add a dedicated key binding for manual refresh of the current screen; update help + add driver tests covering screen-entry refresh behavior.
 - [ ] RQ-0408 [code]: Fix tuiLogger startup rotation recursion/handle leak and add a rotation regression test. (ralph_tui/internal/tui/logging.go, ralph_tui/internal/tui/logging_test.go)
   - Evidence: logging.rotateIfNeededLocked() calls l.openFileLocked() after renaming, but openFileLocked() itself calls rotateIfNeededLocked() before opening; when the log file is already oversized at startup (file handle is nil), rotation can open the file twice and leak a descriptor, and fileSize bookkeeping can become inconsistent.
   - Plan: Refactor rotation to never call openFileLocked recursively (rotate only, then let the caller open), or make openFileLocked return early if rotation already opened a file; add a unit test that forces startup-time rotation (pre-create an oversized log) and asserts old file moves to .1 and subsequent writes go to the new file without leaking handles.

@@ -219,9 +219,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.relayout()
 			return m, nil
 		}
+		if key.Matches(msg, m.keys.RefreshNow) {
+			cmds = append(cmds, m.refreshScreen(m.screen, true)...)
+			return m, tea.Batch(cmds...)
+		}
 		if key.Matches(msg, m.keys.EditSpecsSettings) && m.screen == screenBuildSpecs {
-			m.switchScreen(screenConfig, true)
-			return m, nil
+			cmds = append(cmds, m.switchScreen(screenConfig, true)...)
+			return m, tea.Batch(cmds...)
 		}
 		if key.Matches(msg, m.keys.ToggleLogsFormat) && m.screen == screenLogs && m.logsView != nil {
 			m.logsView.ToggleFormat()
@@ -260,7 +264,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if key.Matches(msg, m.keys.Select) {
 				if item, ok := m.nav.SelectedItem().(navItem); ok {
-					m.switchScreen(item.screen, true)
+					cmds = append(cmds, m.switchScreen(item.screen, true)...)
 				}
 			}
 		} else {
@@ -692,18 +696,61 @@ func (m *model) refreshViews() []tea.Cmd {
 			cmds = append(cmds, cmd)
 		}
 	}
-	if m.logsView != nil {
-		var loopLines []string
-		if m.loopView != nil {
-			loopLines = m.loopView.logs
+	m.refreshLogsView()
+	return cmds
+}
+
+func (m *model) refreshScreen(target screen, force bool) []tea.Cmd {
+	cmds := make([]tea.Cmd, 0)
+	switch target {
+	case screenPin:
+		if m.pinView == nil {
+			return cmds
 		}
-		var specsLines []string
-		if m.specsView != nil {
-			specsLines = m.specsView.runLogs
+		if force {
+			if m.pinView.mode != pinModeTable {
+				return cmds
+			}
+			if cmd := m.pinView.reloadAsync(false); cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return cmds
 		}
-		m.logsView.Refresh(loopLines, specsLines)
+		if cmd := m.pinView.RefreshIfNeeded(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case screenBuildSpecs:
+		if m.specsView == nil || m.specsView.running {
+			return cmds
+		}
+		if force {
+			if cmd := m.specsView.requestPreviewRefresh(); cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return cmds
+		}
+		if cmd := m.specsView.RefreshIfNeeded(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case screenLogs:
+		m.refreshLogsView()
 	}
 	return cmds
+}
+
+func (m *model) refreshLogsView() {
+	if m.logsView == nil {
+		return
+	}
+	var loopLines []string
+	if m.loopView != nil {
+		loopLines = m.loopView.logs
+	}
+	var specsLines []string
+	if m.specsView != nil {
+		specsLines = m.specsView.runLogs
+	}
+	m.logsView.Refresh(loopLines, specsLines)
 }
 
 func (m *model) updateActiveView(msg tea.Msg) tea.Cmd {
@@ -755,6 +802,7 @@ func (m *model) setLogger(cfg config.Config) {
 	if m.logsView != nil {
 		m.logsView.SetLogPath(logPath)
 		m.logsView.SetError(m.logErr)
+		m.refreshLogsView()
 	}
 	if m.loopView != nil {
 		m.loopView.logger = m.logger
@@ -836,7 +884,7 @@ func (m *model) applyFocus() {
 	}
 }
 
-func (m *model) switchScreen(next screen, focusContent bool) {
+func (m *model) switchScreen(next screen, focusContent bool) []tea.Cmd {
 	prev := m.screen
 	m.screen = next
 	m.selectNavItem(next)
@@ -845,9 +893,11 @@ func (m *model) switchScreen(next screen, focusContent bool) {
 	}
 	m.applyFocus()
 	m.relayout()
+	cmds := m.refreshScreen(next, false)
 	if prev != next {
 		m.logInfo("screen.change", map[string]any{"from": screenName(prev), "to": screenName(next)})
 	}
+	return cmds
 }
 
 func (m *model) selectNavItem(target screen) {

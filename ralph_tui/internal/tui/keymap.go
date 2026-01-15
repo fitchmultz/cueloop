@@ -10,6 +10,7 @@ type keyMap struct {
 	Quit              key.Binding
 	Focus             key.Binding
 	Help              key.Binding
+	RefreshNow        key.Binding
 	Select            key.Binding
 	EditSpecsSettings key.Binding
 	ToggleLogsFormat  key.Binding
@@ -44,6 +45,10 @@ func newKeyMap() keyMap {
 		Help: key.NewBinding(
 			key.WithKeys("?"),
 			key.WithHelp("?", "toggle help"),
+		),
+		RefreshNow: key.NewBinding(
+			key.WithKeys("ctrl+l"),
+			key.WithHelp("ctrl+l", "refresh now"),
 		),
 		Select: key.NewBinding(
 			key.WithKeys("enter"),
@@ -125,12 +130,12 @@ func newKeyMap() keyMap {
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Quit, k.Focus, k.Help, k.Select}
+	return []key.Binding{k.Quit, k.Focus, k.Help, k.RefreshNow, k.Select}
 }
 
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Quit, k.Focus, k.Help, k.Select},
+		{k.Quit, k.Focus, k.Help, k.RefreshNow, k.Select},
 		{k.EditSpecsSettings, k.ToggleLogsFormat, k.SaveGlobal, k.SaveRepo},
 		{k.Discard},
 		{k.ValidatePin, k.MoveChecked, k.BlockItem},
