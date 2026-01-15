@@ -15,9 +15,11 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/tui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func main() {
@@ -274,10 +276,6 @@ func newSpecsBuildCommand() *cobra.Command {
 				return err
 			}
 
-			runner, err := cmd.Flags().GetString("runner")
-			if err != nil {
-				return err
-			}
 			interactive, err := cmd.Flags().GetBool("interactive")
 			if err != nil {
 				return err
@@ -314,12 +312,23 @@ func newSpecsBuildCommand() *cobra.Command {
 				return err
 			}
 
+			runner, err := resolveFlagString(cmd.Flags(), "runner", cfg.Specs.Runner)
+			if err != nil {
+				return err
+			}
+			runnerArgs := mergeRunnerArgsWithEffort(
+				runner,
+				cfg.Specs.RunnerArgs,
+				cmd.Flags().Args(),
+				cfg.Specs.ReasoningEffort,
+			)
+
 			result, err := specs.Build(context.Background(), specs.BuildOptions{
 				RepoRoot:         locs.RepoRoot,
 				PinDir:           cfg.Paths.PinDir,
 				PromptTemplate:   promptPath,
 				Runner:           specs.Runner(runner),
-				RunnerArgs:       cmd.Flags().Args(),
+				RunnerArgs:       runnerArgs,
 				Interactive:      interactive,
 				Innovate:         innovate,
 				InnovateExplicit: cmd.Flags().Changed("innovate"),
@@ -392,13 +401,9 @@ func newLoopRunCommand() *cobra.Command {
 
 			flags := cmd.Flags()
 
-			runnerName := "codex"
-			if flags.Changed("runner") {
-				value, err := flags.GetString("runner")
-				if err != nil {
-					return err
-				}
-				runnerName = value
+			runnerName, err := resolveFlagString(flags, "runner", cfg.Loop.Runner)
+			if err != nil {
+				return err
 			}
 
 			promptPath := ""
@@ -471,21 +476,23 @@ func newLoopRunCommand() *cobra.Command {
 			}
 
 			logger := loop.StdLogger{Writer: cmd.OutOrStdout()}
-			effort := cfg.Loop.ReasoningEffort
-			if flags.Changed("reasoning-effort") {
-				value, err := flags.GetString("reasoning-effort")
-				if err != nil {
-					return err
-				}
-				effort = value
+			effort, err := resolveFlagString(flags, "reasoning-effort", cfg.Loop.ReasoningEffort)
+			if err != nil {
+				return err
 			}
+			runnerArgs := mergeRunnerArgsWithEffort(
+				runnerName,
+				cfg.Loop.RunnerArgs,
+				cmd.Flags().Args(),
+				effort,
+			)
 			runner, err := loop.NewRunner(loop.Options{
 				RepoRoot:          locs.RepoRoot,
 				PinDir:            cfg.Paths.PinDir,
 				PromptPath:        promptPath,
 				SupervisorPrompt:  supervisorPrompt,
 				Runner:            runnerName,
-				RunnerArgs:        cmd.Flags().Args(),
+				RunnerArgs:        runnerArgs,
 				ReasoningEffort:   effort,
 				SleepSeconds:      sleepSeconds,
 				MaxIterations:     maxIterations,
@@ -537,6 +544,18 @@ func splitTagsCLI(flag string, fallback string) []string {
 		}
 	}
 	return out
+}
+
+func resolveFlagString(flags *pflag.FlagSet, name string, fallback string) (string, error) {
+	if !flags.Changed(name) {
+		return fallback, nil
+	}
+	return flags.GetString(name)
+}
+
+func mergeRunnerArgsWithEffort(runner string, configArgs []string, cliArgs []string, effort string) []string {
+	merged := runnerargs.MergeArgs(configArgs, cliArgs)
+	return runnerargs.ApplyReasoningEffort(runner, merged, effort).Args
 }
 
 func newPinCommand() *cobra.Command {

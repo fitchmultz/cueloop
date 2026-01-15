@@ -12,6 +12,7 @@ import (
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
 
 // LoadOptions controls how configuration is resolved.
@@ -212,7 +213,7 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 			base.Specs.Runner = strings.TrimSpace(*partial.Specs.Runner)
 		}
 		if partial.Specs.RunnerArgs != nil {
-			base.Specs.RunnerArgs = normalizeRunnerArgs(partial.Specs.RunnerArgs)
+			base.Specs.RunnerArgs = runnerargs.NormalizeArgs(partial.Specs.RunnerArgs)
 		}
 		if partial.Specs.ReasoningEffort != nil {
 			base.Specs.ReasoningEffort = strings.ToLower(strings.TrimSpace(*partial.Specs.ReasoningEffort))
@@ -247,7 +248,7 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 			base.Loop.Runner = strings.TrimSpace(*partial.Loop.Runner)
 		}
 		if partial.Loop.RunnerArgs != nil {
-			base.Loop.RunnerArgs = normalizeRunnerArgs(partial.Loop.RunnerArgs)
+			base.Loop.RunnerArgs = runnerargs.NormalizeArgs(partial.Loop.RunnerArgs)
 		}
 		if partial.Loop.ReasoningEffort != nil {
 			base.Loop.ReasoningEffort = strings.ToLower(strings.TrimSpace(*partial.Loop.ReasoningEffort))
@@ -269,21 +270,6 @@ func applyPartial(base Config, partial PartialConfig, basePath string) (Config, 
 	}
 
 	return base, nil
-}
-
-func normalizeRunnerArgs(args []string) []string {
-	trimmed := make([]string, 0, len(args))
-	for _, arg := range args {
-		value := strings.TrimSpace(arg)
-		if value == "" {
-			continue
-		}
-		trimmed = append(trimmed, value)
-	}
-	if len(trimmed) == 0 {
-		return nil
-	}
-	return trimmed
 }
 
 func resolveConfigPaths(cfg Config, basePath string) Config {
