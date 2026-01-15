@@ -1,10 +1,11 @@
-// Package loop provides tests for queue parsing.
+// Package loop provides tests for queue parsing and prompt policy output.
 // Entrypoint: go test ./...
 package loop
 
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -24,5 +25,38 @@ func TestFirstUncheckedItemWithTags(t *testing.T) {
 	}
 	if item == nil || item.ID != "RQ-0002" {
 		t.Fatalf("expected RQ-0002, got %#v", item)
+	}
+}
+
+func TestContextBuilderPolicyBlock(t *testing.T) {
+	tests := []struct {
+		name      string
+		mandatory bool
+		forced    bool
+		expect    []string
+	}{
+		{
+			name:      "optional when not mandatory",
+			mandatory: false,
+			forced:    false,
+			expect:    []string{"OPTIONAL:"},
+		},
+		{
+			name:      "mandatory when forced",
+			mandatory: true,
+			forced:    true,
+			expect:    []string{"MANDATORY:", "Force context_builder is ENABLED"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			block := contextBuilderPolicyBlock("medium", tt.mandatory, tt.forced)
+			for _, fragment := range tt.expect {
+				if !strings.Contains(block, fragment) {
+					t.Fatalf("expected %q in policy block, got:\n%s", fragment, block)
+				}
+			}
+		})
 	}
 }

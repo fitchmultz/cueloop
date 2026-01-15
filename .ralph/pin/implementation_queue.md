@@ -1,14 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0417 [code]: Add a loop-run "Force context_builder" override toggle (independent of reasoning_effort) + show it in prompts, TUI, and CLI. (ralph_tui/internal/loop/loop.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/keymap.go, ralph_tui/cmd/ralph/main.go)
-  - Evidence:
-    - `ralph_tui/internal/loop/loop.go` sets `contextBuilderMandatory` only when detected `model_reasoning_effort` is `low`/`off`; there is no user override for medium/high effort runs.
-    - The only mechanism today is the injected "CODEX CONTEXT BUILDER POLICY" block, which becomes "OPTIONAL" outside low/off.
-  - Plan:
-    - Add `ForceContextBuilder` (or similar) to `loop.Options` and wire it through prompt generation so the policy block becomes MANDATORY when forced.
-    - Add a loop-screen keybinding to toggle this during run sessions and display the effective state in the UI (controls + status line).
-    - Add a CLI flag for `ralph loop run` so non-TUI runs can also force context_builder; add a small unit test around prompt generation.
 - [ ] RQ-0418 [code]: Upgrade Specs builder prompt to be bug-hunt oriented + add an interactive "scout" workflow that accepts a user focus prompt and seeds queue items for specific areas. (.ralph/pin/specs_builder.md, ralph_tui/internal/specs/specs.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/cmd/ralph/main.go)
   - Evidence:
     - `.ralph/pin/specs_builder.md` is currently generic and does not guide targeted bug-finding runs the way your "identify 10-20 bugs" prompt does.

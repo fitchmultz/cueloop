@@ -7,31 +7,32 @@ import (
 )
 
 type keyMap struct {
-	Quit              key.Binding
-	ToggleNav         key.Binding
-	Focus             key.Binding
-	Help              key.Binding
-	RefreshNow        key.Binding
-	Select            key.Binding
-	EditSpecsSettings key.Binding
-	ToggleLogsFormat  key.Binding
-	SaveGlobal        key.Binding
-	SaveRepo          key.Binding
-	Discard           key.Binding
-	ValidatePin       key.Binding
-	MoveChecked       key.Binding
-	BlockItem         key.Binding
-	ToggleChecked     key.Binding
-	TogglePane        key.Binding
-	ToggleInteractive key.Binding
-	ToggleInnovate    key.Binding
-	ToggleAutofill    key.Binding
-	RunSpecs          key.Binding
-	StopSpecs         key.Binding
-	RunLoopOnce       key.Binding
-	RunLoopContinuous key.Binding
-	StopLoop          key.Binding
-	EditLoopConfig    key.Binding
+	Quit                      key.Binding
+	ToggleNav                 key.Binding
+	Focus                     key.Binding
+	Help                      key.Binding
+	RefreshNow                key.Binding
+	Select                    key.Binding
+	EditSpecsSettings         key.Binding
+	ToggleLogsFormat          key.Binding
+	SaveGlobal                key.Binding
+	SaveRepo                  key.Binding
+	Discard                   key.Binding
+	ValidatePin               key.Binding
+	MoveChecked               key.Binding
+	BlockItem                 key.Binding
+	ToggleChecked             key.Binding
+	TogglePane                key.Binding
+	ToggleInteractive         key.Binding
+	ToggleInnovate            key.Binding
+	ToggleAutofill            key.Binding
+	RunSpecs                  key.Binding
+	StopSpecs                 key.Binding
+	RunLoopOnce               key.Binding
+	RunLoopContinuous         key.Binding
+	StopLoop                  key.Binding
+	EditLoopConfig            key.Binding
+	ToggleForceContextBuilder key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -136,6 +137,10 @@ func newKeyMap() keyMap {
 			key.WithKeys("e"),
 			key.WithHelp("e", "edit loop overrides"),
 		),
+		ToggleForceContextBuilder: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "force context_builder"),
+		),
 	}
 }
 
@@ -150,6 +155,6 @@ func (k keyMap) FullHelp() [][]key.Binding {
 		{k.Discard},
 		{k.ValidatePin, k.MoveChecked, k.BlockItem},
 		{k.ToggleInteractive, k.ToggleInnovate, k.ToggleAutofill, k.RunSpecs, k.StopSpecs},
-		{k.RunLoopOnce, k.RunLoopContinuous, k.StopLoop, k.EditLoopConfig},
+		{k.RunLoopOnce, k.RunLoopContinuous, k.StopLoop, k.EditLoopConfig, k.ToggleForceContextBuilder},
 	}
 }

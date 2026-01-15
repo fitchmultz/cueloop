@@ -1,6 +1,14 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0417 [code]: Add a loop-run "Force context_builder" override toggle (independent of reasoning_effort) + show it in prompts, TUI, and CLI. (ralph_tui/internal/loop/loop.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/keymap.go, ralph_tui/cmd/ralph/main.go)
+  - Evidence:
+    - `ralph_tui/internal/loop/loop.go` sets `contextBuilderMandatory` only when detected `model_reasoning_effort` is `low`/`off`; there is no user override for medium/high effort runs.
+    - The only mechanism today is the injected "CODEX CONTEXT BUILDER POLICY" block, which becomes "OPTIONAL" outside low/off.
+  - Plan:
+    - Add `ForceContextBuilder` (or similar) to `loop.Options` and wire it through prompt generation so the policy block becomes MANDATORY when forced.
+    - Add a loop-screen keybinding to toggle this during run sessions and display the effective state in the UI (controls + status line).
+    - Add a CLI flag for `ralph loop run` so non-TUI runs can also force context_builder; add a small unit test around prompt generation.
 - [x] RQ-0416 [ui]: Add global navigation pane collapse/expand (more space during runs) + smarter layout for narrow terminals. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/keymap.go, ralph_tui/internal/tui/help_keymap.go, ralph_tui/internal/tui/render_contract_test.go)
   - Evidence:
     - `ralph_tui/internal/tui/model.go` always renders nav + content via `lipgloss.JoinHorizontal(...)`; there is no state to hide the nav panel.

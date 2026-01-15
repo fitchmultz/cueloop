@@ -21,24 +21,25 @@ import (
 
 // Options controls loop execution.
 type Options struct {
-	RepoRoot          string
-	PinDir            string
-	PromptPath        string
-	SupervisorPrompt  string
-	Runner            string
-	RunnerArgs        []string
-	ReasoningEffort   string
-	SleepSeconds      int
-	MaxIterations     int
-	MaxStalled        int
-	MaxRepairAttempts int
-	OnlyTags          []string
-	Once              bool
-	RequireMain       bool
-	AutoCommit        bool
-	AutoPush          bool
-	RedactionMode     redaction.Mode
-	Logger            Logger
+	RepoRoot            string
+	PinDir              string
+	PromptPath          string
+	SupervisorPrompt    string
+	Runner              string
+	RunnerArgs          []string
+	ReasoningEffort     string
+	ForceContextBuilder bool
+	SleepSeconds        int
+	MaxIterations       int
+	MaxStalled          int
+	MaxRepairAttempts   int
+	OnlyTags            []string
+	Once                bool
+	RequireMain         bool
+	AutoCommit          bool
+	AutoPush            bool
+	RedactionMode       redaction.Mode
+	Logger              Logger
 }
 
 // Runner executes the loop.
@@ -145,7 +146,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		r.currentRunArgs = runnerargs.ApplyReasoningEffort(r.opts.Runner, r.currentRunArgs, effectiveSetting).Args
 		r.effectiveEffort = effectiveEffort
-		r.contextBuilderMandatory = effectiveEffort == "low" || effectiveEffort == "off"
+		r.contextBuilderMandatory = effectiveEffort == "low" || effectiveEffort == "off" || r.opts.ForceContextBuilder
 
 		headBefore, err := HeadSHA(r.opts.RepoRoot)
 		if err != nil {
@@ -322,7 +323,7 @@ func (r *Runner) writePromptFile(itemLine string) (string, func(), error) {
 	builder.WriteString(content)
 	builder.WriteString("\n\n")
 	if r.opts.Runner == "codex" && r.effectiveEffort != "" {
-		builder.WriteString(contextBuilderPolicyBlock(r.effectiveEffort, r.contextBuilderMandatory))
+		builder.WriteString(contextBuilderPolicyBlock(r.effectiveEffort, r.contextBuilderMandatory, r.opts.ForceContextBuilder))
 		builder.WriteString("\n\n")
 	}
 	builder.WriteString("# CURRENT QUEUE ITEM\n")
@@ -588,7 +589,7 @@ func (r *Runner) buildSupervisorContext(stage string, message string) (string, f
 	builder.WriteString(content)
 	builder.WriteString("\n\n")
 	if r.opts.Runner == "codex" && r.effectiveEffort != "" {
-		builder.WriteString(contextBuilderPolicyBlock(r.effectiveEffort, r.contextBuilderMandatory))
+		builder.WriteString(contextBuilderPolicyBlock(r.effectiveEffort, r.contextBuilderMandatory, r.opts.ForceContextBuilder))
 		builder.WriteString("\n\n")
 	}
 	builder.WriteString("# FAILURE CONTEXT\n")
@@ -750,12 +751,19 @@ func (r *Runner) logf(format string, args ...any) {
 	r.opts.Logger.WriteLine(line)
 }
 
-func contextBuilderPolicyBlock(effort string, mandatory bool) string {
+func contextBuilderPolicyBlock(effort string, mandatory bool, forced bool) string {
 	builder := strings.Builder{}
 	builder.WriteString("# CODEX CONTEXT BUILDER POLICY\n")
 	builder.WriteString(fmt.Sprintf("Codex model_reasoning_effort: %s\n", effort))
+	if forced {
+		builder.WriteString("Override: Force context_builder is ENABLED.\n")
+	}
 	if mandatory {
-		builder.WriteString("MANDATORY: Because reasoning effort is low/off, you MUST use the repo_prompt context_builder to gather context and generate a plan BEFORE making code changes.\n")
+		if forced {
+			builder.WriteString("MANDATORY: Force context_builder override is enabled; you MUST use the repo_prompt context_builder to gather context and generate a plan BEFORE making code changes.\n")
+		} else {
+			builder.WriteString("MANDATORY: Because reasoning effort is low/off, you MUST use the repo_prompt context_builder to gather context and generate a plan BEFORE making code changes.\n")
+		}
 		builder.WriteString("Execute the plan it generates.\n")
 	} else {
 		builder.WriteString("OPTIONAL: You MAY use the repo_prompt context_builder to gather context and generate a plan. It is recommended for complex items or difficult root-cause triage.\n")

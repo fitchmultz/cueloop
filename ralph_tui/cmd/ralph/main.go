@@ -388,7 +388,7 @@ func newLoopRunCommand() *cobra.Command {
 		Use:     "run",
 		Short:   "Run the supervised loop",
 		Long:    "Run the Ralph worker loop, enforcing pin invariants and quarantine rules.",
-		Example: "  ralph loop run --once\n  ralph loop run --only-tag db,ui",
+		Example: "  ralph loop run --once\n  ralph loop run --only-tag db,ui\n  ralph loop run --force-context-builder --reasoning-effort medium",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(cmd)
 			if err != nil {
@@ -470,6 +470,7 @@ func newLoopRunCommand() *cobra.Command {
 			}
 
 			runOnce, _ := flags.GetBool("once")
+			forceContextBuilder, _ := flags.GetBool("force-context-builder")
 
 			if sleepSeconds < 0 || maxIterations < 0 || maxStalled < 0 || maxRepair < 0 {
 				return fmt.Errorf("loop numeric values must be non-negative")
@@ -487,24 +488,25 @@ func newLoopRunCommand() *cobra.Command {
 				effort,
 			)
 			runner, err := loop.NewRunner(loop.Options{
-				RepoRoot:          locs.RepoRoot,
-				PinDir:            cfg.Paths.PinDir,
-				PromptPath:        promptPath,
-				SupervisorPrompt:  supervisorPrompt,
-				Runner:            runnerName,
-				RunnerArgs:        runnerArgs,
-				ReasoningEffort:   effort,
-				SleepSeconds:      sleepSeconds,
-				MaxIterations:     maxIterations,
-				MaxStalled:        maxStalled,
-				MaxRepairAttempts: maxRepair,
-				OnlyTags:          splitTagsCLI(onlyTags, ""),
-				Once:              runOnce,
-				RequireMain:       cfg.Loop.RequireMain,
-				AutoCommit:        cfg.Git.AutoCommit,
-				AutoPush:          cfg.Git.AutoPush,
-				RedactionMode:     cfg.Logging.RedactionMode,
-				Logger:            logger,
+				RepoRoot:            locs.RepoRoot,
+				PinDir:              cfg.Paths.PinDir,
+				PromptPath:          promptPath,
+				SupervisorPrompt:    supervisorPrompt,
+				Runner:              runnerName,
+				RunnerArgs:          runnerArgs,
+				ReasoningEffort:     effort,
+				ForceContextBuilder: forceContextBuilder,
+				SleepSeconds:        sleepSeconds,
+				MaxIterations:       maxIterations,
+				MaxStalled:          maxStalled,
+				MaxRepairAttempts:   maxRepair,
+				OnlyTags:            splitTagsCLI(onlyTags, ""),
+				Once:                runOnce,
+				RequireMain:         cfg.Loop.RequireMain,
+				AutoCommit:          cfg.Git.AutoCommit,
+				AutoPush:            cfg.Git.AutoPush,
+				RedactionMode:       cfg.Logging.RedactionMode,
+				Logger:              logger,
 			})
 			if err != nil {
 				return err
@@ -523,6 +525,7 @@ func newLoopRunCommand() *cobra.Command {
 	cmd.Flags().String("only-tag", "", "Only execute queue items tagged with [tag] (comma-separated)")
 	cmd.Flags().Bool("once", false, "Run exactly one iteration and exit")
 	cmd.Flags().String("reasoning-effort", "", "Codex reasoning effort override (auto/low/medium/high/off)")
+	cmd.Flags().Bool("force-context-builder", false, "Force context_builder even when reasoning effort is medium/high")
 
 	return cmd
 }

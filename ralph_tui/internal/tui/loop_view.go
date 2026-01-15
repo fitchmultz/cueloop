@@ -40,17 +40,18 @@ type loopView struct {
 }
 
 type loopOverrides struct {
-	SleepSeconds      int
-	MaxIterations     int
-	MaxStalled        int
-	MaxRepairAttempts int
-	OnlyTags          string
-	RequireMain       bool
-	AutoCommit        bool
-	AutoPush          bool
-	Runner            string
-	RunnerArgs        []string
-	ReasoningEffort   string
+	SleepSeconds        int
+	MaxIterations       int
+	MaxStalled          int
+	MaxRepairAttempts   int
+	OnlyTags            string
+	RequireMain         bool
+	AutoCommit          bool
+	AutoPush            bool
+	Runner              string
+	RunnerArgs          []string
+	ReasoningEffort     string
+	ForceContextBuilder bool
 }
 
 type loopMode int
@@ -87,17 +88,18 @@ func newLoopView(cfg config.Config, locations paths.Locations) *loopView {
 		locations: locations,
 		viewport:  vp,
 		overrides: loopOverrides{
-			SleepSeconds:      cfg.Loop.SleepSeconds,
-			MaxIterations:     cfg.Loop.MaxIterations,
-			MaxStalled:        cfg.Loop.MaxStalled,
-			MaxRepairAttempts: cfg.Loop.MaxRepairAttempts,
-			OnlyTags:          cfg.Loop.OnlyTags,
-			RequireMain:       cfg.Loop.RequireMain,
-			AutoCommit:        cfg.Git.AutoCommit,
-			AutoPush:          cfg.Git.AutoPush,
-			Runner:            cfg.Loop.Runner,
-			RunnerArgs:        cfg.Loop.RunnerArgs,
-			ReasoningEffort:   cfg.Loop.ReasoningEffort,
+			SleepSeconds:        cfg.Loop.SleepSeconds,
+			MaxIterations:       cfg.Loop.MaxIterations,
+			MaxStalled:          cfg.Loop.MaxStalled,
+			MaxRepairAttempts:   cfg.Loop.MaxRepairAttempts,
+			OnlyTags:            cfg.Loop.OnlyTags,
+			RequireMain:         cfg.Loop.RequireMain,
+			AutoCommit:          cfg.Git.AutoCommit,
+			AutoPush:            cfg.Git.AutoPush,
+			Runner:              cfg.Loop.Runner,
+			RunnerArgs:          cfg.Loop.RunnerArgs,
+			ReasoningEffort:     cfg.Loop.ReasoningEffort,
+			ForceContextBuilder: false,
 		},
 		mode:   loopIdle,
 		status: "Idle",
@@ -180,6 +182,14 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		case key.Matches(msg, keys.EditLoopConfig) && l.mode == loopIdle:
 			l.beginEdit()
 			return nil
+		case key.Matches(msg, keys.ToggleForceContextBuilder) && l.mode != loopEditing:
+			l.overrides.ForceContextBuilder = !l.overrides.ForceContextBuilder
+			state := yesNo(l.overrides.ForceContextBuilder)
+			l.status = fmt.Sprintf("Force context_builder: %s", state)
+			if l.mode == loopRunning {
+				l.appendLogLine(fmt.Sprintf(">> [RALPH] Force context_builder set to %s (applies next run).", state))
+			}
+			return nil
 		}
 	}
 
@@ -208,17 +218,18 @@ func (l *loopView) View() string {
 
 func (l *loopView) statusLine() string {
 	if l.err != "" {
-		return fmt.Sprintf("Error: %s", l.err)
+		return fmt.Sprintf("Error: %s | Force context_builder: %s", l.err, yesNo(l.overrides.ForceContextBuilder))
 	}
 	if l.outputErr != "" {
-		return l.status + " | Persist error: " + l.outputErr
+		return l.status + " | Persist error: " + l.outputErr + " | Force context_builder: " + yesNo(l.overrides.ForceContextBuilder)
 	}
-	return l.status
+	return l.status + " | Force context_builder: " + yesNo(l.overrides.ForceContextBuilder)
 }
 
 func (l *loopView) controlsView() string {
 	effortResult := runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort)
 	effectiveLabel := runnerargs.DisplayEffortResult(effortResult)
+	mandatory := l.overrides.ForceContextBuilder || effortResult.Effective == "low" || effortResult.Effective == "off"
 	lines := []string{
 		fmt.Sprintf("Sleep seconds: %d", l.overrides.SleepSeconds),
 		fmt.Sprintf("Max iterations: %d", l.overrides.MaxIterations),
@@ -231,7 +242,8 @@ func (l *loopView) controlsView() string {
 		fmt.Sprintf("Runner: %s", l.overrides.Runner),
 		fmt.Sprintf("Runner args: %d", len(l.overrides.RunnerArgs)),
 		fmt.Sprintf("Reasoning effort: %s (effective: %s)", runnerargs.DisplayEffort(l.overrides.ReasoningEffort), effectiveLabel),
-		"Keys: r run once | c continuous | s stop | e edit overrides",
+		fmt.Sprintf("Force context_builder: %s (mandatory: %s)", yesNo(l.overrides.ForceContextBuilder), yesNo(mandatory)),
+		"Keys: r run once | c continuous | s stop | e edit overrides | p force ctx builder",
 	}
 	return strings.Join(lines, "\n")
 }
@@ -253,18 +265,19 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 	if l.logger != nil {
 		applied := runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort)
 		l.logger.Info("loop.start", map[string]any{
-			"mode":              loopModeLabel(runOnce),
-			"sleep_seconds":     l.overrides.SleepSeconds,
-			"max_iterations":    l.overrides.MaxIterations,
-			"max_stalled":       l.overrides.MaxStalled,
-			"max_repair":        l.overrides.MaxRepairAttempts,
-			"only_tags":         l.overrides.OnlyTags,
-			"require_main":      l.overrides.RequireMain,
-			"auto_commit":       l.overrides.AutoCommit,
-			"auto_push":         l.overrides.AutoPush,
-			"runner":            l.overrides.Runner,
-			"runner_args_count": len(applied.Args),
-			"reasoning_effort":  runnerargs.DisplayEffort(l.overrides.ReasoningEffort),
+			"mode":                  loopModeLabel(runOnce),
+			"sleep_seconds":         l.overrides.SleepSeconds,
+			"max_iterations":        l.overrides.MaxIterations,
+			"max_stalled":           l.overrides.MaxStalled,
+			"max_repair":            l.overrides.MaxRepairAttempts,
+			"only_tags":             l.overrides.OnlyTags,
+			"require_main":          l.overrides.RequireMain,
+			"auto_commit":           l.overrides.AutoCommit,
+			"auto_push":             l.overrides.AutoPush,
+			"runner":                l.overrides.Runner,
+			"runner_args_count":     len(applied.Args),
+			"reasoning_effort":      runnerargs.DisplayEffort(l.overrides.ReasoningEffort),
+			"force_context_builder": l.overrides.ForceContextBuilder,
 		})
 	}
 
@@ -275,24 +288,25 @@ func (l *loopView) start(runOnce bool) tea.Cmd {
 			},
 		}
 		runner, err := loop.NewRunner(loop.Options{
-			RepoRoot:          l.locations.RepoRoot,
-			PinDir:            l.cfg.Paths.PinDir,
-			PromptPath:        "",
-			SupervisorPrompt:  "",
-			Runner:            l.overrides.Runner,
-			RunnerArgs:        runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort).Args,
-			ReasoningEffort:   l.overrides.ReasoningEffort,
-			SleepSeconds:      l.overrides.SleepSeconds,
-			MaxIterations:     l.overrides.MaxIterations,
-			MaxStalled:        l.overrides.MaxStalled,
-			MaxRepairAttempts: l.overrides.MaxRepairAttempts,
-			OnlyTags:          splitTags(l.overrides.OnlyTags),
-			Once:              runOnce,
-			RequireMain:       l.overrides.RequireMain,
-			AutoCommit:        l.overrides.AutoCommit,
-			AutoPush:          l.overrides.AutoPush,
-			RedactionMode:     l.cfg.Logging.RedactionMode,
-			Logger:            logger,
+			RepoRoot:            l.locations.RepoRoot,
+			PinDir:              l.cfg.Paths.PinDir,
+			PromptPath:          "",
+			SupervisorPrompt:    "",
+			Runner:              l.overrides.Runner,
+			RunnerArgs:          runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort).Args,
+			ReasoningEffort:     l.overrides.ReasoningEffort,
+			SleepSeconds:        l.overrides.SleepSeconds,
+			MaxIterations:       l.overrides.MaxIterations,
+			MaxStalled:          l.overrides.MaxStalled,
+			MaxRepairAttempts:   l.overrides.MaxRepairAttempts,
+			OnlyTags:            splitTags(l.overrides.OnlyTags),
+			Once:                runOnce,
+			RequireMain:         l.overrides.RequireMain,
+			AutoCommit:          l.overrides.AutoCommit,
+			AutoPush:            l.overrides.AutoPush,
+			ForceContextBuilder: l.overrides.ForceContextBuilder,
+			RedactionMode:       l.cfg.Logging.RedactionMode,
+			Logger:              logger,
 		})
 		if err != nil {
 			close(logCh)
@@ -357,6 +371,7 @@ func (l *loopView) buildEditForm() *huh.Form {
 					huh.NewOption("off", "off"),
 				).
 				Value(&l.editData.ReasoningEffort),
+			huh.NewConfirm().Title("Force context_builder").Value(&l.editData.ForceContextBuilder),
 		),
 	).WithShowHelp(false)
 }
@@ -393,36 +408,39 @@ func (l *loopView) applyEditData() error {
 		reasoningEffort = "auto"
 	}
 	l.overrides.ReasoningEffort = reasoningEffort
+	l.overrides.ForceContextBuilder = l.editData.ForceContextBuilder
 	return nil
 }
 
 type loopFormData struct {
-	SleepSeconds      string
-	MaxIterations     string
-	MaxStalled        string
-	MaxRepairAttempts string
-	OnlyTags          string
-	RequireMain       bool
-	AutoCommit        bool
-	AutoPush          bool
-	Runner            string
-	RunnerArgs        string
-	ReasoningEffort   string
+	SleepSeconds        string
+	MaxIterations       string
+	MaxStalled          string
+	MaxRepairAttempts   string
+	OnlyTags            string
+	RequireMain         bool
+	AutoCommit          bool
+	AutoPush            bool
+	Runner              string
+	RunnerArgs          string
+	ReasoningEffort     string
+	ForceContextBuilder bool
 }
 
 func loopFormDataFromOverrides(overrides loopOverrides) loopFormData {
 	return loopFormData{
-		SleepSeconds:      fmt.Sprintf("%d", overrides.SleepSeconds),
-		MaxIterations:     fmt.Sprintf("%d", overrides.MaxIterations),
-		MaxStalled:        fmt.Sprintf("%d", overrides.MaxStalled),
-		MaxRepairAttempts: fmt.Sprintf("%d", overrides.MaxRepairAttempts),
-		OnlyTags:          overrides.OnlyTags,
-		RequireMain:       overrides.RequireMain,
-		AutoCommit:        overrides.AutoCommit,
-		AutoPush:          overrides.AutoPush,
-		Runner:            overrides.Runner,
-		RunnerArgs:        formatArgsLines(overrides.RunnerArgs),
-		ReasoningEffort:   runnerargs.DisplayEffort(overrides.ReasoningEffort),
+		SleepSeconds:        fmt.Sprintf("%d", overrides.SleepSeconds),
+		MaxIterations:       fmt.Sprintf("%d", overrides.MaxIterations),
+		MaxStalled:          fmt.Sprintf("%d", overrides.MaxStalled),
+		MaxRepairAttempts:   fmt.Sprintf("%d", overrides.MaxRepairAttempts),
+		OnlyTags:            overrides.OnlyTags,
+		RequireMain:         overrides.RequireMain,
+		AutoCommit:          overrides.AutoCommit,
+		AutoPush:            overrides.AutoPush,
+		Runner:              overrides.Runner,
+		RunnerArgs:          formatArgsLines(overrides.RunnerArgs),
+		ReasoningEffort:     runnerargs.DisplayEffort(overrides.ReasoningEffort),
+		ForceContextBuilder: overrides.ForceContextBuilder,
 	}
 }
 
@@ -475,17 +493,18 @@ func (l *loopView) SetConfig(cfg config.Config, locations paths.Locations) {
 		return
 	}
 	l.overrides = loopOverrides{
-		SleepSeconds:      cfg.Loop.SleepSeconds,
-		MaxIterations:     cfg.Loop.MaxIterations,
-		MaxStalled:        cfg.Loop.MaxStalled,
-		MaxRepairAttempts: cfg.Loop.MaxRepairAttempts,
-		OnlyTags:          cfg.Loop.OnlyTags,
-		RequireMain:       cfg.Loop.RequireMain,
-		AutoCommit:        cfg.Git.AutoCommit,
-		AutoPush:          cfg.Git.AutoPush,
-		Runner:            cfg.Loop.Runner,
-		RunnerArgs:        cfg.Loop.RunnerArgs,
-		ReasoningEffort:   cfg.Loop.ReasoningEffort,
+		SleepSeconds:        cfg.Loop.SleepSeconds,
+		MaxIterations:       cfg.Loop.MaxIterations,
+		MaxStalled:          cfg.Loop.MaxStalled,
+		MaxRepairAttempts:   cfg.Loop.MaxRepairAttempts,
+		OnlyTags:            cfg.Loop.OnlyTags,
+		RequireMain:         cfg.Loop.RequireMain,
+		AutoCommit:          cfg.Git.AutoCommit,
+		AutoPush:            cfg.Git.AutoPush,
+		Runner:              cfg.Loop.Runner,
+		RunnerArgs:          cfg.Loop.RunnerArgs,
+		ReasoningEffort:     cfg.Loop.ReasoningEffort,
+		ForceContextBuilder: l.overrides.ForceContextBuilder,
 	}
 }
 
