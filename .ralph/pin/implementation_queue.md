@@ -4,6 +4,104 @@
 - [ ] RQ-0415 [code]: Remove or implement dead config knobs (runner.max_workers/dry_run, loop.workers/poll_seconds, git.require_clean/commit_prefix) so settings actually do something. (ralph_tui/internal/config/config.go, ralph_tui/internal/config/defaults.json, ralph_tui/internal/tui/config_editor.go, ralph_tui/cmd/ralph/main.go, ralph_tui/internal/loop/loop.go)
   - Evidence: config schema + config editor expose several fields that are not wired into behavior anywhere (runner.max_workers, runner.dry_run, loop.workers, loop.poll_seconds, git.require_clean, git.commit_prefix), so users can change them but nothing changes at runtime.
   - Plan: Audit each knob and either wire it into loop/specs/TUI behavior with clear semantics, or deprecate/remove it with a migration step and updated docs/tests; ensure config validation stays correct and does not enforce unused fields.
+- [ ] RQ-0416 [ui]: Add global navigation pane collapse/expand (more space during runs) + smarter layout for narrow terminals. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/keymap.go, ralph_tui/internal/tui/help_keymap.go, ralph_tui/internal/tui/render_contract_test.go)
+  - Evidence:
+    - `ralph_tui/internal/tui/model.go` always renders nav + content via `lipgloss.JoinHorizontal(...)`; there is no state to hide the nav panel.
+    - `computeLayoutWithBody()` always reserves a `defaultNavWidth` (26) with `minNavWidth` (20), so the nav can consume a large fraction of small terminals and make the content feel "full-screen wasted".
+  - Plan:
+    - Add a global model flag (e.g., `navCollapsed bool`) + a dedicated keybinding to toggle it; when collapsed, allocate 0 width to nav and give full width to content.
+    - Make focus behavior sane: if nav is collapsed, force content focus and prevent nav cursor changes.
+    - Update help keymap + add render contract tests for collapsed/un-collapsed states (including small terminal sizes).
+- [ ] RQ-0417 [code]: Add a loop-run "Force context_builder" override toggle (independent of reasoning_effort) + show it in prompts, TUI, and CLI. (ralph_tui/internal/loop/loop.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/keymap.go, ralph_tui/cmd/ralph/main.go)
+  - Evidence:
+    - `ralph_tui/internal/loop/loop.go` sets `contextBuilderMandatory` only when detected `model_reasoning_effort` is `low`/`off`; there is no user override for medium/high effort runs.
+    - The only mechanism today is the injected "CODEX CONTEXT BUILDER POLICY" block, which becomes "OPTIONAL" outside low/off.
+  - Plan:
+    - Add `ForceContextBuilder` (or similar) to `loop.Options` and wire it through prompt generation so the policy block becomes MANDATORY when forced.
+    - Add a loop-screen keybinding to toggle this during run sessions and display the effective state in the UI (controls + status line).
+    - Add a CLI flag for `ralph loop run` so non-TUI runs can also force context_builder; add a small unit test around prompt generation.
+- [ ] RQ-0418 [code]: Upgrade Specs builder prompt to be bug-hunt oriented + add an interactive "scout" workflow that accepts a user focus prompt and seeds queue items for specific areas. (.ralph/pin/specs_builder.md, ralph_tui/internal/specs/specs.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/cmd/ralph/main.go)
+  - Evidence:
+    - `.ralph/pin/specs_builder.md` is currently generic and does not guide targeted bug-finding runs the way your "identify 10-20 bugs" prompt does.
+    - `ralph_tui/internal/specs/specs.go` `innovateInstructions` references repo areas like `backend/`, `tools/`, `frontend/`, and `ops/` that do not match this repo’s actual layout (`ralph_tui/internal/...`, `ralph_legacy/...`), which reduces scouting quality.
+    - Specs "interactive" is currently just a boolean (`BuildOptions.Interactive`) and there is no way (in CLI or TUI) to pass a user-entered "focus area" prompt into the build/scout process.
+  - Plan:
+    - Redesign the specs builder templates/instructions to explicitly run bug-detection/scouting on a user-specified subsystem (e.g., `tui`, `loop`, `pin`, `config`) and to produce evidence-backed queue items.
+    - Add a user-provided "scout prompt" input (CLI flag + TUI input) that becomes part of the filled prompt content/signature so the preview matches the actual run.
+    - Add regression tests for prompt filling (placeholders present) and for the new "scout prompt" threading.
+- [ ] RQ-0419 [code]: Disable autofill-scout by default; fix/clarify auto-scout toggle semantics and make it reliably reflected across TUI/CLI/specs runs. (ralph_tui/internal/config/defaults.json, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/specs/specs.go, ralph_tui/cmd/ralph/main.go)
+  - Evidence:
+    - `ralph_tui/internal/config/defaults.json` sets `specs.autofill_scout` to `true` by default; you want it disabled by default.
+    - `ralph_tui/internal/tui/specs_view.go` has `autofillScout` + `autofillExplicit` behavior (config updates only apply when not explicit), which can make the toggle feel "broken" when switching between Config and Specs screens.
+    - `specs.ResolveInnovate()` auto-enables innovate when `uncheckedQueueCount()==0`, which can surprise users if they don’t understand the "empty queue == auto innovate" rule.
+  - Plan:
+    - Change defaults so `specs.autofill_scout` is `false` by default; ensure config editor, CLI, and TUI reflect this consistently.
+    - Make the Specs screen show clearer state: (1) autofill scout on/off, (2) innovate on/off, (3) whether innovate was auto-enabled (and why).
+    - Add tests for `ResolveInnovate()` and for Specs view state transitions when toggling autofill/innovate and when config reloads occur.
+- [ ] RQ-0420 [ui]: Replace empty Dashboard with a real status overview (queue counts, running state, last results, log path) + quick actions. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/screens.go, ralph_tui/internal/tui/help_keymap.go)
+  - Evidence:
+    - `ralph_tui/internal/tui/model.go` currently returns a placeholder for `screenDashboard`: "Dashboard\n\nSummary panels will land here." (no actionable information).
+  - Plan:
+    - Show at-a-glance stats: unchecked queue count, blocked count, current/last queue item ID (if available), loop running state + mode, specs running state, last status messages, and resolved log path.
+    - Add one or two "quick actions" shortcuts (e.g., start loop once/continuous, run specs) and document them in help.
+    - Add small render contract coverage for the dashboard at narrow widths/heights.
+- [ ] RQ-0421 [ui]: Add search/command-palette style navigation + Pin queue filtering to handle large queues without manual scrolling. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/tui/keymap.go)
+  - Evidence:
+    - The nav list explicitly disables filtering (`SetShowFilter(false)`, `SetFilteringEnabled(false)`), so there is no fast jump across screens.
+    - The Pin screen uses a table with no search/filter mode; for large queues this becomes slow and "laggy" to navigate.
+  - Plan:
+    - Add a "search mode" (command palette style) with a text input; support jumping screens and filtering Pin queue rows by ID/title/tag.
+    - Ensure selection/scroll restoration still works when filters are cleared.
+    - Update help + add a small unit test for filter activation and for stable selection when filtering.
+- [ ] RQ-0422 [ops]: Add `ralph init` (bootstrap) and TUI self-heal for missing/invalid `.ralph/pin` files so the app works in fresh repos. (ralph_tui/cmd/ralph/main.go, ralph_tui/internal/pin/pin.go, ralph_tui/internal/paths/paths.go, .ralph/pin/README.md)
+  - Evidence:
+    - Most workflows assume `.ralph/pin/implementation_queue.md` et al exist; `pin.ValidatePin()` hard-requires Queue/Done/Lookup/README files.
+    - The CLI offers `ralph migrate` but there is no equivalent "init" to create a valid default pin layout for a fresh repo.
+  - Plan:
+    - Add `ralph init` to create `.ralph/pin` + `.ralph/cache` skeletons and seed valid pin files (Queue/Done/Lookup/README/specs_builder.md).
+    - On TUI start, detect missing pin files and offer a guided init (or show an actionable message with the exact CLI command).
+    - Add unit tests that init produces a pin set that passes `pin.ValidatePin()`.
+- [ ] RQ-0423 [code]: Fix process-group cancellation reliability (stop/cancel should kill ALL child procs) for loop + specs runners across platforms. (ralph_tui/internal/procgroup/procgroup_unix.go, ralph_tui/internal/loop/exec.go, ralph_tui/internal/specs/specs.go)
+  - Evidence:
+    - `ralph_tui/internal/procgroup/procgroup_unix.go` only overrides `cmd.Cancel` when `cmd.Cancel != nil`; if it is nil (or doesn’t kill the process group), child processes may survive cancel.
+    - Both loop and specs rely on context cancellation to stop runner processes; lingering children are a common "hang/lag" failure mode.
+  - Plan:
+    - Update procgroup configuration to always set up process-group cancellation on Unix (define `cmd.Cancel` to kill PGID, with a safe fallback when `cmd.Process` is nil).
+    - Ensure loop/specs use this consistently and add regression tests (similar to existing specs cancel tests) that confirm child processes die on cancel.
+- [ ] RQ-0424 [code]: Reduce TUI lag during noisy runs by eliminating O(n) log joins and excessive viewport.SetContent churn. (ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/logs_view.go)
+  - Evidence:
+    - `loop_view.appendLogLines()` calls `strings.Join(l.logs, "\n")` on every batch update (logs can reach 2000 lines), which is O(n) per update.
+    - `specs_view.appendRunLogs()` similarly calls `strings.Join(s.runLogs, "\n")` repeatedly (up to 500 lines).
+    - `logs_view.renderContent()` rebuilds a single giant string for Debug/Loop/Specs sections each refresh.
+  - Plan:
+    - Introduce a ring buffer with a cached joined string (or incremental builder) so appends are O(k) for new lines instead of O(n) for the full history.
+    - Ensure viewports only call `SetContent` when content actually changed (keep/extend current signature caching where applicable).
+    - Add a perf-oriented regression test (or at least a benchmark) to keep updates responsive with thousands of lines.
+- [ ] RQ-0425 [ui]: Improve Run Loop screen UX: show active queue item/progress, add jump-to-Pin/logs shortcuts, and reduce wasted space while running. (ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/model.go, ralph_tui/internal/loop/loop.go)
+  - Evidence:
+    - The Run Loop screen currently shows static override values + a log viewport, but not the active queue item ID/title (even though the loop runner knows `firstItem.ID` and `currentItemBlock`).
+    - Switching screens via the left nav during runs is slow and space-inefficient (and you explicitly want better use of screen space during loop runs).
+  - Plan:
+    - Plumb structured "loop state" messages (active item ID/title, iteration count, mode) from `internal/loop` into the TUI so the loop screen can show real progress.
+    - Add a hotkey to jump directly to Pin (and auto-select the active item) and/or to Logs.
+    - Combine with nav collapse to provide a genuinely useful "run mode" layout while the loop is active.
+- [ ] RQ-0426 [ui]: Make Config editor less confusing: show per-field source (default/global/repo/session/cli), simplify Save actions, and add 'reset layer/field' controls. (ralph_tui/internal/tui/config_editor.go, ralph_tui/internal/config/load.go, ralph_tui/internal/tui/help_keymap.go)
+  - Evidence:
+    - The config editor supports layers but does not show where each effective value came from (defaults vs global vs repo vs session/CLI), which makes it hard to reason about changes.
+    - Saving requires selecting an "Action" and then toggling "Apply action" (two-step), which is easy to miss and feels unintuitive compared to typical config UIs.
+  - Plan:
+    - Add per-field/source indicators (even if approximate) so users can see which layer is providing each value.
+    - Replace the "Apply action" toggle with clearer explicit actions (key-driven save + on-screen hints) and add reset operations (reset field, reset layer/session).
+    - Add tests ensuring session overrides remain correct and UI reflects effective config + sources.
+- [ ] RQ-0427 [code]: Improve git helper error reporting + surface failures in the UI/logs instead of swallowing details. (ralph_tui/internal/loop/git.go, ralph_tui/internal/loop/loop.go, ralph_tui/internal/tui/logs_view.go)
+  - Evidence:
+    - `ralph_tui/internal/loop/git.go` `CurrentBranch()` returns `fmt.Errorf("Unable to detect current git branch.")` without the underlying error or stderr, making failures opaque.
+    - `CommitAll`, `CommitPaths`, and `Push` discard stdout/stderr, preventing useful diagnostics when git operations fail.
+    - `AheadCount()` returns 0 on several errors (e.g., no upstream), which can silently change behavior and confuse users.
+  - Plan:
+    - Wrap git command failures with stderr/stdout tails and log them through the loop logger (with redaction where applicable).
+    - Update loop failure reporting to include actionable details (command + concise output tail).
+    - Add tests using a stubbed git backend or hermetic repo fixtures to validate error messages and behavior.
 
 ## Blocked
 
