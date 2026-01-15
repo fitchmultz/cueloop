@@ -8,13 +8,27 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
+)
+
+const (
+	outputWriterBufferSize      = 256 * 1024
+	outputWriterFlushInterval   = 250 * time.Millisecond
+	outputWriterMaxPendingLines = 128
+	outputWriterMaxPendingBytes = 64 * 1024
 )
 
 type outputFileWriter struct {
-	mu   sync.Mutex
-	path string
-	file *os.File
-	w    *bufio.Writer
+	mu              sync.Mutex
+	path            string
+	file            *os.File
+	w               *bufio.Writer
+	lastFlush       time.Time
+	pendingLines    int
+	flushInterval   time.Duration
+	maxPendingLines int
+	maxPendingBytes int
+	bufferSize      int
 }
 
 func (o *outputFileWriter) Path() string {
@@ -46,9 +60,23 @@ func (o *outputFileWriter) Reset(path string) error {
 	if err != nil {
 		return err
 	}
+	if o.flushInterval == 0 {
+		o.flushInterval = outputWriterFlushInterval
+	}
+	if o.maxPendingLines == 0 {
+		o.maxPendingLines = outputWriterMaxPendingLines
+	}
+	if o.maxPendingBytes == 0 {
+		o.maxPendingBytes = outputWriterMaxPendingBytes
+	}
+	if o.bufferSize == 0 {
+		o.bufferSize = outputWriterBufferSize
+	}
 	o.path = path
 	o.file = file
-	o.w = bufio.NewWriter(file)
+	o.w = bufio.NewWriterSize(file, o.bufferSize)
+	o.lastFlush = time.Now()
+	o.pendingLines = 0
 	return nil
 }
 
@@ -70,7 +98,16 @@ func (o *outputFileWriter) AppendLines(lines []string) error {
 			return err
 		}
 	}
-	return o.w.Flush()
+	o.pendingLines += len(lines)
+	now := time.Now()
+	if o.shouldFlushLocked(now) {
+		if err := o.w.Flush(); err != nil {
+			return err
+		}
+		o.pendingLines = 0
+		o.lastFlush = now
+	}
+	return nil
 }
 
 func (o *outputFileWriter) Close() error {
@@ -96,5 +133,20 @@ func (o *outputFileWriter) closeLocked() error {
 	}
 	o.w = nil
 	o.file = nil
+	o.pendingLines = 0
+	o.lastFlush = time.Time{}
 	return err
+}
+
+func (o *outputFileWriter) shouldFlushLocked(now time.Time) bool {
+	if o.maxPendingLines > 0 && o.pendingLines >= o.maxPendingLines {
+		return true
+	}
+	if o.maxPendingBytes > 0 && o.w.Buffered() >= o.maxPendingBytes {
+		return true
+	}
+	if o.flushInterval > 0 && !o.lastFlush.IsZero() && now.Sub(o.lastFlush) >= o.flushInterval {
+		return true
+	}
+	return false
 }

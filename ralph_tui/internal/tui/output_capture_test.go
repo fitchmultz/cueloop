@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLosslessOutputPersistenceUnderLoad(t *testing.T) {
@@ -75,5 +76,69 @@ func TestLosslessOutputPersistenceUnderLoad(t *testing.T) {
 	}
 	if lines[len(lines)-1] != fmt.Sprintf("line %d", totalLines-1) {
 		t.Fatalf("expected last line to be line %d, got %q", totalLines-1, lines[len(lines)-1])
+	}
+}
+
+func TestOutputFileWriterFlushThresholds(t *testing.T) {
+	t.Parallel()
+
+	outputDir := t.TempDir()
+	outputPath := filepath.Join(outputDir, "output.log")
+	writer := &outputFileWriter{
+		flushInterval:   time.Hour,
+		maxPendingLines: 2,
+		maxPendingBytes: 1 << 20,
+		bufferSize:      1024,
+	}
+	if err := writer.Reset(outputPath); err != nil {
+		t.Fatalf("reset output writer: %v", err)
+	}
+
+	if err := writer.AppendLines([]string{"line 1"}); err != nil {
+		t.Fatalf("append first line: %v", err)
+	}
+	if writer.pendingLines != 1 {
+		t.Fatalf("expected pending lines to be 1, got %d", writer.pendingLines)
+	}
+	if writer.w.Buffered() == 0 {
+		t.Fatalf("expected buffered data after first append")
+	}
+
+	if err := writer.AppendLines([]string{"line 2"}); err != nil {
+		t.Fatalf("append second line: %v", err)
+	}
+	if writer.pendingLines != 0 {
+		t.Fatalf("expected pending lines to reset after flush, got %d", writer.pendingLines)
+	}
+	if writer.w.Buffered() != 0 {
+		t.Fatalf("expected buffer to flush after reaching threshold")
+	}
+
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+}
+
+func BenchmarkOutputFileWriterAppendLines(b *testing.B) {
+	outputDir := b.TempDir()
+	outputPath := filepath.Join(outputDir, "output.log")
+	writer := &outputFileWriter{
+		flushInterval:   time.Hour,
+		maxPendingLines: 10_000,
+		maxPendingBytes: 1 << 20,
+		bufferSize:      256 * 1024,
+	}
+	if err := writer.Reset(outputPath); err != nil {
+		b.Fatalf("reset output writer: %v", err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := writer.AppendLines([]string{"line"}); err != nil {
+			b.Fatalf("append line: %v", err)
+		}
+	}
+	b.StopTimer()
+	if err := writer.Close(); err != nil {
+		b.Fatalf("close writer: %v", err)
 	}
 }
