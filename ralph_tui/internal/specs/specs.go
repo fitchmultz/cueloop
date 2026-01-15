@@ -15,6 +15,7 @@ import (
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/lockfile"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/procgroup"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
 
 const (
@@ -365,73 +366,53 @@ func runRunner(ctx context.Context, opts BuildOptions, prompt string, promptPath
 		stdin = os.Stdin
 	}
 
-	switch opts.Runner {
-	case RunnerCodex:
-		if opts.Interactive {
-			cmd := backend.CommandContext(ctx, "codex", append(runArgs, prompt)...)
-			procgroup.Configure(cmd)
-			cmd.Stdout = stdout
-			cmd.Stderr = stderr
-			cmd.Stdin = stdin
-			if err := cmd.Run(); err != nil {
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
-				return fmt.Errorf("codex failed while building specs: %w", err)
-			}
-			return nil
-		}
-		args := append([]string{"exec"}, runArgs...)
-		args = append(args, "-")
-		cmd := backend.CommandContext(ctx, "codex", args...)
-		procgroup.Configure(cmd)
-		file, err := os.Open(promptPath)
+	invocation, err := runnerargs.BuildRunnerCommand(string(opts.Runner), runArgs, prompt, promptPath, opts.Interactive)
+	if err != nil {
+		return err
+	}
+	cmd := backend.CommandContext(ctx, invocation.Name, invocation.Args...)
+	procgroup.Configure(cmd)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	var file *os.File
+	if invocation.PromptStdinPath != "" {
+		file, err = os.Open(invocation.PromptStdinPath)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
 		cmd.Stdin = file
-		cmd.Stdout = stdout
-		cmd.Stderr = stderr
-		if err := cmd.Run(); err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			return fmt.Errorf("codex failed while building specs: %w", err)
-		}
-		return nil
-	case RunnerOpencode:
-		if opts.Interactive {
-			cmd := backend.CommandContext(ctx, "opencode", append(runArgs, prompt)...)
-			procgroup.Configure(cmd)
-			cmd.Stdout = stdout
-			cmd.Stderr = stderr
-			cmd.Stdin = stdin
-			if err := cmd.Run(); err != nil {
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
-				return fmt.Errorf("opencode failed while building specs: %w", err)
-			}
-			return nil
-		}
-		args := append([]string{"run"}, runArgs...)
-		args = append(args, "--file", promptPath, "--", "Follow the attached prompt file verbatim.")
-		cmd := backend.CommandContext(ctx, "opencode", args...)
-		procgroup.Configure(cmd)
-		cmd.Stdout = stdout
-		cmd.Stderr = stderr
+	} else {
 		cmd.Stdin = stdin
-		if err := cmd.Run(); err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			return fmt.Errorf("opencode failed while building specs: %w", err)
-		}
-		return nil
-	default:
-		return fmt.Errorf("--runner must be codex or opencode (got: %s)", opts.Runner)
 	}
+	defer flushWriters(stdout, stderr)
+	if err := cmd.Run(); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return fmt.Errorf("%s failed while building specs: %w", invocation.Name, err)
+	}
+	return nil
+}
+
+type writerFlusher interface {
+	Flush()
+}
+
+func flushWriters(stdout io.Writer, stderr io.Writer) {
+	flushWriter(stdout)
+	if stderr == nil || stderr == stdout {
+		return
+	}
+	flushWriter(stderr)
+}
+
+func flushWriter(writer io.Writer) {
+	flusher, ok := writer.(writerFlusher)
+	if !ok || flusher == nil {
+		return
+	}
+	flusher.Flush()
 }
 
 func verifyRunner(backend RunnerBackend, runner Runner) error {

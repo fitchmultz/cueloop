@@ -1,10 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0450 [code]: Eliminate DRY violations in runner invocation (specs vs loop); validate opencode args and ensure streaming behavior is consistent across commands. (ralph_tui/internal/loop/runner.go, ralph_tui/internal/specs/specs.go, ralph_tui/internal/runnerargs/effort.go)
-  - Evidence: Codex/opencode command construction is duplicated between `loop.RunnerInvoker.RunPrompt` and `specs.runRunner`, increasing the risk of argument drift and inconsistent behavior (including streaming semantics).
-  - Plan: Extract shared runner invocation utilities, align opencode argument conventions in both paths, and add hermetic tests that assert arguments and streaming output behavior.
-
 - [ ] RQ-0448 [code]: Harden Logs view tail reader against concurrent writes/rotations (avoid spurious errors and blank Logs screen). (ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/tui/logs_view_test.go)
   - Evidence: `tailFileLines` does Stat → Seek → `io.ReadFull` across assumed-stable byte ranges; when the log file changes concurrently (append/rotate), this can return errors and surface as "Error:" in Logs.
   - Plan: Make tail reading resilient (ReadAt, tolerate EOF/UnexpectedEOF, retry on size changes), add a regression test that simulates concurrent append/rotation, and ensure the Logs screen degrades gracefully.
