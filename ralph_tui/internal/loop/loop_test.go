@@ -47,6 +47,32 @@ func TestFirstUncheckedItemWithTagsIgnoresInlineBrackets(t *testing.T) {
 	}
 }
 
+func TestFirstUncheckedItemWithMetadataBlock(t *testing.T) {
+	content := "## Queue\n" +
+		"- [ ] RQ-0001 [code]: Metadata item. (a)\n" +
+		"  - Evidence: Confirm metadata does not break parsing.\n" +
+		"  - Plan: Keep metadata indented.\n" +
+		"  - Notes: Add extra context.\n" +
+		"    - Link: https://example.com/item\n" +
+		"  ```yaml\n" +
+		"  owner: ralph-team\n" +
+		"  severity: low\n" +
+		"  ```\n" +
+		"\n## Blocked\n\n## Parking Lot\n"
+	path := filepath.Join(t.TempDir(), "queue.md")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	item, err := FirstUncheckedItem(path, []string{"code"})
+	if err != nil {
+		t.Fatalf("FirstUncheckedItem failed: %v", err)
+	}
+	if item == nil || item.ID != "RQ-0001" {
+		t.Fatalf("expected RQ-0001, got %#v", item)
+	}
+}
+
 func TestContextBuilderPolicyBlock(t *testing.T) {
 	tests := []struct {
 		name      string

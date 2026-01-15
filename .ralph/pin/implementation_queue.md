@@ -1,14 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0437 [code]: Support richer queue item metadata (notes/links/extra context) without breaking pin validation or loop parsing; optionally move to a structured format. (ralph_tui/internal/pin/pin.go, ralph_tui/internal/loop/queue.go, .ralph/pin/README.md)
-  - Evidence:
-    - `pin.ValidatePin()` enforces a strict queue item header format + requires `Evidence` and `Plan`, but there is no supported place for additional structured notes; users report the system "freaks out" when they add extra detail.
-    - The loop runner and TUI both treat the queue file as opaque markdown blocks, so adding richer metadata today risks parsing/validation surprises.
-  - Plan:
-    - Define and document an explicit "extra metadata" convention (e.g., optional `Notes:` field, or a fenced YAML block) that is ignored by the loop selector but validated as safe by `pin.ValidatePin()`.
-    - Update pin parsing/validation to allow and preserve the metadata, and update the prompts to encourage using the supported format.
-    - Add tests that a queue item containing extra metadata still passes validation and is still selectable/runnable by the loop.
 - [ ] RQ-0438 [ui]: Add a safe "edit queue" + "commit pin changes" workflow in the TUI (reduce manual git mistakes and the need to stop the loop to edit files). (ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/tui/model.go, ralph_tui/internal/loop/git.go, ralph_tui/internal/loop/loop.go)
   - Evidence:
     - Today, editing `.ralph/pin/implementation_queue.md` happens outside Ralph; if the user forgets to commit before starting the loop, the loop can treat the repo as dirty and quarantine/reset, losing the edits.

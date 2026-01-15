@@ -1,6 +1,14 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0437 [code]: Support richer queue item metadata (notes/links/extra context) without breaking pin validation or loop parsing; optionally move to a structured format. (ralph_tui/internal/pin/pin.go, ralph_tui/internal/loop/queue.go, .ralph/pin/README.md)
+  - Evidence:
+    - `pin.ValidatePin()` enforces a strict queue item header format + requires `Evidence` and `Plan`, but there is no supported place for additional structured notes; users report the system "freaks out" when they add extra detail.
+    - The loop runner and TUI both treat the queue file as opaque markdown blocks, so adding richer metadata today risks parsing/validation surprises.
+  - Plan:
+    - Define and document an explicit "extra metadata" convention (e.g., optional `Notes:` field, or a fenced YAML block) that is ignored by the loop selector but validated as safe by `pin.ValidatePin()`.
+    - Update pin parsing/validation to allow and preserve the metadata, and update the prompts to encourage using the supported format.
+    - Add tests that a queue item containing extra metadata still passes validation and is still selectable/runnable by the loop.
 - [x] RQ-0436 [docs]: Make worker/supervisor prompts more prescriptive for fragile edge cases (stop/cancel, dirty repo, and end-of-turn checklist). (ralph_tui/internal/prompts/defaults/prompt_codex.md, ralph_tui/internal/prompts/defaults/prompt_opencode.md, ralph_tui/internal/prompts/defaults/supervisor_prompt.md)
   - Evidence:
     - The prompts emphasize "run make ci" and "check the queue item", but they don’t explicitly cover what to do when the loop is stopped mid-iteration or when the repo is dirty before starting (both of which currently trigger quarantine behavior in code).

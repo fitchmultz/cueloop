@@ -789,17 +789,13 @@ func validateQueueItemFormat(lines []string) error {
 
 		evidenceOk := false
 		planOk := false
-		for _, line := range itemLines {
-			trimmed := strings.TrimLeft(line, " \t")
-			if strings.HasPrefix(trimmed, "- Evidence:") {
-				evidenceOk = true
-			}
-			if strings.HasPrefix(trimmed, "- Plan:") {
-				planOk = true
-			}
-		}
+		bodyErrors := make([]string, 0)
+		check := validateQueueItemLines(itemLines)
+		evidenceOk = check.Evidence
+		planOk = check.Plan
+		bodyErrors = append(bodyErrors, check.Errors...)
 
-		if !(idOk && tagOk && colonOk && scopeOk && evidenceOk && planOk) {
+		if !(idOk && tagOk && colonOk && scopeOk && evidenceOk && planOk) || len(bodyErrors) > 0 {
 			bad = true
 			output = append(output, "Bad queue item format:")
 			output = append(output, header)
@@ -821,6 +817,7 @@ func validateQueueItemFormat(lines []string) error {
 			if !planOk {
 				output = append(output, "  - Missing indented metadata bullet: \"- Plan: ...\"")
 			}
+			output = append(output, bodyErrors...)
 			output = append(output, "")
 		}
 
@@ -862,12 +859,87 @@ func validateQueueItemFormat(lines []string) error {
 	return nil
 }
 
+type queueItemLineCheck struct {
+	Evidence bool
+	Plan     bool
+	Errors   []string
+}
+
+func validateQueueItemLines(lines []string) queueItemLineCheck {
+	check := queueItemLineCheck{
+		Errors: make([]string, 0),
+	}
+	inFence := false
+	unsafeList := false
+	unsafeHeader := false
+	fenceIndent := false
+	fenceLang := false
+	fenceContentIndent := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if strings.HasPrefix(trimmed, "- Evidence:") {
+			check.Evidence = true
+		}
+		if strings.HasPrefix(trimmed, "- Plan:") {
+			check.Plan = true
+		}
+
+		if strings.HasPrefix(line, "- [") {
+			unsafeList = true
+		}
+		if strings.HasPrefix(line, "## ") {
+			unsafeHeader = true
+		}
+
+		if strings.HasPrefix(trimmed, "```") {
+			if line == trimmed {
+				fenceIndent = true
+			}
+			fenceLanguage := strings.TrimSpace(strings.TrimPrefix(trimmed, "```"))
+			if !inFence {
+				if fenceLanguage != "yaml" && fenceLanguage != "yml" {
+					fenceLang = true
+				}
+				inFence = true
+			} else {
+				inFence = false
+			}
+			continue
+		}
+
+		if inFence && trimmed != "" && line == trimmed {
+			fenceContentIndent = true
+		}
+	}
+
+	if unsafeList {
+		check.Errors = append(check.Errors, "  - Unindented list items starting with \"- [\" are not allowed inside queue items. Indent extra metadata bullets by two spaces.")
+	}
+	if unsafeHeader {
+		check.Errors = append(check.Errors, "  - Unindented subheaders (\"## \") are not allowed inside queue items. Indent extra metadata headers by two spaces.")
+	}
+	if fenceIndent {
+		check.Errors = append(check.Errors, "  - Fenced metadata blocks must be indented by two spaces.")
+	}
+	if fenceLang {
+		check.Errors = append(check.Errors, "  - Only indented ```yaml or ```yml fenced blocks are supported for extra metadata.")
+	}
+	if fenceContentIndent {
+		check.Errors = append(check.Errors, "  - Lines inside fenced metadata blocks must be indented by two spaces.")
+	}
+	if inFence {
+		check.Errors = append(check.Errors, "  - Fenced metadata blocks must be closed with an indented ``` line.")
+	}
+	return check
+}
+
 func splitBlocks(lines []string) [][]string {
 	blocks := make([][]string, 0)
 	current := make([]string, 0)
 
 	for _, line := range lines {
-		if strings.HasPrefix(line, "- [") || strings.HasPrefix(line, "## ") {
+		if queueItemLine.MatchString(line) || strings.HasPrefix(line, "## ") {
 			if len(current) > 0 {
 				blocks = append(blocks, current)
 			}

@@ -30,6 +30,81 @@ func TestValidatePinFixtures(t *testing.T) {
 	}
 }
 
+func TestValidatePinAllowsExtraMetadata(t *testing.T) {
+	fixture := mustLocateFixtures(t)
+
+	tmpDir := t.TempDir()
+	queuePath := copyFixture(t, fixture.queue, filepath.Join(tmpDir, "implementation_queue.md"))
+	donePath := copyFixture(t, fixture.done, filepath.Join(tmpDir, "implementation_done.md"))
+	lookupPath := copyFixture(t, fixture.lookup, filepath.Join(tmpDir, "lookup_table.md"))
+	readmePath := copyFixture(t, fixture.readme, filepath.Join(tmpDir, "README.md"))
+
+	data, err := os.ReadFile(queuePath)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+
+	extra := "  - Plan: Keep the fixture in sync with queue validation rules.\n" +
+		"  - Notes: Extra context for the fixture.\n" +
+		"    - Link: https://example.com/queue-item\n" +
+		"  ```yaml\n" +
+		"  owner: ralph-team\n" +
+		"  severity: medium\n" +
+		"  ```"
+	updated := strings.Replace(string(data), "  - Plan: Keep the fixture in sync with queue validation rules.", extra, 1)
+	if updated == string(data) {
+		t.Fatalf("failed to insert extra metadata into fixture")
+	}
+	if err := os.WriteFile(queuePath, []byte(updated), 0o600); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	if err := ValidatePin(Files{
+		QueuePath:  queuePath,
+		DonePath:   donePath,
+		LookupPath: lookupPath,
+		ReadmePath: readmePath,
+	}); err != nil {
+		t.Fatalf("ValidatePin failed with extra metadata: %v", err)
+	}
+}
+
+func TestValidatePinRejectsUnsafeMetadataLines(t *testing.T) {
+	fixture := mustLocateFixtures(t)
+
+	tmpDir := t.TempDir()
+	queuePath := copyFixture(t, fixture.queue, filepath.Join(tmpDir, "implementation_queue.md"))
+	donePath := copyFixture(t, fixture.done, filepath.Join(tmpDir, "implementation_done.md"))
+	lookupPath := copyFixture(t, fixture.lookup, filepath.Join(tmpDir, "lookup_table.md"))
+	readmePath := copyFixture(t, fixture.readme, filepath.Join(tmpDir, "README.md"))
+
+	data, err := os.ReadFile(queuePath)
+	if err != nil {
+		t.Fatalf("read queue: %v", err)
+	}
+
+	updated := strings.Replace(string(data), "  - Plan: Keep the fixture in sync with queue validation rules.", "  - Plan: Keep the fixture in sync with queue validation rules.\n- [link]: https://example.com/unsafe", 1)
+	if updated == string(data) {
+		t.Fatalf("failed to insert unsafe metadata into fixture")
+	}
+	if err := os.WriteFile(queuePath, []byte(updated), 0o600); err != nil {
+		t.Fatalf("write queue: %v", err)
+	}
+
+	err = ValidatePin(Files{
+		QueuePath:  queuePath,
+		DonePath:   donePath,
+		LookupPath: lookupPath,
+		ReadmePath: readmePath,
+	})
+	if err == nil {
+		t.Fatalf("expected ValidatePin to fail with unsafe metadata")
+	}
+	if !strings.Contains(err.Error(), "Unindented list items") {
+		t.Fatalf("expected unsafe metadata error, got: %v", err)
+	}
+}
+
 func TestExtractTags(t *testing.T) {
 	header := "- [ ] RQ-0001 [code] [ui]: Example"
 	tags := ExtractTags(header)
