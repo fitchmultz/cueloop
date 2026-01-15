@@ -157,6 +157,10 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 	return cmd
 }
 
+func (p *pinView) HandlesTabNavigation() bool {
+	return p.mode == pinModeBlockForm && p.blockForm != nil
+}
+
 func (p *pinView) View() string {
 	if p.mode == pinModeBlockForm && p.blockForm != nil {
 		return withFinalNewline("Block item\n\n" + p.blockForm.View())

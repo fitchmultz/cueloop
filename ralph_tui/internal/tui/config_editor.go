@@ -144,6 +144,10 @@ func (e *configEditor) Update(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
+func (e *configEditor) HandlesTabNavigation() bool {
+	return e.form != nil
+}
+
 func (e *configEditor) View() string {
 	header := fmt.Sprintf("Config (editing: %s)", layerLabel(e.layer))
 	status := e.statusLine()

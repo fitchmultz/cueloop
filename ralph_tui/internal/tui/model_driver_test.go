@@ -53,7 +53,7 @@ func (d *modelDriver) KeyRunes(value string) {
 
 func (d *modelDriver) ToggleFocus() {
 	d.t.Helper()
-	d.KeyType(tea.KeyTab)
+	d.KeyType(tea.KeyCtrlF)
 }
 
 func (d *modelDriver) SelectScreen(target screen) {

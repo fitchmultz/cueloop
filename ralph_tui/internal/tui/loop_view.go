@@ -190,6 +190,10 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 	return nil
 }
 
+func (l *loopView) HandlesTabNavigation() bool {
+	return l.mode == loopEditing && l.editForm != nil
+}
+
 func (l *loopView) View() string {
 	head := "Run Loop"
 	status := l.statusLine()

@@ -228,6 +228,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if key.Matches(msg, m.keys.Focus) {
+			if m.shouldBypassFocusToggle(msg) {
+				break
+			}
 			m.navFocused = !m.navFocused
 			m.applyFocus()
 			m.relayout()
@@ -272,6 +275,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m model) shouldBypassFocusToggle(msg tea.KeyMsg) bool {
+	if m.navFocused {
+		return false
+	}
+	if msg.Type != tea.KeyTab {
+		return false
+	}
+	return m.activeViewUsesTabNavigation()
+}
+
+func (m model) activeViewUsesTabNavigation() bool {
+	switch m.screen {
+	case screenConfig:
+		return m.configView != nil && m.configView.HandlesTabNavigation()
+	case screenRunLoop:
+		return m.loopView != nil && m.loopView.HandlesTabNavigation()
+	case screenPin:
+		return m.pinView != nil && m.pinView.HandlesTabNavigation()
+	default:
+		return false
+	}
 }
 
 func (m model) View() string {
@@ -381,7 +407,7 @@ func (m model) contentView() string {
 		}
 		return m.logsView.View()
 	case screenHelp:
-		return "Help\n\nUse the left menu to navigate and Tab to switch focus."
+		return "Help\n\nUse the left menu to navigate and Tab (or Ctrl+F) to switch focus."
 	default:
 		return ""
 	}

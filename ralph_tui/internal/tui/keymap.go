@@ -38,8 +38,8 @@ func newKeyMap() keyMap {
 			key.WithHelp("q", "quit"),
 		),
 		Focus: key.NewBinding(
-			key.WithKeys("tab"),
-			key.WithHelp("tab", "toggle focus"),
+			key.WithKeys("tab", "ctrl+f"),
+			key.WithHelp("tab/ctrl+f", "toggle focus"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),
