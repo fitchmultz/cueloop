@@ -1,6 +1,14 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0455 [ops]: Repair pin validity (duplicate IDs) and add guardrails for queue ID allocation + CI pin validation. (.ralph/pin/implementation_queue.md, .ralph/pin/implementation_done.md, ralph_tui/internal/pin/pin.go, ralph_tui/internal/queueid/queueid.go, Makefile)
+  - Evidence: `.ralph/pin/implementation_done.md` contains a done entry with ID `RQ-0453`, while `.ralph/pin/implementation_queue.md` also contains an active `RQ-0453`. `pin.ValidatePin()` rejects duplicate IDs across queue+done, which can prevent the TUI from starting cleanly (see `ralph_tui/internal/tui/model.go` startup validation path).
+  - Plan: (1) Renumber one of the colliding entries (recommended: assign a new ID to the *queue* item to preserve historical Done IDs), (2) add an automated "next ID" helper (CLI `ralph pin next-id` or equivalent) that scans queue+done and prints the next free `RQ-####`, (3) add `make pin-validate` and run it from `make ci`, and (4) add tests ensuring pin validation is enforced in CI to prevent regressions.
+  - Findings:
+    - Duplicate IDs across queue/done are currently possible and break `pin.ValidatePin()`.
+    - There is no automated "next ID" helper; ID allocation is manual and error-prone.
+    - `make ci` currently does not enforce pin validation, so this can slip in unnoticed.
+
 - [x] RQ-0443 [P1] [ui]: Correct Dashboard queue summary accuracy (unfiltered counts, true "last done" from implementation_done.md, and better "next item" semantics). (ralph_tui/internal/tui/dashboard_view.go, ralph_tui/internal/pin/pin.go, ralph_tui/internal/tui/pin_view.go)
   - Evidence: `dashboardQueueSummaryFor` uses `pinView.items` (which can be filtered by search) and derives "Last done" from checked queue items, but checked items are not the done log and may never be moved; dashboard can report misleading queue stats.
   - Plan: Compute dashboard queue stats from the real queue/done files (or `pinView.allItems` plus done-tail parsing), ensure filtering doesn’t affect dashboard, and add unit tests for summary correctness.

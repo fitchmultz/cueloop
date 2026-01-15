@@ -3,6 +3,10 @@
 | Area | Notes |
 | --- | --- |
 | pin | Default pin fixtures for the Ralph TUI/CLI. |
+| cli | Cobra CLI entrypoint + subcommands live in `ralph_tui/cmd/ralph/` (start at `ralph_tui/cmd/ralph/main.go`). |
+| paths | Repo root discovery and config path resolution live in `ralph_tui/internal/paths/`. |
+| migrate | Legacy pin migration logic lives in `ralph_tui/internal/migrate/`. |
+| version | Build-time version metadata lives in `ralph_tui/internal/version/`. |
 | config | Config models and save/load logic for the Ralph TUI live in `ralph_tui/internal/config/`. |
 | tui | Ralph TUI layout, keybindings, and view behavior live in `ralph_tui/internal/tui/`. |
 | loop | Supervised loop runner, git helpers, and redaction live in `ralph_tui/internal/loop/`. |
