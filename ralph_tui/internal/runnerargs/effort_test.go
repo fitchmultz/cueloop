@@ -40,6 +40,18 @@ func TestApplyReasoningEffort_AutoNoInjection(t *testing.T) {
 	}
 }
 
+func TestApplyReasoningEffort_AutoTargetInjection(t *testing.T) {
+	args := []string{"--baz"}
+	result := ApplyReasoningEffortWithAutoTarget("codex", args, "auto", "high")
+	wantArgs := []string{"-c", "model_reasoning_effort=\"high\"", "--baz"}
+	if !reflect.DeepEqual(result.Args, wantArgs) {
+		t.Fatalf("expected args %v, got %v", wantArgs, result.Args)
+	}
+	if result.Effective != "high" || result.Source != EffortSourceAuto {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
 func TestApplyReasoningEffort_NonCodex(t *testing.T) {
 	args := []string{"--baz"}
 	result := ApplyReasoningEffort("opencode", args, "high")

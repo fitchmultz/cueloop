@@ -96,12 +96,20 @@ func TestContextBuilderPolicyBlock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			block := contextBuilderPolicyBlock("medium", tt.mandatory, tt.forced)
+			block := contextBuilderPolicyBlock("medium", tt.mandatory, tt.forced, "")
 			for _, fragment := range tt.expect {
 				if !strings.Contains(block, fragment) {
 					t.Fatalf("expected %q in policy block, got:\n%s", fragment, block)
 				}
 			}
 		})
+	}
+}
+
+func TestContextBuilderPolicyBlockIncludesNote(t *testing.T) {
+	note := "Auto reasoning effort target applied (P1 item): high."
+	block := contextBuilderPolicyBlock("high", false, false, note)
+	if !strings.Contains(block, note) {
+		t.Fatalf("expected note in policy block, got:\n%s", block)
 	}
 }

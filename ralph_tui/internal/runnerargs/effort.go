@@ -26,6 +26,12 @@ type EffortResult struct {
 
 // ApplyReasoningEffort injects reasoning effort into Codex args when explicitly set.
 func ApplyReasoningEffort(runner string, args []string, effort string) EffortResult {
+	return ApplyReasoningEffortWithAutoTarget(runner, args, effort, "")
+}
+
+// ApplyReasoningEffortWithAutoTarget injects reasoning effort into Codex args.
+// If effort is auto and autoTarget is set, the target is applied explicitly.
+func ApplyReasoningEffortWithAutoTarget(runner string, args []string, effort string, autoTarget string) EffortResult {
 	if strings.ToLower(strings.TrimSpace(runner)) != "codex" {
 		return EffortResult{Args: args, Effective: "", Source: EffortSourceNone}
 	}
@@ -36,6 +42,11 @@ func ApplyReasoningEffort(runner string, args []string, effort string) EffortRes
 
 	normalized := NormalizeEffort(effort)
 	if normalized == "" || normalized == "auto" {
+		target := NormalizeEffort(autoTarget)
+		if target != "" && target != "auto" {
+			applied := append([]string{"-c", fmt.Sprintf("model_reasoning_effort=\"%s\"", target)}, args...)
+			return EffortResult{Args: applied, Effective: target, Source: EffortSourceAuto}
+		}
 		return EffortResult{Args: args, Effective: "auto", Source: EffortSourceAuto}
 	}
 

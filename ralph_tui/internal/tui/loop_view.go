@@ -322,7 +322,13 @@ func (l *loopView) controlsView() string {
 	if l.mode == loopRunning || l.mode == loopStopping {
 		return l.runControlsView()
 	}
-	effortResult := runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort)
+	autoTarget := l.autoTargetEffort()
+	effortResult := runnerargs.ApplyReasoningEffortWithAutoTarget(
+		l.overrides.Runner,
+		l.overrides.RunnerArgs,
+		l.overrides.ReasoningEffort,
+		autoTarget,
+	)
 	effectiveLabel := runnerargs.DisplayEffortResult(effortResult)
 	mandatory := l.overrides.ForceContextBuilder || effortResult.Effective == "low" || effortResult.Effective == "off"
 	lines := []string{
@@ -343,6 +349,26 @@ func (l *loopView) controlsView() string {
 		"Keys: r run once | c continuous | s stop | e edit overrides | p force ctx builder | shift+p pin | shift+l logs",
 	}
 	return strings.Join(lines, "\n")
+}
+
+func (l *loopView) autoTargetEffort() string {
+	normalized := runnerargs.NormalizeEffort(l.overrides.ReasoningEffort)
+	if normalized != "" && normalized != "auto" {
+		return ""
+	}
+	onlyTags, err := parseOnlyTags(l.overrides.OnlyTags)
+	if err != nil {
+		return ""
+	}
+	files := pin.ResolveFiles(l.cfg.Paths.PinDir)
+	item, err := loop.FirstUncheckedItem(files.QueuePath, onlyTags)
+	if err != nil || item == nil {
+		return ""
+	}
+	if strings.Contains(item.Header, "[P1]") {
+		return "high"
+	}
+	return ""
 }
 
 func (l *loopView) runControlsView() string {

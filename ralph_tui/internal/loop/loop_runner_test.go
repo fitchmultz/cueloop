@@ -67,6 +67,13 @@ func TestRunnerEffortAutoUsesQueuePriority(t *testing.T) {
 	if runner.effectiveEffort != "high" {
 		t.Fatalf("expected effective effort high, got %q", runner.effectiveEffort)
 	}
+	joinedArgs := strings.Join(runner.currentRunArgs, " ")
+	if !strings.Contains(joinedArgs, "model_reasoning_effort=\"high\"") {
+		t.Fatalf("expected injected model_reasoning_effort in args, got %q", joinedArgs)
+	}
+	if !strings.Contains(runner.effectiveEffortNote, "P1 item") {
+		t.Fatalf("expected P1 note, got %q", runner.effectiveEffortNote)
+	}
 }
 
 func (b *bufferLogger) WriteLine(line string) {

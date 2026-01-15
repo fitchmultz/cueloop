@@ -61,6 +61,7 @@ type Runner struct {
 	currentRunArgs          []string
 	currentItemBlock        string
 	effectiveEffort         string
+	effectiveEffortNote     string
 	contextBuilderMandatory bool
 	state                   State
 }
@@ -174,28 +175,25 @@ func (r *Runner) Run(ctx context.Context) error {
 			return fmt.Errorf("Queue item is missing an ID prefix (expected something like ABC-0123).")
 		}
 
-		effort := "high"
+		autoTarget := ""
+		autoTargetReason := ""
 		if strings.Contains(firstItem.Header, "[P1]") {
-			effort = "high"
+			autoTarget = "high"
+			autoTargetReason = "P1 item"
 		}
-		effectiveSetting := effort
-		if runnerargs.NormalizeEffort(r.opts.ReasoningEffort) != "" {
-			effectiveSetting = r.opts.ReasoningEffort
+		effectiveSetting := runnerargs.NormalizeEffort(r.opts.ReasoningEffort)
+		if effectiveSetting == "" {
+			effectiveSetting = "auto"
 		}
 		r.currentRunArgs = append([]string{}, r.opts.RunnerArgs...)
-		effectiveEffort := ""
-		if r.opts.Runner == "codex" {
-			if detected, ok := runnerargs.DetectEffort(r.currentRunArgs); ok {
-				effectiveEffort = detected
-			} else if runnerargs.NormalizeEffort(effectiveSetting) == "auto" {
-				effectiveEffort = effort
-			} else {
-				effectiveEffort = runnerargs.NormalizeEffort(effectiveSetting)
-			}
+		effortResult := runnerargs.ApplyReasoningEffortWithAutoTarget(r.opts.Runner, r.currentRunArgs, effectiveSetting, autoTarget)
+		r.currentRunArgs = effortResult.Args
+		r.effectiveEffort = effortResult.Effective
+		r.effectiveEffortNote = ""
+		if effortResult.Source == runnerargs.EffortSourceAuto && effortResult.Effective != "auto" && autoTargetReason != "" {
+			r.effectiveEffortNote = fmt.Sprintf("Auto reasoning effort target applied (%s): %s.", autoTargetReason, effortResult.Effective)
 		}
-		r.currentRunArgs = runnerargs.ApplyReasoningEffort(r.opts.Runner, r.currentRunArgs, effectiveSetting).Args
-		r.effectiveEffort = effectiveEffort
-		r.contextBuilderMandatory = effectiveEffort == "low" || effectiveEffort == "off" || r.opts.ForceContextBuilder
+		r.contextBuilderMandatory = r.effectiveEffort == "low" || r.effectiveEffort == "off" || r.opts.ForceContextBuilder
 
 		headBefore, err := HeadSHA(ctx, r.opts.RepoRoot)
 		if err != nil {
@@ -502,7 +500,7 @@ func (r *Runner) writePromptFile(itemLine string) (string, func(), error) {
 	builder.WriteString(content)
 	builder.WriteString("\n\n")
 	if r.opts.Runner == "codex" && r.effectiveEffort != "" {
-		builder.WriteString(contextBuilderPolicyBlock(r.effectiveEffort, r.contextBuilderMandatory, r.opts.ForceContextBuilder))
+		builder.WriteString(contextBuilderPolicyBlock(r.effectiveEffort, r.contextBuilderMandatory, r.opts.ForceContextBuilder, r.effectiveEffortNote))
 		builder.WriteString("\n\n")
 	}
 	builder.WriteString("# CURRENT QUEUE ITEM\n")
@@ -821,7 +819,7 @@ func (r *Runner) buildSupervisorContext(ctx context.Context, stage string, messa
 	builder.WriteString(content)
 	builder.WriteString("\n\n")
 	if r.opts.Runner == "codex" && r.effectiveEffort != "" {
-		builder.WriteString(contextBuilderPolicyBlock(r.effectiveEffort, r.contextBuilderMandatory, r.opts.ForceContextBuilder))
+		builder.WriteString(contextBuilderPolicyBlock(r.effectiveEffort, r.contextBuilderMandatory, r.opts.ForceContextBuilder, r.effectiveEffortNote))
 		builder.WriteString("\n\n")
 	}
 	builder.WriteString("# FAILURE CONTEXT\n")
@@ -1085,10 +1083,13 @@ func (r *Runner) recordFailure(stage string, message string) {
 	r.publishState(r.stateWithFailure(r.state))
 }
 
-func contextBuilderPolicyBlock(effort string, mandatory bool, forced bool) string {
+func contextBuilderPolicyBlock(effort string, mandatory bool, forced bool, note string) string {
 	builder := strings.Builder{}
 	builder.WriteString("# CODEX CONTEXT BUILDER POLICY\n")
 	builder.WriteString(fmt.Sprintf("Codex model_reasoning_effort: %s\n", effort))
+	if note != "" {
+		builder.WriteString(note + "\n")
+	}
 	if forced {
 		builder.WriteString("Override: Force context_builder is ENABLED.\n")
 	}
