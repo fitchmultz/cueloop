@@ -10,6 +10,17 @@ The pin directory should include:
 - lookup_table.md
 - specs_builder.md
 
+## Queue IDs
+To allocate the next queue ID, run:
+
+  ralph pin next-id
+
+This scans the queue and done logs and prints the next available `RQ-####`.
+
+If duplicates slip in, repair them with:
+
+  ralph pin fix-ids
+
 ## Queue item metadata
 Queue items require `Evidence` and `Plan` bullets. You may add extra metadata after those bullets using
 indented notes/links or an indented YAML block. Keep extra metadata indented by two spaces so it stays

@@ -13,7 +13,8 @@
 - `make format`: Format Python (Ruff) and Go (gofmt).
 - `make lint`: Lint Python (Ruff) and Go (go vet).
 - `make type-check`: Run Python type checks (Astral Ty) and a no-op Go test pass for type safety.
-- `make ci`: Local gate; runs generate/format/type-check/lint/build/test.
+- `make pin-validate`: Validate pin files via `ralph pin validate`.
+- `make ci`: Local gate; runs generate/format/type-check/lint/pin-validate/build/test.
 
 ## Coding Style & Naming Conventions
 - Go: standard formatting (`gofmt`), lower_snake_case filenames, lower-case package names.

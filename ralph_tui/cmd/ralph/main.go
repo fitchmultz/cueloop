@@ -782,10 +782,12 @@ func newPinCommand() *cobra.Command {
 		Use:     "pin",
 		Short:   "Pin queue operations",
 		Long:    "Validate and manipulate Ralph pin queue files.",
-		Example: "  ralph pin validate\n  ralph pin move-checked\n  ralph pin block-item --item-id RQ-0001 --reason \"needs fixes\"",
+		Example: "  ralph pin validate\n  ralph pin next-id\n  ralph pin fix-ids\n  ralph pin move-checked\n  ralph pin block-item --item-id RQ-0001 --reason \"needs fixes\"",
 	}
 
 	pinCmd.AddCommand(newPinValidateCommand())
+	pinCmd.AddCommand(newPinNextIDCommand())
+	pinCmd.AddCommand(newPinFixIDsCommand())
 	pinCmd.AddCommand(newPinMoveCheckedCommand())
 	pinCmd.AddCommand(newPinBlockItemCommand())
 
@@ -809,6 +811,71 @@ func newPinValidateCommand() *cobra.Command {
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), ">> [RALPH] Pin validation OK.")
 			return err
+		},
+	}
+}
+
+func newPinNextIDCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     "next-id",
+		Short:   "Print the next available queue ID",
+		Long:    "Scan queue and done pin files and print the next available RQ-#### ID.",
+		Example: "  ralph pin next-id\n  ralph --pin-dir .ralph/pin pin next-id",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+			files := pin.ResolveFiles(cfg.Paths.PinDir)
+			if err := pin.ValidatePin(files); err != nil {
+				return err
+			}
+			nextID, err := pin.NextQueueID(files, "")
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), nextID)
+			return err
+		},
+	}
+}
+
+func newPinFixIDsCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:     "fix-ids",
+		Short:   "Fix duplicate queue IDs",
+		Long:    "Renumber duplicate queue IDs without modifying the done log.",
+		Example: "  ralph pin fix-ids\n  ralph --pin-dir .ralph/pin pin fix-ids",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+			files := pin.ResolveFiles(cfg.Paths.PinDir)
+			result, err := pin.FixDuplicateQueueIDs(files, "")
+			if err != nil {
+				return err
+			}
+			if len(result.Fixed) == 0 {
+				_, err = fmt.Fprintln(cmd.OutOrStdout(), ">> [RALPH] No duplicate queue IDs found.")
+				return err
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), ">> [RALPH] Updated %d queue IDs:\n", len(result.Fixed))
+			if err != nil {
+				return err
+			}
+			for _, fix := range result.Fixed {
+				section := ""
+				if fix.Section != "" {
+					section = fmt.Sprintf(" (%s)", fix.Section)
+				}
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "- %s -> %s%s\n", fix.OldID, fix.NewID, section); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 }

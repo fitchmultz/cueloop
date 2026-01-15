@@ -37,6 +37,17 @@ The pin directory should include:
 - lookup_table.md
 - specs_builder.md
 
+## Queue IDs
+To allocate the next queue ID, run:
+
+  ralph pin next-id
+
+This scans the queue and done logs and prints the next available RQ-####.
+
+If duplicates slip in, repair them with:
+
+  ralph pin fix-ids
+
 ## Queue item metadata
 Queue items require ` + "`Evidence`" + ` and ` + "`Plan`" + ` bullets. You may add extra metadata after those bullets using
 indented notes/links or an indented YAML block. Keep extra metadata indented by two spaces so it stays
@@ -71,7 +82,7 @@ You are the Ralph specs builder for this repository.
 - Some items to look for: laggy interfaces, limited or incomplete functionality, logical design flaws and oversights, lack of standardization, violation of DRY principals, functionality that outright don't work, etc. This list is not comprehensive. 
 - When you have your batches of tasks, add them to the ` + "`.ralph/pin/implementation_queue.md`" + ` queue file according to the required spec queue formatting. Each task in the queue (each batch of findings) will be executed sequentially by an agent. Feel free to innovate, refactor, redo things, reorganize, etc. Do NOT be afraid of large scale changes if they are required to move the project in the correct direction.
 - Add the highest priority items to the top of the task queue.
-- Use unique task IDs (e.g. RQ-123) for each task. Check the ` + "`.ralph/pin/implementation_queue.md`" + ` and ` + "`.ralph/pin/implementation_done.md`" + ` files to know which unique ID comes next.
+- Use unique task IDs (e.g. RQ-1234) for each task. Use ` + "`ralph pin next-id`" + ` to get the next available ID (it scans queue + done).
 - Keep queue items in the required format: ID, routing tag(s), title, scope list, ` + "`Evidence`" + `, and ` + "`Plan`" + `. Keep extra metadata indented by two spaces so it stays inside the queue item block.
 - Optional extra metadata is allowed after ` + "`Plan`" + ` using indented Notes/Links bullets or an indented ` + "```yaml" + ` block (see ` + "`.ralph/pin/README.md`" + `).
 - Add/update ` + "`.ralph/pin/lookup_table.md`" + ` entries when new areas appear and it is incomplete.

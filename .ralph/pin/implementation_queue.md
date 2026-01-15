@@ -5,7 +5,7 @@
   - Evidence: The loop auto-blocks when HEAD changes before finalize; this currently treats intentional queue edits under `.ralph/` as failures even though they are expected during a run.
   - Plan: If HEAD changed, diff the commit range and permit only `.ralph/` (pin) changes; refresh queue state and continue. Add regression tests for pin-only commits vs non-pin changes.
 
-- [ ] RQ-0453 [ui]: Correct Run Loop info panel "Max iterations" display for single execution mode. (ralph_tui/internal/tui/loop_view.go)
+- [ ] RQ-0462 [ui]: Correct Run Loop info panel "Max iterations" display for single execution mode. (ralph_tui/internal/tui/loop_view.go)
   - Evidence: When pressing 'r' for single execution, the info panel can show "Max iterations: unlimited" (or the configured limit) even though it will only run once; this is misleading.
   - Plan: Update the info panel display logic to reflect "1" (or "single run") when a single execution is triggered, regardless of the persistent MaxIterations setting.
 

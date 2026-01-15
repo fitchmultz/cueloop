@@ -74,6 +74,7 @@ type model struct {
 	height              int
 	layout              layoutSpec
 	initErr             error
+	pinFixPrompt        *pinFixPrompt
 	locations           paths.Locations
 	loopAutoCollapsed   bool
 	loopNavWasCollapsed bool
@@ -120,6 +121,7 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 	}
 
 	pinFiles := pin.ResolveFiles(cfg.Paths.PinDir)
+	var pinFix *pinFixPrompt
 	if err == nil {
 		missing := pin.MissingFiles(pinFiles)
 		if len(missing) > 0 {
@@ -128,10 +130,18 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 				strings.Join(missing, "\n- "),
 			)
 		} else if pinErr := pin.ValidatePin(pinFiles); pinErr != nil {
-			err = fmt.Errorf(
-				"Ralph pin files are invalid: %v\n\nRun `ralph pin validate` for details or `ralph init --force` to reset defaults.",
-				pinErr,
-			)
+			report, reportErr := pin.DuplicateIDs(pinFiles)
+			if reportErr == nil && len(report.Fixable) > 0 && len(report.InDone) == 0 {
+				pinFix = &pinFixPrompt{
+					err:    pinErr,
+					report: report,
+				}
+			} else {
+				err = fmt.Errorf(
+					"Ralph pin files are invalid: %v\n\nRun `ralph pin validate` for details or `ralph init --force` to reset defaults.",
+					pinErr,
+				)
+			}
 		}
 	}
 
@@ -167,6 +177,7 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 		sessionOverrides: opts.SessionOverrides,
 		refreshGen:       1,
 		initErr:          err,
+		pinFixPrompt:     pinFix,
 		locations:        locations,
 		fixupRunner:      loop.FixupBlockedItems,
 	}
@@ -223,6 +234,48 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	handled := false
+
+	if m.pinFixPrompt != nil {
+		switch msg := msg.(type) {
+		case pinFixResultMsg:
+			m.pinFixPrompt.running = false
+			if msg.err != nil {
+				m.initErr = msg.err
+				m.pinFixPrompt = nil
+				return m, nil
+			}
+			if m.pinView != nil {
+				if err := m.pinView.reload(); err != nil {
+					m.initErr = err
+					m.pinFixPrompt = nil
+					return m, nil
+				}
+			}
+			m.pinFixPrompt = nil
+			return m, nil
+		case tea.KeyMsg:
+			if m.pinFixPrompt.running {
+				return m, nil
+			}
+			switch strings.ToLower(msg.String()) {
+			case "y":
+				m.pinFixPrompt.running = true
+				pinFiles := pin.ResolveFiles(m.cfg.Paths.PinDir)
+				return m, fixPinDuplicatesCmd(pinFiles)
+			case "n", "q", "esc", "ctrl+c":
+				m.initErr = fmt.Errorf(
+					"Ralph pin files are invalid: %v\n\nRun `ralph pin validate` for details or `ralph pin fix-ids` to repair duplicates.",
+					m.pinFixPrompt.err,
+				)
+				m.pinFixPrompt = nil
+				return m, nil
+			default:
+				return m, nil
+			}
+		default:
+			return m, nil
+		}
+	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -639,6 +692,9 @@ func (m *model) updateBackgroundViews(msg tea.Msg) (tea.Cmd, bool) {
 }
 
 func (m model) View() string {
+	if m.pinFixPrompt != nil {
+		return pinFixPromptView(*m.pinFixPrompt)
+	}
 	if m.initErr != nil {
 		return fmt.Sprintf("Error: %v\n", m.initErr)
 	}

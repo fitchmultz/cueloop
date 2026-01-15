@@ -5,7 +5,7 @@ GO_FILES := $(shell find $(GO_PROJECT) -name '*.go')
 GO_TEST := go test -count=1
 PY_TESTS := $(shell find $(PY_PROJECT) -name 'test_*.py' -o -name '*_test.py')
 
-.PHONY: install update lint type-check format clean test generate build ci
+.PHONY: install update lint type-check format clean test generate pin-validate build ci
 
 install:
 	uv sync --project $(PY_PROJECT) --all-packages --all-groups --all-extras 
@@ -45,7 +45,10 @@ endif
 generate:
 	@echo "No API type generation configured."
 
+pin-validate:
+	cd $(GO_PROJECT) && go run ./cmd/ralph pin validate
+
 build:
 	cd $(GO_PROJECT) && go build ./cmd/ralph
 
-ci: generate format type-check lint build test
+ci: generate format type-check lint pin-validate build test
