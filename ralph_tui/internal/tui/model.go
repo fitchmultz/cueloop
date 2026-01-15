@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 )
 
 // StartOptions provides override layers that should be preserved during reloads.
@@ -98,6 +99,22 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 	configView, configErr := newConfigEditor(locations, opts.CLIOverrides, opts.SessionOverrides)
 	if err == nil {
 		err = configErr
+	}
+
+	pinFiles := pin.ResolveFiles(cfg.Paths.PinDir)
+	if err == nil {
+		missing := pin.MissingFiles(pinFiles)
+		if len(missing) > 0 {
+			err = fmt.Errorf(
+				"Ralph pin files missing:\n- %s\n\nRun `ralph init` to create defaults.",
+				strings.Join(missing, "\n- "),
+			)
+		} else if pinErr := pin.ValidatePin(pinFiles); pinErr != nil {
+			err = fmt.Errorf(
+				"Ralph pin files are invalid: %v\n\nRun `ralph pin validate` for details or `ralph init --force` to reset defaults.",
+				pinErr,
+			)
+		}
 	}
 
 	pinView, pinErr := newPinView(cfg, locations)

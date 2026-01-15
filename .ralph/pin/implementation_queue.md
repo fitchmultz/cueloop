@@ -1,14 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0422 [ops]: Add `ralph init` (bootstrap) and TUI self-heal for missing/invalid `.ralph/pin` files so the app works in fresh repos. (ralph_tui/cmd/ralph/main.go, ralph_tui/internal/pin/pin.go, ralph_tui/internal/paths/paths.go, .ralph/pin/README.md)
-  - Evidence:
-    - Most workflows assume `.ralph/pin/implementation_queue.md` et al exist; `pin.ValidatePin()` hard-requires Queue/Done/Lookup/README files.
-    - The CLI offers `ralph migrate` but there is no equivalent "init" to create a valid default pin layout for a fresh repo.
-  - Plan:
-    - Add `ralph init` to create `.ralph/pin` + `.ralph/cache` skeletons and seed valid pin files (Queue/Done/Lookup/README/specs_builder.md).
-    - On TUI start, detect missing pin files and offer a guided init (or show an actionable message with the exact CLI command).
-    - Add unit tests that init produces a pin set that passes `pin.ValidatePin()`.
 - [ ] RQ-0423 [code]: Fix process-group cancellation reliability (stop/cancel should kill ALL child procs) for loop + specs runners across platforms. (ralph_tui/internal/procgroup/procgroup_unix.go, ralph_tui/internal/loop/exec.go, ralph_tui/internal/specs/specs.go)
   - Evidence:
     - `ralph_tui/internal/procgroup/procgroup_unix.go` only overrides `cmd.Cancel` when `cmd.Cancel != nil`; if it is nil (or doesn’t kill the process group), child processes may survive cancel.

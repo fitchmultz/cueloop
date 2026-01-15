@@ -27,6 +27,34 @@ func TestValidatePinFixtures(t *testing.T) {
 	}
 }
 
+func TestInitLayoutCreatesValidPin(t *testing.T) {
+	tmpDir := t.TempDir()
+	pinDir := filepath.Join(tmpDir, ".ralph", "pin")
+	cacheDir := filepath.Join(tmpDir, ".ralph", "cache")
+
+	result, err := InitLayout(pinDir, cacheDir, InitOptions{})
+	if err != nil {
+		t.Fatalf("InitLayout failed: %v", err)
+	}
+
+	files := ResolveFiles(pinDir)
+	if err := ValidatePin(files); err != nil {
+		t.Fatalf("ValidatePin failed after init: %v", err)
+	}
+
+	if _, err := os.Stat(files.SpecsPath); err != nil {
+		t.Fatalf("specs_builder missing after init: %v", err)
+	}
+
+	cacheInfo, err := os.Stat(result.CacheDir)
+	if err != nil {
+		t.Fatalf("cache dir missing after init: %v", err)
+	}
+	if !cacheInfo.IsDir() {
+		t.Fatalf("cache path is not a directory: %s", result.CacheDir)
+	}
+}
+
 func TestReadQueueSummaryFixtures(t *testing.T) {
 	fixture := mustLocateFixtures(t)
 

@@ -1,6 +1,14 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0422 [ops]: Add `ralph init` (bootstrap) and TUI self-heal for missing/invalid `.ralph/pin` files so the app works in fresh repos. (ralph_tui/cmd/ralph/main.go, ralph_tui/internal/pin/pin.go, ralph_tui/internal/paths/paths.go, .ralph/pin/README.md)
+  - Evidence:
+    - Most workflows assume `.ralph/pin/implementation_queue.md` et al exist; `pin.ValidatePin()` hard-requires Queue/Done/Lookup/README files.
+    - The CLI offers `ralph migrate` but there is no equivalent "init" to create a valid default pin layout for a fresh repo.
+  - Plan:
+    - Add `ralph init` to create `.ralph/pin` + `.ralph/cache` skeletons and seed valid pin files (Queue/Done/Lookup/README/specs_builder.md).
+    - On TUI start, detect missing pin files and offer a guided init (or show an actionable message with the exact CLI command).
+    - Add unit tests that init produces a pin set that passes `pin.ValidatePin()`.
 - [x] RQ-0421 [ui]: Add search/command-palette style navigation + Pin queue filtering to handle large queues without manual scrolling. (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/tui/keymap.go)
   - Evidence:
     - The nav list explicitly disables filtering (`SetShowFilter(false)`, `SetFilteringEnabled(false)`), so there is no fast jump across screens.

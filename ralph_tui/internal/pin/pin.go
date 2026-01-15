@@ -26,6 +26,7 @@ type Files struct {
 	DonePath   string
 	LookupPath string
 	ReadmePath string
+	SpecsPath  string
 }
 
 // ResolveFiles returns the expected pin file locations for the given repo.
@@ -35,6 +36,7 @@ func ResolveFiles(pinDir string) Files {
 		DonePath:   filepath.Join(pinDir, "implementation_done.md"),
 		LookupPath: filepath.Join(pinDir, "lookup_table.md"),
 		ReadmePath: filepath.Join(pinDir, "README.md"),
+		SpecsPath:  filepath.Join(pinDir, "specs_builder.md"),
 	}
 }
 

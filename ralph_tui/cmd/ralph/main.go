@@ -71,6 +71,7 @@ func newRootCommand() *cobra.Command {
 	cmd.PersistentFlags().String("pin-dir", "", "Pin directory path")
 
 	cmd.AddCommand(newConfigCommand())
+	cmd.AddCommand(newInitCommand())
 	cmd.AddCommand(newMigrateCommand())
 	cmd.AddCommand(newPinCommand())
 	cmd.AddCommand(newSpecsCommand())
@@ -120,6 +121,62 @@ func newMigrateCommand() *cobra.Command {
 			return err
 		},
 	}
+}
+
+func newInitCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "init",
+		Short:   "Initialize Ralph pin and cache directories",
+		Long:    "Create the .ralph/pin and .ralph/cache layouts and seed default pin files.",
+		Example: "  ralph init\n  ralph init --force",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			locs, err := paths.Resolve("")
+			if err != nil {
+				return err
+			}
+			cliOverrides, err := buildCLIOverrides(cmd)
+			if err != nil {
+				return err
+			}
+			cfg, err := config.LoadFromLocations(config.LoadOptions{
+				Locations:    locs,
+				CLIOverrides: cliOverrides,
+			})
+			if err != nil {
+				return err
+			}
+			force, err := cmd.Flags().GetBool("force")
+			if err != nil {
+				return err
+			}
+			result, err := pin.InitLayout(cfg.Paths.PinDir, cfg.Paths.CacheDir, pin.InitOptions{Force: force})
+			if err != nil {
+				return err
+			}
+			files := pin.ResolveFiles(cfg.Paths.PinDir)
+			if err := pin.ValidatePin(files); err != nil {
+				return err
+			}
+
+			out := cmd.OutOrStdout()
+			if len(result.Created) == 0 && len(result.Overwritten) == 0 {
+				_, _ = fmt.Fprintf(out, ">> [RALPH] Pin already initialized at %s.\n", result.PinDir)
+			} else {
+				_, _ = fmt.Fprintf(out, ">> [RALPH] Pin initialized at %s.\n", result.PinDir)
+			}
+			if len(result.Created) > 0 {
+				_, _ = fmt.Fprintf(out, ">> [RALPH] Created: %s\n", strings.Join(result.Created, ", "))
+			}
+			if len(result.Overwritten) > 0 {
+				_, _ = fmt.Fprintf(out, ">> [RALPH] Overwritten: %s\n", strings.Join(result.Overwritten, ", "))
+			}
+			_, err = fmt.Fprintf(out, ">> [RALPH] Cache directory: %s\n", result.CacheDir)
+			return err
+		},
+	}
+	cmd.Flags().Bool("force", false, "Overwrite existing pin files")
+	return cmd
 }
 
 func newConfigShowCommand() *cobra.Command {
