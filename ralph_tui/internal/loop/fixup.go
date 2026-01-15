@@ -64,6 +64,7 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 	if opts.RequireMain {
 		branch, err := CurrentBranch(opts.RepoRoot)
 		if err != nil {
+			logGitError(redactor, opts.Logger, "current branch", err)
 			return result, err
 		}
 		if branch != "main" {
@@ -73,6 +74,7 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 
 	dirty, err := StatusPorcelain(opts.RepoRoot)
 	if err != nil {
+		logGitError(redactor, opts.Logger, "status", err)
 		return result, err
 	}
 	if dirty != "" {
@@ -114,7 +116,7 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 			if err := pin.ValidatePin(pin.ResolveFiles(opts.PinDir)); err != nil {
 				return result, err
 			}
-			if err := commitPinChanges(opts, fmt.Sprintf("%s: fixup requeue", item.ID)); err != nil {
+			if err := commitPinChanges(opts, redactor, fmt.Sprintf("%s: fixup requeue", item.ID)); err != nil {
 				return result, err
 			}
 			result.RequeuedIDs = append(result.RequeuedIDs, item.ID)
@@ -133,7 +135,7 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 		if err := pin.ValidatePin(pin.ResolveFiles(opts.PinDir)); err != nil {
 			return result, err
 		}
-		if err := commitPinChanges(opts, fmt.Sprintf("%s: fixup attempt %d", item.ID, attempts)); err != nil {
+		if err := commitPinChanges(opts, redactor, fmt.Sprintf("%s: fixup attempt %d", item.ID, attempts)); err != nil {
 			return result, err
 		}
 		result.FailedIDs = append(result.FailedIDs, item.ID)
@@ -200,12 +202,13 @@ func pinDirForWorktree(repoRoot string, pinDir string, worktreePath string) stri
 	return filepath.Join(worktreePath, rel)
 }
 
-func commitPinChanges(opts FixupOptions, message string) error {
+func commitPinChanges(opts FixupOptions, redactor *Redactor, message string) error {
 	if !opts.AutoCommit {
 		return nil
 	}
 	status, err := StatusPorcelain(opts.RepoRoot)
 	if err != nil {
+		logGitError(redactor, opts.Logger, "status", err)
 		return err
 	}
 	if status == "" {
@@ -214,16 +217,22 @@ func commitPinChanges(opts FixupOptions, message string) error {
 
 	queuePath := filepath.Join(opts.PinDir, "implementation_queue.md")
 	if err := CommitPaths(opts.RepoRoot, message, queuePath); err != nil {
+		logGitError(redactor, opts.Logger, "commit", err)
 		return err
 	}
 	if !opts.AutoPush {
 		return nil
 	}
-	ahead, _ := AheadCount(opts.RepoRoot)
+	ahead, err := AheadCount(opts.RepoRoot)
+	if err != nil {
+		logGitError(redactor, opts.Logger, "ahead count", err)
+		return err
+	}
 	if ahead <= 0 {
 		return nil
 	}
 	if err := Push(opts.RepoRoot); err != nil {
+		logGitError(redactor, opts.Logger, "push", err)
 		return fmt.Errorf("git push failed: %w", err)
 	}
 	return nil

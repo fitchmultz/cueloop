@@ -1,15 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0427 [code]: Improve git helper error reporting + surface failures in the UI/logs instead of swallowing details. (ralph_tui/internal/loop/git.go, ralph_tui/internal/loop/loop.go, ralph_tui/internal/tui/logs_view.go)
-  - Evidence:
-    - `ralph_tui/internal/loop/git.go` `CurrentBranch()` returns `fmt.Errorf("Unable to detect current git branch.")` without the underlying error or stderr, making failures opaque.
-    - `CommitAll`, `CommitPaths`, and `Push` discard stdout/stderr, preventing useful diagnostics when git operations fail.
-    - `AheadCount()` returns 0 on several errors (e.g., no upstream), which can silently change behavior and confuse users.
-  - Plan:
-    - Wrap git command failures with stderr/stdout tails and log them through the loop logger (with redaction where applicable).
-    - Update loop failure reporting to include actionable details (command + concise output tail).
-    - Add tests using a stubbed git backend or hermetic repo fixtures to validate error messages and behavior.
 - [ ] RQ-0428 [code]: Harden loop end-of-turn finalization + cancellation handling (ensure queue->done, commit/push, and no quarantine on user stop). (ralph_tui/internal/loop/loop.go, ralph_tui/internal/loop/exec.go, ralph_tui/internal/loop/git.go)
   - Evidence:
     - `handleIterationFailure()` runs supervisor + quarantine even when the underlying error is `context.Canceled`, so a user stop can unexpectedly create WIP branches/auto-block items.

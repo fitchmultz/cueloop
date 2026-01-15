@@ -159,6 +159,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		headBefore, err := HeadSHA(r.opts.RepoRoot)
 		if err != nil {
+			logGitError(r.redactor, r.opts.Logger, "head sha", err)
 			return err
 		}
 
@@ -169,17 +170,19 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.currentItemBlock = block
 
 		if err := r.reconcileCheckedQueueItems(); err != nil {
-			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "pin-ops", "Failed to move checked queue items.")
+			r.handleIterationFailure(ctx, itemID, firstItem.Header, headBefore, "pin-ops", failureMessage("Failed to move checked queue items", err))
 			continue
 		}
 
 		headBefore, err = HeadSHA(r.opts.RepoRoot)
 		if err != nil {
+			logGitError(r.redactor, r.opts.Logger, "head sha", err)
 			return err
 		}
 
 		dirty, err := StatusPorcelain(r.opts.RepoRoot)
 		if err != nil {
+			logGitError(r.redactor, r.opts.Logger, "status", err)
 			return err
 		}
 		if dirty != "" {
@@ -226,6 +229,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		dirty, err = StatusPorcelain(r.opts.RepoRoot)
 		if err != nil {
+			logGitError(r.redactor, r.opts.Logger, "status", err)
 			return err
 		}
 		if dirty != "" {
@@ -241,6 +245,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		headAfter, err := HeadSHA(r.opts.RepoRoot)
 		if err != nil {
+			logGitError(r.redactor, r.opts.Logger, "head sha", err)
 			return err
 		}
 		if headBefore == headAfter && firstAfter != nil && firstAfter.Header == firstItem.Header {
@@ -321,6 +326,7 @@ func (r *Runner) verifyBranch() error {
 	}
 	branch, err := CurrentBranch(r.opts.RepoRoot)
 	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "current branch", err)
 		return err
 	}
 	if branch != "main" {
@@ -381,6 +387,7 @@ func (r *Runner) finalizeIteration(itemID string, itemLine string, headBefore st
 
 	headNow, err := HeadSHA(r.opts.RepoRoot)
 	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "head sha", err)
 		return err
 	}
 	if headNow != headBefore {
@@ -408,6 +415,7 @@ func (r *Runner) finalizeIteration(itemID string, itemLine string, headBefore st
 
 	dirty, err := StatusPorcelain(r.opts.RepoRoot)
 	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "status", err)
 		return err
 	}
 
@@ -435,6 +443,9 @@ func (r *Runner) finalizeIteration(itemID string, itemLine string, headBefore st
 	pinPrefix := pinPathPrefix(r.opts.RepoRoot, r.opts.PinDir)
 	changed, err := DiffNameOnly(r.opts.RepoRoot)
 	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "diff --name-only", err)
+		r.lastFailureStage = "git"
+		r.lastFailureMessage = "git diff failed."
 		return err
 	}
 	for _, path := range changed {
@@ -458,6 +469,9 @@ func (r *Runner) finalizeIteration(itemID string, itemLine string, headBefore st
 	}
 	if r.opts.AutoCommit {
 		if err := CommitAll(r.opts.RepoRoot, fmt.Sprintf("%s: %s", itemID, title)); err != nil {
+			logGitError(r.redactor, r.opts.Logger, "commit", err)
+			r.lastFailureStage = "commit"
+			r.lastFailureMessage = fmt.Sprintf("git commit failed: %v", err)
 			return err
 		}
 		if r.opts.AutoPush {
@@ -483,10 +497,12 @@ func (r *Runner) reconcileCheckedQueueItems() error {
 	if summary != "" {
 		dirty, err := StatusPorcelain(r.opts.RepoRoot)
 		if err != nil {
+			logGitError(r.redactor, r.opts.Logger, "status", err)
 			return err
 		}
 		if dirty != "" && r.opts.AutoCommit {
 			if err := CommitPaths(r.opts.RepoRoot, fmt.Sprintf("chore: move completed queue items (%s)", summary), r.pinFiles.QueuePath, r.pinFiles.DonePath); err != nil {
+				logGitError(r.redactor, r.opts.Logger, "commit", err)
 				return err
 			}
 			if r.opts.AutoPush {
@@ -614,17 +630,29 @@ func (r *Runner) buildSupervisorContext(stage string, message string) (string, f
 	builder.WriteString(r.currentItemBlock)
 	builder.WriteString("\n\n")
 
-	status, _ := StatusSummary(r.opts.RepoRoot)
+	status, err := StatusSummary(r.opts.RepoRoot)
+	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "status summary", err)
+		status = fmt.Sprintf("Error: %v", err)
+	}
 	builder.WriteString("# GIT STATUS\n")
 	builder.WriteString(status)
 	builder.WriteString("\n\n")
 
-	stat, _ := DiffStat(r.opts.RepoRoot)
+	stat, err := DiffStat(r.opts.RepoRoot)
+	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "diff --stat", err)
+		stat = fmt.Sprintf("Error: %v", err)
+	}
 	builder.WriteString("# GIT DIFF --STAT\n")
 	builder.WriteString(stat)
 	builder.WriteString("\n\n")
 
-	diff, _ := Diff(r.opts.RepoRoot)
+	diff, err := Diff(r.opts.RepoRoot)
+	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "diff", err)
+		diff = fmt.Sprintf("Error: %v", err)
+	}
 	builder.WriteString("# GIT DIFF (truncated)\n")
 	builder.WriteString(StringTail(diff, 400))
 	builder.WriteString("\n")
@@ -688,10 +716,17 @@ func (r *Runner) quarantine(itemID string, headBefore string, reason string) (st
 		}
 	}
 
-	dirty, _ := StatusPorcelain(r.opts.RepoRoot)
+	dirty, err := StatusPorcelain(r.opts.RepoRoot)
+	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "status", err)
+		return "", err
+	}
 	if dirty != "" {
 		shortReason := CommitMessageShort(reason)
-		_ = CommitAll(r.opts.RepoRoot, fmt.Sprintf("WIP %s: quarantine (%s)", itemID, shortReason))
+		if err := CommitAll(r.opts.RepoRoot, fmt.Sprintf("WIP %s: quarantine (%s)", itemID, shortReason)); err != nil {
+			logGitError(r.redactor, r.opts.Logger, "commit", err)
+			return "", err
+		}
 	}
 
 	if err := CheckoutBranch(r.opts.RepoRoot, "main"); err != nil {
@@ -722,7 +757,10 @@ func (r *Runner) autoBlock(itemID string, reason string, wipBranch string, headB
 
 	if r.opts.AutoCommit {
 		shortReason := CommitMessageShort(reason)
-		_ = CommitPaths(r.opts.RepoRoot, fmt.Sprintf("%s: auto-block (%s)", itemID, shortReason), r.pinFiles.QueuePath)
+		if err := CommitPaths(r.opts.RepoRoot, fmt.Sprintf("%s: auto-block (%s)", itemID, shortReason), r.pinFiles.QueuePath); err != nil {
+			logGitError(r.redactor, r.opts.Logger, "commit", err)
+			r.logf(">> [RALPH] Warning: auto-block commit failed; local pin edits remain.")
+		}
 		if r.opts.AutoPush {
 			r.pushIfAhead()
 		}
@@ -730,17 +768,30 @@ func (r *Runner) autoBlock(itemID string, reason string, wipBranch string, headB
 }
 
 func (r *Runner) pushIfAhead() {
-	ahead, _ := AheadCount(r.opts.RepoRoot)
+	ahead, err := AheadCount(r.opts.RepoRoot)
+	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "ahead count", err)
+		r.logf(">> [RALPH] Warning: unable to determine ahead count; skipping push.")
+		r.pushFailed = true
+		return
+	}
 	if ahead <= 0 {
 		return
 	}
 	r.logf(">> [RALPH] Pushing %d commit(s) to upstream...", ahead)
 	if err := Push(r.opts.RepoRoot); err != nil {
+		logGitError(r.redactor, r.opts.Logger, "push", err)
 		r.logf(">> [RALPH] Warning: git push failed; continuing with local commits.")
 		r.pushFailed = true
 		return
 	}
-	aheadAfter, _ := AheadCount(r.opts.RepoRoot)
+	aheadAfter, err := AheadCount(r.opts.RepoRoot)
+	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "ahead count", err)
+		r.logf(">> [RALPH] Warning: unable to verify upstream sync after push.")
+		r.pushFailed = true
+		return
+	}
 	if aheadAfter > 0 {
 		r.logf(">> [RALPH] Warning: push did not bring HEAD in sync (ahead by %d).", aheadAfter)
 		r.pushFailed = true
@@ -751,7 +802,12 @@ func (r *Runner) logPushFailed() {
 	if !r.pushFailed {
 		return
 	}
-	ahead, _ := AheadCount(r.opts.RepoRoot)
+	ahead, err := AheadCount(r.opts.RepoRoot)
+	if err != nil {
+		logGitError(r.redactor, r.opts.Logger, "ahead count", err)
+		r.logf(">> [RALPH] Push required; ahead count unavailable.")
+		return
+	}
 	r.logf(">> [RALPH] Push required; local branch ahead by %d commit(s).", ahead)
 }
 
@@ -764,6 +820,13 @@ func (r *Runner) logf(format string, args ...any) {
 		line = r.redactor.Redact(line)
 	}
 	r.opts.Logger.WriteLine(line)
+}
+
+func failureMessage(message string, err error) string {
+	if err == nil {
+		return message
+	}
+	return fmt.Sprintf("%s: %v", message, err)
 }
 
 func (r *Runner) publishState(state State) {
