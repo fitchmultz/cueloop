@@ -106,10 +106,10 @@ You are the Ralph specs builder for this repository (documentation-focused).
 4. ` + "`.ralph/pin/lookup_table.md`" + `
 
 # INSTRUCTIONS
-- This repo is documentation-first. Focus on doc maintenance, link checks, research synthesis, and content structure.
-- Identify at least 15 doc-centric issues: broken/obsolete links, outdated or missing references, unclear sections, missing cross-links, inconsistent terminology, or weak navigation.
+- The documentation is riddled with issues and the user experience is poor. There are at least 20 doc problems present that need identified and squashed. Identify 15+ (no upper limit) issues/flaws/etc, and batch the findings into remediation tasks.
+- Some items to look for: broken/obsolete links, outdated or missing references, unclear sections, missing cross-links, inconsistent terminology, weak navigation, or gaps in doc workflows. This list is not comprehensive.
 - If code changes are required to support docs workflows, include them only when the documentation goal depends on it.
-- When you have your batches of tasks, add them to the ` + "`.ralph/pin/implementation_queue.md`" + ` queue file according to the required spec queue formatting. Each task in the queue (each batch of findings) will be executed sequentially by an agent.
+- When you have your batches of tasks, add them to the ` + "`.ralph/pin/implementation_queue.md`" + ` queue file according to the required spec queue formatting. Each task in the queue (each batch of findings) will be executed sequentially by an agent. Feel free to innovate, refactor, redo things, reorganize, etc. Do NOT be afraid of large scale changes if they are required to move the docs in the correct direction.
 - Add the highest priority items to the top of the task queue.
 - Use unique task IDs (e.g. RQ-1234) for each task. Use ` + "`ralph pin next-id`" + ` to get the next available ID (it scans queue + done).
 - Keep queue items in the required format: ID, routing tag(s), title, scope list, ` + "`Evidence`" + `, and ` + "`Plan`" + `. Keep extra metadata indented by two spaces so it stays inside the queue item block.

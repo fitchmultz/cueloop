@@ -542,6 +542,8 @@ type fixupSummary struct {
 	requeued int
 	skipped  int
 	failed   int
+	lastID   string
+	lastNote string
 }
 
 type fixupState struct {
@@ -576,17 +578,28 @@ func loopRunModeCmd(running bool) tea.Cmd {
 }
 
 func summaryFromFixupResult(result loop.FixupResult) fixupSummary {
+	var lastID string
+	var lastNote string
+	if len(result.FailedReasons) > 0 {
+		last := result.FailedReasons[len(result.FailedReasons)-1]
+		lastID = last.ID
+		lastNote = loop.CommitMessageShort(last.Reason)
+	} else if len(result.FailedIDs) > 0 {
+		lastID = result.FailedIDs[len(result.FailedIDs)-1]
+	}
 	return fixupSummary{
 		scanned:  result.ScannedBlocked,
 		eligible: result.Eligible,
 		requeued: len(result.RequeuedIDs),
 		skipped:  len(result.SkippedMax),
 		failed:   len(result.FailedIDs),
+		lastID:   lastID,
+		lastNote: lastNote,
 	}
 }
 
 func formatFixupSummary(summary fixupSummary) string {
-	return fmt.Sprintf(
+	base := fmt.Sprintf(
 		"Scanned %d | Eligible %d | Requeued %d | Skipped %d | Failed %d",
 		summary.scanned,
 		summary.eligible,
@@ -594,6 +607,13 @@ func formatFixupSummary(summary fixupSummary) string {
 		summary.skipped,
 		summary.failed,
 	)
+	if summary.lastID == "" {
+		return base
+	}
+	if summary.lastNote == "" {
+		return fmt.Sprintf("%s | Last failed %s", base, summary.lastID)
+	}
+	return fmt.Sprintf("%s | Last failed %s: %s", base, summary.lastID, summary.lastNote)
 }
 
 func listenFixupLogs(logCh <-chan string, runID int) tea.Cmd {

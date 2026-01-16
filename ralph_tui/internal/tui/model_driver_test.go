@@ -214,6 +214,9 @@ func TestDashboardFixupKeyStartsRunAndUpdatesStatus(t *testing.T) {
 		Eligible:       1,
 		RequeuedIDs:    []string{"RQ-0002"},
 		FailedIDs:      []string{"RQ-0003"},
+		FailedReasons: []loop.FixupFailure{
+			{ID: "RQ-0003", Reason: "ci failed"},
+		},
 	}
 	driver.Send(fixupResultMsg{runID: runID, result: result, finishedAt: time.Now()})
 
@@ -221,7 +224,7 @@ func TestDashboardFixupKeyStartsRunAndUpdatesStatus(t *testing.T) {
 		t.Fatalf("expected fixup to be marked stopped")
 	}
 	view := driver.m.contentView()
-	if !strings.Contains(view, "Fixup: Scanned 2 | Eligible 1 | Requeued 1 | Skipped 0 | Failed 1") {
+	if !strings.Contains(view, "Fixup: Scanned 2 | Eligible 1 | Requeued 1 | Skipped 0 | Failed 1 | Last failed RQ-0003: ci failed") {
 		t.Fatalf("expected dashboard to report fixup summary, got %q", view)
 	}
 }

@@ -37,6 +37,13 @@ type FixupResult struct {
 	RequeuedIDs    []string
 	SkippedMax     []string
 	FailedIDs      []string
+	FailedReasons  []FixupFailure
+}
+
+// FixupFailure captures a failed fixup attempt with context.
+type FixupFailure struct {
+	ID     string
+	Reason string
 }
 
 // FixupBlockedItems attempts to validate and requeue blocked items with WIP metadata.
@@ -124,6 +131,10 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 		}
 
 		logFixup(redactor, opts.Logger, ">> [RALPH] Fixup %s failed: %s", item.ID, err.Error())
+		result.FailedReasons = append(result.FailedReasons, FixupFailure{
+			ID:     item.ID,
+			Reason: err.Error(),
+		})
 		reason := fmt.Sprintf("%s %s", now().Format(time.RFC3339), CommitMessageShort(err.Error()))
 		updated, attempts, err := pin.RecordFixupAttempt(queuePath, item.ID, reason)
 		if err != nil {
