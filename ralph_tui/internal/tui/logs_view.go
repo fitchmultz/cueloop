@@ -30,20 +30,6 @@ const (
 
 var logsLevelCycle = []string{"", "error", "warn", "info", "debug"}
 
-type renderCache struct {
-	raw            string
-	rawValid       bool
-	formatted      string
-	formattedValid bool
-}
-
-func (c *renderCache) Reset() {
-	c.raw = ""
-	c.rawValid = false
-	c.formatted = ""
-	c.formattedValid = false
-}
-
 type logsFilters struct {
 	Level     string
 	Component string
@@ -57,24 +43,24 @@ type parsedLogLine struct {
 	formatted string
 }
 
-type debugRenderCache struct {
+type logLineCache struct {
 	input  []string
 	parsed []parsedLogLine
 }
 
-func (c *debugRenderCache) Reset() {
+func (c *logLineCache) Reset() {
 	c.input = nil
 	c.parsed = nil
 }
 
-func (c *debugRenderCache) Update(lines []string) {
+func (c *logLineCache) Update(lines []string) {
 	if len(lines) == 0 {
 		c.Reset()
 		return
 	}
 	if len(c.input) == 0 || len(c.input) != len(c.parsed) {
 		c.input = lines
-		c.parsed = parseDebugLogLines(lines)
+		c.parsed = parseLogLines(lines)
 		return
 	}
 	old := c.input
@@ -89,13 +75,19 @@ func (c *debugRenderCache) Update(lines []string) {
 	parsed := make([]parsedLogLine, len(lines))
 	updatedCount := len(lines) - reused
 	if updatedCount > 0 {
-		copy(parsed, parseDebugLogLines(lines[:updatedCount]))
+		copy(parsed, parseLogLines(lines[:updatedCount]))
 	}
 	if reused > 0 && reused <= len(oldParsed) {
 		copy(parsed[updatedCount:], oldParsed[len(oldParsed)-reused:])
 	}
 	c.input = lines
 	c.parsed = parsed
+}
+
+type logSectionRenderOptions struct {
+	AllowFormat               bool
+	AllowFilters              bool
+	KeepUnparsedWhenFiltering bool
 }
 
 type logsView struct {
@@ -121,9 +113,9 @@ type logsView struct {
 	lastRenderedContent     string
 	viewportSetContentCalls int
 	forceRefresh            bool
-	debugCache              debugRenderCache
-	loopCache               renderCache
-	specsCache              renderCache
+	debugCache              logLineCache
+	loopCache               logLineCache
+	specsCache              logLineCache
 }
 
 func newLogsView(logPath string) *logsView {
@@ -213,7 +205,7 @@ func (l *logsView) Refresh() {
 	contentChanged := l.forceRefresh
 	l.forceRefresh = false
 
-	if l.refreshTailedFile(l.logPath, &l.debugStamp, &l.debugLines, &l.debugErr, nil, true) {
+	if l.refreshTailedFile(l.logPath, &l.debugStamp, &l.debugLines, &l.debugErr, &l.debugCache, true) {
 		contentChanged = true
 	}
 	if l.refreshTailedFile(l.loopPath, &l.loopStamp, &l.loopLines, &l.loopErr, &l.loopCache, true) {
@@ -230,20 +222,26 @@ func (l *logsView) Refresh() {
 	l.setViewportContentIfChanged(rendered, atBottom)
 }
 
-func (l *logsView) refreshTailedFile(path string, stamp *fileStamp, lines *[]string, errText *string, cache *renderCache, clearOnEmptyPath bool) bool {
+type cacheResetter interface {
+	Reset()
+}
+
+func (l *logsView) refreshTailedFile(path string, stamp *fileStamp, lines *[]string, errText *string, cache cacheResetter, clearOnEmptyPath bool) bool {
 	if strings.TrimSpace(path) == "" {
+		changed := false
 		if clearOnEmptyPath && len(*lines) > 0 {
 			*lines = nil
 			if cache != nil {
 				cache.Reset()
 			}
 			*errText = ""
-			return true
+			changed = true
 		}
 		if *errText != "" {
 			*errText = ""
+			changed = true
 		}
-		return false
+		return changed
 	}
 	nextStamp, changed, err := fileChanged(path, *stamp)
 	if err != nil {
@@ -253,13 +251,22 @@ func (l *logsView) refreshTailedFile(path string, stamp *fileStamp, lines *[]str
 		return false
 	}
 	if !nextStamp.Exists {
+		stateChanged := false
+		if len(*lines) > 0 {
+			*lines = nil
+			stateChanged = true
+		}
 		if errText != nil && *errText != "" {
 			*errText = ""
+			stateChanged = true
+		}
+		if cache != nil {
+			cache.Reset()
 		}
 		if stamp != nil {
 			*stamp = nextStamp
 		}
-		return false
+		return stateChanged
 	}
 	if !changed && errText != nil && *errText == "" {
 		if stamp != nil {
@@ -281,15 +288,12 @@ func (l *logsView) refreshTailedFile(path string, stamp *fileStamp, lines *[]str
 	if stamp != nil {
 		*stamp = nextStamp
 	}
-	if cache != nil {
-		cache.Reset()
-	}
 	return true
 }
 
 func (l *logsView) statusLine() string {
-	formatNote := "Format: " + l.formatLabel()
-	filterNote := "Level: " + filterLabel(l.filters.Level) + " | Component: " + filterLabel(l.filters.Component)
+	formatNote := "Format (json): " + l.formatLabel()
+	filterNote := "Filters (json): Level=" + filterLabel(l.filters.Level) + " | Component=" + filterLabel(l.filters.Component)
 	errParts := make([]string, 0, 4)
 	if l.loggerErr != "" {
 		errParts = append(errParts, "Logger: "+l.loggerErr)
@@ -307,7 +311,7 @@ func (l *logsView) statusLine() string {
 		return "Error: " + strings.Join(errParts, " | ") + " | " + formatNote + " | " + filterNote
 	}
 	if strings.TrimSpace(l.logPath) == "" {
-		return "Log file unavailable. | " + formatNote + " | " + filterNote
+		return "Debug log unavailable. | " + formatNote + " | " + filterNote
 	}
 	return "Log file: " + l.logPath + " | " + formatNote + " | " + filterNote
 }
@@ -315,22 +319,34 @@ func (l *logsView) statusLine() string {
 func (l *logsView) renderContent() string {
 	sections := []string{
 		"Debug Log (tail)",
-		l.renderDebugLines("No log entries yet."),
+		l.renderLogLines(l.debugLines, "No log entries yet.", &l.debugCache, logSectionRenderOptions{
+			AllowFormat:               true,
+			AllowFilters:              true,
+			KeepUnparsedWhenFiltering: false,
+		}),
 		"",
 		"Loop Output (tail)",
-		l.renderLines(l.loopLines, "No loop output yet.", &l.loopCache, false),
+		l.renderLogLines(l.loopLines, "No loop output yet.", &l.loopCache, logSectionRenderOptions{
+			AllowFormat:               true,
+			AllowFilters:              true,
+			KeepUnparsedWhenFiltering: true,
+		}),
 		"",
 		"Specs Output (tail)",
-		l.renderLines(l.specsLines, "No specs output yet.", &l.specsCache, false),
+		l.renderLogLines(l.specsLines, "No specs output yet.", &l.specsCache, logSectionRenderOptions{
+			AllowFormat:               true,
+			AllowFilters:              true,
+			KeepUnparsedWhenFiltering: true,
+		}),
 	}
 	return strings.Join(sections, "\n")
 }
 
 func (l *logsView) formatLabel() string {
 	if l.format == logsFormatFormatted {
-		return "formatted (debug)"
+		return "formatted"
 	}
-	return "raw (debug)"
+	return "raw"
 }
 
 type tailReadAtStater interface {
@@ -467,36 +483,6 @@ func normalizeTailLines(lines []string) []string {
 	return normalized
 }
 
-func (l *logsView) renderLines(lines []string, fallback string, cache *renderCache, allowFormat bool) string {
-	if len(lines) == 0 {
-		return fallback
-	}
-	if l.format == logsFormatRaw || !allowFormat {
-		if cache != nil && cache.rawValid {
-			return cache.raw
-		}
-		rendered := strings.Join(lines, "\n")
-		if cache != nil {
-			cache.raw = rendered
-			cache.rawValid = true
-		}
-		return rendered
-	}
-	if cache != nil && cache.formattedValid {
-		return cache.formatted
-	}
-	formatted := formatLogLines(lines)
-	if len(formatted) == 0 {
-		return fallback
-	}
-	rendered := strings.Join(formatted, "\n")
-	if cache != nil {
-		cache.formatted = rendered
-		cache.formattedValid = true
-	}
-	return rendered
-}
-
 func (l *logsView) setViewportContentIfChanged(content string, wasAtBottom bool) {
 	if content == l.lastRenderedContent {
 		return
@@ -550,21 +536,32 @@ func (l *logsView) refreshContent() {
 	l.setViewportContentIfChanged(l.renderContent(), atBottom)
 }
 
-func (l *logsView) renderDebugLines(fallback string) string {
-	if len(l.debugLines) == 0 {
-		l.debugCache.Reset()
+func (l *logsView) renderLogLines(lines []string, fallback string, cache *logLineCache, opts logSectionRenderOptions) string {
+	if len(lines) == 0 {
+		if cache != nil {
+			cache.Reset()
+		}
 		return fallback
 	}
-	l.debugCache.Update(l.debugLines)
-	if len(l.debugCache.parsed) == 0 {
+	if cache != nil {
+		cache.Update(lines)
+	}
+	var parsed []parsedLogLine
+	if cache != nil {
+		parsed = cache.parsed
+	} else {
+		parsed = parseLogLines(lines)
+	}
+	if len(parsed) == 0 {
 		return fallback
 	}
-	out := make([]string, 0, len(l.debugCache.parsed))
-	for _, entry := range l.debugCache.parsed {
-		if !l.debugLinePassesFilters(entry) {
+	out := make([]string, 0, len(parsed))
+	useFormat := l.format == logsFormatFormatted && opts.AllowFormat
+	for _, entry := range parsed {
+		if opts.AllowFilters && !l.logLinePassesFilters(entry, opts.KeepUnparsedWhenFiltering) {
 			continue
 		}
-		if l.format == logsFormatFormatted && entry.formatted != "" {
+		if useFormat && entry.formatted != "" {
 			out = append(out, entry.formatted)
 			continue
 		}
@@ -576,12 +573,12 @@ func (l *logsView) renderDebugLines(fallback string) string {
 	return strings.Join(out, "\n")
 }
 
-func (l *logsView) debugLinePassesFilters(entry parsedLogLine) bool {
+func (l *logsView) logLinePassesFilters(entry parsedLogLine, keepUnparsed bool) bool {
 	if l.filters.Level == "" && l.filters.Component == "" {
 		return true
 	}
 	if !entry.parsed {
-		return false
+		return keepUnparsed
 	}
 	if l.filters.Level != "" && entry.level != l.filters.Level {
 		return false
@@ -594,12 +591,17 @@ func (l *logsView) debugLinePassesFilters(entry parsedLogLine) bool {
 
 func (l *logsView) availableComponents() []string {
 	l.debugCache.Update(l.debugLines)
+	l.loopCache.Update(l.loopLines)
+	l.specsCache.Update(l.specsLines)
 	components := make(map[string]struct{})
-	for _, entry := range l.debugCache.parsed {
-		if !entry.parsed || entry.component == "" {
-			continue
+	caches := []*logLineCache{&l.debugCache, &l.loopCache, &l.specsCache}
+	for _, cache := range caches {
+		for _, entry := range cache.parsed {
+			if !entry.parsed || entry.component == "" {
+				continue
+			}
+			components[entry.component] = struct{}{}
 		}
-		components[entry.component] = struct{}{}
 	}
 	available := make([]string, 0, len(components)+1)
 	for component := range components {
@@ -608,26 +610,6 @@ func (l *logsView) availableComponents() []string {
 	sort.Strings(available)
 	available = append([]string{""}, available...)
 	return available
-}
-
-func formatLogLines(lines []string) []string {
-	formatted := make([]string, 0, len(lines))
-	for _, line := range lines {
-		formatted = append(formatted, formatLogLine(line))
-	}
-	return formatted
-}
-
-func formatLogLine(line string) string {
-	trimmed := strings.TrimSpace(line)
-	if trimmed == "" {
-		return line
-	}
-	var entry logEntry
-	if err := json.Unmarshal([]byte(trimmed), &entry); err != nil {
-		return line
-	}
-	return formatLogEntry(entry, line)
 }
 
 func formatLogEntry(entry logEntry, fallback string) string {
@@ -663,15 +645,15 @@ func formatLogEntry(entry logEntry, fallback string) string {
 	return lineOut
 }
 
-func parseDebugLogLines(lines []string) []parsedLogLine {
+func parseLogLines(lines []string) []parsedLogLine {
 	parsed := make([]parsedLogLine, len(lines))
 	for i, line := range lines {
-		parsed[i] = parseDebugLogLine(line)
+		parsed[i] = parseLogLine(line)
 	}
 	return parsed
 }
 
-func parseDebugLogLine(raw string) parsedLogLine {
+func parseLogLine(raw string) parsedLogLine {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return parsedLogLine{raw: raw, parsed: false, formatted: raw}

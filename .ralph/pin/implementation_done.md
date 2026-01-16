@@ -1,6 +1,9 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0483 [ui]: Make log format/filter controls accurate and clear stale tail output. (ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/tui/key_hints.go)
+  - Evidence: Filters and format toggles are advertised globally but only apply to debug logs; refreshTailedFile keeps old lines when a log file disappears, so the UI shows stale output after deletion/rotation.
+  - Plan: Apply formatting/filters to loop/specs output or scope the controls/labels to debug-only; clear cached lines and errors when tailed files go missing; update help text and tests.
 - [x] RQ-0482 [ui]: Refresh dashboard repo status when working tree changes. (ralph_tui/internal/tui/repo_status.go, ralph_tui/internal/tui/dashboard_view.go)
   - Evidence: RepoStatusSampler only watches .git/HEAD and .git/index; untracked or unstaged edits do not change these, so cached status is reused and the dashboard can show stale dirty state.
   - Plan: Add a working-tree change signal (git status fingerprint or repo-root mtime) to the sampling signature; update throttling logic/tests.

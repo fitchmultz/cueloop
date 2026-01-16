@@ -96,19 +96,19 @@ func newKeyMap() keyMap {
 		),
 		ToggleLogsFormat: key.NewBinding(
 			key.WithKeys("F"),
-			key.WithHelp("shift+f", "toggle logs format"),
+			key.WithHelp("shift+f", "toggle format (json)"),
 		),
 		CycleLogsLevelFilter: key.NewBinding(
 			key.WithKeys("l"),
-			key.WithHelp("l", "cycle log level"),
+			key.WithHelp("l", "cycle level filter (json)"),
 		),
 		CycleLogsComponentFilter: key.NewBinding(
 			key.WithKeys("c"),
-			key.WithHelp("c", "cycle component"),
+			key.WithHelp("c", "cycle component filter (json)"),
 		),
 		ClearLogsFilters: key.NewBinding(
 			key.WithKeys("x"),
-			key.WithHelp("x", "clear log filters"),
+			key.WithHelp("x", "clear filters"),
 		),
 		SaveGlobal: key.NewBinding(
 			key.WithKeys("ctrl+g"),

@@ -81,6 +81,23 @@ func TestScreenKeyMapReflectsLoopMode(t *testing.T) {
 	}
 }
 
+func TestLogsKeyBindingsHelpTextIsAccurate(t *testing.T) {
+	keys := newTestKeyMap()
+
+	if keys.ToggleLogsFormat.Help().Desc != "toggle format (json)" {
+		t.Fatalf("unexpected logs format help: %q", keys.ToggleLogsFormat.Help().Desc)
+	}
+	if keys.CycleLogsLevelFilter.Help().Desc != "cycle level filter (json)" {
+		t.Fatalf("unexpected logs level help: %q", keys.CycleLogsLevelFilter.Help().Desc)
+	}
+	if keys.CycleLogsComponentFilter.Help().Desc != "cycle component filter (json)" {
+		t.Fatalf("unexpected logs component help: %q", keys.CycleLogsComponentFilter.Help().Desc)
+	}
+	if keys.ClearLogsFilters.Help().Desc != "clear filters" {
+		t.Fatalf("unexpected logs clear help: %q", keys.ClearLogsFilters.Help().Desc)
+	}
+}
+
 func findLineWithPrefix(t *testing.T, block string, prefix string) string {
 	t.Helper()
 	for _, line := range strings.Split(block, "\n") {

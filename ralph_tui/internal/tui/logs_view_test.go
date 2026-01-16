@@ -202,7 +202,7 @@ func TestTailFileLinesFromHandleTruncationDuringRead(t *testing.T) {
 	}
 }
 
-func TestLogsViewRefreshRotationGapKeepsDebugTail(t *testing.T) {
+func TestLogsViewRefreshRotationGapClearsDebugTail(t *testing.T) {
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "ralph_tui.log")
 	if err := os.WriteFile(logPath, []byte("first\nsecond\n"), 0o600); err != nil {
@@ -220,16 +220,21 @@ func TestLogsViewRefreshRotationGapKeepsDebugTail(t *testing.T) {
 		t.Fatalf("rotate log file: %v", err)
 	}
 	view.Refresh()
-	if !strings.Contains(view.renderContent(), "second") {
-		t.Fatalf("expected logs view to keep previous tail during rotation gap")
+	content := view.renderContent()
+	if strings.Contains(content, "second") {
+		t.Fatalf("expected logs view to clear previous tail during rotation gap, got %q", content)
+	}
+	if !strings.Contains(content, "No log entries yet.") {
+		t.Fatalf("expected debug fallback during rotation gap, got %q", content)
 	}
 
 	if err := os.WriteFile(logPath, []byte("fresh\n"), 0o600); err != nil {
 		t.Fatalf("write new log file: %v", err)
 	}
 	view.Refresh()
-	if !strings.Contains(view.renderContent(), "fresh") {
-		t.Fatalf("expected logs view to read new log content after rotation")
+	content = view.renderContent()
+	if !strings.Contains(content, "fresh") {
+		t.Fatalf("expected logs view to read new log content after rotation, got %q", content)
 	}
 }
 
@@ -320,6 +325,161 @@ func TestLogsViewFilters(t *testing.T) {
 	}
 	if strings.Contains(content, "tui.start") || strings.Contains(content, "specs.fail") {
 		t.Fatalf("expected non-loop components to be filtered, got %q", content)
+	}
+}
+
+func TestLogsViewRefreshClearsStaleTailsWhenFilesMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+	logPath := filepath.Join(tmpDir, "ralph_tui.log")
+	if err := os.WriteFile(logPath, []byte("debug line\n"), 0o600); err != nil {
+		t.Fatalf("write log file: %v", err)
+	}
+	loopPath := loopOutputLogPath(tmpDir)
+	if err := os.WriteFile(loopPath, []byte("loop line\n"), 0o600); err != nil {
+		t.Fatalf("write loop output: %v", err)
+	}
+	specsPath := specsOutputLogPath(tmpDir)
+	if err := os.WriteFile(specsPath, []byte("spec line\n"), 0o600); err != nil {
+		t.Fatalf("write specs output: %v", err)
+	}
+
+	view := newLogsView(logPath)
+	view.SetCacheDir(tmpDir)
+	view.Refresh()
+	content := view.renderContent()
+	if !strings.Contains(content, "debug line") || !strings.Contains(content, "loop line") || !strings.Contains(content, "spec line") {
+		t.Fatalf("expected initial tail content, got %q", content)
+	}
+
+	view.debugErr = "debug err"
+	view.loopErr = "loop err"
+	view.specsErr = "specs err"
+	if err := os.Remove(logPath); err != nil {
+		t.Fatalf("remove log file: %v", err)
+	}
+	if err := os.Remove(loopPath); err != nil {
+		t.Fatalf("remove loop output: %v", err)
+	}
+	if err := os.Remove(specsPath); err != nil {
+		t.Fatalf("remove specs output: %v", err)
+	}
+
+	view.Refresh()
+	content = view.renderContent()
+	if strings.Contains(content, "debug line") || strings.Contains(content, "loop line") || strings.Contains(content, "spec line") {
+		t.Fatalf("expected tails cleared after files removed, got %q", content)
+	}
+	if !strings.Contains(content, "No log entries yet.") ||
+		!strings.Contains(content, "No loop output yet.") ||
+		!strings.Contains(content, "No specs output yet.") {
+		t.Fatalf("expected fallback content after files removed, got %q", content)
+	}
+	if view.debugErr != "" || view.loopErr != "" || view.specsErr != "" {
+		t.Fatalf("expected errors cleared, got debug=%q loop=%q specs=%q", view.debugErr, view.loopErr, view.specsErr)
+	}
+}
+
+func TestLogsViewFormatAndFiltersApplyToAllSections(t *testing.T) {
+	tmpDir := t.TempDir()
+	logPath := filepath.Join(tmpDir, "ralph_tui.log")
+	if err := os.WriteFile(logPath, []byte(""), 0o600); err != nil {
+		t.Fatalf("write log file: %v", err)
+	}
+	loopPath := loopOutputLogPath(tmpDir)
+	loopEntry := logEntry{
+		Timestamp: "2026-01-14T12:34:56Z",
+		Level:     "info",
+		Message:   "loop.start",
+		Fields: map[string]any{
+			"loop_field": "x",
+		},
+	}
+	loopPayload, err := json.Marshal(loopEntry)
+	if err != nil {
+		t.Fatalf("marshal loop entry: %v", err)
+	}
+	loopLines := []string{string(loopPayload), "loop plain"}
+	if err := os.WriteFile(loopPath, []byte(strings.Join(loopLines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatalf("write loop output: %v", err)
+	}
+	specsPath := specsOutputLogPath(tmpDir)
+	specsEntry := logEntry{
+		Timestamp: "2026-01-14T12:35:56Z",
+		Level:     "info",
+		Message:   "specs.build",
+		Fields: map[string]any{
+			"specs_field": "y",
+		},
+	}
+	specsPayload, err := json.Marshal(specsEntry)
+	if err != nil {
+		t.Fatalf("marshal specs entry: %v", err)
+	}
+	specsLines := []string{string(specsPayload), "specs plain"}
+	if err := os.WriteFile(specsPath, []byte(strings.Join(specsLines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatalf("write specs output: %v", err)
+	}
+
+	view := newLogsView(logPath)
+	view.SetCacheDir(tmpDir)
+	view.Refresh()
+	view.ToggleFormat()
+	content := view.renderContent()
+	if strings.Contains(content, string(loopPayload)) || strings.Contains(content, string(specsPayload)) {
+		t.Fatalf("expected formatted output instead of raw JSONL, got %q", content)
+	}
+	if !strings.Contains(content, "loop_field=x") || !strings.Contains(content, "specs_field=y") {
+		t.Fatalf("expected formatted fields in output, got %q", content)
+	}
+	if !strings.Contains(content, "loop plain") || !strings.Contains(content, "specs plain") {
+		t.Fatalf("expected unparsed lines preserved, got %q", content)
+	}
+
+	view.SetLevelFilter("error")
+	content = view.renderContent()
+	if strings.Contains(content, "loop_field=x") || strings.Contains(content, "specs_field=y") {
+		t.Fatalf("expected filters to hide non-error JSON entries, got %q", content)
+	}
+	if !strings.Contains(content, "loop plain") || !strings.Contains(content, "specs plain") {
+		t.Fatalf("expected unparsed lines to remain visible, got %q", content)
+	}
+}
+
+func TestLogsViewComponentCycleIncludesLoopAndSpecsComponents(t *testing.T) {
+	tmpDir := t.TempDir()
+	logPath := filepath.Join(tmpDir, "ralph_tui.log")
+	if err := os.WriteFile(logPath, []byte(""), 0o600); err != nil {
+		t.Fatalf("write log file: %v", err)
+	}
+	loopPath := loopOutputLogPath(tmpDir)
+	loopEntry := logEntry{Level: "info", Message: "loop.start"}
+	loopPayload, err := json.Marshal(loopEntry)
+	if err != nil {
+		t.Fatalf("marshal loop entry: %v", err)
+	}
+	if err := os.WriteFile(loopPath, append(loopPayload, '\n'), 0o600); err != nil {
+		t.Fatalf("write loop output: %v", err)
+	}
+	specsPath := specsOutputLogPath(tmpDir)
+	specsEntry := logEntry{Level: "info", Message: "specs.build"}
+	specsPayload, err := json.Marshal(specsEntry)
+	if err != nil {
+		t.Fatalf("marshal specs entry: %v", err)
+	}
+	if err := os.WriteFile(specsPath, append(specsPayload, '\n'), 0o600); err != nil {
+		t.Fatalf("write specs output: %v", err)
+	}
+
+	view := newLogsView(logPath)
+	view.SetCacheDir(tmpDir)
+	view.Refresh()
+	view.CycleComponentFilter()
+
+	if view.filters.Component == "" {
+		t.Fatalf("expected component filter to advance to loop/specs component")
+	}
+	if view.filters.Component != "loop" && view.filters.Component != "specs" {
+		t.Fatalf("unexpected component filter %q", view.filters.Component)
 	}
 }
 
