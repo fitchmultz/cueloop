@@ -26,6 +26,11 @@ type keyMap struct {
 	EditQueue                 key.Binding
 	MoveChecked               key.Binding
 	BlockItem                 key.Binding
+	UnblockItemTop            key.Binding
+	UnblockItemBottom         key.Binding
+	CopyWIPBranch             key.Binding
+	CopyKnownGoodSHA          key.Binding
+	ResetFixupMetadata        key.Binding
 	ToggleChecked             key.Binding
 	TogglePinSection          key.Binding
 	TogglePane                key.Binding
@@ -126,6 +131,26 @@ func newKeyMap() keyMap {
 			key.WithKeys("b"),
 			key.WithHelp("b", "block item"),
 		),
+		UnblockItemTop: key.NewBinding(
+			key.WithKeys("u"),
+			key.WithHelp("u", "unblock (top)"),
+		),
+		UnblockItemBottom: key.NewBinding(
+			key.WithKeys("U"),
+			key.WithHelp("shift+u", "unblock (bottom)"),
+		),
+		CopyWIPBranch: key.NewBinding(
+			key.WithKeys("w"),
+			key.WithHelp("w", "copy wip branch"),
+		),
+		CopyKnownGoodSHA: key.NewBinding(
+			key.WithKeys("k"),
+			key.WithHelp("k", "copy known-good sha"),
+		),
+		ResetFixupMetadata: key.NewBinding(
+			key.WithKeys("f"),
+			key.WithHelp("f", "reset fixup meta"),
+		),
 		ToggleChecked: key.NewBinding(
 			key.WithKeys("x"),
 			key.WithHelp("x", "toggle checked"),
@@ -217,7 +242,8 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Quit, k.ToggleNav, k.Focus, k.Help, k.RefreshNow, k.Search, k.Select},
 		{k.EditSpecsSettings, k.ToggleLogsFormat, k.SaveGlobal, k.SaveRepo, k.Discard, k.ResetField, k.ResetLayer},
-		{k.ValidatePin, k.EditQueue, k.TogglePinSection, k.MoveChecked, k.BlockItem, k.ToggleChecked},
+		{k.ValidatePin, k.EditQueue, k.TogglePinSection, k.MoveChecked, k.BlockItem, k.UnblockItemTop, k.UnblockItemBottom},
+		{k.CopyWIPBranch, k.CopyKnownGoodSHA, k.ResetFixupMetadata, k.ToggleChecked},
 		{k.ToggleInteractive, k.ToggleInnovate, k.ToggleAutofill, k.ToggleScoutWorkflow, k.EditUserFocus, k.RunSpecs, k.StopSpecs},
 		{k.RunLoopOnce, k.RunLoopContinuous, k.StopLoop, k.EditLoopConfig, k.ToggleForceContextBuilder, k.JumpToPin, k.JumpToLogs},
 	}

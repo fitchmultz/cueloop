@@ -367,3 +367,229 @@ func TestPinMoveCheckedAppendChoice(t *testing.T) {
 		t.Fatalf("expected existing done to remain before appended items")
 	}
 }
+
+func TestPinBlockedUnblockRequeuesItemAndSwitchesToQueue(t *testing.T) {
+	view := setupPinViewWithBlockedItem(t, blockedQueueFixture())
+	keys := newTestKeyMap()
+
+	_ = view.Update(keyMsg("B"), keys, loopIdle)
+	if view.section != pinSectionBlocked {
+		t.Fatalf("expected blocked section before requeue, got %v", view.section)
+	}
+
+	cmd := view.Update(keyMsg("u"), keys, loopIdle)
+	if cmd == nil {
+		t.Fatalf("expected requeue to return reload command")
+	}
+	msg := cmd()
+	reload, ok := msg.(pinReloadMsg)
+	if !ok {
+		t.Fatalf("expected pinReloadMsg, got %T", msg)
+	}
+	_ = view.Update(reload, keys, loopIdle)
+
+	if view.section != pinSectionQueue {
+		t.Fatalf("expected section to switch to queue, got %v", view.section)
+	}
+	if view.selectedItemID() != "RQ-0200" {
+		t.Fatalf("expected selection on requeued item, got %q", view.selectedItemID())
+	}
+
+	queueItems, err := pin.ReadQueueItems(view.files.QueuePath)
+	if err != nil {
+		t.Fatalf("ReadQueueItems failed: %v", err)
+	}
+	blockedItems, err := pin.ReadBlockedItems(view.files.QueuePath)
+	if err != nil {
+		t.Fatalf("ReadBlockedItems failed: %v", err)
+	}
+	if !queueContainsID(queueItems, "RQ-0200") {
+		t.Fatalf("expected requeued item in queue items")
+	}
+	if queueContainsBlockedID(blockedItems, "RQ-0200") {
+		t.Fatalf("expected requeued item removed from blocked items")
+	}
+}
+
+func TestPinBlockedCopyWIPBranchCopiesToClipboardAndSetsStatus(t *testing.T) {
+	view := setupPinViewWithBlockedItem(t, blockedQueueFixture())
+	keys := newTestKeyMap()
+
+	_ = view.Update(keyMsg("B"), keys, loopIdle)
+
+	captured := ""
+	view.clipboardWrite = func(value string) error {
+		captured = value
+		return nil
+	}
+
+	cmd := view.Update(keyMsg("w"), keys, loopIdle)
+	if cmd != nil {
+		t.Fatalf("expected copy WIP branch to return nil cmd")
+	}
+	if captured != "feature/blocked" {
+		t.Fatalf("expected clipboard value to match WIP branch, got %q", captured)
+	}
+	if !strings.Contains(view.status, "WIP branch") || !strings.Contains(view.status, "feature/blocked") {
+		t.Fatalf("expected status to mention copied branch, got %q", view.status)
+	}
+}
+
+func TestPinBlockedCopyKnownGoodCopiesToClipboardAndSetsStatus(t *testing.T) {
+	view := setupPinViewWithBlockedItem(t, blockedQueueFixture())
+	keys := newTestKeyMap()
+
+	_ = view.Update(keyMsg("B"), keys, loopIdle)
+
+	captured := ""
+	view.clipboardWrite = func(value string) error {
+		captured = value
+		return nil
+	}
+
+	cmd := view.Update(keyMsg("k"), keys, loopIdle)
+	if cmd != nil {
+		t.Fatalf("expected copy known-good SHA to return nil cmd")
+	}
+	if captured != "abc1234" {
+		t.Fatalf("expected clipboard value to match known-good SHA, got %q", captured)
+	}
+	if !strings.Contains(view.status, "known-good SHA") || !strings.Contains(view.status, "abc1234") {
+		t.Fatalf("expected status to mention copied SHA, got %q", view.status)
+	}
+}
+
+func TestPinBlockedResetFixupMetadataClearsAttemptsAndReloads(t *testing.T) {
+	view := setupPinViewWithBlockedItem(t, blockedQueueFixture())
+	keys := newTestKeyMap()
+
+	_ = view.Update(keyMsg("B"), keys, loopIdle)
+
+	cmd := view.Update(keyMsg("f"), keys, loopIdle)
+	if cmd == nil {
+		t.Fatalf("expected reset fixup metadata to return reload command")
+	}
+	msg := cmd()
+	reload, ok := msg.(pinReloadMsg)
+	if !ok {
+		t.Fatalf("expected pinReloadMsg, got %T", msg)
+	}
+	_ = view.Update(reload, keys, loopIdle)
+
+	item := view.selectedItem()
+	if item == nil {
+		t.Fatalf("expected selected item after reset")
+	}
+	if item.FixupAttempts != 0 {
+		t.Fatalf("expected fixup attempts reset to 0, got %d", item.FixupAttempts)
+	}
+	if item.FixupLast != "" {
+		t.Fatalf("expected fixup last reset, got %q", item.FixupLast)
+	}
+
+	contents := string(mustReadFile(t, view.files.QueuePath))
+	if strings.Contains(contents, "- Fixup attempts:") || strings.Contains(contents, "- Fixup last:") {
+		t.Fatalf("expected fixup metadata removed from queue file")
+	}
+}
+
+func TestPinBlockedActionsDisabledWhileLoopRunning(t *testing.T) {
+	keys := newTestKeyMap()
+	cases := []struct {
+		name string
+		key  string
+	}{
+		{name: "unblock top", key: "u"},
+		{name: "unblock bottom", key: "U"},
+		{name: "copy wip", key: "w"},
+		{name: "copy known-good", key: "k"},
+		{name: "reset fixup", key: "f"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			view := setupPinViewWithBlockedItem(t, blockedQueueFixture())
+			_ = view.Update(keyMsg("B"), keys, loopIdle)
+
+			clipboardCalls := 0
+			view.clipboardWrite = func(value string) error {
+				clipboardCalls++
+				return nil
+			}
+
+			before := string(mustReadFile(t, view.files.QueuePath))
+			cmd := view.Update(keyMsg(tc.key), keys, loopRunning)
+			if cmd != nil {
+				t.Fatalf("expected no command for blocked key %q", tc.key)
+			}
+			if view.status != "Pin updates disabled while loop is running." {
+				t.Fatalf("expected blocked status, got %q", view.status)
+			}
+			if view.err != "" {
+				t.Fatalf("expected empty error, got %q", view.err)
+			}
+			if clipboardCalls != 0 {
+				t.Fatalf("expected clipboard not invoked for %q", tc.key)
+			}
+
+			after := string(mustReadFile(t, view.files.QueuePath))
+			if before != after {
+				t.Fatalf("expected queue file unchanged for key %q", tc.key)
+			}
+		})
+	}
+}
+
+func setupPinViewWithBlockedItem(t *testing.T, queueContent string) *pinView {
+	t.Helper()
+	_, locs, cfg := newHermeticModel(t)
+	view, err := newPinView(cfg, locs)
+	if err != nil {
+		t.Fatalf("newPinView failed: %v", err)
+	}
+	writeTestFile(t, view.files.QueuePath, queueContent)
+	if err := view.reload(); err != nil {
+		t.Fatalf("reload pin view: %v", err)
+	}
+	return view
+}
+
+func blockedQueueFixture() string {
+	return strings.Join([]string{
+		"## Queue",
+		"- [ ] RQ-0100 [ui]: Queue item",
+		"  - Evidence: test",
+		"  - Plan: test",
+		"",
+		"## Blocked",
+		"- [ ] RQ-0200 [ops]: Blocked item",
+		"  - Evidence: test",
+		"  - Plan: test",
+		"  - Blocked reason: waiting on upstream",
+		"  - WIP branch: feature/blocked",
+		"  - Known-good: abc1234",
+		"  - Fixup attempts: 2",
+		"  - Fixup last: 2026-01-15T00:00:00Z ci failed",
+		"",
+		"## Parking Lot",
+		"",
+	}, "\n")
+}
+
+func queueContainsID(items []pin.QueueItem, id string) bool {
+	for _, item := range items {
+		if item.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func queueContainsBlockedID(items []pin.BlockedItem, id string) bool {
+	for _, item := range items {
+		if item.ID == id {
+			return true
+		}
+	}
+	return false
+}

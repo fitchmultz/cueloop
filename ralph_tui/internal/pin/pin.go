@@ -29,6 +29,16 @@ var (
 	}
 )
 
+const (
+	metadataIndent      = "  "
+	blockedReasonPrefix = "- Blocked reason:"
+	wipBranchPrefix     = "- WIP branch:"
+	knownGoodPrefix     = "- Known-good:"
+	unblockHintPrefix   = "- Unblock hint:"
+	fixupAttemptsPrefix = "- Fixup attempts:"
+	fixupLastPrefix     = "- Fixup last:"
+)
+
 // TagList captures parsed tags plus any unknown values.
 type TagList struct {
 	Tags    []string
@@ -752,6 +762,69 @@ func RecordFixupAttempt(queuePath string, itemID string, last string) (bool, int
 	return true, attempts, nil
 }
 
+// ResetFixupMetadata removes fixup metadata lines from a blocked item.
+// found indicates the item existed in Blocked; changed indicates if any metadata was removed.
+func ResetFixupMetadata(queuePath string, itemID string) (bool, bool, error) {
+	lock, err := acquirePinLock(filepath.Dir(queuePath))
+	if err != nil {
+		return false, false, err
+	}
+	defer lock.Release()
+
+	if err := requireFile(queuePath); err != nil {
+		return false, false, err
+	}
+
+	lines, err := readLines(queuePath)
+	if err != nil {
+		return false, false, err
+	}
+
+	blocks := splitBlocks(lines)
+	newBlocks := make([][]string, 0, len(blocks))
+	inBlocked := false
+	found := false
+	changed := false
+
+	for _, block := range blocks {
+		header := firstLine(block)
+		switch {
+		case strings.TrimSpace(header) == "## Blocked":
+			inBlocked = true
+			newBlocks = append(newBlocks, block)
+			continue
+		case strings.HasPrefix(header, "## "):
+			inBlocked = false
+			newBlocks = append(newBlocks, block)
+			continue
+		}
+
+		if inBlocked && strings.HasPrefix(header, "- [") && extractID(header) == itemID {
+			found = true
+			cleaned, stripped := stripFixupMetadata(block)
+			if stripped {
+				changed = true
+				block = cleaned
+			}
+		}
+		newBlocks = append(newBlocks, block)
+	}
+
+	if !found {
+		return false, false, nil
+	}
+	if !changed {
+		return true, false, nil
+	}
+
+	flattened := flattenBlocks(newBlocks)
+	if err := writeLines(queuePath, flattened); err != nil {
+		return true, false, err
+	}
+
+	return true, true, nil
+}
+
 // ToggleQueueItemChecked flips the checked state for a queue item by ID.
 func ToggleQueueItemChecked(queuePath string, itemID string) (bool, bool, error) {
 	lock, err := acquirePinLock(filepath.Dir(queuePath))
@@ -821,21 +894,20 @@ func toggleCheckHeader(header string) string {
 }
 
 func appendMetadata(block []string, reasonLines []string, metadata Metadata) []string {
-	indent := "  "
 	for _, line := range reasonLines {
 		clean := strings.TrimSpace(line)
 		if clean != "" {
-			block = append(block, fmt.Sprintf("%s- Blocked reason: %s", indent, clean))
+			block = append(block, fmt.Sprintf("%s%s %s", metadataIndent, blockedReasonPrefix, clean))
 		}
 	}
 	if metadata.WIPBranch != "" {
-		block = append(block, fmt.Sprintf("%s- WIP branch: %s", indent, metadata.WIPBranch))
+		block = append(block, fmt.Sprintf("%s%s %s", metadataIndent, wipBranchPrefix, metadata.WIPBranch))
 	}
 	if metadata.KnownGood != "" {
-		block = append(block, fmt.Sprintf("%s- Known-good: %s", indent, metadata.KnownGood))
+		block = append(block, fmt.Sprintf("%s%s %s", metadataIndent, knownGoodPrefix, metadata.KnownGood))
 	}
 	if metadata.UnblockHint != "" {
-		block = append(block, fmt.Sprintf("%s- Unblock hint: %s", indent, metadata.UnblockHint))
+		block = append(block, fmt.Sprintf("%s%s %s", metadataIndent, unblockHintPrefix, metadata.UnblockHint))
 	}
 	return block
 }
@@ -1221,18 +1293,18 @@ func parseBlockedItem(block []string) BlockedItem {
 	for _, line := range block[1:] {
 		trimmed := strings.TrimLeft(line, " \t")
 		switch {
-		case strings.HasPrefix(trimmed, "- WIP branch:"):
-			metadata.WIPBranch = strings.TrimSpace(strings.TrimPrefix(trimmed, "- WIP branch:"))
-		case strings.HasPrefix(trimmed, "- Known-good:"):
-			metadata.KnownGood = strings.TrimSpace(strings.TrimPrefix(trimmed, "- Known-good:"))
-		case strings.HasPrefix(trimmed, "- Unblock hint:"):
-			metadata.UnblockHint = strings.TrimSpace(strings.TrimPrefix(trimmed, "- Unblock hint:"))
-		case strings.HasPrefix(trimmed, "- Fixup attempts:"):
+		case strings.HasPrefix(trimmed, wipBranchPrefix):
+			metadata.WIPBranch = strings.TrimSpace(strings.TrimPrefix(trimmed, wipBranchPrefix))
+		case strings.HasPrefix(trimmed, knownGoodPrefix):
+			metadata.KnownGood = strings.TrimSpace(strings.TrimPrefix(trimmed, knownGoodPrefix))
+		case strings.HasPrefix(trimmed, unblockHintPrefix):
+			metadata.UnblockHint = strings.TrimSpace(strings.TrimPrefix(trimmed, unblockHintPrefix))
+		case strings.HasPrefix(trimmed, fixupAttemptsPrefix):
 			if value, ok := parseFixupAttempts(trimmed); ok {
 				attempts = value
 			}
-		case strings.HasPrefix(trimmed, "- Fixup last:"):
-			last = strings.TrimSpace(strings.TrimPrefix(trimmed, "- Fixup last:"))
+		case strings.HasPrefix(trimmed, fixupLastPrefix):
+			last = strings.TrimSpace(strings.TrimPrefix(trimmed, fixupLastPrefix))
 		}
 	}
 
@@ -1243,7 +1315,7 @@ func parseBlockedItem(block []string) BlockedItem {
 }
 
 func parseFixupAttempts(trimmed string) (int, bool) {
-	value := strings.TrimSpace(strings.TrimPrefix(trimmed, "- Fixup attempts:"))
+	value := strings.TrimSpace(strings.TrimPrefix(trimmed, fixupAttemptsPrefix))
 	if value == "" {
 		return 0, false
 	}
@@ -1255,19 +1327,18 @@ func parseFixupAttempts(trimmed string) (int, bool) {
 }
 
 func updateFixupMetadata(block []string, attempts int, last string) []string {
-	indent := "  "
-	attemptLine := fmt.Sprintf("%s- Fixup attempts: %d", indent, attempts)
-	lastLine := fmt.Sprintf("%s- Fixup last: %s", indent, last)
+	attemptLine := fmt.Sprintf("%s%s %d", metadataIndent, fixupAttemptsPrefix, attempts)
+	lastLine := fmt.Sprintf("%s%s %s", metadataIndent, fixupLastPrefix, last)
 
 	updatedAttempts := false
 	updatedLast := false
 	for i, line := range block {
 		trimmed := strings.TrimLeft(line, " \t")
 		switch {
-		case strings.HasPrefix(trimmed, "- Fixup attempts:"):
+		case strings.HasPrefix(trimmed, fixupAttemptsPrefix):
 			block[i] = attemptLine
 			updatedAttempts = true
-		case strings.HasPrefix(trimmed, "- Fixup last:"):
+		case strings.HasPrefix(trimmed, fixupLastPrefix):
 			if last != "" {
 				block[i] = lastLine
 				updatedLast = true
@@ -1284,6 +1355,15 @@ func updateFixupMetadata(block []string, attempts int, last string) []string {
 	return block
 }
 
+func hasAnyPrefix(value string, prefixes ...string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(value, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func stripBlockedMetadata(block []string) []string {
 	cleaned := make([]string, 0, len(block))
 	for i, line := range block {
@@ -1292,17 +1372,37 @@ func stripBlockedMetadata(block []string) []string {
 			continue
 		}
 		trimmed := strings.TrimLeft(line, " \t")
-		if strings.HasPrefix(trimmed, "- Blocked reason:") ||
-			strings.HasPrefix(trimmed, "- WIP branch:") ||
-			strings.HasPrefix(trimmed, "- Known-good:") ||
-			strings.HasPrefix(trimmed, "- Unblock hint:") ||
-			strings.HasPrefix(trimmed, "- Fixup attempts:") ||
-			strings.HasPrefix(trimmed, "- Fixup last:") {
+		if hasAnyPrefix(trimmed,
+			blockedReasonPrefix,
+			wipBranchPrefix,
+			knownGoodPrefix,
+			unblockHintPrefix,
+			fixupAttemptsPrefix,
+			fixupLastPrefix,
+		) {
 			continue
 		}
 		cleaned = append(cleaned, line)
 	}
 	return cleaned
+}
+
+func stripFixupMetadata(block []string) ([]string, bool) {
+	cleaned := make([]string, 0, len(block))
+	changed := false
+	for i, line := range block {
+		if i == 0 {
+			cleaned = append(cleaned, line)
+			continue
+		}
+		trimmed := strings.TrimLeft(line, " \t")
+		if hasAnyPrefix(trimmed, fixupAttemptsPrefix, fixupLastPrefix) {
+			changed = true
+			continue
+		}
+		cleaned = append(cleaned, line)
+	}
+	return cleaned, changed
 }
 
 func setHeaderUnchecked(header string) string {

@@ -418,7 +418,15 @@ func TestRequeueBlockedItem(t *testing.T) {
 	tmpDir := t.TempDir()
 	queuePath := copyFixture(t, fixture.queue, filepath.Join(tmpDir, "implementation_queue.md"))
 
-	ok, err := RequeueBlockedItem(queuePath, "RQ-0003", RequeueOptions{InsertAtTop: true})
+	ok, _, err := RecordFixupAttempt(queuePath, "RQ-0003", "2026-01-15T00:00:00Z ci failed")
+	if err != nil {
+		t.Fatalf("RecordFixupAttempt failed: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected fixup attempt to update blocked item")
+	}
+
+	ok, err = RequeueBlockedItem(queuePath, "RQ-0003", RequeueOptions{InsertAtTop: true})
 	if err != nil {
 		t.Fatalf("RequeueBlockedItem failed: %v", err)
 	}
@@ -439,7 +447,9 @@ func TestRequeueBlockedItem(t *testing.T) {
 		if strings.HasPrefix(trimmed, "- Blocked reason:") ||
 			strings.HasPrefix(trimmed, "- WIP branch:") ||
 			strings.HasPrefix(trimmed, "- Known-good:") ||
-			strings.HasPrefix(trimmed, "- Unblock hint:") {
+			strings.HasPrefix(trimmed, "- Unblock hint:") ||
+			strings.HasPrefix(trimmed, "- Fixup attempts:") ||
+			strings.HasPrefix(trimmed, "- Fixup last:") {
 			t.Fatalf("blocked metadata leaked into requeued item: %s", line)
 		}
 	}
@@ -480,6 +490,58 @@ func TestRecordFixupAttempt(t *testing.T) {
 	}
 	if !foundAttempts || !foundLast {
 		t.Fatalf("expected fixup attempt metadata to be appended")
+	}
+}
+
+func TestResetFixupMetadata(t *testing.T) {
+	fixture := mustLocateFixtures(t)
+
+	tmpDir := t.TempDir()
+	queuePath := copyFixture(t, fixture.queue, filepath.Join(tmpDir, "implementation_queue.md"))
+
+	ok, _, err := RecordFixupAttempt(queuePath, "RQ-0003", "2026-01-15T00:00:00Z ci failed")
+	if err != nil {
+		t.Fatalf("RecordFixupAttempt failed: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected fixup attempt to update blocked item")
+	}
+
+	found, changed, err := ResetFixupMetadata(queuePath, "RQ-0003")
+	if err != nil {
+		t.Fatalf("ResetFixupMetadata failed: %v", err)
+	}
+	if !found {
+		t.Fatalf("expected blocked item to be found")
+	}
+	if !changed {
+		t.Fatalf("expected fixup metadata to be removed")
+	}
+
+	lines := readFileLines(t, queuePath)
+	block, section := findItemBlock(lines, "- [ ] RQ-0003 [ops]: Blocked fixture item. (README.md)")
+	if section != "Blocked" {
+		t.Fatalf("expected item in Blocked section, got %s", section)
+	}
+	for _, line := range block {
+		trimmed := strings.TrimLeft(line, " \t")
+		if strings.HasPrefix(trimmed, "- Fixup attempts:") || strings.HasPrefix(trimmed, "- Fixup last:") {
+			t.Fatalf("expected fixup metadata removed, found %q", trimmed)
+		}
+	}
+
+	items, err := ReadBlockedItems(queuePath)
+	if err != nil {
+		t.Fatalf("ReadBlockedItems failed: %v", err)
+	}
+	if len(items) == 0 {
+		t.Fatalf("expected blocked items to remain")
+	}
+	if items[0].FixupAttempts != 0 {
+		t.Fatalf("expected fixup attempts reset to 0, got %d", items[0].FixupAttempts)
+	}
+	if items[0].FixupLast != "" {
+		t.Fatalf("expected fixup last reset, got %q", items[0].FixupLast)
 	}
 }
 

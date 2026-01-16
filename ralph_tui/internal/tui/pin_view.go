@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -60,6 +61,9 @@ type pinTableEntry struct {
 	Lines         []string
 	Checked       bool
 	FixupAttempts int
+	WIPBranch     string
+	KnownGood     string
+	FixupLast     string
 }
 
 func queueEntry(item pin.QueueItem) pinTableEntry {
@@ -79,6 +83,9 @@ func blockedEntry(item pin.BlockedItem) pinTableEntry {
 		Header:        item.Header,
 		Lines:         item.Lines,
 		FixupAttempts: item.FixupAttempts,
+		WIPBranch:     item.Metadata.WIPBranch,
+		KnownGood:     item.Metadata.KnownGood,
+		FixupLast:     item.FixupLast,
 	}
 }
 
@@ -133,6 +140,7 @@ type pinView struct {
 	config                config.Config
 	locations             paths.Locations
 	logger                *tuiLogger
+	clipboardWrite        func(string) error
 	width                 int
 	height                int
 	queueStamp            fileStamp
@@ -158,6 +166,7 @@ func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) 
 		config:    cfg,
 		locations: locations,
 	}
+	view.clipboardWrite = clipboard.WriteAll
 	view.tableStyles = table.DefaultStyles()
 	columns := pinTableColumns(defaultPinViewWidth, nil, view.tableStyles)
 	view.table = table.New(table.WithColumns(columns), table.WithFocused(true), table.WithStyles(view.tableStyles))
@@ -291,6 +300,31 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap, loopMode loopMode) tea.Cmd {
 			}
 			p.startBlock()
 			return nil
+		case key.Matches(keyMsg, keys.UnblockItemTop):
+			if p.commandsBlocked(loopMode) {
+				return nil
+			}
+			return p.requeueSelectedBlockedItem(true)
+		case key.Matches(keyMsg, keys.UnblockItemBottom):
+			if p.commandsBlocked(loopMode) {
+				return nil
+			}
+			return p.requeueSelectedBlockedItem(false)
+		case key.Matches(keyMsg, keys.CopyWIPBranch):
+			if p.commandsBlocked(loopMode) {
+				return nil
+			}
+			return p.copySelectedBlockedWIPBranch()
+		case key.Matches(keyMsg, keys.CopyKnownGoodSHA):
+			if p.commandsBlocked(loopMode) {
+				return nil
+			}
+			return p.copySelectedBlockedKnownGood()
+		case key.Matches(keyMsg, keys.ResetFixupMetadata):
+			if p.commandsBlocked(loopMode) {
+				return nil
+			}
+			return p.resetSelectedBlockedFixupMetadata()
 		case key.Matches(keyMsg, keys.ToggleChecked):
 			if p.commandsBlocked(loopMode) {
 				return nil
@@ -665,6 +699,107 @@ func (p *pinView) toggleChecked() tea.Cmd {
 		state = "checked"
 	}
 	p.status = fmt.Sprintf("Marked %s as %s", item.ID, state)
+	p.err = ""
+	return p.reloadAsync(false)
+}
+
+func (p *pinView) selectedBlockedItem(action string) *pinTableEntry {
+	item := p.selectedItem()
+	if item == nil || item.ID == "" || item.Section != pinSectionBlocked {
+		p.status = fmt.Sprintf("Switch to Blocked to %s.", action)
+		p.err = ""
+		return nil
+	}
+	return item
+}
+
+func (p *pinView) requeueSelectedBlockedItem(insertAtTop bool) tea.Cmd {
+	item := p.selectedBlockedItem("requeue blocked items")
+	if item == nil {
+		return nil
+	}
+	ok, err := pin.RequeueBlockedItem(p.files.QueuePath, item.ID, pin.RequeueOptions{InsertAtTop: insertAtTop})
+	if err != nil {
+		p.err = err.Error()
+		p.status = ""
+		return nil
+	}
+	if !ok {
+		p.err = fmt.Sprintf("Item %s not found in Blocked.", item.ID)
+		p.status = ""
+		return nil
+	}
+	if insertAtTop {
+		p.status = fmt.Sprintf("Requeued %s to top of Queue.", item.ID)
+	} else {
+		p.status = fmt.Sprintf("Requeued %s to bottom of Queue.", item.ID)
+	}
+	p.err = ""
+	p.pendingSelectID = item.ID
+	p.section = pinSectionQueue
+	return p.reloadAsync(true)
+}
+
+func (p *pinView) copySelectedBlockedMetadata(label string, value string, itemID string) tea.Cmd {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		p.status = fmt.Sprintf("No %s metadata for %s.", label, itemID)
+		p.err = ""
+		return nil
+	}
+	if p.clipboardWrite == nil {
+		p.err = "Clipboard unavailable."
+		p.status = ""
+		return nil
+	}
+	if err := p.clipboardWrite(value); err != nil {
+		p.err = err.Error()
+		p.status = ""
+		return nil
+	}
+	p.status = fmt.Sprintf("Copied %s for %s: %s", label, itemID, value)
+	p.err = ""
+	return nil
+}
+
+func (p *pinView) copySelectedBlockedWIPBranch() tea.Cmd {
+	item := p.selectedBlockedItem("copy WIP branch")
+	if item == nil {
+		return nil
+	}
+	return p.copySelectedBlockedMetadata("WIP branch", item.WIPBranch, item.ID)
+}
+
+func (p *pinView) copySelectedBlockedKnownGood() tea.Cmd {
+	item := p.selectedBlockedItem("copy known-good SHA")
+	if item == nil {
+		return nil
+	}
+	return p.copySelectedBlockedMetadata("known-good SHA", item.KnownGood, item.ID)
+}
+
+func (p *pinView) resetSelectedBlockedFixupMetadata() tea.Cmd {
+	item := p.selectedBlockedItem("reset fixup metadata")
+	if item == nil {
+		return nil
+	}
+	found, changed, err := pin.ResetFixupMetadata(p.files.QueuePath, item.ID)
+	if err != nil {
+		p.err = err.Error()
+		p.status = ""
+		return nil
+	}
+	if !found {
+		p.err = fmt.Sprintf("Item %s not found in Blocked.", item.ID)
+		p.status = ""
+		return nil
+	}
+	if !changed {
+		p.status = fmt.Sprintf("No fixup metadata to reset for %s.", item.ID)
+		p.err = ""
+		return nil
+	}
+	p.status = fmt.Sprintf("Reset fixup metadata for %s.", item.ID)
 	p.err = ""
 	return p.reloadAsync(false)
 }

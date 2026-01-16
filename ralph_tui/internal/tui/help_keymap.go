@@ -52,6 +52,7 @@ func (p pinKeyMap) ShortHelp() []key.Binding {
 		p.keys.ValidatePin,
 		p.keys.MoveChecked,
 		p.keys.BlockItem,
+		p.keys.UnblockItemTop,
 		p.keys.ToggleChecked,
 	}
 }
@@ -59,6 +60,7 @@ func (p pinKeyMap) ShortHelp() []key.Binding {
 func (p pinKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{p.keys.TogglePinSection, p.keys.ValidatePin, p.keys.MoveChecked, p.keys.BlockItem, p.keys.ToggleChecked},
+		{p.keys.UnblockItemTop, p.keys.UnblockItemBottom, p.keys.CopyWIPBranch, p.keys.CopyKnownGoodSHA, p.keys.ResetFixupMetadata},
 		{p.keys.TogglePane},
 	}
 }
