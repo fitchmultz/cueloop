@@ -1,6 +1,9 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0484 [code]: Prevent long log lines from being split mid-line. (ralph_tui/internal/streaming/line_splitter.go, ralph_tui/internal/loop/line_writer.go, ralph_tui/internal/tui/stream_writer.go)
+  - Evidence: LineSplitter flushes partial buffers after DefaultMaxBufferedBytes (512), so long JSON/log lines are emitted as multiple lines and break formatting/filters.
+  - Plan: Increase the default buffer, make it configurable, and/or flush only on newline boundaries; add tests for long-line integrity.
 - [x] RQ-0483 [ui]: Make log format/filter controls accurate and clear stale tail output. (ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/tui/key_hints.go)
   - Evidence: Filters and format toggles are advertised globally but only apply to debug logs; refreshTailedFile keeps old lines when a log file disappears, so the UI shows stale output after deletion/rotation.
   - Plan: Apply formatting/filters to loop/specs output or scope the controls/labels to debug-only; clear cached lines and errors when tailed files go missing; update help text and tests.

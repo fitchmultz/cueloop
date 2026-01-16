@@ -18,16 +18,17 @@ import (
 
 // FixupOptions controls the blocked-item fixup workflow.
 type FixupOptions struct {
-	RepoRoot      string
-	PinDir        string
-	MaxAttempts   int
-	MaxItems      int
-	RequireMain   bool
-	AutoCommit    bool
-	AutoPush      bool
-	RedactionMode redaction.Mode
-	Logger        Logger
-	Now           func() time.Time
+	RepoRoot            string
+	PinDir              string
+	MaxAttempts         int
+	MaxItems            int
+	RequireMain         bool
+	AutoCommit          bool
+	AutoPush            bool
+	RedactionMode       redaction.Mode
+	LogMaxBufferedBytes int
+	Logger              Logger
+	Now                 func() time.Time
 }
 
 // FixupResult summarizes fixup outcomes.
@@ -201,7 +202,7 @@ func validateWipBranchInWorktree(ctx context.Context, opts FixupOptions, redacto
 func runMakeCIInWorktree(ctx context.Context, opts FixupOptions, redactor *Redactor, worktreePath string) error {
 	logFixup(redactor, opts.Logger, ">> [RALPH] Fixup running make ci in %s", worktreePath)
 	cmd := exec.CommandContext(ctx, "make", "-C", worktreePath, "ci")
-	if err := RunCommand(ctx, cmd, NewRedactor(os.Environ(), opts.RedactionMode), opts.Logger); err != nil {
+	if err := RunCommand(ctx, cmd, NewRedactor(os.Environ(), opts.RedactionMode), opts.Logger, opts.LogMaxBufferedBytes); err != nil {
 		return err
 	}
 	logFixup(redactor, opts.Logger, ">> [RALPH] Fixup make ci succeeded.")

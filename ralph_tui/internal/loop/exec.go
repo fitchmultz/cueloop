@@ -11,10 +11,10 @@ import (
 )
 
 // RunCommand executes a command and streams output to the logger.
-func RunCommand(ctx context.Context, cmd *exec.Cmd, redactor *Redactor, logger Logger) error {
+func RunCommand(ctx context.Context, cmd *exec.Cmd, redactor *Redactor, logger Logger, maxBufferedBytes int) error {
 	cmd = ensureCommandContext(ctx, cmd)
 	procgroup.Configure(cmd)
-	writer := newLineWriter(redactor, logger, nil)
+	writer := newLineWriter(redactor, logger, nil, maxBufferedBytes)
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 	if cmd.Stdin == nil {
@@ -26,7 +26,7 @@ func RunCommand(ctx context.Context, cmd *exec.Cmd, redactor *Redactor, logger L
 }
 
 // RunCommandWithFile executes a command and streams output to logger and file.
-func RunCommandWithFile(ctx context.Context, cmd *exec.Cmd, redactor *Redactor, logger Logger, outputPath string) error {
+func RunCommandWithFile(ctx context.Context, cmd *exec.Cmd, redactor *Redactor, logger Logger, outputPath string, maxBufferedBytes int) error {
 	cmd = ensureCommandContext(ctx, cmd)
 	procgroup.Configure(cmd)
 	file, err := os.Create(outputPath)
@@ -35,7 +35,7 @@ func RunCommandWithFile(ctx context.Context, cmd *exec.Cmd, redactor *Redactor, 
 	}
 	defer file.Close()
 
-	writer := newLineWriter(redactor, logger, file)
+	writer := newLineWriter(redactor, logger, file, maxBufferedBytes)
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 	if cmd.Stdin == nil {

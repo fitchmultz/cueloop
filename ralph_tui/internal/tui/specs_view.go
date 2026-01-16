@@ -710,7 +710,7 @@ func (s *specsView) runBuildCmd() tea.Cmd {
 	}
 
 	sink := logChannelSink{ch: logCh}
-	writer := newStreamWriter(sink)
+	writer := newStreamWriter(sink, s.cfg.Logging.MaxBufferedBytes)
 
 	runCmd := func() tea.Msg {
 		defer close(done)

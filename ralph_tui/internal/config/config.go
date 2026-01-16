@@ -34,9 +34,10 @@ type UIConfig struct {
 
 // LoggingConfig controls log verbosity.
 type LoggingConfig struct {
-	Level         string         `json:"level"`
-	File          string         `json:"file"`
-	RedactionMode redaction.Mode `json:"redaction_mode"`
+	Level            string         `json:"level"`
+	File             string         `json:"file"`
+	RedactionMode    redaction.Mode `json:"redaction_mode"`
+	MaxBufferedBytes int            `json:"max_buffered_bytes"`
 }
 
 // PathsConfig declares filesystem locations used by Ralph.
@@ -107,6 +108,9 @@ func (c Config) Validate() error {
 	}
 	if !redaction.ValidMode(string(c.Logging.RedactionMode)) {
 		return fmt.Errorf("logging.redaction_mode must be one of off, secrets_only, or all_env")
+	}
+	if c.Logging.MaxBufferedBytes < 0 {
+		return fmt.Errorf("logging.max_buffered_bytes must be >= 0")
 	}
 	if strings.TrimSpace(c.Paths.DataDir) == "" {
 		return fmt.Errorf("paths.data_dir must be set")
@@ -228,9 +232,10 @@ type UIPartial struct {
 
 // LoggingPartial overrides LoggingConfig fields when set.
 type LoggingPartial struct {
-	Level         *string         `json:"level,omitempty"`
-	File          *string         `json:"file,omitempty"`
-	RedactionMode *redaction.Mode `json:"redaction_mode,omitempty"`
+	Level            *string         `json:"level,omitempty"`
+	File             *string         `json:"file,omitempty"`
+	RedactionMode    *redaction.Mode `json:"redaction_mode,omitempty"`
+	MaxBufferedBytes *int            `json:"max_buffered_bytes,omitempty"`
 }
 
 // PathsPartial overrides PathsConfig fields when set.

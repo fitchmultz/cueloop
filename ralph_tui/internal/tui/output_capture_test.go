@@ -22,7 +22,7 @@ func TestLosslessOutputPersistenceUnderLoad(t *testing.T) {
 
 	logCh := make(chan string, 4)
 	sink := logChannelSink{ch: logCh}
-	stream := newStreamWriter(sink)
+	stream := newStreamWriter(sink, 0)
 
 	errCh := make(chan error, 1)
 	doneCh := make(chan struct{})

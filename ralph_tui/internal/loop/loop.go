@@ -45,6 +45,7 @@ type Options struct {
 	AllowUntracked      bool
 	QuarantineClean     bool
 	RedactionMode       redaction.Mode
+	LogMaxBufferedBytes int
 	Logger              Logger
 	StateSink           StateSink
 }
@@ -330,10 +331,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		runner := RunnerInvoker{
-			Runner:     r.opts.Runner,
-			RunnerArgs: r.currentRunArgs,
-			Redactor:   r.redactor,
-			Logger:     r.opts.Logger,
+			Runner:              r.opts.Runner,
+			RunnerArgs:          r.currentRunArgs,
+			Redactor:            r.redactor,
+			Logger:              r.opts.Logger,
+			LogMaxBufferedBytes: r.opts.LogMaxBufferedBytes,
 		}
 		if err := runner.RunPrompt(ctx, promptFile); err != nil {
 			cleanup()
@@ -726,7 +728,7 @@ func (r *Runner) runMakeCI(ctx context.Context) error {
 	ciCtx, cancel := withTimeout(ctx, makeCITimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ciCtx, "make", "-C", r.opts.RepoRoot, "ci")
-	if err := RunCommandWithFile(ciCtx, cmd, r.redactor, r.opts.Logger, r.lastCIOutput); err != nil {
+	if err := RunCommandWithFile(ciCtx, cmd, r.redactor, r.opts.Logger, r.lastCIOutput, r.opts.LogMaxBufferedBytes); err != nil {
 		return err
 	}
 	return nil
@@ -820,10 +822,11 @@ func (r *Runner) runSupervisor(ctx context.Context, stage string, message string
 	defer cleanup()
 
 	runner := RunnerInvoker{
-		Runner:     r.opts.Runner,
-		RunnerArgs: r.currentRunArgs,
-		Redactor:   r.redactor,
-		Logger:     r.opts.Logger,
+		Runner:              r.opts.Runner,
+		RunnerArgs:          r.currentRunArgs,
+		Redactor:            r.redactor,
+		Logger:              r.opts.Logger,
+		LogMaxBufferedBytes: r.opts.LogMaxBufferedBytes,
 	}
 	if err := runner.RunPrompt(ctx, contextFile); err != nil {
 		r.lastFailureStage = "supervisor"

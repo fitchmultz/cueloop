@@ -70,6 +70,7 @@ func newRootCommand() *cobra.Command {
 	cmd.PersistentFlags().String("log-level", "", "Log level (debug, info, warn, error)")
 	cmd.PersistentFlags().String("log-file", "", "Log file path")
 	cmd.PersistentFlags().String("redaction-mode", "", "Log redaction mode (off, secrets_only, all_env)")
+	cmd.PersistentFlags().Int("log-max-buffered-bytes", 0, "Max bytes buffered per log line before partial flush (0 = disable)")
 	cmd.PersistentFlags().String("project-type", "", "Project type (code, docs)")
 	cmd.PersistentFlags().String("data-dir", "", "Data directory path")
 	cmd.PersistentFlags().String("cache-dir", "", "Cache directory path")
@@ -390,6 +391,14 @@ func buildCLIOverrides(cmd *cobra.Command) (config.PartialConfig, error) {
 		mode := redaction.Mode(value)
 		logging := ensureLoggingPartial(&overrides)
 		logging.RedactionMode = &mode
+	}
+	if flags.Changed("log-max-buffered-bytes") {
+		value, err := flags.GetInt("log-max-buffered-bytes")
+		if err != nil {
+			return overrides, err
+		}
+		logging := ensureLoggingPartial(&overrides)
+		logging.MaxBufferedBytes = &value
 	}
 	if flags.Changed("project-type") {
 		value, err := flags.GetString("project-type")
@@ -813,6 +822,7 @@ func newLoopRunCommand() *cobra.Command {
 				AllowUntracked:      allowUntracked,
 				QuarantineClean:     quarantineClean,
 				RedactionMode:       cfg.Logging.RedactionMode,
+				LogMaxBufferedBytes: cfg.Logging.MaxBufferedBytes,
 				Logger:              logger,
 			})
 			if err != nil {
@@ -874,15 +884,16 @@ func newLoopFixupCommand() *cobra.Command {
 
 			logger := loop.StdLogger{Writer: cmd.OutOrStdout()}
 			result, err := loop.FixupBlockedItems(context.Background(), loop.FixupOptions{
-				RepoRoot:      locs.RepoRoot,
-				PinDir:        cfg.Paths.PinDir,
-				MaxAttempts:   maxAttempts,
-				MaxItems:      maxItems,
-				RequireMain:   cfg.Loop.RequireMain,
-				AutoCommit:    cfg.Git.AutoCommit,
-				AutoPush:      cfg.Git.AutoPush,
-				RedactionMode: cfg.Logging.RedactionMode,
-				Logger:        logger,
+				RepoRoot:            locs.RepoRoot,
+				PinDir:              cfg.Paths.PinDir,
+				MaxAttempts:         maxAttempts,
+				MaxItems:            maxItems,
+				RequireMain:         cfg.Loop.RequireMain,
+				AutoCommit:          cfg.Git.AutoCommit,
+				AutoPush:            cfg.Git.AutoPush,
+				RedactionMode:       cfg.Logging.RedactionMode,
+				LogMaxBufferedBytes: cfg.Logging.MaxBufferedBytes,
+				Logger:              logger,
 			})
 			if err != nil {
 				return err

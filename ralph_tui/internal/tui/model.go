@@ -726,15 +726,16 @@ func (m *model) startFixupCmd() tea.Cmd {
 		}
 		sendLineBlocking(logCh, ">> [RALPH] Fixup blocked starting.")
 		result, err := m.fixupRunner(m.runCtx, loop.FixupOptions{
-			RepoRoot:      m.locations.RepoRoot,
-			PinDir:        m.cfg.Paths.PinDir,
-			MaxAttempts:   defaultFixupMaxAttempts,
-			MaxItems:      defaultFixupMaxItems,
-			RequireMain:   m.cfg.Loop.RequireMain,
-			AutoCommit:    m.cfg.Git.AutoCommit,
-			AutoPush:      m.cfg.Git.AutoPush,
-			RedactionMode: m.cfg.Logging.RedactionMode,
-			Logger:        fixupLogger,
+			RepoRoot:            m.locations.RepoRoot,
+			PinDir:              m.cfg.Paths.PinDir,
+			MaxAttempts:         defaultFixupMaxAttempts,
+			MaxItems:            defaultFixupMaxItems,
+			RequireMain:         m.cfg.Loop.RequireMain,
+			AutoCommit:          m.cfg.Git.AutoCommit,
+			AutoPush:            m.cfg.Git.AutoPush,
+			RedactionMode:       m.cfg.Logging.RedactionMode,
+			LogMaxBufferedBytes: m.cfg.Logging.MaxBufferedBytes,
+			Logger:              fixupLogger,
 		})
 		if err != nil {
 			sendLineBlocking(logCh, ">> [RALPH] Fixup blocked failed: "+err.Error())

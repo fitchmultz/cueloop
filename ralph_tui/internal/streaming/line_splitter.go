@@ -3,7 +3,7 @@
 package streaming
 
 // DefaultMaxBufferedBytes flushes partial lines once the buffer exceeds this size.
-const DefaultMaxBufferedBytes = 512
+const DefaultMaxBufferedBytes = 1 << 20
 
 // LineSplitter buffers byte streams into newline-delimited log lines.
 // It treats both '\n' and '\r' as line terminators and can flush partial
@@ -49,7 +49,7 @@ func (s *LineSplitter) Write(p []byte, emit func(string)) {
 	}
 	if start < len(p) {
 		s.buf = append(s.buf, p[start:]...)
-		if s.maxBufferedBytes > 0 && len(s.buf) >= s.maxBufferedBytes {
+		if s.maxBufferedBytes > 0 && len(s.buf) > s.maxBufferedBytes {
 			s.emitLine(emit, false)
 		}
 	}

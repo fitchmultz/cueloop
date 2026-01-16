@@ -186,6 +186,9 @@ func applyPartial(base Config, partial PartialConfig, basePath string, repoRoot 
 		if partial.Logging.RedactionMode != nil {
 			base.Logging.RedactionMode = redaction.NormalizeMode(string(*partial.Logging.RedactionMode))
 		}
+		if partial.Logging.MaxBufferedBytes != nil {
+			base.Logging.MaxBufferedBytes = *partial.Logging.MaxBufferedBytes
+		}
 	}
 	if partial.Paths != nil {
 		if partial.Paths.DataDir != nil {

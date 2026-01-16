@@ -615,6 +615,7 @@ func (l *loopView) startRun(runOnce bool) tea.Cmd {
 			QuarantineClean:     l.overrides.QuarantineClean,
 			ForceContextBuilder: l.overrides.ForceContextBuilder,
 			RedactionMode:       l.cfg.Logging.RedactionMode,
+			LogMaxBufferedBytes: l.cfg.Logging.MaxBufferedBytes,
 			Logger:              logger,
 			StateSink:           stateSink,
 		})

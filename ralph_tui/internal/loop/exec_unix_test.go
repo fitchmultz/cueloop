@@ -42,7 +42,7 @@ func TestRunCommandCancelKillsChildProcess(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- RunCommand(ctx, cmd, nil, logger)
+		errCh <- RunCommand(ctx, cmd, nil, logger, 0)
 	}()
 
 	childPID, ok := testutil.WaitForChildPID(logger.String, 2*time.Second)

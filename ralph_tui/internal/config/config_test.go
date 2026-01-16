@@ -376,6 +376,18 @@ func TestRedactionModeValidation(t *testing.T) {
 	}
 }
 
+func TestLoggingMaxBufferedBytesValidation(t *testing.T) {
+	base, err := DefaultConfig()
+	if err != nil {
+		t.Fatalf("default config: %v", err)
+	}
+
+	base.Logging.MaxBufferedBytes = -1
+	if err := base.Validate(); err == nil {
+		t.Fatalf("expected validation error for logging.max_buffered_bytes")
+	}
+}
+
 func TestApplyPartialNormalizesRedactionMode(t *testing.T) {
 	base, err := DefaultConfig()
 	if err != nil {

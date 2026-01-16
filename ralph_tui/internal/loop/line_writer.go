@@ -14,11 +14,18 @@ type lineWriter struct {
 	logger   Logger
 	tee      io.Writer
 	splitter *streaming.LineSplitter
+	maxBytes int
 	mu       sync.Mutex
 }
 
-func newLineWriter(redactor *Redactor, logger Logger, tee io.Writer) *lineWriter {
-	return &lineWriter{redactor: redactor, logger: logger, tee: tee, splitter: streaming.NewLineSplitter(streaming.DefaultMaxBufferedBytes)}
+func newLineWriter(redactor *Redactor, logger Logger, tee io.Writer, maxBufferedBytes int) *lineWriter {
+	return &lineWriter{
+		redactor: redactor,
+		logger:   logger,
+		tee:      tee,
+		splitter: streaming.NewLineSplitter(maxBufferedBytes),
+		maxBytes: maxBufferedBytes,
+	}
 }
 
 func (w *lineWriter) Write(p []byte) (int, error) {
@@ -26,7 +33,7 @@ func (w *lineWriter) Write(p []byte) (int, error) {
 	defer w.mu.Unlock()
 
 	if w.splitter == nil {
-		w.splitter = streaming.NewLineSplitter(streaming.DefaultMaxBufferedBytes)
+		w.splitter = streaming.NewLineSplitter(w.maxBytes)
 	}
 	w.splitter.Write(p, w.writeLine)
 	return len(p), nil
@@ -49,7 +56,7 @@ func (w *lineWriter) Flush() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.splitter == nil {
-		w.splitter = streaming.NewLineSplitter(streaming.DefaultMaxBufferedBytes)
+		w.splitter = streaming.NewLineSplitter(w.maxBytes)
 	}
 	w.splitter.Flush(w.writeLine)
 }

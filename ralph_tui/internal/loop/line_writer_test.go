@@ -4,13 +4,11 @@ package loop
 import (
 	"strings"
 	"testing"
-
-	"github.com/mitchfultz/ralph/ralph_tui/internal/streaming"
 )
 
 func TestLineWriterSplitsOnCarriageReturn(t *testing.T) {
 	logger := &captureLogger{}
-	writer := newLineWriter(nil, logger, nil)
+	writer := newLineWriter(nil, logger, nil, 0)
 
 	if _, err := writer.Write([]byte("step 1\rstep 2\r")); err != nil {
 		t.Fatalf("write: %v", err)
@@ -26,8 +24,8 @@ func TestLineWriterSplitsOnCarriageReturn(t *testing.T) {
 
 func TestLineWriterFlushesPartialBufferAtLimit(t *testing.T) {
 	logger := &captureLogger{}
-	writer := newLineWriter(nil, logger, nil)
-	payload := strings.Repeat("a", streaming.DefaultMaxBufferedBytes+1)
+	writer := newLineWriter(nil, logger, nil, 4)
+	payload := strings.Repeat("a", 5)
 
 	if _, err := writer.Write([]byte(payload)); err != nil {
 		t.Fatalf("write: %v", err)

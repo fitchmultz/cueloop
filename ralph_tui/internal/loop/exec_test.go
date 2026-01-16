@@ -22,7 +22,7 @@ func TestRunCommandPreservesStdin(t *testing.T) {
 	cmd.Stdin = strings.NewReader("hello\n")
 
 	logger := &captureLogger{}
-	if err := RunCommand(ctx, cmd, nil, logger); err != nil {
+	if err := RunCommand(ctx, cmd, nil, logger, 0); err != nil {
 		t.Fatalf("RunCommand failed: %v", err)
 	}
 	if len(logger.lines) != 1 {

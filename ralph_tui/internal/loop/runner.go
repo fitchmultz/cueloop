@@ -13,10 +13,11 @@ import (
 
 // RunnerInvoker invokes Codex or opencode.
 type RunnerInvoker struct {
-	Runner     string
-	RunnerArgs []string
-	Redactor   *Redactor
-	Logger     Logger
+	Runner              string
+	RunnerArgs          []string
+	Redactor            *Redactor
+	Logger              Logger
+	LogMaxBufferedBytes int
 }
 
 // RunPrompt runs the runner using the provided prompt file.
@@ -34,7 +35,7 @@ func (r RunnerInvoker) RunPrompt(ctx context.Context, promptPath string) error {
 		defer file.Close()
 		cmd.Stdin = file
 	}
-	if err := RunCommand(ctx, cmd, r.Redactor, r.Logger); err != nil {
+	if err := RunCommand(ctx, cmd, r.Redactor, r.Logger, r.LogMaxBufferedBytes); err != nil {
 		return fmt.Errorf("%s failed while running loop: %w", invocation.Name, err)
 	}
 	return nil

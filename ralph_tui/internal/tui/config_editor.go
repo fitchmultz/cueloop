@@ -40,6 +40,7 @@ type configFormData struct {
 	LogLevel          string
 	LogFile           string
 	LogRedactionMode  string
+	LogMaxBuffered    string
 	DataDir           string
 	CacheDir          string
 	PinDir            string
@@ -82,6 +83,7 @@ const (
 	fieldLogLevel           = "logging.level"
 	fieldLogRedactionMode   = "logging.redaction_mode"
 	fieldLogFile            = "logging.file"
+	fieldLogMaxBuffered     = "logging.max_buffered_bytes"
 	fieldDataDir            = "paths.data_dir"
 	fieldCacheDir           = "paths.cache_dir"
 	fieldPinDir             = "paths.pin_dir"
@@ -572,6 +574,8 @@ func (e *configEditor) sourceForKey(key string) config.SourceLayer {
 		return e.sources.LoggingFile
 	case fieldLogRedactionMode:
 		return e.sources.LoggingRedaction
+	case fieldLogMaxBuffered:
+		return e.sources.LoggingMaxBuffer
 	case fieldDataDir:
 		return e.sources.PathsDataDir
 	case fieldCacheDir:
@@ -631,6 +635,8 @@ func (e *configEditor) applyFieldValueFromConfig(key string, cfg config.Config) 
 		e.data.LogRedactionMode = string(cfg.Logging.RedactionMode)
 	case fieldLogFile:
 		e.data.LogFile = cfg.Logging.File
+	case fieldLogMaxBuffered:
+		e.data.LogMaxBuffered = strconv.Itoa(cfg.Logging.MaxBufferedBytes)
 	case fieldDataDir:
 		e.data.DataDir = cfg.Paths.DataDir
 	case fieldCacheDir:
@@ -738,6 +744,8 @@ func (e *configEditor) syncFocusedFieldValue(field huh.Field, key string) {
 				input.Value(&e.data.LogLevel)
 			case fieldLogFile:
 				input.Value(&e.data.LogFile)
+			case fieldLogMaxBuffered:
+				input.Value(&e.data.LogMaxBuffered)
 			case fieldDataDir:
 				input.Value(&e.data.DataDir)
 			case fieldCacheDir:
@@ -842,6 +850,12 @@ func (e *configEditor) buildForm() *huh.Form {
 	e.registerFieldDesc(fieldLogRedactionMode, func(desc string) { logRedaction.Description(desc) })
 	logFile := huh.NewInput().Title("Log File").Value(&e.data.LogFile).Key(fieldLogFile)
 	e.registerFieldDesc(fieldLogFile, func(desc string) { logFile.Description(desc) })
+	logMaxBuffered := huh.NewInput().
+		Title("Log Max Buffered Bytes").
+		Value(&e.data.LogMaxBuffered).
+		Validate(nonNegativeInt("logging.max_buffered_bytes")).
+		Key(fieldLogMaxBuffered)
+	e.registerFieldDesc(fieldLogMaxBuffered, func(desc string) { logMaxBuffered.Description(desc) })
 
 	dataDir := huh.NewInput().Title("Data Dir").Value(&e.data.DataDir).Validate(nonEmptyString("paths.data_dir")).Key(fieldDataDir)
 	e.registerFieldDesc(fieldDataDir, func(desc string) { dataDir.Description(desc) })
@@ -930,6 +944,7 @@ func (e *configEditor) buildForm() *huh.Form {
 			logLevel,
 			logRedaction,
 			logFile,
+			logMaxBuffered,
 			dataDir,
 			cacheDir,
 			pinDir,
@@ -962,6 +977,7 @@ func formDataFromConfig(cfg config.Config) configFormData {
 		LogLevel:          cfg.Logging.Level,
 		LogFile:           cfg.Logging.File,
 		LogRedactionMode:  string(cfg.Logging.RedactionMode),
+		LogMaxBuffered:    strconv.Itoa(cfg.Logging.MaxBufferedBytes),
 		DataDir:           cfg.Paths.DataDir,
 		CacheDir:          cfg.Paths.CacheDir,
 		PinDir:            cfg.Paths.PinDir,
@@ -1022,6 +1038,10 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 	if !redaction.ValidMode(logRedactionMode) {
 		return config.PartialConfig{}, fmt.Errorf("logging.redaction_mode must be one of off, secrets_only, or all_env")
 	}
+	logMaxBuffered, err := parseNonNegativeInt("logging.max_buffered_bytes", data.LogMaxBuffered)
+	if err != nil {
+		return config.PartialConfig{}, err
+	}
 	specsRunner := strings.TrimSpace(data.SpecsRunner)
 	if specsRunner == "" {
 		return config.PartialConfig{}, fmt.Errorf("specs.runner must be set")
@@ -1065,9 +1085,10 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 			RefreshSeconds: &refreshSeconds,
 		},
 		Logging: &config.LoggingPartial{
-			Level:         &logLevel,
-			File:          &logFile,
-			RedactionMode: &logMode,
+			Level:            &logLevel,
+			File:             &logFile,
+			RedactionMode:    &logMode,
+			MaxBufferedBytes: &logMaxBuffered,
 		},
 		Paths: &config.PathsPartial{
 			DataDir:  &dataDir,

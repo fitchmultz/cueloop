@@ -14,6 +14,7 @@ type lineSink interface {
 type streamWriter struct {
 	sink     lineSink
 	splitter *streaming.LineSplitter
+	maxBytes int
 }
 
 type logBatch struct {
@@ -22,8 +23,12 @@ type logBatch struct {
 	Done  bool
 }
 
-func newStreamWriter(sink lineSink) *streamWriter {
-	return &streamWriter{sink: sink, splitter: streaming.NewLineSplitter(streaming.DefaultMaxBufferedBytes)}
+func newStreamWriter(sink lineSink, maxBufferedBytes int) *streamWriter {
+	return &streamWriter{
+		sink:     sink,
+		splitter: streaming.NewLineSplitter(maxBufferedBytes),
+		maxBytes: maxBufferedBytes,
+	}
 }
 
 func newLogChannel() chan string {
@@ -61,7 +66,7 @@ func (w *streamWriter) Write(p []byte) (int, error) {
 		return len(p), nil
 	}
 	if w.splitter == nil {
-		w.splitter = streaming.NewLineSplitter(streaming.DefaultMaxBufferedBytes)
+		w.splitter = streaming.NewLineSplitter(w.maxBytes)
 	}
 	w.splitter.Write(p, w.emitLine)
 	return len(p), nil
@@ -72,7 +77,7 @@ func (w *streamWriter) Flush() {
 		return
 	}
 	if w.splitter == nil {
-		w.splitter = streaming.NewLineSplitter(streaming.DefaultMaxBufferedBytes)
+		w.splitter = streaming.NewLineSplitter(w.maxBytes)
 	}
 	w.splitter.Flush(w.emitLine)
 }

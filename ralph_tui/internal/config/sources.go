@@ -23,6 +23,7 @@ type FieldSources struct {
 	LoggingLevel      SourceLayer
 	LoggingFile       SourceLayer
 	LoggingRedaction  SourceLayer
+	LoggingMaxBuffer  SourceLayer
 	PathsDataDir      SourceLayer
 	PathsCacheDir     SourceLayer
 	PathsPinDir       SourceLayer
@@ -54,6 +55,7 @@ func FieldSourcesForConfigs(defaults, globalCfg, repoCfg, cliCfg, sessionCfg Con
 		LoggingLevel:      SourceDefault,
 		LoggingFile:       SourceDefault,
 		LoggingRedaction:  SourceDefault,
+		LoggingMaxBuffer:  SourceDefault,
 		PathsDataDir:      SourceDefault,
 		PathsCacheDir:     SourceDefault,
 		PathsPinDir:       SourceDefault,
@@ -82,6 +84,7 @@ func FieldSourcesForConfigs(defaults, globalCfg, repoCfg, cliCfg, sessionCfg Con
 	sources.LoggingLevel = resolveSource(defaults.Logging.Level, globalCfg.Logging.Level, repoCfg.Logging.Level, cliCfg.Logging.Level, sessionCfg.Logging.Level)
 	sources.LoggingFile = resolveSource(defaults.Logging.File, globalCfg.Logging.File, repoCfg.Logging.File, cliCfg.Logging.File, sessionCfg.Logging.File)
 	sources.LoggingRedaction = resolveSource(defaults.Logging.RedactionMode, globalCfg.Logging.RedactionMode, repoCfg.Logging.RedactionMode, cliCfg.Logging.RedactionMode, sessionCfg.Logging.RedactionMode)
+	sources.LoggingMaxBuffer = resolveSource(defaults.Logging.MaxBufferedBytes, globalCfg.Logging.MaxBufferedBytes, repoCfg.Logging.MaxBufferedBytes, cliCfg.Logging.MaxBufferedBytes, sessionCfg.Logging.MaxBufferedBytes)
 
 	sources.PathsDataDir = resolveSource(defaults.Paths.DataDir, globalCfg.Paths.DataDir, repoCfg.Paths.DataDir, cliCfg.Paths.DataDir, sessionCfg.Paths.DataDir)
 	sources.PathsCacheDir = resolveSource(defaults.Paths.CacheDir, globalCfg.Paths.CacheDir, repoCfg.Paths.CacheDir, cliCfg.Paths.CacheDir, sessionCfg.Paths.CacheDir)

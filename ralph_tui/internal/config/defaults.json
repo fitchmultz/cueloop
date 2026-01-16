@@ -8,7 +8,8 @@
   "logging": {
     "level": "info",
     "file": "",
-    "redaction_mode": "secrets_only"
+    "redaction_mode": "secrets_only",
+    "max_buffered_bytes": 1048576
   },
   "paths": {
     "data_dir": "data",
