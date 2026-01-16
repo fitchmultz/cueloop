@@ -7,7 +7,7 @@
 	},
 	"logging": {
 		"level": "info",
-		"file": "",
+		"file": ".ralph/logs/ralph.log",
 		"redaction_mode": "secrets_only",
 		"max_buffered_bytes": 1048576
 	},

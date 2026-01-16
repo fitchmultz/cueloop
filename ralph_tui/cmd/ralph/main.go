@@ -69,7 +69,7 @@ func newRootCommand() *cobra.Command {
 	cmd.PersistentFlags().String("ui-theme", "", "UI theme name")
 	cmd.PersistentFlags().Int("refresh-seconds", 0, "UI refresh interval in seconds")
 	cmd.PersistentFlags().String("log-level", "", "Log level (debug, info, warn, error)")
-	cmd.PersistentFlags().String("log-file", "", "Log file path")
+	cmd.PersistentFlags().String("log-file", "", "Log file path (default: .ralph/logs/ralph.log)")
 	cmd.PersistentFlags().String("redaction-mode", "", "Log redaction mode (off, secrets_only, all_env)")
 	cmd.PersistentFlags().Int("log-max-buffered-bytes", 0, "Max bytes buffered per log line before partial flush (0 = disable)")
 	cmd.PersistentFlags().String("project-type", "", "Project type (code, docs)")

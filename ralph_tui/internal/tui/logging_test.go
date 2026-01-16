@@ -238,3 +238,41 @@ func TestTUILoggerCapturesRotationErrorAndRecovers(t *testing.T) {
 		t.Fatalf("expected post-rotation entry in current log")
 	}
 }
+
+func TestTUILoggerDefaultsToRepoLocalLogsDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, ".ralph", "data")
+	cfg := config.Config{
+		Logging: config.LoggingConfig{
+			Level: "info",
+			File:  "",
+		},
+		Paths: config.PathsConfig{
+			DataDir: dataDir,
+		},
+	}
+
+	logger, err := newTUILogger(cfg)
+	if err != nil {
+		t.Fatalf("newTUILogger failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = logger.Close()
+	})
+
+	expectedPath := filepath.Join(tmpDir, ".ralph", "logs", "ralph.log")
+	if logger.Path() != expectedPath {
+		t.Fatalf("expected logger path %q, got %q", expectedPath, logger.Path())
+	}
+
+	logger.Info("test.default", map[string]any{"note": "hello"})
+
+	data, err := os.ReadFile(expectedPath)
+	if err != nil {
+		t.Fatalf("read log file: %v", err)
+	}
+	payload := string(data)
+	if !strings.Contains(payload, "\"msg\":\"test.default\"") {
+		t.Fatalf("expected log entry in payload, got %q", payload)
+	}
+}

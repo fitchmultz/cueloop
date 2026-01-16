@@ -71,6 +71,9 @@ func TestScreenEntryRefreshUpdatesLogsView(t *testing.T) {
 
 	before := m.logsView.viewportSetContentCalls
 	loopPath := loopOutputLogPath(cfg.Paths.CacheDir)
+	if err := os.MkdirAll(filepath.Dir(loopPath), 0o700); err != nil {
+		t.Fatalf("create loop output dir: %v", err)
+	}
 	if err := os.WriteFile(loopPath, []byte("loop refresh line\n"), 0o600); err != nil {
 		t.Fatalf("write loop output: %v", err)
 	}

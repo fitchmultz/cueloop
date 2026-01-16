@@ -121,10 +121,11 @@ func resolveLogPath(cfg config.Config) (string, error) {
 	if strings.TrimSpace(cfg.Logging.File) != "" {
 		return filepath.Clean(cfg.Logging.File), nil
 	}
-	if strings.TrimSpace(cfg.Paths.CacheDir) == "" {
-		return "", fmt.Errorf("cache dir is required to resolve log path")
+	if strings.TrimSpace(cfg.Paths.DataDir) == "" {
+		return "", fmt.Errorf("data_dir is required to resolve default log path")
 	}
-	return filepath.Join(cfg.Paths.CacheDir, "ralph_tui.log"), nil
+	ralphDir := filepath.Dir(cfg.Paths.DataDir)
+	return filepath.Join(ralphDir, "logs", "ralph.log"), nil
 }
 
 func (l *tuiLogger) Path() string {

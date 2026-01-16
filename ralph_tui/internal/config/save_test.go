@@ -19,7 +19,7 @@ func TestSavePartialRepoRelativePaths(t *testing.T) {
 	dataDir := filepath.Join(repoRoot, ".ralph", "data")
 	cacheDir := filepath.Join(repoRoot, ".ralph", "cache")
 	pinDir := filepath.Join(repoRoot, ".ralph", "pin")
-	logFile := filepath.Join(repoRoot, ".ralph", "cache", "ralph_tui.log")
+	logFile := filepath.Join(repoRoot, ".ralph", "logs", "ralph.log")
 	partial := PartialConfig{
 		Paths: &PathsPartial{
 			DataDir:  stringPtr(dataDir),
@@ -58,7 +58,7 @@ func TestSavePartialRepoRelativePaths(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected logging map")
 	}
-	if got := loggingValue["file"]; got != filepath.Join(".ralph", "cache", "ralph_tui.log") {
+	if got := loggingValue["file"]; got != filepath.Join(".ralph", "logs", "ralph.log") {
 		t.Fatalf("expected relative logging.file, got %#v", got)
 	}
 }

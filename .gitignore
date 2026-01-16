@@ -6,3 +6,4 @@
 **/.ty_cache/
 ralph_tui/ralph
 .ralph/cache/
+.ralph/logs/
