@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
@@ -138,7 +139,7 @@ func loadPartialFromFile(path string) (*PartialConfig, error) {
 }
 
 func isEmptyPartial(partial PartialConfig) bool {
-	if partial.Version != nil || partial.UI != nil || partial.Logging != nil || partial.Paths != nil {
+	if partial.Version != nil || partial.ProjectType != nil || partial.UI != nil || partial.Logging != nil || partial.Paths != nil {
 		return false
 	}
 	if partial.Specs != nil || partial.Loop != nil || partial.Git != nil {
@@ -150,6 +151,9 @@ func isEmptyPartial(partial PartialConfig) bool {
 func applyPartial(base Config, partial PartialConfig, basePath string, repoRoot string) (Config, error) {
 	if partial.Version != nil {
 		base.Version = *partial.Version
+	}
+	if partial.ProjectType != nil {
+		base.ProjectType = project.NormalizeType(string(*partial.ProjectType))
 	}
 	if partial.UI != nil {
 		if partial.UI.Theme != nil {

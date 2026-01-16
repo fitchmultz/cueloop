@@ -141,8 +141,10 @@ func newSpecsView(cfg config.Config, locations paths.Locations, keys keyMap) (*s
 	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
 		view.queueStamp = stamp
 	}
-	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "specs_builder.md")); err == nil {
-		view.promptStamp = stamp
+	if promptPath, err := specs.ResolvePromptTemplate(cfg.Paths.PinDir, cfg.ProjectType, ""); err == nil {
+		if stamp, err := getFileStamp(promptPath); err == nil {
+			view.promptStamp = stamp
+		}
 	}
 	return view, nil
 }
@@ -428,7 +430,10 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 			return specsPreviewMsg{err: err}
 		}
 
-		promptPath := filepath.Join(cfg.Paths.PinDir, "specs_builder.md")
+		promptPath, err := specs.ResolvePromptTemplate(cfg.Paths.PinDir, cfg.ProjectType, "")
+		if err != nil {
+			return specsPreviewMsg{err: err}
+		}
 		prompt, err := specs.FillPrompt(promptPath, specs.FillPromptOptions{
 			Interactive:   interactive,
 			Innovate:      resolution.Effective,
@@ -508,6 +513,7 @@ func (s *specsView) runBuildCmd() tea.Cmd {
 		result, err := specs.Build(ctx, specs.BuildOptions{
 			RepoRoot:         s.locations.RepoRoot,
 			PinDir:           s.cfg.Paths.PinDir,
+			ProjectType:      s.cfg.ProjectType,
 			Runner:           s.runner,
 			RunnerArgs:       runnerargs.ApplyReasoningEffort(string(s.runner), s.runnerArgs, s.reasoningEffort).Args,
 			Interactive:      s.interactive,
@@ -662,8 +668,10 @@ func (s *specsView) SetConfig(cfg config.Config, locations paths.Locations) {
 	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")); err == nil {
 		s.queueStamp = stamp
 	}
-	if stamp, err := getFileStamp(filepath.Join(cfg.Paths.PinDir, "specs_builder.md")); err == nil {
-		s.promptStamp = stamp
+	if promptPath, err := specs.ResolvePromptTemplate(cfg.Paths.PinDir, cfg.ProjectType, ""); err == nil {
+		if stamp, err := getFileStamp(promptPath); err == nil {
+			s.promptStamp = stamp
+		}
 	}
 	if !s.running {
 		s.previewDirty = true
@@ -683,10 +691,14 @@ func (s *specsView) RefreshIfNeeded() tea.Cmd {
 		s.setRefreshError("watch implementation_queue.md", queueErr)
 		return nil
 	}
-	promptPath := filepath.Join(s.cfg.Paths.PinDir, "specs_builder.md")
+	promptPath, err := specs.ResolvePromptTemplate(s.cfg.Paths.PinDir, s.cfg.ProjectType, "")
+	if err != nil {
+		s.setRefreshError("resolve prompt template", err)
+		return nil
+	}
 	promptStamp, promptChanged, promptErr := fileChanged(promptPath, s.promptStamp)
 	if promptErr != nil {
-		s.setRefreshError("watch specs_builder.md", promptErr)
+		s.setRefreshError("watch "+filepath.Base(promptPath), promptErr)
 		return nil
 	}
 	if s.previewErr == "" && s.refreshErr != "" {

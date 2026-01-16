@@ -3,6 +3,8 @@ package prompts
 import (
 	"strings"
 	"testing"
+
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 )
 
 func TestWorkerPromptsIncludeSafetySections(t *testing.T) {
@@ -12,27 +14,46 @@ func TestWorkerPromptsIncludeSafetySections(t *testing.T) {
 		"END-OF-TURN CHECKLIST",
 	}
 	runners := []Runner{RunnerCodex, RunnerOpencode}
+	projectTypes := []project.Type{project.TypeCode, project.TypeDocs}
 
 	for _, runner := range runners {
-		content, err := WorkerPrompt(runner)
-		if err != nil {
-			t.Fatalf("failed to load worker prompt for %s: %v", runner, err)
-		}
-		for _, section := range sections {
-			if !strings.Contains(content, section) {
-				t.Fatalf("worker prompt for %s missing section %q", runner, section)
+		for _, projectType := range projectTypes {
+			content, err := WorkerPrompt(runner, projectType)
+			if err != nil {
+				t.Fatalf("failed to load worker prompt for %s/%s: %v", runner, projectType, err)
+			}
+			for _, section := range sections {
+				if !strings.Contains(content, section) {
+					t.Fatalf("worker prompt for %s/%s missing section %q", runner, projectType, section)
+				}
 			}
 		}
 	}
 }
 
 func TestSupervisorPromptIncludesRepairPriority(t *testing.T) {
-	content, err := SupervisorPrompt()
+	content, err := SupervisorPrompt(project.TypeCode)
 	if err != nil {
 		t.Fatalf("failed to load supervisor prompt: %v", err)
 	}
 	section := "MECHANICAL REPAIR PRIORITY (BEFORE QUARANTINE)"
 	if !strings.Contains(content, section) {
 		t.Fatalf("supervisor prompt missing section %q", section)
+	}
+}
+
+func TestDocsWorkerPromptMentionsDocsWorkflow(t *testing.T) {
+	content, err := WorkerPrompt(RunnerCodex, project.TypeDocs)
+	if err != nil {
+		t.Fatalf("failed to load docs worker prompt: %v", err)
+	}
+	if !strings.Contains(content, "DOCS WORKFLOW") {
+		t.Fatalf("expected docs worker prompt to mention docs workflow")
+	}
+	if !strings.Contains(content, "link checks") {
+		t.Fatalf("expected docs worker prompt to mention link checks")
+	}
+	if !strings.Contains(content, "research synthesis") {
+		t.Fatalf("expected docs worker prompt to mention research synthesis")
 	}
 }

@@ -1,7 +1,11 @@
 // Package config tests configuration source attribution helpers.
 package config
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
+)
 
 func TestFieldSourcesForConfigs(t *testing.T) {
 	defaults, err := DefaultConfig()
@@ -11,6 +15,7 @@ func TestFieldSourcesForConfigs(t *testing.T) {
 
 	globalCfg := defaults
 	globalCfg.UI.Theme = "global"
+	globalCfg.ProjectType = project.TypeDocs
 
 	repoCfg := globalCfg
 	repoCfg.Logging.Level = "warn"
@@ -26,6 +31,9 @@ func TestFieldSourcesForConfigs(t *testing.T) {
 
 	if sources.UITheme != SourceGlobal {
 		t.Fatalf("expected ui.theme source global, got %q", sources.UITheme)
+	}
+	if sources.ProjectType != SourceGlobal {
+		t.Fatalf("expected project_type source global, got %q", sources.ProjectType)
 	}
 	if sources.LoggingLevel != SourceRepo {
 		t.Fatalf("expected logging.level source repo, got %q", sources.LoggingLevel)

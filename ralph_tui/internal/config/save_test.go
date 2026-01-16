@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 )
 
 func TestSavePartialRepoRelativePaths(t *testing.T) {
@@ -101,6 +103,28 @@ func TestSavePartialGlobalKeepsAbsolute(t *testing.T) {
 	}
 	if got := loggingValue["file"]; got != logFile {
 		t.Fatalf("expected absolute logging.file, got %#v", got)
+	}
+}
+
+func TestSavePartialIncludesProjectType(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	mustMkdirAll(t, repoRoot)
+
+	projectType := project.TypeDocs
+	partial := PartialConfig{
+		ProjectType: &projectType,
+		Version:     intPtr(1),
+	}
+
+	path := filepath.Join(repoRoot, ".ralph", "ralph.json")
+	if err := SavePartial(path, partial, SaveOptions{RelativeRoot: repoRoot}); err != nil {
+		t.Fatalf("SavePartial failed: %v", err)
+	}
+
+	payload := readJSONMap(t, path)
+	if got := payload["project_type"]; got != "docs" {
+		t.Fatalf("expected project_type docs, got %#v", got)
 	}
 }
 

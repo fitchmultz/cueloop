@@ -9,18 +9,20 @@ import (
 	"strings"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
 )
 
 // Config is the fully-resolved configuration used by the app.
 type Config struct {
-	Version int           `json:"version"`
-	UI      UIConfig      `json:"ui"`
-	Logging LoggingConfig `json:"logging"`
-	Paths   PathsConfig   `json:"paths"`
-	Specs   SpecsConfig   `json:"specs"`
-	Loop    LoopConfig    `json:"loop"`
-	Git     GitConfig     `json:"git"`
+	Version     int           `json:"version"`
+	ProjectType project.Type  `json:"project_type"`
+	UI          UIConfig      `json:"ui"`
+	Logging     LoggingConfig `json:"logging"`
+	Paths       PathsConfig   `json:"paths"`
+	Specs       SpecsConfig   `json:"specs"`
+	Loop        LoopConfig    `json:"loop"`
+	Git         GitConfig     `json:"git"`
 }
 
 // UIConfig controls TUI presentation and refresh behavior.
@@ -86,6 +88,9 @@ type GitConfig struct {
 func (c Config) Validate() error {
 	if c.Version < 1 {
 		return fmt.Errorf("version must be >= 1")
+	}
+	if !project.ValidType(c.ProjectType) {
+		return fmt.Errorf("project_type must be code or docs")
 	}
 	if strings.TrimSpace(c.UI.Theme) == "" {
 		return fmt.Errorf("ui.theme must be set")
@@ -204,13 +209,14 @@ func validDirtyRepoPolicy(value string) bool {
 
 // PartialConfig captures optional overrides from config files, flags, or session values.
 type PartialConfig struct {
-	Version *int            `json:"version,omitempty"`
-	UI      *UIPartial      `json:"ui,omitempty"`
-	Logging *LoggingPartial `json:"logging,omitempty"`
-	Paths   *PathsPartial   `json:"paths,omitempty"`
-	Specs   *SpecsPartial   `json:"specs,omitempty"`
-	Loop    *LoopPartial    `json:"loop,omitempty"`
-	Git     *GitPartial     `json:"git,omitempty"`
+	Version     *int            `json:"version,omitempty"`
+	ProjectType *project.Type   `json:"project_type,omitempty"`
+	UI          *UIPartial      `json:"ui,omitempty"`
+	Logging     *LoggingPartial `json:"logging,omitempty"`
+	Paths       *PathsPartial   `json:"paths,omitempty"`
+	Specs       *SpecsPartial   `json:"specs,omitempty"`
+	Loop        *LoopPartial    `json:"loop,omitempty"`
+	Git         *GitPartial     `json:"git,omitempty"`
 }
 
 // UIPartial overrides UIConfig fields when set.

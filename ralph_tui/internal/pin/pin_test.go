@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/lockfile"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 )
 
 type fixturePaths struct {
@@ -157,6 +158,21 @@ func TestInitLayoutCreatesValidPin(t *testing.T) {
 	}
 	if !cacheInfo.IsDir() {
 		t.Fatalf("cache path is not a directory: %s", result.CacheDir)
+	}
+}
+
+func TestInitLayoutCreatesDocsTemplate(t *testing.T) {
+	tmpDir := t.TempDir()
+	pinDir := filepath.Join(tmpDir, ".ralph", "pin")
+	cacheDir := filepath.Join(tmpDir, ".ralph", "cache")
+
+	_, err := InitLayout(pinDir, cacheDir, InitOptions{ProjectType: project.TypeDocs})
+	if err != nil {
+		t.Fatalf("InitLayout failed: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(pinDir, "specs_builder_docs.md")); err != nil {
+		t.Fatalf("specs_builder_docs missing after init: %v", err)
 	}
 }
 

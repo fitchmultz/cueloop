@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
 )
 
@@ -172,6 +173,7 @@ func TestApplyPartialNormalizesRunnerSettings(t *testing.T) {
 	}
 
 	partial := PartialConfig{
+		ProjectType: projectTypePtr(" Docs "),
 		Specs: &SpecsPartial{
 			Runner:          stringPtr("codex"),
 			RunnerArgs:      []string{"  -c", "model_reasoning_effort=\"high\" ", " ", ""},
@@ -190,6 +192,9 @@ func TestApplyPartialNormalizesRunnerSettings(t *testing.T) {
 	}
 	if got := cfg.Specs.ReasoningEffort; got != "high" {
 		t.Fatalf("expected specs.reasoning_effort to be normalized, got %q", got)
+	}
+	if got := cfg.ProjectType; got != project.TypeDocs {
+		t.Fatalf("expected project_type normalized to %q, got %q", project.TypeDocs, got)
 	}
 	if got := cfg.Loop.ReasoningEffort; got != "auto" {
 		t.Fatalf("expected loop.reasoning_effort to be normalized, got %q", got)
@@ -243,6 +248,17 @@ func TestDirtyRepoPolicyValidation(t *testing.T) {
 	base.Loop.DirtyRepo.StartPolicy = "bad"
 	if err := base.Validate(); err == nil {
 		t.Fatalf("expected validation error for loop.dirty_repo.start_policy")
+	}
+}
+
+func TestProjectTypeValidation(t *testing.T) {
+	base, err := DefaultConfig()
+	if err != nil {
+		t.Fatalf("default config: %v", err)
+	}
+	base.ProjectType = project.Type("invalid")
+	if err := base.Validate(); err == nil {
+		t.Fatalf("expected validation error for project_type")
 	}
 }
 
@@ -337,6 +353,11 @@ func mustMkdirAll(t *testing.T, path string) {
 
 func stringPtr(value string) *string {
 	return &value
+}
+
+func projectTypePtr(value string) *project.Type {
+	typed := project.Type(value)
+	return &typed
 }
 
 func intPtr(value int) *int {

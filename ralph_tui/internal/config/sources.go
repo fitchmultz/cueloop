@@ -17,6 +17,7 @@ const (
 
 // FieldSources captures the source layer for each configuration field.
 type FieldSources struct {
+	ProjectType       SourceLayer
 	UITheme           SourceLayer
 	UIRefreshSeconds  SourceLayer
 	LoggingLevel      SourceLayer
@@ -47,6 +48,7 @@ type FieldSources struct {
 // FieldSourcesForConfigs compares each layer's config to determine source layers.
 func FieldSourcesForConfigs(defaults, globalCfg, repoCfg, cliCfg, sessionCfg Config) FieldSources {
 	sources := FieldSources{
+		ProjectType:       SourceDefault,
 		UITheme:           SourceDefault,
 		UIRefreshSeconds:  SourceDefault,
 		LoggingLevel:      SourceDefault,
@@ -74,6 +76,7 @@ func FieldSourcesForConfigs(defaults, globalCfg, repoCfg, cliCfg, sessionCfg Con
 		GitAutoPush:       SourceDefault,
 	}
 
+	sources.ProjectType = resolveSource(defaults.ProjectType, globalCfg.ProjectType, repoCfg.ProjectType, cliCfg.ProjectType, sessionCfg.ProjectType)
 	sources.UITheme = resolveSource(defaults.UI.Theme, globalCfg.UI.Theme, repoCfg.UI.Theme, cliCfg.UI.Theme, sessionCfg.UI.Theme)
 	sources.UIRefreshSeconds = resolveSource(defaults.UI.RefreshSeconds, globalCfg.UI.RefreshSeconds, repoCfg.UI.RefreshSeconds, cliCfg.UI.RefreshSeconds, sessionCfg.UI.RefreshSeconds)
 	sources.LoggingLevel = resolveSource(defaults.Logging.Level, globalCfg.Logging.Level, repoCfg.Logging.Level, cliCfg.Logging.Level, sessionCfg.Logging.Level)

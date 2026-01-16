@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/prompts"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
@@ -25,6 +26,7 @@ type Options struct {
 	PinDir              string
 	PromptPath          string
 	SupervisorPrompt    string
+	ProjectType         project.Type
 	Runner              string
 	RunnerArgs          []string
 	ReasoningEffort     string
@@ -93,6 +95,13 @@ func NewRunner(opts Options) (*Runner, error) {
 	}
 	if opts.PinDir == "" {
 		return nil, fmt.Errorf("pin dir required")
+	}
+	if strings.TrimSpace(string(opts.ProjectType)) == "" {
+		opts.ProjectType = project.DefaultType()
+	}
+	opts.ProjectType = project.NormalizeType(string(opts.ProjectType))
+	if !project.ValidType(opts.ProjectType) {
+		return nil, fmt.Errorf("project_type must be code or docs")
 	}
 	if opts.DirtyRepoStart == "" {
 		opts.DirtyRepoStart = DirtyRepoPolicyError
@@ -538,7 +547,7 @@ func (r *Runner) loadWorkerPrompt() (string, error) {
 		return string(content), nil
 	}
 
-	return prompts.WorkerPrompt(prompts.Runner(r.opts.Runner))
+	return prompts.WorkerPrompt(prompts.Runner(r.opts.Runner), r.opts.ProjectType)
 }
 
 func (r *Runner) finalizeIteration(ctx context.Context, itemID string, itemLine string, headBefore string, opts FinalizeOptions) error {
@@ -910,7 +919,7 @@ func (r *Runner) loadSupervisorPrompt() (string, error) {
 		return string(content), nil
 	}
 
-	return prompts.SupervisorPrompt()
+	return prompts.SupervisorPrompt(r.opts.ProjectType)
 }
 
 func (r *Runner) quarantine(ctx context.Context, itemID string, headBefore string, reason string) (string, error) {

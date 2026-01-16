@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "project_type": "code",
   "ui": {
     "theme": "classic",
     "refresh_seconds": 5

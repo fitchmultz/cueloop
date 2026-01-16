@@ -3,9 +3,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -14,12 +16,14 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/migrate"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/term"
 )
 
 func main() {
@@ -66,6 +70,7 @@ func newRootCommand() *cobra.Command {
 	cmd.PersistentFlags().String("log-level", "", "Log level (debug, info, warn, error)")
 	cmd.PersistentFlags().String("log-file", "", "Log file path")
 	cmd.PersistentFlags().String("redaction-mode", "", "Log redaction mode (off, secrets_only, all_env)")
+	cmd.PersistentFlags().String("project-type", "", "Project type (code, docs)")
 	cmd.PersistentFlags().String("data-dir", "", "Data directory path")
 	cmd.PersistentFlags().String("cache-dir", "", "Cache directory path")
 	cmd.PersistentFlags().String("pin-dir", "", "Pin directory path")
@@ -128,7 +133,7 @@ func newInitCommand() *cobra.Command {
 		Use:     "init",
 		Short:   "Initialize Ralph pin and cache directories",
 		Long:    "Create the .ralph/pin and .ralph/cache layouts and seed default pin files.",
-		Example: "  ralph init\n  ralph init --force",
+		Example: "  ralph init\n  ralph init --project-type docs\n  ralph init --force",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			locs, err := paths.Resolve("")
@@ -146,16 +151,26 @@ func newInitCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			projectType, err := resolveInitProjectType(cmd, locs, cfg)
+			if err != nil {
+				return err
+			}
 			force, err := cmd.Flags().GetBool("force")
 			if err != nil {
 				return err
 			}
-			result, err := pin.InitLayout(cfg.Paths.PinDir, cfg.Paths.CacheDir, pin.InitOptions{Force: force})
+			result, err := pin.InitLayout(cfg.Paths.PinDir, cfg.Paths.CacheDir, pin.InitOptions{
+				Force:       force,
+				ProjectType: projectType,
+			})
 			if err != nil {
 				return err
 			}
 			files := pin.ResolveFiles(cfg.Paths.PinDir)
 			if err := pin.ValidatePin(files); err != nil {
+				return err
+			}
+			if err := persistProjectTypeConfig(locs.RepoConfigPath, locs.RepoRoot, projectType); err != nil {
 				return err
 			}
 
@@ -177,6 +192,127 @@ func newInitCommand() *cobra.Command {
 	}
 	cmd.Flags().Bool("force", false, "Overwrite existing pin files")
 	return cmd
+}
+
+func resolveInitProjectType(cmd *cobra.Command, locs paths.Locations, cfg config.Config) (project.Type, error) {
+	flags := cmd.Flags()
+	if flags.Changed("project-type") {
+		value, err := flags.GetString("project-type")
+		if err != nil {
+			return "", err
+		}
+		projectType := project.NormalizeType(value)
+		if projectType == "" {
+			projectType = project.DefaultType()
+		}
+		if !project.ValidType(projectType) {
+			return "", fmt.Errorf("project_type must be code or docs")
+		}
+		return projectType, nil
+	}
+
+	if locs.RepoConfigPath != "" {
+		partial, err := config.LoadPartial(locs.RepoConfigPath)
+		if err != nil {
+			return "", err
+		}
+		if partial != nil && partial.ProjectType != nil {
+			projectType := project.NormalizeType(string(*partial.ProjectType))
+			if projectType == "" {
+				projectType = project.DefaultType()
+			}
+			if !project.ValidType(projectType) {
+				return "", fmt.Errorf("project_type must be code or docs")
+			}
+			return projectType, nil
+		}
+	}
+
+	projectType := project.NormalizeType(string(cfg.ProjectType))
+	if projectType == "" {
+		projectType = project.DefaultType()
+	}
+	if !project.ValidType(projectType) {
+		return "", fmt.Errorf("project_type must be code or docs")
+	}
+
+	if !isTerminal(cmd.InOrStdin()) {
+		return projectType, nil
+	}
+
+	detected, summary, err := project.DetectType(locs.RepoRoot)
+	if err != nil {
+		return projectType, nil
+	}
+	if detected == "" {
+		detected = projectType
+	}
+	return promptProjectType(cmd.InOrStdin(), cmd.OutOrStdout(), detected, summary)
+}
+
+func promptProjectType(in io.Reader, out io.Writer, defaultType project.Type, summary project.DetectSummary) (project.Type, error) {
+	reader := bufio.NewReader(in)
+	if summary.CodeFiles > 0 || summary.DocsFiles > 0 {
+		_, _ = fmt.Fprintf(out, "Detected %d code files and %d docs files.\n", summary.CodeFiles, summary.DocsFiles)
+	}
+	for {
+		_, _ = fmt.Fprintf(out, "Select project type [code/docs] (default: %s): ", defaultType)
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return "", err
+		}
+		choice := project.NormalizeType(line)
+		if choice == "" {
+			return defaultType, nil
+		}
+		if project.ValidType(choice) {
+			return choice, nil
+		}
+		_, _ = fmt.Fprintln(out, "Invalid selection. Enter \"code\" or \"docs\".")
+		if err == io.EOF {
+			return defaultType, nil
+		}
+	}
+}
+
+func persistProjectTypeConfig(repoConfigPath string, repoRoot string, projectType project.Type) error {
+	if repoConfigPath == "" {
+		return fmt.Errorf("repo config path unavailable")
+	}
+	normalized := project.NormalizeType(string(projectType))
+	if normalized == "" {
+		normalized = project.DefaultType()
+	}
+	if !project.ValidType(normalized) {
+		return fmt.Errorf("project_type must be code or docs")
+	}
+	partial, err := config.LoadPartial(repoConfigPath)
+	if err != nil {
+		return err
+	}
+	if partial == nil {
+		partial = &config.PartialConfig{}
+	}
+	if partial.ProjectType != nil {
+		existing := project.NormalizeType(string(*partial.ProjectType))
+		if existing == normalized && partial.Version != nil {
+			return nil
+		}
+	}
+	partial.ProjectType = &normalized
+	if partial.Version == nil {
+		version := 1
+		partial.Version = &version
+	}
+	return config.SavePartial(repoConfigPath, *partial, config.SaveOptions{RelativeRoot: repoRoot})
+}
+
+func isTerminal(reader io.Reader) bool {
+	file, ok := reader.(*os.File)
+	if !ok {
+		return false
+	}
+	return term.IsTerminal(int(file.Fd()))
 }
 
 func newConfigShowCommand() *cobra.Command {
@@ -254,6 +390,14 @@ func buildCLIOverrides(cmd *cobra.Command) (config.PartialConfig, error) {
 		mode := redaction.Mode(value)
 		logging := ensureLoggingPartial(&overrides)
 		logging.RedactionMode = &mode
+	}
+	if flags.Changed("project-type") {
+		value, err := flags.GetString("project-type")
+		if err != nil {
+			return overrides, err
+		}
+		projectType := project.Type(value)
+		overrides.ProjectType = &projectType
 	}
 	if flags.Changed("data-dir") {
 		value, err := flags.GetString("data-dir")
@@ -401,6 +545,7 @@ func newSpecsBuildCommand() *cobra.Command {
 				RepoRoot:         locs.RepoRoot,
 				PinDir:           cfg.Paths.PinDir,
 				PromptTemplate:   promptPath,
+				ProjectType:      cfg.ProjectType,
 				Runner:           specs.Runner(runner),
 				RunnerArgs:       runnerArgs,
 				Interactive:      interactive,
@@ -443,7 +588,7 @@ func newSpecsBuildCommand() *cobra.Command {
 	cmd.Flags().Bool("scout-workflow", false, "Include scout workflow instructions in the prompt")
 	cmd.Flags().String("user-focus", "", "Optional focus prompt to guide the scout workflow")
 	cmd.Flags().Bool("print-prompt", false, "Print the filled prompt and exit")
-	cmd.Flags().String("prompt", "", "Prompt template path (default: .ralph/pin/specs_builder.md)")
+	cmd.Flags().String("prompt", "", "Prompt template path (default: .ralph/pin/specs_builder.md or specs_builder_docs.md by project type)")
 
 	return cmd
 }
@@ -636,6 +781,7 @@ func newLoopRunCommand() *cobra.Command {
 				PinDir:              cfg.Paths.PinDir,
 				PromptPath:          promptPath,
 				SupervisorPrompt:    supervisorPrompt,
+				ProjectType:         cfg.ProjectType,
 				Runner:              runnerName,
 				RunnerArgs:          runnerArgs,
 				ReasoningEffort:     effort,

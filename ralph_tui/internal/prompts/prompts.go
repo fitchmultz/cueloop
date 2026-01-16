@@ -4,6 +4,8 @@ package prompts
 import (
 	"embed"
 	"fmt"
+
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 )
 
 type Runner string
@@ -16,16 +18,19 @@ const (
 //go:embed defaults/*
 var defaultPrompts embed.FS
 
-// WorkerPrompt returns the default worker prompt content for a runner.
-func WorkerPrompt(runner Runner) (string, error) {
-	filename := "defaults/prompt_codex.md"
-	switch runner {
-	case RunnerCodex:
-		filename = "defaults/prompt_codex.md"
-	case RunnerOpencode:
-		filename = "defaults/prompt_opencode.md"
-	default:
-		return "", fmt.Errorf("unsupported runner: %s", runner)
+// WorkerPrompt returns the default worker prompt content for a runner and project type.
+func WorkerPrompt(runner Runner, projectType project.Type) (string, error) {
+	normalized := project.NormalizeType(string(projectType))
+	if normalized == "" {
+		normalized = project.DefaultType()
+	}
+	if !project.ValidType(normalized) {
+		return "", fmt.Errorf("unsupported project type: %s", projectType)
+	}
+
+	filename, err := workerPromptFilename(runner, normalized)
+	if err != nil {
+		return "", err
 	}
 
 	content, err := defaultPrompts.ReadFile(filename)
@@ -35,11 +40,36 @@ func WorkerPrompt(runner Runner) (string, error) {
 	return string(content), nil
 }
 
-// SupervisorPrompt returns the default supervisor prompt content.
-func SupervisorPrompt() (string, error) {
+// SupervisorPrompt returns the default supervisor prompt content for a project type.
+func SupervisorPrompt(projectType project.Type) (string, error) {
+	normalized := project.NormalizeType(string(projectType))
+	if normalized == "" {
+		normalized = project.DefaultType()
+	}
+	if !project.ValidType(normalized) {
+		return "", fmt.Errorf("unsupported project type: %s", projectType)
+	}
+
 	content, err := defaultPrompts.ReadFile("defaults/supervisor_prompt.md")
 	if err != nil {
 		return "", err
 	}
 	return string(content), nil
+}
+
+func workerPromptFilename(runner Runner, projectType project.Type) (string, error) {
+	switch runner {
+	case RunnerCodex:
+		if projectType == project.TypeDocs {
+			return "defaults/prompt_codex_docs.md", nil
+		}
+		return "defaults/prompt_codex.md", nil
+	case RunnerOpencode:
+		if projectType == project.TypeDocs {
+			return "defaults/prompt_opencode_docs.md", nil
+		}
+		return "defaults/prompt_opencode.md", nil
+	default:
+		return "", fmt.Errorf("unsupported runner: %s", runner)
+	}
 }

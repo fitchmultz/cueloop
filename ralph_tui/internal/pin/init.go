@@ -10,11 +10,13 @@ import (
 	"strings"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/fileutil"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 )
 
 // InitOptions configures how pin initialization behaves.
 type InitOptions struct {
-	Force bool
+	Force       bool
+	ProjectType project.Type
 }
 
 // InitResult captures initialization outcomes.
@@ -60,6 +62,21 @@ func InitLayout(pinDir string, cacheDir string, opts InitOptions) (InitResult, e
 		{path: files.LookupPath, content: defaultLookupContent},
 		{path: files.ReadmePath, content: defaultReadmeContent},
 		{path: files.SpecsPath, content: defaultSpecsBuilderContent},
+	}
+
+	projectType := project.NormalizeType(string(opts.ProjectType))
+	if projectType == "" {
+		projectType = project.DefaultType()
+	}
+	if !project.ValidType(projectType) {
+		return InitResult{}, fmt.Errorf("project_type must be code or docs")
+	}
+	if projectType == project.TypeDocs {
+		docsTemplate := filepath.Join(cleanPinDir, "specs_builder_docs.md")
+		entries = append(entries, struct {
+			path    string
+			content string
+		}{path: docsTemplate, content: defaultSpecsBuilderDocsContent})
 	}
 
 	result := InitResult{

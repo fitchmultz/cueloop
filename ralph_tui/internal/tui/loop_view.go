@@ -589,6 +589,7 @@ func (l *loopView) startRun(runOnce bool) tea.Cmd {
 			PinDir:              l.cfg.Paths.PinDir,
 			PromptPath:          "",
 			SupervisorPrompt:    "",
+			ProjectType:         l.cfg.ProjectType,
 			Runner:              l.overrides.Runner,
 			RunnerArgs:          runnerargs.ApplyReasoningEffort(l.overrides.Runner, l.overrides.RunnerArgs, l.overrides.ReasoningEffort).Args,
 			ReasoningEffort:     l.overrides.ReasoningEffort,

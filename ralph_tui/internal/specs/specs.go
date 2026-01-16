@@ -14,7 +14,9 @@ import (
 	"strings"
 
 	"github.com/mitchfultz/ralph/ralph_tui/internal/lockfile"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/procgroup"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
 
@@ -82,6 +84,7 @@ type BuildOptions struct {
 	RepoRoot         string
 	PinDir           string
 	PromptTemplate   string
+	ProjectType      project.Type
 	Runner           Runner
 	RunnerArgs       []string
 	Interactive      bool
@@ -140,6 +143,14 @@ func scoutWorkflowInstructions(userFocus string) string {
 		focus = "(none provided)"
 	}
 	return fmt.Sprintf(scoutWorkflowTemplate, focus)
+}
+
+// ResolvePromptTemplate returns the prompt template path, creating defaults when needed.
+func ResolvePromptTemplate(pinDir string, projectType project.Type, promptPath string) (string, error) {
+	if strings.TrimSpace(promptPath) != "" {
+		return promptPath, nil
+	}
+	return pin.EnsureSpecsTemplate(pinDir, projectType)
 }
 
 // FillPrompt loads and fills the prompt template with interactive/innovate/scout placeholders.
@@ -223,9 +234,11 @@ func Build(ctx context.Context, opts BuildOptions) (BuildResult, error) {
 	if err := ctx.Err(); err != nil {
 		return BuildResult{}, err
 	}
-	if opts.PromptTemplate == "" {
-		opts.PromptTemplate = filepath.Join(opts.PinDir, "specs_builder.md")
+	templatePath, err := ResolvePromptTemplate(opts.PinDir, opts.ProjectType, opts.PromptTemplate)
+	if err != nil {
+		return BuildResult{}, err
 	}
+	opts.PromptTemplate = templatePath
 	if opts.Runner == "" {
 		opts.Runner = RunnerCodex
 	}

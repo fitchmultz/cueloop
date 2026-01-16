@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
@@ -31,6 +32,7 @@ type configEditor struct {
 }
 
 type configFormData struct {
+	ProjectType       string
 	UITheme           string
 	RefreshSeconds    string
 	LogLevel          string
@@ -72,6 +74,7 @@ const (
 
 const (
 	fieldLayer              = "layer"
+	fieldProjectType        = "project_type"
 	fieldUITheme            = "ui.theme"
 	fieldUIRefreshSeconds   = "ui.refresh_seconds"
 	fieldLogLevel           = "logging.level"
@@ -498,6 +501,8 @@ func (e *configEditor) baseConfigForLayer(layer string) (config.Config, error) {
 
 func (e *configEditor) sourceForKey(key string) config.SourceLayer {
 	switch key {
+	case fieldProjectType:
+		return e.sources.ProjectType
 	case fieldUITheme:
 		return e.sources.UITheme
 	case fieldUIRefreshSeconds:
@@ -555,6 +560,8 @@ func (e *configEditor) sourceForKey(key string) config.SourceLayer {
 
 func (e *configEditor) applyFieldValueFromConfig(key string, cfg config.Config) bool {
 	switch key {
+	case fieldProjectType:
+		e.data.ProjectType = string(cfg.ProjectType)
 	case fieldUITheme:
 		e.data.UITheme = cfg.UI.Theme
 	case fieldUIRefreshSeconds:
@@ -633,9 +640,11 @@ func (e *configEditor) syncFocusedFieldValue(field huh.Field, key string) {
 		if confirm, ok := field.(*huh.Confirm); ok {
 			confirm.Value(&e.data.GitAutoPush)
 		}
-	case fieldLogRedactionMode, fieldSpecsRunner, fieldSpecsEffort, fieldLoopRunner, fieldLoopEffort:
+	case fieldProjectType, fieldLogRedactionMode, fieldSpecsRunner, fieldSpecsEffort, fieldLoopRunner, fieldLoopEffort:
 		if selectField, ok := field.(*huh.Select[string]); ok {
 			switch key {
+			case fieldProjectType:
+				selectField.Value(&e.data.ProjectType)
 			case fieldLogRedactionMode:
 				selectField.Value(&e.data.LogRedactionMode)
 			case fieldSpecsRunner:
@@ -745,6 +754,16 @@ func (e *configEditor) buildForm() *huh.Form {
 		Value(&e.layer).
 		Key(fieldLayer)
 
+	projectType := huh.NewSelect[string]().
+		Title("Project Type").
+		Options(
+			huh.NewOption("code (default)", string(project.TypeCode)),
+			huh.NewOption("docs", string(project.TypeDocs)),
+		).
+		Value(&e.data.ProjectType).
+		Key(fieldProjectType)
+	e.registerFieldDesc(fieldProjectType, func(desc string) { projectType.Description(desc) })
+
 	uiTheme := huh.NewInput().Title("UI Theme").Value(&e.data.UITheme).Validate(nonEmptyString("ui.theme")).Key(fieldUITheme)
 	e.registerFieldDesc(fieldUITheme, func(desc string) { uiTheme.Description(desc) })
 	refreshSeconds := huh.NewInput().Title("Refresh Seconds").Value(&e.data.RefreshSeconds).Validate(positiveInt("ui.refresh_seconds")).Key(fieldUIRefreshSeconds)
@@ -845,6 +864,7 @@ func (e *configEditor) buildForm() *huh.Form {
 	return huh.NewForm(
 		huh.NewGroup(
 			layerField,
+			projectType,
 			uiTheme,
 			refreshSeconds,
 			logLevel,
@@ -876,6 +896,7 @@ func (e *configEditor) buildForm() *huh.Form {
 
 func formDataFromConfig(cfg config.Config) configFormData {
 	return configFormData{
+		ProjectType:       string(cfg.ProjectType),
 		UITheme:           cfg.UI.Theme,
 		RefreshSeconds:    strconv.Itoa(cfg.UI.RefreshSeconds),
 		LogLevel:          cfg.Logging.Level,
@@ -925,6 +946,13 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 	if err != nil {
 		return config.PartialConfig{}, err
 	}
+	projectType := project.NormalizeType(data.ProjectType)
+	if projectType == "" {
+		projectType = project.DefaultType()
+	}
+	if !project.ValidType(projectType) {
+		return config.PartialConfig{}, fmt.Errorf("project_type must be code or docs")
+	}
 	logLevel := strings.ToLower(strings.TrimSpace(data.LogLevel))
 	if !isValidLogLevel(logLevel) {
 		return config.PartialConfig{}, fmt.Errorf("logging.level must be one of debug, info, warn, or error")
@@ -973,7 +1001,8 @@ func partialFromForm(data configFormData) (config.PartialConfig, error) {
 	logMode := redaction.NormalizeMode(logRedactionMode)
 
 	return config.PartialConfig{
-		Version: intPtr(1),
+		Version:     intPtr(1),
+		ProjectType: &projectType,
 		UI: &config.UIPartial{
 			Theme:          &uiTheme,
 			RefreshSeconds: &refreshSeconds,
