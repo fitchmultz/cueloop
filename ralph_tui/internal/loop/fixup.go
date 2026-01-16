@@ -56,13 +56,15 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 		return result, fmt.Errorf("pin dir is required")
 	}
 
+	redactor := NewRedactor(os.Environ(), opts.RedactionMode)
+	logFixup(redactor, opts.Logger, ">> [RALPH] Fixup acquiring lock.")
 	lock, err := specs.AcquireLock(opts.RepoRoot)
 	if err != nil {
+		logFixup(redactor, opts.Logger, ">> [RALPH] Fixup failed to acquire lock: %s", err.Error())
 		return result, err
 	}
 	defer lock.Release()
-
-	redactor := NewRedactor(os.Environ(), opts.RedactionMode)
+	logFixup(redactor, opts.Logger, ">> [RALPH] Fixup lock acquired.")
 	now := opts.Now
 	if now == nil {
 		now = time.Now
@@ -94,6 +96,7 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 		return result, err
 	}
 	result.ScannedBlocked = len(blockedItems)
+	logFixup(redactor, opts.Logger, ">> [RALPH] Fixup scanning %d blocked items.", result.ScannedBlocked)
 
 	attempted := 0
 	for _, item := range blockedItems {
@@ -111,7 +114,7 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 
 		attempted++
 		logFixup(redactor, opts.Logger, ">> [RALPH] Fixup %s using %s", item.ID, item.Metadata.WIPBranch)
-		err := validateWipBranchInWorktree(ctx, opts, item.Metadata.WIPBranch, item.Metadata.KnownGood)
+		err := validateWipBranchInWorktree(ctx, opts, redactor, item.Metadata.WIPBranch, item.Metadata.KnownGood)
 		if err == nil {
 			updated, err := pin.RequeueBlockedItem(queuePath, item.ID, pin.RequeueOptions{InsertAtTop: true})
 			if err != nil {
@@ -155,7 +158,7 @@ func FixupBlockedItems(ctx context.Context, opts FixupOptions) (FixupResult, err
 	return result, nil
 }
 
-func validateWipBranchInWorktree(ctx context.Context, opts FixupOptions, wipBranch string, knownGood string) error {
+func validateWipBranchInWorktree(ctx context.Context, opts FixupOptions, redactor *Redactor, wipBranch string, knownGood string) error {
 	exists, err := BranchExists(ctx, opts.RepoRoot, wipBranch)
 	if err != nil {
 		return err
@@ -188,17 +191,20 @@ func validateWipBranchInWorktree(ctx context.Context, opts FixupOptions, wipBran
 		return err
 	}
 	if !pathsOnlyUnderPrefix(changed, pinPrefix) {
-		return runMakeCIInWorktree(ctx, opts, worktreePath)
+		return runMakeCIInWorktree(ctx, opts, redactor, worktreePath)
 	}
+	logFixup(redactor, opts.Logger, ">> [RALPH] Fixup skipping make ci (pin-only changes).")
 
 	return nil
 }
 
-func runMakeCIInWorktree(ctx context.Context, opts FixupOptions, worktreePath string) error {
+func runMakeCIInWorktree(ctx context.Context, opts FixupOptions, redactor *Redactor, worktreePath string) error {
+	logFixup(redactor, opts.Logger, ">> [RALPH] Fixup running make ci in %s", worktreePath)
 	cmd := exec.CommandContext(ctx, "make", "-C", worktreePath, "ci")
 	if err := RunCommand(ctx, cmd, NewRedactor(os.Environ(), opts.RedactionMode), opts.Logger); err != nil {
 		return err
 	}
+	logFixup(redactor, opts.Logger, ">> [RALPH] Fixup make ci succeeded.")
 	return nil
 }
 

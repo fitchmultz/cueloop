@@ -134,7 +134,7 @@ func TestModelDriver_NavigationResizeKeyFlows(t *testing.T) {
 	driver.ToggleFocus()
 	driver.SelectScreen(screenLogs)
 	driver.AssertScreen(screenLogs)
-	driver.KeyRunes("f")
+	driver.KeyRunes("F")
 	driver.AssertViewWithinBounds()
 
 	for _, size := range []struct {
@@ -224,7 +224,10 @@ func TestDashboardFixupKeyStartsRunAndUpdatesStatus(t *testing.T) {
 		t.Fatalf("expected fixup to be marked stopped")
 	}
 	view := driver.m.contentView()
-	if !strings.Contains(view, "Fixup: Scanned 2 | Eligible 1 | Requeued 1 | Skipped 0 | Failed 1 | Last failed RQ-0003: ci failed") {
-		t.Fatalf("expected dashboard to report fixup summary, got %q", view)
+	if !strings.Contains(view, "Fixup: Scanned 2 | Eligible 1 | Requeued 1 | Skipped 0 | Failed 1") {
+		t.Fatalf("expected dashboard to report fixup counts, got %q", view)
+	}
+	if !strings.Contains(view, "Failed RQ-0003: ci failed") {
+		t.Fatalf("expected dashboard to report fixup failure details, got %q", view)
 	}
 }

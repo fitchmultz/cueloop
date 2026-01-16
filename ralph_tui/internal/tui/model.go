@@ -112,6 +112,10 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 	l.SetShowHelp(false)
+	l.KeyMap.Filter = key.NewBinding()
+	l.KeyMap.ClearFilter = key.NewBinding()
+	l.KeyMap.AcceptWhileFiltering = key.NewBinding()
+	l.KeyMap.CancelWhileFiltering = key.NewBinding()
 
 	searchInput := textinput.New()
 	searchInput.Prompt = "Search: "
@@ -327,6 +331,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.loopView != nil {
 			m.loopView.appendLogLines(msg.batch.Lines)
 		}
+		if last := lastNonEmptyLine(msg.batch.Lines); last != "" {
+			m.fixup.lastLogLine = last
+		}
 		m.refreshLogsView()
 		if msg.batch.Done {
 			m.fixupLogCh = nil
@@ -536,6 +543,11 @@ type loopRunModeMsg struct {
 
 type fixupRunner func(context.Context, loop.FixupOptions) (loop.FixupResult, error)
 
+type fixupFailureDetail struct {
+	id     string
+	reason string
+}
+
 type fixupSummary struct {
 	scanned  int
 	eligible int
@@ -544,15 +556,17 @@ type fixupSummary struct {
 	failed   int
 	lastID   string
 	lastNote string
+	failures []fixupFailureDetail
 }
 
 type fixupState struct {
-	running    bool
-	err        string
-	summary    fixupSummary
-	hasSummary bool
-	startedAt  time.Time
-	finishedAt time.Time
+	running     bool
+	err         string
+	summary     fixupSummary
+	hasSummary  bool
+	startedAt   time.Time
+	finishedAt  time.Time
+	lastLogLine string
 }
 
 type fixupResultMsg struct {
@@ -577,24 +591,60 @@ func loopRunModeCmd(running bool) tea.Cmd {
 	}
 }
 
+func shortFixupReason(reason string) string {
+	trimmed := strings.TrimSpace(reason)
+	if trimmed == "" {
+		return ""
+	}
+	return loop.CommitMessageShort(trimmed)
+}
+
+func lastNonEmptyLine(lines []string) string {
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line != "" {
+			return line
+		}
+	}
+	return ""
+}
+
 func summaryFromFixupResult(result loop.FixupResult) fixupSummary {
 	var lastID string
 	var lastNote string
+	failures := make([]fixupFailureDetail, 0, len(result.FailedReasons))
 	if len(result.FailedReasons) > 0 {
 		last := result.FailedReasons[len(result.FailedReasons)-1]
 		lastID = last.ID
-		lastNote = loop.CommitMessageShort(last.Reason)
-	} else if len(result.FailedIDs) > 0 {
+		lastNote = shortFixupReason(last.Reason)
+		for _, failure := range result.FailedReasons {
+			failures = append(failures, fixupFailureDetail{
+				id:     failure.ID,
+				reason: shortFixupReason(failure.Reason),
+			})
+		}
+	}
+	if len(result.FailedIDs) > 0 {
 		lastID = result.FailedIDs[len(result.FailedIDs)-1]
+		if len(failures) == 0 {
+			for _, id := range result.FailedIDs {
+				failures = append(failures, fixupFailureDetail{id: id})
+			}
+		}
+	}
+	failed := len(result.FailedIDs)
+	if len(result.FailedReasons) > failed {
+		failed = len(result.FailedReasons)
 	}
 	return fixupSummary{
 		scanned:  result.ScannedBlocked,
 		eligible: result.Eligible,
 		requeued: len(result.RequeuedIDs),
 		skipped:  len(result.SkippedMax),
-		failed:   len(result.FailedIDs),
+		failed:   failed,
 		lastID:   lastID,
 		lastNote: lastNote,
+		failures: failures,
 	}
 }
 
@@ -635,6 +685,7 @@ func (m *model) startFixupCmd() tea.Cmd {
 	m.fixup.running = true
 	m.fixup.err = ""
 	m.fixup.hasSummary = false
+	m.fixup.lastLogLine = ""
 	m.fixup.startedAt = time.Now()
 	m.fixup.finishedAt = time.Time{}
 	m.fixupLogRunID++
@@ -658,7 +709,7 @@ func (m *model) startFixupCmd() tea.Cmd {
 			return fixupResultMsg{runID: runID, err: errors.New("fixup runner not configured"), finishedAt: time.Now()}
 		}
 		sendLineBlocking(logCh, ">> [RALPH] Fixup blocked starting.")
-		result, err := m.fixupRunner(context.Background(), loop.FixupOptions{
+		result, err := m.fixupRunner(m.runCtx, loop.FixupOptions{
 			RepoRoot:      m.locations.RepoRoot,
 			PinDir:        m.cfg.Paths.PinDir,
 			MaxAttempts:   defaultFixupMaxAttempts,

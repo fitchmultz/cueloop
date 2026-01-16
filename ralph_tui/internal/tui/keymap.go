@@ -92,8 +92,8 @@ func newKeyMap() keyMap {
 			key.WithHelp("e", "specs settings"),
 		),
 		ToggleLogsFormat: key.NewBinding(
-			key.WithKeys("f"),
-			key.WithHelp("f", "toggle logs format"),
+			key.WithKeys("F"),
+			key.WithHelp("shift+f", "toggle logs format"),
 		),
 		SaveGlobal: key.NewBinding(
 			key.WithKeys("ctrl+g"),

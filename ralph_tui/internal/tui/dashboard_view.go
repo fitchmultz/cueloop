@@ -140,8 +140,16 @@ func dashboardStatusLines(p *pinView, l *loopView, s *specsView, f fixupState) [
 	if status := dashboardLoopFailure(l); status != "" {
 		lines = append(lines, "Loop failure: "+status)
 	}
-	if status := dashboardFixupStatus(f); status != "" {
-		lines = append(lines, "Fixup: "+status)
+	if statuses := dashboardFixupStatusLines(f); len(statuses) > 0 {
+		const fixupPrefix = "Fixup: "
+		indent := strings.Repeat(" ", len(fixupPrefix))
+		for i, status := range statuses {
+			if i == 0 {
+				lines = append(lines, fixupPrefix+status)
+			} else {
+				lines = append(lines, indent+status)
+			}
+		}
 	}
 	if status := dashboardSpecsStatus(s); status != "" {
 		lines = append(lines, "Specs: "+status)
@@ -215,20 +223,65 @@ func dashboardSpecsStatus(s *specsView) string {
 	return ""
 }
 
-func dashboardFixupStatus(f fixupState) string {
+func dashboardFixupStatusLines(f fixupState) []string {
 	if f.running {
-		return "Running..."
+		lines := []string{"Running..."}
+		if f.lastLogLine != "" {
+			lines = append(lines, "Last: "+f.lastLogLine)
+		}
+		return lines
 	}
 	if f.err != "" {
+		lines := []string{"Error: " + f.err}
 		if f.hasSummary {
-			return "Error: " + f.err + " | " + formatFixupSummary(f.summary)
+			lines = append(lines, formatFixupCounts(f.summary))
+			lines = append(lines, fixupFailureLines(f.summary)...)
 		}
-		return "Error: " + f.err
+		return lines
 	}
 	if f.hasSummary {
-		return formatFixupSummary(f.summary)
+		lines := []string{formatFixupCounts(f.summary)}
+		lines = append(lines, fixupFailureLines(f.summary)...)
+		return lines
 	}
-	return ""
+	return nil
+}
+
+func formatFixupCounts(summary fixupSummary) string {
+	return fmt.Sprintf(
+		"Scanned %d | Eligible %d | Requeued %d | Skipped %d | Failed %d",
+		summary.scanned,
+		summary.eligible,
+		summary.requeued,
+		summary.skipped,
+		summary.failed,
+	)
+}
+
+func fixupFailureLines(summary fixupSummary) []string {
+	if len(summary.failures) == 0 {
+		return nil
+	}
+	const maxFixupFailuresShown = 3
+	limit := len(summary.failures)
+	if limit > maxFixupFailuresShown {
+		limit = maxFixupFailuresShown
+	}
+	lines := make([]string, 0, limit+1)
+	for i := 0; i < limit; i++ {
+		lines = append(lines, formatFixupFailure(summary.failures[i]))
+	}
+	if remaining := len(summary.failures) - limit; remaining > 0 {
+		lines = append(lines, fmt.Sprintf("...and %d more (see Logs)", remaining))
+	}
+	return lines
+}
+
+func formatFixupFailure(failure fixupFailureDetail) string {
+	if failure.reason == "" {
+		return fmt.Sprintf("Failed %s", failure.id)
+	}
+	return fmt.Sprintf("Failed %s: %s", failure.id, failure.reason)
 }
 
 func dashboardRepoLines(m model) []string {
