@@ -106,8 +106,68 @@ func TestValidatePinRejectsUnsafeMetadataLines(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected ValidatePin to fail with unsafe metadata")
 	}
-	if !strings.Contains(err.Error(), "Unindented list items") {
+	if !strings.Contains(err.Error(), "Unindented metadata bullets") {
 		t.Fatalf("expected unsafe metadata error, got: %v", err)
+	}
+}
+
+func TestValidatePinRejectsUnindentedEvidenceOrPlanBullets(t *testing.T) {
+	fixture := mustLocateFixtures(t)
+
+	cases := []struct {
+		name        string
+		needle      string
+		replacement string
+		expected    string
+	}{
+		{
+			name:        "evidence",
+			needle:      "  - Evidence:",
+			replacement: "- Evidence:",
+			expected:    "Missing indented metadata bullet: \"- Evidence:",
+		},
+		{
+			name:        "plan",
+			needle:      "  - Plan:",
+			replacement: "- Plan:",
+			expected:    "Missing indented metadata bullet: \"- Plan:",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			files := ResolveFiles(tmpDir)
+			queuePath := copyFixture(t, fixture.queue, files.QueuePath)
+			_ = copyFixture(t, fixture.done, files.DonePath)
+			_ = copyFixture(t, fixture.lookup, files.LookupPath)
+			_ = copyFixture(t, fixture.readme, files.ReadmePath)
+			copyFixtureSpecs(t, fixture, files)
+
+			data, err := os.ReadFile(queuePath)
+			if err != nil {
+				t.Fatalf("read queue: %v", err)
+			}
+
+			updated := strings.Replace(string(data), tc.needle, tc.replacement, 1)
+			if updated == string(data) {
+				t.Fatalf("failed to replace %q", tc.needle)
+			}
+			if err := os.WriteFile(queuePath, []byte(updated), 0o600); err != nil {
+				t.Fatalf("write queue: %v", err)
+			}
+
+			err = ValidatePin(files, project.TypeCode)
+			if err == nil {
+				t.Fatalf("expected ValidatePin to fail with unindented %s metadata", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.expected) {
+				t.Fatalf("expected missing metadata error, got: %v", err)
+			}
+			if !strings.Contains(err.Error(), "Unindented metadata bullets") {
+				t.Fatalf("expected unindented metadata error, got: %v", err)
+			}
+		})
 	}
 }
 

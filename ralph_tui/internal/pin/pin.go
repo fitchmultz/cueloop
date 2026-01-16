@@ -1152,22 +1152,23 @@ func validateQueueItemLines(lines []string) queueItemLineCheck {
 
 	for _, line := range lines {
 		trimmed := strings.TrimLeft(line, " \t")
-		if strings.HasPrefix(trimmed, "- Evidence:") {
+		indentLen := len(line) - len(trimmed)
+		if strings.HasPrefix(line, metadataIndent+"- Evidence:") {
 			check.Evidence = true
 		}
-		if strings.HasPrefix(trimmed, "- Plan:") {
+		if strings.HasPrefix(line, metadataIndent+"- Plan:") {
 			check.Plan = true
 		}
 
-		if strings.HasPrefix(line, "- [") {
+		if (strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "-\t")) && indentLen < len(metadataIndent) {
 			unsafeList = true
 		}
-		if strings.HasPrefix(line, "## ") {
+		if strings.HasPrefix(trimmed, "## ") && indentLen < len(metadataIndent) {
 			unsafeHeader = true
 		}
 
 		if strings.HasPrefix(trimmed, "```") {
-			if line == trimmed {
+			if indentLen < len(metadataIndent) {
 				fenceIndent = true
 			}
 			fenceLanguage := strings.TrimSpace(strings.TrimPrefix(trimmed, "```"))
@@ -1182,13 +1183,13 @@ func validateQueueItemLines(lines []string) queueItemLineCheck {
 			continue
 		}
 
-		if inFence && trimmed != "" && line == trimmed {
+		if inFence && trimmed != "" && indentLen < len(metadataIndent) {
 			fenceContentIndent = true
 		}
 	}
 
 	if unsafeList {
-		check.Errors = append(check.Errors, "  - Unindented list items starting with \"- [\" are not allowed inside queue items. Indent extra metadata bullets by two spaces.")
+		check.Errors = append(check.Errors, "  - Unindented metadata bullets are not allowed inside queue items. Indent metadata bullets by two spaces.")
 	}
 	if unsafeHeader {
 		check.Errors = append(check.Errors, "  - Unindented subheaders (\"## \") are not allowed inside queue items. Indent extra metadata headers by two spaces.")
