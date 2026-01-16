@@ -17,6 +17,7 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/procgroup"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/prompts"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
 
@@ -29,6 +30,7 @@ const (
 	interactivePlaceholder = "{{INTERACTIVE_INSTRUCTIONS}}"
 	innovatePlaceholder    = "{{INNOVATE_INSTRUCTIONS}}"
 	scoutPlaceholder       = "{{SCOUT_WORKFLOW}}"
+	bugSweepPlaceholder    = "{{BUG_SWEEP_ENTRY}}"
 )
 
 const interactiveInstructions = "INTERACTIVE MODE ENABLED. Before adding any new queue items:\n" +
@@ -74,6 +76,7 @@ type FillPromptOptions struct {
 	Innovate      bool
 	ScoutWorkflow bool
 	UserFocus     string
+	ProjectType   project.Type
 }
 
 // Runner selects which specs runner to invoke.
@@ -177,6 +180,10 @@ func FillPrompt(templatePath string, opts FillPromptOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	prompt, err = replaceBugSweepPlaceholder(prompt, opts.ProjectType)
+	if err != nil {
+		return "", err
+	}
 
 	return prompt, nil
 }
@@ -263,6 +270,7 @@ func Build(ctx context.Context, opts BuildOptions) (BuildResult, error) {
 		Innovate:      effectiveInnovate,
 		ScoutWorkflow: opts.ScoutWorkflow,
 		UserFocus:     opts.UserFocus,
+		ProjectType:   opts.ProjectType,
 	})
 	if err != nil {
 		return BuildResult{}, err
@@ -342,6 +350,17 @@ func replacePlaceholder(content string, placeholder string, instructions string,
 		return "", fmt.Errorf("Error: Prompt template missing %s placeholder", placeholder)
 	}
 	return content, nil
+}
+
+func replaceBugSweepPlaceholder(content string, projectType project.Type) (string, error) {
+	if !strings.Contains(content, bugSweepPlaceholder) {
+		return content, nil
+	}
+	entry, err := prompts.BugSweepEntry(projectType)
+	if err != nil {
+		return "", err
+	}
+	return strings.ReplaceAll(content, bugSweepPlaceholder, strings.TrimSpace(entry)), nil
 }
 
 func writeTempPrompt(prompt string) (string, func(), error) {

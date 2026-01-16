@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 )
 
 func TestFillPromptReplacements(t *testing.T) {
@@ -70,6 +72,44 @@ func TestFillPromptMissingScoutPlaceholderErrors(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatalf("expected error for missing scout placeholder")
+	}
+}
+
+func TestFillPromptBugSweepEntryReplacement(t *testing.T) {
+	cases := []struct {
+		name        string
+		projectType project.Type
+		expectType  string
+	}{
+		{name: "code", projectType: project.TypeCode, expectType: "PROJECT TYPE: CODE"},
+		{name: "docs", projectType: project.TypeDocs, expectType: "PROJECT TYPE: DOCS"},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			path := filepath.Join(tmpDir, "specs_builder.md")
+			content := "AGENTS.md\n" + bugSweepPlaceholder + "\n"
+			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+				t.Fatalf("write template: %v", err)
+			}
+
+			prompt, err := FillPrompt(path, FillPromptOptions{
+				ProjectType: testCase.projectType,
+			})
+			if err != nil {
+				t.Fatalf("FillPrompt failed: %v", err)
+			}
+			if strings.Contains(prompt, bugSweepPlaceholder) {
+				t.Fatalf("expected bug sweep placeholder to be replaced")
+			}
+			if !strings.Contains(prompt, "BUG SWEEP PROMPT ENTRY") {
+				t.Fatalf("expected bug sweep entry to be inserted")
+			}
+			if !strings.Contains(prompt, testCase.expectType) {
+				t.Fatalf("expected project type marker %q", testCase.expectType)
+			}
+		})
 	}
 }
 

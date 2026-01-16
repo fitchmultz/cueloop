@@ -79,6 +79,8 @@ You are the Ralph specs builder for this repository.
 4. ` + "`.ralph/pin/lookup_table.md`" + `
 
 # INSTRUCTIONS
+{{BUG_SWEEP_ENTRY}}
+
 - The code is riddled with bugs and the user experience is poor. There are at least 20 bugs present that need identified and squashed. Identify 15+ (no upper limit) bugs/issues/flaws/etc, and batch the individual findings into remediation tasks. 
 - Some items to look for: laggy interfaces, limited or incomplete functionality, logical design flaws and oversights, lack of standardization, violation of DRY principals, functionality that outright don't work, etc. This list is not comprehensive. 
 - When you have your batches of tasks, add them to the ` + "`.ralph/pin/implementation_queue.md`" + ` queue file according to the required spec queue formatting. Each task in the queue (each batch of findings) will be executed sequentially by an agent. Feel free to innovate, refactor, redo things, reorganize, etc. Do NOT be afraid of large scale changes if they are required to move the project in the correct direction.
@@ -106,6 +108,8 @@ You are the Ralph specs builder for this repository (documentation-focused).
 4. ` + "`.ralph/pin/lookup_table.md`" + `
 
 # INSTRUCTIONS
+{{BUG_SWEEP_ENTRY}}
+
 - The documentation is riddled with issues and the user experience is poor. There are at least 20 doc problems present that need identified and squashed. Identify 15+ (no upper limit) issues/flaws/etc, and batch the findings into remediation tasks.
 - Some items to look for: broken/obsolete links, outdated or missing references, unclear sections, missing cross-links, inconsistent terminology, weak navigation, or gaps in doc workflows. This list is not comprehensive.
 - If code changes are required to support docs workflows, include them only when the documentation goal depends on it.
