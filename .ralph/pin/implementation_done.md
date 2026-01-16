@@ -1,12 +1,6 @@
 # Implementation Done
 
 ## Done
-- [x] RQ-0466 [bug][ui]: Execute fixup when pressing `f` and capture failures. (ralph_tui/internal/tui/dashboard_view.go, ralph_tui/internal/tui/model.go, ralph_tui/internal/loop/fixup.go)
-  - Evidence: User reports "Fixup: Scanned 1 | Eligible 1 | Requeued 0 | Skipped 0 | Failed 1" and pressing `f` only identifies an item without running the fixup.
-  - Plan: Trace the dashboard fixup action, ensure `f` triggers the actual fixup execution path, and surface execution/failure details in logs/status with tests.
-- [x] RQ-0467 [docs][ux]: Add project-type aware bug-sweep prompt entry for spec/queue builder. (ralph_tui/internal/prompts/defaults, ralph_tui/internal/specs, ralph_tui/internal/pin, .ralph/pin)
-  - Evidence: Need a standardized prompt that adapts by project type and batches 15+ findings into queue tasks, populating `.ralph/pin/implementation_queue.md` and `.ralph/pin/lookup_table.md`.
-  - Plan: Add a dedicated prompt template for spec/queue builder mode that inserts the project type, ensure it targets the pin queue format, and document usage in pin/specs builder guidance.
 - [x] RQ-0464 [code][ui][docs]: Add configurable project type (default: code; option: docs) to drive prompts and workflows for non-code repos. (ralph_tui/internal/config, ralph_tui/internal/tui/config_editor.go, ralph_tui/internal/prompts/defaults/, ralph_tui/internal/specs, ralph_tui/internal/loop, ralph_tui/internal/pin, README.md)
   - Evidence: Current prompt templates assume code-heavy repos, which performs poorly on doc-heavy knowledge bases; users need a docs-focused flow for documentation improvements, link fixes, and research synthesis.
   - Plan: Add `project_type` config (default `code`, allow `docs`) and persist it in pin/config; surface it in the config editor; during `ralph init`, prompt for repo type (with optional auto-detect + confirmation) so new repos start with the right prompts; select prompt templates for specs and loop runs based on project type; add docs-focused prompt variants (doc maintenance, link checks, research synthesis) and tests to ensure prompt selection + config round-trips per type.
