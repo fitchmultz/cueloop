@@ -59,6 +59,7 @@ type model struct {
 	configView          *configEditor
 	pinView             *pinView
 	specsView           *specsView
+	taskBuilderView     *taskBuilderView
 	loopView            *loopView
 	logsView            *logsView
 	fixup               fixupState
@@ -151,6 +152,10 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 	if err == nil {
 		err = specsErr
 	}
+	taskBuilderView, taskBuilderErr := newTaskBuilderView(cfg, locations, keys)
+	if err == nil {
+		err = taskBuilderErr
+	}
 
 	loopView := newLoopView(cfg, locations, keys)
 	logsView := newLogsView("")
@@ -170,6 +175,7 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 		configView:        configView,
 		pinView:           pinView,
 		specsView:         specsView,
+		taskBuilderView:   taskBuilderView,
 		loopView:          loopView,
 		logsView:          logsView,
 		runCtx:            runCtx,
@@ -188,6 +194,9 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 	}
 	if m.specsView != nil {
 		m.specsView.parentCtx = m.runCtx
+	}
+	if m.taskBuilderView != nil {
+		m.taskBuilderView.parentCtx = m.runCtx
 	}
 	m.setLogger(cfg)
 	if m.logsView != nil {
@@ -304,6 +313,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		handled = true
 	case loopRunModeMsg:
 		m.applyLoopRunMode(msg.running)
+		handled = true
+	case taskBuilderQueuedMsg:
+		if m.loopView != nil {
+			m.loopView.ApplyTaskOverrides(msg.Runner, msg.Effort, msg.Tags)
+			cmds = append(cmds, m.switchScreen(screenRunLoop, true)...)
+			if cmd := m.loopView.StartOnce(); cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
 		handled = true
 	case fixupLogBatchMsg:
 		if msg.batch.RunID != m.fixupLogRunID {
@@ -763,6 +781,8 @@ func (m model) isTyping() bool {
 		return m.pinView != nil && m.pinView.IsTyping()
 	case screenBuildSpecs:
 		return m.specsView != nil && m.specsView.IsTyping()
+	case screenTaskBuilder:
+		return m.taskBuilderView != nil && m.taskBuilderView.IsTyping()
 	case screenRunLoop:
 		return m.loopView != nil && m.loopView.IsTyping()
 	default:
@@ -783,6 +803,11 @@ func (m *model) updateBackgroundViews(msg tea.Msg) (tea.Cmd, bool) {
 			return nil, true
 		}
 		return m.specsView.Update(msg, m.keys), true
+	case taskBuilderResultMsg:
+		if m.taskBuilderView == nil {
+			return nil, true
+		}
+		return m.taskBuilderView.Update(msg, m.keys), true
 	case loopResultMsg, loopLogBatchMsg, loopStateMsg:
 		if m.loopView == nil {
 			return nil, true
@@ -900,6 +925,11 @@ func (m model) contentView() string {
 			return "Build Specs\n\nSpecs builder unavailable."
 		}
 		return m.specsView.View()
+	case screenTaskBuilder:
+		if m.taskBuilderView == nil {
+			return "Task Builder\n\nTask builder unavailable."
+		}
+		return m.taskBuilderView.View()
 	case screenPin:
 		if m.pinView == nil {
 			return "Pin\n\nPin view unavailable."
@@ -1102,6 +1132,9 @@ func (m *model) resizeViews(contentInnerW int, contentInnerH int) {
 	if m.specsView != nil {
 		m.specsView.Resize(contentInnerW, contentInnerH)
 	}
+	if m.taskBuilderView != nil {
+		m.taskBuilderView.Resize(contentInnerW, contentInnerH)
+	}
 	if m.loopView != nil {
 		m.loopView.Resize(contentInnerW, contentInnerH)
 	}
@@ -1169,6 +1202,9 @@ func (m *model) applyConfig() {
 	}
 	if m.specsView != nil {
 		m.specsView.SetConfig(m.cfg, m.locations)
+	}
+	if m.taskBuilderView != nil {
+		m.taskBuilderView.SetConfig(m.cfg, m.locations)
 	}
 	if m.loopView != nil {
 		m.loopView.SetConfig(m.cfg, m.locations)
@@ -1323,6 +1359,10 @@ func (m *model) updateActiveView(msg tea.Msg) tea.Cmd {
 	case screenBuildSpecs:
 		if m.specsView != nil {
 			return m.specsView.Update(msg, m.keys)
+		}
+	case screenTaskBuilder:
+		if m.taskBuilderView != nil {
+			return m.taskBuilderView.Update(msg, m.keys)
 		}
 	case screenRunLoop:
 		if m.loopView != nil {
@@ -1517,6 +1557,13 @@ func (m *model) applyFocus() {
 			m.specsView.Blur()
 		} else {
 			m.specsView.Focus()
+		}
+	}
+	if m.taskBuilderView != nil {
+		if navFocused || m.screen != screenTaskBuilder {
+			m.taskBuilderView.Blur()
+		} else {
+			m.taskBuilderView.Focus()
 		}
 	}
 	if m.loopView != nil {

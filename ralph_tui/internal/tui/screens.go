@@ -8,6 +8,7 @@ const (
 	screenDashboard screen = iota
 	screenRunLoop
 	screenBuildSpecs
+	screenTaskBuilder
 	screenPin
 	screenConfig
 	screenLogs
@@ -30,6 +31,7 @@ func navigationItems() []navItem {
 		{title: "Dashboard", desc: "Overview of Ralph activity", screen: screenDashboard},
 		{title: "Run Loop", desc: "Run loop controls", screen: screenRunLoop},
 		{title: "Build Specs", desc: "Specs builder", screen: screenBuildSpecs},
+		{title: "Task Builder", desc: "Queue task builder", screen: screenTaskBuilder},
 		{title: "Pin", desc: "Pin manager", screen: screenPin},
 		{title: "Config", desc: "Configuration editor", screen: screenConfig},
 		{title: "Logs", desc: "Recent logs", screen: screenLogs},
@@ -45,6 +47,8 @@ func screenName(value screen) string {
 		return "runloop"
 	case screenBuildSpecs:
 		return "buildspecs"
+	case screenTaskBuilder:
+		return "taskbuilder"
 	case screenPin:
 		return "pin"
 	case screenConfig:

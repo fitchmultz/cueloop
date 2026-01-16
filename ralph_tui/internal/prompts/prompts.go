@@ -32,6 +32,8 @@ const (
 	specsScoutTemplateCodePath = "defaults/specs_scout_workflow_template_code.md"
 	specsScoutTemplateDocsPath = "defaults/specs_scout_workflow_template_docs.md"
 	supervisorPromptPath       = "defaults/supervisor_prompt.md"
+	taskBuilderEvidencePath    = "defaults/task_builder_evidence.md"
+	taskBuilderPlanPath        = "defaults/task_builder_plan.md"
 )
 
 func readDefault(filename string) (string, error) {
@@ -128,6 +130,16 @@ func SpecsScoutWorkflowTemplate(projectType project.Type) (string, error) {
 		path = specsScoutTemplateDocsPath
 	}
 	return readDefault(path)
+}
+
+// TaskBuilderEvidenceTemplate returns the default task builder evidence template.
+func TaskBuilderEvidenceTemplate() (string, error) {
+	return readDefault(taskBuilderEvidencePath)
+}
+
+// TaskBuilderPlanTemplate returns the default task builder plan template.
+func TaskBuilderPlanTemplate() (string, error) {
+	return readDefault(taskBuilderPlanPath)
 }
 
 func workerPromptFilename(runner Runner, projectType project.Type) (string, error) {

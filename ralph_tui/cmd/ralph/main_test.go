@@ -153,6 +153,17 @@ func TestPinMoveCheckedFlagDefaults(t *testing.T) {
 	}
 }
 
+func TestTaskBuildCommandHasExamples(t *testing.T) {
+	root := newRootCommand()
+	cmd, err := findCommand(root, "task", "build")
+	if err != nil {
+		t.Fatalf("locate task build: %v", err)
+	}
+	if cmd.Example == "" || !strings.Contains(cmd.Example, "ralph task build") {
+		t.Fatalf("expected task build examples, got: %q", cmd.Example)
+	}
+}
+
 func findCommand(root *cobra.Command, path ...string) (*cobra.Command, error) {
 	cmd := root
 	for _, name := range path {

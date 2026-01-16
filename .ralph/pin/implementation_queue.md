@@ -1,9 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0492 [ui]: Add a TUI task-builder mode (plus CLI entrypoint) that turns prompts into queue-formatted items. (ralph_tui/internal/tui, ralph_tui/internal/pin, ralph_tui/internal/prompts, ralph_tui/cmd/ralph/main.go)
-  - Evidence: Users currently have to hand-format queue entries and track IDs/tags manually; the requested workflow is an agent-led prompt session that inserts correctly formatted tasks automatically.
-  - Plan: Implement a TUI flow with a CLI entrypoint that launches it; agent choices are Codex/OpenCode with low/medium/high reasoning options; reuse NextQueueID/queue format rules; add prompt injection templates and repo recon for Evidence/Plan; add tests and help text.
 - [ ] RQ-0493 [code]: Support an optional Notes metadata bullet in queue items. (ralph_tui/internal/pin/pin.go, ralph_tui/internal/pin/pin_test.go, ralph_tui/internal/pin/testdata/pin/implementation_queue.md)
   - Evidence: Queue validation currently only recognizes Evidence/Plan metadata; optional context needs are forced into Evidence/Plan or left out.
   - Plan: Extend metadata validation to allow a "- Notes:" bullet (optional); update fixtures and tests to cover items with and without Notes.

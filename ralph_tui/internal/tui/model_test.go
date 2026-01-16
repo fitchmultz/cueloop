@@ -12,7 +12,7 @@ import (
 func TestModelScreenTransition(t *testing.T) {
 	_, locs, cfg := newHermeticModel(t)
 	m := newModel(cfg, locs, StartOptions{})
-	m.nav.Select(4)
+	m.nav.Select(navIndexForScreen(screenConfig))
 	m.navFocused = true
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -349,7 +349,7 @@ func TestSearchEscRestoresNavSelection(t *testing.T) {
 	base, _, _ := newHermeticModel(t)
 	m := base
 
-	m.nav.Select(3)
+	m.nav.Select(navIndexForScreen(screenPin))
 	priorIndex := m.nav.Index()
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlK})

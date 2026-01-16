@@ -299,6 +299,26 @@ func (l *loopView) StartOnce() tea.Cmd {
 	return l.startWithGuard(true)
 }
 
+// ApplyTaskOverrides updates runner/effort/only-tag overrides for task builder runs.
+func (l *loopView) ApplyTaskOverrides(runner string, effort string, tags []string) {
+	if l == nil {
+		return
+	}
+	normalizedRunner := runnerargs.NormalizeRunner(runner)
+	if strings.TrimSpace(normalizedRunner) != "" {
+		l.overrides.Runner = normalizedRunner
+	}
+	normalizedEffort := runnerargs.NormalizeEffort(effort)
+	if strings.TrimSpace(normalizedEffort) != "" {
+		l.overrides.ReasoningEffort = normalizedEffort
+	}
+	if len(tags) == 0 {
+		l.overrides.OnlyTags = ""
+	} else {
+		l.overrides.OnlyTags = strings.Join(tags, ", ")
+	}
+}
+
 func (l *loopView) IsTyping() bool {
 	if l == nil {
 		return false

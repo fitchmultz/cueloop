@@ -1492,6 +1492,14 @@ func setHeaderUnchecked(header string) string {
 	return indent + "- [ ]" + tail
 }
 
+func setHeaderChecked(header string) string {
+	indent, tail, _, ok := parseCheckboxHeader(header)
+	if !ok {
+		return header
+	}
+	return indent + "- [x]" + tail
+}
+
 func readLines(path string) ([]string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

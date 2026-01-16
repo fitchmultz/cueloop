@@ -20,6 +20,7 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/taskbuilder"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -81,6 +82,7 @@ func newRootCommand() *cobra.Command {
 	cmd.AddCommand(newMigrateCommand())
 	cmd.AddCommand(newPinCommand())
 	cmd.AddCommand(newSpecsCommand())
+	cmd.AddCommand(newTaskCommand())
 	cmd.AddCommand(newLoopCommand())
 
 	return cmd
@@ -468,6 +470,182 @@ func newSpecsCommand() *cobra.Command {
 	specsCmd.AddCommand(newSpecsBuildCommand())
 
 	return specsCmd
+}
+
+func newTaskCommand() *cobra.Command {
+	taskCmd := &cobra.Command{
+		Use:     "task",
+		Short:   "Task builder helpers",
+		Long:    "Build queue-formatted tasks from prompt input.",
+		Example: "  ralph task build \"Add a TUI task builder screen\"",
+	}
+
+	taskCmd.AddCommand(newTaskBuildCommand())
+
+	return taskCmd
+}
+
+func newTaskBuildCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "build [prompt]",
+		Short: "Build a queue item from a prompt",
+		Long:  "Create a queue-formatted task from prompt input and insert it into the implementation queue.",
+		Example: "  ralph task build \"Add a TUI task builder screen\"\n" +
+			"  echo \"Triage log spam in loop output\" | ralph task build --tags ops --scope ralph_tui/internal/loop\n" +
+			"  ralph task build --runner codex --reasoning-effort high \"Plan a pin validation sweep\"\n" +
+			"  ralph task build --dry-run \"Draft queue item only\"",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+			locs, err := paths.Resolve("")
+			if err != nil {
+				return err
+			}
+
+			prompt, err := readPromptInput(cmd, args)
+			if err != nil {
+				return err
+			}
+
+			flags := cmd.Flags()
+			dryRun, err := flags.GetBool("dry-run")
+			if err != nil {
+				return err
+			}
+			runNow, err := flags.GetBool("run")
+			if err != nil {
+				return err
+			}
+			if dryRun && runNow {
+				return fmt.Errorf("cannot combine --dry-run and --run")
+			}
+
+			tagsInput, err := flags.GetString("tags")
+			if err != nil {
+				return err
+			}
+			var tags []string
+			if strings.TrimSpace(tagsInput) != "" {
+				tags, err = pin.ValidateTagList("--tags", tagsInput)
+				if err != nil {
+					return err
+				}
+			}
+
+			scope, err := flags.GetString("scope")
+			if err != nil {
+				return err
+			}
+			description, err := flags.GetString("description")
+			if err != nil {
+				return err
+			}
+
+			runnerName, err := resolveRunnerFlag(flags, "runner", cfg.Loop.Runner)
+			if err != nil {
+				return err
+			}
+			effort, err := resolveFlagString(flags, "reasoning-effort", cfg.Loop.ReasoningEffort)
+			if err != nil {
+				return err
+			}
+
+			result, err := taskbuilder.Build(context.Background(), taskbuilder.BuildOptions{
+				RepoRoot:     locs.RepoRoot,
+				PinDir:       cfg.Paths.PinDir,
+				ProjectType:  cfg.ProjectType,
+				Prompt:       prompt,
+				Tags:         tags,
+				Scope:        scope,
+				Description:  description,
+				WriteToQueue: !dryRun,
+				InsertAtTop:  true,
+			})
+			if err != nil {
+				return err
+			}
+
+			out := cmd.OutOrStdout()
+			if dryRun {
+				for _, line := range result.ItemBlock {
+					if _, err := fmt.Fprintln(out, line); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+
+			if _, err := fmt.Fprintf(out, ">> [RALPH] Queued %s\n", result.ID); err != nil {
+				return err
+			}
+
+			if runNow {
+				itemTags := tags
+				if len(itemTags) == 0 && len(result.ItemBlock) > 0 {
+					itemTags = pin.ExtractTags(result.ItemBlock[0])
+				}
+				dirtyStartPolicy, err := loop.ParseDirtyRepoPolicy(cfg.Loop.DirtyRepo.StartPolicy)
+				if err != nil {
+					return err
+				}
+				dirtyDuringPolicy, err := loop.ParseDirtyRepoPolicy(cfg.Loop.DirtyRepo.DuringPolicy)
+				if err != nil {
+					return err
+				}
+				logger := loop.StdLogger{Writer: out}
+				runnerArgs := mergeRunnerArgsWithEffort(
+					runnerName,
+					cfg.Loop.RunnerArgs,
+					nil,
+					effort,
+				)
+				runner, err := loop.NewRunner(loop.Options{
+					RepoRoot:                locs.RepoRoot,
+					PinDir:                  cfg.Paths.PinDir,
+					ProjectType:             cfg.ProjectType,
+					Runner:                  runnerName,
+					RunnerArgs:              runnerArgs,
+					ReasoningEffort:         effort,
+					ForceContextBuilder:     false,
+					SleepSeconds:            cfg.Loop.SleepSeconds,
+					MaxIterations:           cfg.Loop.MaxIterations,
+					MaxStalled:              cfg.Loop.MaxStalled,
+					MaxRepairAttempts:       cfg.Loop.MaxRepairAttempts,
+					RunnerInactivitySeconds: cfg.Loop.RunnerInactivitySeconds,
+					OnlyTags:                itemTags,
+					Once:                    true,
+					RequireMain:             cfg.Loop.RequireMain,
+					AutoCommit:              cfg.Git.AutoCommit,
+					AutoPush:                cfg.Git.AutoPush,
+					DirtyRepoStart:          dirtyStartPolicy,
+					DirtyRepoDuring:         dirtyDuringPolicy,
+					AllowUntracked:          cfg.Loop.DirtyRepo.AllowUntracked,
+					QuarantineClean:         cfg.Loop.DirtyRepo.QuarantineCleanUntracked,
+					RedactionMode:           cfg.Logging.RedactionMode,
+					LogMaxBufferedBytes:     cfg.Logging.MaxBufferedBytes,
+					Logger:                  logger,
+				})
+				if err != nil {
+					return err
+				}
+				return runner.Run(context.Background())
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().String("tags", "", "Routing tags (comma/space-separated)")
+	cmd.Flags().String("scope", "repo", "Scope list for the queue item header")
+	cmd.Flags().String("description", "", "Optional queue item summary (defaults to prompt first line)")
+	cmd.Flags().String("runner", "codex", "Runner to use: codex or opencode")
+	cmd.Flags().String("reasoning-effort", "", "Codex reasoning effort override (auto/low/medium/high/off)")
+	cmd.Flags().Bool("dry-run", false, "Print the queue item without writing to disk")
+	cmd.Flags().Bool("run", false, "Run one loop iteration after queuing the task")
+
+	return cmd
 }
 
 func newSpecsBuildCommand() *cobra.Command {
@@ -955,6 +1133,24 @@ func resolveRunnerFlag(flags *pflag.FlagSet, name string, fallback string) (stri
 func mergeRunnerArgsWithEffort(runner string, configArgs []string, cliArgs []string, effort string) []string {
 	merged := runnerargs.MergeArgs(configArgs, cliArgs)
 	return runnerargs.ApplyReasoningEffort(runner, merged, effort).Args
+}
+
+func readPromptInput(cmd *cobra.Command, args []string) (string, error) {
+	if len(args) > 0 {
+		return strings.TrimSpace(strings.Join(args, " ")), nil
+	}
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		return "", fmt.Errorf("prompt text required (pass arguments or pipe input)")
+	}
+	data, err := io.ReadAll(cmd.InOrStdin())
+	if err != nil {
+		return "", err
+	}
+	prompt := strings.TrimSpace(string(data))
+	if prompt == "" {
+		return "", fmt.Errorf("prompt text required (input was empty)")
+	}
+	return prompt, nil
 }
 
 func newPinCommand() *cobra.Command {

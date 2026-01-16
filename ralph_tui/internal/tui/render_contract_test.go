@@ -32,6 +32,7 @@ func TestRenderContract(t *testing.T) {
 		screenDashboard,
 		screenRunLoop,
 		screenBuildSpecs,
+		screenTaskBuilder,
 		screenPin,
 		screenConfig,
 		screenLogs,

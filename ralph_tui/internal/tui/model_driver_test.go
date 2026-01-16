@@ -157,7 +157,8 @@ func TestModelDriver_AllScreens_RenderWithinBounds(t *testing.T) {
 	driver.Resize(40, 10)
 
 	for _, item := range navigationItems() {
-		driver.SelectScreen(item.screen)
+		driver.m.switchScreen(item.screen, true)
+		driver.m.applyFocus()
 		driver.AssertScreen(item.screen)
 		driver.AssertViewWithinBounds()
 	}

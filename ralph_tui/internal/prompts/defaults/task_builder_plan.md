@@ -1,0 +1,3 @@
+- Translate the prompt into scoped work for {{SCOPE}}.
+- Use repo recon ({{PROJECT_TYPE}}) to target the right files and tests.
+- Run make ci and confirm pin validation.
