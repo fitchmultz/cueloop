@@ -62,7 +62,7 @@ func TestConfigScreenRendersFormWithoutInput(t *testing.T) {
 	}
 }
 
-func TestTabBypassesGlobalFocusWhenFormActive(t *testing.T) {
+func TestFocusToggleIgnoredWhileTyping(t *testing.T) {
 	cases := []struct {
 		name  string
 		setup func(t *testing.T, m *model)
@@ -72,6 +72,11 @@ func TestTabBypassesGlobalFocusWhenFormActive(t *testing.T) {
 			setup: func(t *testing.T, m *model) {
 				t.Helper()
 				m.switchScreen(screenConfig, true)
+				if m.configView == nil {
+					t.Fatalf("config view missing")
+				}
+				m.configView.form.NextField()
+				m.configView.form.NextField()
 			},
 		},
 		{
@@ -108,21 +113,29 @@ func TestTabBypassesGlobalFocusWhenFormActive(t *testing.T) {
 			tc.setup(t, &m)
 
 			if m.navFocused {
-				t.Fatalf("expected content focus before tab handling")
+				t.Fatalf("expected content focus before ctrl+f handling")
 			}
 
-			updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+			updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 			next := updated.(model)
 			if next.navFocused {
-				t.Fatalf("expected tab to stay with form, focus toggled to nav")
-			}
-
-			updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
-			next = updated.(model)
-			if !next.navFocused {
-				t.Fatalf("expected ctrl+f to toggle focus to nav")
+				t.Fatalf("expected ctrl+f to stay with form, focus toggled to nav")
 			}
 		})
+	}
+}
+
+func TestFocusToggleWorksWhenNotTyping(t *testing.T) {
+	base, _, _ := newHermeticModel(t)
+	m := base
+	m.navFocused = false
+	m.navCollapsed = false
+	m.applyFocus()
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
+	next := updated.(model)
+	if !next.navFocused {
+		t.Fatalf("expected ctrl+f to toggle focus to nav")
 	}
 }
 
@@ -137,13 +150,10 @@ func TestTypingBlocksGlobalShortcutsInSpecsUserFocus(t *testing.T) {
 	m.specsView.userFocusInput.Focus()
 	m.specsView.editUserFocus = true
 
-	updated, _ := m.Update(runeKey('/'))
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlK})
 	m = updated.(model)
 	if m.searchActive {
 		t.Fatalf("expected search to remain inactive while typing")
-	}
-	if !strings.Contains(m.specsView.userFocusInput.Value(), "/") {
-		t.Fatalf("expected user focus input to capture '/'")
 	}
 
 	updated, _ = m.Update(runeKey('e'))
@@ -156,6 +166,12 @@ func TestTypingBlocksGlobalShortcutsInSpecsUserFocus(t *testing.T) {
 	m = updated.(model)
 	if m.shuttingDown {
 		t.Fatalf("expected 'q' to be ignored while typing")
+	}
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlQ})
+	m = updated.(model)
+	if !m.shuttingDown {
+		t.Fatalf("expected ctrl+q to quit while typing")
 	}
 
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -176,13 +192,13 @@ func TestTypingBlocksGlobalSearchInConfigEditorInput(t *testing.T) {
 	m.configView.form.NextField()
 
 	before := m.configView.data.UITheme
-	updated, _ := m.Update(runeKey('/'))
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlK})
 	m = updated.(model)
 	if m.searchActive {
 		t.Fatalf("expected search to remain inactive while typing")
 	}
-	if !strings.Contains(m.configView.data.UITheme, "/") || m.configView.data.UITheme == before {
-		t.Fatalf("expected config input to capture '/'")
+	if m.configView.data.UITheme != before {
+		t.Fatalf("expected config input to ignore ctrl+k while typing")
 	}
 }
 

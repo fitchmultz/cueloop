@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
@@ -147,7 +148,32 @@ func newConfigEditor(
 	return editor, nil
 }
 
-func (e *configEditor) Update(msg tea.Msg) tea.Cmd {
+func (e *configEditor) Update(msg tea.Msg, keys keyMap) tea.Cmd {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch {
+		case key.Matches(keyMsg, keys.SaveGlobal):
+			if e.handleAction(actionSaveGlobal) {
+				return requestConfigReloadCmd()
+			}
+			return nil
+		case key.Matches(keyMsg, keys.SaveRepo):
+			if e.handleAction(actionSaveRepo) {
+				return requestConfigReloadCmd()
+			}
+			return nil
+		case key.Matches(keyMsg, keys.Discard):
+			if e.handleAction(actionDiscard) {
+				return requestConfigReloadCmd()
+			}
+			return nil
+		case key.Matches(keyMsg, keys.ResetField):
+			e.ResetField()
+			return nil
+		case key.Matches(keyMsg, keys.ResetLayer):
+			e.ResetLayer()
+			return nil
+		}
+	}
 	prevLayer := e.layer
 	model, cmd := e.form.Update(msg)
 	if form, ok := model.(*huh.Form); ok {
@@ -169,15 +195,23 @@ func (e *configEditor) Update(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
+func requestConfigReloadCmd() tea.Cmd {
+	return func() tea.Msg {
+		return configReloadRequestMsg{}
+	}
+}
+
 func (e *configEditor) IsTyping() bool {
 	if e == nil || e.form == nil {
 		return false
 	}
-	return e.form.GetFocusedField() != nil
-}
-
-func (e *configEditor) HandlesTabNavigation() bool {
-	return e.form != nil
+	focused := e.form.GetFocusedField()
+	switch focused.(type) {
+	case *huh.Input, *huh.Text:
+		return true
+	default:
+		return false
+	}
 }
 
 func (e *configEditor) View() string {
@@ -222,15 +256,15 @@ func (e *configEditor) statusLine() string {
 }
 
 func (e *configEditor) SaveGlobal() {
-	e.handleAction(actionSaveGlobal)
+	_ = e.handleAction(actionSaveGlobal)
 }
 
 func (e *configEditor) SaveRepo() {
-	e.handleAction(actionSaveRepo)
+	_ = e.handleAction(actionSaveRepo)
 }
 
 func (e *configEditor) DiscardSession() {
-	e.handleAction(actionDiscard)
+	_ = e.handleAction(actionDiscard)
 }
 
 func (e *configEditor) ResetLayer() {
@@ -268,26 +302,28 @@ func (e *configEditor) SessionOverrides() config.PartialConfig {
 	return e.drafts[layerSession]
 }
 
-func (e *configEditor) handleAction(action string) {
+func (e *configEditor) handleAction(action string) bool {
 	if action == "" {
-		return
+		return false
 	}
 	if err := e.commitDraft(e.layer); err != nil {
 		e.saveError = err.Error()
 		e.saveNote = ""
-		return
+		return false
 	}
 	switch action {
 	case actionSaveGlobal:
-		e.saveLayer(layerGlobal)
+		return e.saveLayer(layerGlobal)
 	case actionSaveRepo:
-		e.saveLayer(layerRepo)
+		return e.saveLayer(layerRepo)
 	case actionDiscard:
 		e.discardSession()
+		return true
 	}
+	return false
 }
 
-func (e *configEditor) saveLayer(layer string) {
+func (e *configEditor) saveLayer(layer string) bool {
 	partial, ok := e.drafts[layer]
 	if !ok {
 		partial = config.PartialConfig{}
@@ -295,7 +331,7 @@ func (e *configEditor) saveLayer(layer string) {
 	if err := e.validatePartial(layer, partial); err != nil {
 		e.saveError = err.Error()
 		e.saveNote = ""
-		return
+		return false
 	}
 
 	var path string
@@ -305,31 +341,32 @@ func (e *configEditor) saveLayer(layer string) {
 		if path == "" {
 			e.saveError = "global config path unavailable"
 			e.saveNote = ""
-			return
+			return false
 		}
 	} else if layer == layerRepo {
 		path = e.locations.RepoConfigPath
 		if path == "" {
 			e.saveError = "repo config path unavailable"
 			e.saveNote = ""
-			return
+			return false
 		}
 		options.RelativeRoot = e.locations.RepoRoot
 	} else {
 		e.saveError = "session layer cannot be saved"
 		e.saveNote = ""
-		return
+		return false
 	}
 
 	if err := config.SavePartial(path, partial, options); err != nil {
 		e.saveError = err.Error()
 		e.saveNote = ""
-		return
+		return false
 	}
 
 	e.saveError = ""
 	e.saveNote = fmt.Sprintf("Saved %s config to %s", layer, path)
 	_ = e.resetLayer(e.layer)
+	return true
 }
 
 func (e *configEditor) discardSession() {

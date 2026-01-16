@@ -331,12 +331,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.loopView != nil {
 			m.loopView.appendLogLines(msg.batch.Lines)
 		}
-		if last := lastNonEmptyLine(msg.batch.Lines); last != "" {
+		if last := lastNonEmptyLineExcluding(msg.batch.Lines, isFixupSystemLine); last != "" {
 			m.fixup.lastLogLine = last
+		} else {
+			fallback := lastNonEmptyLine(msg.batch.Lines)
+			if fallback != "" && (m.fixup.lastLogLine == "" || isFixupSystemLine(m.fixup.lastLogLine)) {
+				m.fixup.lastLogLine = fallback
+			}
 		}
 		m.refreshLogsView()
 		if msg.batch.Done {
 			m.fixupLogCh = nil
+			if !m.fixup.hasSummary && !m.fixup.running && !m.fixup.finishedAt.IsZero() {
+				m.fixup.hasSummary = true
+			}
 		} else if m.fixupLogCh != nil {
 			cmds = append(cmds, listenFixupLogs(m.fixupLogCh, m.fixupLogRunID))
 		}
@@ -349,11 +357,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fixup.running = false
 		m.fixup.finishedAt = msg.finishedAt
 		m.fixup.summary = summaryFromFixupResult(msg.result)
-		m.fixup.hasSummary = true
 		if msg.err != nil {
 			m.fixup.err = msg.err.Error()
 		} else {
 			m.fixup.err = ""
+		}
+		if m.fixupLogCh == nil {
+			m.fixup.hasSummary = true
 		}
 		m.logInfo("fixup.stop", map[string]any{
 			"scanned_blocked": m.fixup.summary.scanned,
@@ -387,6 +397,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			"refresh_gen":     m.refreshGen,
 		})
 		handled = true
+	case configReloadRequestMsg:
+		m.syncSessionOverridesFromEditor()
+		return m, m.reloadConfigCmd()
 	case repoStatusMsg:
 		m.repoStatus = msg.result
 		handled = true
@@ -401,18 +414,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Shutdown("key.quit")
 			return m, tea.Quit
 		}
-		if m.searchActive {
-			cmd := m.updateSearch(msg)
-			return m, cmd
-		}
-		if m.isTyping() && isTextEntryKey(msg) {
-			cmd := m.updateActiveView(msg)
-			return m, cmd
-		}
 		if key.Matches(msg, m.keys.Quit) {
 			m.logInfo("tui.quit", map[string]any{"screen": screenName(m.screen)})
 			m.Shutdown("key.quit")
 			return m, tea.Quit
+		}
+		if m.searchActive {
+			cmd := m.updateSearch(msg)
+			return m, cmd
+		}
+		if m.isTyping() {
+			cmd := m.updateActiveView(msg)
+			return m, cmd
 		}
 		if key.Matches(msg, m.keys.ToggleNav) {
 			m.navCollapsed = !m.navCollapsed
@@ -483,38 +496,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			if m.shouldBypassFocusToggle(msg) {
-				break
-			}
 			m.navFocused = !m.navFocused
 			m.applyFocus()
 			m.relayout()
 			return m, nil
-		}
-		if m.screen == screenConfig {
-			if key.Matches(msg, m.keys.SaveGlobal) && m.configView != nil {
-				m.configView.SaveGlobal()
-				m.syncSessionOverridesFromEditor()
-				return m, m.reloadConfigCmd()
-			}
-			if key.Matches(msg, m.keys.SaveRepo) && m.configView != nil {
-				m.configView.SaveRepo()
-				m.syncSessionOverridesFromEditor()
-				return m, m.reloadConfigCmd()
-			}
-			if key.Matches(msg, m.keys.Discard) && m.configView != nil {
-				m.configView.DiscardSession()
-				m.syncSessionOverridesFromEditor()
-				return m, m.reloadConfigCmd()
-			}
-			if key.Matches(msg, m.keys.ResetField) && m.configView != nil {
-				m.configView.ResetField()
-				return m, nil
-			}
-			if key.Matches(msg, m.keys.ResetLayer) && m.configView != nil {
-				m.configView.ResetLayer()
-				return m, nil
-			}
 		}
 		if m.navFocused && !m.navCollapsed {
 			updated, cmd := m.nav.Update(msg)
@@ -616,6 +601,26 @@ func lastNonEmptyLine(lines []string) string {
 		}
 	}
 	return ""
+}
+
+func lastNonEmptyLineExcluding(lines []string, skip func(string) bool) string {
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if skip != nil && skip(line) {
+			continue
+		}
+		return line
+	}
+	return ""
+}
+
+func isFixupSystemLine(line string) bool {
+	return strings.Contains(line, "Fixup blocked starting.") ||
+		strings.Contains(line, "Fixup blocked completed:") ||
+		strings.Contains(line, "Fixup blocked failed:")
 }
 
 func summaryFromFixupResult(result loop.FixupResult) fixupSummary {
@@ -741,19 +746,6 @@ func (m *model) startFixupCmd() tea.Cmd {
 	return tea.Batch(runCmd, listenFixupLogs(logCh, runID))
 }
 
-func (m model) shouldBypassFocusToggle(msg tea.KeyMsg) bool {
-	if m.navFocused {
-		return false
-	}
-	if msg.Type != tea.KeyTab {
-		return false
-	}
-	if m.isTyping() {
-		return true
-	}
-	return m.activeViewUsesTabNavigation()
-}
-
 func (m model) isTyping() bool {
 	if m.focusedPanelEffective() != focusedPanelContent {
 		return false
@@ -767,19 +759,6 @@ func (m model) isTyping() bool {
 		return m.specsView != nil && m.specsView.IsTyping()
 	case screenRunLoop:
 		return m.loopView != nil && m.loopView.IsTyping()
-	default:
-		return false
-	}
-}
-
-func (m model) activeViewUsesTabNavigation() bool {
-	switch m.screen {
-	case screenConfig:
-		return m.configView != nil && m.configView.HandlesTabNavigation()
-	case screenRunLoop:
-		return m.loopView != nil && m.loopView.HandlesTabNavigation()
-	case screenPin:
-		return m.pinView != nil && m.pinView.HandlesTabNavigation()
 	default:
 		return false
 	}
@@ -935,7 +914,7 @@ func (m model) contentView() string {
 		}
 		return m.logsView.View()
 	case screenHelp:
-		return "Help\n\nUse the left menu to navigate and Tab (or Ctrl+F) to switch focus."
+		return "Help\n\nUse the left menu to navigate and Ctrl+F to switch focus."
 	default:
 		return ""
 	}
@@ -1143,6 +1122,8 @@ type refreshMsg struct {
 	gen int
 }
 
+type configReloadRequestMsg struct{}
+
 type configReloadMsg struct {
 	cfg config.Config
 	err error
@@ -1298,7 +1279,7 @@ func (m *model) updateActiveView(msg tea.Msg) tea.Cmd {
 	switch m.screen {
 	case screenConfig:
 		if m.configView != nil {
-			return m.configView.Update(msg)
+			return m.configView.Update(msg, m.keys)
 		}
 	case screenLogs:
 		if m.logsView != nil {
@@ -1432,9 +1413,11 @@ func (m *model) helpKeyMap() help.KeyMap {
 	if m.searchActive {
 		return searchKeyMap{keys: m.keys, canToggleTarget: m.canToggleSearchTarget()}
 	}
-	global := globalKeyMap{keys: m.keys}
 	screenKeys := m.screenKeyMap()
-	return mergedKeyMap{global: global, screen: screenKeys}
+	if m.isTyping() {
+		return mergedKeyMap{global: typingGlobalKeyMap{keys: m.keys}, screen: screenKeys}
+	}
+	return mergedKeyMap{global: globalKeyMap{keys: m.keys}, screen: screenKeys}
 }
 
 func (m *model) screenKeyMap() help.KeyMap {
@@ -1703,13 +1686,6 @@ func (m *model) updateSearch(msg tea.KeyMsg) tea.Cmd {
 	}
 	if msg.Type == tea.KeyEsc {
 		m.cancelSearch()
-		return nil
-	}
-	if msg.Type == tea.KeyCtrlF {
-		m.cancelSearch()
-		m.navFocused = !m.navFocused
-		m.applyFocus()
-		m.relayout()
 		return nil
 	}
 	return cmd

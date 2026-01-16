@@ -237,12 +237,12 @@ func assertBodyBordersIntact(t *testing.T, out string, w int, bodyH int) {
 	}
 }
 
-func TestHelpScreenMentionsTabFocus(t *testing.T) {
+func TestHelpScreenMentionsCtrlFocus(t *testing.T) {
 	_, locs, cfg := newHermeticModel(t)
 	m := newModel(cfg, locs, StartOptions{})
 	m.screen = screenHelp
 	view := m.contentView()
-	if !strings.Contains(view, "Tab") {
-		t.Fatalf("expected help screen to mention Tab focus, got %q", view)
+	if !strings.Contains(view, "Ctrl+F") {
+		t.Fatalf("expected help screen to mention Ctrl+F focus, got %q", view)
 	}
 }

@@ -319,13 +319,6 @@ func (p *pinView) Update(msg tea.Msg, keys keyMap, loopMode loopMode) tea.Cmd {
 	return cmd
 }
 
-func (p *pinView) HandlesTabNavigation() bool {
-	if p.mode == pinModeBlockForm && p.blockForm != nil {
-		return true
-	}
-	return p.mode == pinModeMoveCheckedForm && p.moveForm != nil
-}
-
 func (p *pinView) IsTyping() bool {
 	if p == nil {
 		return false

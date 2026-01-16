@@ -18,6 +18,18 @@ func (g globalKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{{g.keys.Quit, g.keys.ToggleNav, g.keys.Focus, g.keys.Help, g.keys.RefreshNow, g.keys.Search, g.keys.Select}}
 }
 
+type typingGlobalKeyMap struct {
+	keys keyMap
+}
+
+func (t typingGlobalKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{t.keys.Quit}
+}
+
+func (t typingGlobalKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{{t.keys.Quit}}
+}
+
 type searchKeyMap struct {
 	keys            keyMap
 	canToggleTarget bool

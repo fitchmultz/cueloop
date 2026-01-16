@@ -52,27 +52,27 @@ type keyMap struct {
 func newKeyMap() keyMap {
 	return keyMap{
 		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c"),
-			key.WithHelp("q", "quit"),
+			key.WithKeys("ctrl+q"),
+			key.WithHelp("ctrl+q", "quit"),
 		),
 		ToggleNav: key.NewBinding(
 			key.WithKeys("ctrl+n"),
 			key.WithHelp("ctrl+n", "toggle nav"),
 		),
 		Focus: key.NewBinding(
-			key.WithKeys("tab", "ctrl+f"),
-			key.WithHelp("tab/ctrl+f", "toggle focus"),
+			key.WithKeys("ctrl+f"),
+			key.WithHelp("ctrl+f", "toggle focus"),
 		),
 		Help: key.NewBinding(
-			key.WithKeys("?"),
-			key.WithHelp("?", "toggle help"),
+			key.WithKeys("ctrl+h"),
+			key.WithHelp("ctrl+h", "toggle help"),
 		),
 		RefreshNow: key.NewBinding(
 			key.WithKeys("ctrl+l"),
 			key.WithHelp("ctrl+l", "refresh now"),
 		),
 		Search: key.NewBinding(
-			key.WithKeys("ctrl+k", "/"),
+			key.WithKeys("ctrl+k"),
 			key.WithHelp("ctrl+k", "search"),
 		),
 		SearchCancel: key.NewBinding(

@@ -66,7 +66,7 @@ func TestTUIQuitTerminatesRunnerProcessGroup(t *testing.T) {
 		t.Fatalf("expected child pid %d to be running", pid)
 	}
 
-	if _, err := writer.Write([]byte("q")); err != nil {
+	if _, err := writer.Write([]byte{0x11}); err != nil {
 		t.Fatalf("send quit key: %v", err)
 	}
 	_ = writer.Close()

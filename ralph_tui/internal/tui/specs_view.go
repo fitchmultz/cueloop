@@ -360,7 +360,7 @@ func (s *specsView) optionsView() string {
 		fmt.Sprintf("Scout workflow: %s", yesNo(s.scoutWorkflow)),
 		userFocusLine,
 		renderKeyHints("Keys", specsKeyHintBindings(s.keys, s.running)),
-		"Scroll: \u2191/\u2193 PgUp/PgDn (Tab to focus)",
+		"Scroll: \u2191/\u2193 PgUp/PgDn (Ctrl+F to focus)",
 	}
 	if s.editUserFocus {
 		lines = append(lines, "Edit focus: Enter to save | Esc to cancel")
