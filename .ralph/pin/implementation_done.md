@@ -1,6 +1,9 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0498 [code]: Add unit tests for fileutil atomic writes. (ralph_tui/internal/fileutil/atomic.go)
+  - Evidence: Critical write/rename helper has no package-level tests; failures could corrupt pin/config files.
+  - Plan: Add `atomic_test.go` to cover successful atomic write, content preservation, permissions, and error behavior when the destination directory is missing.
 - [x] RQ-0492 [ui]: Add a TUI task-builder mode (plus CLI entrypoint) that turns prompts into queue-formatted items. (ralph_tui/internal/tui, ralph_tui/internal/pin, ralph_tui/internal/prompts, ralph_tui/cmd/ralph/main.go)
   - Evidence: Users currently have to hand-format queue entries and track IDs/tags manually; the requested workflow is an agent-led prompt session that inserts correctly formatted tasks automatically.
   - Plan: Implement a TUI flow with a CLI entrypoint that launches it; agent choices are Codex/OpenCode with low/medium/high reasoning options; reuse NextQueueID/queue format rules; add prompt injection templates and repo recon for Evidence/Plan; add tests and help text.

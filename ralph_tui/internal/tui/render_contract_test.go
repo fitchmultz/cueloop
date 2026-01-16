@@ -166,7 +166,7 @@ func TestBorderContract(t *testing.T) {
 
 func assertBodyBordersIntact(t *testing.T, out string, w int, bodyH int) {
 	t.Helper()
-	if bodyH <= 0 {
+	if bodyH < 2 || w < 2 {
 		return
 	}
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")

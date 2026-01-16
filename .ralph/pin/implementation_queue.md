@@ -1,9 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0498 [code]: Add unit tests for fileutil atomic writes. (ralph_tui/internal/fileutil/atomic.go)
-  - Evidence: Critical write/rename helper has no package-level tests; failures could corrupt pin/config files.
-  - Plan: Add `atomic_test.go` to cover successful atomic write, content preservation, permissions, and error behavior when the destination directory is missing.
 - [ ] RQ-0499 [code]: Add unit tests for paths resolution. (ralph_tui/internal/paths/paths.go)
   - Evidence: Path resolution is core to repo/root discovery yet lacks direct tests; regressions could break startup in nested directories.
   - Plan: Add `paths_test.go` to validate resolving from repo root, resolving from nested subdirectories, and error behavior when no `.ralph/` exists.
