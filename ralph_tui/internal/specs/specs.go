@@ -202,19 +202,22 @@ func ResolveInnovate(queuePath string, innovate bool, innovateExplicit bool, aut
 
 // ResolveInnovateDetails returns the effective innovate state plus any auto-enable reason.
 func ResolveInnovateDetails(queuePath string, innovate bool, innovateExplicit bool, autofillScout bool) (InnovateResolution, error) {
-	if innovateExplicit || !autofillScout {
+	if innovateExplicit {
 		return InnovateResolution{Effective: innovate}, nil
 	}
-	count, err := uncheckedQueueCount(queuePath)
+	if !autofillScout {
+		return InnovateResolution{Effective: innovate}, nil
+	}
+	count, err := queueTopLevelItemCount(queuePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			autoEnabled := !innovateExplicit && autofillScout && !innovate
+			autoEnabled := !innovate
 			reason := ""
 			if autoEnabled {
 				reason = "missing queue file"
 			}
 			return InnovateResolution{
-				Effective:   true,
+				Effective:   innovate || autoEnabled,
 				AutoEnabled: autoEnabled,
 				AutoReason:  reason,
 			}, nil
@@ -222,13 +225,13 @@ func ResolveInnovateDetails(queuePath string, innovate bool, innovateExplicit bo
 		return InnovateResolution{}, err
 	}
 	if count == 0 {
-		autoEnabled := !innovateExplicit && autofillScout && !innovate
+		autoEnabled := !innovate
 		reason := ""
 		if autoEnabled {
 			reason = "empty queue"
 		}
 		return InnovateResolution{
-			Effective:   true,
+			Effective:   innovate || autoEnabled,
 			AutoEnabled: autoEnabled,
 			AutoReason:  reason,
 		}, nil
@@ -482,28 +485,12 @@ func enforceInteractiveSize(prompt string, runner Runner) error {
 	return fmt.Errorf("Prompt too large for interactive opencode (size: %d bytes). Use non-interactive or codex.", promptSize)
 }
 
-func uncheckedQueueCount(queuePath string) (int, error) {
-	content, err := os.ReadFile(queuePath)
+func queueTopLevelItemCount(queuePath string) (int, error) {
+	items, err := pin.ReadQueueItems(queuePath)
 	if err != nil {
 		return 0, err
 	}
-	lines := strings.Split(strings.TrimSuffix(string(content), "\n"), "\n")
-	inQueue := false
-	count := 0
-	for _, line := range lines {
-		switch {
-		case strings.TrimSpace(line) == "## Queue":
-			inQueue = true
-		case strings.HasPrefix(line, "## "):
-			inQueue = false
-		case inQueue:
-			trimmed := strings.TrimLeft(line, " \t")
-			if strings.HasPrefix(trimmed, "- [ ]") {
-				count++
-			}
-		}
-	}
-	return count, nil
+	return len(items), nil
 }
 
 func lockChecksum(repoRoot string) string {

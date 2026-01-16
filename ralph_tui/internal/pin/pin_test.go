@@ -31,6 +31,15 @@ func TestValidatePinFixtures(t *testing.T) {
 	}
 }
 
+func TestValidatePinAllowsEmptyQueueAndDone(t *testing.T) {
+	fixture := mustLocateEmptyFixtures(t)
+	files := ResolveFiles(fixture.pinDir)
+
+	if err := ValidatePin(files); err != nil {
+		t.Fatalf("ValidatePin failed for empty fixtures: %v", err)
+	}
+}
+
 func TestValidatePinAllowsExtraMetadata(t *testing.T) {
 	fixture := mustLocateFixtures(t)
 
@@ -659,6 +668,32 @@ func mustLocateFixtures(t *testing.T) fixturePaths {
 	queue := filepath.Join(pinDir, "implementation_queue.md")
 	if !fileExists(queue) {
 		t.Fatalf("unable to locate pin fixtures from %s", pinDir)
+	}
+
+	done := filepath.Join(pinDir, "implementation_done.md")
+	lookup := filepath.Join(pinDir, "lookup_table.md")
+	readme := filepath.Join(pinDir, "README.md")
+	return fixturePaths{
+		pinDir: pinDir,
+		queue:  queue,
+		done:   done,
+		lookup: lookup,
+		readme: readme,
+	}
+}
+
+func mustLocateEmptyFixtures(t *testing.T) fixturePaths {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatalf("unable to resolve testdata path")
+	}
+
+	baseDir := filepath.Dir(file)
+	pinDir := filepath.Join(baseDir, "testdata", "pin_empty")
+	queue := filepath.Join(pinDir, "implementation_queue.md")
+	if !fileExists(queue) {
+		t.Fatalf("unable to locate empty pin fixtures from %s", pinDir)
 	}
 
 	done := filepath.Join(pinDir, "implementation_done.md")

@@ -246,9 +246,6 @@ func ValidatePin(files Files) error {
 
 	ids := append(extractIDs(queueLines), extractIDs(doneLines)...)
 	sort.Strings(ids)
-	if len(ids) == 0 {
-		return fmt.Errorf("No task IDs found in queue/done. Expected IDs like RQ-0123.")
-	}
 	dupes := findDuplicates(ids)
 	if len(dupes) > 0 {
 		return fmt.Errorf("Duplicate task IDs detected. Fix these IDs:\n%s", strings.Join(dupes, "\n"))

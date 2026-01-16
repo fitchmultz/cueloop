@@ -1,9 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0480 [code]: Stabilize pin queue validation and auto-innovate accounting. (ralph_tui/internal/pin/pin.go, ralph_tui/internal/specs/specs.go, ralph_tui/cmd/ralph/main.go)
-  - Evidence: ValidatePin errors when queue/done are empty; uncheckedQueueCount counts any "- [ ]" line (including indented metadata) and ignores checked items; ResolveInnovateDetails returns Effective=true even when auto-enable is disabled for empty/missing queue; pin next-id runs ValidatePin so fresh queues cannot allocate IDs.
-  - Plan: Allow empty queue/done while still enforcing format when items exist; count only top-level queue items (checked+unchecked) in ## Queue; fix ResolveInnovateDetails to respect explicit/disabled settings; update pin/specs CLI/tests/fixtures.
 - [ ] RQ-0481 [code]: Normalize runner values across config, CLI, and loop invocations. (ralph_tui/internal/config/load.go, ralph_tui/internal/config/config.go, ralph_tui/internal/loop/loop.go, ralph_tui/cmd/ralph/main.go)
   - Evidence: ValidRunner lowercases input but applyPartial stores raw values; loop.verifyRunner only matches exact "codex"/"opencode"; CLI flags pass raw values so mixed-case runners pass config validation but fail at runtime.
   - Plan: Normalize runner strings in config load/apply and CLI overrides; ensure loop/specs use normalized values; add tests for mixed-case inputs.

@@ -1,6 +1,9 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0480 [code]: Stabilize pin queue validation and auto-innovate accounting. (ralph_tui/internal/pin/pin.go, ralph_tui/internal/specs/specs.go, ralph_tui/cmd/ralph/main.go)
+  - Evidence: ValidatePin errors when queue/done are empty; uncheckedQueueCount counts any "- [ ]" line (including indented metadata) and ignores checked items; ResolveInnovateDetails returns Effective=true even when auto-enable is disabled for empty/missing queue; pin next-id runs ValidatePin so fresh queues cannot allocate IDs.
+  - Plan: Allow empty queue/done while still enforcing format when items exist; count only top-level queue items (checked+unchecked) in ## Queue; fix ResolveInnovateDetails to respect explicit/disabled settings; update pin/specs CLI/tests/fixtures.
 - [x] RQ-0479 [ops]: Reduce refresh/jitter and background workload to address lag (adaptive refresh, debounce preview rendering, avoid heavy work when screen inactive). (ralph_tui/internal/tui/model.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/repo_status.go)
   - Evidence: `refreshCmd` ticks frequently and triggers repo status sampling + view refresh checks even when screens are inactive (`model.refreshViews`). Specs preview rendering (glamour) can be expensive and is re-triggered on many resizes (`specs_view.Resize` sets `previewDirty=true`), contributing to a laggy experience.
   - Plan: Make refresh adaptive: only run heavy refresh logic when the relevant screen is visible, debounce preview rendering on rapid resize, and add lightweight timing logs at debug level to identify hotspots. Keep a manual "refresh now" as an escape hatch.
