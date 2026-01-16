@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/config"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/paths"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
@@ -564,16 +565,21 @@ func formatUserFocus(value string) string {
 }
 
 func (s *specsView) Resize(width int, height int) {
-	optionsLines := strings.Count(s.optionsView(), "\n") + 1
-	reserved := 1 + 1 + 1 + optionsLines + 1
-	previewHeight := height - reserved
-	if previewHeight < 0 {
-		previewHeight = 0
-	}
+	promptWidth := ansi.StringWidth(s.userFocusInput.Prompt)
+	s.userFocusInput.Width = max(0, width-promptWidth)
+	header := "Build Specs"
+	status := s.statusLine()
+	options := s.optionsView()
+	chrome := chromeHeight(
+		width,
+		wrappedBlock{Text: header, MinRows: 1},
+		wrappedBlock{Text: status, MinRows: 1, BlankLinesAfter: 1},
+		wrappedBlock{Text: options, MinRows: 1, BlankLinesAfter: 1},
+	)
+	previewHeight := remainingHeight(height, chrome)
 	resizeViewportToFit(&s.previewViewport, max(0, width), max(0, previewHeight), paddedViewportStyle)
 	resizeViewportToFit(&s.logViewport, max(0, width), max(0, previewHeight), paddedViewportStyle)
-	s.previewWidth = max(1, s.previewViewport.Width)
-	s.userFocusInput.Width = max(20, width-20)
+	s.previewWidth = max(0, s.previewViewport.Width)
 	s.previewDirty = true
 }
 

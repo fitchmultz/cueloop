@@ -1,0 +1,4 @@
+Config (editing: R
+Save: ctrl+g globa
+
+                 

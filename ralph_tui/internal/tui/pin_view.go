@@ -146,7 +146,6 @@ type pinView struct {
 
 const (
 	defaultPinViewWidth = 80
-	pinViewChromeHeight = 4
 )
 
 func newPinView(cfg config.Config, locations paths.Locations) (*pinView, error) {
@@ -342,43 +341,35 @@ func (p *pinView) Resize(width int, height int) {
 	p.height = height
 
 	p.setTableColumns(width)
-	available := height - pinViewChromeHeight
-	if available < 0 {
-		available = 0
+	header := "Pin"
+	status := p.statusLine()
+	blocks := []wrappedBlock{{Text: header, MinRows: 1}}
+	if status == "" {
+		blocks[0].BlankLinesAfter = 1
+	} else {
+		blocks = append(blocks, wrappedBlock{Text: status, MinRows: 1, BlankLinesAfter: 1})
 	}
-	tableHeight := 0
-	detailHeight := 0
-	if available > 0 {
-		tableHeight = available * 2 / 5
-		if tableHeight < 1 {
-			tableHeight = 1
-		}
-		if tableHeight > available {
-			tableHeight = available
-		}
-		detailHeight = available - tableHeight
-		if detailHeight < 1 && available > 1 {
-			detailHeight = 1
-			tableHeight = available - 1
-		}
-	}
+	chrome := chromeHeight(width, blocks...)
+	available := remainingHeight(height, chrome)
+	available = remainingHeight(available, 1)
+	tableHeight, detailHeight := splitTwoPaneHeight(available, 2, 5)
 	p.table.SetHeight(tableHeight)
 	resizeViewportToFit(&p.detail, max(0, width), max(0, detailHeight), p.detail.Style)
 	if p.mode == pinModeBlockForm && p.blockForm != nil {
-		formHeight := height - 2
-		if formHeight < 1 {
-			formHeight = 1
-		}
-		p.blockForm = p.blockForm.WithWidth(max(1, width))
-		p.blockForm = p.blockForm.WithHeight(max(1, formHeight))
+		chrome := chromeHeight(
+			width,
+			wrappedBlock{Text: "Block item", MinRows: 1, BlankLinesAfter: 1},
+		)
+		formHeight := remainingHeight(height, chrome)
+		p.blockForm = resizeHuhFormToFit(p.blockForm, width, formHeight)
 	}
 	if p.mode == pinModeMoveCheckedForm && p.moveForm != nil {
-		formHeight := height - 2
-		if formHeight < 1 {
-			formHeight = 1
-		}
-		p.moveForm = p.moveForm.WithWidth(max(1, width))
-		p.moveForm = p.moveForm.WithHeight(max(1, formHeight))
+		chrome := chromeHeight(
+			width,
+			wrappedBlock{Text: "Move checked items", MinRows: 1, BlankLinesAfter: 1},
+		)
+		formHeight := remainingHeight(height, chrome)
+		p.moveForm = resizeHuhFormToFit(p.moveForm, width, formHeight)
 	}
 }
 

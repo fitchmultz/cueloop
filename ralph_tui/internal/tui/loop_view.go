@@ -167,6 +167,7 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			l.guardForm = nil
 			l.mode = loopIdle
 			l.status = "Run cancelled"
+			l.Resize(l.width, l.height)
 		}
 		return cmd
 	}
@@ -184,9 +185,13 @@ func (l *loopView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 				l.status = "Session overrides updated"
 			}
 			l.mode = loopIdle
+			l.editForm = nil
+			l.Resize(l.width, l.height)
 		} else if l.editForm.State == huh.StateAborted {
 			l.mode = loopIdle
 			l.status = "Edit cancelled"
+			l.editForm = nil
+			l.Resize(l.width, l.height)
 		}
 		return cmd
 	}
@@ -671,11 +676,13 @@ func (l *loopView) applyGuardAction() tea.Cmd {
 	switch action {
 	case guardActionProceed:
 		l.mode = loopIdle
+		l.Resize(l.width, l.height)
 		return l.startRun(runOnce)
 	case guardActionCancel:
 		l.mode = loopIdle
 		l.status = "Run cancelled"
 		l.err = ""
+		l.Resize(l.width, l.height)
 		return nil
 	case guardActionShowStatus:
 		l.appendGitStatusSummary(context.Background())
@@ -707,6 +714,7 @@ func (l *loopView) applyGuardAction() tea.Cmd {
 	default:
 		l.mode = loopIdle
 		l.status = "Run cancelled"
+		l.Resize(l.width, l.height)
 		return nil
 	}
 }
@@ -919,27 +927,44 @@ func loopModeLabel(runOnce bool) string {
 func (l *loopView) Resize(width int, height int) {
 	l.width = width
 	l.height = height
-	controlsLines := strings.Count(l.controlsView(), "\n") + 1
-	extraLines := 4
-	stateView := l.stateView()
-	stateLines := strings.Count(stateView, "\n")
-	if stateView != "" {
-		stateLines++
+	if l.mode == loopGuarding && l.guardForm != nil {
+		chrome := chromeHeight(
+			width,
+			wrappedBlock{Text: "Run Loop", MinRows: 1},
+			wrappedBlock{Text: l.statusLine(), MinRows: 1, BlankLinesAfter: 1},
+		)
+		formHeight := remainingHeight(height, chrome)
+		l.guardForm = resizeHuhFormToFit(l.guardForm, width, formHeight)
+		return
 	}
-	logHeight := height - (controlsLines + extraLines + stateLines)
-	if logHeight < 0 {
-		logHeight = 0
+	if l.mode == loopEditing && l.editForm != nil {
+		chrome := chromeHeight(
+			width,
+			wrappedBlock{Text: "Run Loop", MinRows: 1},
+			wrappedBlock{Text: l.statusLine(), MinRows: 1, BlankLinesAfter: 1},
+		)
+		formHeight := remainingHeight(height, chrome)
+		l.editForm = resizeHuhFormToFit(l.editForm, width, formHeight)
+		return
 	}
-	resizeViewportToFit(&l.viewport, max(0, width), max(0, logHeight), paddedViewportStyle)
 
-	if l.editForm != nil {
-		formHeight := height - 3
-		if formHeight < 1 {
-			formHeight = 1
-		}
-		l.editForm = l.editForm.WithWidth(max(1, width))
-		l.editForm = l.editForm.WithHeight(max(1, formHeight))
+	head := "Run Loop"
+	status := l.statusLine()
+	state := l.stateView()
+	controls := l.controlsView()
+	blocks := []wrappedBlock{
+		{Text: head, MinRows: 1},
+		{Text: status, MinRows: 1},
 	}
+	if state != "" {
+		blocks = append(blocks, wrappedBlock{Text: state})
+		blocks[len(blocks)-1].BlankLinesAfter = 1
+	} else {
+		blocks[len(blocks)-1].BlankLinesAfter = 1
+	}
+	blocks = append(blocks, wrappedBlock{Text: controls, MinRows: 1, BlankLinesAfter: 1})
+	logHeight := remainingHeight(height, chromeHeight(width, blocks...))
+	resizeViewportToFit(&l.viewport, max(0, width), max(0, logHeight), paddedViewportStyle)
 }
 
 func (l *loopView) SetConfig(cfg config.Config, locations paths.Locations) {

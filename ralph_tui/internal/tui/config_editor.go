@@ -226,23 +226,15 @@ func (e *configEditor) Resize(width int, height int) {
 	if e.form == nil {
 		return
 	}
-	formHeight := height - 3
-	if formHeight < 1 {
-		formHeight = 1
-	}
-	if width > 0 {
-		e.form = e.form.WithWidth(width)
-	}
-	if height > 0 {
-		e.form = e.form.WithHeight(formHeight)
-	}
-	// Ensure the form has built its view even before it receives user input.
-	if width > 0 || height > 0 {
-		model, _ := e.form.Update(tea.WindowSizeMsg{Width: width, Height: formHeight})
-		if form, ok := model.(*huh.Form); ok {
-			e.form = form
-		}
-	}
+	header := fmt.Sprintf("Config (editing: %s)", layerLabel(e.layer))
+	status := e.statusLine()
+	chrome := chromeHeight(
+		width,
+		wrappedBlock{Text: header, MinRows: 1},
+		wrappedBlock{Text: status, MinRows: 1, BlankLinesAfter: 1},
+	)
+	formHeight := remainingHeight(height, chrome)
+	e.form = resizeHuhFormToFit(e.form, width, formHeight)
 }
 
 func (e *configEditor) statusLine() string {
