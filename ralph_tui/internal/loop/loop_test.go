@@ -113,3 +113,37 @@ func TestContextBuilderPolicyBlockIncludesNote(t *testing.T) {
 		t.Fatalf("expected note in policy block, got:\n%s", block)
 	}
 }
+
+func TestRunnerNormalizesRunnerInput(t *testing.T) {
+	t.Setenv("RALPH_LOOP_SKIP_RUNNER_CHECK", "1")
+
+	tests := []struct {
+		name   string
+		input  string
+		expect string
+	}{
+		{name: "codex mixed case", input: " Codex ", expect: "codex"},
+		{name: "opencode mixed case", input: " OPENcode ", expect: "opencode"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repoRoot := t.TempDir()
+			pinDir := t.TempDir()
+			runner, err := NewRunner(Options{
+				RepoRoot: repoRoot,
+				PinDir:   pinDir,
+				Runner:   tt.input,
+			})
+			if err != nil {
+				t.Fatalf("NewRunner failed: %v", err)
+			}
+			if runner.opts.Runner != tt.expect {
+				t.Fatalf("expected runner %q, got %q", tt.expect, runner.opts.Runner)
+			}
+			if err := runner.verifyRunner(); err != nil {
+				t.Fatalf("verifyRunner failed: %v", err)
+			}
+		})
+	}
+}

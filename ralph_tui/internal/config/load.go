@@ -221,7 +221,7 @@ func applyPartial(base Config, partial PartialConfig, basePath string, repoRoot 
 			base.Specs.UserFocus = strings.TrimSpace(*partial.Specs.UserFocus)
 		}
 		if partial.Specs.Runner != nil {
-			base.Specs.Runner = strings.TrimSpace(*partial.Specs.Runner)
+			base.Specs.Runner = runnerargs.NormalizeRunner(*partial.Specs.Runner)
 		}
 		if partial.Specs.RunnerArgs != nil {
 			base.Specs.RunnerArgs = runnerargs.NormalizeArgs(partial.Specs.RunnerArgs)
@@ -250,7 +250,7 @@ func applyPartial(base Config, partial PartialConfig, basePath string, repoRoot 
 			base.Loop.RequireMain = *partial.Loop.RequireMain
 		}
 		if partial.Loop.Runner != nil {
-			base.Loop.Runner = strings.TrimSpace(*partial.Loop.Runner)
+			base.Loop.Runner = runnerargs.NormalizeRunner(*partial.Loop.Runner)
 		}
 		if partial.Loop.RunnerArgs != nil {
 			base.Loop.RunnerArgs = runnerargs.NormalizeArgs(partial.Loop.RunnerArgs)

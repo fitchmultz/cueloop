@@ -26,7 +26,7 @@ type EffortResult struct {
 
 // SupportsReasoningEffort returns true when the runner supports reasoning effort settings.
 func SupportsReasoningEffort(runner string) bool {
-	return strings.ToLower(strings.TrimSpace(runner)) == "codex"
+	return NormalizeRunner(runner) == "codex"
 }
 
 // ApplyReasoningEffort injects reasoning effort into Codex args when explicitly set.

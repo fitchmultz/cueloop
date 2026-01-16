@@ -41,6 +41,38 @@ func TestResolveFlagString_Changed(t *testing.T) {
 	}
 }
 
+func TestResolveRunnerFlag_NormalizesFallback(t *testing.T) {
+	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flags.String("runner", "codex", "runner")
+	if err := flags.Parse([]string{}); err != nil {
+		t.Fatalf("parse flags: %v", err)
+	}
+
+	value, err := resolveRunnerFlag(flags, "runner", " Codex ")
+	if err != nil {
+		t.Fatalf("resolve runner flag: %v", err)
+	}
+	if value != "codex" {
+		t.Fatalf("expected normalized fallback value, got %q", value)
+	}
+}
+
+func TestResolveRunnerFlag_NormalizesChanged(t *testing.T) {
+	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flags.String("runner", "codex", "runner")
+	if err := flags.Parse([]string{"--runner", " OPENcode "}); err != nil {
+		t.Fatalf("parse flags: %v", err)
+	}
+
+	value, err := resolveRunnerFlag(flags, "runner", "codex")
+	if err != nil {
+		t.Fatalf("resolve runner flag: %v", err)
+	}
+	if value != "opencode" {
+		t.Fatalf("expected normalized flag value, got %q", value)
+	}
+}
+
 func TestMergeRunnerArgsWithEffort_ConfigThenCLI(t *testing.T) {
 	configArgs := []string{"--agent", "default"}
 	cliArgs := []string{"--foo"}

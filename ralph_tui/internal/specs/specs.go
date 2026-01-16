@@ -252,9 +252,11 @@ func Build(ctx context.Context, opts BuildOptions) (BuildResult, error) {
 		return BuildResult{}, err
 	}
 	opts.PromptTemplate = templatePath
-	if opts.Runner == "" {
-		opts.Runner = RunnerCodex
+	normalizedRunner := runnerargs.NormalizeRunner(string(opts.Runner))
+	if normalizedRunner == "" {
+		normalizedRunner = string(RunnerCodex)
 	}
+	opts.Runner = Runner(normalizedRunner)
 
 	if err := verifyRunner(opts.runnerBackend(), opts.Runner); err != nil {
 		return BuildResult{}, err
@@ -453,13 +455,9 @@ func flushWriter(writer io.Writer) {
 	flusher.Flush()
 }
 
-func normalizeRunner(runner Runner) Runner {
-	return Runner(strings.ToLower(strings.TrimSpace(string(runner))))
-}
-
 func verifyRunner(backend RunnerBackend, runner Runner) error {
-	normalized := normalizeRunner(runner)
-	switch normalized {
+	normalized := runnerargs.NormalizeRunner(string(runner))
+	switch Runner(normalized) {
 	case RunnerCodex:
 		if _, err := backend.LookPath("codex"); err != nil {
 			return fmt.Errorf("codex is not on PATH. Install it or use --runner opencode.")
@@ -479,7 +477,7 @@ func enforceInteractiveSize(prompt string, runner Runner) error {
 	if promptSize <= 200000 {
 		return nil
 	}
-	if normalizeRunner(runner) == RunnerCodex {
+	if runnerargs.NormalizeRunner(string(runner)) == string(RunnerCodex) {
 		return fmt.Errorf("Prompt too large for interactive codex (size: %d bytes). Use non-interactive or opencode.", promptSize)
 	}
 	return fmt.Errorf("Prompt too large for interactive opencode (size: %d bytes). Use non-interactive or codex.", promptSize)

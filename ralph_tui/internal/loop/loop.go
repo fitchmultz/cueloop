@@ -101,6 +101,7 @@ func NewRunner(opts Options) (*Runner, error) {
 		return nil, fmt.Errorf("project_type must be code or docs")
 	}
 	opts.ProjectType = resolvedProjectType
+	opts.Runner = runnerargs.NormalizeRunner(opts.Runner)
 	if opts.DirtyRepoStart == "" {
 		opts.DirtyRepoStart = DirtyRepoPolicyError
 	}
@@ -446,16 +447,21 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func (r *Runner) verifyRunner() error {
-	switch r.opts.Runner {
+	normalized := runnerargs.NormalizeRunner(r.opts.Runner)
+	if normalized == "" {
+		return fmt.Errorf("--runner must be codex or opencode (got: %s)", r.opts.Runner)
+	}
+	r.opts.Runner = normalized
+	switch normalized {
 	case "codex":
-		if r.opts.Runner == "codex" && os.Getenv("RALPH_LOOP_SKIP_RUNNER_CHECK") == "1" {
+		if os.Getenv("RALPH_LOOP_SKIP_RUNNER_CHECK") == "1" {
 			return nil
 		}
 		if _, err := exec.LookPath("codex"); err != nil {
 			return fmt.Errorf("codex is not on PATH. Install it or use --runner opencode.")
 		}
 	case "opencode":
-		if r.opts.Runner == "opencode" && os.Getenv("RALPH_LOOP_SKIP_RUNNER_CHECK") == "1" {
+		if os.Getenv("RALPH_LOOP_SKIP_RUNNER_CHECK") == "1" {
 			return nil
 		}
 		if _, err := exec.LookPath("opencode"); err != nil {

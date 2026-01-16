@@ -4,6 +4,11 @@ package runnerargs
 
 import "strings"
 
+// NormalizeRunner trims whitespace and lowercases runner values.
+func NormalizeRunner(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
 // NormalizeArgs trims and drops empty args while preserving order.
 func NormalizeArgs(args []string) []string {
 	trimmed := make([]string, 0, len(args))

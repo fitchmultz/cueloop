@@ -42,6 +42,16 @@ func TestBuildRunnerCommandInteractive(t *testing.T) {
 	}
 }
 
+func TestBuildRunnerCommandNormalizesRunner(t *testing.T) {
+	cmd, err := BuildRunnerCommand(" OPENcode ", []string{"--model", "test"}, "", "/tmp/prompt.md", false)
+	if err != nil {
+		t.Fatalf("BuildRunnerCommand failed: %v", err)
+	}
+	if cmd.Name != "opencode" {
+		t.Fatalf("expected opencode, got %q", cmd.Name)
+	}
+}
+
 func TestValidateOpencodeArgs(t *testing.T) {
 	if err := ValidateOpencodeArgs([]string{"--model", "test"}); err != nil {
 		t.Fatalf("unexpected error: %v", err)

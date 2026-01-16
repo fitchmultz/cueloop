@@ -326,12 +326,12 @@ func TestApplyPartialNormalizesRunnerSettings(t *testing.T) {
 	partial := PartialConfig{
 		ProjectType: projectTypePtr(" Docs "),
 		Specs: &SpecsPartial{
-			Runner:          stringPtr("codex"),
+			Runner:          stringPtr(" Codex "),
 			RunnerArgs:      []string{"  -c", "model_reasoning_effort=\"high\" ", " ", ""},
 			ReasoningEffort: stringPtr(" High "),
 		},
 		Loop: &LoopPartial{
-			Runner:          stringPtr("opencode"),
+			Runner:          stringPtr(" OPENcode "),
 			RunnerArgs:      []string{" --flag", "value ", "", "  "},
 			ReasoningEffort: stringPtr(" AUTO "),
 		},
@@ -344,11 +344,17 @@ func TestApplyPartialNormalizesRunnerSettings(t *testing.T) {
 	if got := cfg.Specs.ReasoningEffort; got != "high" {
 		t.Fatalf("expected specs.reasoning_effort to be normalized, got %q", got)
 	}
+	if got := cfg.Specs.Runner; got != "codex" {
+		t.Fatalf("expected specs.runner to be normalized, got %q", got)
+	}
 	if got := cfg.ProjectType; got != project.TypeDocs {
 		t.Fatalf("expected project_type normalized to %q, got %q", project.TypeDocs, got)
 	}
 	if got := cfg.Loop.ReasoningEffort; got != "auto" {
 		t.Fatalf("expected loop.reasoning_effort to be normalized, got %q", got)
+	}
+	if got := cfg.Loop.Runner; got != "opencode" {
+		t.Fatalf("expected loop.runner to be normalized, got %q", got)
 	}
 	if len(cfg.Specs.RunnerArgs) != 2 {
 		t.Fatalf("expected specs.runner_args to trim blanks, got %#v", cfg.Specs.RunnerArgs)

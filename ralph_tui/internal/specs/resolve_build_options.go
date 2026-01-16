@@ -74,7 +74,7 @@ func ResolveBuildOptions(defaults BuildOptionDefaults, overrides BuildOptionOver
 	if overrides.Runner != nil {
 		runner = *overrides.Runner
 	}
-	runner = normalizeRunner(runner)
+	runner = Runner(runnerargs.NormalizeRunner(string(runner)))
 	if runner == "" {
 		runner = RunnerCodex
 	}

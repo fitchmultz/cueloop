@@ -11,6 +11,7 @@ import (
 	"github.com/mitchfultz/ralph/ralph_tui/internal/pin"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/project"
 	"github.com/mitchfultz/ralph/ralph_tui/internal/redaction"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/runnerargs"
 )
 
 // Config is the fully-resolved configuration used by the app.
@@ -171,7 +172,7 @@ func (c Config) Validate() error {
 
 // ValidRunner returns true when the runner value is supported by Ralph.
 func ValidRunner(value string) bool {
-	switch strings.ToLower(strings.TrimSpace(value)) {
+	switch runnerargs.NormalizeRunner(value) {
 	case "codex", "opencode":
 		return true
 	default:

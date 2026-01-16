@@ -189,6 +189,16 @@ func TestBuildRunnerArgsOpencodeNonInteractive(t *testing.T) {
 	}
 }
 
+func TestVerifyRunnerNormalizesInput(t *testing.T) {
+	backend := testRunnerBackend{mode: "echo"}
+	if err := verifyRunner(backend, Runner(" Codex ")); err != nil {
+		t.Fatalf("expected codex runner to validate, got %v", err)
+	}
+	if err := verifyRunner(backend, Runner(" OPENcode ")); err != nil {
+		t.Fatalf("expected opencode runner to validate, got %v", err)
+	}
+}
+
 func TestBuildRunnerFlushesStreamingWriter(t *testing.T) {
 	template := "AGENTS.md\n" + interactivePlaceholder + "\n" + innovatePlaceholder + "\nFlush test."
 	pinDir := writeSpecsPinDir(t, template)

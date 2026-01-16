@@ -531,7 +531,7 @@ func newSpecsBuildCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				runner := specs.Runner(value)
+				runner := specs.Runner(runnerargs.NormalizeRunner(value))
 				overrides.Runner = &runner
 			}
 
@@ -638,7 +638,7 @@ func newLoopRunCommand() *cobra.Command {
 
 			flags := cmd.Flags()
 
-			runnerName, err := resolveFlagString(flags, "runner", cfg.Loop.Runner)
+			runnerName, err := resolveRunnerFlag(flags, "runner", cfg.Loop.Runner)
 			if err != nil {
 				return err
 			}
@@ -921,6 +921,14 @@ func resolveFlagString(flags *pflag.FlagSet, name string, fallback string) (stri
 		return fallback, nil
 	}
 	return flags.GetString(name)
+}
+
+func resolveRunnerFlag(flags *pflag.FlagSet, name string, fallback string) (string, error) {
+	value, err := resolveFlagString(flags, name, fallback)
+	if err != nil {
+		return "", err
+	}
+	return runnerargs.NormalizeRunner(value), nil
 }
 
 func mergeRunnerArgsWithEffort(runner string, configArgs []string, cliArgs []string, effort string) []string {

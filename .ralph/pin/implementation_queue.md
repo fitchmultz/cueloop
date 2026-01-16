@@ -1,9 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0481 [code]: Normalize runner values across config, CLI, and loop invocations. (ralph_tui/internal/config/load.go, ralph_tui/internal/config/config.go, ralph_tui/internal/loop/loop.go, ralph_tui/cmd/ralph/main.go)
-  - Evidence: ValidRunner lowercases input but applyPartial stores raw values; loop.verifyRunner only matches exact "codex"/"opencode"; CLI flags pass raw values so mixed-case runners pass config validation but fail at runtime.
-  - Plan: Normalize runner strings in config load/apply and CLI overrides; ensure loop/specs use normalized values; add tests for mixed-case inputs.
 - [ ] RQ-0482 [ui]: Refresh dashboard repo status when working tree changes. (ralph_tui/internal/tui/repo_status.go, ralph_tui/internal/tui/dashboard_view.go)
   - Evidence: RepoStatusSampler only watches .git/HEAD and .git/index; untracked or unstaged edits do not change these, so cached status is reused and the dashboard can show stale dirty state.
   - Plan: Add a working-tree change signal (git status fingerprint or repo-root mtime) to the sampling signature; update throttling logic/tests.

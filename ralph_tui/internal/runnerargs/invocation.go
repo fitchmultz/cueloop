@@ -18,7 +18,7 @@ type RunnerCommand struct {
 
 // BuildRunnerCommand constructs the runner command/args for the given mode.
 func BuildRunnerCommand(runner string, runnerArgs []string, prompt string, promptPath string, interactive bool) (RunnerCommand, error) {
-	normalized := strings.ToLower(strings.TrimSpace(runner))
+	normalized := NormalizeRunner(runner)
 	switch normalized {
 	case "codex":
 		if interactive {
