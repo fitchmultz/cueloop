@@ -12,7 +12,7 @@
 		"max_buffered_bytes": 1048576
 	},
 	"paths": {
-		"data_dir": "data",
+		"data_dir": ".ralph/data",
 		"cache_dir": "~/.ralph/cache/{repo}",
 		"pin_dir": ".ralph/pin",
 		"done_retention_limit": 100

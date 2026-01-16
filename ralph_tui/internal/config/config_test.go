@@ -256,7 +256,7 @@ func TestSavePartial_RelativeRoot_RoundTripLoad(t *testing.T) {
 		t.Setenv("USERPROFILE", homeDir)
 	}
 
-	inside := filepath.Join(repoRoot, "data")
+	inside := filepath.Join(repoRoot, ".ralph", "data")
 	outside := filepath.Join(tmpDir, "outside")
 	rootPath := repoRoot
 
@@ -284,7 +284,7 @@ func TestSavePartial_RelativeRoot_RoundTripLoad(t *testing.T) {
 	if saved.Paths == nil {
 		t.Fatalf("expected saved paths config")
 	}
-	if saved.Paths.DataDir == nil || *saved.Paths.DataDir != filepath.Join("data") {
+	if saved.Paths.DataDir == nil || *saved.Paths.DataDir != filepath.Join(".ralph", "data") {
 		t.Fatalf("expected data_dir to be relative, got %#v", saved.Paths.DataDir)
 	}
 	if saved.Paths.CacheDir == nil || *saved.Paths.CacheDir != outside {
@@ -306,8 +306,8 @@ func TestSavePartial_RelativeRoot_RoundTripLoad(t *testing.T) {
 		t.Fatalf("LoadFromLocations failed: %v", err)
 	}
 
-	if cfg.Paths.DataDir != filepath.Join(repoRoot, "data") {
-		t.Fatalf("expected data_dir %q, got %q", filepath.Join(repoRoot, "data"), cfg.Paths.DataDir)
+	if cfg.Paths.DataDir != filepath.Join(repoRoot, ".ralph", "data") {
+		t.Fatalf("expected data_dir %q, got %q", filepath.Join(repoRoot, ".ralph", "data"), cfg.Paths.DataDir)
 	}
 	if cfg.Paths.CacheDir != outside {
 		t.Fatalf("expected cache_dir %q, got %q", outside, cfg.Paths.CacheDir)

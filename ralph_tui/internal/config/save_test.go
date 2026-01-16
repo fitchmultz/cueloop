@@ -16,7 +16,7 @@ func TestSavePartialRepoRelativePaths(t *testing.T) {
 	repoRoot := filepath.Join(tmpDir, "repo")
 	mustMkdirAll(t, repoRoot)
 
-	dataDir := filepath.Join(repoRoot, "data")
+	dataDir := filepath.Join(repoRoot, ".ralph", "data")
 	cacheDir := filepath.Join(repoRoot, ".ralph", "cache")
 	pinDir := filepath.Join(repoRoot, ".ralph", "pin")
 	logFile := filepath.Join(repoRoot, ".ralph", "cache", "ralph_tui.log")
@@ -44,7 +44,7 @@ func TestSavePartialRepoRelativePaths(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected paths map")
 	}
-	if got := pathsValue["data_dir"]; got != "data" {
+	if got := pathsValue["data_dir"]; got != filepath.Join(".ralph", "data") {
 		t.Fatalf("expected relative data_dir, got %#v", got)
 	}
 	if got := pathsValue["cache_dir"]; got != filepath.Join(".ralph", "cache") {
