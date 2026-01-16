@@ -28,11 +28,7 @@ const (
 	logsFormatFormatted
 )
 
-type linesSignature struct {
-	n     int
-	first string
-	last  string
-}
+var logsLevelCycle = []string{"", "error", "warn", "info", "debug"}
 
 type renderCache struct {
 	raw            string
@@ -48,26 +44,86 @@ func (c *renderCache) Reset() {
 	c.formattedValid = false
 }
 
+type logsFilters struct {
+	Level     string
+	Component string
+}
+
+type parsedLogLine struct {
+	raw       string
+	parsed    bool
+	level     string
+	component string
+	formatted string
+}
+
+type debugRenderCache struct {
+	input  []string
+	parsed []parsedLogLine
+}
+
+func (c *debugRenderCache) Reset() {
+	c.input = nil
+	c.parsed = nil
+}
+
+func (c *debugRenderCache) Update(lines []string) {
+	if len(lines) == 0 {
+		c.Reset()
+		return
+	}
+	if len(c.input) == 0 || len(c.input) != len(c.parsed) {
+		c.input = lines
+		c.parsed = parseDebugLogLines(lines)
+		return
+	}
+	old := c.input
+	oldParsed := c.parsed
+	reused := 0
+	for i, j := len(old)-1, len(lines)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
+		if old[i] != lines[j] {
+			break
+		}
+		reused++
+	}
+	parsed := make([]parsedLogLine, len(lines))
+	updatedCount := len(lines) - reused
+	if updatedCount > 0 {
+		copy(parsed, parseDebugLogLines(lines[:updatedCount]))
+	}
+	if reused > 0 && reused <= len(oldParsed) {
+		copy(parsed[updatedCount:], oldParsed[len(oldParsed)-reused:])
+	}
+	c.input = lines
+	c.parsed = parsed
+}
+
 type logsView struct {
 	viewport                viewport.Model
 	logPath                 string
+	cacheDir                string
+	loopPath                string
+	specsPath               string
 	loggerErr               string
-	fileErr                 string
-	lastStamp               fileStamp
+	debugErr                string
+	loopErr                 string
+	specsErr                string
+	debugStamp              fileStamp
+	loopStamp               fileStamp
+	specsStamp              fileStamp
 	debugLines              []string
 	loopLines               []string
 	specsLines              []string
 	format                  logsFormat
+	filters                 logsFilters
 	width                   int
 	height                  int
 	lastRenderedContent     string
 	viewportSetContentCalls int
 	forceRefresh            bool
-	debugCache              renderCache
+	debugCache              debugRenderCache
 	loopCache               renderCache
 	specsCache              renderCache
-	loopSig                 linesSignature
-	specsSig                linesSignature
 }
 
 func newLogsView(logPath string) *logsView {
@@ -83,14 +139,28 @@ func (l *logsView) SetLogPath(path string) {
 		return
 	}
 	l.logPath = path
-	l.fileErr = ""
-	l.lastStamp = fileStamp{}
+	l.debugErr = ""
+	l.debugStamp = fileStamp{}
 	l.debugLines = nil
+	l.debugCache.Reset()
+	l.lastRenderedContent = ""
+	l.forceRefresh = true
+}
+
+func (l *logsView) SetCacheDir(cacheDir string) {
+	cacheDir = strings.TrimSpace(cacheDir)
+	if l.cacheDir == cacheDir {
+		return
+	}
+	l.cacheDir = cacheDir
+	l.loopPath = loopOutputLogPath(cacheDir)
+	l.specsPath = specsOutputLogPath(cacheDir)
+	l.loopErr = ""
+	l.specsErr = ""
+	l.loopStamp = fileStamp{}
+	l.specsStamp = fileStamp{}
 	l.loopLines = nil
 	l.specsLines = nil
-	l.loopSig = linesSignature{}
-	l.specsSig = linesSignature{}
-	l.debugCache.Reset()
 	l.loopCache.Reset()
 	l.specsCache.Reset()
 	l.lastRenderedContent = ""
@@ -138,56 +208,19 @@ func (l *logsView) Resize(width int, height int) {
 	resizeViewportToFit(&l.viewport, max(0, width), max(0, contentHeight), paddedViewportStyle)
 }
 
-func (l *logsView) Refresh(loopLines []string, specsLines []string) {
+func (l *logsView) Refresh() {
 	atBottom := l.viewport.AtBottom()
 	contentChanged := l.forceRefresh
 	l.forceRefresh = false
 
-	loopSig := signatureForLines(loopLines)
-	if loopSig != l.loopSig {
-		l.loopSig = loopSig
-		l.loopLines = tailLines(loopLines, logsTailLines)
-		l.loopCache.Reset()
+	if l.refreshTailedFile(l.logPath, &l.debugStamp, &l.debugLines, &l.debugErr, nil, true) {
 		contentChanged = true
 	}
-	specsSig := signatureForLines(specsLines)
-	if specsSig != l.specsSig {
-		l.specsSig = specsSig
-		l.specsLines = tailLines(specsLines, logsTailLines)
-		l.specsCache.Reset()
+	if l.refreshTailedFile(l.loopPath, &l.loopStamp, &l.loopLines, &l.loopErr, &l.loopCache, true) {
 		contentChanged = true
 	}
-
-	if strings.TrimSpace(l.logPath) == "" {
-		if len(l.debugLines) > 0 {
-			l.debugLines = nil
-			l.debugCache.Reset()
-			contentChanged = true
-		}
-		if l.fileErr != "" {
-			l.fileErr = ""
-		}
-	} else {
-		stamp, changed, err := fileChanged(l.logPath, l.lastStamp)
-		if err != nil {
-			l.fileErr = err.Error()
-		} else if !stamp.Exists {
-			if l.fileErr != "" {
-				l.fileErr = ""
-			}
-			l.lastStamp = stamp
-		} else if changed || l.fileErr != "" {
-			lines, err := tailFileLines(l.logPath, logsTailLines)
-			if err != nil {
-				l.fileErr = err.Error()
-			} else {
-				l.fileErr = ""
-				l.debugLines = lines
-				l.lastStamp = stamp
-				l.debugCache.Reset()
-				contentChanged = true
-			}
-		}
+	if l.refreshTailedFile(l.specsPath, &l.specsStamp, &l.specsLines, &l.specsErr, &l.specsCache, true) {
+		contentChanged = true
 	}
 
 	if !contentChanged {
@@ -197,43 +230,107 @@ func (l *logsView) Refresh(loopLines []string, specsLines []string) {
 	l.setViewportContentIfChanged(rendered, atBottom)
 }
 
+func (l *logsView) refreshTailedFile(path string, stamp *fileStamp, lines *[]string, errText *string, cache *renderCache, clearOnEmptyPath bool) bool {
+	if strings.TrimSpace(path) == "" {
+		if clearOnEmptyPath && len(*lines) > 0 {
+			*lines = nil
+			if cache != nil {
+				cache.Reset()
+			}
+			*errText = ""
+			return true
+		}
+		if *errText != "" {
+			*errText = ""
+		}
+		return false
+	}
+	nextStamp, changed, err := fileChanged(path, *stamp)
+	if err != nil {
+		if errText != nil {
+			*errText = err.Error()
+		}
+		return false
+	}
+	if !nextStamp.Exists {
+		if errText != nil && *errText != "" {
+			*errText = ""
+		}
+		if stamp != nil {
+			*stamp = nextStamp
+		}
+		return false
+	}
+	if !changed && errText != nil && *errText == "" {
+		if stamp != nil {
+			*stamp = nextStamp
+		}
+		return false
+	}
+	tail, err := tailFileLines(path, logsTailLines)
+	if err != nil {
+		if errText != nil {
+			*errText = err.Error()
+		}
+		return false
+	}
+	if errText != nil {
+		*errText = ""
+	}
+	*lines = tail
+	if stamp != nil {
+		*stamp = nextStamp
+	}
+	if cache != nil {
+		cache.Reset()
+	}
+	return true
+}
+
 func (l *logsView) statusLine() string {
 	formatNote := "Format: " + l.formatLabel()
-	errParts := make([]string, 0, 2)
+	filterNote := "Level: " + filterLabel(l.filters.Level) + " | Component: " + filterLabel(l.filters.Component)
+	errParts := make([]string, 0, 4)
 	if l.loggerErr != "" {
 		errParts = append(errParts, "Logger: "+l.loggerErr)
 	}
-	if l.fileErr != "" {
-		errParts = append(errParts, "Read: "+l.fileErr)
+	if l.debugErr != "" {
+		errParts = append(errParts, "Debug: "+l.debugErr)
+	}
+	if l.loopErr != "" {
+		errParts = append(errParts, "Loop: "+l.loopErr)
+	}
+	if l.specsErr != "" {
+		errParts = append(errParts, "Specs: "+l.specsErr)
 	}
 	if len(errParts) > 0 {
-		return "Error: " + strings.Join(errParts, " | ") + " | " + formatNote
+		return "Error: " + strings.Join(errParts, " | ") + " | " + formatNote + " | " + filterNote
 	}
 	if strings.TrimSpace(l.logPath) == "" {
-		return "Log file unavailable. | " + formatNote
+		return "Log file unavailable. | " + formatNote + " | " + filterNote
 	}
-	return "Log file: " + l.logPath + " | " + formatNote
+	return "Log file: " + l.logPath + " | " + formatNote + " | " + filterNote
 }
 
 func (l *logsView) renderContent() string {
 	sections := []string{
 		"Debug Log (tail)",
-		l.renderLines(l.debugLines, "No log entries yet.", &l.debugCache),
+		l.renderDebugLines("No log entries yet."),
 		"",
 		"Loop Output (tail)",
-		l.renderLines(l.loopLines, "No loop output yet.", &l.loopCache),
+		l.renderLines(l.loopLines, "No loop output yet.", &l.loopCache, false),
 		"",
 		"Specs Output (tail)",
-		l.renderLines(l.specsLines, "No specs output yet.", &l.specsCache),
+		l.renderLines(l.specsLines, "No specs output yet.", &l.specsCache, false),
 	}
 	return strings.Join(sections, "\n")
 }
 
 func (l *logsView) formatLabel() string {
 	if l.format == logsFormatFormatted {
-		return "formatted"
+		return "formatted (debug)"
 	}
-	return "raw"
+	return "raw (debug)"
 }
 
 type tailReadAtStater interface {
@@ -270,7 +367,7 @@ func tailFileLinesFromHandle(file tailReadAtStater, limit int) ([]string, error)
 	newlineCount := 0
 	chunks := make([][]byte, 0, 8)
 	trimTrailing := true
-	retriesRemaining := 1
+	retriesRemaining := 2
 
 	for pos > 0 && newlineCount < limit+1 {
 		readLen := chunkSize
@@ -284,12 +381,28 @@ func tailFileLinesFromHandle(file tailReadAtStater, limit int) ([]string, error)
 		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, err
 		}
+		if errors.Is(err, io.EOF) && int64(n) < readLen {
+			if retriesRemaining > 0 {
+				info, statErr := file.Stat()
+				if statErr == nil && info.Size() < pos+readLen {
+					pos = info.Size()
+					retriesRemaining--
+					newlineCount = 0
+					trimTrailing = true
+					chunks = chunks[:0]
+					continue
+				}
+			}
+		}
 		if n == 0 {
 			if errors.Is(err, io.EOF) && retriesRemaining > 0 {
 				info, statErr := file.Stat()
 				if statErr == nil && info.Size() < pos+readLen {
 					pos = info.Size()
 					retriesRemaining--
+					newlineCount = 0
+					trimTrailing = true
+					chunks = chunks[:0]
 					continue
 				}
 			}
@@ -298,7 +411,7 @@ func tailFileLinesFromHandle(file tailReadAtStater, limit int) ([]string, error)
 		buf = buf[:n]
 
 		if trimTrailing {
-			buf = bytes.TrimRight(buf, "\n")
+			buf = bytes.TrimRight(buf, "\r\n")
 			if len(buf) == 0 {
 				continue
 			}
@@ -329,18 +442,8 @@ func tailFileLinesFromHandle(file tailReadAtStater, limit int) ([]string, error)
 	if content == "" {
 		return []string{}, nil
 	}
-	return tailLines(strings.Split(content, "\n"), limit), nil
-}
-
-func signatureForLines(lines []string) linesSignature {
-	if len(lines) == 0 {
-		return linesSignature{}
-	}
-	return linesSignature{
-		n:     len(lines),
-		first: lines[0],
-		last:  lines[len(lines)-1],
-	}
+	lines := normalizeTailLines(strings.Split(content, "\n"))
+	return tailLines(lines, limit), nil
 }
 
 func tailLines(lines []string, limit int) []string {
@@ -353,11 +456,22 @@ func tailLines(lines []string, limit int) []string {
 	return lines[len(lines)-limit:]
 }
 
-func (l *logsView) renderLines(lines []string, fallback string, cache *renderCache) string {
+func normalizeTailLines(lines []string) []string {
+	if len(lines) == 0 {
+		return lines
+	}
+	normalized := make([]string, len(lines))
+	for i, line := range lines {
+		normalized[i] = strings.TrimSuffix(line, "\r")
+	}
+	return normalized
+}
+
+func (l *logsView) renderLines(lines []string, fallback string, cache *renderCache, allowFormat bool) string {
 	if len(lines) == 0 {
 		return fallback
 	}
-	if l.format == logsFormatRaw {
+	if l.format == logsFormatRaw || !allowFormat {
 		if cache != nil && cache.rawValid {
 			return cache.raw
 		}
@@ -395,6 +509,107 @@ func (l *logsView) setViewportContentIfChanged(content string, wasAtBottom bool)
 	}
 }
 
+func (l *logsView) CycleLevelFilter() {
+	l.SetLevelFilter(nextCycleValue(normalizeLogLevel(l.filters.Level), logsLevelCycle))
+}
+
+func (l *logsView) CycleComponentFilter() {
+	components := l.availableComponents()
+	l.SetComponentFilter(nextCycleValue(l.filters.Component, components))
+}
+
+func (l *logsView) ClearFilters() {
+	if l.filters.Level == "" && l.filters.Component == "" {
+		return
+	}
+	l.filters.Level = ""
+	l.filters.Component = ""
+	l.refreshContent()
+}
+
+func (l *logsView) SetLevelFilter(level string) {
+	normalized := normalizeLogLevel(level)
+	if l.filters.Level == normalized {
+		return
+	}
+	l.filters.Level = normalized
+	l.refreshContent()
+}
+
+func (l *logsView) SetComponentFilter(component string) {
+	normalized := normalizeComponent(component)
+	if l.filters.Component == normalized {
+		return
+	}
+	l.filters.Component = normalized
+	l.refreshContent()
+}
+
+func (l *logsView) refreshContent() {
+	atBottom := l.viewport.AtBottom()
+	l.setViewportContentIfChanged(l.renderContent(), atBottom)
+}
+
+func (l *logsView) renderDebugLines(fallback string) string {
+	if len(l.debugLines) == 0 {
+		l.debugCache.Reset()
+		return fallback
+	}
+	l.debugCache.Update(l.debugLines)
+	if len(l.debugCache.parsed) == 0 {
+		return fallback
+	}
+	out := make([]string, 0, len(l.debugCache.parsed))
+	for _, entry := range l.debugCache.parsed {
+		if !l.debugLinePassesFilters(entry) {
+			continue
+		}
+		if l.format == logsFormatFormatted && entry.formatted != "" {
+			out = append(out, entry.formatted)
+			continue
+		}
+		out = append(out, entry.raw)
+	}
+	if len(out) == 0 {
+		return fallback
+	}
+	return strings.Join(out, "\n")
+}
+
+func (l *logsView) debugLinePassesFilters(entry parsedLogLine) bool {
+	if l.filters.Level == "" && l.filters.Component == "" {
+		return true
+	}
+	if !entry.parsed {
+		return false
+	}
+	if l.filters.Level != "" && entry.level != l.filters.Level {
+		return false
+	}
+	if l.filters.Component != "" && entry.component != l.filters.Component {
+		return false
+	}
+	return true
+}
+
+func (l *logsView) availableComponents() []string {
+	l.debugCache.Update(l.debugLines)
+	components := make(map[string]struct{})
+	for _, entry := range l.debugCache.parsed {
+		if !entry.parsed || entry.component == "" {
+			continue
+		}
+		components[entry.component] = struct{}{}
+	}
+	available := make([]string, 0, len(components)+1)
+	for component := range components {
+		available = append(available, component)
+	}
+	sort.Strings(available)
+	available = append([]string{""}, available...)
+	return available
+}
+
 func formatLogLines(lines []string) []string {
 	formatted := make([]string, 0, len(lines))
 	for _, line := range lines {
@@ -412,8 +627,12 @@ func formatLogLine(line string) string {
 	if err := json.Unmarshal([]byte(trimmed), &entry); err != nil {
 		return line
 	}
-	if entry.Message == "" && entry.Level == "" && entry.Timestamp == "" {
-		return line
+	return formatLogEntry(entry, line)
+}
+
+func formatLogEntry(entry logEntry, fallback string) string {
+	if entry.Message == "" && entry.Level == "" && entry.Timestamp == "" && len(entry.Fields) == 0 {
+		return fallback
 	}
 	timestamp := formatLogTimestamp(entry.Timestamp)
 	level := strings.ToUpper(strings.TrimSpace(entry.Level))
@@ -439,9 +658,77 @@ func formatLogLine(line string) string {
 		}
 	}
 	if lineOut == "" {
-		return line
+		return fallback
 	}
 	return lineOut
+}
+
+func parseDebugLogLines(lines []string) []parsedLogLine {
+	parsed := make([]parsedLogLine, len(lines))
+	for i, line := range lines {
+		parsed[i] = parseDebugLogLine(line)
+	}
+	return parsed
+}
+
+func parseDebugLogLine(raw string) parsedLogLine {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return parsedLogLine{raw: raw, parsed: false, formatted: raw}
+	}
+	var entry logEntry
+	if err := json.Unmarshal([]byte(trimmed), &entry); err != nil {
+		return parsedLogLine{raw: raw, parsed: false, formatted: raw}
+	}
+	if entry.Message == "" && entry.Level == "" && entry.Timestamp == "" && len(entry.Fields) == 0 {
+		return parsedLogLine{raw: raw, parsed: false, formatted: raw}
+	}
+	return parsedLogLine{
+		raw:       raw,
+		parsed:    true,
+		level:     normalizeLogLevel(entry.Level),
+		component: componentFromMessage(entry.Message),
+		formatted: formatLogEntry(entry, raw),
+	}
+}
+
+func normalizeLogLevel(level string) string {
+	return strings.ToLower(strings.TrimSpace(level))
+}
+
+func normalizeComponent(component string) string {
+	return strings.ToLower(strings.TrimSpace(component))
+}
+
+func componentFromMessage(message string) string {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return ""
+	}
+	parts := strings.SplitN(message, ".", 2)
+	if len(parts) == 0 {
+		return ""
+	}
+	return normalizeComponent(parts[0])
+}
+
+func filterLabel(value string) string {
+	if value == "" {
+		return "all"
+	}
+	return value
+}
+
+func nextCycleValue(current string, cycle []string) string {
+	if len(cycle) == 0 {
+		return current
+	}
+	for i, value := range cycle {
+		if value == current {
+			return cycle[(i+1)%len(cycle)]
+		}
+	}
+	return cycle[0]
 }
 
 func formatLogTimestamp(raw string) string {

@@ -24,11 +24,20 @@ func BenchmarkLogsViewRefresh_NoChanges(b *testing.B) {
 	view := newLogsView(logPath)
 	loopLines := makeBenchmarkLines("loop", 2000)
 	specsLines := makeBenchmarkLines("spec", 500)
-	view.Refresh(loopLines, specsLines)
+	loopPath := loopOutputLogPath(tmpDir)
+	if err := os.WriteFile(loopPath, []byte(strings.Join(loopLines, "\n")+"\n"), 0o600); err != nil {
+		b.Fatalf("write loop output: %v", err)
+	}
+	specsPath := specsOutputLogPath(tmpDir)
+	if err := os.WriteFile(specsPath, []byte(strings.Join(specsLines, "\n")+"\n"), 0o600); err != nil {
+		b.Fatalf("write specs output: %v", err)
+	}
+	view.SetCacheDir(tmpDir)
+	view.Refresh()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		view.Refresh(loopLines, specsLines)
+		view.Refresh()
 	}
 }
 

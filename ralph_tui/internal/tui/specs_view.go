@@ -980,10 +980,7 @@ func (s *specsView) applyBuildResult(msg specsBuildResultMsg) tea.Cmd {
 }
 
 func (s *specsView) specsOutputPath() string {
-	if strings.TrimSpace(s.cfg.Paths.CacheDir) == "" {
-		return ""
-	}
-	return filepath.Join(s.cfg.Paths.CacheDir, "specs_output.log")
+	return specsOutputLogPath(s.cfg.Paths.CacheDir)
 }
 
 func (s *specsView) startPersistingOutput() {

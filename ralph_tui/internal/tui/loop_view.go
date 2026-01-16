@@ -5,7 +5,6 @@ package tui
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -1083,10 +1082,7 @@ func listenLoopState(stateCh <-chan loop.State, runID int) tea.Cmd {
 }
 
 func (l *loopView) loopOutputPath() string {
-	if strings.TrimSpace(l.cfg.Paths.CacheDir) == "" {
-		return ""
-	}
-	return filepath.Join(l.cfg.Paths.CacheDir, "loop_output.log")
+	return loopOutputLogPath(l.cfg.Paths.CacheDir)
 }
 
 func (l *loopView) startPersistingOutput() {

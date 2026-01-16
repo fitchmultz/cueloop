@@ -1,6 +1,10 @@
 # Implementation Done
 
 ## Done
+- [x] RQ-0477 [ui]: Logs screen improvements: use persisted loop/specs output on restart, harden tailing, and add lightweight filtering. (ralph_tui/internal/tui/logs_view.go, ralph_tui/internal/tui/loop_view.go, ralph_tui/internal/tui/specs_view.go, ralph_tui/internal/tui/file_watch.go)
+  - Evidence: Loop/specs output is persisted to disk (`loop_output.log`, `specs_output.log`) but Logs view only displays in-memory buffers passed from active views, so after a restart the Logs screen loses loop/specs history even though files exist. Also, `tailFileLinesFromHandle` trims `\n` but not `\r`, and formatted mode repeatedly JSON-decodes log lines, which can be costly during frequent refreshes.
+  - Plan: Teach Logs view to read persisted loop/specs outputs from cache as a fallback/source-of-truth; watch those files with the existing stamp logic. Normalize CRLF handling in tailing; add simple filters (component/level) and keep formatted rendering incremental/cached.
+
 - [x] RQ-0476 [ui]: Pin screen feature completeness: add unblock/requeue actions and blocked-item tooling in TUI (stop relying on external editor for routine flows). (ralph_tui/internal/tui/pin_view.go, ralph_tui/internal/tui/keymap.go, ralph_tui/internal/tui/help_keymap.go, ralph_tui/internal/pin/pin.go)
   - Evidence: The `pin` package supports `RequeueBlockedItem` and blocked metadata parsing (`pin.go`), but `pin_view.go` exposes no TUI action to requeue/unblock blocked items, inspect WIP branch metadata in an actionable way, or perform common pin workflows without opening an external editor.
   - Plan: Add blocked-item actions in the Pin view: requeue selected blocked item (top/bottom), show/copy WIP branch + known-good SHA, and optionally reset fixup attempt metadata. Add keybindings + help; keep commands disabled while loop is running.

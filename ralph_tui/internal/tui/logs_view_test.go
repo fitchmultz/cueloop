@@ -19,9 +19,18 @@ func TestLogsViewRefreshRendersContent(t *testing.T) {
 	if err := os.WriteFile(logPath, []byte("first\nsecond\n"), 0o600); err != nil {
 		t.Fatalf("write log file: %v", err)
 	}
+	loopPath := loopOutputLogPath(tmpDir)
+	if err := os.WriteFile(loopPath, []byte("loop line\n"), 0o600); err != nil {
+		t.Fatalf("write loop output: %v", err)
+	}
+	specsPath := specsOutputLogPath(tmpDir)
+	if err := os.WriteFile(specsPath, []byte("spec line\n"), 0o600); err != nil {
+		t.Fatalf("write specs output: %v", err)
+	}
 
 	view := newLogsView(logPath)
-	view.Refresh([]string{"loop line"}, []string{"spec line"})
+	view.SetCacheDir(tmpDir)
+	view.Refresh()
 	content := view.renderContent()
 
 	if !strings.Contains(content, "second") {
@@ -56,7 +65,7 @@ func TestLogsViewFormattedRendersJSONL(t *testing.T) {
 	}
 
 	view := newLogsView(logPath)
-	view.Refresh(nil, nil)
+	view.Refresh()
 	view.ToggleFormat()
 	content := view.renderContent()
 
@@ -111,6 +120,18 @@ func TestTailFileLines(t *testing.T) {
 			name:    "fewer than limit",
 			content: "a\nb\n",
 			limit:   200,
+			want:    []string{"a", "b"},
+		},
+		{
+			name:    "crlf trailing newline",
+			content: "a\r\nb\r\n",
+			limit:   10,
+			want:    []string{"a", "b"},
+		},
+		{
+			name:    "crlf no trailing newline",
+			content: "a\r\nb",
+			limit:   10,
 			want:    []string{"a", "b"},
 		},
 		{
@@ -189,7 +210,7 @@ func TestLogsViewRefreshRotationGapKeepsDebugTail(t *testing.T) {
 	}
 
 	view := newLogsView(logPath)
-	view.Refresh(nil, nil)
+	view.Refresh()
 	if !strings.Contains(view.renderContent(), "second") {
 		t.Fatalf("expected initial log content")
 	}
@@ -198,7 +219,7 @@ func TestLogsViewRefreshRotationGapKeepsDebugTail(t *testing.T) {
 	if err := os.Rename(logPath, rotatedPath); err != nil {
 		t.Fatalf("rotate log file: %v", err)
 	}
-	view.Refresh(nil, nil)
+	view.Refresh()
 	if !strings.Contains(view.renderContent(), "second") {
 		t.Fatalf("expected logs view to keep previous tail during rotation gap")
 	}
@@ -206,7 +227,7 @@ func TestLogsViewRefreshRotationGapKeepsDebugTail(t *testing.T) {
 	if err := os.WriteFile(logPath, []byte("fresh\n"), 0o600); err != nil {
 		t.Fatalf("write new log file: %v", err)
 	}
-	view.Refresh(nil, nil)
+	view.Refresh()
 	if !strings.Contains(view.renderContent(), "fresh") {
 		t.Fatalf("expected logs view to read new log content after rotation")
 	}
@@ -218,14 +239,23 @@ func TestLogsViewRefreshSuppressesRedundantViewportUpdates(t *testing.T) {
 	if err := os.WriteFile(logPath, []byte("first\nsecond\n"), 0o600); err != nil {
 		t.Fatalf("write log file: %v", err)
 	}
+	loopPath := loopOutputLogPath(tmpDir)
+	if err := os.WriteFile(loopPath, []byte("loop line\n"), 0o600); err != nil {
+		t.Fatalf("write loop output: %v", err)
+	}
+	specsPath := specsOutputLogPath(tmpDir)
+	if err := os.WriteFile(specsPath, []byte("spec line\n"), 0o600); err != nil {
+		t.Fatalf("write specs output: %v", err)
+	}
 
 	view := newLogsView(logPath)
-	view.Refresh([]string{"loop line"}, []string{"spec line"})
+	view.SetCacheDir(tmpDir)
+	view.Refresh()
 	if view.viewportSetContentCalls != 1 {
 		t.Fatalf("expected one viewport update, got %d", view.viewportSetContentCalls)
 	}
 
-	view.Refresh([]string{"loop line"}, []string{"spec line"})
+	view.Refresh()
 	if view.viewportSetContentCalls != 1 {
 		t.Fatalf("expected cached viewport update, got %d", view.viewportSetContentCalls)
 	}
@@ -242,16 +272,83 @@ func TestLogsViewRefreshSuppressesRedundantViewportUpdates(t *testing.T) {
 		t.Fatalf("close log file: %v", err)
 	}
 
-	view.Refresh([]string{"loop line"}, []string{"spec line"})
+	view.Refresh()
 	if view.viewportSetContentCalls != 2 {
 		t.Fatalf("expected refreshed viewport update, got %d", view.viewportSetContentCalls)
 	}
 }
 
+func TestLogsViewFilters(t *testing.T) {
+	tmpDir := t.TempDir()
+	logPath := filepath.Join(tmpDir, "ralph_tui.log")
+	entries := []logEntry{
+		{Timestamp: "2026-01-14T12:34:56Z", Level: "info", Message: "tui.start"},
+		{Timestamp: "2026-01-14T12:35:00Z", Level: "error", Message: "specs.fail"},
+		{Timestamp: "2026-01-14T12:35:30Z", Level: "warn", Message: "loop.warn"},
+	}
+	lines := make([]string, 0, len(entries)+1)
+	for _, entry := range entries {
+		payload, err := json.Marshal(entry)
+		if err != nil {
+			t.Fatalf("marshal log entry: %v", err)
+		}
+		lines = append(lines, string(payload))
+	}
+	lines = append(lines, "not-json")
+	if err := os.WriteFile(logPath, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatalf("write log file: %v", err)
+	}
+
+	view := newLogsView(logPath)
+	view.Refresh()
+	view.ToggleFormat()
+
+	view.SetLevelFilter("error")
+	content := view.renderContent()
+	if !strings.Contains(content, "ERROR") || !strings.Contains(content, "specs.fail") {
+		t.Fatalf("expected error log line, got %q", content)
+	}
+	if strings.Contains(content, "INFO") || strings.Contains(content, "WARN") || strings.Contains(content, "not-json") {
+		t.Fatalf("expected non-error lines to be filtered, got %q", content)
+	}
+
+	view.ClearFilters()
+	view.SetComponentFilter("LOOP")
+	content = view.renderContent()
+	if !strings.Contains(content, "loop.warn") || !strings.Contains(content, "WARN") {
+		t.Fatalf("expected loop component line, got %q", content)
+	}
+	if strings.Contains(content, "tui.start") || strings.Contains(content, "specs.fail") {
+		t.Fatalf("expected non-loop components to be filtered, got %q", content)
+	}
+}
+
+func TestTailFileLinesFromHandleTruncationAcrossChunks(t *testing.T) {
+	largeLine := strings.Repeat("x", 70*1024)
+	initialData := []byte(largeLine + "\nline-1\nline-2\nline-3\n")
+
+	file := newMemoryTailFile(initialData)
+	file.onReadCount = func(f *memoryTailFile, count int) {
+		if count == 2 {
+			f.data = []byte("fresh-1\nfresh-2\n")
+		}
+	}
+
+	lines, err := tailFileLinesFromHandle(file, 5)
+	if err != nil {
+		t.Fatalf("tailFileLinesFromHandle: %v", err)
+	}
+	if strings.Join(lines, "\n") != "fresh-1\nfresh-2" {
+		t.Fatalf("unexpected lines after truncation: %q", lines)
+	}
+}
+
 type memoryTailFile struct {
-	mu     sync.Mutex
-	data   []byte
-	onRead func(*memoryTailFile)
+	mu          sync.Mutex
+	data        []byte
+	onRead      func(*memoryTailFile)
+	readCount   int
+	onReadCount func(*memoryTailFile, int)
 }
 
 func newMemoryTailFile(data []byte) *memoryTailFile {
@@ -266,6 +363,10 @@ func (m *memoryTailFile) Stat() (os.FileInfo, error) {
 
 func (m *memoryTailFile) ReadAt(p []byte, off int64) (int, error) {
 	m.mu.Lock()
+	m.readCount++
+	if m.onReadCount != nil {
+		m.onReadCount(m, m.readCount)
+	}
 	if m.onRead != nil {
 		m.onRead(m)
 		m.onRead = nil

@@ -189,15 +189,8 @@ func newModel(cfg config.Config, locations paths.Locations, opts StartOptions) m
 	}
 	m.setLogger(cfg)
 	if m.logsView != nil {
-		var loopLines []string
-		if m.loopView != nil {
-			loopLines = m.loopView.LogLines()
-		}
-		var specsLines []string
-		if m.specsView != nil {
-			specsLines = m.specsView.RunLogLines()
-		}
-		m.logsView.Refresh(loopLines, specsLines)
+		m.logsView.SetCacheDir(cfg.Paths.CacheDir)
+		m.logsView.Refresh()
 	}
 	m.layout = computeLayoutWithBody(0, 0, m.navCollapsed)
 	m.resizeViews(0, 0)
@@ -478,9 +471,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.switchScreen(screenConfig, true)...)
 			return m, tea.Batch(cmds...)
 		}
-		if key.Matches(msg, m.keys.ToggleLogsFormat) && m.screen == screenLogs && m.logsView != nil {
-			m.logsView.ToggleFormat()
-			return m, nil
+		if m.screen == screenLogs && m.logsView != nil {
+			switch {
+			case key.Matches(msg, m.keys.ToggleLogsFormat):
+				m.logsView.ToggleFormat()
+				return m, nil
+			case key.Matches(msg, m.keys.CycleLogsLevelFilter):
+				m.logsView.CycleLevelFilter()
+				return m, nil
+			case key.Matches(msg, m.keys.CycleLogsComponentFilter):
+				m.logsView.CycleComponentFilter()
+				return m, nil
+			case key.Matches(msg, m.keys.ClearLogsFilters):
+				m.logsView.ClearFilters()
+				return m, nil
+			}
 		}
 		if key.Matches(msg, m.keys.Focus) {
 			if m.navCollapsed {
@@ -1164,15 +1169,8 @@ func (m *model) applyConfig() {
 	}
 	m.setLogger(m.cfg)
 	if m.logsView != nil {
-		var loopLines []string
-		if m.loopView != nil {
-			loopLines = m.loopView.LogLines()
-		}
-		var specsLines []string
-		if m.specsView != nil {
-			specsLines = m.specsView.RunLogLines()
-		}
-		m.logsView.Refresh(loopLines, specsLines)
+		m.logsView.SetCacheDir(m.cfg.Paths.CacheDir)
+		m.logsView.Refresh()
 	}
 }
 
@@ -1238,15 +1236,7 @@ func (m *model) refreshLogsView() {
 		return
 	}
 	m.syncLoggerErrorToLogsView()
-	var loopLines []string
-	if m.loopView != nil {
-		loopLines = m.loopView.LogLines()
-	}
-	var specsLines []string
-	if m.specsView != nil {
-		specsLines = m.specsView.RunLogLines()
-	}
-	m.logsView.Refresh(loopLines, specsLines)
+	m.logsView.Refresh()
 }
 
 func (m *model) currentLoggerError() error {
@@ -1315,7 +1305,6 @@ func (m *model) setLogger(cfg config.Config) {
 	if m.logsView != nil {
 		m.logsView.SetLogPath(logPath)
 		m.logsView.SetLoggerError(m.currentLoggerError())
-		m.refreshLogsView()
 	}
 	if m.loopView != nil {
 		m.loopView.logger = m.logger

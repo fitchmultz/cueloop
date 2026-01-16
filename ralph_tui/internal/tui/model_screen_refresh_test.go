@@ -63,13 +63,16 @@ func TestScreenEntryRefreshTriggersSpecsPreview(t *testing.T) {
 }
 
 func TestScreenEntryRefreshUpdatesLogsView(t *testing.T) {
-	m, _, _ := newHermeticModel(t)
+	m, _, cfg := newHermeticModel(t)
 	if m.logsView == nil || m.loopView == nil {
 		t.Fatalf("expected logs and loop views to be initialized")
 	}
 
 	before := m.logsView.viewportSetContentCalls
-	m.loopView.logBuf.AppendLines([]string{"loop refresh line"})
+	loopPath := loopOutputLogPath(cfg.Paths.CacheDir)
+	if err := os.WriteFile(loopPath, []byte("loop refresh line\n"), 0o600); err != nil {
+		t.Fatalf("write loop output: %v", err)
+	}
 
 	_ = m.switchScreen(screenLogs, true)
 

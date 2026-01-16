@@ -17,6 +17,9 @@ type keyMap struct {
 	Select                    key.Binding
 	EditSpecsSettings         key.Binding
 	ToggleLogsFormat          key.Binding
+	CycleLogsLevelFilter      key.Binding
+	CycleLogsComponentFilter  key.Binding
+	ClearLogsFilters          key.Binding
 	SaveGlobal                key.Binding
 	SaveRepo                  key.Binding
 	Discard                   key.Binding
@@ -94,6 +97,18 @@ func newKeyMap() keyMap {
 		ToggleLogsFormat: key.NewBinding(
 			key.WithKeys("F"),
 			key.WithHelp("shift+f", "toggle logs format"),
+		),
+		CycleLogsLevelFilter: key.NewBinding(
+			key.WithKeys("l"),
+			key.WithHelp("l", "cycle log level"),
+		),
+		CycleLogsComponentFilter: key.NewBinding(
+			key.WithKeys("c"),
+			key.WithHelp("c", "cycle component"),
+		),
+		ClearLogsFilters: key.NewBinding(
+			key.WithKeys("x"),
+			key.WithHelp("x", "clear log filters"),
 		),
 		SaveGlobal: key.NewBinding(
 			key.WithKeys("ctrl+g"),
@@ -241,7 +256,7 @@ func (k keyMap) ShortHelp() []key.Binding {
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Quit, k.ToggleNav, k.Focus, k.Help, k.RefreshNow, k.Search, k.Select},
-		{k.EditSpecsSettings, k.ToggleLogsFormat, k.SaveGlobal, k.SaveRepo, k.Discard, k.ResetField, k.ResetLayer},
+		{k.EditSpecsSettings, k.ToggleLogsFormat, k.CycleLogsLevelFilter, k.CycleLogsComponentFilter, k.ClearLogsFilters, k.SaveGlobal, k.SaveRepo, k.Discard, k.ResetField, k.ResetLayer},
 		{k.ValidatePin, k.EditQueue, k.TogglePinSection, k.MoveChecked, k.BlockItem, k.UnblockItemTop, k.UnblockItemBottom},
 		{k.CopyWIPBranch, k.CopyKnownGoodSHA, k.ResetFixupMetadata, k.ToggleChecked},
 		{k.ToggleInteractive, k.ToggleInnovate, k.ToggleAutofill, k.ToggleScoutWorkflow, k.EditUserFocus, k.RunSpecs, k.StopSpecs},

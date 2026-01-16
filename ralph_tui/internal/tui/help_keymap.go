@@ -121,11 +121,21 @@ type logsKeyMap struct {
 }
 
 func (l logsKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{l.keys.ToggleLogsFormat}
+	return []key.Binding{
+		l.keys.ToggleLogsFormat,
+		l.keys.CycleLogsLevelFilter,
+		l.keys.CycleLogsComponentFilter,
+		l.keys.ClearLogsFilters,
+	}
 }
 
 func (l logsKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{l.keys.ToggleLogsFormat}}
+	return [][]key.Binding{{
+		l.keys.ToggleLogsFormat,
+		l.keys.CycleLogsLevelFilter,
+		l.keys.CycleLogsComponentFilter,
+		l.keys.ClearLogsFilters,
+	}}
 }
 
 type emptyKeyMap struct{}
