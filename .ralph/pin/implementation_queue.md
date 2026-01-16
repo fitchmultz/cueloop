@@ -1,9 +1,6 @@
 # Implementation Queue
 
 ## Queue
-- [ ] RQ-0499 [code]: Add unit tests for paths resolution. (ralph_tui/internal/paths/paths.go)
-  - Evidence: Path resolution is core to repo/root discovery yet lacks direct tests; regressions could break startup in nested directories.
-  - Plan: Add `paths_test.go` to validate resolving from repo root, resolving from nested subdirectories, and error behavior when no `.ralph/` exists.
 - [ ] RQ-0500 [code]: Add unit tests for project type detection. (ralph_tui/internal/project/detect.go, ralph_tui/internal/project/type.go)
   - Evidence: Heuristic type detection has no unit tests; incorrect detection picks the wrong prompt templates.
   - Plan: Add `detect_test.go` to verify code-heavy repos resolve to `code`, docs-heavy repos resolve to `docs`, and ambiguous/empty cases follow defaults.
