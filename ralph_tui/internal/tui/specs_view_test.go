@@ -3,9 +3,13 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mitchfultz/ralph/ralph_tui/internal/specs"
 )
 
 type fakePreviewRenderer struct {
@@ -25,6 +29,10 @@ func setSpecsRunOutput(view *specsView, lines []string) {
 	view.runLogBuf.Reset()
 	view.runLogBuf.AppendLines(lines)
 	view.finalizeRunOutput()
+}
+
+func contains(s string, substr string) bool {
+	return strings.Contains(s, substr)
 }
 
 func TestSpecsPreviewRefreshSetsLoading(t *testing.T) {
@@ -382,5 +390,58 @@ func TestSpecsPreviewDebounceIgnoresStaleMessages(t *testing.T) {
 	view.Update(cmd().(specsPreviewMsg), newTestKeyMap())
 	if renderer.renderCalls != 1 {
 		t.Fatalf("expected renderer to run once, got %d", renderer.renderCalls)
+	}
+}
+
+func TestSpecsUserFocusPlaceholderReplacedGlobally(t *testing.T) {
+	templateContent := "# Test Template\n\n## AGENTS.md\n\n## User Focus\n{{USER_FOCUS}}\n"
+
+	tempDir := t.TempDir()
+	promptPath := filepath.Join(tempDir, "test_template.md")
+	if err := os.WriteFile(promptPath, []byte(templateContent), 0644); err != nil {
+		t.Fatalf("failed to write template: %v", err)
+	}
+
+	opts := specs.FillPromptOptions{
+		UserFocus: "Test Focus",
+	}
+
+	prompt, err := specs.FillPrompt(promptPath, opts)
+	if err != nil {
+		t.Fatalf("FillPrompt failed: %v", err)
+	}
+
+	if !contains(prompt, "Test Focus") {
+		t.Fatalf("expected prompt to contain 'Test Focus', got: %s", prompt)
+	}
+	if contains(prompt, "{{USER_FOCUS}}") {
+		t.Fatalf("expected {{USER_FOCUS}} placeholder to be replaced")
+	}
+}
+
+func TestSpecsUserFocusPlaceholderReplacedWhenScoutWorkflowDisabled(t *testing.T) {
+	templateContent := "# Test Template\n\n## AGENTS.md\n\n## User Focus\n{{USER_FOCUS}}\n"
+
+	tempDir := t.TempDir()
+	promptPath := filepath.Join(tempDir, "test_template.md")
+	if err := os.WriteFile(promptPath, []byte(templateContent), 0644); err != nil {
+		t.Fatalf("failed to write template: %v", err)
+	}
+
+	opts := specs.FillPromptOptions{
+		UserFocus:     "Focus ABC",
+		ScoutWorkflow: false,
+	}
+
+	prompt, err := specs.FillPrompt(promptPath, opts)
+	if err != nil {
+		t.Fatalf("FillPrompt failed: %v", err)
+	}
+
+	if !contains(prompt, "Focus ABC") {
+		t.Fatalf("expected prompt to contain user focus 'Focus ABC', got: %s", prompt)
+	}
+	if contains(prompt, "{{USER_FOCUS}}") {
+		t.Fatalf("expected {{USER_FOCUS}} placeholder to be replaced when ScoutWorkflow is disabled")
 	}
 }

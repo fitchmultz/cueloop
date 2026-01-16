@@ -187,8 +187,23 @@ func FillPrompt(templatePath string, opts FillPromptOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	prompt, err = replaceUserFocusPlaceholder(prompt, opts.UserFocus)
+	if err != nil {
+		return "", err
+	}
 
 	return prompt, nil
+}
+
+func replaceUserFocusPlaceholder(prompt string, userFocus string) (string, error) {
+	if !strings.Contains(prompt, userFocusPlaceholder) {
+		return prompt, nil
+	}
+	focus := strings.TrimSpace(userFocus)
+	if focus == "" {
+		focus = "(none provided)"
+	}
+	return strings.ReplaceAll(prompt, userFocusPlaceholder, focus), nil
 }
 
 // ResolveInnovate applies the autofill scout rules to determine the effective innovate mode.
