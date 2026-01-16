@@ -20,7 +20,7 @@
     "scout_workflow": false,
     "user_focus": "",
     "runner": "codex",
-    "reasoning_effort": "medium"
+    "reasoning_effort": "high"
   },
   "loop": {
     "sleep_seconds": 5,
@@ -30,7 +30,7 @@
     "only_tags": "",
     "require_main": true,
     "runner": "codex",
-    "reasoning_effort": "medium"
+    "reasoning_effort": "high"
   },
   "git": {
     "auto_commit": true,
