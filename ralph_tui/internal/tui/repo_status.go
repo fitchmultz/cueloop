@@ -4,6 +4,8 @@ package tui
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -24,6 +26,7 @@ type repoStatusSnapshot struct {
 	ShortHeadNote      string
 	StatusSummary      string
 	StatusSummaryNote  string
+	worktreeSignature  string
 	DirtyCount         int
 	AheadCount         int
 	AheadNote          string
@@ -57,13 +60,16 @@ func repoStatusCmd(ctx context.Context, sampler *RepoStatusSampler, force bool) 
 }
 
 type RepoStatusSamplerOptions struct {
-	Cooldown           time.Duration
-	NotGitRepoCooldown time.Duration
-	GitMissingCooldown time.Duration
-	Logger             *tuiLogger
-	Fetch              func(context.Context, string) (repoStatusSnapshot, error)
-	TimeNow            func() time.Time
-	LookPath           func(string) (string, error)
+	Cooldown                time.Duration
+	NotGitRepoCooldown      time.Duration
+	GitMissingCooldown      time.Duration
+	Logger                  *tuiLogger
+	Fetch                   func(context.Context, string) (repoStatusSnapshot, error)
+	EnableWorktreeSignature *bool
+	WorktreeCheckInterval   time.Duration
+	WorktreeSignature       func(context.Context, string) (string, error)
+	TimeNow                 func() time.Time
+	LookPath                func(string) (string, error)
 }
 
 type RepoStatusSampler struct {
@@ -77,12 +83,19 @@ type RepoStatusSampler struct {
 	now      func() time.Time
 	lookPath func(string) (string, error)
 
+	worktreeEnabled       bool
+	worktreeCheckInterval time.Duration
+	worktreeSignature     func(context.Context, string) (string, error)
+
 	mu            sync.Mutex
 	last          repoStatusResult
 	nextAllowedAt time.Time
 
-	lastHeadStamp fileStamp
-	lastIdxStamp  fileStamp
+	lastHeadStamp         fileStamp
+	lastIdxStamp          fileStamp
+	lastWorktreeSignature string
+	nextWorktreeCheckAt   time.Time
+	worktreeInFlight      bool
 
 	inFlight bool
 	logger   *tuiLogger
@@ -113,19 +126,36 @@ func NewRepoStatusSampler(repoRoot string, opts RepoStatusSamplerOptions) *RepoS
 	if lookPath == nil {
 		lookPath = exec.LookPath
 	}
+	worktreeEnabled := true
+	if opts.EnableWorktreeSignature != nil {
+		worktreeEnabled = *opts.EnableWorktreeSignature
+	}
+	worktreeCheckInterval := opts.WorktreeCheckInterval
+	if worktreeCheckInterval <= 0 {
+		worktreeCheckInterval = 2 * time.Second
+	}
+	worktreeSignature := opts.WorktreeSignature
+	if worktreeSignature == nil {
+		worktreeSignature = defaultWorktreeSignature
+	}
 	return &RepoStatusSampler{
-		repoRoot:           repoRoot,
-		cooldown:           cooldown,
-		notGitRepoCooldown: notGitCooldown,
-		gitMissingCooldown: gitMissingCooldown,
-		fetch:              fetch,
-		now:                now,
-		lookPath:           lookPath,
-		last:               repoStatusResult{},
-		nextAllowedAt:      time.Time{},
-		lastHeadStamp:      fileStamp{},
-		lastIdxStamp:       fileStamp{},
-		logger:             opts.Logger,
+		repoRoot:              repoRoot,
+		cooldown:              cooldown,
+		notGitRepoCooldown:    notGitCooldown,
+		gitMissingCooldown:    gitMissingCooldown,
+		fetch:                 fetch,
+		now:                   now,
+		lookPath:              lookPath,
+		worktreeEnabled:       worktreeEnabled,
+		worktreeCheckInterval: worktreeCheckInterval,
+		worktreeSignature:     worktreeSignature,
+		last:                  repoStatusResult{},
+		nextAllowedAt:         time.Time{},
+		lastHeadStamp:         fileStamp{},
+		lastIdxStamp:          fileStamp{},
+		lastWorktreeSignature: "",
+		nextWorktreeCheckAt:   time.Time{},
+		logger:                opts.Logger,
 	}
 }
 
@@ -205,13 +235,44 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 	}
 
 	filesChanged := headChanged || idxChanged
-	if !force && !filesChanged && !s.last.SampledAt.IsZero() && !s.nextAllowedAt.IsZero() && now.Before(s.nextAllowedAt) {
-		res := s.last
-		res.FromCache = true
-		res.Throttled = true
-		res.ThrottleReason = "cooldown"
-		res.NextAllowedAt = s.nextAllowedAt
-		return returnWithLog(res)
+	cooldownActive := !force && !filesChanged && !s.last.SampledAt.IsZero() && !s.nextAllowedAt.IsZero() && now.Before(s.nextAllowedAt)
+	if cooldownActive {
+		if !s.worktreeEnabled || s.worktreeSignature == nil || s.lastWorktreeSignature == "" || (!s.nextWorktreeCheckAt.IsZero() && now.Before(s.nextWorktreeCheckAt)) || s.worktreeInFlight {
+			res := s.last
+			res.FromCache = true
+			res.Throttled = true
+			res.ThrottleReason = "cooldown"
+			res.NextAllowedAt = s.nextAllowedAt
+			return returnWithLog(res)
+		}
+
+		s.worktreeInFlight = true
+		repoRoot := s.repoRoot
+		worktreeSignature := s.worktreeSignature
+		s.mu.Unlock()
+
+		signature, signatureErr := worktreeSignature(ctx, repoRoot)
+
+		s.mu.Lock()
+		s.worktreeInFlight = false
+		s.nextWorktreeCheckAt = now.Add(s.worktreeCheckInterval)
+		if signatureErr != nil || strings.TrimSpace(signature) == "" {
+			res := s.last
+			res.FromCache = true
+			res.Throttled = true
+			res.ThrottleReason = "cooldown"
+			res.NextAllowedAt = s.nextAllowedAt
+			return returnWithLog(res)
+		}
+		if signature == s.lastWorktreeSignature {
+			res := s.last
+			res.FromCache = true
+			res.Throttled = true
+			res.ThrottleReason = "cooldown"
+			res.NextAllowedAt = s.nextAllowedAt
+			return returnWithLog(res)
+		}
+		s.lastWorktreeSignature = signature
 	}
 
 	if _, lookErr := s.lookPath("git"); lookErr != nil {
@@ -241,6 +302,10 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 
 	s.lastHeadStamp = headStamp
 	s.lastIdxStamp = idxStamp
+	if snapshot.worktreeSignature != "" {
+		s.lastWorktreeSignature = snapshot.worktreeSignature
+		s.nextWorktreeCheckAt = now.Add(s.worktreeCheckInterval)
+	}
 
 	cooldown := s.cooldown
 	if fetchErr != nil {
@@ -320,6 +385,21 @@ func resolveGitDir(repoRoot string) (string, error) {
 	return "", fmt.Errorf("not a git repo")
 }
 
+func defaultWorktreeSignature(ctx context.Context, repoRoot string) (string, error) {
+	summary, err := loop.StatusSummary(ctx, repoRoot)
+	if err != nil {
+		return "", err
+	}
+	return worktreeSignatureFromStatusSummary(summary), nil
+}
+
+func worktreeSignatureFromStatusSummary(summary string) string {
+	trimmed := strings.TrimSpace(summary)
+	hasher := sha256.New()
+	_, _ = hasher.Write([]byte(trimmed))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
 func fetchRepoStatus(ctx context.Context, repoRoot string) (repoStatusSnapshot, error) {
 	snapshot := repoStatusSnapshot{}
 	if strings.TrimSpace(repoRoot) == "" {
@@ -351,6 +431,7 @@ func fetchRepoStatus(ctx context.Context, repoRoot string) (repoStatusSnapshot, 
 		statusLine, dirtyCount := summarizeStatusSummary(summary)
 		snapshot.StatusSummary = statusLine
 		snapshot.DirtyCount = dirtyCount
+		snapshot.worktreeSignature = worktreeSignatureFromStatusSummary(summary)
 	}
 
 	ahead, err := loop.AheadCount(ctx, repoRoot)
