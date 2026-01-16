@@ -199,6 +199,83 @@ func TestTypingBlocksGlobalSearchInConfigEditorInput(t *testing.T) {
 	}
 }
 
+func TestRefreshViewsSkipsInactiveSpecs(t *testing.T) {
+	base, _, _ := newHermeticModel(t)
+	if base.specsView == nil {
+		t.Fatalf("specs view missing")
+	}
+	m := base
+	m.screen = screenDashboard
+	m.specsView.previewDirty = true
+	m.specsView.previewLoading = false
+
+	_ = m.refreshViews()
+
+	if m.specsView.previewLoading {
+		t.Fatalf("expected specs preview to remain idle when inactive")
+	}
+}
+
+func TestPostResizeDebouncesSpecsPreview(t *testing.T) {
+	base, _, _ := newHermeticModel(t)
+	if base.specsView == nil {
+		t.Fatalf("specs view missing")
+	}
+	m := base
+	m.screen = screenBuildSpecs
+	m.specsView.previewDirty = true
+	m.specsView.previewLoading = false
+	m.specsView.resizeDebounce = 0
+	m.specsView.Resize(120, 40)
+
+	cmds := m.postResizeCmds()
+	if len(cmds) != 1 {
+		t.Fatalf("expected one debounce command, got %d", len(cmds))
+	}
+	msg := cmds[0]()
+	if msg == nil {
+		t.Fatalf("expected debounce message")
+	}
+	if _, ok := msg.(specsPreviewDebounceMsg); !ok {
+		t.Fatalf("expected specsPreviewDebounceMsg, got %T", msg)
+	}
+}
+
+func TestNextRefreshSecondsAdaptsByScreen(t *testing.T) {
+	base, _, _ := newHermeticModel(t)
+	m := base
+	m.cfg.UI.RefreshSeconds = 2
+
+	m.screen = screenDashboard
+	if got := m.nextRefreshSeconds(); got != 2 {
+		t.Fatalf("expected dashboard refresh 2, got %d", got)
+	}
+
+	m.screen = screenBuildSpecs
+	if m.specsView != nil {
+		m.specsView.running = false
+	}
+	if got := m.nextRefreshSeconds(); got != 2 {
+		t.Fatalf("expected specs refresh 2, got %d", got)
+	}
+	if m.specsView != nil {
+		m.specsView.running = true
+	}
+	if got := m.nextRefreshSeconds(); got != 4 {
+		t.Fatalf("expected specs refresh 4 while running, got %d", got)
+	}
+
+	m.screen = screenLogs
+	if got := m.nextRefreshSeconds(); got != 4 {
+		t.Fatalf("expected logs refresh 4, got %d", got)
+	}
+
+	m.screen = screenConfig
+	if got := m.nextRefreshSeconds(); got != 8 {
+		t.Fatalf("expected config refresh 8, got %d", got)
+	}
+}
+
 func TestNavCollapseForcesContentFocus(t *testing.T) {
 	_, locs, cfg := newHermeticModel(t)
 	m := newModel(cfg, locs, StartOptions{})

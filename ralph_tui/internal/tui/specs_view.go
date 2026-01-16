@@ -51,6 +51,9 @@ type specsView struct {
 	previewLoading          bool
 	previewDirty            bool
 	previewSignature        string
+	lastResizeAt            time.Time
+	resizeDebounce          time.Duration
+	previewDebounceGen      int
 	status                  string
 	err                     string
 	refreshErr              string
@@ -108,6 +111,10 @@ type specsPreviewMsg struct {
 	unchanged  bool
 }
 
+type specsPreviewDebounceMsg struct {
+	gen int
+}
+
 func newSpecsView(cfg config.Config, locations paths.Locations, keys keyMap) (*specsView, error) {
 	vp := viewport.New(80, 20)
 	logViewport := viewport.New(80, 20)
@@ -131,6 +138,7 @@ func newSpecsView(cfg config.Config, locations paths.Locations, keys keyMap) (*s
 		logViewport:             logViewport,
 		previewWidth:            80,
 		previewDirty:            true,
+		resizeDebounce:          250 * time.Millisecond,
 		rendererBuilder:         buildRenderer,
 		previewRenderers:        map[int]previewRenderer{},
 		runLogBuf:               newLogLineBuffer(500, 400),
@@ -188,7 +196,7 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			s.setRefreshError("render preview", msg.err)
 			s.preview = ""
 			if s.previewDirty && !s.running {
-				return s.refreshPreviewAsync()
+				return s.refreshPreviewIfDirty()
 			}
 			return nil
 		}
@@ -198,7 +206,7 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 			s.autoEnabled = msg.auto
 			s.autoEnabledReason = msg.autoReason
 			if s.previewDirty && !s.running {
-				return s.refreshPreviewAsync()
+				return s.refreshPreviewIfDirty()
 			}
 			return nil
 		}
@@ -212,7 +220,15 @@ func (s *specsView) Update(msg tea.Msg, keys keyMap) tea.Cmd {
 		s.previewViewport.SetContent(msg.preview)
 		s.previewViewport.GotoTop()
 		if s.previewDirty && !s.running {
-			return s.refreshPreviewAsync()
+			return s.refreshPreviewIfDirty()
+		}
+		return nil
+	case specsPreviewDebounceMsg:
+		if msg.gen != s.previewDebounceGen {
+			return nil
+		}
+		if s.previewDirty && !s.running {
+			return s.refreshPreviewIfDirty()
 		}
 		return nil
 	case tea.KeyMsg:
@@ -466,6 +482,7 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 	priorEffective := s.effectiveInnovate
 	priorAuto := s.autoEnabled
 	priorAutoReason := s.autoEnabledReason
+	logger := s.logger
 
 	var overrides specs.BuildOptionOverrides
 	if innovateExplicit {
@@ -513,14 +530,32 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 		}
 	}
 	return func() tea.Msg {
+		start := time.Now()
+		errNote := ""
+		defer func() {
+			if logger == nil {
+				return
+			}
+			fields := map[string]any{
+				"duration_ms": time.Since(start).Milliseconds(),
+				"width":       previewWidth,
+				"signature":   signature,
+			}
+			if errNote != "" {
+				fields["error"] = errNote
+			}
+			logger.Debug("specs.preview.render", fields)
+		}()
 		queuePath := filepath.Join(cfg.Paths.PinDir, "implementation_queue.md")
 		resolution, err := specs.ResolveInnovateDetails(queuePath, resolved.Innovate, resolved.InnovateExplicit, resolved.AutofillScout)
 		if err != nil {
+			errNote = err.Error()
 			return specsPreviewMsg{err: err}
 		}
 
 		promptPath, err := specs.ResolvePromptTemplate(cfg.Paths.PinDir, cfg.ProjectType, "")
 		if err != nil {
+			errNote = err.Error()
 			return specsPreviewMsg{err: err}
 		}
 		prompt, err := specs.FillPrompt(promptPath, specs.FillPromptOptions{
@@ -531,10 +566,12 @@ func (s *specsView) refreshPreviewAsync() tea.Cmd {
 			ProjectType:   cfg.ProjectType,
 		})
 		if err != nil {
+			errNote = err.Error()
 			return specsPreviewMsg{err: err}
 		}
 		rendered, err := renderer.Render(prompt)
 		if err != nil {
+			errNote = err.Error()
 			return specsPreviewMsg{err: err}
 		}
 		if lastRunOutput != "" {
@@ -557,6 +594,55 @@ func (s *specsView) requestPreviewRefresh() tea.Cmd {
 	if s.previewLoading {
 		s.previewDirty = true
 		return nil
+	}
+	return s.refreshPreviewAsync()
+}
+
+func (s *specsView) debouncePreviewCmd(delay time.Duration) tea.Cmd {
+	if s == nil {
+		return nil
+	}
+	s.previewDebounceGen++
+	gen := s.previewDebounceGen
+	if delay <= 0 {
+		return func() tea.Msg {
+			return specsPreviewDebounceMsg{gen: gen}
+		}
+	}
+	return tea.Tick(delay, func(time.Time) tea.Msg {
+		return specsPreviewDebounceMsg{gen: gen}
+	})
+}
+
+func (s *specsView) DebouncedRefreshPreviewCmd() tea.Cmd {
+	if s == nil || s.running || s.editUserFocus {
+		return nil
+	}
+	if !s.previewDirty || s.previewLoading {
+		return nil
+	}
+	if s.resizeDebounce <= 0 {
+		return s.debouncePreviewCmd(0)
+	}
+	return s.debouncePreviewCmd(s.resizeDebounce)
+}
+
+func (s *specsView) refreshPreviewIfDirty() tea.Cmd {
+	if s == nil || s.running || s.editUserFocus {
+		return nil
+	}
+	if !s.previewDirty {
+		return nil
+	}
+	if s.previewLoading {
+		s.previewDirty = true
+		return nil
+	}
+	if s.resizeDebounce > 0 && !s.lastResizeAt.IsZero() {
+		remaining := s.resizeDebounce - time.Since(s.lastResizeAt)
+		if remaining > 0 {
+			return s.debouncePreviewCmd(remaining)
+		}
 	}
 	return s.refreshPreviewAsync()
 }
@@ -703,6 +789,7 @@ func (s *specsView) Resize(width int, height int) {
 	resizeViewportToFit(&s.previewViewport, max(0, width), max(0, previewHeight), paddedViewportStyle)
 	resizeViewportToFit(&s.logViewport, max(0, width), max(0, previewHeight), paddedViewportStyle)
 	s.previewWidth = max(0, s.previewViewport.Width)
+	s.lastResizeAt = time.Now()
 	s.previewDirty = true
 }
 
@@ -810,7 +897,7 @@ func (s *specsView) RefreshIfNeeded() tea.Cmd {
 		return nil
 	}
 	if s.previewDirty {
-		return s.requestPreviewRefresh()
+		return s.refreshPreviewIfDirty()
 	}
 	queuePath := filepath.Join(s.cfg.Paths.PinDir, "implementation_queue.md")
 	queueStamp, queueChanged, queueErr := fileChanged(queuePath, s.queueStamp)
@@ -838,14 +925,15 @@ func (s *specsView) RefreshIfNeeded() tea.Cmd {
 		s.promptStamp = promptStamp
 	}
 	if queueChanged || promptChanged {
-		return s.requestPreviewRefresh()
+		s.previewDirty = true
+		return s.refreshPreviewIfDirty()
 	}
 	return nil
 }
 
 func (s *specsView) RefreshPreviewCmd() tea.Cmd {
 	if s.previewDirty {
-		return s.requestPreviewRefresh()
+		return s.refreshPreviewIfDirty()
 	}
 	return nil
 }

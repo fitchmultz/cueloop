@@ -52,6 +52,7 @@ func TestScreenEntryRefreshTriggersSpecsPreview(t *testing.T) {
 
 	m.specsView.previewLoading = false
 	m.specsView.previewDirty = false
+	m.specsView.resizeDebounce = 0
 
 	cmds := m.switchScreen(screenBuildSpecs, true)
 	if len(cmds) == 0 {

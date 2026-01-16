@@ -60,6 +60,7 @@ type RepoStatusSamplerOptions struct {
 	Cooldown           time.Duration
 	NotGitRepoCooldown time.Duration
 	GitMissingCooldown time.Duration
+	Logger             *tuiLogger
 	Fetch              func(context.Context, string) (repoStatusSnapshot, error)
 	TimeNow            func() time.Time
 	LookPath           func(string) (string, error)
@@ -84,6 +85,7 @@ type RepoStatusSampler struct {
 	lastIdxStamp  fileStamp
 
 	inFlight bool
+	logger   *tuiLogger
 }
 
 func NewRepoStatusSampler(repoRoot string, opts RepoStatusSamplerOptions) *RepoStatusSampler {
@@ -123,16 +125,33 @@ func NewRepoStatusSampler(repoRoot string, opts RepoStatusSamplerOptions) *RepoS
 		nextAllowedAt:      time.Time{},
 		lastHeadStamp:      fileStamp{},
 		lastIdxStamp:       fileStamp{},
+		logger:             opts.Logger,
 	}
 }
 
+func (s *RepoStatusSampler) SetLogger(logger *tuiLogger) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logger = logger
+}
+
 func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusResult {
+	start := time.Now()
 	now := s.now()
 
 	s.mu.Lock()
-	if strings.TrimSpace(s.repoRoot) == "" {
+	returnWithLog := func(res repoStatusResult) repoStatusResult {
+		logger := s.logger
 		s.mu.Unlock()
-		return repoStatusResult{Err: fmt.Errorf("repo root unavailable")}
+		s.logSampleDuration(logger, start, force, res)
+		return res
+	}
+
+	if strings.TrimSpace(s.repoRoot) == "" {
+		return returnWithLog(repoStatusResult{Err: fmt.Errorf("repo root unavailable")})
 	}
 
 	if !force && s.last.Err != nil && !s.nextAllowedAt.IsZero() && now.Before(s.nextAllowedAt) {
@@ -141,8 +160,7 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 		res.Throttled = true
 		res.ThrottleReason = "error-cooldown"
 		res.NextAllowedAt = s.nextAllowedAt
-		s.mu.Unlock()
-		return res
+		return returnWithLog(res)
 	}
 
 	if !force && s.inFlight {
@@ -151,8 +169,7 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 		res.Throttled = true
 		res.ThrottleReason = "in-flight"
 		res.NextAllowedAt = s.nextAllowedAt
-		s.mu.Unlock()
-		return res
+		return returnWithLog(res)
 	}
 
 	gitDir, err := resolveGitDir(s.repoRoot)
@@ -164,8 +181,7 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 		s.last = res
 		s.nextAllowedAt = now.Add(s.notGitRepoCooldown)
 		res.NextAllowedAt = s.nextAllowedAt
-		s.mu.Unlock()
-		return res
+		return returnWithLog(res)
 	}
 
 	headPath := filepath.Join(gitDir, "HEAD")
@@ -177,8 +193,7 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 		s.last = res
 		s.nextAllowedAt = now.Add(s.cooldown)
 		res.NextAllowedAt = s.nextAllowedAt
-		s.mu.Unlock()
-		return res
+		return returnWithLog(res)
 	}
 	idxStamp, idxChanged, idxErr := fileChanged(idxPath, s.lastIdxStamp)
 	if idxErr != nil {
@@ -186,8 +201,7 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 		s.last = res
 		s.nextAllowedAt = now.Add(s.cooldown)
 		res.NextAllowedAt = s.nextAllowedAt
-		s.mu.Unlock()
-		return res
+		return returnWithLog(res)
 	}
 
 	filesChanged := headChanged || idxChanged
@@ -197,8 +211,7 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 		res.Throttled = true
 		res.ThrottleReason = "cooldown"
 		res.NextAllowedAt = s.nextAllowedAt
-		s.mu.Unlock()
-		return res
+		return returnWithLog(res)
 	}
 
 	if _, lookErr := s.lookPath("git"); lookErr != nil {
@@ -209,8 +222,7 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 		s.last = res
 		s.nextAllowedAt = now.Add(s.gitMissingCooldown)
 		res.NextAllowedAt = s.nextAllowedAt
-		s.mu.Unlock()
-		return res
+		return returnWithLog(res)
 	}
 
 	s.inFlight = true
@@ -219,7 +231,6 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 	snapshot, fetchErr := s.fetch(ctx, s.repoRoot)
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.inFlight = false
 
 	res := repoStatusResult{
@@ -245,7 +256,33 @@ func (s *RepoStatusSampler) Sample(ctx context.Context, force bool) repoStatusRe
 	res.NextAllowedAt = s.nextAllowedAt
 
 	s.last = res
+	logger := s.logger
+	s.mu.Unlock()
+	s.logSampleDuration(logger, start, force, res)
 	return res
+}
+
+func (s *RepoStatusSampler) logSampleDuration(logger *tuiLogger, start time.Time, force bool, res repoStatusResult) {
+	if logger == nil {
+		return
+	}
+	fields := map[string]any{
+		"duration_ms": time.Since(start).Milliseconds(),
+		"force":       force,
+	}
+	if res.FromCache {
+		fields["from_cache"] = true
+	}
+	if res.Throttled {
+		fields["throttled"] = true
+	}
+	if res.ThrottleReason != "" {
+		fields["throttle_reason"] = res.ThrottleReason
+	}
+	if res.Err != nil {
+		fields["error"] = res.Err.Error()
+	}
+	logger.Debug("repo_status.sample", fields)
 }
 
 func resolveGitDir(repoRoot string) (string, error) {

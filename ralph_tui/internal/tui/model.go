@@ -215,14 +215,16 @@ func (m model) Init() tea.Cmd {
 		fields["logger_error"] = m.logErr.Error()
 	}
 	m.logInfo("tui.start", fields)
-	cmds := []tea.Cmd{refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen)}
-	cmds = append(cmds, repoStatusCmd(m.runCtx, m.repoStatusSampler, false))
+	cmds := []tea.Cmd{refreshCmd(m.nextRefreshSeconds(), m.refreshGen)}
+	if m.screen == screenDashboard {
+		cmds = append(cmds, repoStatusCmd(m.runCtx, m.repoStatusSampler, false))
+	}
 	if m.pinView != nil {
 		if cmd := m.pinView.reloadAsync(true); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	}
-	if m.specsView != nil {
+	if m.specsView != nil && m.screen == screenBuildSpecs {
 		if cmd := m.specsView.RefreshPreviewCmd(); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
@@ -296,7 +298,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.logDebug("refresh.tick", map[string]any{"gen": msg.gen})
 		cmds = append(cmds, m.refreshViews()...)
-		cmds = append(cmds, refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen))
+		cmds = append(cmds, refreshCmd(m.nextRefreshSeconds(), m.refreshGen))
 		handled = true
 	case loopRunModeMsg:
 		m.applyLoopRunMode(msg.running)
@@ -367,7 +369,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cfg = msg.cfg
 		m.applyConfig()
 		m.refreshGen++
-		cmds = append(cmds, refreshCmd(m.cfg.UI.RefreshSeconds, m.refreshGen))
+		cmds = append(cmds, refreshCmd(m.nextRefreshSeconds(), m.refreshGen))
 		m.logInfo("config.reload", map[string]any{
 			"refresh_seconds": m.cfg.UI.RefreshSeconds,
 			"log_level":       m.cfg.Logging.Level,
@@ -1106,8 +1108,8 @@ func (m *model) resizeViews(contentInnerW int, contentInnerH int) {
 
 func (m *model) postResizeCmds() []tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
-	if m.specsView != nil {
-		if cmd := m.specsView.RefreshPreviewCmd(); cmd != nil {
+	if m.specsView != nil && m.screen == screenBuildSpecs {
+		if cmd := m.specsView.DebouncedRefreshPreviewCmd(); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	}
@@ -1175,19 +1177,36 @@ func (m *model) applyConfig() {
 }
 
 func (m *model) refreshViews() []tea.Cmd {
+	start := time.Now()
 	cmds := make([]tea.Cmd, 0)
-	if m.pinView != nil {
-		if cmd := m.pinView.RefreshIfNeeded(); cmd != nil {
-			cmds = append(cmds, cmd)
+	switch m.screen {
+	case screenDashboard:
+		if m.pinView != nil {
+			if cmd := m.pinView.RefreshIfNeeded(); cmd != nil {
+				cmds = append(cmds, cmd)
+			}
 		}
-	}
-	if m.specsView != nil {
-		if cmd := m.specsView.RefreshIfNeeded(); cmd != nil {
-			cmds = append(cmds, cmd)
+		cmds = append(cmds, repoStatusCmd(m.runCtx, m.repoStatusSampler, false))
+	case screenPin:
+		if m.pinView != nil {
+			if cmd := m.pinView.RefreshIfNeeded(); cmd != nil {
+				cmds = append(cmds, cmd)
+			}
 		}
+	case screenBuildSpecs:
+		if m.specsView != nil {
+			if cmd := m.specsView.RefreshIfNeeded(); cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+	case screenLogs:
+		m.refreshLogsView()
 	}
-	cmds = append(cmds, repoStatusCmd(m.runCtx, m.repoStatusSampler, false))
-	m.refreshLogsView()
+	m.logDebug("refresh.views", map[string]any{
+		"screen":      screenName(m.screen),
+		"cmd_count":   len(cmds),
+		"duration_ms": time.Since(start).Milliseconds(),
+	})
 	return cmds
 }
 
@@ -1237,6 +1256,33 @@ func (m *model) refreshLogsView() {
 	}
 	m.syncLoggerErrorToLogsView()
 	m.logsView.Refresh()
+}
+
+func (m model) nextRefreshSeconds() int {
+	base := m.cfg.UI.RefreshSeconds
+	if base <= 0 {
+		base = 1
+	}
+	multiplier := 1
+	switch m.screen {
+	case screenDashboard, screenPin:
+		multiplier = 1
+	case screenBuildSpecs:
+		if m.specsView != nil && m.specsView.running {
+			multiplier = 2
+		}
+	case screenRunLoop, screenLogs:
+		multiplier = 2
+	case screenConfig, screenHelp:
+		multiplier = 4
+	default:
+		multiplier = 2
+	}
+	seconds := base * multiplier
+	if seconds < 1 {
+		return 1
+	}
+	return seconds
 }
 
 func (m *model) currentLoggerError() error {
@@ -1315,6 +1361,9 @@ func (m *model) setLogger(cfg config.Config) {
 	if m.specsView != nil {
 		m.specsView.logger = m.logger
 	}
+	if m.repoStatusSampler != nil {
+		m.repoStatusSampler.SetLogger(m.logger)
+	}
 }
 
 func (m *model) closeLogger() {
@@ -1322,6 +1371,9 @@ func (m *model) closeLogger() {
 		_ = m.logger.Close()
 	}
 	m.logger = nil
+	if m.repoStatusSampler != nil {
+		m.repoStatusSampler.SetLogger(nil)
+	}
 }
 
 func (m *model) Shutdown(reason string) {

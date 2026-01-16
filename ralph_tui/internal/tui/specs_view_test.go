@@ -196,3 +196,48 @@ func TestSpecsViewConfigReloadResetsExplicitAutofill(t *testing.T) {
 		t.Fatalf("expected autofill to match updated config")
 	}
 }
+
+func TestSpecsPreviewDebounceIgnoresStaleMessages(t *testing.T) {
+	_, locs, cfg := newHermeticModel(t)
+	view, err := newSpecsView(cfg, locs, newTestKeyMap())
+	if err != nil {
+		t.Fatalf("newSpecsView failed: %v", err)
+	}
+
+	renderer := &fakePreviewRenderer{output: "rendered"}
+	view.rendererBuilder = func(width int) (previewRenderer, error) {
+		return renderer, nil
+	}
+
+	view.previewDirty = true
+	view.previewLoading = false
+	view.resizeDebounce = 0
+
+	cmd1 := view.DebouncedRefreshPreviewCmd()
+	cmd2 := view.DebouncedRefreshPreviewCmd()
+	if cmd1 == nil || cmd2 == nil {
+		t.Fatalf("expected debounce commands")
+	}
+
+	msg1 := cmd1().(specsPreviewDebounceMsg)
+	if cmd := view.Update(msg1, newTestKeyMap()); cmd != nil {
+		t.Fatalf("expected stale debounce to do nothing")
+	}
+	if view.previewLoading {
+		t.Fatalf("expected preview to remain idle after stale debounce")
+	}
+
+	msg2 := cmd2().(specsPreviewDebounceMsg)
+	cmd := view.Update(msg2, newTestKeyMap())
+	if cmd == nil {
+		t.Fatalf("expected debounce to trigger preview refresh")
+	}
+	if !view.previewLoading {
+		t.Fatalf("expected preview to start loading after debounce")
+	}
+
+	view.Update(cmd().(specsPreviewMsg), newTestKeyMap())
+	if renderer.renderCalls != 1 {
+		t.Fatalf("expected renderer to run once, got %d", renderer.renderCalls)
+	}
+}
