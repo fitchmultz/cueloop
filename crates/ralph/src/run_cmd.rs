@@ -1,6 +1,6 @@
 use crate::config;
 use crate::contracts::{Model, QueueFile, ReasoningEffort, Runner, TaskStatus};
-use crate::{gitutil, prompts, queue, runner, timeutil};
+use crate::{gitutil, prompts, queue, redaction, runner, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -133,7 +133,8 @@ pub fn run_one(resolved: &config::Resolved) -> Result<RunOutcome> {
         };
 
         let combined = output.combined();
-        let tail = tail_lines(&combined, OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS);
+        let redacted = redaction::redact_text(&combined);
+        let tail = tail_lines(&redacted, OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS);
         if !tail.is_empty() {
             eprintln!(">> [RALPH] runner output (tail):");
             for line in tail {

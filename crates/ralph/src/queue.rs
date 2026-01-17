@@ -1,5 +1,6 @@
 use crate::contracts::{QueueFile, Task, TaskStatus};
 use crate::fsutil;
+use crate::redaction;
 use anyhow::{anyhow, bail, Context, Result};
 use std::collections::HashSet;
 use std::path::Path;
@@ -213,7 +214,8 @@ pub fn set_status(
         TaskStatus::Blocked => {
             task.completed_at = None;
             if let Some(reason) = reason {
-                let trimmed = reason.trim();
+                let redacted = redaction::redact_text(reason);
+                let trimmed = redacted.trim();
                 if !trimmed.is_empty() {
                     task.blocked_reason = Some(trimmed.to_string());
                 }
@@ -226,7 +228,8 @@ pub fn set_status(
     }
 
     if let Some(note) = note {
-        let trimmed = note.trim();
+        let redacted = redaction::redact_text(note);
+        let trimmed = redacted.trim();
         if !trimmed.is_empty() {
             task.notes.push(trimmed.to_string());
         }
@@ -414,6 +417,30 @@ mod tests {
         assert_eq!(t.completed_at.as_deref(), Some(now3));
         assert_eq!(t.blocked_reason, None);
         assert!(t.notes.iter().any(|n| n == "completed"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn set_status_redacts_reason_and_note() -> Result<()> {
+        let mut queue = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0001")],
+        };
+
+        let now = "2026-01-17T00:00:00Z";
+        set_status(
+            &mut queue,
+            "RQ-0001",
+            TaskStatus::Blocked,
+            now,
+            Some("token=abc12345"),
+            Some("API_KEY=abc12345"),
+        )?;
+
+        let t = &queue.tasks[0];
+        assert_eq!(t.blocked_reason.as_deref(), Some("token=[REDACTED]"));
+        assert_eq!(t.notes, vec!["API_KEY=[REDACTED]".to_string()]);
 
         Ok(())
     }

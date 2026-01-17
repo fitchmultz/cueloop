@@ -4,6 +4,7 @@ mod config;
 mod fsutil;
 mod init_cmd;
 mod queue;
+mod redaction;
 mod run_cmd;
 mod timeutil;
 
