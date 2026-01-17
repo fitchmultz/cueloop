@@ -1,22 +1,37 @@
 # Ralph
 
-Ralph is a tool for managing AI agent loops and pin operations.
+Ralph is a tool for managing AI agent loops with a structured YAML task queue.
 
-## Project Structure
+## Current Status (Rust rewrite)
 
-This repository is focused on the Go TUI/CLI:
+The canonical implementation is the Rust CLI in `crates/ralph/`.
 
-- **[ralph_tui](./ralph_tui)**: The active Go TUI/CLI. All new work and feature development targets this path.
+- Queue (source of truth): `.ralph/queue.yaml`
+- Prompt templates: `.ralph/prompts/`
 
-## Getting Started
+The legacy Go TUI/CLI lives in `ralph_tui/` and uses the Markdown pin workflow under `.ralph/pin/`. That Go implementation is frozen during the Rust rewrite and should only be modified when a queue task explicitly targets it.
 
-Refer to the README in `ralph_tui/` for usage. Default pin files live under `.ralph/pin/`.
+## Quick Start (Rust)
+
+- Run tests:
+  - `cargo test -p ralph`
+- Validate queue:
+  - `cargo run -p ralph -- queue validate`
+- Add a task from a request:
+  - `cargo run -p ralph -- task build "<request>"`
+- Seed the backlog with a scan:
+  - `cargo run -p ralph -- scan --focus "<focus>"`
+- Execute the next task (first `todo` task in queue order):
+  - `cargo run -p ralph -- run one`
+
+## Configuration
+
+Ralph uses a two-layer YAML config:
+- Global: `~/.config/ralph/config.yaml`
+- Project: `.ralph/config.yaml` (overrides global)
 
 ## Project Types
 
-Ralph supports a configurable `project_type` to tune prompts and workflows:
+Ralph supports a configurable `project_type` (`code` or `docs`) to tune prompts and workflows. This is read from config and primarily affects prompt defaults.
 
-- `code` (default): code-focused prompts.
-- `docs`: documentation-focused prompts (doc maintenance, link checks, research synthesis).
-
-Set it via `ralph init --project-type docs` or the config editor to persist in `.ralph/ralph.json`.
+See `.ralph/README.md` for Rust runtime-file details.

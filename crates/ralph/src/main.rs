@@ -6,6 +6,7 @@ mod queue;
 mod run_cmd;
 mod timeutil;
 
+mod gitutil;
 mod prompts;
 mod runner;
 mod scan_cmd;

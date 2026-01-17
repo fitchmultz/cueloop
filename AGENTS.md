@@ -1,53 +1,46 @@
 # Contributor Guide
 
-## Project Structure & Module Organization
-- `ralph_tui/`: Active Go-based CLI/TUI (`go run ./cmd/ralph`). All new development targets this path; source lives in `internal/` with tests alongside as `*_test.go`.
-- `.ralph/`: Runtime/config defaults, including pin files at `.ralph/pin/` and cache/config files.
-- `README.md`: High-level orientation and links to component-specific docs.
+## Project Structure & Source of Truth
+- `crates/ralph/`: **Active** Rust CLI (the Rust rewrite).
+  - Run locally via `cargo run -p ralph -- <command>`
+- `.ralph/`: Repo-local runtime state for the Rust CLI.
+  - `.ralph/queue.yaml` is the **source of truth** for work.
+  - `.ralph/prompts/*.md` are repo-local prompt templates used by `ralph scan`, `ralph task build`, and `ralph run`.
+- `ralph_tui/`: **Legacy** Go TUI/CLI + Markdown pin workflow (`.ralph/pin/*`). This path is deprecated/frozen; do not modify unless a queue task explicitly targets it.
 
-## Build, Test, and Development Commands
-- `make install`: Download Go modules.
-- `make build`: Build the Go CLI binary.
-- `make test`: Run Go tests.
-- `make format`: Format Go (gofmt).
-- `make lint`: Lint Go (go vet).
-- `make type-check`: Run a no-op Go test pass for type safety.
-- `make pin-validate`: Validate pin files via `ralph pin validate`.
-- `make ci`: Local gate; runs generate/format/type-check/lint/pin-validate/build/test.
+## Build, Test, and Development Commands (Rust)
+- `cargo test -p ralph`
+- `cargo run -p ralph -- queue validate`
+- `cargo run -p ralph -- queue next-id`
+- `cargo run -p ralph -- task build "<request>"`
+- `cargo run -p ralph -- scan --focus "<focus>"`
+- `cargo run -p ralph -- run one`
 
-## Coding Style & Naming Conventions
-- Go: standard formatting (`gofmt`), lower_snake_case filenames, lower-case package names.
-- Prompts/specs are Markdown; keep them generalized (no project-specific assumptions).
+## Queue & Prompt Contract (Rust)
+- Source of truth is `.ralph/queue.yaml` (YAML). Task order is priority (top runs first).
+- New tasks must include: `id`, `status`, `title`, `tags`, `scope`, `evidence`, `plan` (and typically `request`, `created_at`, `updated_at`).
+- Prompt templates live in `.ralph/prompts/` and reference these files.
 
-## Testing Guidelines
-- Go tests use the standard `testing` package and live alongside code as `*_test.go`.
-- Prefer table-driven tests for multiple scenarios in Go.
+## Git + CI Expectations (Current Rust State)
+- The Rust runner does **not** auto-commit/push yet.
+- Each run should leave the repo clean (`git status` empty) before exiting:
+  - run repo checks (typically `make ci` when available)
+  - commit or revert changes as needed
+- Prefer commit messages like `RQ-####: <short summary>`.
 
-## Co & Pull Request Guidelines
-- Commit messages in history are sentence-case summaries; some include multiple sentences.
-- No formal PR template; include:
-  - A concise summary of changes.
-  - Commands run (especially `make ci` or `go test ./...`).
-  - Notes on prompt/spec changes or TUI behavior changes.
-  - Screenshots or recordings if TUI UI behavior changes.
+## Configuration
+- Two-layer YAML config:
+  - Global: `~/.config/ralph/config.yaml`
+  - Project: `.ralph/config.yaml` (overrides global)
+- CLI flags can override at runtime; they should not be relied on as persisted config.
 
 ## Configuration & Security
-- Prefer a single project-root `.env` if configuration is needed; keep `.env.example` in sync.
 - Do not commit real secrets if the repo is public.
+- Treat runner output as potentially sensitive; avoid copying raw output into `.ralph/queue.yaml` notes without redaction.
 
 ## First-Principles Simplicity
-- Start from the fundamentals, strip to essentials, then rebuild the simplest working path (think SpaceX’s Raptor approach).
+- Start from the fundamentals, strip to essentials, then rebuild the simplest working path.
 - Delete before adding: remove dead code, redundant layers, and stale comments; net-negative diffs are wins when behavior stays correct.
 - Complexity budget: add components only when they reduce total risk/maintenance or increase measurable value.
 - Evidence over opinion: tests, data constraints, and benchmarks settle debates; formatters/linters settle style.
 - Centralize early: if similar logic exists, consolidate into shared helpers/modules.
-
-## Agent Notes
-- Default pin/spec templates live in `.ralph/pin/`.
-- Update path references in docs/prompts when moving or renaming directories.
-- For TUI resize behavior, avoid min-size clamps that exceed available space; views should shrink to fit to prevent selection/highlight mismatches.
-- Loop runner inactivity is controlled by `loop.runner_inactivity_seconds`; when triggered, the loop resets to the last known good commit and restarts the item (no WIP quarantine).
-- TUI keybinding policy (RQ-0469):
-  - Global actions must use `ctrl+` combos only; avoid bare letters for global scope.
-  - While typing in a content view, global shortcuts do not fire (except quit); route keys to the active view.
-  - Screen-specific letter bindings are only safe when not typing and must be reflected in help/hints and conflict tests.

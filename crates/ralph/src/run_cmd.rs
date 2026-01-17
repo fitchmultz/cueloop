@@ -1,6 +1,6 @@
 use crate::config;
 use crate::contracts::{Model, ReasoningEffort, Runner, TaskStatus};
-use crate::{prompts, queue, runner, timeutil};
+use crate::{gitutil, prompts, queue, runner, timeutil};
 use anyhow::{bail, Result};
 
 const OUTPUT_TAIL_LINES: usize = 20;
@@ -22,6 +22,10 @@ pub fn run_one(resolved: &config::Resolved) -> Result<()> {
 	if task_id.is_empty() {
 		bail!("selected task has empty id");
 	}
+
+	// Require a clean repo before we mutate queue state / invoke the runner.
+	// This ensures reverting uncommitted changes on failure won't delete unrelated user work.
+	gitutil::require_clean_repo(&resolved.repo_root)?;
 
 	let now = timeutil::now_utc_rfc3339()?;
 	queue::set_status(&mut queue_file, &task_id, TaskStatus::Doing, &now, None, None)?;
@@ -52,7 +56,7 @@ pub fn run_one(resolved: &config::Resolved) -> Result<()> {
 	let template = prompts::load_worker_prompt(&resolved.repo_root)?;
 	let prompt = prompts::render_worker_prompt(&template, &task)?;
 
-	let output = runner::run_prompt(
+	let output = match runner::run_prompt(
 		runner_kind,
 		&resolved.repo_root,
 		codex_bin,
@@ -60,7 +64,17 @@ pub fn run_one(resolved: &config::Resolved) -> Result<()> {
 		model,
 		reasoning_effort,
 		&prompt,
-	)?;
+	) {
+		Ok(output) => output,
+		Err(err) => {
+			// Runner failed to execute (spawn/IO/etc). Revert our queue "doing" update + any partial changes.
+			gitutil::revert_uncommitted(&resolved.repo_root)?;
+			bail!(
+				"runner invocation failed; reverted uncommitted changes; rerun is recommended: {:#}",
+				err
+			);
+		}
+	};
 
 	if !output.stdout.is_empty() {
 		print!("{}", output.stdout);
@@ -79,30 +93,18 @@ pub fn run_one(resolved: &config::Resolved) -> Result<()> {
 		None => "runner terminated by signal".to_string(),
 	};
 
-	let mut latest = queue::load_queue(&resolved.queue_path)?;
-	let now2 = timeutil::now_utc_rfc3339()?;
-	queue::set_status(
-		&mut latest,
-		&task_id,
-		TaskStatus::Blocked,
-		&now2,
-		Some(&exit_reason),
-		None,
-	)?;
-
-	if let Some(task_mut) = latest.tasks.iter_mut().find(|t| t.id.trim() == task_id) {
-		let combined = output.combined();
-		let tail = tail_lines(&combined, OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS);
-		if !tail.is_empty() {
-			task_mut.notes.push("runner output (tail):".to_string());
-			for line in tail {
-				task_mut.notes.push(format!("runner: {line}"));
-			}
+	let combined = output.combined();
+	let tail = tail_lines(&combined, OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS);
+	if !tail.is_empty() {
+		eprintln!(">> [RALPH] runner output (tail):");
+		for line in tail {
+			eprintln!(">> [RALPH] runner: {line}");
 		}
 	}
 
-	queue::save_queue(&resolved.queue_path, &latest)?;
-	bail!("runner failed; {task_id} marked blocked: {exit_reason}")
+	// Per policy: never mark blocked on execution failure. Just revert WIP and let the loop retry.
+	gitutil::revert_uncommitted(&resolved.repo_root)?;
+	bail!("runner failed ({exit_reason}); reverted uncommitted changes; rerun is recommended")
 }
 
 fn tail_lines(text: &str, max_lines: usize, max_chars: usize) -> Vec<String> {

@@ -1,4 +1,4 @@
-use crate::{config, prompts, queue, runner};
+use crate::{config, gitutil, prompts, queue, runner};
 use crate::contracts::{Model, QueueFile, ReasoningEffort, Runner};
 use anyhow::{bail, Context, Result};
 use std::collections::HashSet;
@@ -35,6 +35,9 @@ pub fn read_request_from_args_or_stdin(args: &[String]) -> Result<String> {
 }
 
 pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result<()> {
+	// Enforce the "repo is clean before any agent run" assumption.
+	gitutil::require_clean_repo(&resolved.repo_root)?;
+
 	if opts.request.trim().is_empty() {
 		bail!("request text required");
 	}
@@ -66,7 +69,7 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
 		.as_deref()
 		.unwrap_or("opencode");
 
-	let output = runner::run_prompt(
+	let output = match runner::run_prompt(
 		opts.runner,
 		&resolved.repo_root,
 		codex_bin,
@@ -74,7 +77,16 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
 		opts.model,
 		opts.reasoning_effort,
 		&prompt,
-	)?;
+	) {
+		Ok(output) => output,
+		Err(err) => {
+			gitutil::revert_uncommitted(&resolved.repo_root)?;
+			bail!(
+				"task builder runner failed to execute; reverted uncommitted changes: {:#}",
+				err
+			);
+		}
+	};
 
 	if !output.stdout.is_empty() {
 		print!("{}", output.stdout);
@@ -83,10 +95,22 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
 		eprint!("{}", output.stderr);
 	}
 
-	let after = queue::load_queue(&resolved.queue_path)
-		.with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
-	queue::validate_queue(&after, &resolved.id_prefix, resolved.id_width)
-		.context("validate queue after task build")?;
+	let after = match queue::load_queue(&resolved.queue_path)
+		.with_context(|| format!("read queue {}", resolved.queue_path.display()))
+	{
+		Ok(queue) => queue,
+		Err(err) => {
+			gitutil::revert_uncommitted(&resolved.repo_root)?;
+			return Err(err);
+		}
+	};
+
+	if let Err(err) = queue::validate_queue(&after, &resolved.id_prefix, resolved.id_width)
+		.context("validate queue after task build")
+	{
+		gitutil::revert_uncommitted(&resolved.repo_root)?;
+		return Err(err);
+	}
 
 	let added = added_tasks(&before_ids, &after);
 	if added.is_empty() {
@@ -109,6 +133,8 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
 		Some(code) => format!("task builder runner exited non-zero (code={code})"),
 		None => "task builder runner terminated by signal".to_string(),
 	};
+
+	gitutil::revert_uncommitted(&resolved.repo_root)?;
 	bail!(exit_reason)
 }
 

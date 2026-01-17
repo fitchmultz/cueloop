@@ -23,13 +23,23 @@ Convert findings into executable YAML tasks and insert them into `.ralph/queue.y
 - Do not invent evidence. Evidence must cite concrete file paths and what you observed (function/module/pattern), or a concrete workflow gap (command, Make target, config mismatch).
 
 ## QUEUE INSERTION RULES
-- Insert new tasks at the TOP of the queue in priority order.
+- Insert new tasks near the TOP of the queue in priority order (top = highest priority).
+- IMPORTANT (avoid reversed ordering): if you are adding multiple tasks and using `ralph queue next-id` repeatedly, do NOT keep inserting each newly generated task at the absolute top of the file. That reverses priority order. Instead:
+  - Insert the first new task at the top of the queue.
+  - Insert each subsequent new task immediately BELOW the previously inserted new tasks so the final top-to-bottom ordering matches your intended priority order.
 - Use `ralph queue next-id` for each new task ID.
 - Each new task must include:
   - `id`, `status: todo`, `title`, `tags`, `scope`, `evidence`, `plan`
   - `request`: a short statement like "scan finding"
   - `created_at` and `updated_at` set to current UTC RFC3339 time
-- Do not reorder existing tasks below the inserted block.
+- Do not renumber existing task IDs.
+
+## FINAL QUEUE REVIEW (ORDER OPTIMIZATION)
+- Queue order is priority: the run loop selects the first `todo` task from the TOP of the queue.
+- Before finishing, re-read the entire `.ralph/queue.yaml` task list top-to-bottom.
+- Reorder ALL `todo` tasks into the most logical execution order based on dependencies and leverage (schema/contract tasks before implementation tasks that depend on them; safety/infra before UX polish).
+- Do NOT reorder tasks that are not `todo` (`doing`, `blocked`, `done`) unless absolutely necessary; prefer to keep them in place.
+- Avoid churn when there is no benefit: only move tasks when it materially improves dependency order or execution efficiency.
 
 ## YAML QUEUE CONTRACT (DO NOT DEVIATE)
 - Root: `version: 1` and `tasks: [...]`

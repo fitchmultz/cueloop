@@ -1,4 +1,4 @@
-use crate::{config, prompts, queue, runner};
+use crate::{config, gitutil, prompts, queue, runner};
 use crate::contracts::{Model, QueueFile, ReasoningEffort, Runner};
 use anyhow::{bail, Context, Result};
 use std::collections::HashSet;
@@ -11,10 +11,17 @@ pub struct ScanOptions {
 }
 
 pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
+	// Enforce the "repo is clean before any agent run" assumption.
+	gitutil::require_clean_repo(&resolved.repo_root)?;
+
 	let before = queue::load_queue(&resolved.queue_path)
 		.with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
-	queue::validate_queue(&before, &resolved.id_prefix, resolved.id_width)
-		.context("validate queue before scan")?;
+	if let Err(err) = queue::validate_queue(&before, &resolved.id_prefix, resolved.id_width)
+		.context("validate queue before scan")
+	{
+		gitutil::revert_uncommitted(&resolved.repo_root)?;
+		return Err(err);
+	}
 	let before_ids = task_id_set(&before);
 
 	let template = prompts::load_scan_prompt(&resolved.repo_root)?;
@@ -33,7 +40,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
 		.as_deref()
 		.unwrap_or("opencode");
 
-	let output = runner::run_prompt(
+	let output = match runner::run_prompt(
 		opts.runner,
 		&resolved.repo_root,
 		codex_bin,
@@ -41,7 +48,13 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
 		opts.model,
 		opts.reasoning_effort,
 		&prompt,
-	)?;
+	) {
+		Ok(output) => output,
+		Err(err) => {
+			gitutil::revert_uncommitted(&resolved.repo_root)?;
+			bail!("scan runner failed to execute; reverted uncommitted changes: {:#}", err);
+		}
+	};
 
 	if !output.stdout.is_empty() {
 		print!("{}", output.stdout);
@@ -50,10 +63,22 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
 		eprint!("{}", output.stderr);
 	}
 
-	let after = queue::load_queue(&resolved.queue_path)
-		.with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
-	queue::validate_queue(&after, &resolved.id_prefix, resolved.id_width)
-		.context("validate queue after scan")?;
+	let after = match queue::load_queue(&resolved.queue_path)
+		.with_context(|| format!("read queue {}", resolved.queue_path.display()))
+	{
+		Ok(queue) => queue,
+		Err(err) => {
+			gitutil::revert_uncommitted(&resolved.repo_root)?;
+			return Err(err);
+		}
+	};
+
+	if let Err(err) = queue::validate_queue(&after, &resolved.id_prefix, resolved.id_width)
+		.context("validate queue after scan")
+	{
+		gitutil::revert_uncommitted(&resolved.repo_root)?;
+		return Err(err);
+	}
 
 	let added = added_tasks(&before_ids, &after);
 	if added.is_empty() {
@@ -76,6 +101,8 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
 		Some(code) => format!("scan runner exited non-zero (code={code})"),
 		None => "scan runner terminated by signal".to_string(),
 	};
+
+	gitutil::revert_uncommitted(&resolved.repo_root)?;
 	bail!(exit_reason)
 }
 

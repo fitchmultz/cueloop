@@ -40,6 +40,7 @@ Optional hint scope (may be empty):
 - Do not invent evidence. If you cannot cite repo specifics, use evidence from the user request as evidence.
 - Use `ralph queue next-id` for each new task ID.
 - Insert new task(s) at the TOP of the queue unless the request explicitly says otherwise.
+- IMPORTANT (avoid reversed ordering): if you add multiple tasks and are using `ralph queue next-id` repeatedly, do NOT insert each newly created task at the absolute top of the file. That reverses the intended priority order. Instead, insert the first new task at the top, then insert subsequent new tasks immediately BELOW the previously inserted new tasks.
 - Set `request` on each task to the original user request.
 - Set `created_at` and `updated_at` to current UTC RFC3339 time.
 

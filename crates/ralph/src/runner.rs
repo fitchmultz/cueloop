@@ -85,8 +85,6 @@ fn run_codex(
 	ensure_self_on_path(&mut cmd);
 	cmd.arg("exec")
 		.arg("--full-auto")
-		.arg("--sandbox")
-		.arg("workspace-write")
 		.arg("--model")
 		.arg(model_as_str(model));
 

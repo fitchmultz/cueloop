@@ -31,8 +31,12 @@ Ship correct, durable changes quickly and safely.
   - `blocked` with `blocked_reason` when blocked
   - leave as `doing` or revert to `todo` if incomplete but not blocked
 - `.ralph/queue.yaml` remains valid YAML and matches the queue contract.
-- Working tree is clean (no uncommitted changes).
-- Repo checks pass (use the repo standard, typically `make ci` if present).
+- CI gate is 100% clean: run `make ci` and fix all failures before ending your turn.
+- Git hygiene (leave a clean repo state for the next run):
+  - Commit ALL changes (including `.ralph/queue.yaml`) with a message like `RQ-####: <short summary>`.
+  - Push your commit(s) so the branch is not ahead of upstream.
+  - Confirm the repo is clean: `git status --porcelain` is empty.
+  - If you cannot push (no upstream/permissions), set the task to `blocked` with a precise `blocked_reason` explaining what is required to unblock.
 
 ## DECISION HEURISTICS
 - Delete or consolidate before adding new parts.
@@ -56,9 +60,13 @@ Ship correct, durable changes quickly and safely.
    - Set `status: done`
    - Set `completed_at` to current UTC RFC3339 time
    - Add 1-5 `notes` bullets summarizing what changed and how to verify
+   - Run `make ci` and ensure it passes.
+   - Commit and push all changes (including `.ralph/queue.yaml`) so the repo is clean for the next run.
 6. If blocked:
+   - Revert or discard partial changes so the repo is clean (do not leave failing WIP changes in the working tree).
    - Set `status: blocked`
    - Fill `blocked_reason` with the precise blocker and the smallest action needed to unblock
+   - Commit and push the queue update (so the blocked state is persisted), unless pushing is impossible (in which case explain in `blocked_reason`).
 
 # CURRENT TASK
 {{TASK_YAML}}

@@ -1,5 +1,8 @@
 # Repository Guidelines
 
+NOTE: `ralph_tui/` is the legacy Go TUI/CLI implementation. The canonical workflow is the Rust CLI in `crates/ralph/` using `.ralph/queue.yaml`.
+Do not make changes in `ralph_tui/` unless a queue task explicitly targets it (see repo-root `AGENTS.md` and `.ralph/README.md`).
+
 ## Project Structure & Module Organization
 - `cmd/ralph/`: Cobra-based CLI/TUI entrypoint (`go run ./cmd/ralph`).
 - `internal/`: Core application packages (`config`, `loop`, `pin`, `prompts`, `specs`, `tui`, etc.).
