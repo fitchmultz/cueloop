@@ -1,40 +1,33 @@
-GO_PROJECT := ralph_tui
-GO_CMD := $(GO_PROJECT)/cmd/ralph
-GO_FILES := $(shell find $(GO_PROJECT) -name '*.go')
-GO_TEST := go test -count=1
+RUST_WORKSPACE := .
 
-.PHONY: install update lint type-check format clean test generate pin-validate build ci
+.PHONY: install update lint type-check format clean test generate build ci
 
 install:
-	cd $(GO_PROJECT) && go mod download
+	cargo fetch
 
 update:
-	cd $(GO_PROJECT) && go get -u ./... && go mod tidy
+	cargo update
 
 lint:
-	cd $(GO_PROJECT) && go vet ./...
+	cargo clippy --workspace --all-targets -- -D warnings
 
 type-check:
-	cd $(GO_PROJECT) && $(GO_TEST) ./... -run=^$$
+	cargo check --workspace
 
 format:
-	gofmt -w $(GO_FILES)
+	cargo fmt --all
 
 clean:
+	cargo clean
 	find . -name '*.log' -type f -delete
-	rm -f $(GO_PROJECT)/ralph
-	cd $(GO_PROJECT) && go clean -cache -testcache
 
 test:
-	cd $(GO_PROJECT) && $(GO_TEST) ./...
+	cargo test --workspace
 
 generate:
 	@echo "No API type generation configured."
 
-pin-validate:
-	cd $(GO_PROJECT) && go run ./cmd/ralph pin validate
-
 build:
-	cd $(GO_PROJECT) && go build ./cmd/ralph
+	cargo build --workspace
 
-ci: generate format type-check lint pin-validate build test
+ci: generate format type-check lint build test

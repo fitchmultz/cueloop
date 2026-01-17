@@ -7,6 +7,7 @@ Ralph is a tool for managing AI agent loops with a structured YAML task queue.
 The canonical implementation is the Rust CLI in `crates/ralph/`.
 
 - Queue (source of truth): `.ralph/queue.yaml`
+- Done archive: `.ralph/done.yaml`
 - Prompt templates: `.ralph/prompts/`
 
 The legacy Go TUI/CLI lives in `ralph_tui/` and uses the Markdown pin workflow under `.ralph/pin/`. That Go implementation is frozen during the Rust rewrite and should only be modified when a queue task explicitly targets it.
@@ -14,7 +15,7 @@ The legacy Go TUI/CLI lives in `ralph_tui/` and uses the Markdown pin workflow u
 ## Quick Start (Rust)
 
 - Run tests:
-  - `cargo test -p ralph`
+  - `cargo test --workspace`
 - Validate queue:
   - `cargo run -p ralph -- queue validate`
 - Add a task from a request:
@@ -23,6 +24,16 @@ The legacy Go TUI/CLI lives in `ralph_tui/` and uses the Markdown pin workflow u
   - `cargo run -p ralph -- scan --focus "<focus>"`
 - Execute the next task (first `todo` task in queue order):
   - `cargo run -p ralph -- run one`
+- Archive completed tasks:
+  - `cargo run -p ralph -- queue archive`
+
+## Go vs Rust Mapping
+
+Rust is the canonical workflow for queue-driven execution. The Go TUI remains for legacy pin workflows only.
+
+- Queue validation: Go `ralph pin validate` -> Rust `ralph queue validate`
+- Backlog management: Go `.ralph/pin/*` -> Rust `.ralph/queue.yaml` + `.ralph/done.yaml`
+- Task execution loop: Go TUI loop -> Rust `ralph run one` / `ralph run loop`
 
 ## Configuration
 

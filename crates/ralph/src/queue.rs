@@ -6,467 +6,489 @@ use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub struct ArchiveReport {
-	pub moved_ids: Vec<String>,
-	pub skipped_ids: Vec<String>,
+    pub moved_ids: Vec<String>,
+    pub skipped_ids: Vec<String>,
 }
 
 pub fn load_queue(path: &Path) -> Result<QueueFile> {
-	let raw = std::fs::read_to_string(path).with_context(|| format!("read queue file {}", path.display()))?;
-	let queue: QueueFile = serde_yaml::from_str(&raw).with_context(|| format!("parse queue YAML {}", path.display()))?;
-	Ok(queue)
+    let raw = std::fs::read_to_string(path)
+        .with_context(|| format!("read queue file {}", path.display()))?;
+    let queue: QueueFile = serde_yaml::from_str(&raw)
+        .with_context(|| format!("parse queue YAML {}", path.display()))?;
+    Ok(queue)
 }
 
 pub fn load_queue_or_default(path: &Path) -> Result<QueueFile> {
-	if !path.exists() {
-		return Ok(QueueFile::default());
-	}
-	load_queue(path)
+    if !path.exists() {
+        return Ok(QueueFile::default());
+    }
+    load_queue(path)
 }
 
 pub fn save_queue(path: &Path, queue: &QueueFile) -> Result<()> {
-	let rendered = serde_yaml::to_string(queue).context("serialize queue YAML")?;
-	fsutil::write_atomic(path, rendered.as_bytes()).with_context(|| format!("write queue YAML {}", path.display()))?;
-	Ok(())
+    let rendered = serde_yaml::to_string(queue).context("serialize queue YAML")?;
+    fsutil::write_atomic(path, rendered.as_bytes())
+        .with_context(|| format!("write queue YAML {}", path.display()))?;
+    Ok(())
 }
 
 pub fn validate_queue(queue: &QueueFile, id_prefix: &str, id_width: usize) -> Result<()> {
-	if queue.version != 1 {
-		bail!("queue.yaml version must be 1 (got {})", queue.version);
-	}
-	if id_width == 0 {
-		bail!("id_width must be > 0");
-	}
+    if queue.version != 1 {
+        bail!("queue.yaml version must be 1 (got {})", queue.version);
+    }
+    if id_width == 0 {
+        bail!("id_width must be > 0");
+    }
 
-	let expected_prefix = normalize_prefix(id_prefix);
-	if expected_prefix.is_empty() {
-		bail!("id_prefix must be non-empty");
-	}
+    let expected_prefix = normalize_prefix(id_prefix);
+    if expected_prefix.is_empty() {
+        bail!("id_prefix must be non-empty");
+    }
 
-	let mut seen = HashSet::new();
-	for (idx, task) in queue.tasks.iter().enumerate() {
-		validate_task_required_fields(idx, task)?;
-		validate_task_id(idx, &task.id, &expected_prefix, id_width)?;
+    let mut seen = HashSet::new();
+    for (idx, task) in queue.tasks.iter().enumerate() {
+        validate_task_required_fields(idx, task)?;
+        validate_task_id(idx, &task.id, &expected_prefix, id_width)?;
 
-		let key = task.id.trim().to_string();
-		if !seen.insert(key.clone()) {
-			bail!("duplicate task id detected: {}", key);
-		}
-	}
+        let key = task.id.trim().to_string();
+        if !seen.insert(key.clone()) {
+            bail!("duplicate task id detected: {}", key);
+        }
+    }
 
-	Ok(())
+    Ok(())
 }
 
 pub fn validate_queue_set(
-	active: &QueueFile,
-	done: Option<&QueueFile>,
-	id_prefix: &str,
-	id_width: usize,
+    active: &QueueFile,
+    done: Option<&QueueFile>,
+    id_prefix: &str,
+    id_width: usize,
 ) -> Result<()> {
-	validate_queue(active, id_prefix, id_width)?;
-	if let Some(done) = done {
-		validate_queue(done, id_prefix, id_width)?;
-	}
+    validate_queue(active, id_prefix, id_width)?;
+    if let Some(done) = done {
+        validate_queue(done, id_prefix, id_width)?;
+    }
 
-	let mut seen = HashSet::new();
-	for task in &active.tasks {
-		let key = task.id.trim().to_string();
-		seen.insert(key);
-	}
-	if let Some(done) = done {
-		for task in &done.tasks {
-			let key = task.id.trim().to_string();
-			if !seen.insert(key.clone()) {
-				bail!("duplicate task id across queue + done: {}", key);
-			}
-		}
-	}
+    let mut seen = HashSet::new();
+    for task in &active.tasks {
+        let key = task.id.trim().to_string();
+        seen.insert(key);
+    }
+    if let Some(done) = done {
+        for task in &done.tasks {
+            let key = task.id.trim().to_string();
+            if !seen.insert(key.clone()) {
+                bail!("duplicate task id across queue + done: {}", key);
+            }
+        }
+    }
 
-	Ok(())
-}
-
-pub fn next_id(queue: &QueueFile, id_prefix: &str, id_width: usize) -> Result<String> {
-	validate_queue(queue, id_prefix, id_width)?;
-	let expected_prefix = normalize_prefix(id_prefix);
-
-	let mut max_value: u32 = 0;
-	for (idx, task) in queue.tasks.iter().enumerate() {
-		let value = validate_task_id(idx, &task.id, &expected_prefix, id_width)?;
-		if value > max_value {
-			max_value = value;
-		}
-	}
-
-	let next_value = max_value.saturating_add(1);
-	Ok(format_id(&expected_prefix, next_value, id_width))
+    Ok(())
 }
 
 pub fn next_id_across(
-	active: &QueueFile,
-	done: Option<&QueueFile>,
-	id_prefix: &str,
-	id_width: usize,
+    active: &QueueFile,
+    done: Option<&QueueFile>,
+    id_prefix: &str,
+    id_width: usize,
 ) -> Result<String> {
-	validate_queue_set(active, done, id_prefix, id_width)?;
-	let expected_prefix = normalize_prefix(id_prefix);
+    validate_queue_set(active, done, id_prefix, id_width)?;
+    let expected_prefix = normalize_prefix(id_prefix);
 
-	let mut max_value: u32 = 0;
-	for (idx, task) in active.tasks.iter().enumerate() {
-		let value = validate_task_id(idx, &task.id, &expected_prefix, id_width)?;
-		if value > max_value {
-			max_value = value;
-		}
-	}
-	if let Some(done) = done {
-		for (idx, task) in done.tasks.iter().enumerate() {
-			let value = validate_task_id(idx, &task.id, &expected_prefix, id_width)?;
-			if value > max_value {
-				max_value = value;
-			}
-		}
-	}
+    let mut max_value: u32 = 0;
+    for (idx, task) in active.tasks.iter().enumerate() {
+        let value = validate_task_id(idx, &task.id, &expected_prefix, id_width)?;
+        if value > max_value {
+            max_value = value;
+        }
+    }
+    if let Some(done) = done {
+        for (idx, task) in done.tasks.iter().enumerate() {
+            let value = validate_task_id(idx, &task.id, &expected_prefix, id_width)?;
+            if value > max_value {
+                max_value = value;
+            }
+        }
+    }
 
-	let next_value = max_value.saturating_add(1);
-	Ok(format_id(&expected_prefix, next_value, id_width))
+    let next_value = max_value.saturating_add(1);
+    Ok(format_id(&expected_prefix, next_value, id_width))
 }
 
 pub fn archive_done_tasks(
-	queue_path: &Path,
-	done_path: &Path,
-	id_prefix: &str,
-	id_width: usize,
+    queue_path: &Path,
+    done_path: &Path,
+    id_prefix: &str,
+    id_width: usize,
 ) -> Result<ArchiveReport> {
-	let mut active = load_queue(queue_path)?;
-	let mut done = load_queue_or_default(done_path)?;
+    let mut active = load_queue(queue_path)?;
+    let mut done = load_queue_or_default(done_path)?;
 
-	validate_queue(&active, id_prefix, id_width)?;
-	validate_queue(&done, id_prefix, id_width)?;
+    validate_queue(&active, id_prefix, id_width)?;
+    validate_queue(&done, id_prefix, id_width)?;
 
-	let mut done_ids: HashSet<String> = done.tasks.iter().map(|t| t.id.trim().to_string()).collect();
-	for task in &active.tasks {
-		if task.status == TaskStatus::Done {
-			continue;
-		}
-		let key = task.id.trim().to_string();
-		if done_ids.contains(&key) {
-			bail!("duplicate task id across queue + done: {}", key);
-		}
-	}
-	let mut moved_ids = Vec::new();
-	let mut skipped_ids = Vec::new();
-	let mut remaining = Vec::new();
+    let mut done_ids: HashSet<String> =
+        done.tasks.iter().map(|t| t.id.trim().to_string()).collect();
+    for task in &active.tasks {
+        if task.status == TaskStatus::Done {
+            continue;
+        }
+        let key = task.id.trim().to_string();
+        if done_ids.contains(&key) {
+            bail!("duplicate task id across queue + done: {}", key);
+        }
+    }
+    let mut moved_ids = Vec::new();
+    let mut skipped_ids = Vec::new();
+    let mut remaining = Vec::new();
 
-	for task in active.tasks.into_iter() {
-		if task.status != TaskStatus::Done {
-			remaining.push(task);
-			continue;
-		}
+    for task in active.tasks.into_iter() {
+        if task.status != TaskStatus::Done {
+            remaining.push(task);
+            continue;
+        }
 
-		let key = task.id.trim().to_string();
-		if done_ids.contains(&key) {
-			skipped_ids.push(key);
-			continue;
-		}
+        let key = task.id.trim().to_string();
+        if done_ids.contains(&key) {
+            skipped_ids.push(key);
+            continue;
+        }
 
-		done_ids.insert(key.clone());
-		moved_ids.push(key);
-		done.tasks.push(task);
-	}
+        done_ids.insert(key.clone());
+        moved_ids.push(key);
+        done.tasks.push(task);
+    }
 
-	active.tasks = remaining;
+    active.tasks = remaining;
 
-	if moved_ids.is_empty() && skipped_ids.is_empty() {
-		return Ok(ArchiveReport { moved_ids, skipped_ids });
-	}
+    if moved_ids.is_empty() && skipped_ids.is_empty() {
+        return Ok(ArchiveReport {
+            moved_ids,
+            skipped_ids,
+        });
+    }
 
-	save_queue(done_path, &done)?;
-	save_queue(queue_path, &active)?;
+    save_queue(done_path, &done)?;
+    save_queue(queue_path, &active)?;
 
-	Ok(ArchiveReport { moved_ids, skipped_ids })
+    Ok(ArchiveReport {
+        moved_ids,
+        skipped_ids,
+    })
 }
 
 pub fn set_status(
-	queue: &mut QueueFile,
-	task_id: &str,
-	status: TaskStatus,
-	now_rfc3339: &str,
-	reason: Option<&str>,
-	note: Option<&str>,
+    queue: &mut QueueFile,
+    task_id: &str,
+    status: TaskStatus,
+    now_rfc3339: &str,
+    reason: Option<&str>,
+    note: Option<&str>,
 ) -> Result<()> {
-	let now = now_rfc3339.trim();
-	if now.is_empty() {
-		bail!("now timestamp is required");
-	}
+    let now = now_rfc3339.trim();
+    if now.is_empty() {
+        bail!("now timestamp is required");
+    }
 
-	let needle = task_id.trim();
-	if needle.is_empty() {
-		bail!("task_id is required");
-	}
+    let needle = task_id.trim();
+    if needle.is_empty() {
+        bail!("task_id is required");
+    }
 
-	let task = queue
-		.tasks
-		.iter_mut()
-		.find(|t| t.id.trim() == needle)
-		.ok_or_else(|| anyhow!("task not found: {}", needle))?;
+    let task = queue
+        .tasks
+        .iter_mut()
+        .find(|t| t.id.trim() == needle)
+        .ok_or_else(|| anyhow!("task not found: {}", needle))?;
 
-	task.status = status;
-	task.updated_at = Some(now.to_string());
+    task.status = status;
+    task.updated_at = Some(now.to_string());
 
-	match status {
-		TaskStatus::Done => {
-			task.completed_at = Some(now.to_string());
-			task.blocked_reason = None;
-		}
-		TaskStatus::Blocked => {
-			task.completed_at = None;
-			if let Some(reason) = reason {
-				let trimmed = reason.trim();
-				if !trimmed.is_empty() {
-					task.blocked_reason = Some(trimmed.to_string());
-				}
-			}
-		}
-		TaskStatus::Todo | TaskStatus::Doing => {
-			task.completed_at = None;
-			task.blocked_reason = None;
-		}
-	}
+    match status {
+        TaskStatus::Done => {
+            task.completed_at = Some(now.to_string());
+            task.blocked_reason = None;
+        }
+        TaskStatus::Blocked => {
+            task.completed_at = None;
+            if let Some(reason) = reason {
+                let trimmed = reason.trim();
+                if !trimmed.is_empty() {
+                    task.blocked_reason = Some(trimmed.to_string());
+                }
+            }
+        }
+        TaskStatus::Todo | TaskStatus::Doing => {
+            task.completed_at = None;
+            task.blocked_reason = None;
+        }
+    }
 
-	if let Some(note) = note {
-		let trimmed = note.trim();
-		if !trimmed.is_empty() {
-			task.notes.push(trimmed.to_string());
-		}
-	}
+    if let Some(note) = note {
+        let trimmed = note.trim();
+        if !trimmed.is_empty() {
+            task.notes.push(trimmed.to_string());
+        }
+    }
 
-	Ok(())
+    Ok(())
 }
 
 fn normalize_prefix(prefix: &str) -> String {
-	prefix.trim().to_uppercase()
+    prefix.trim().to_uppercase()
 }
 
 fn validate_task_required_fields(index: usize, task: &Task) -> Result<()> {
-	if task.id.trim().is_empty() {
-		bail!("task[{}] id is required", index);
-	}
-	if task.title.trim().is_empty() {
-		bail!("task[{}] title is required (id={})", index, task.id);
-	}
-	ensure_list_non_empty("tags", index, &task.id, &task.tags)?;
-	ensure_list_non_empty("scope", index, &task.id, &task.scope)?;
-	ensure_list_non_empty("evidence", index, &task.id, &task.evidence)?;
-	ensure_list_non_empty("plan", index, &task.id, &task.plan)?;
-	Ok(())
+    if task.id.trim().is_empty() {
+        bail!("task[{}] id is required", index);
+    }
+    if task.title.trim().is_empty() {
+        bail!("task[{}] title is required (id={})", index, task.id);
+    }
+    ensure_list_non_empty("tags", index, &task.id, &task.tags)?;
+    ensure_list_non_empty("scope", index, &task.id, &task.scope)?;
+    ensure_list_non_empty("evidence", index, &task.id, &task.evidence)?;
+    ensure_list_non_empty("plan", index, &task.id, &task.plan)?;
+    Ok(())
 }
 
 fn ensure_list_non_empty(label: &str, index: usize, id: &str, values: &[String]) -> Result<()> {
-	if values.is_empty() {
-		bail!("task[{}] {} must be non-empty (id={})", index, label, id);
-	}
-	for (i, value) in values.iter().enumerate() {
-		if value.trim().is_empty() {
-			bail!(
-				"task[{}] {}[{}] must be non-empty (id={})",
-				index,
-				label,
-				i,
-				id
-			);
-		}
-	}
-	Ok(())
+    if values.is_empty() {
+        bail!("task[{}] {} must be non-empty (id={})", index, label, id);
+    }
+    for (i, value) in values.iter().enumerate() {
+        if value.trim().is_empty() {
+            bail!(
+                "task[{}] {}[{}] must be non-empty (id={})",
+                index,
+                label,
+                i,
+                id
+            );
+        }
+    }
+    Ok(())
 }
 
-fn validate_task_id(index: usize, raw_id: &str, expected_prefix: &str, id_width: usize) -> Result<u32> {
-	let trimmed = raw_id.trim();
-	let (prefix_raw, num_raw) = trimmed
-		.split_once('-')
-		.ok_or_else(|| anyhow!("task[{}] id must contain '-' (got: {})", index, trimmed))?;
+fn validate_task_id(
+    index: usize,
+    raw_id: &str,
+    expected_prefix: &str,
+    id_width: usize,
+) -> Result<u32> {
+    let trimmed = raw_id.trim();
+    let (prefix_raw, num_raw) = trimmed
+        .split_once('-')
+        .ok_or_else(|| anyhow!("task[{}] id must contain '-' (got: {})", index, trimmed))?;
 
-	let prefix = prefix_raw.trim().to_uppercase();
-	if prefix != expected_prefix {
-		bail!(
-			"task[{}] id prefix must be {} (got: {})",
-			index,
-			expected_prefix,
-			prefix
-		);
-	}
+    let prefix = prefix_raw.trim().to_uppercase();
+    if prefix != expected_prefix {
+        bail!(
+            "task[{}] id prefix must be {} (got: {})",
+            index,
+            expected_prefix,
+            prefix
+        );
+    }
 
-	let num = num_raw.trim();
-	if num.len() != id_width {
-		bail!(
-			"task[{}] id numeric width must be {} digits (got: {})",
-			index,
-			id_width,
-			num
-		);
-	}
-	if !num.chars().all(|c| c.is_ascii_digit()) {
-		bail!("task[{}] id numeric suffix must be digits (got: {})", index, num);
-	}
+    let num = num_raw.trim();
+    if num.len() != id_width {
+        bail!(
+            "task[{}] id numeric width must be {} digits (got: {})",
+            index,
+            id_width,
+            num
+        );
+    }
+    if !num.chars().all(|c| c.is_ascii_digit()) {
+        bail!(
+            "task[{}] id numeric suffix must be digits (got: {})",
+            index,
+            num
+        );
+    }
 
-	let value: u32 = num
-		.parse()
-		.with_context(|| format!("task[{}] id numeric suffix must parse as integer (got: {})", index, num))?;
-	Ok(value)
+    let value: u32 = num.parse().with_context(|| {
+        format!(
+            "task[{}] id numeric suffix must parse as integer (got: {})",
+            index, num
+        )
+    })?;
+    Ok(value)
 }
 
 fn format_id(prefix: &str, number: u32, width: usize) -> String {
-	format!("{}-{:0width$}", prefix, number, width = width)
+    format!("{}-{:0width$}", prefix, number, width = width)
 }
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use crate::contracts::{Task, TaskStatus};
-	use tempfile::TempDir;
+    use super::*;
+    use crate::contracts::{Task, TaskStatus};
+    use tempfile::TempDir;
 
-	fn task(id: &str) -> Task {
-		Task {
-			id: id.to_string(),
-			status: TaskStatus::Todo,
-			title: "Test task".to_string(),
-			tags: vec!["code".to_string()],
-			scope: vec!["crates/ralph".to_string()],
-			evidence: vec!["observed".to_string()],
-			plan: vec!["do thing".to_string()],
-			notes: vec![],
-			request: None,
-			agent: None,
-			created_at: None,
-			updated_at: None,
-			completed_at: None,
-			blocked_reason: None,
-		}
-	}
+    fn task(id: &str) -> Task {
+        Task {
+            id: id.to_string(),
+            status: TaskStatus::Todo,
+            title: "Test task".to_string(),
+            tags: vec!["code".to_string()],
+            scope: vec!["crates/ralph".to_string()],
+            evidence: vec!["observed".to_string()],
+            plan: vec!["do thing".to_string()],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: None,
+            updated_at: None,
+            completed_at: None,
+            blocked_reason: None,
+        }
+    }
 
-	#[test]
-	fn next_id_increments_properly() -> Result<()> {
-		let queue = QueueFile {
-			version: 1,
-			tasks: vec![task("RQ-0001"), task("RQ-0010")],
-		};
-		let next = next_id(&queue, "RQ", 4)?;
-		assert_eq!(next, "RQ-0011");
-		Ok(())
-	}
+    #[test]
+    fn validate_rejects_duplicate_ids() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0001"), task("RQ-0001")],
+        };
+        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.to_lowercase().contains("duplicate"),
+            "unexpected error: {msg}"
+        );
+    }
 
-	#[test]
-	fn validate_rejects_duplicate_ids() {
-		let queue = QueueFile {
-			version: 1,
-			tasks: vec![task("RQ-0001"), task("RQ-0001")],
-		};
-		let err = validate_queue(&queue, "RQ", 4).unwrap_err();
-		let msg = format!("{err:#}");
-		assert!(msg.to_lowercase().contains("duplicate"), "unexpected error: {msg}");
-	}
+    #[test]
+    fn set_status_updates_timestamps_and_fields() -> Result<()> {
+        let mut queue = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0001")],
+        };
 
-	#[test]
-	fn set_status_updates_timestamps_and_fields() -> Result<()> {
-		let mut queue = QueueFile {
-			version: 1,
-			tasks: vec![task("RQ-0001")],
-		};
+        let now = "2026-01-17T00:00:00Z";
+        set_status(
+            &mut queue,
+            "RQ-0001",
+            TaskStatus::Doing,
+            now,
+            None,
+            Some("started"),
+        )?;
+        let t = &queue.tasks[0];
+        assert_eq!(t.status, TaskStatus::Doing);
+        assert_eq!(t.updated_at.as_deref(), Some(now));
+        assert_eq!(t.completed_at, None);
+        assert_eq!(t.blocked_reason, None);
+        assert_eq!(t.notes, vec!["started".to_string()]);
 
-		let now = "2026-01-17T00:00:00Z";
-		set_status(&mut queue, "RQ-0001", TaskStatus::Doing, now, None, Some("started"))?;
-		let t = &queue.tasks[0];
-		assert_eq!(t.status, TaskStatus::Doing);
-		assert_eq!(t.updated_at.as_deref(), Some(now));
-		assert_eq!(t.completed_at, None);
-		assert_eq!(t.blocked_reason, None);
-		assert_eq!(t.notes, vec!["started".to_string()]);
+        let now2 = "2026-01-17T00:01:00Z";
+        set_status(
+            &mut queue,
+            "RQ-0001",
+            TaskStatus::Blocked,
+            now2,
+            Some("ci failed"),
+            None,
+        )?;
+        let t = &queue.tasks[0];
+        assert_eq!(t.status, TaskStatus::Blocked);
+        assert_eq!(t.updated_at.as_deref(), Some(now2));
+        assert_eq!(t.completed_at, None);
+        assert_eq!(t.blocked_reason.as_deref(), Some("ci failed"));
 
-		let now2 = "2026-01-17T00:01:00Z";
-		set_status(&mut queue, "RQ-0001", TaskStatus::Blocked, now2, Some("ci failed"), None)?;
-		let t = &queue.tasks[0];
-		assert_eq!(t.status, TaskStatus::Blocked);
-		assert_eq!(t.updated_at.as_deref(), Some(now2));
-		assert_eq!(t.completed_at, None);
-		assert_eq!(t.blocked_reason.as_deref(), Some("ci failed"));
+        let now3 = "2026-01-17T00:02:00Z";
+        set_status(
+            &mut queue,
+            "RQ-0001",
+            TaskStatus::Done,
+            now3,
+            None,
+            Some("completed"),
+        )?;
+        let t = &queue.tasks[0];
+        assert_eq!(t.status, TaskStatus::Done);
+        assert_eq!(t.updated_at.as_deref(), Some(now3));
+        assert_eq!(t.completed_at.as_deref(), Some(now3));
+        assert_eq!(t.blocked_reason, None);
+        assert!(t.notes.iter().any(|n| n == "completed"));
 
-		let now3 = "2026-01-17T00:02:00Z";
-		set_status(&mut queue, "RQ-0001", TaskStatus::Done, now3, None, Some("completed"))?;
-		let t = &queue.tasks[0];
-		assert_eq!(t.status, TaskStatus::Done);
-		assert_eq!(t.updated_at.as_deref(), Some(now3));
-		assert_eq!(t.completed_at.as_deref(), Some(now3));
-		assert_eq!(t.blocked_reason, None);
-		assert!(t.notes.iter().any(|n| n == "completed"));
+        Ok(())
+    }
 
-		Ok(())
-	}
+    #[test]
+    fn validate_queue_set_rejects_cross_file_duplicates() {
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0001")],
+        };
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0001")],
+        };
+        let err = validate_queue_set(&active, Some(&done), "RQ", 4).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.to_lowercase().contains("duplicate"),
+            "unexpected error: {msg}"
+        );
+    }
 
-	#[test]
-	fn validate_queue_set_rejects_cross_file_duplicates() {
-		let active = QueueFile {
-			version: 1,
-			tasks: vec![task("RQ-0001")],
-		};
-		let done = QueueFile {
-			version: 1,
-			tasks: vec![task("RQ-0001")],
-		};
-		let err = validate_queue_set(&active, Some(&done), "RQ", 4).unwrap_err();
-		let msg = format!("{err:#}");
-		assert!(msg.to_lowercase().contains("duplicate"), "unexpected error: {msg}");
-	}
+    #[test]
+    fn next_id_across_includes_done() -> Result<()> {
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0002")],
+        };
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0009")],
+        };
+        let next = next_id_across(&active, Some(&done), "RQ", 4)?;
+        assert_eq!(next, "RQ-0010");
+        Ok(())
+    }
 
-	#[test]
-	fn next_id_across_includes_done() -> Result<()> {
-		let active = QueueFile {
-			version: 1,
-			tasks: vec![task("RQ-0002")],
-		};
-		let done = QueueFile {
-			version: 1,
-			tasks: vec![task("RQ-0009")],
-		};
-		let next = next_id_across(&active, Some(&done), "RQ", 4)?;
-		assert_eq!(next, "RQ-0010");
-		Ok(())
-	}
+    #[test]
+    fn archive_done_tasks_moves_and_dedupes() -> Result<()> {
+        let dir = TempDir::new()?;
+        let queue_path = dir.path().join("queue.yaml");
+        let done_path = dir.path().join("done.yaml");
 
-	#[test]
-	fn archive_done_tasks_moves_and_dedupes() -> Result<()> {
-		let dir = TempDir::new()?;
-		let queue_path = dir.path().join("queue.yaml");
-		let done_path = dir.path().join("done.yaml");
+        let mut done_task = task("RQ-0002");
+        done_task.status = TaskStatus::Done;
 
-		let mut done_task = task("RQ-0002");
-		done_task.status = TaskStatus::Done;
+        let mut active_task = task("RQ-0001");
+        active_task.status = TaskStatus::Done;
 
-		let mut active_task = task("RQ-0001");
-		active_task.status = TaskStatus::Done;
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![active_task.clone(), done_task.clone()],
+        };
 
-		let active = QueueFile {
-			version: 1,
-			tasks: vec![active_task.clone(), done_task.clone()],
-		};
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![done_task],
+        };
 
-		let done = QueueFile {
-			version: 1,
-			tasks: vec![done_task],
-		};
+        save_queue(&queue_path, &active)?;
+        save_queue(&done_path, &done)?;
 
-		save_queue(&queue_path, &active)?;
-		save_queue(&done_path, &done)?;
+        let report = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
+        assert_eq!(report.moved_ids, vec!["RQ-0001".to_string()]);
+        assert_eq!(report.skipped_ids, vec!["RQ-0002".to_string()]);
 
-		let report = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
-		assert_eq!(report.moved_ids, vec!["RQ-0001".to_string()]);
-		assert_eq!(report.skipped_ids, vec!["RQ-0002".to_string()]);
+        let active_after = load_queue(&queue_path)?;
+        assert!(active_after.tasks.is_empty());
 
-		let active_after = load_queue(&queue_path)?;
-		assert!(active_after.tasks.is_empty());
+        let done_after = load_queue(&done_path)?;
+        assert_eq!(done_after.tasks.len(), 2);
 
-		let done_after = load_queue(&done_path)?;
-		assert_eq!(done_after.tasks.len(), 2);
-
-		let report2 = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
-		assert!(report2.moved_ids.is_empty());
-		assert!(report2.skipped_ids.is_empty());
-		Ok(())
-	}
+        let report2 = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
+        assert!(report2.moved_ids.is_empty());
+        assert!(report2.skipped_ids.is_empty());
+        Ok(())
+    }
 }

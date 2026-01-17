@@ -1,0 +1,57 @@
+version: 1
+tasks:
+  - id: RQ-0002
+    status: done
+    title: Align root docs for Rust rewrite vs Go legacy
+    tags:
+      - docs
+      - rust
+      - migration
+    scope:
+      - README.md
+      - .ralph/README.md
+      - crates/ralph/src/main.rs
+      - Makefile
+    evidence:
+      - "README.md describes `ralph_tui/` as the active CLI/TUI, while `.ralph/README.md` states the repo is undergoing a Rust rewrite using `.ralph/queue.yaml`."
+      - "The Rust CLI is implemented under `crates/ralph/src/main.rs` and exposes `ralph queue|config|run|task|scan`."
+      - "The root `Makefile` only targets the Go CLI (`ralph_tui`) and does not mention the Rust rewrite, which risks confusion during migration."
+    plan:
+      - Clarify in `README.md` which CLI is canonical for queue/runner workflows today and how Go vs Rust coexist during migration.
+      - Add a short mapping section (Go commands/screens ↔ Rust commands) to reduce user error.
+      - Update `.ralph/README.md` to link to the canonical docs and list the minimal commands to get started with the Rust queue.
+    notes:
+      - Updated root README to clarify Rust is canonical, add done.yaml, and document Go/Rust mapping.
+      - Updated `.ralph/README.md` with minimal Rust commands and done.yaml archive workflow.
+      - Added CLI help text for queue subcommands to reduce confusion.
+    request: scan finding
+    created_at: 2026-01-17T17:26:38Z
+    updated_at: 2026-01-17T20:06:56Z
+    completed_at: 2026-01-17T20:06:56Z
+  - id: RQ-0014
+    status: done
+    title: Extend root `Makefile` so `make ci` gates the Rust rewrite (cargo fmt/clippy/test/build)
+    tags:
+      - rust
+      - workflow
+      - ci
+    scope:
+      - Makefile
+      - Cargo.toml
+      - crates/ralph
+      - make ci
+    evidence:
+      - "The repo has a Rust workspace (`Cargo.toml` with member `crates/ralph`), but the root `Makefile` only runs Go checks under `ralph_tui/`."
+      - "The Rust CLI is the mechanism used by `.ralph/prompts/*.md` (`ralph queue next-id`, `ralph scan`, etc.), so missing Rust checks in `make ci` is a workflow gap."
+    plan:
+      - "Add Makefile targets for Rust: `rust-build`, `rust-test`, `rust-format` (cargo fmt), and `rust-lint` (cargo clippy)."
+      - Update `make ci` to run both Go and Rust gates (or introduce `make ci-rust` and make `ci` depend on both).
+      - Ensure commands run from repo root and respect workspace conventions.
+      - Document the new targets briefly in `README.md`.
+    notes:
+      - Replaced Makefile CI gate with Rust cargo fmt/check/clippy/build/test targets.
+      - Updated README to reflect Rust-only CI expectations.
+    request: scan finding
+    created_at: 2026-01-17T17:26:38Z
+    updated_at: 2026-01-17T20:06:56Z
+    completed_at: 2026-01-17T20:06:56Z
