@@ -28,15 +28,15 @@ Ship correct, durable changes quickly and safely.
 ## END-OF-TURN CHECKLIST
 - The CURRENT TASK status in `.ralph/queue.yaml` is updated correctly:
   - `done` with `completed_at` when complete
-  - `blocked` with `blocked_reason` when blocked
   - leave as `doing` or revert to `todo` if incomplete but not blocked
+- Do NOT set `status: blocked`.
 - `.ralph/queue.yaml` remains valid YAML and matches the queue contract.
 - CI gate is 100% clean: run `make ci` and fix all failures before ending your turn.
 - Git hygiene (leave a clean repo state for the next run):
   - Commit ALL changes (including `.ralph/queue.yaml`) with a message like `RQ-####: <short summary>`.
   - Push your commit(s) so the branch is not ahead of upstream.
   - Confirm the repo is clean: `git status --porcelain` is empty.
-  - If you cannot push (no upstream/permissions), set the task to `blocked` with a precise `blocked_reason` explaining what is required to unblock.
+  - If you cannot push (no upstream/permissions), stop and report the blocker in your output. Do NOT set the task to `blocked`.
 
 ## DECISION HEURISTICS
 - Delete or consolidate before adding new parts.
@@ -50,7 +50,7 @@ Ship correct, durable changes quickly and safely.
 - Allowed status values: `todo`, `doing`, `blocked`, `done`.
 
 ## WORKFLOW
-1. Read the CURRENT TASK block below.
+1. Read the CURRENT TASK block below. Confirm it is the first `todo` task from the top of `.ralph/queue.yaml`.
 2. Immediately set its `status` to `doing` and set/update `updated_at` to current UTC RFC3339 time.
 3. Execute the task. Use repo conventions. Keep changes minimal and correct.
 4. If you discover follow-up work that should be queued, add new task(s) directly BELOW the current task in `.ralph/queue.yaml`:
@@ -62,11 +62,10 @@ Ship correct, durable changes quickly and safely.
    - Add 1-5 `notes` bullets summarizing what changed and how to verify
    - Run `make ci` and ensure it passes.
    - Commit and push all changes (including `.ralph/queue.yaml`) so the repo is clean for the next run.
-6. If blocked:
+6. If you cannot complete the task:
    - Revert or discard partial changes so the repo is clean (do not leave failing WIP changes in the working tree).
-   - Set `status: blocked`
-   - Fill `blocked_reason` with the precise blocker and the smallest action needed to unblock
-   - Commit and push the queue update (so the blocked state is persisted), unless pushing is impossible (in which case explain in `blocked_reason`).
+   - Leave the task as `todo` (or `doing` if you plan to immediately resume in the same run).
+   - Report the blocker in your output. Do NOT set `status: blocked`.
 
 # CURRENT TASK
 {{TASK_YAML}}

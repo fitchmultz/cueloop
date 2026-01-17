@@ -15,6 +15,7 @@
 - `cargo run -p ralph -- task build "<request>"`
 - `cargo run -p ralph -- scan --focus "<focus>"`
 - `cargo run -p ralph -- run one`
+- `cargo run -p ralph -- run loop --max-tasks 0`
 
 ## Queue & Prompt Contract (Rust)
 - Source of truth is `.ralph/queue.yaml` (YAML). Task order is priority (top runs first).
@@ -22,10 +23,8 @@
 - Prompt templates live in `.ralph/prompts/` and reference these files.
 
 ## Git + CI Expectations (Current Rust State)
-- The Rust runner does **not** auto-commit/push yet.
-- Each run should leave the repo clean (`git status` empty) before exiting:
-  - run repo checks (typically `make ci` when available)
-  - commit or revert changes as needed
+- The execution agent owns the lifecycle: update queue status, run `make ci`, commit, and push.
+- The supervisor (`ralph run`) verifies the repo is clean and will commit/push only if needed.
 - Prefer commit messages like `RQ-####: <short summary>`.
 
 ## Configuration

@@ -97,7 +97,16 @@ fn handle_config(cmd: ConfigCommand) -> Result<()> {
 fn handle_run(cmd: RunCommand) -> Result<()> {
 	let resolved = config::resolve_from_cwd()?;
 	match cmd {
-		RunCommand::One => run_cmd::run_one(&resolved),
+		RunCommand::One => {
+			run_cmd::run_one(&resolved)?;
+			Ok(())
+		}
+		RunCommand::Loop(args) => run_cmd::run_loop(
+			&resolved,
+			run_cmd::RunLoopOptions {
+				max_tasks: args.max_tasks,
+			},
+		),
 	}
 }
 
@@ -276,6 +285,14 @@ enum ConfigCommand {
 #[derive(Subcommand)]
 enum RunCommand {
 	One,
+	Loop(RunLoopArgs),
+}
+
+#[derive(Args)]
+struct RunLoopArgs {
+	/// Maximum tasks to run before stopping (0 = no limit).
+	#[arg(long, default_value_t = 0)]
+	max_tasks: u32,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
