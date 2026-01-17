@@ -201,7 +201,7 @@ impl Default for Model {
 
 impl Default for ReasoningEffort {
 	fn default() -> Self {
-		Self::High
+		Self::Medium
 	}
 }
 
@@ -227,7 +227,7 @@ impl Default for Config {
 			agent: AgentConfig {
 				runner: Some(Runner::Codex),
 				model: Some(Model::Gpt52Codex),
-				reasoning_effort: Some(ReasoningEffort::High),
+				reasoning_effort: Some(ReasoningEffort::Medium),
 				codex_bin: Some("codex".to_string()),
 				opencode_bin: Some("opencode".to_string()),
 			},

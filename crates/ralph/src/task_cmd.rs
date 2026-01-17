@@ -1,0 +1,140 @@
+use crate::{config, prompts, queue, runner};
+use crate::contracts::{Model, QueueFile, ReasoningEffort, Runner};
+use anyhow::{bail, Context, Result};
+use std::collections::HashSet;
+use std::io::Read;
+
+// TaskBuildOptions controls runner-driven task creation via .ralph/prompts/task_builder.md.
+pub struct TaskBuildOptions {
+	pub request: String,
+	pub hint_tags: String,
+	pub hint_scope: String,
+	pub runner: Runner,
+	pub model: Model,
+	pub reasoning_effort: Option<ReasoningEffort>,
+}
+
+// read_request_from_args_or_stdin joins any positional args, otherwise reads stdin.
+pub fn read_request_from_args_or_stdin(args: &[String]) -> Result<String> {
+	if !args.is_empty() {
+		let joined = args.join(" ");
+		let trimmed = joined.trim();
+		if trimmed.is_empty() {
+			bail!("request text required");
+		}
+		return Ok(trimmed.to_string());
+	}
+
+	let mut buf = String::new();
+	std::io::stdin().read_to_string(&mut buf).context("read stdin")?;
+	let trimmed = buf.trim();
+	if trimmed.is_empty() {
+		bail!("request text required (pass arguments or pipe input)");
+	}
+	Ok(trimmed.to_string())
+}
+
+pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result<()> {
+	if opts.request.trim().is_empty() {
+		bail!("request text required");
+	}
+
+	let before = queue::load_queue(&resolved.queue_path)
+		.with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
+	queue::validate_queue(&before, &resolved.id_prefix, resolved.id_width)
+		.context("validate queue before task build")?;
+	let before_ids = task_id_set(&before);
+
+	let template = prompts::load_task_builder_prompt(&resolved.repo_root)?;
+	let prompt = prompts::render_task_builder_prompt(
+		&template,
+		&opts.request,
+		&opts.hint_tags,
+		&opts.hint_scope,
+	)?;
+
+	let codex_bin = resolved
+		.config
+		.agent
+		.codex_bin
+		.as_deref()
+		.unwrap_or("codex");
+	let opencode_bin = resolved
+		.config
+		.agent
+		.opencode_bin
+		.as_deref()
+		.unwrap_or("opencode");
+
+	let output = runner::run_prompt(
+		opts.runner,
+		&resolved.repo_root,
+		codex_bin,
+		opencode_bin,
+		opts.model,
+		opts.reasoning_effort,
+		&prompt,
+	)?;
+
+	if !output.stdout.is_empty() {
+		print!("{}", output.stdout);
+	}
+	if !output.stderr.is_empty() {
+		eprint!("{}", output.stderr);
+	}
+
+	let after = queue::load_queue(&resolved.queue_path)
+		.with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
+	queue::validate_queue(&after, &resolved.id_prefix, resolved.id_width)
+		.context("validate queue after task build")?;
+
+	let added = added_tasks(&before_ids, &after);
+	if added.is_empty() {
+		println!(">> [RALPH] Task builder completed. No new tasks detected.");
+	} else {
+		println!(">> [RALPH] Task builder added {} task(s):", added.len());
+		for (id, title) in added.iter().take(10) {
+			println!("- {}: {}", id, title);
+		}
+		if added.len() > 10 {
+			println!("...and {} more.", added.len() - 10);
+		}
+	}
+
+	if output.success() {
+		return Ok(());
+	}
+
+	let exit_reason = match output.status.code() {
+		Some(code) => format!("task builder runner exited non-zero (code={code})"),
+		None => "task builder runner terminated by signal".to_string(),
+	};
+	bail!(exit_reason)
+}
+
+fn task_id_set(queue: &QueueFile) -> HashSet<String> {
+	let mut set = HashSet::new();
+	for task in &queue.tasks {
+		let id = task.id.trim();
+		if id.is_empty() {
+			continue;
+		}
+		set.insert(id.to_string());
+	}
+	set
+}
+
+fn added_tasks(before: &HashSet<String>, after: &QueueFile) -> Vec<(String, String)> {
+	let mut added = Vec::new();
+	for task in &after.tasks {
+		let id = task.id.trim();
+		if id.is_empty() {
+			continue;
+		}
+		if before.contains(id) {
+			continue;
+		}
+		added.push((id.to_string(), task.title.trim().to_string()));
+	}
+	added
+}

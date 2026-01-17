@@ -1,0 +1,107 @@
+use crate::{config, prompts, queue, runner};
+use crate::contracts::{Model, QueueFile, ReasoningEffort, Runner};
+use anyhow::{bail, Context, Result};
+use std::collections::HashSet;
+
+pub struct ScanOptions {
+	pub focus: String,
+	pub runner: Runner,
+	pub model: Model,
+	pub reasoning_effort: Option<ReasoningEffort>,
+}
+
+pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
+	let before = queue::load_queue(&resolved.queue_path)
+		.with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
+	queue::validate_queue(&before, &resolved.id_prefix, resolved.id_width)
+		.context("validate queue before scan")?;
+	let before_ids = task_id_set(&before);
+
+	let template = prompts::load_scan_prompt(&resolved.repo_root)?;
+	let prompt = prompts::render_scan_prompt(&template, &opts.focus)?;
+
+	let codex_bin = resolved
+		.config
+		.agent
+		.codex_bin
+		.as_deref()
+		.unwrap_or("codex");
+	let opencode_bin = resolved
+		.config
+		.agent
+		.opencode_bin
+		.as_deref()
+		.unwrap_or("opencode");
+
+	let output = runner::run_prompt(
+		opts.runner,
+		&resolved.repo_root,
+		codex_bin,
+		opencode_bin,
+		opts.model,
+		opts.reasoning_effort,
+		&prompt,
+	)?;
+
+	if !output.stdout.is_empty() {
+		print!("{}", output.stdout);
+	}
+	if !output.stderr.is_empty() {
+		eprint!("{}", output.stderr);
+	}
+
+	let after = queue::load_queue(&resolved.queue_path)
+		.with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
+	queue::validate_queue(&after, &resolved.id_prefix, resolved.id_width)
+		.context("validate queue after scan")?;
+
+	let added = added_tasks(&before_ids, &after);
+	if added.is_empty() {
+		println!(">> [RALPH] Scan completed. No new tasks detected.");
+	} else {
+		println!(">> [RALPH] Scan added {} task(s):", added.len());
+		for (id, title) in added.iter().take(15) {
+			println!("- {}: {}", id, title);
+		}
+		if added.len() > 15 {
+			println!("...and {} more.", added.len() - 15);
+		}
+	}
+
+	if output.success() {
+		return Ok(());
+	}
+
+	let exit_reason = match output.status.code() {
+		Some(code) => format!("scan runner exited non-zero (code={code})"),
+		None => "scan runner terminated by signal".to_string(),
+	};
+	bail!(exit_reason)
+}
+
+fn task_id_set(queue: &QueueFile) -> HashSet<String> {
+	let mut set = HashSet::new();
+	for task in &queue.tasks {
+		let id = task.id.trim();
+		if id.is_empty() {
+			continue;
+		}
+		set.insert(id.to_string());
+	}
+	set
+}
+
+fn added_tasks(before: &HashSet<String>, after: &QueueFile) -> Vec<(String, String)> {
+	let mut added = Vec::new();
+	for task in &after.tasks {
+		let id = task.id.trim();
+		if id.is_empty() {
+			continue;
+		}
+		if before.contains(id) {
+			continue;
+		}
+		added.push((id.to_string(), task.title.trim().to_string()));
+	}
+	added
+}

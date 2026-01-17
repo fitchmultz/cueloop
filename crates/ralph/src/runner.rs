@@ -6,6 +6,28 @@ use std::process::{Command, ExitStatus, Stdio};
 
 const OPENCODE_PROMPT_FILE_MESSAGE: &str = "Follow the attached prompt file verbatim.";
 
+fn ensure_self_on_path(cmd: &mut Command) {
+	let exe = match std::env::current_exe() {
+		Ok(path) => path,
+		Err(_) => return,
+	};
+	let dir = match exe.parent() {
+		Some(dir) => dir.to_path_buf(),
+		None => return,
+	};
+
+	let mut paths = Vec::new();
+	paths.push(dir);
+
+	if let Some(existing) = std::env::var_os("PATH") {
+		paths.extend(std::env::split_paths(&existing));
+	}
+
+	if let Ok(joined) = std::env::join_paths(paths) {
+		cmd.env("PATH", joined);
+	}
+}
+
 pub struct RunnerOutput {
 	pub status: ExitStatus,
 	pub stdout: String,
@@ -60,6 +82,7 @@ fn run_codex(
 ) -> Result<RunnerOutput> {
 	let mut cmd = Command::new(bin);
 	cmd.current_dir(work_dir);
+	ensure_self_on_path(&mut cmd);
 	cmd.arg("exec")
 		.arg("--full-auto")
 		.arg("--sandbox")
@@ -105,6 +128,7 @@ fn run_opencode(work_dir: &Path, bin: &str, model: Model, prompt: &str) -> Resul
 
 	let mut cmd = Command::new(bin);
 	cmd.current_dir(work_dir);
+	ensure_self_on_path(&mut cmd);
 	cmd.arg("run")
 		.arg("--model")
 		.arg(model_as_str(model))
@@ -137,6 +161,33 @@ fn effort_as_str(effort: ReasoningEffort) -> &'static str {
 		ReasoningEffort::Low => "low",
 		ReasoningEffort::Medium => "medium",
 		ReasoningEffort::High => "high",
+	}
+}
+
+pub fn parse_model(value: &str) -> Result<Model> {
+	let trimmed = value.trim();
+	match trimmed {
+		"gpt-5.2-codex" => Ok(Model::Gpt52Codex),
+		"gpt-5.2" => Ok(Model::Gpt52),
+		"glm-4.7" => Ok(Model::Glm47),
+		_ => bail!(
+			"unsupported model: {} (allowed: gpt-5.2-codex, gpt-5.2, glm-4.7)",
+			trimmed
+		),
+	}
+}
+
+pub fn parse_reasoning_effort(value: &str) -> Result<ReasoningEffort> {
+	let normalized = value.trim().to_lowercase();
+	match normalized.as_str() {
+		"minimal" => Ok(ReasoningEffort::Minimal),
+		"low" => Ok(ReasoningEffort::Low),
+		"medium" => Ok(ReasoningEffort::Medium),
+		"high" => Ok(ReasoningEffort::High),
+		_ => bail!(
+			"unsupported reasoning effort: {} (allowed: minimal, low, medium, high)",
+			value.trim()
+		),
 	}
 }
 

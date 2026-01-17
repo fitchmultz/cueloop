@@ -8,9 +8,13 @@ mod timeutil;
 
 mod prompts;
 mod runner;
+mod scan_cmd;
+mod task_cmd;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+
+use crate::contracts::Runner as RunnerKind;
 
 fn main() {
 	if let Err(err) = run() {
@@ -25,6 +29,8 @@ fn run() -> Result<()> {
 		Command::Queue(args) => handle_queue(args.command),
 		Command::Config(args) => handle_config(args.command),
 		Command::Run(args) => handle_run(args.command),
+		Command::Task(args) => handle_task(args.command),
+		Command::Scan(args) => handle_scan(args),
 	}
 }
 
@@ -94,6 +100,66 @@ fn handle_run(cmd: RunCommand) -> Result<()> {
 	}
 }
 
+fn handle_task(cmd: TaskCommand) -> Result<()> {
+	let resolved = config::resolve_from_cwd()?;
+	match cmd {
+		TaskCommand::Build(args) => {
+			let request = task_cmd::read_request_from_args_or_stdin(&args.request)?;
+			let runner_kind = parse_runner(&args.runner)?;
+			let model = runner::parse_model(&args.model)?;
+			let effort = runner::parse_reasoning_effort(&args.effort)?;
+			let reasoning_effort = if runner_kind == RunnerKind::Codex {
+				Some(effort)
+			} else {
+				None
+			};
+
+			task_cmd::build_task(
+				&resolved,
+				task_cmd::TaskBuildOptions {
+					request,
+					hint_tags: args.tags,
+					hint_scope: args.scope,
+					runner: runner_kind,
+					model,
+					reasoning_effort,
+				},
+			)
+		}
+	}
+}
+
+fn handle_scan(args: ScanArgs) -> Result<()> {
+	let resolved = config::resolve_from_cwd()?;
+	let runner_kind = parse_runner(&args.runner)?;
+	let model = runner::parse_model(&args.model)?;
+	let effort = runner::parse_reasoning_effort(&args.effort)?;
+	let reasoning_effort = if runner_kind == RunnerKind::Codex {
+		Some(effort)
+	} else {
+		None
+	};
+
+	scan_cmd::run_scan(
+		&resolved,
+		scan_cmd::ScanOptions {
+			focus: args.focus,
+			runner: runner_kind,
+			model,
+			reasoning_effort,
+		},
+	)
+}
+
+fn parse_runner(value: &str) -> Result<RunnerKind> {
+	let normalized = value.trim().to_lowercase();
+	match normalized.as_str() {
+		"codex" => Ok(RunnerKind::Codex),
+		"opencode" => Ok(RunnerKind::Opencode),
+		_ => bail!("--runner must be codex or opencode (got: {})", value.trim()),
+	}
+}
+
 #[derive(Parser)]
 #[command(name = "ralph")]
 #[command(about = "Ralph (Rust rewrite)")]
@@ -107,6 +173,8 @@ enum Command {
 	Queue(QueueArgs),
 	Config(ConfigArgs),
 	Run(RunArgs),
+	Task(TaskArgs),
+	Scan(ScanArgs),
 }
 
 #[derive(Args)]
@@ -125,6 +193,63 @@ struct ConfigArgs {
 struct RunArgs {
 	#[command(subcommand)]
 	command: RunCommand,
+}
+
+#[derive(Args)]
+struct TaskArgs {
+	#[command(subcommand)]
+	command: TaskCommand,
+}
+
+#[derive(Subcommand)]
+enum TaskCommand {
+	Build(TaskBuildArgs),
+}
+
+#[derive(Args)]
+struct TaskBuildArgs {
+	/// Freeform request text; if omitted, reads from stdin.
+	#[arg(value_name = "REQUEST")]
+	request: Vec<String>,
+
+	/// Optional hint tags (passed to the task builder prompt).
+	#[arg(long, default_value = "")]
+	tags: String,
+
+	/// Optional hint scope (passed to the task builder prompt).
+	#[arg(long, default_value = "")]
+	scope: String,
+
+	/// Runner to use (default: codex).
+	#[arg(long, default_value = "codex")]
+	runner: String,
+
+	/// Model to use (default: gpt-5.2-codex).
+	#[arg(long, default_value = "gpt-5.2-codex")]
+	model: String,
+
+	/// Codex reasoning effort (default: low). Ignored for opencode.
+	#[arg(long, default_value = "low")]
+	effort: String,
+}
+
+#[derive(Args)]
+struct ScanArgs {
+	/// Optional focus prompt to guide the scan.
+	#[arg(long, default_value = "")]
+	focus: String,
+
+	/// Runner to use (default: codex).
+	#[arg(long, default_value = "codex")]
+	runner: String,
+
+	/// Model to use (default: gpt-5.2).
+	#[arg(long, default_value = "gpt-5.2")]
+	model: String,
+
+	/// Codex reasoning effort (default: high). Ignored for opencode.
+	#[arg(long, default_value = "high")]
+	effort: String,
 }
 
 #[derive(Subcommand)]
