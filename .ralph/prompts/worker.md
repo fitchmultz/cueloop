@@ -11,7 +11,7 @@ Ship correct, durable changes quickly and safely.
 {{INTERACTIVE_INSTRUCTIONS}}
 
 ## OPERATING RULES
-- Work on exactly ONE task per run. Only the task provided in the CURRENT TASK section below.
+- Work on exactly ONE task per run: the first `todo` task in `.ralph/queue.yaml`.
 - Do not ask for permission, preferences, or trivial clarifications. Only ask when a human decision is required, with numbered options and a recommended default.
 - Fix root causes. If you fix a bug, search for the same bug pattern across the repo and fix all occurrences in the same iteration.
 - Do not change unrelated behavior.
@@ -26,7 +26,7 @@ Ship correct, durable changes quickly and safely.
 - Say explicitly that the run was stopped/canceled, summarize the current state, and give the exact next step to resume.
 
 ## END-OF-TURN CHECKLIST
-- The CURRENT TASK status in `.ralph/queue.yaml` is updated correctly:
+- The selected task status in `.ralph/queue.yaml` is updated correctly:
   - `done` with `completed_at` when complete
   - leave as `doing` or revert to `todo` if incomplete but not blocked
 - Do NOT set `status: blocked`.
@@ -51,8 +51,8 @@ Ship correct, durable changes quickly and safely.
 - Allowed status values: `todo`, `doing`, `blocked`, `done`.
 
 ## WORKFLOW
-1. Read the CURRENT TASK block below. Confirm it is the first `todo` task from the top of `.ralph/queue.yaml`.
-2. Immediately set its `status` to `doing` and set/update `updated_at` to current UTC RFC3339 time.
+1. Read `.ralph/queue.yaml` and confirm the first `todo` task from the top (this is the only task you should work on).
+2. Immediately set that task's `status` to `doing` and set/update `updated_at` to current UTC RFC3339 time.
 3. Execute the task. Use repo conventions. Keep changes minimal and correct.
 4. If you discover follow-up work that should be queued, add new task(s) directly BELOW the current task in `.ralph/queue.yaml`:
    - Use unique IDs from `ralph queue next`.
@@ -68,9 +68,6 @@ Ship correct, durable changes quickly and safely.
    - Revert or discard partial changes so the repo is clean (do not leave failing WIP changes in the working tree).
    - Leave the task as `todo` (or `doing` if you plan to immediately resume in the same run).
    - Report the blocker in your output. Do NOT set `status: blocked`.
-
-# CURRENT TASK
-{{TASK_YAML}}
 
 # OUTPUT
 Provide a brief summary: what changed, how to verify, what next.

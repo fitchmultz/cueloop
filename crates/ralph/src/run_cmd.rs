@@ -105,7 +105,7 @@ pub fn run_one(resolved: &config::Resolved) -> Result<RunOutcome> {
         .unwrap_or("opencode");
 
     let template = prompts::load_worker_prompt(&resolved.repo_root)?;
-    let prompt = prompts::render_worker_prompt(&template, &task)?;
+    let prompt = prompts::render_worker_prompt(&template)?;
 
     let output = match runner::run_prompt(
         runner_kind,
