@@ -90,8 +90,28 @@ Common scenarios:
 
 Stress tests live in `crates/ralph/tests/stress_queue_contract_test.rs` and include large-scale queue operations, archive/mutate cycles, and YAML repair stress.
 
-Long-run burn-in is guarded by an env var so CI stays deterministic:
+Long-run burn-in is guarded by an env var so CI stays deterministic. The canonical way to run it is:
+- `make stress` (runs in release mode with burn-in enabled)
+
+Manual invocation:
 - `RALPH_STRESS_BURN_IN=1 cargo test -p ralph --test stress_queue_contract_test -- --ignored --nocapture`
 
 CI-safe stress coverage (already included in standard test runs):
 - `cargo test -p ralph --test stress_queue_contract_test`
+
+## Release Checklist
+
+Before tagging a release or deploying to production:
+
+1. **Clean Build & CI Gate**:
+   - Run `make clean`
+   - Run `make ci` (must pass 100%)
+2. **Stress Verification**:
+   - Run `make stress`
+   - Ensure no panics or timeouts under load.
+3. **Environment Check**:
+   - Run `cargo run -p ralph -- doctor` (or `ralph doctor` if installed)
+   - Verify all checks pass.
+4. **Manual sanity check**:
+   - `ralph queue list`
+   - `ralph queue next`

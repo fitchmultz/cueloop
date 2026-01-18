@@ -16,7 +16,7 @@ install: build-release
 	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
 
 update:
-	cargo update
+	@cargo update
 
 lint:
 	cargo clippy --workspace --all-targets -- -D warnings
@@ -37,6 +37,10 @@ test:
 	RUSTDOCFLAGS="-D warnings" cargo test --workspace --doc -- --include-ignored
 	cargo test --workspace --all-targets --release -- --include-ignored
 	cargo build --workspace --release
+
+stress:
+	@echo "Running burn-in stress tests..."
+	RALPH_STRESS_BURN_IN=1 cargo test -p ralph --test stress_queue_contract_test --release -- --ignored --nocapture
 
 generate:
 	@echo "No API type generation configured."

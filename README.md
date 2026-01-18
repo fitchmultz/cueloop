@@ -9,6 +9,7 @@ The canonical implementation is the Rust CLI in `crates/ralph/`.
 - Queue (source of truth): `.ralph/queue.yaml`
 - Done archive: `.ralph/done.yaml`
 - Prompt templates: built-in defaults; override in `ralph/prompts/`
+- **Production Verification:** See `.ralph/README.md`.
 
 ## Quick Start (Rust)
 
