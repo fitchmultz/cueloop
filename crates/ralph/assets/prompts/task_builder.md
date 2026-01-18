@@ -34,6 +34,10 @@ Optional hint scope (may be empty):
   - `plan` (non-empty; specific, sequential steps)
 - Optional keys: `notes`, `request`, `agent`, `created_at`, `updated_at`
 
+## YAML SAFETY
+- Do not include shell-escape artifacts like `\"` or `'\''` inside YAML values.
+- Prefer plain scalars. If a value needs quotes, use YAML single quotes and escape single quotes by doubling them (`''`).
+
 ## RULES
 - Create the smallest number of tasks that makes the request executable.
 - If the request is clearly multiple independent deliverables, split into multiple tasks in priority order.

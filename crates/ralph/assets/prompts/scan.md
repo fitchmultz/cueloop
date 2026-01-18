@@ -45,6 +45,10 @@ Convert findings into executable YAML tasks and insert them into `.ralph/queue.y
 - Root: `version: 1` and `tasks: [...]`
 - Allowed task statuses: `todo`, `doing`, `blocked`, `done`
 
+## YAML SAFETY
+- Do not include shell-escape artifacts like `\"` or `'\''` inside YAML values.
+- Prefer plain scalars. If a value needs quotes, use YAML single quotes and escape single quotes by doubling them (`''`).
+
 # OUTPUT
 After editing `.ralph/queue.yaml`, provide:
 - Count of new tasks added

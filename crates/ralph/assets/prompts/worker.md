@@ -50,6 +50,10 @@ Ship correct, durable changes quickly and safely.
 - Each task has: `id`, `status`, `title`, `tags`, `scope`, `evidence`, `plan`.
 - Allowed status values: `todo`, `doing`, `blocked`, `done`.
 
+## YAML SAFETY
+- Do not include shell-escape artifacts like `\"` or `'\''` inside YAML values.
+- Prefer plain scalars. If a value needs quotes, use YAML single quotes and escape single quotes by doubling them (`''`).
+
 ## WORKFLOW
 1. Read `.ralph/queue.yaml` and confirm the first `todo` task from the top (this is the only task you should work on).
 2. Immediately set that task's `status` to `doing` and set/update `updated_at` to current UTC RFC3339 time.
