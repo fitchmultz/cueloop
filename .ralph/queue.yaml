@@ -1,2 +1,337 @@
 version: 1
-tasks: []
+tasks:
+  - id: RQ-0057
+    status: todo
+    title: Prevent data loss when revert_uncommitted cleans untracked files
+    tags:
+      - rust
+      - safety
+      - git
+    scope:
+      - crates/ralph/src/gitutil.rs
+    evidence:
+      - revert_uncommitted runs git clean -fd which removes all untracked files
+    plan:
+      - Update revert_uncommitted to exclude .env and other known local files or provide a safe allowlist
+      - Add tests to ensure protected files remain after cleanup
+      - Document the cleanup behavior and exclusions
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0058
+    status: todo
+    title: Gracefully skip push when upstream is missing in run supervisor
+    tags:
+      - rust
+      - ux
+      - git
+    scope:
+      - crates/ralph/src/run_cmd.rs
+      - crates/ralph/src/gitutil.rs
+    evidence:
+      - push_if_ahead calls is_ahead_of_upstream which errors when no upstream is configured
+    plan:
+      - Treat missing upstream as a warning and skip push in push_if_ahead
+      - Keep hard failure for real push errors
+      - Add coverage for upstream missing behavior
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0059
+    status: todo
+    title: Doctor should warn not fail when git upstream is missing
+    tags:
+      - rust
+      - ux
+      - tooling
+    scope:
+      - crates/ralph/src/doctor_cmd.rs
+      - crates/ralph/tests/doctor_contract_test.rs
+    evidence:
+      - doctor_cmd marks missing upstream as a failure and doctor_contract_test notes it should ideally pass
+    plan:
+      - Downgrade missing upstream to a warning in doctor output
+      - Update doctor tests to assert the new warning behavior
+      - Keep failure for invalid git repo or missing queue
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0060
+    status: todo
+    title: Doctor check_command should fail on non-zero exit status
+    tags:
+      - rust
+      - ux
+      - tooling
+    scope:
+      - crates/ralph/src/doctor_cmd.rs
+    evidence:
+      - check_command returns Ok even when the command exits non-zero
+    plan:
+      - Validate command exit status and surface failures
+      - Include stderr in the error message for debugging
+      - Add a unit test or integration case for a failing command
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0061
+    status: todo
+    title: Remove install side effects from make ci
+    tags:
+      - build
+      - workflow
+      - tooling
+    scope:
+      - Makefile
+    evidence:
+      - make ci includes install which writes to a user bin directory and runs ralph --help
+    plan:
+      - Remove install from the ci target or split into a separate target
+      - Ensure ci still runs generate format type-check lint build test
+      - Update docs if they imply make ci installs binaries
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0062
+    status: todo
+    title: Use YAML repair when loading queue before scan
+    tags:
+      - rust
+      - queue
+      - ux
+    scope:
+      - crates/ralph/src/scan_cmd.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - scan_cmd uses load_queue before running and only repairs after scan
+    plan:
+      - Switch pre-scan queue load to load_queue_with_repair
+      - Emit a warning when repair modifies the queue
+      - Add a scan test covering preexisting colon scalars
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0063
+    status: todo
+    title: Use YAML repair when loading queue before task build
+    tags:
+      - rust
+      - queue
+      - ux
+    scope:
+      - crates/ralph/src/task_cmd.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - task_cmd uses load_queue before running and only repairs after task build
+    plan:
+      - Switch pre-task queue load to load_queue_with_repair
+      - Emit a warning when repair modifies the queue
+      - Add a task build test covering preexisting colon scalars
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0064
+    status: todo
+    title: Expose queue repair or auto-repair in queue commands
+    tags:
+      - rust
+      - queue
+      - ux
+    scope:
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - queue commands use load_queue and fail on invalid scalars even though repair exists
+    plan:
+      - Add a queue repair subcommand or switch queue validate list show next to repair-aware loading
+      - Ensure repaired YAML is persisted using write_atomic
+      - Add tests for queue commands operating with repaired YAML
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0065
+    status: todo
+    title: Fix archive_done_tasks skipped_ids reporting
+    tags:
+      - rust
+      - queue
+    scope:
+      - crates/ralph/src/queue.rs
+      - crates/ralph/src/main.rs
+    evidence:
+      - ArchiveReport.skipped_ids is never populated but queue done message mentions skipped items
+    plan:
+      - Implement skip behavior or remove skipped_ids from the report struct
+      - Align queue done output with the chosen behavior
+      - Add tests for the updated archive report
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0066
+    status: todo
+    title: Repair YAML list scalars that look like mappings
+    tags:
+      - rust
+      - queue
+      - correctness
+    scope:
+      - crates/ralph/src/queue.rs
+    evidence:
+      - repair_yaml_scalars skips quoting list items when looks_like_mapping returns true
+    plan:
+      - 'Adjust list item repair logic to quote ambiguous scalars like foo: bar'
+      - Add tests for evidence and plan list items containing colon patterns
+      - Confirm mapping detection still works for real mappings
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0067
+    status: todo
+    title: Expand YAML scalar repair to colon variants beyond colon space
+    tags:
+      - rust
+      - queue
+      - correctness
+    scope:
+      - crates/ralph/src/queue.rs
+    evidence:
+      - should_quote_scalar only checks for colon space so colon tab or trailing colon are missed
+    plan:
+      - Extend scalar detection to colon followed by whitespace or end of line
+      - Add tests for colon tab and trailing colon values
+      - Verify repaired YAML parses and validates
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0068
+    status: todo
+    title: Align queue validation with prompt contract for request and timestamps
+    tags:
+      - rust
+      - queue
+      - contract
+    scope:
+      - crates/ralph/src/queue.rs
+      - crates/ralph/assets/prompts/task_builder.md
+      - crates/ralph/assets/prompts/scan.md
+    evidence:
+      - prompts require request and created_at and updated_at but validate_task_required_fields does not check them
+    plan:
+      - Decide whether request and timestamps are required or optional
+      - Update prompt contract text for consistency
+      - Enforce the chosen requirement in validation with tests
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0069
+    status: todo
+    title: Backfill missing request and timestamps after scan or task build
+    tags:
+      - rust
+      - queue
+      - ux
+    scope:
+      - crates/ralph/src/scan_cmd.rs
+      - crates/ralph/src/task_cmd.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - scan_cmd and task_cmd do not fill request or created_at and updated_at if runner omits them
+    plan:
+      - Detect newly added tasks lacking request or timestamps
+      - Populate missing fields using the input request and current UTC time
+      - Add tests for backfill behavior
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0070
+    status: todo
+    title: Validate RFC3339 timestamps in set_status and queue validation
+    tags:
+      - rust
+      - correctness
+      - queue
+    scope:
+      - crates/ralph/src/queue.rs
+    evidence:
+      - set_status only checks now is non-empty and validation never parses timestamps
+    plan:
+      - Parse timestamps with time::OffsetDateTime and reject invalid formats
+      - Validate created_at updated_at and completed_at when present
+      - Add tests for invalid timestamp handling
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0071
+    status: todo
+    title: Pin Rust toolchain with rust-toolchain.toml
+    tags:
+      - build
+      - tooling
+      - rust
+    scope:
+      - rust-toolchain.toml
+      - Cargo.toml
+    evidence:
+      - there is no rust-toolchain file to pin a consistent toolchain
+    plan:
+      - Add rust-toolchain.toml with the chosen channel and components
+      - Update docs if they reference toolchain requirements
+      - Verify make ci still succeeds with the pinned toolchain
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0072
+    status: todo
+    title: Introduce canonical .env and .env.example and load dotenv in CLI
+    tags:
+      - config
+      - tooling
+      - rust
+    scope:
+      - .env
+      - .env.example
+      - crates/ralph/src/main.rs
+    evidence:
+      - project policy requires a canonical .env file but the repo has none
+    plan:
+      - Add .env and .env.example with non-secret defaults
+      - Load dotenv early in CLI startup
+      - Document expected variables and usage
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
+
+  - id: RQ-0073
+    status: todo
+    title: Handle stale queue locks via auto-clean or force unlock command
+    tags:
+      - rust
+      - ux
+      - queue
+    scope:
+      - crates/ralph/src/fsutil.rs
+      - crates/ralph/src/main.rs
+    evidence:
+      - acquire_dir_lock only reports stale pid and requires manual removal of .ralph/lock
+    plan:
+      - Add stale lock detection and an opt-in auto-clean or queue unlock command
+      - Ensure lock cleanup is safe when the pid is still active
+      - Add tests for stale lock cleanup behavior
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:45:41Z
