@@ -40,6 +40,31 @@ Ralph embeds default prompts in the Rust binary. To override them for a repo, ad
 If a file is missing, Ralph falls back to the embedded default. Any override must keep required
 placeholders (for example `{{USER_REQUEST}}` in the task builder prompt).
 
+## OpenCode Runner
+
+Ralph supports the OpenCode CLI as a runner alongside Codex.
+
+Quick usage:
+- Ensure `opencode` is installed and on `PATH` (or set `agent.opencode_bin`).
+- Use `--runner opencode` on `task build` or `scan`:
+  - `cargo run -p ralph -- task build --runner opencode --model gpt-5.2 "Add tests for X"`
+  - `cargo run -p ralph -- scan --runner opencode --model gpt-5.2 --focus "CI gaps"`
+
+Defaults and config:
+- `ralph run one` pulls runner/model from the task `agent` block if present, otherwise from config.
+- Configure defaults in `.ralph/config.yaml` (or global config):
+
+```yaml
+version: 1
+agent:
+  runner: opencode
+  model: gpt-5.2
+  opencode_bin: opencode
+```
+
+Allowed models: `gpt-5.2-codex`, `gpt-5.2`, `glm-4.7`. Note: `glm-4.7` is not supported for the
+Codex runner, but is valid for OpenCode.
+
 ## Configuration
 
 Ralph uses a two-layer YAML config:

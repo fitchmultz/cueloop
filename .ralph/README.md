@@ -45,6 +45,27 @@ Defaults are embedded in the Rust CLI. To override prompts for this repo, create
 
 Missing files fall back to the embedded defaults. Overrides must keep required placeholders.
 
+## OpenCode Runner
+
+Ralph can use the OpenCode CLI as a runner.
+
+One-off usage:
+- `cargo run -p ralph -- task build --runner opencode --model gpt-5.2 "Add tests for X"`
+- `cargo run -p ralph -- scan --runner opencode --model gpt-5.2 --focus "CI gaps"`
+
+Defaults via config (`.ralph/config.yaml` or global):
+
+```yaml
+version: 1
+agent:
+  runner: opencode
+  model: gpt-5.2
+  opencode_bin: opencode
+```
+
+Allowed models: `gpt-5.2-codex`, `gpt-5.2`, `glm-4.7`. Note: `glm-4.7` is not supported for the
+Codex runner.
+
 ## Supervisor Workflow (Rust)
 
 `ralph run one` (and `ralph run loop`) act as a lightweight supervisor around the execution agent.

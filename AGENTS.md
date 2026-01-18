@@ -36,6 +36,7 @@
   - Global: `~/.config/ralph/config.yaml`
   - Project: `.ralph/config.yaml` (overrides global)
 - CLI flags can override at runtime; they should not be relied on as persisted config.
+- OpenCode usage: set `agent.runner: opencode` (and `agent.opencode_bin` if needed); allowed models are `gpt-5.2-codex`, `gpt-5.2`, `glm-4.7` (glm-4.7 not valid for Codex).
 
 ## Configuration & Security
 - Do not commit real secrets if the repo is public.
