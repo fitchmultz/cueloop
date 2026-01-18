@@ -110,7 +110,8 @@ pub fn revert_uncommitted(repo_root: &Path) -> Result<()> {
     }
 
     // Remove untracked files/directories created during the run.
-    git_run(repo_root, &["clean", "-fd"]).context("git clean -fd")?;
+    git_run(repo_root, &["clean", "-fd", "-e", ".env", "-e", ".env.*"])
+        .context("git clean -fd -e .env*")?;
     Ok(())
 }
 
