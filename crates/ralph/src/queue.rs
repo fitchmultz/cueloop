@@ -8,7 +8,6 @@ use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct ArchiveReport {
     pub moved_ids: Vec<String>,
-    pub skipped_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -187,19 +186,13 @@ pub fn archive_done_tasks(
     active.tasks = remaining;
 
     if moved_ids.is_empty() {
-        return Ok(ArchiveReport {
-            moved_ids,
-            skipped_ids: Vec::new(),
-        });
+        return Ok(ArchiveReport { moved_ids });
     }
 
     save_queue(done_path, &done)?;
     save_queue(queue_path, &active)?;
 
-    Ok(ArchiveReport {
-        moved_ids,
-        skipped_ids: Vec::new(),
-    })
+    Ok(ArchiveReport { moved_ids })
 }
 
 pub fn set_status(
@@ -873,7 +866,6 @@ tasks:
             report.moved_ids,
             vec!["RQ-0001".to_string(), "RQ-0003".to_string()]
         );
-        assert!(report.skipped_ids.is_empty());
 
         let (active_after, repaired_active) = load_queue_with_repair(&queue_path)?;
         assert!(
@@ -888,7 +880,6 @@ tasks:
 
         let report2 = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
         assert!(report2.moved_ids.is_empty());
-        assert!(report2.skipped_ids.is_empty());
         Ok(())
     }
 

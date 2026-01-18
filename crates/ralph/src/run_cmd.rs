@@ -305,7 +305,7 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
         &resolved.id_prefix,
         resolved.id_width,
     )?;
-    if !report.moved_ids.is_empty() || !report.skipped_ids.is_empty() {
+    if !report.moved_ids.is_empty() {
         changed = true;
     }
 

@@ -1,5 +1,31 @@
-version: 1
-tasks:
+ version: 1
+ tasks:
+  - id: RQ-0065
+    status: done
+    title: Fix archive_done_tasks skipped_ids reporting
+    tags:
+      - rust
+      - queue
+    scope:
+      - crates/ralph/src/queue.rs
+      - crates/ralph/src/main.rs
+    evidence:
+      - ArchiveReport.skipped_ids is never populated but queue done message mentions skipped items
+    plan:
+      - Implement skip behavior or remove skipped_ids from the report struct
+      - Align queue done output with the chosen behavior
+      - Add tests for the updated archive report
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T22:36:16Z
+    completed_at: 2026-01-18T22:36:16Z
+    notes:
+      - Removed skipped_ids field from ArchiveReport struct in queue.rs
+      - Updated archive_done_tasks to only return moved_ids
+      - Updated queue done output in main.rs and run_cmd.rs to remove skipped task references
+      - Updated tests to remove skipped_ids checks
+      - All tests pass including make ci
+
   - id: RQ-0064
     status: done
     title: Expose queue repair or auto-repair in queue commands

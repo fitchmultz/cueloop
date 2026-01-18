@@ -209,14 +209,10 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
                 &resolved.id_prefix,
                 resolved.id_width,
             )?;
-            if report.moved_ids.is_empty() && report.skipped_ids.is_empty() {
+            if report.moved_ids.is_empty() {
                 println!(">> [RALPH] No done tasks to move.");
             } else {
-                println!(
-                    ">> [RALPH] Moved {} done task(s) ({} skipped as already done).",
-                    report.moved_ids.len(),
-                    report.skipped_ids.len()
-                );
+                println!(">> [RALPH] Moved {} done task(s).", report.moved_ids.len());
             }
         }
         QueueCommand::Repair => {
