@@ -1,0 +1,10 @@
+Build Specs
+
+
+Runner: codex
+Runner args: 0
+Reasoning effort: auto
+Interactive: off
+Innovate: off
+Autofill scout: off
+Scout workflow: off
