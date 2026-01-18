@@ -311,10 +311,20 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
 }
 
 fn push_if_ahead(repo_root: &Path) -> Result<()> {
-    let ahead = gitutil::is_ahead_of_upstream(repo_root)
-        .map_err(|err| anyhow!("upstream check failed: {:#}", err))?;
-    if !ahead {
-        return Ok(());
+    match gitutil::is_ahead_of_upstream(repo_root) {
+        Ok(ahead) => {
+            if !ahead {
+                return Ok(());
+            }
+        }
+        Err(err) => {
+            let msg = err.to_string().to_lowercase();
+            if msg.contains("no upstream") {
+                eprintln!(">> [RALPH] Warning: skipping push (no upstream configured)");
+                return Ok(());
+            }
+            return Err(anyhow!("upstream check failed: {:#}", err));
+        }
     }
     if let Err(err) = gitutil::push_upstream(repo_root) {
         bail!("git push failed; repo has unpushed commits: {:#}", err);

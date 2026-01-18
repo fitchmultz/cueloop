@@ -52,6 +52,18 @@ fn git_init(dir: &Path) -> Result<()> {
         .status()
         .context("run git init")?;
     anyhow::ensure!(status.success(), "git init failed");
+
+    let gitignore_path = dir.join(".gitignore");
+    std::fs::write(&gitignore_path, ".ralph/lock\n")?;
+    Command::new("git")
+        .current_dir(dir)
+        .args(["add", ".gitignore"])
+        .status()?;
+    Command::new("git")
+        .current_dir(dir)
+        .args(["commit", "-m", "add gitignore"])
+        .status()?;
+
     Ok(())
 }
 
@@ -131,6 +143,94 @@ fn run_one_refuses_to_run_when_repo_is_dirty_and_a_todo_exists() -> Result<()> {
     anyhow::ensure!(
         stderr.to_lowercase().contains("repo is dirty"),
         "expected dirty repo error\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    git_init(dir.path())?;
+
+    // This mimics the production environment where .ralph/lock is ignored,
+    // preventing the 'repo is dirty' check in run_one from failing due to the lock file.
+    let gitignore_path = dir.path().join(".gitignore");
+    std::fs::write(&gitignore_path, ".ralph/lock\n")?;
+    Command::new("git")
+        .current_dir(dir.path())
+        .args(["add", ".gitignore"])
+        .status()?;
+    Command::new("git")
+        .current_dir(dir.path())
+        .args(["commit", "-m", "add gitignore"])
+        .status()?;
+
+    // 1. Setup Ralph
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // 2. Add a task
+    write_valid_single_todo_queue(dir.path())?;
+
+    // 3. Create a fake runner that succeeds (does nothing)
+    let bin_dir = dir.path().join("bin");
+    std::fs::create_dir(&bin_dir)?;
+    let runner_path = bin_dir.join("codex");
+
+    let script = "#!/bin/sh\nexit 0\n";
+    std::fs::write(&runner_path, script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&runner_path)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&runner_path, perms)?;
+    }
+
+    // 4. Run `ralph run one` with the fake runner on PATH
+    Command::new("git")
+        .current_dir(dir.path())
+        .args(["add", "."])
+        .status()?;
+    Command::new("git")
+        .current_dir(dir.path())
+        .args(["commit", "-m", "setup test env"])
+        .status()?;
+
+    let path_env = std::env::join_paths(std::iter::once(bin_dir).chain(std::env::split_paths(
+        &std::env::var("PATH").unwrap_or_default(),
+    )))?;
+
+    let output = Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .env("PATH", path_env)
+        .arg("run")
+        .arg("one")
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    anyhow::ensure!(
+        output.status.success(),
+        "run one failed but should have succeeded (soft push failure)\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        stderr.contains("Warning: skipping push"),
+        "expected warning about skipping push\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Verify task was actually marked done and archived (supervisor logic)
+    let done_content = std::fs::read_to_string(dir.path().join(".ralph/done.yaml"))?;
+    anyhow::ensure!(
+        done_content.contains("RQ-0001"),
+        "task should be moved to done"
     );
 
     Ok(())

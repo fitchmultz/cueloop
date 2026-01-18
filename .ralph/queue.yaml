@@ -1,25 +1,5 @@
 version: 1
 tasks:
-  - id: RQ-0058
-    status: todo
-    title: Gracefully skip push when upstream is missing in run supervisor
-    tags:
-      - rust
-      - ux
-      - git
-    scope:
-      - crates/ralph/src/run_cmd.rs
-      - crates/ralph/src/gitutil.rs
-    evidence:
-      - push_if_ahead calls is_ahead_of_upstream which errors when no upstream is configured
-    plan:
-      - Treat missing upstream as a warning and skip push in push_if_ahead
-      - Keep hard failure for real push errors
-      - Add coverage for upstream missing behavior
-    request: scan finding
-    created_at: 2026-01-18T20:45:41Z
-    updated_at: 2026-01-18T20:45:41Z
-
   - id: RQ-0059
     status: todo
     title: Doctor should warn not fail when git upstream is missing
