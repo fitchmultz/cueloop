@@ -1,29 +1,29 @@
 version: 1
-  tasks:
+tasks:
   - id: RQ-0069
-      status: done
-      title: Backfill missing request and timestamps after scan or task build
-      tags:
-        - rust
-        - queue
-        - ux
-      scope:
-        - crates/ralph/src/scan_cmd.rs
-        - crates/ralph/src/task_cmd.rs
-        - crates/ralph/src/queue.rs
-      evidence:
-        - scan_cmd and task_cmd do not fill request or created_at and updated_at if runner omits them
-      plan:
-        - Detect newly added tasks lacking request or timestamps
-        - Populate missing fields using the input request and current UTC time
-        - Add tests for backfill behavior
-      request: scan finding
-      created_at: 2026-01-18T20:45:41Z
-      updated_at: 2026-01-18T21:00:00Z
-      completed_at: 2026-01-18T21:30:00Z
-      notes:
-        - Added backfill_missing_fields function to queue.rs
-        - Updated scan_cmd.rs to backfill new tasks after runner succeeds
-        - Updated task_cmd.rs to backfill new tasks after runner succeeds
-        - Added 6 tests covering backfill behavior (populate, skip existing, empty string handling)
-        - All tests pass and make ci completes successfully
+    status: done
+    title: Backfill missing request and timestamps after scan or task build
+    tags:
+      - rust
+      - queue
+      - ux
+    scope:
+      - crates/ralph/src/scan_cmd.rs
+      - crates/ralph/src/task_cmd.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - scan_cmd and task_cmd do not fill request or created_at and updated_at if runner omits them
+    plan:
+      - Detect newly added tasks lacking request or timestamps
+      - Populate missing fields using the input request and current UTC time
+      - Add tests for backfill behavior
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T21:00:00Z
+    completed_at: 2026-01-18T21:30:00Z
+    notes:
+      - Added backfill_missing_fields function to queue.rs
+      - Updated scan_cmd.rs to backfill new tasks after runner succeeds
+      - Updated task_cmd.rs to backfill new tasks after runner succeeds
+      - Added 6 tests covering backfill behavior (populate, skip existing, empty string handling)
+      - All tests pass and make ci completes successfully

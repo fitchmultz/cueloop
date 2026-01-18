@@ -42,7 +42,7 @@ pub fn load_queue_with_repair(path: &Path) -> Result<(QueueFile, bool)> {
     match serde_yaml::from_str::<QueueFile>(&raw) {
         Ok(queue) => Ok((queue, false)),
         Err(err) => {
-            let repaired = repair_yaml_scalars(&raw)
+            let repaired = repair_yaml(&raw)
                 .ok_or_else(|| anyhow!("parse queue YAML {}: {err}", path.display()))?;
             let queue: QueueFile = serde_yaml::from_str(&repaired)
                 .with_context(|| format!("parse repaired queue YAML {}", path.display()))?;
@@ -59,7 +59,7 @@ pub fn repair_queue(path: &Path) -> Result<RepairReport> {
     match serde_yaml::from_str::<QueueFile>(&raw) {
         Ok(_) => Ok(RepairReport { repaired: false }),
         Err(_) => {
-            let repaired = repair_yaml_scalars(&raw)
+            let repaired = repair_yaml(&raw)
                 .ok_or_else(|| anyhow!("unable to repair queue YAML {}", path.display()))?;
             let _queue: QueueFile = serde_yaml::from_str(&repaired)
                 .with_context(|| format!("parse repaired queue YAML {}", path.display()))?;
@@ -275,6 +275,53 @@ fn sanitize_yaml_text(prefix: &str, value: &str) -> String {
     trimmed.to_string()
 }
 
+fn repair_yaml(raw: &str) -> Option<String> {
+    let mut changed = false;
+    let mut updated = raw.to_string();
+
+    if let Some(structured) = repair_yaml_structure(&updated) {
+        updated = structured;
+        changed = true;
+    }
+
+    if let Some(scalars) = repair_yaml_scalars(&updated) {
+        updated = scalars;
+        changed = true;
+    }
+
+    if changed {
+        Some(updated)
+    } else {
+        None
+    }
+}
+
+fn repair_yaml_structure(raw: &str) -> Option<String> {
+    let mut changed = false;
+    let mut out = String::new();
+
+    for line in raw.lines() {
+        let trimmed = line.trim_start();
+        let updated = if line.len() != trimmed.len()
+            && (trimmed.starts_with("version:") || trimmed.starts_with("tasks:"))
+        {
+            changed = true;
+            trimmed.to_string()
+        } else {
+            line.to_string()
+        };
+
+        out.push_str(&updated);
+        out.push('\n');
+    }
+
+    if changed {
+        Some(out)
+    } else {
+        None
+    }
+}
+
 fn repair_yaml_scalars(raw: &str) -> Option<String> {
     let mut changed = false;
     let mut out = String::new();
@@ -291,17 +338,24 @@ fn repair_yaml_scalars(raw: &str) -> Option<String> {
         if let Some(rest) = trimmed.strip_prefix("- ") {
             let indent = line.len() - trimmed.len();
             if indent > 2 && (should_quote_scalar(rest) || looks_like_mapping(rest)) {
-                let escaped = escape_single_quotes(rest.trim());
-                updated = format!("{}- '{}'", " ".repeat(indent), escaped);
-                changed = true;
+                let value = rest.trim();
+                updated = format!(
+                    "{}- {}",
+                    " ".repeat(indent),
+                    quote_scalar_for_yaml(value, &mut changed)
+                );
             }
         } else if let Some((left, right)) = line.split_once(": ") {
             let key = left.trim();
             if !key.is_empty() && should_quote_scalar(right) {
-                let escaped = escape_single_quotes(right.trim());
+                let value = right.trim();
                 let indent = left.len() - left.trim_start().len();
-                updated = format!("{}{}: '{}'", " ".repeat(indent), key, escaped);
-                changed = true;
+                updated = format!(
+                    "{}{}: {}",
+                    " ".repeat(indent),
+                    key,
+                    quote_scalar_for_yaml(value, &mut changed)
+                );
             }
         }
 
@@ -368,7 +422,78 @@ fn looks_like_mapping(value: &str) -> bool {
 }
 
 fn escape_single_quotes(value: &str) -> String {
-    value.replace('\'', "''")
+    let normalized = value.replace("\\t", "\t");
+    normalized.replace('\'', "''")
+}
+
+fn quote_scalar_for_yaml(value: &str, changed: &mut bool) -> String {
+    if should_use_double_quotes(value) {
+        let escaped = escape_double_quotes(value);
+        *changed = true;
+        format!("\"{}\"", escaped)
+    } else {
+        let escaped = escape_single_quotes(value);
+        *changed = true;
+        format!("'{}'", escaped)
+    }
+}
+
+fn should_use_double_quotes(value: &str) -> bool {
+    value.contains("\\n")
+        || value.contains("\\r")
+        || value.contains("\\u")
+        || value.contains("\\U")
+        || value.contains("\\x")
+}
+
+fn escape_double_quotes(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut chars = value.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => {
+                if let Some(next) = chars.peek().copied() {
+                    if is_allowed_yaml_escape(next) {
+                        out.push('\\');
+                        out.push(next);
+                        chars.next();
+                    } else {
+                        out.push_str("\\\\");
+                    }
+                } else {
+                    out.push_str("\\\\");
+                }
+            }
+            _ => out.push(ch),
+        }
+    }
+
+    out
+}
+
+fn is_allowed_yaml_escape(ch: char) -> bool {
+    matches!(
+        ch,
+        '0' | 'a'
+            | 'b'
+            | 't'
+            | 'n'
+            | 'v'
+            | 'f'
+            | 'r'
+            | 'e'
+            | '"'
+            | '\\'
+            | 'N'
+            | '_'
+            | 'L'
+            | 'P'
+            | 'x'
+            | 'u'
+            | 'U'
+    )
 }
 
 pub fn next_todo_task(queue: &QueueFile) -> Option<&Task> {
@@ -794,7 +919,7 @@ tasks:
     notes:
       - key: value
       - trailing:
-      - tab:	value
+      - tab:\tvalue
 "#;
         std::fs::write(&queue_path, raw)?;
 
@@ -821,6 +946,40 @@ tasks:
         assert!(repaired_raw.contains("- 'key: value'"));
         assert!(repaired_raw.contains("- 'trailing:'"));
         assert!(repaired_raw.contains("- 'tab:\tvalue'"));
+        Ok(())
+    }
+
+    #[test]
+    fn load_queue_with_repair_fixes_indented_tasks_key() -> Result<()> {
+        let dir = TempDir::new()?;
+        let queue_path = dir.path().join("queue.yaml");
+
+        let raw = r#"version: 1
+  tasks:
+  - id: RQ-0001
+    status: todo
+    title: Fix indentation
+    tags:
+      - rust
+    scope:
+      - crates/ralph
+    evidence:
+      - regression test
+    plan:
+      - repair indentation
+    request: test
+    created_at: 2026-01-18T00:00:00Z
+    updated_at: 2026-01-18T00:00:00Z
+"#;
+        std::fs::write(&queue_path, raw)?;
+
+        let (queue, repaired) = load_queue_with_repair(&queue_path)?;
+        assert!(repaired);
+        assert_eq!(queue.tasks.len(), 1);
+
+        let fixed = std::fs::read_to_string(&queue_path)?;
+        assert!(fixed.contains("\ntasks:\n"));
+
         Ok(())
     }
 
