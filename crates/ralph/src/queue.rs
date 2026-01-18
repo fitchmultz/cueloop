@@ -96,6 +96,14 @@ pub fn validate_queue_set(
     validate_queue(active, id_prefix, id_width)?;
     if let Some(done) = done {
         validate_queue(done, id_prefix, id_width)?;
+
+        let active_ids: HashSet<&str> = active.tasks.iter().map(|t| t.id.trim()).collect();
+        for task in &done.tasks {
+            let id = task.id.trim();
+            if active_ids.contains(id) {
+                bail!("duplicate task id detected across queue and done: {}", id);
+            }
+        }
     }
 
     Ok(())
@@ -139,22 +147,9 @@ pub fn archive_done_tasks(
     let mut active = load_queue(queue_path)?;
     let mut done = load_queue_or_default(done_path)?;
 
-    validate_queue(&active, id_prefix, id_width)?;
-    validate_queue(&done, id_prefix, id_width)?;
+    validate_queue_set(&active, Some(&done), id_prefix, id_width)?;
 
-    let mut done_ids: HashSet<String> =
-        done.tasks.iter().map(|t| t.id.trim().to_string()).collect();
-    for task in &active.tasks {
-        if task.status == TaskStatus::Done {
-            continue;
-        }
-        let key = task.id.trim().to_string();
-        if done_ids.contains(&key) {
-            bail!("duplicate task id across queue + done: {}", key);
-        }
-    }
     let mut moved_ids = Vec::new();
-    let mut skipped_ids = Vec::new();
     let mut remaining = Vec::new();
 
     for task in active.tasks.into_iter() {
@@ -164,22 +159,16 @@ pub fn archive_done_tasks(
         }
 
         let key = task.id.trim().to_string();
-        if done_ids.contains(&key) {
-            skipped_ids.push(key);
-            continue;
-        }
-
-        done_ids.insert(key.clone());
         moved_ids.push(key);
         done.tasks.push(task);
     }
 
     active.tasks = remaining;
 
-    if moved_ids.is_empty() && skipped_ids.is_empty() {
+    if moved_ids.is_empty() {
         return Ok(ArchiveReport {
             moved_ids,
-            skipped_ids,
+            skipped_ids: Vec::new(),
         });
     }
 
@@ -188,7 +177,7 @@ pub fn archive_done_tasks(
 
     Ok(ArchiveReport {
         moved_ids,
-        skipped_ids,
+        skipped_ids: Vec::new(),
     })
 }
 
@@ -669,7 +658,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_queue_set_allows_cross_file_duplicates() {
+    fn validate_queue_set_rejects_cross_file_duplicates() {
         let active = QueueFile {
             version: 1,
             tasks: vec![task("RQ-0001")],
@@ -678,7 +667,8 @@ mod tests {
             version: 1,
             tasks: vec![task("RQ-0001")],
         };
-        validate_queue_set(&active, Some(&done), "RQ", 4).expect("allow duplicates");
+        let err = validate_queue_set(&active, Some(&done), "RQ", 4).unwrap_err();
+        assert!(format!("{err}").contains("duplicate task id detected across queue and done"));
     }
 
     #[test]
@@ -733,6 +723,37 @@ tasks:
     }
 
     #[test]
+    fn archive_done_tasks_fails_on_duplicates() -> Result<()> {
+        let dir = TempDir::new()?;
+        let queue_path = dir.path().join("queue.yaml");
+        let done_path = dir.path().join("done.yaml");
+
+        let mut done_task = task("RQ-0001");
+        done_task.status = TaskStatus::Done;
+
+        let mut active_task = task("RQ-0001");
+        active_task.status = TaskStatus::Done;
+
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![active_task],
+        };
+
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![done_task],
+        };
+
+        save_queue(&queue_path, &active)?;
+        save_queue(&done_path, &done)?;
+
+        let err = archive_done_tasks(&queue_path, &done_path, "RQ", 4).unwrap_err();
+        assert!(format!("{err}").contains("duplicate task id detected across queue and done"));
+
+        Ok(())
+    }
+
+    #[test]
     fn archive_done_tasks_moves_and_dedupes() -> Result<()> {
         let dir = TempDir::new()?;
         let queue_path = dir.path().join("queue.yaml");
@@ -744,9 +765,12 @@ tasks:
         let mut active_task = task("RQ-0001");
         active_task.status = TaskStatus::Done;
 
+        let mut active_task_two = task("RQ-0003");
+        active_task_two.status = TaskStatus::Done;
+
         let active = QueueFile {
             version: 1,
-            tasks: vec![active_task.clone(), done_task.clone()],
+            tasks: vec![active_task, active_task_two],
         };
 
         let done = QueueFile {
@@ -758,14 +782,17 @@ tasks:
         save_queue(&done_path, &done)?;
 
         let report = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
-        assert_eq!(report.moved_ids, vec!["RQ-0001".to_string()]);
-        assert_eq!(report.skipped_ids, vec!["RQ-0002".to_string()]);
+        assert_eq!(
+            report.moved_ids,
+            vec!["RQ-0001".to_string(), "RQ-0003".to_string()]
+        );
+        assert!(report.skipped_ids.is_empty());
 
         let active_after = load_queue(&queue_path)?;
         assert!(active_after.tasks.is_empty());
 
         let done_after = load_queue(&done_path)?;
-        assert_eq!(done_after.tasks.len(), 2);
+        assert_eq!(done_after.tasks.len(), 3);
 
         let report2 = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
         assert!(report2.moved_ids.is_empty());

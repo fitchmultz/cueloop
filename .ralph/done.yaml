@@ -426,3 +426,33 @@ tasks:
     created_at: 2026-01-18T03:41:10Z
     updated_at: 2026-01-18T06:30:00Z
     completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0045
+    status: done
+    title: Enforce unique task IDs across queue plus done and repair validation logic
+    tags:
+      - rust
+      - queue
+      - correctness
+      - p0
+    scope:
+      - crates/ralph/src/queue.rs
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/run_cmd.rs
+    evidence:
+      - queue validate currently allows duplicate ids across active queue and done archive
+      - duplicate ids break next-id correctness and violate task identity guarantees
+      - the id system must be globally unique across active and archived tasks
+    plan:
+      - change queue validate to reject duplicates across queue and done
+      - hard-fail archive behavior on duplicate ids across sets instead of silently allowing them
+      - update tests that assert cross-file duplicates are allowed
+      - add tests for cross-file duplicate detection and error messaging
+    notes:
+      - Updated `validate_queue_set` to enforce uniqueness across active and done sets.
+      - Updated `archive_done_tasks` to fail hard if duplicates exist, removing the old skip/dedupe logic.
+      - Updated unit tests to assert cross-file duplicates are rejected.
+    request: go-to-rust production readiness
+    created_at: 2026-01-18T07:00:00Z
+    updated_at: 2026-01-18T07:15:00Z
+    completed_at: 2026-01-18T07:15:00Z
