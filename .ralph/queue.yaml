@@ -1,7 +1,5 @@
 version: 1
 tasks:
- 
-
   - id: RQ-0070
     status: todo
     title: Validate RFC3339 timestamps in set_status and queue validation
