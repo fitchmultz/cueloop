@@ -2,6 +2,45 @@ use anyhow::{bail, Context, Result};
 use std::path::Path;
 use std::process::Command;
 
+#[derive(Debug, Clone)]
+pub struct GitPushError {
+    pub message: String,
+}
+
+fn classify_push_error(stderr: &str) -> GitPushError {
+    let raw = stderr.trim();
+    let lower = raw.to_lowercase();
+
+    if lower.contains("no upstream")
+        || lower.contains("set-upstream")
+        || lower.contains("set the remote as upstream")
+    {
+        return GitPushError {
+			message: "git push failed: no upstream configured for current branch. Set it with: git push -u origin <branch> OR git branch --set-upstream-to origin/<branch>.".to_string(),
+		};
+    }
+
+    if lower.contains("permission denied")
+        || lower.contains("authentication failed")
+        || lower.contains("access denied")
+        || lower.contains("could not read from remote repository")
+        || lower.contains("repository not found")
+    {
+        return GitPushError {
+			message: "git push failed: authentication/permission denied. Verify the remote URL, credentials, and that you have push access.".to_string(),
+		};
+    }
+
+    let detail = if raw.is_empty() {
+        "unknown git error".to_string()
+    } else {
+        raw.to_string()
+    };
+    GitPushError {
+        message: format!("git push failed: {detail}"),
+    }
+}
+
 // status_porcelain returns raw `git status --porcelain` output (may be empty).
 pub fn status_porcelain(repo_root: &Path) -> Result<String> {
     let output = Command::new("git")
@@ -111,10 +150,11 @@ pub fn upstream_ref(repo_root: &Path) -> Result<String> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let classified = classify_push_error(&stderr);
         bail!(
             "git rev-parse @{{u}} failed (code={:?}): {}",
             output.status.code(),
-            stderr.trim()
+            classified.message
         );
     }
 
@@ -165,14 +205,18 @@ pub fn is_ahead_of_upstream(repo_root: &Path) -> Result<bool> {
 
 // push_upstream pushes HEAD to the configured upstream.
 pub fn push_upstream(repo_root: &Path) -> Result<()> {
-    let upstream = upstream_ref(repo_root)?;
-    let mut parts = upstream.splitn(2, '/');
-    let remote = parts.next().unwrap_or("").trim();
-    let branch = parts.next().unwrap_or("").trim();
-    if remote.is_empty() || branch.is_empty() {
-        bail!("invalid upstream format: {}", upstream);
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(repo_root)
+        .arg("push")
+        .output()
+        .with_context(|| format!("run git push in {}", repo_root.display()))?;
+
+    if output.status.success() {
+        return Ok(());
     }
 
-    git_run(repo_root, &["push", remote, &format!("HEAD:{branch}")]).context("git push")?;
-    Ok(())
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let classified = classify_push_error(&stderr);
+    bail!(classified.message)
 }

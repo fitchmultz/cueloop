@@ -1,5 +1,33 @@
 version: 1
 tasks:
+  - id: RQ-0050
+    status: done
+    title: Harden git push behavior by removing upstream parsing fragility and improving no-upstream messaging
+    tags:
+      - rust
+      - git
+      - ux
+      - p1
+    scope:
+      - crates/ralph/src/gitutil.rs
+      - crates/ralph/src/run_cmd.rs
+    evidence:
+      - push logic parses upstream into remote and branch by splitting on slash which is brittle and unnecessary
+      - missing upstream should produce actionable error messaging without corrupting queue state
+      - production loops must fail safe when push is impossible
+    plan:
+      - replace push_upstream implementation to call git push using default upstream behavior without parsing origin slash branch
+      - improve error messages for no upstream configured and permission failures
+      - add tests for no-upstream error path using a temp git repo
+    notes:
+      - Removed upstream parsing and rely on native git push behavior.
+      - Added upstream/auth failure classification with actionable messages.
+      - Centralized push-if-ahead handling to avoid queue corruption on push failure.
+    request: go-to-rust production readiness
+    created_at: 2026-01-18T07:00:00Z
+    updated_at: 2026-01-18T12:00:00Z
+    completed_at: 2026-01-18T12:00:00Z
+
   - id: RQ-0049
     status: done
     title: Add a stress test suite for huge queues repeated operations and long-run stability

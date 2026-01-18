@@ -268,17 +268,13 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
 
         let commit_message = format_task_commit_message(task_id, &task_title);
         gitutil::commit_all(&resolved.repo_root, &commit_message)?;
-        if gitutil::is_ahead_of_upstream(&resolved.repo_root)? {
-            gitutil::push_upstream(&resolved.repo_root)?;
-        }
+        push_if_ahead(&resolved.repo_root)?;
         gitutil::require_clean_repo(&resolved.repo_root)?;
         return Ok(());
     }
 
     if task_status == TaskStatus::Done && in_done {
-        if gitutil::is_ahead_of_upstream(&resolved.repo_root)? {
-            gitutil::push_upstream(&resolved.repo_root)?;
-        }
+        push_if_ahead(&resolved.repo_root)?;
         return Ok(());
     }
 
@@ -309,10 +305,20 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
 
     let commit_message = format_task_commit_message(task_id, &task_title);
     gitutil::commit_all(&resolved.repo_root, &commit_message)?;
-    if gitutil::is_ahead_of_upstream(&resolved.repo_root)? {
-        gitutil::push_upstream(&resolved.repo_root)?;
-    }
+    push_if_ahead(&resolved.repo_root)?;
     gitutil::require_clean_repo(&resolved.repo_root)?;
+    Ok(())
+}
+
+fn push_if_ahead(repo_root: &Path) -> Result<()> {
+    let ahead = gitutil::is_ahead_of_upstream(repo_root)
+        .map_err(|err| anyhow!("upstream check failed: {:#}", err))?;
+    if !ahead {
+        return Ok(());
+    }
+    if let Err(err) = gitutil::push_upstream(repo_root) {
+        bail!("git push failed; repo has unpushed commits: {:#}", err);
+    }
     Ok(())
 }
 
