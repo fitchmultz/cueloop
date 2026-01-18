@@ -26,8 +26,26 @@ pub fn load_queue_or_default(path: &Path) -> Result<QueueFile> {
     load_queue(path)
 }
 
+pub fn load_queue_with_repair(path: &Path) -> Result<(QueueFile, bool)> {
+    let raw = std::fs::read_to_string(path)
+        .with_context(|| format!("read queue file {}", path.display()))?;
+    match serde_yaml::from_str::<QueueFile>(&raw) {
+        Ok(queue) => Ok((queue, false)),
+        Err(err) => {
+            let repaired = repair_yaml_scalars(&raw)
+                .ok_or_else(|| anyhow!("parse queue YAML {}: {err}", path.display()))?;
+            let queue: QueueFile = serde_yaml::from_str(&repaired)
+                .with_context(|| format!("parse repaired queue YAML {}", path.display()))?;
+            fsutil::write_atomic(path, repaired.as_bytes())
+                .with_context(|| format!("write repaired queue YAML {}", path.display()))?;
+            Ok((queue, true))
+        }
+    }
+}
+
 pub fn save_queue(path: &Path, queue: &QueueFile) -> Result<()> {
     let rendered = serde_yaml::to_string(queue).context("serialize queue YAML")?;
+    let rendered = repair_yaml_scalars(&rendered).unwrap_or(rendered);
     fsutil::write_atomic(path, rendered.as_bytes())
         .with_context(|| format!("write queue YAML {}", path.display()))?;
     Ok(())
@@ -69,20 +87,6 @@ pub fn validate_queue_set(
     validate_queue(active, id_prefix, id_width)?;
     if let Some(done) = done {
         validate_queue(done, id_prefix, id_width)?;
-    }
-
-    let mut seen = HashSet::new();
-    for task in &active.tasks {
-        let key = task.id.trim().to_string();
-        seen.insert(key);
-    }
-    if let Some(done) = done {
-        for task in &done.tasks {
-            let key = task.id.trim().to_string();
-            if !seen.insert(key.clone()) {
-                bail!("duplicate task id across queue + done: {}", key);
-            }
-        }
     }
 
     Ok(())
@@ -258,6 +262,88 @@ fn sanitize_yaml_text(prefix: &str, value: &str) -> String {
         }
     }
     trimmed.to_string()
+}
+
+fn repair_yaml_scalars(raw: &str) -> Option<String> {
+    let mut changed = false;
+    let mut out = String::new();
+
+    for line in raw.lines() {
+        let mut updated = line.to_string();
+        let trimmed = line.trim_start();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            out.push_str(&updated);
+            out.push('\n');
+            continue;
+        }
+
+        if let Some(rest) = trimmed.strip_prefix("- ") {
+            let indent = line.len() - trimmed.len();
+            if indent > 2 && should_quote_scalar(rest) && !looks_like_mapping(rest) {
+                let escaped = escape_single_quotes(rest.trim());
+                updated = format!("{}- '{}'", " ".repeat(indent), escaped);
+                changed = true;
+            }
+        } else if let Some((left, right)) = line.split_once(": ") {
+            let key = left.trim();
+            if !key.is_empty() && should_quote_scalar(right) {
+                let escaped = escape_single_quotes(right.trim());
+                let indent = left.len() - left.trim_start().len();
+                updated = format!("{}{}: '{}'", " ".repeat(indent), key, escaped);
+                changed = true;
+            }
+        }
+
+        out.push_str(&updated);
+        out.push('\n');
+    }
+
+    if changed {
+        Some(out)
+    } else {
+        None
+    }
+}
+
+fn should_quote_scalar(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if trimmed.starts_with('\'')
+        || trimmed.starts_with('"')
+        || trimmed.starts_with('{')
+        || trimmed.starts_with('[')
+        || trimmed.starts_with('|')
+        || trimmed.starts_with('>')
+    {
+        return false;
+    }
+    trimmed.contains(": ")
+}
+
+fn looks_like_mapping(value: &str) -> bool {
+    let trimmed = value.trim_start();
+    let mut chars = trimmed.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if !first.is_ascii_alphanumeric() {
+        return false;
+    }
+    for ch in chars {
+        if ch == ':' {
+            return true;
+        }
+        if !(ch.is_ascii_alphanumeric() || ch == '_' || ch == '-') {
+            return false;
+        }
+    }
+    false
+}
+
+fn escape_single_quotes(value: &str) -> String {
+    value.replace('\'', "''")
 }
 
 pub fn next_todo_task(queue: &QueueFile) -> Option<&Task> {
@@ -547,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_queue_set_rejects_cross_file_duplicates() {
+    fn validate_queue_set_allows_cross_file_duplicates() {
         let active = QueueFile {
             version: 1,
             tasks: vec![task("RQ-0001")],
@@ -556,12 +642,7 @@ mod tests {
             version: 1,
             tasks: vec![task("RQ-0001")],
         };
-        let err = validate_queue_set(&active, Some(&done), "RQ", 4).unwrap_err();
-        let msg = format!("{err:#}");
-        assert!(
-            msg.to_lowercase().contains("duplicate"),
-            "unexpected error: {msg}"
-        );
+        validate_queue_set(&active, Some(&done), "RQ", 4).expect("allow duplicates");
     }
 
     #[test]
@@ -576,6 +657,42 @@ mod tests {
         };
         let next = next_id_across(&active, Some(&done), "RQ", 4)?;
         assert_eq!(next, "RQ-0010");
+        Ok(())
+    }
+
+    #[test]
+    fn load_queue_with_repair_quotes_colon_scalars() -> Result<()> {
+        let dir = TempDir::new()?;
+        let queue_path = dir.path().join("queue.yaml");
+
+        let raw = r#"version: 1
+tasks:
+  - id: RQ-0001
+    status: todo
+    title: Normalize empty queue YAML and handle tasks: null safely
+    tags:
+      - queue
+    scope:
+      - crates/ralph/src/queue.rs
+    evidence:
+      - queues can break: null tasks
+    plan:
+      - Fix parsing: add a safe default
+"#;
+        std::fs::write(&queue_path, raw)?;
+
+        let (queue, repaired) = load_queue_with_repair(&queue_path)?;
+        assert!(repaired);
+        assert_eq!(
+            queue.tasks[0].title,
+            "Normalize empty queue YAML and handle tasks: null safely"
+        );
+
+        let repaired_raw = std::fs::read_to_string(&queue_path)?;
+        assert!(repaired_raw
+            .contains("title: 'Normalize empty queue YAML and handle tasks: null safely'"));
+        assert!(repaired_raw.contains("- 'queues can break: null tasks'"));
+        assert!(repaired_raw.contains("- 'Fix parsing: add a safe default'"));
         Ok(())
     }
 

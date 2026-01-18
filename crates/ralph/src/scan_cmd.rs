@@ -64,10 +64,18 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         }
     };
 
-    let after = match queue::load_queue(&resolved.queue_path)
+    let after = match queue::load_queue_with_repair(&resolved.queue_path)
         .with_context(|| format!("read queue {}", resolved.queue_path.display()))
     {
-        Ok(queue) => queue,
+        Ok((queue, repaired)) => {
+            if repaired {
+                eprintln!(
+                    ">> [RALPH] Repaired invalid YAML scalars in {}",
+                    resolved.queue_path.display()
+                );
+            }
+            queue
+        }
         Err(err) => {
             gitutil::revert_uncommitted(&resolved.repo_root)?;
             return Err(err);

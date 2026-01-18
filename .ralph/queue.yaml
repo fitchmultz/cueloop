@@ -1,2 +1,299 @@
 version: 1
 tasks:
+  - id: RQ-0016
+    status: todo
+    title: Prevent scan from reverting dirty repos
+    tags:
+      - safety
+      - scan
+      - workflow
+    scope:
+      - crates/ralph/src/scan_cmd.rs
+      - crates/ralph/src/gitutil.rs
+      - ralph scan
+    evidence:
+      - crates/ralph/src/scan_cmd.rs calls gitutil::revert_uncommitted on validation or runner errors but never calls gitutil::require_clean_repo, so a failed scan can wipe uncommitted user changes.
+    plan:
+      - Require a clean repo at the start of scan_cmd::run_scan to match task build and run behavior.
+      - If the repo is dirty, exit with a clear error without calling revert_uncommitted.
+      - Add coverage to ensure scans refuse to run when the repo is dirty.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0017
+    status: todo
+    title: Remove install from make ci to avoid writing binaries into the repo
+    tags:
+      - ci
+      - workflow
+      - safety
+    scope:
+      - Makefile
+      - make ci
+      - crates/ralph/src/run_cmd.rs
+    evidence:
+      - Makefile ci depends on install, and install falls back to writing target/release/ralph into .local/bin when the default bin dir is not writable.
+      - crates/ralph/src/run_cmd.rs runs make ci before committing; the current Makefile can create untracked binaries and pollute commits.
+    plan:
+      - Remove install from the make ci dependency chain and keep install as an explicit user action.
+      - If install must stay in ci, redirect output to a non-repo temp dir or add a gitignore policy that prevents repo pollution.
+      - Update README or .ralph/README.md to clarify the CI gate and install behavior.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0018
+    status: todo
+    title: Skip push when no upstream is configured instead of failing run
+    tags:
+      - git
+      - workflow
+      - reliability
+    scope:
+      - crates/ralph/src/run_cmd.rs
+      - crates/ralph/src/gitutil.rs
+    evidence:
+      - crates/ralph/src/gitutil.rs upstream_ref uses git rev-parse @{u} and errors if no upstream is set, while run_cmd calls is_ahead_of_upstream unconditionally after commit.
+    plan:
+      - Detect missing upstream and treat it as a non-fatal condition with a clear warning.
+      - Ensure run_cmd still completes and leaves the repo clean when no upstream is configured.
+      - Add tests covering no-upstream scenarios for is_ahead_of_upstream or the run_cmd flow.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0019
+    status: todo
+    title: Validate that done.yaml only contains done tasks and fix existing mismatch
+    tags:
+      - queue
+      - safety
+      - validation
+    scope:
+      - crates/ralph/src/queue.rs
+      - .ralph/done.yaml
+      - ralph queue validate
+    evidence:
+      - .ralph/done.yaml includes task RQ-0005 with status todo, but done.yaml is intended as the archive of completed tasks.
+      - crates/ralph/src/queue.rs validate_queue_set only validates each file independently and does not enforce done-only status for the done archive.
+    plan:
+      - Add a validation step that enforces all tasks in done.yaml have status done.
+      - Update queue validation tests to cover done-only enforcement and cross-file consistency.
+      - Fix the existing done.yaml task status and ensure the archive stays consistent.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0020
+    status: todo
+    title: Align blocked status support with supervisor docs and CLI behavior
+    tags:
+      - queue
+      - workflow
+      - docs
+    scope:
+      - crates/ralph/src/contracts.rs
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/run_cmd.rs
+      - .ralph/README.md
+    evidence:
+      - .ralph/README.md says status blocked is not supported, yet TaskStatus includes Blocked and QueueCommand::SetStatus allows blocked.
+      - crates/ralph/src/run_cmd.rs bails when a task is blocked, which conflicts with the CLI allowing the status.
+    plan:
+      - Decide on the single supported behavior for blocked tasks (disallow vs fully support).
+      - Update task status enum, CLI parsing, and validation to enforce the chosen policy.
+      - Align documentation and add tests covering blocked handling.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0021
+    status: todo
+    title: Redact PRIVATEKEY env values consistently with other secret patterns
+    tags:
+      - safety
+      - redaction
+      - security
+    scope:
+      - crates/ralph/src/redaction.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - crates/ralph/src/redaction.rs looks_sensitive_env_key does not flag PRIVATEKEY as sensitive, but looks_sensitive_label treats PRIVATEKEY as sensitive.
+      - redact_sensitive_env_values relies on looks_sensitive_env_key, so PRIVATEKEY env values are not scrubbed from notes or output.
+    plan:
+      - Update looks_sensitive_env_key to treat PRIVATEKEY as sensitive (or normalize rules so label and env behavior match).
+      - Adjust tests to assert PRIVATEKEY redaction for both labels and env values.
+      - Verify redaction still avoids path-like keys such as PATH.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0022
+    status: todo
+    title: Emit redacted output tails on scan and task builder failures
+    tags:
+      - ux
+      - scan
+      - task-builder
+    scope:
+      - crates/ralph/src/scan_cmd.rs
+      - crates/ralph/src/task_cmd.rs
+      - crates/ralph/src/redaction.rs
+    evidence:
+      - crates/ralph/src/scan_cmd.rs and crates/ralph/src/task_cmd.rs only report exit reasons on failure; they do not print redacted output tails like run_cmd does.
+    plan:
+      - Reuse run_cmd tail_lines and redaction logic to show a short, redacted output tail when scan or task build fails.
+      - Keep output length bounded and consistent with run_cmd defaults.
+      - Add tests to confirm output is shown and secrets are redacted.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0023
+    status: todo
+    title: Wire project_type into prompt rendering and workflow behavior
+    tags:
+      - config
+      - prompts
+      - ux
+    scope:
+      - crates/ralph/src/config.rs
+      - crates/ralph/src/prompts.rs
+      - README.md
+    evidence:
+      - README.md states project_type tunes prompts and workflows, but rg -n project_type shows it is only defined and loaded, not used anywhere in runtime logic.
+    plan:
+      - Decide how project_type should influence prompts or behavior (e.g., select different defaults or insert guidance blocks).
+      - Update prompt rendering to incorporate project_type and add tests for both code and docs modes.
+      - Document the behavior clearly in README.md and .ralph/README.md.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0024
+    status: todo
+    title: Enforce unique task IDs across queue and done archives
+    tags:
+      - queue
+      - validation
+      - integrity
+    scope:
+      - crates/ralph/src/queue.rs
+      - crates/ralph/src/main.rs
+    evidence:
+      - crates/ralph/src/queue.rs validate_queue_set validates each file independently and a test explicitly allows duplicate IDs across active and done.
+    plan:
+      - Decide on a single source-of-truth for IDs and enforce uniqueness across queue and done.
+      - Update validation and tests to reject duplicates across files.
+      - Add a remediation path or error message guiding users to fix duplicates.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0025
+    status: todo
+    title: Add a long or formatted queue list output with tags and scope
+    tags:
+      - ux
+      - queue
+      - cli
+    scope:
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/queue.rs
+      - ralph queue list
+    evidence:
+      - crates/ralph/src/main.rs uses format_task_compact for queue list output, which only prints id, status, and title.
+    plan:
+      - Add a --format or --long flag to include tags, scope, and timestamps in list output.
+      - Keep the default compact output for script-friendliness.
+      - Add tests covering both output formats.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0026
+    status: todo
+    title: Validate worker prompt placeholders to avoid silent prompt regressions
+    tags:
+      - prompts
+      - safety
+      - ux
+    scope:
+      - crates/ralph/src/prompts.rs
+      - crates/ralph/assets/prompts/worker.md
+    evidence:
+      - crates/ralph/src/prompts.rs render_worker_prompt does not validate that {{INTERACTIVE_INSTRUCTIONS}} exists, unlike scan and task builder prompt renderers.
+    plan:
+      - Add a placeholder check in render_worker_prompt similar to render_scan_prompt.
+      - Add tests that fail when the placeholder is missing from a worker prompt override.
+      - Document the required placeholders in prompt override docs.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0027
+    status: todo
+    title: Deduplicate added-task detection between scan and task build
+    tags:
+      - refactor
+      - maintainability
+      - rust
+    scope:
+      - crates/ralph/src/scan_cmd.rs
+      - crates/ralph/src/task_cmd.rs
+    evidence:
+      - crates/ralph/src/scan_cmd.rs and crates/ralph/src/task_cmd.rs both define task_id_set and added_tasks with identical logic.
+    plan:
+      - Extract shared helpers into a common module and reuse them in scan_cmd and task_cmd.
+      - Keep behavior identical and add tests to protect output consistency.
+      - Remove duplicate implementations.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0028
+    status: todo
+    title: "Normalize empty queue YAML and handle tasks: null safely"
+    tags:
+      - queue
+      - robustness
+      - ux
+    scope:
+      - crates/ralph/src/queue.rs
+      - .ralph/queue.yaml
+    evidence:
+      - ".ralph/queue.yaml currently contains version: 1 and tasks: with no list value, which parses as null and can break serde deserialization."
+    plan:
+      - "Teach queue loading to treat tasks: null as an empty list or emit a clear migration error."
+      - "Normalize queue writing to always output tasks: [] when empty."
+      - Update the repo queue.yaml to the normalized empty-list form.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0029
+    status: todo
+    title: Add queue list scope filtering to improve navigation
+    tags:
+      - queue
+      - ux
+      - cli
+    scope:
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - QueueListArgs supports status and tag filters but there is no scope filter, and queue::filter_tasks only filters by status and tags.
+    plan:
+      - Add a repeatable --scope filter and implement matching in queue::filter_tasks.
+      - Keep filter behavior case-insensitive and whitespace-tolerant.
+      - Add tests for scope filtering with multiple scopes.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
+  - id: RQ-0030
+    status: todo
+    title: Mark tasks as doing at run start to reflect in-progress work
+    tags:
+      - queue
+      - ux
+      - workflow
+    scope:
+      - crates/ralph/src/run_cmd.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - crates/ralph/src/run_cmd.rs selects the first todo task but never sets its status to doing before invoking the runner.
+    plan:
+      - Update run_cmd::run_one to set the selected task to doing with updated_at before running the runner.
+      - Ensure failures revert the status cleanly and preserve queue integrity.
+      - Add tests to confirm status transitions for success and failure.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T03:41:10Z
