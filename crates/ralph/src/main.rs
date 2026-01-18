@@ -97,9 +97,23 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
         }
         QueueCommand::Show(args) => {
             let queue_file = queue::load_queue(&resolved.queue_path)?;
-            queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
-            let task = queue::find_task(&queue_file, &args.task_id)
+            let done = queue::load_queue_or_default(&resolved.done_path)?;
+            let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
+                None
+            } else {
+                Some(&done)
+            };
+
+            queue::validate_queue_set(
+                &queue_file,
+                done_ref,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )?;
+
+            let task = queue::find_task_across(&queue_file, done_ref, &args.task_id)
                 .ok_or_else(|| anyhow::anyhow!("task not found: {}", args.task_id.trim()))?;
+
             match args.format {
                 QueueShowFormat::Yaml => {
                     let rendered = serde_yaml::to_string(task)?;
@@ -111,13 +125,62 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
             }
         }
         QueueCommand::List(args) => {
+            if args.include_done && args.only_done {
+                bail!("--include-done and --only-done are mutually exclusive");
+            }
+
             let queue_file = queue::load_queue(&resolved.queue_path)?;
-            queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
+            let done = if args.include_done || args.only_done {
+                Some(queue::load_queue_or_default(&resolved.done_path)?)
+            } else {
+                None
+            };
+            let done_ref = done
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+
+            if let Some(done_ref) = done_ref {
+                queue::validate_queue_set(
+                    &queue_file,
+                    Some(done_ref),
+                    &resolved.id_prefix,
+                    resolved.id_width,
+                )?;
+            } else {
+                queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
+            }
+
             let statuses: Vec<TaskStatus> = args.status.into_iter().map(|s| s.into()).collect();
             let limit = resolve_list_limit(args.limit, args.all);
-            let tasks = queue::filter_tasks(&queue_file, &statuses, &args.tag, limit);
-            for task in tasks {
-                println!("{}", format_task_compact(task));
+
+            let mut tasks: Vec<&Task> = Vec::new();
+            if !args.only_done {
+                tasks.extend(queue::filter_tasks(
+                    &queue_file,
+                    &statuses,
+                    &args.tag,
+                    &args.scope,
+                    None,
+                ));
+            }
+            if args.include_done || args.only_done {
+                if let Some(done_ref) = done_ref {
+                    tasks.extend(queue::filter_tasks(
+                        done_ref,
+                        &statuses,
+                        &args.tag,
+                        &args.scope,
+                        None,
+                    ));
+                }
+            }
+
+            let max = limit.unwrap_or(usize::MAX);
+            for task in tasks.into_iter().take(max) {
+                match args.format {
+                    QueueListFormat::Compact => println!("{}", format_task_compact(task)),
+                    QueueListFormat::Long => println!("{}", format_task_long(task)),
+                }
             }
         }
         QueueCommand::Done => {
@@ -322,6 +385,33 @@ fn format_task_compact(task: &Task) -> String {
     format!("{}\t{}\t{}", task.id.trim(), task.status, task.title.trim())
 }
 
+fn format_task_long(task: &Task) -> String {
+    fn join_trimmed(values: &[String]) -> String {
+        values
+            .iter()
+            .map(|v| v.trim())
+            .filter(|v| !v.is_empty())
+            .collect::<Vec<&str>>()
+            .join(",")
+    }
+
+    let tags = join_trimmed(&task.tags);
+    let scope = join_trimmed(&task.scope);
+    let updated_at = task.updated_at.as_deref().unwrap_or("").trim();
+    let completed_at = task.completed_at.as_deref().unwrap_or("").trim();
+
+    format!(
+        "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+        task.id.trim(),
+        task.status,
+        task.title.trim(),
+        tags,
+        scope,
+        updated_at,
+        completed_at
+    )
+}
+
 fn resolve_list_limit(limit: u32, all: bool) -> Option<usize> {
     if all || limit == 0 {
         None
@@ -498,6 +588,13 @@ enum QueueShowFormat {
     Compact,
 }
 
+#[derive(Clone, Copy, Debug, ValueEnum)]
+#[clap(rename_all = "snake_case")]
+enum QueueListFormat {
+    Compact,
+    Long,
+}
+
 #[derive(Args)]
 struct QueueNextArgs {
     /// Include the task title after the ID.
@@ -525,6 +622,22 @@ struct QueueListArgs {
     /// Filter by tag (repeatable, case-insensitive).
     #[arg(long)]
     tag: Vec<String>,
+
+    /// Filter by scope token (repeatable, case-insensitive; substring match).
+    #[arg(long)]
+    scope: Vec<String>,
+
+    /// Include tasks from .ralph/done.yaml after active queue output.
+    #[arg(long)]
+    include_done: bool,
+
+    /// Only list tasks from .ralph/done.yaml (ignores active queue).
+    #[arg(long)]
+    only_done: bool,
+
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = QueueListFormat::Compact)]
+    format: QueueListFormat,
 
     /// Maximum tasks to show (0 = no limit).
     #[arg(long, default_value_t = 50)]
@@ -647,6 +760,32 @@ mod tests {
 
         let rendered = super::format_task_compact(&task);
         assert_eq!(rendered, "RQ-0001\tdoing\tFix bug");
+    }
+
+    #[test]
+    fn format_task_long_trims_and_renders_optional_timestamps() {
+        let task = Task {
+            id: " RQ-0001 ".to_string(),
+            status: TaskStatus::Done,
+            title: "  Ship it  ".to_string(),
+            tags: vec![" rust ".to_string(), "queue".to_string()],
+            scope: vec![" crates/ralph/src/main.rs ".to_string()],
+            evidence: vec!["e".to_string()],
+            plan: vec!["p".to_string()],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: None,
+            updated_at: None,
+            completed_at: Some(" 2026-01-18T06:30:00Z ".to_string()),
+            blocked_reason: None,
+        };
+
+        let rendered = super::format_task_long(&task);
+        assert_eq!(
+            rendered,
+            "RQ-0001\tdone\tShip it\trust,queue\tcrates/ralph/src/main.rs\t\t2026-01-18T06:30:00Z"
+        );
     }
 
     #[test]

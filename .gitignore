@@ -9,3 +9,4 @@ ralph_tui/ralph
 .ralph/logs/
 target/debug/
 target/release
+!target/release/ralph*

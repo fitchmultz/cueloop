@@ -260,6 +260,18 @@ pub fn find_task<'a>(queue: &'a QueueFile, task_id: &str) -> Option<&'a Task> {
     queue.tasks.iter().find(|task| task.id.trim() == needle)
 }
 
+pub fn find_task_across<'a>(
+    active: &'a QueueFile,
+    done: Option<&'a QueueFile>,
+    task_id: &str,
+) -> Option<&'a Task> {
+    find_task(active, task_id).or_else(|| done.and_then(|d| find_task(d, task_id)))
+}
+
+fn normalize_scope(value: &str) -> String {
+    value.trim().to_lowercase()
+}
+
 fn sanitize_yaml_text(prefix: &str, value: &str) -> String {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -366,6 +378,7 @@ pub fn filter_tasks<'a>(
     queue: &'a QueueFile,
     statuses: &[TaskStatus],
     tags: &[String],
+    scopes: &[String],
     limit: Option<usize>,
 ) -> Vec<&'a Task> {
     let status_filter: HashSet<TaskStatus> = statuses.iter().copied().collect();
@@ -374,9 +387,15 @@ pub fn filter_tasks<'a>(
         .map(|tag| normalize_tag(tag))
         .filter(|tag| !tag.is_empty())
         .collect();
+    let scope_filter: Vec<String> = scopes
+        .iter()
+        .map(|scope| normalize_scope(scope))
+        .filter(|scope| !scope.is_empty())
+        .collect();
 
     let has_status_filter = !status_filter.is_empty();
     let has_tag_filter = !tag_filter.is_empty();
+    let has_scope_filter = !scope_filter.is_empty();
 
     let mut out = Vec::new();
     for task in &queue.tasks {
@@ -388,6 +407,14 @@ pub fn filter_tasks<'a>(
                 .tags
                 .iter()
                 .any(|tag| tag_filter.contains(&normalize_tag(tag)))
+        {
+            continue;
+        }
+        if has_scope_filter
+            && !task.scope.iter().any(|scope| {
+                let hay = normalize_scope(scope);
+                scope_filter.iter().any(|needle| hay.contains(needle))
+            })
         {
             continue;
         }
@@ -802,6 +829,7 @@ tasks:
             &queue,
             &[TaskStatus::Todo, TaskStatus::Done],
             &["rust".to_string()],
+            &[],
             None,
         );
         let ids: Vec<&str> = filtered.iter().map(|t| t.id.as_str()).collect();
@@ -815,8 +843,48 @@ tasks:
             tasks: vec![task("RQ-0001"), task("RQ-0002"), task("RQ-0003")],
         };
 
-        let filtered = filter_tasks(&queue, &[], &[], Some(2));
+        let filtered = filter_tasks(&queue, &[], &[], &[], Some(2));
         let ids: Vec<&str> = filtered.iter().map(|t| t.id.as_str()).collect();
         assert_eq!(ids, vec!["RQ-0001", "RQ-0002"]);
+    }
+
+    #[test]
+    fn filter_tasks_by_scope_is_case_insensitive_substring() {
+        let mut a = task("RQ-0001");
+        a.scope = vec![
+            "crates/ralph/src/main.rs".to_string(),
+            "make ci".to_string(),
+        ];
+        let mut b = task("RQ-0002");
+        b.scope = vec!["docs/README.md".to_string()];
+
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![a, b],
+        };
+
+        let filtered = filter_tasks(&queue, &[], &[], &["MAIN.RS".to_string()], None);
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].id, "RQ-0001");
+    }
+
+    #[test]
+    fn find_task_across_prefers_active_then_done() {
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0001")],
+        };
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0002")],
+        };
+
+        let found_active = find_task_across(&active, Some(&done), "RQ-0001").expect("active");
+        assert_eq!(found_active.id, "RQ-0001");
+
+        let found_done = find_task_across(&active, Some(&done), "RQ-0002").expect("done");
+        assert_eq!(found_done.id, "RQ-0002");
+
+        assert!(find_task_across(&active, Some(&done), "RQ-9999").is_none());
     }
 }

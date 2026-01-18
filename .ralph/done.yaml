@@ -1,7 +1,7 @@
 version: 1
 tasks:
   - id: RQ-0005
-    status: todo
+    status: done
     title: Make Rust CLI defaults come from `.ralph/config.yaml` (runner/model/effort) instead of hardcoded flags
     tags:
       - rust
@@ -24,9 +24,14 @@ tasks:
       - Ensure `runner::validate_model_for_runner` still runs after resolution and produces a clear error on invalid combinations.
       - Add tests covering default resolution with and without `.ralph/config.yaml`.
       - "Update `--help` text to document precedence: CLI flags override repo config, which overrides global config, which overrides defaults."
+    notes:
+      - CLI runner/model/effort flags now behave as overrides; defaults come from resolved config layers.
+      - Added tests covering default resolution and invalid runner/model combinations.
     request: scan finding
     created_at: 2026-01-17T17:26:38Z
-    updated_at: 2026-01-17T17:26:38Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
   - id: RQ-0002
     status: done
     title: Align root docs for Rust rewrite vs Go legacy
@@ -55,6 +60,7 @@ tasks:
     created_at: 2026-01-17T17:26:38Z
     updated_at: 2026-01-17T20:06:56Z
     completed_at: 2026-01-17T20:06:56Z
+
   - id: RQ-0014
     status: done
     title: Extend root `Makefile` so `make ci` gates the Rust rewrite (cargo fmt/clippy/test/build)
@@ -82,6 +88,7 @@ tasks:
     created_at: 2026-01-17T17:26:38Z
     updated_at: 2026-01-17T20:06:56Z
     completed_at: 2026-01-17T20:06:56Z
+
   - id: RQ-0003
     status: done
     title: Add Rust bootstrap command to create `.ralph/queue.yaml` and `.ralph/config.yaml` when missing
@@ -113,6 +120,7 @@ tasks:
     created_at: 2026-01-17T17:26:38Z
     updated_at: 2026-01-17T21:12:48Z
     completed_at: 2026-01-17T21:12:48Z
+
   - id: RQ-0015
     status: done
     title: Redact secrets before persisting runner output into `.ralph/queue.yaml` notes
@@ -141,6 +149,7 @@ tasks:
     created_at: 2026-01-17T17:26:38Z
     updated_at: 2026-01-17T22:34:35Z
     completed_at: 2026-01-17T22:34:35Z
+
   - id: RQ-0008
     status: done
     title: Add queue inspection (show, next, list) with filtering and compact output
@@ -173,3 +182,247 @@ tasks:
     created_at: 2026-01-17T17:26:38Z
     updated_at: 2026-01-17T22:45:36Z
     completed_at: 2026-01-17T22:45:36Z
+
+  - id: RQ-0021
+    status: done
+    title: Redact PRIVATEKEY env values consistently with other secret patterns
+    tags:
+      - safety
+      - redaction
+      - security
+    scope:
+      - crates/ralph/src/redaction.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - crates/ralph/src/redaction.rs looks_sensitive_env_key does not flag PRIVATEKEY as sensitive, but looks_sensitive_label treats PRIVATEKEY as sensitive.
+      - redact_sensitive_env_values relies on looks_sensitive_env_key, so PRIVATEKEY env values are not scrubbed from notes or output.
+    plan:
+      - Update looks_sensitive_env_key to treat PRIVATEKEY as sensitive (or normalize rules so label and env behavior match).
+      - Adjust tests to assert PRIVATEKEY redaction for both labels and env values.
+      - Verify redaction still avoids path-like keys such as PATH.
+    notes:
+      - looks_sensitive_env_key now treats PRIVATEKEY as sensitive.
+      - Added/updated tests to confirm PRIVATEKEY env values are scrubbed during redaction.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0035
+    status: done
+    title: Emit actionable errors when queue or done files are missing
+    tags:
+      - ux
+      - queue
+      - workflow
+    scope:
+      - crates/ralph/src/queue.rs
+      - crates/ralph/src/main.rs
+    evidence:
+      - queue::load_queue returns a raw read_to_string error when .ralph/queue.yaml is missing, and CLI commands do not suggest running ralph init or specify expected paths.
+    plan:
+      - Detect missing queue/done files and return a clear error that points to ralph init and config paths.
+      - Keep the error context for other IO failures unchanged.
+      - Add tests for missing file messaging in at least one queue command path.
+    notes:
+      - queue::load_queue now emits a NotFound error that points to `ralph init` and `ralph config paths`.
+    request: scan finding
+    created_at: 2026-01-18T04:01:58Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0036
+    status: done
+    title: Only report added tasks when scan/task builder succeed
+    tags:
+      - ux
+      - scan
+      - task-builder
+    scope:
+      - crates/ralph/src/scan_cmd.rs
+      - crates/ralph/src/task_cmd.rs
+    evidence:
+      - scan_cmd::run_scan and task_cmd::build_task print added tasks before checking output.success, then revert and error on failure, which produces misleading success output.
+    plan:
+      - Move the added-tasks reporting behind the output.success check.
+      - On failure, emit a message that changes were reverted (if any).
+      - Add tests covering both success and failure messaging paths.
+    notes:
+      - scan/task builder now report added tasks only when the runner succeeds.
+      - Failure paths print bounded, redacted output tails before reverting.
+    request: scan finding
+    created_at: 2026-01-18T04:01:58Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0022
+    status: done
+    title: Emit redacted output tails on scan and task builder failures
+    tags:
+      - ux
+      - scan
+      - task-builder
+    scope:
+      - crates/ralph/src/scan_cmd.rs
+      - crates/ralph/src/task_cmd.rs
+      - crates/ralph/src/redaction.rs
+    evidence:
+      - crates/ralph/src/scan_cmd.rs and crates/ralph/src/task_cmd.rs only report exit reasons on failure; they do not print redacted output tails like run_cmd does.
+    plan:
+      - Reuse run_cmd tail_lines and redaction logic to show a short, redacted output tail when scan or task build fails.
+      - Keep output length bounded and consistent with run_cmd defaults.
+      - Add tests to confirm output is shown and secrets are redacted.
+    notes:
+      - scan/task builder failures now print bounded, redacted output tails using shared outpututil settings.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0044
+    status: done
+    title: Validate prompt rendering leaves no unresolved placeholders
+    tags:
+      - prompts
+      - safety
+      - ux
+    scope:
+      - crates/ralph/src/prompts.rs
+      - crates/ralph/assets/prompts
+    evidence:
+      - render_worker_prompt, render_task_builder_prompt, and render_scan_prompt do not check for leftover {{PLACEHOLDER}} tokens after rendering, so prompt overrides can silently ship with missing substitutions.
+    plan:
+      - Add a shared validation that scans rendered prompts for unreplaced placeholders.
+      - Fail fast with a clear error listing the missing tokens.
+      - Add tests to assert the validation catches stray placeholders.
+    notes:
+      - Prompt rendering now fails fast if any {{PLACEHOLDER}} tokens remain after substitution.
+      - Added tests validating placeholder detection and error messaging.
+    request: scan finding
+    created_at: 2026-01-18T04:01:58Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0023
+    status: done
+    title: Wire project_type into prompt rendering and workflow behavior
+    tags:
+      - config
+      - prompts
+      - ux
+    scope:
+      - crates/ralph/src/config.rs
+      - crates/ralph/src/prompts.rs
+      - README.md
+    evidence:
+      - README.md states project_type tunes prompts and workflows, but rg -n project_type shows it is only defined and loaded, not used anywhere in runtime logic.
+    plan:
+      - Decide how project_type should influence prompts or behavior (e.g., select different defaults or insert guidance blocks).
+      - Update prompt rendering to incorporate project_type and add tests for both code and docs modes.
+      - Document the behavior clearly in README.md and .ralph/README.md.
+    notes:
+      - project_type is now injected into prompts as a guidance block (or appended if placeholder is missing).
+      - Added tests for prompt rendering behavior and placeholder validation.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0029
+    status: done
+    title: Add queue list scope filtering to improve navigation
+    tags:
+      - queue
+      - ux
+      - cli
+    scope:
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/queue.rs
+    evidence:
+      - QueueListArgs supports status and tag filters but there is no scope filter, and queue::filter_tasks only filters by status and tags.
+    plan:
+      - Add a repeatable --scope filter and implement matching in queue::filter_tasks.
+      - Keep filter behavior case-insensitive and whitespace-tolerant.
+      - Add tests for scope filtering with multiple scopes.
+    notes:
+      - Added `ralph queue list --scope <token>` (repeatable) using case-insensitive substring matching against task scope entries.
+      - Updated queue filtering logic and added tests for scope matching.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0039
+    status: done
+    title: Allow queue show to search the done archive
+    tags:
+      - queue
+      - ux
+      - cli
+    scope:
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/queue.rs
+      - ralph queue show
+    evidence:
+      - handle_queue QueueCommand::Show only searches the active queue file and cannot display tasks that have been archived in .ralph/done.yaml.
+    plan:
+      - Add a flag (or default fallback) to search done.yaml when a task is not found in the active queue.
+      - Keep output format consistent with existing show formats.
+      - Add tests covering active-only, done-only, and not-found cases.
+    notes:
+      - "`ralph queue show` now searches the done archive when the task is not present in the active queue."
+      - Added a helper in queue.rs with tests for active-first fallback behavior.
+    request: scan finding
+    created_at: 2026-01-18T04:01:58Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0040
+    status: done
+    title: Add queue list support for the done archive
+    tags:
+      - queue
+      - ux
+      - cli
+    scope:
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/queue.rs
+      - ralph queue list
+    evidence:
+      - QueueCommand::List loads only the active queue file and ignores .ralph/done.yaml, so archived tasks are not listable via CLI.
+    plan:
+      - Add a flag to include done.yaml in list output or a separate mode for listing archived tasks.
+      - Ensure filters (status/tag/scope) apply consistently across both sources.
+      - Add tests for list output with and without the archive.
+    notes:
+      - Added `--include-done` (append archive after active queue) and `--only-done` (archive-only) to `ralph queue list`.
+      - Filters apply consistently across active and done sources.
+    request: scan finding
+    created_at: 2026-01-18T04:01:58Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
+
+  - id: RQ-0025
+    status: done
+    title: Add a long or formatted queue list output with tags and scope
+    tags:
+      - ux
+      - queue
+      - cli
+    scope:
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/queue.rs
+      - ralph queue list
+    evidence:
+      - crates/ralph/src/main.rs uses format_task_compact for queue list output, which only prints id, status, and title.
+    plan:
+      - Add a --format or --long flag to include tags, scope, and timestamps in list output.
+      - Keep the default compact output for script-friendliness.
+      - Add tests covering both output formats.
+    notes:
+      - Added `--format long` to `ralph queue list` with tab-separated tags/scope/timestamps while keeping compact as default.
+      - Added unit test for long formatter trimming and optional timestamp rendering.
+    request: scan finding
+    created_at: 2026-01-18T03:41:10Z
+    updated_at: 2026-01-18T06:30:00Z
+    completed_at: 2026-01-18T06:30:00Z
