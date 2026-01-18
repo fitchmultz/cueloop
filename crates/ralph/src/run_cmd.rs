@@ -5,6 +5,13 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+#[derive(Debug, Clone, Default)]
+pub struct AgentOverrides {
+    pub runner: Option<Runner>,
+    pub model: Option<Model>,
+    pub reasoning_effort: Option<ReasoningEffort>,
+}
+
 pub enum RunOutcome {
     NoTodo,
     Ran { task_id: String },
@@ -13,6 +20,7 @@ pub enum RunOutcome {
 pub struct RunLoopOptions {
     /// 0 means "no limit"
     pub max_tasks: u32,
+    pub agent_overrides: AgentOverrides,
 }
 
 pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()> {
@@ -23,7 +31,7 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
             return Ok(());
         }
 
-        match run_one(resolved)? {
+        match run_one(resolved, &opts.agent_overrides)? {
             RunOutcome::NoTodo => return Ok(()),
             RunOutcome::Ran { task_id } => {
                 completed += 1;
@@ -33,7 +41,10 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
     }
 }
 
-pub fn run_one(resolved: &config::Resolved) -> Result<RunOutcome> {
+pub fn run_one(
+    resolved: &config::Resolved,
+    agent_overrides: &AgentOverrides,
+) -> Result<RunOutcome> {
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
@@ -70,23 +81,8 @@ pub fn run_one(resolved: &config::Resolved) -> Result<RunOutcome> {
     // This prevents accidental destruction of unrelated user work on failure recovery.
     gitutil::require_clean_repo(&resolved.repo_root)?;
 
-    let task_agent = task.agent.as_ref();
-
-    let runner_kind: Runner = task_agent
-        .and_then(|agent| agent.runner)
-        .or(resolved.config.agent.runner)
-        .unwrap_or_default();
-
-    let model: Model = task_agent
-        .and_then(|agent| agent.model)
-        .or(resolved.config.agent.model)
-        .unwrap_or_default();
-
-    let reasoning_effort: Option<ReasoningEffort> = task_agent
-        .and_then(|agent| agent.reasoning_effort)
-        .or(resolved.config.agent.reasoning_effort);
-
-    runner::validate_model_for_runner(runner_kind, model)?;
+    let (runner_kind, model, reasoning_effort) =
+        resolve_run_agent_settings(resolved, &task, agent_overrides)?;
 
     let codex_bin = resolved
         .config
@@ -152,6 +148,40 @@ pub fn run_one(resolved: &config::Resolved) -> Result<RunOutcome> {
 
     post_run_supervise(resolved, &task_id)?;
     Ok(RunOutcome::Ran { task_id })
+}
+
+fn resolve_run_agent_settings(
+    resolved: &config::Resolved,
+    task: &crate::contracts::Task,
+    overrides: &AgentOverrides,
+) -> Result<(Runner, Model, Option<ReasoningEffort>)> {
+    let task_agent = task.agent.as_ref();
+
+    let runner_kind: Runner = overrides
+        .runner
+        .or(task_agent.and_then(|agent| agent.runner))
+        .or(resolved.config.agent.runner)
+        .unwrap_or_default();
+
+    let model: Model = overrides
+        .model
+        .or(task_agent.and_then(|agent| agent.model))
+        .or(resolved.config.agent.model)
+        .unwrap_or_default();
+
+    let effort_candidate: Option<ReasoningEffort> = overrides
+        .reasoning_effort
+        .or(task_agent.and_then(|agent| agent.reasoning_effort))
+        .or(resolved.config.agent.reasoning_effort);
+
+    let reasoning_effort = if runner_kind == Runner::Codex {
+        Some(effort_candidate.unwrap_or_default())
+    } else {
+        None
+    };
+
+    runner::validate_model_for_runner(runner_kind, model)?;
+    Ok((runner_kind, model, reasoning_effort))
 }
 
 fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> {
@@ -319,4 +349,157 @@ fn format_task_commit_message(task_id: &str, title: &str) -> String {
     raw = raw.replace(['\n', '\r', '\t'], " ");
     let squashed = raw.split_whitespace().collect::<Vec<&str>>().join(" ");
     outpututil::truncate_chars(&squashed, 100)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contracts::{AgentConfig, Config, Model, QueueConfig, Task, TaskAgent, TaskStatus};
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn resolved_with_agent_defaults(
+        runner: Option<Runner>,
+        model: Option<Model>,
+        effort: Option<ReasoningEffort>,
+    ) -> config::Resolved {
+        let dir = TempDir::new().expect("temp dir");
+        let repo_root = dir.path().to_path_buf();
+
+        let cfg = Config {
+            agent: AgentConfig {
+                runner,
+                model,
+                reasoning_effort: effort,
+                codex_bin: Some("codex".to_string()),
+                opencode_bin: Some("opencode".to_string()),
+            },
+            queue: QueueConfig {
+                file: Some(PathBuf::from(".ralph/queue.yaml")),
+                done_file: Some(PathBuf::from(".ralph/done.yaml")),
+                id_prefix: Some("RQ".to_string()),
+                id_width: Some(4),
+            },
+            ..Config::default()
+        };
+
+        config::Resolved {
+            config: cfg,
+            repo_root: repo_root.clone(),
+            queue_path: repo_root.join(".ralph/queue.yaml"),
+            done_path: repo_root.join(".ralph/done.yaml"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: Some(repo_root.join(".ralph/config.yaml")),
+        }
+    }
+
+    fn base_task() -> Task {
+        Task {
+            id: "RQ-0001".to_string(),
+            status: TaskStatus::Todo,
+            title: "Test task".to_string(),
+            tags: vec!["rust".to_string()],
+            scope: vec!["crates/ralph".to_string()],
+            evidence: vec!["observed".to_string()],
+            plan: vec!["do thing".to_string()],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: None,
+            updated_at: None,
+            completed_at: None,
+            blocked_reason: None,
+        }
+    }
+
+    #[test]
+    fn resolve_run_agent_settings_task_agent_overrides_config() -> Result<()> {
+        let resolved = resolved_with_agent_defaults(
+            Some(Runner::Codex),
+            Some(Model::Gpt52Codex),
+            Some(ReasoningEffort::Medium),
+        );
+
+        let mut task = base_task();
+        task.agent = Some(TaskAgent {
+            runner: Some(Runner::Opencode),
+            model: Some(Model::Gpt52),
+            reasoning_effort: Some(ReasoningEffort::High),
+        });
+
+        let overrides = AgentOverrides::default();
+        let (runner, model, effort) = resolve_run_agent_settings(&resolved, &task, &overrides)?;
+        assert_eq!(runner, Runner::Opencode);
+        assert_eq!(model, Model::Gpt52);
+        assert_eq!(effort, None);
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_run_agent_settings_cli_overrides_task_agent_and_config() -> Result<()> {
+        let resolved = resolved_with_agent_defaults(
+            Some(Runner::Opencode),
+            Some(Model::Gpt52),
+            Some(ReasoningEffort::Low),
+        );
+
+        let mut task = base_task();
+        task.agent = Some(TaskAgent {
+            runner: Some(Runner::Opencode),
+            model: Some(Model::Gpt52),
+            reasoning_effort: Some(ReasoningEffort::Low),
+        });
+
+        let overrides = AgentOverrides {
+            runner: Some(Runner::Codex),
+            model: Some(Model::Gpt52Codex),
+            reasoning_effort: Some(ReasoningEffort::High),
+        };
+
+        let (runner, model, effort) = resolve_run_agent_settings(&resolved, &task, &overrides)?;
+        assert_eq!(runner, Runner::Codex);
+        assert_eq!(model, Model::Gpt52Codex);
+        assert_eq!(effort, Some(ReasoningEffort::High));
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_run_agent_settings_effort_defaults_to_medium_for_codex_when_unspecified(
+    ) -> Result<()> {
+        let resolved =
+            resolved_with_agent_defaults(Some(Runner::Codex), Some(Model::Gpt52Codex), None);
+
+        let task = base_task();
+        let overrides = AgentOverrides::default();
+
+        let (runner, model, effort) = resolve_run_agent_settings(&resolved, &task, &overrides)?;
+        assert_eq!(runner, Runner::Codex);
+        assert_eq!(model, Model::Gpt52Codex);
+        assert_eq!(effort, Some(ReasoningEffort::Medium));
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_run_agent_settings_effort_is_ignored_for_opencode() -> Result<()> {
+        let resolved = resolved_with_agent_defaults(
+            Some(Runner::Opencode),
+            Some(Model::Gpt52),
+            Some(ReasoningEffort::Low),
+        );
+
+        let task = base_task();
+        let overrides = AgentOverrides {
+            runner: Some(Runner::Opencode),
+            model: Some(Model::Gpt52),
+            reasoning_effort: Some(ReasoningEffort::High),
+        };
+
+        let (runner, model, effort) = resolve_run_agent_settings(&resolved, &task, &overrides)?;
+        assert_eq!(runner, Runner::Opencode);
+        assert_eq!(model, Model::Gpt52);
+        assert_eq!(effort, None);
+        Ok(())
+    }
 }

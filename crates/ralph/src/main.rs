@@ -278,16 +278,21 @@ fn handle_init(args: InitArgs) -> Result<()> {
 fn handle_run(cmd: RunCommand) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     match cmd {
-        RunCommand::One => {
-            run_cmd::run_one(&resolved)?;
+        RunCommand::One(args) => {
+            let overrides = resolve_run_agent_overrides(&args.agent)?;
+            let _ = run_cmd::run_one(&resolved, &overrides)?;
             Ok(())
         }
-        RunCommand::Loop(args) => run_cmd::run_loop(
-            &resolved,
-            run_cmd::RunLoopOptions {
-                max_tasks: args.max_tasks,
-            },
-        ),
+        RunCommand::Loop(args) => {
+            let overrides = resolve_run_agent_overrides(&args.agent)?;
+            run_cmd::run_loop(
+                &resolved,
+                run_cmd::RunLoopOptions {
+                    max_tasks: args.max_tasks,
+                    agent_overrides: overrides,
+                },
+            )
+        }
     }
 }
 
@@ -345,6 +350,29 @@ fn parse_runner(value: &str) -> Result<RunnerKind> {
         "opencode" => Ok(RunnerKind::Opencode),
         _ => bail!("--runner must be codex or opencode (got: {})", value.trim()),
     }
+}
+
+fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<run_cmd::AgentOverrides> {
+    let runner = match args.runner.as_deref() {
+        Some(value) => Some(parse_runner(value)?),
+        None => None,
+    };
+
+    let model = match args.model.as_deref() {
+        Some(value) => Some(runner::parse_model(value)?),
+        None => None,
+    };
+
+    let reasoning_effort = match args.effort.as_deref() {
+        Some(value) => Some(runner::parse_reasoning_effort(value)?),
+        None => None,
+    };
+
+    Ok(run_cmd::AgentOverrides {
+        runner,
+        model,
+        reasoning_effort,
+    })
 }
 
 fn resolve_agent_args(
@@ -424,7 +452,7 @@ fn resolve_list_limit(limit: u32, all: bool) -> Option<usize> {
 #[command(name = "ralph")]
 #[command(about = "Ralph (Rust rewrite)")]
 #[command(
-    after_long_help = "Examples:\n  ralph queue list\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph run one\n  ralph task build \"Fix the flaky test\""
+    after_long_help = "Runner selection:\n  - Default runner/model come from config (project .ralph/config.yaml > global ~/.config/ralph/config.yaml > built-in).\n  - `task build` and `scan` accept --runner/--model/--effort as one-off overrides.\n  - `run` uses task.agent overrides when present; otherwise it uses config agent defaults.\n\nConfig example (.ralph/config.yaml):\n  version: 1\n  agent:\n    runner: opencode\n    model: gpt-5.2\n    opencode_bin: opencode\n\nNotes:\n  - Allowed runners: codex, opencode\n  - Allowed models: gpt-5.2-codex, gpt-5.2, glm-4.7 (glm-4.7 is NOT supported for codex)\n\nExamples:\n  ralph queue list\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI gaps\"\n  ralph task build --runner codex --model gpt-5.2-codex --effort high \"Fix the flaky test\"\n  ralph run one"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -457,6 +485,10 @@ struct ConfigArgs {
 }
 
 #[derive(Args)]
+#[command(
+    about = "Run the Ralph supervisor (executes queued tasks via codex/opencode)",
+    after_long_help = "Runner selection:\n  - `ralph run` selects runner/model/effort with this precedence:\n      1) CLI overrides (flags on `run one` / `run loop`)\n      2) the task's `agent` override (if present in .ralph/queue.yaml)\n      3) otherwise the resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\nNotes:\n  - Allowed runners: codex, opencode\n  - Allowed models: gpt-5.2-codex, gpt-5.2, glm-4.7 (glm-4.7 is NOT supported for codex)\n  - `--effort` is codex-only and is ignored for opencode.\n\nTo change defaults for this repo, edit .ralph/config.yaml:\n  version: 1\n  agent:\n    runner: opencode\n    model: gpt-5.2\n\nExamples:\n  ralph run one\n  ralph run one --runner opencode --model gpt-5.2\n  ralph run one --runner codex --model gpt-5.2-codex --effort high\n  ralph run loop --max-tasks 0\n  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2"
+)]
 struct RunArgs {
     #[command(subcommand)]
     command: RunCommand,
@@ -481,6 +513,9 @@ enum TaskCommand {
 }
 
 #[derive(Args)]
+#[command(
+    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nExamples:\n  ralph task build \"Add integration tests for run one\"\n  ralph task build --runner opencode --model gpt-5.2 \"Add docs for OpenCode setup\"\n  ralph task build --runner codex --model gpt-5.2-codex --effort high \"Fix queue validation\"\n  echo \"Triage flaky CI\" | ralph task build --runner codex --model gpt-5.2-codex --effort medium"
+)]
 struct TaskBuildArgs {
     /// Freeform request text; if omitted, reads from stdin.
     #[arg(value_name = "REQUEST")]
@@ -509,6 +544,9 @@ struct TaskBuildArgs {
 }
 
 #[derive(Args)]
+#[command(
+    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nExamples:\n  ralph scan --focus \"production readiness gaps\"\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI and safety gaps\"\n  ralph scan --runner codex --model gpt-5.2-codex --effort high --focus \"queue correctness\""
+)]
 struct ScanArgs {
     /// Optional focus prompt to guide the scan.
     #[arg(long, default_value = "")]
@@ -561,8 +599,38 @@ enum ConfigCommand {
 
 #[derive(Subcommand)]
 enum RunCommand {
-    One,
+    #[command(
+        about = "Run exactly one task (the first todo in .ralph/queue.yaml)",
+        after_long_help = "Runner selection (precedence):\n  1) CLI overrides (--runner/--model/--effort)\n  2) task.agent in .ralph/queue.yaml (if present)\n  3) config defaults (.ralph/config.yaml then ~/.config/ralph/config.yaml)\n\nExamples:\n  ralph run one\n  ralph run one --runner opencode --model gpt-5.2\n  ralph run one --runner codex --model gpt-5.2-codex --effort high\n  ralph queue next --with-title"
+    )]
+    One(RunOneArgs),
+    #[command(
+        about = "Run tasks repeatedly until no todo remain (or --max-tasks is reached)",
+        after_long_help = "Examples:\n  ralph run loop --max-tasks 0\n  ralph run loop --max-tasks 3\n  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2"
+    )]
     Loop(RunLoopArgs),
+}
+
+#[derive(Args, Clone, Debug, Default)]
+struct RunAgentArgs {
+    /// Runner override for this invocation (codex or opencode). Overrides task.agent and config.
+    #[arg(long)]
+    runner: Option<String>,
+
+    /// Model override for this invocation. Overrides task.agent and config.
+    /// Allowed: gpt-5.2-codex, gpt-5.2, glm-4.7 (glm-4.7 is NOT supported for codex).
+    #[arg(long)]
+    model: Option<String>,
+
+    /// Codex reasoning effort override (minimal, low, medium, high). Ignored for opencode.
+    #[arg(long)]
+    effort: Option<String>,
+}
+
+#[derive(Args)]
+struct RunOneArgs {
+    #[command(flatten)]
+    agent: RunAgentArgs,
 }
 
 #[derive(Args)]
@@ -570,6 +638,9 @@ struct RunLoopArgs {
     /// Maximum tasks to run before stopping (0 = no limit).
     #[arg(long, default_value_t = 0)]
     max_tasks: u32,
+
+    #[command(flatten)]
+    agent: RunAgentArgs,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
