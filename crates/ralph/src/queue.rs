@@ -11,6 +11,11 @@ pub struct ArchiveReport {
     pub skipped_ids: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct RepairReport {
+    pub repaired: bool,
+}
+
 pub fn acquire_queue_lock(repo_root: &Path, label: &str) -> Result<fsutil::DirLock> {
     let lock_dir = fsutil::queue_lock_dir(repo_root);
     fsutil::acquire_dir_lock(&lock_dir, label)
@@ -53,6 +58,23 @@ pub fn load_queue_with_repair(path: &Path) -> Result<(QueueFile, bool)> {
             fsutil::write_atomic(path, repaired.as_bytes())
                 .with_context(|| format!("write repaired queue YAML {}", path.display()))?;
             Ok((queue, true))
+        }
+    }
+}
+
+pub fn repair_queue(path: &Path) -> Result<RepairReport> {
+    let raw = std::fs::read_to_string(path)
+        .with_context(|| format!("read queue file {}", path.display()))?;
+    match serde_yaml::from_str::<QueueFile>(&raw) {
+        Ok(_) => Ok(RepairReport { repaired: false }),
+        Err(_) => {
+            let repaired = repair_yaml_scalars(&raw)
+                .ok_or_else(|| anyhow!("unable to repair queue YAML {}", path.display()))?;
+            let _queue: QueueFile = serde_yaml::from_str(&repaired)
+                .with_context(|| format!("parse repaired queue YAML {}", path.display()))?;
+            fsutil::write_atomic(path, repaired.as_bytes())
+                .with_context(|| format!("write repaired queue YAML {}", path.display()))?;
+            Ok(RepairReport { repaired: true })
         }
     }
 }
@@ -687,6 +709,73 @@ tasks:
             .contains("title: 'Normalize empty queue YAML and handle tasks: null safely'"));
         assert!(repaired_raw.contains("- 'queues can break: null tasks'"));
         assert!(repaired_raw.contains("- 'Fix parsing: add a safe default'"));
+        Ok(())
+    }
+
+    #[test]
+    fn repair_queue_repairs_invalid_yaml() -> Result<()> {
+        let dir = TempDir::new()?;
+        let queue_path = dir.path().join("queue.yaml");
+
+        let raw = r#"version: 1
+tasks:
+  - id: RQ-0001
+    status: todo
+    title: Fix colon: in this title
+    tags:
+      - test
+    scope:
+      - file:rs
+    evidence:
+      - contains colon: in evidence
+    plan:
+      - Repair YAML scalars with colons
+      - Test queue repair behavior
+"#;
+        std::fs::write(&queue_path, raw)?;
+
+        let report = repair_queue(&queue_path)?;
+        assert!(report.repaired, "repair should have occurred");
+
+        let queue = load_queue(&queue_path)?;
+        assert_eq!(queue.tasks.len(), 1);
+        assert_eq!(queue.tasks[0].id, "RQ-0001");
+        assert_eq!(queue.tasks[0].title, "Fix colon: in this title");
+
+        let file_content = std::fs::read_to_string(&queue_path)?;
+        assert!(
+            file_content.contains("title: 'Fix colon: in this title'")
+                || file_content.contains("title: \"Fix colon: in this title\""),
+            "file on disk should have quoted colon scalar"
+        );
+        assert!(
+            file_content.contains("- 'contains colon: in evidence'")
+                || file_content.contains("- \"contains colon: in evidence\""),
+            "evidence list item with colon should be quoted"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn repair_queue_returns_false_for_valid_yaml() -> Result<()> {
+        let dir = TempDir::new()?;
+        let queue_path = dir.path().join("queue.yaml");
+
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0001")],
+        };
+        save_queue(&queue_path, &queue)?;
+
+        let report = repair_queue(&queue_path)?;
+        assert!(
+            !report.repaired,
+            "repair should not have occurred for valid YAML"
+        );
+
+        let queue_after = load_queue(&queue_path)?;
+        assert_eq!(queue_after.tasks.len(), 1);
+        assert_eq!(queue_after.tasks[0].id, "RQ-0001");
         Ok(())
     }
 

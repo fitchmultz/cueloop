@@ -203,6 +203,15 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
                 );
             }
         }
+        QueueCommand::Repair => {
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue repair")?;
+            let report = queue::repair_queue(&resolved.queue_path)?;
+            if report.repaired {
+                println!(">> [RALPH] Repaired queue YAML.");
+            } else {
+                println!(">> [RALPH] Queue YAML is already valid (no repairs needed).");
+            }
+        }
         QueueCommand::SetStatus {
             task_id,
             status,
@@ -610,6 +619,8 @@ enum QueueCommand {
     List(QueueListArgs),
     /// Move completed tasks from queue.yaml to done.yaml.
     Done,
+    /// Repair invalid YAML scalars in the queue file.
+    Repair,
     /// Update a task status in the active queue.
     SetStatus {
         task_id: String,
