@@ -20,46 +20,6 @@ tasks:
     request: scan finding
     created_at: 2026-01-18T03:41:10Z
     updated_at: 2026-01-18T03:41:10Z
-  - id: RQ-0017
-    status: todo
-    title: Remove install from make ci to avoid writing binaries into the repo
-    tags:
-      - ci
-      - workflow
-      - safety
-    scope:
-      - Makefile
-      - make ci
-      - crates/ralph/src/run_cmd.rs
-    evidence:
-      - Makefile ci depends on install, and install falls back to writing target/release/ralph into .local/bin when the default bin dir is not writable.
-      - crates/ralph/src/run_cmd.rs runs make ci before committing; the current Makefile can create untracked binaries and pollute commits.
-    plan:
-      - Remove install from the make ci dependency chain and keep install as an explicit user action.
-      - If install must stay in ci, redirect output to a non-repo temp dir or add a gitignore policy that prevents repo pollution.
-      - Update README or .ralph/README.md to clarify the CI gate and install behavior.
-    request: scan finding
-    created_at: 2026-01-18T03:41:10Z
-    updated_at: 2026-01-18T03:41:10Z
-  - id: RQ-0018
-    status: todo
-    title: Skip push when no upstream is configured instead of failing run
-    tags:
-      - git
-      - workflow
-      - reliability
-    scope:
-      - crates/ralph/src/run_cmd.rs
-      - crates/ralph/src/gitutil.rs
-    evidence:
-      - crates/ralph/src/gitutil.rs upstream_ref uses git rev-parse @{u} and errors if no upstream is set, while run_cmd calls is_ahead_of_upstream unconditionally after commit.
-    plan:
-      - Detect missing upstream and treat it as a non-fatal condition with a clear warning.
-      - Ensure run_cmd still completes and leaves the repo clean when no upstream is configured.
-      - Add tests covering no-upstream scenarios for is_ahead_of_upstream or the run_cmd flow.
-    request: scan finding
-    created_at: 2026-01-18T03:41:10Z
-    updated_at: 2026-01-18T03:41:10Z
   - id: RQ-0019
     status: todo
     title: Validate that done.yaml only contains done tasks and fix existing mismatch
@@ -97,7 +57,7 @@ tasks:
       - .ralph/README.md says status blocked is not supported, yet TaskStatus includes Blocked and QueueCommand::SetStatus allows blocked.
       - crates/ralph/src/run_cmd.rs bails when a task is blocked, which conflicts with the CLI allowing the status.
     plan:
-      - Decide on the single supported behavior for blocked tasks (disallow vs fully support).
+      - Decide on the single supported behavior for blocked tasks (disallow it).
       - Update task status enum, CLI parsing, and validation to enforce the chosen policy.
       - Align documentation and add tests covering blocked handling.
     request: scan finding
@@ -275,25 +235,6 @@ tasks:
       - Add a repeatable --scope filter and implement matching in queue::filter_tasks.
       - Keep filter behavior case-insensitive and whitespace-tolerant.
       - Add tests for scope filtering with multiple scopes.
-    request: scan finding
-    created_at: 2026-01-18T03:41:10Z
-    updated_at: 2026-01-18T03:41:10Z
-  - id: RQ-0030
-    status: todo
-    title: Mark tasks as doing at run start to reflect in-progress work
-    tags:
-      - queue
-      - ux
-      - workflow
-    scope:
-      - crates/ralph/src/run_cmd.rs
-      - crates/ralph/src/queue.rs
-    evidence:
-      - crates/ralph/src/run_cmd.rs selects the first todo task but never sets its status to doing before invoking the runner.
-    plan:
-      - Update run_cmd::run_one to set the selected task to doing with updated_at before running the runner.
-      - Ensure failures revert the status cleanly and preserve queue integrity.
-      - Add tests to confirm status transitions for success and failure.
     request: scan finding
     created_at: 2026-01-18T03:41:10Z
     updated_at: 2026-01-18T03:41:10Z
