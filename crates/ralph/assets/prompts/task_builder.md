@@ -35,7 +35,10 @@ Optional hint scope (may be empty):
   - `scope` (non-empty; paths and/or commands)
   - `evidence` (non-empty; cite user request and/or repo facts)
   - `plan` (non-empty; specific, sequential steps)
-- Optional keys: `notes`, `request`, `agent`, `created_at`, `updated_at`
+  - `request` (non-empty; original user request)
+  - `created_at` (non-empty; current UTC RFC3339 time)
+  - `updated_at` (non-empty; current UTC RFC3339 time)
+- Optional keys: `notes`, `agent`, `completed_at`
 
 ## YAML SAFETY
 - Do not include shell-escape artifacts like `\"` or `'\''` inside YAML values.

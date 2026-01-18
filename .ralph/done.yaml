@@ -923,3 +923,31 @@
       - Expanded scalar detection to colon whitespace and end of line
       - Added coverage for trailing colon and tab variants
       - Added done.yaml repair integration test
+
+  - id: RQ-0068
+    status: done
+    title: Align queue validation with prompt contract for request and timestamps
+    tags:
+      - rust
+      - queue
+      - contract
+    scope:
+      - crates/ralph/src/queue.rs
+      - crates/ralph/assets/prompts/task_builder.md
+      - crates/ralph/assets/prompts/scan.md
+    evidence:
+      - prompts require request and created_at and updated_at but validate_task_required_fields does not check them
+    plan:
+      - Decide whether request and timestamps are required or optional
+      - Update prompt contract text for consistency
+      - Enforce the chosen requirement in validation with tests
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T22:44:25Z
+    completed_at: 2026-01-18T22:44:25Z
+    notes:
+      - Updated validate_task_required_fields to check for non-empty request created_at and updated_at
+      - Added ensure_field_present helper for optional field validation
+      - Updated prompt contracts to explicitly list request created_at and updated_at as required
+      - Added validation tests for missing or empty request and timestamps
+      - Updated all test fixtures to include required fields

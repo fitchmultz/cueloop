@@ -47,6 +47,18 @@ Convert findings into executable YAML tasks and insert them into `.ralph/queue.y
 ## YAML QUEUE CONTRACT (DO NOT DEVIATE)
 - Root: `version: 1` and `tasks: [...]`
 - Allowed task statuses: `todo`, `doing`, `done`
+- Task required keys:
+  - `id` (use `ralph queue next`)
+  - `status` (always `todo` for new tasks)
+  - `title` (short, outcome-sized)
+  - `tags` (non-empty)
+  - `scope` (non-empty; paths and/or commands)
+  - `evidence` (non-empty; cite concrete observations)
+  - `plan` (non-empty; specific, sequential steps)
+  - `request` (non-empty; short statement like "scan finding")
+  - `created_at` (non-empty; current UTC RFC3339 time)
+  - `updated_at` (non-empty; current UTC RFC3339 time)
+- Optional keys: `notes`, `agent`, `completed_at`
 
 ## YAML SAFETY
 - Do not include shell-escape artifacts like `\"` or `'\''` inside YAML values.

@@ -29,11 +29,15 @@ fn make_task_with(id_num: u32, status: TaskStatus, id_prefix: &str, id_width: us
         evidence: vec!["stress fixture".to_string()],
         plan: vec!["exercise queue ops".to_string()],
         notes: vec![],
-        request: None,
+        request: Some("stress test".to_string()),
         agent: None,
-        created_at: None,
-        updated_at: None,
-        completed_at: None,
+        created_at: Some("2026-01-18T00:00:00Z".to_string()),
+        updated_at: Some("2026-01-18T00:00:00Z".to_string()),
+        completed_at: if status == TaskStatus::Done {
+            Some("2026-01-18T00:00:00Z".to_string())
+        } else {
+            None
+        },
     }
 }
 
@@ -82,6 +86,9 @@ fn build_raw_yaml_with_colons(task_count: u32, id_prefix: &str, id_width: usize)
         ));
         out.push_str(&format!("    plan:\n      - plan {i}: exercise repair\n"));
         out.push_str("    notes: []\n");
+        out.push_str("    request: stress test\n");
+        out.push_str("    created_at: 2026-01-18T00:00:00Z\n");
+        out.push_str("    updated_at: 2026-01-18T00:00:00Z\n");
     }
     out
 }

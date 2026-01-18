@@ -452,6 +452,9 @@ fn validate_task_required_fields(index: usize, task: &Task) -> Result<()> {
     ensure_list_non_empty("scope", index, &task.id, &task.scope)?;
     ensure_list_non_empty("evidence", index, &task.id, &task.evidence)?;
     ensure_list_non_empty("plan", index, &task.id, &task.plan)?;
+    ensure_field_present("request", index, &task.id, task.request.as_deref())?;
+    ensure_field_present("created_at", index, &task.id, task.created_at.as_deref())?;
+    ensure_field_present("updated_at", index, &task.id, task.updated_at.as_deref())?;
     Ok(())
 }
 
@@ -471,6 +474,18 @@ fn ensure_list_non_empty(label: &str, index: usize, id: &str, values: &[String])
         }
     }
     Ok(())
+}
+
+fn ensure_field_present(label: &str, index: usize, id: &str, value: Option<&str>) -> Result<()> {
+    match value {
+        Some(v) if !v.trim().is_empty() => Ok(()),
+        _ => bail!(
+            "task[{}] {} is required and must be non-empty (id={})",
+            index,
+            label,
+            id
+        ),
+    }
 }
 
 fn validate_task_id(
@@ -544,10 +559,10 @@ mod tests {
             evidence: vec!["observed".to_string()],
             plan: vec!["do thing".to_string()],
             notes: vec![],
-            request: None,
+            request: Some("test request".to_string()),
             agent: None,
-            created_at: None,
-            updated_at: None,
+            created_at: Some("2026-01-18T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-18T00:00:00Z".to_string()),
             completed_at: None,
         }
     }
@@ -564,6 +579,54 @@ mod tests {
             msg.to_lowercase().contains("duplicate"),
             "unexpected error: {msg}"
         );
+    }
+
+    #[test]
+    fn validate_rejects_missing_request() {
+        let mut task = task("RQ-0001");
+        task.request = None;
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task],
+        };
+        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+        assert!(format!("{err}").contains("request is required"));
+    }
+
+    #[test]
+    fn validate_rejects_empty_request() {
+        let mut task = task("RQ-0001");
+        task.request = Some("".to_string());
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task],
+        };
+        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+        assert!(format!("{err}").contains("request is required"));
+    }
+
+    #[test]
+    fn validate_rejects_missing_created_at() {
+        let mut task = task("RQ-0001");
+        task.created_at = None;
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task],
+        };
+        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+        assert!(format!("{err}").contains("created_at is required"));
+    }
+
+    #[test]
+    fn validate_rejects_missing_updated_at() {
+        let mut task = task("RQ-0001");
+        task.updated_at = None;
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task],
+        };
+        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+        assert!(format!("{err}").contains("updated_at is required"));
     }
 
     #[test]

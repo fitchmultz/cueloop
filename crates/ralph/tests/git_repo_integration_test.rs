@@ -86,6 +86,9 @@ tasks:
       - integration test fixture
     plan:
       - run preflight
+    request: integration test
+    created_at: 2026-01-18T00:00:00Z
+    updated_at: 2026-01-18T00:00:00Z
 "#;
 
     let done = r#"version: 1
@@ -117,6 +120,10 @@ tasks:
       - done plan
     notes:
       - key: value
+    request: test
+    created_at: 2026-01-18T00:00:00Z
+    updated_at: 2026-01-18T00:00:00Z
+    completed_at: 2026-01-18T00:00:00Z
 "#;
 
     std::fs::write(&done_path, done).context("write done.yaml")?;
