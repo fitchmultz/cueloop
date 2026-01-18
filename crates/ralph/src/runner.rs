@@ -90,7 +90,7 @@ impl RunnerOutput {
 
 pub fn validate_model_for_runner(runner: Runner, model: Model) -> Result<()> {
     if runner == Runner::Codex && model == Model::Glm47 {
-        bail!("model glm-4.7 is not supported for codex runner");
+        bail!("model zai-coding-plan/glm-4.7 is not supported for codex runner");
     }
     Ok(())
 }
@@ -346,7 +346,7 @@ fn model_as_str(model: Model) -> &'static str {
     match model {
         Model::Gpt52Codex => "gpt-5.2-codex",
         Model::Gpt52 => "gpt-5.2",
-        Model::Glm47 => "glm-4.7",
+        Model::Glm47 => "zai-coding-plan/glm-4.7",
     }
 }
 
@@ -364,9 +364,9 @@ pub fn parse_model(value: &str) -> Result<Model> {
     match trimmed {
         "gpt-5.2-codex" => Ok(Model::Gpt52Codex),
         "gpt-5.2" => Ok(Model::Gpt52),
-        "glm-4.7" => Ok(Model::Glm47),
+        "zai-coding-plan/glm-4.7" => Ok(Model::Glm47),
         _ => bail!(
-            "unsupported model: {} (allowed: gpt-5.2-codex, gpt-5.2, glm-4.7)",
+            "unsupported model: {} (allowed: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7)",
             trimmed
         ),
     }
@@ -394,6 +394,6 @@ mod tests {
     fn validate_model_for_runner_rejects_glm47_on_codex() {
         let err = validate_model_for_runner(Runner::Codex, Model::Glm47).unwrap_err();
         let msg = format!("{err:#}");
-        assert!(msg.contains("glm-4.7"));
+        assert!(msg.contains("zai-coding-plan/glm-4.7"));
     }
 }

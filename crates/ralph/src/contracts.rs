@@ -86,7 +86,7 @@ pub enum Model {
     Gpt52Codex,
     #[serde(rename = "gpt-5.2")]
     Gpt52,
-    #[serde(rename = "glm-4.7")]
+    #[serde(rename = "zai-coding-plan/glm-4.7")]
     Glm47,
 }
 

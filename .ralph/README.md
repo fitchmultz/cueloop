@@ -63,7 +63,7 @@ agent:
   opencode_bin: opencode
 ```
 
-Allowed models: `gpt-5.2-codex`, `gpt-5.2`, `glm-4.7`. Note: `glm-4.7` is not supported for the
+Allowed models: `gpt-5.2-codex`, `gpt-5.2`, `zai-coding-plan/glm-4.7`. Note: `zai-coding-plan/glm-4.7` is not supported for the
 Codex runner.
 
 ## Supervisor Workflow (Rust)
