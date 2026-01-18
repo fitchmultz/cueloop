@@ -16,8 +16,23 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
 
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "scan")?;
 
-    let before = queue::load_queue(&resolved.queue_path)
-        .with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
+    let before = match queue::load_queue_with_repair(&resolved.queue_path)
+        .with_context(|| format!("read queue {}", resolved.queue_path.display()))
+    {
+        Ok((queue, repaired)) => {
+            if repaired {
+                eprintln!(
+                    ">> [RALPH] Repaired invalid YAML scalars in {}",
+                    resolved.queue_path.display()
+                );
+            }
+            queue
+        }
+        Err(err) => {
+            gitutil::revert_uncommitted(&resolved.repo_root)?;
+            return Err(err);
+        }
+    };
     let done = queue::load_queue_or_default(&resolved.done_path)
         .with_context(|| format!("read done {}", resolved.done_path.display()))?;
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
