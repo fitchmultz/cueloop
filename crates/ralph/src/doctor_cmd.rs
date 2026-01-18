@@ -29,8 +29,7 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
     match gitutil::upstream_ref(&resolved.repo_root) {
         Ok(u) => println!("  [OK] upstream configured: {}", u),
         Err(e) => {
-            println!("  [FAIL] no upstream configured: {}", e);
-            failures.push("missing upstream");
+            println!("  [WARN] no upstream configured: {}", e);
         }
     }
 

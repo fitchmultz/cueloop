@@ -1,25 +1,5 @@
 version: 1
 tasks:
-  - id: RQ-0059
-    status: todo
-    title: Doctor should warn not fail when git upstream is missing
-    tags:
-      - rust
-      - ux
-      - tooling
-    scope:
-      - crates/ralph/src/doctor_cmd.rs
-      - crates/ralph/tests/doctor_contract_test.rs
-    evidence:
-      - doctor_cmd marks missing upstream as a failure and doctor_contract_test notes it should ideally pass
-    plan:
-      - Downgrade missing upstream to a warning in doctor output
-      - Update doctor tests to assert the new warning behavior
-      - Keep failure for invalid git repo or missing queue
-    request: scan finding
-    created_at: 2026-01-18T20:45:41Z
-    updated_at: 2026-01-18T20:45:41Z
-
   - id: RQ-0060
     status: todo
     title: Doctor check_command should fail on non-zero exit status

@@ -58,14 +58,11 @@ fn doctor_passes_in_clean_env() -> Result<()> {
         println!("STDERR:\n{}", String::from_utf8_lossy(&output.stderr));
     }
 
-    // We can't guarantee git upstream in a temp env without more setup,
-    // so doctor might fail on "missing upstream". We assert on output content
-    // rather than strict success, OR we accept failure if it's just upstream.
-    // However, the test should ideally pass.
-    // Let's settle for checking that it ran and verified components.
-
+    // Missing upstream is now a warning, not a failure, so doctor should pass
+    assert!(output.status.success());
     assert!(stdout.contains("[OK] git binary found"));
     assert!(stdout.contains("[OK] queue valid"));
+    assert!(stdout.contains("[WARN] no upstream configured"));
     Ok(())
 }
 
@@ -87,5 +84,37 @@ fn doctor_fails_when_queue_missing() -> Result<()> {
     assert!(!output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("[FAIL] queue file missing"));
+    Ok(())
+}
+
+#[test]
+fn doctor_warns_on_missing_upstream() -> Result<()> {
+    let dir = TempDir::new()?;
+    // Setup valid repo without upstream
+    Command::new("git")
+        .current_dir(dir.path())
+        .arg("init")
+        .status()?;
+
+    // Setup ralph
+    Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .args(["init", "--force"])
+        .status()?;
+
+    let output = Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .arg("doctor")
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if !output.status.success() {
+        println!("STDOUT:\n{stdout}");
+        println!("STDERR:\n{}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    // Should succeed with a warning about missing upstream
+    assert!(output.status.success());
+    assert!(stdout.contains("[WARN] no upstream configured"));
     Ok(())
 }
