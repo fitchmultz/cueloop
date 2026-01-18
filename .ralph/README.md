@@ -80,8 +80,6 @@ Core behavior:
   - If the repo is clean and the task is `done` (archived), it proceeds to the next task.
   - If the repo is dirty, it runs `make ci`. On green, it commits + pushes all changes.
   - If the task is not `done`, the supervisor sets `done`, archives the task, and commits + pushes.
-- `status: blocked` is not supported. If encountered, the supervisor reverts uncommitted changes
-  (if any) and stops.
 
 Common scenarios:
 - Agent completes normally (done + archive + CI + commit + push) -> supervisor sees clean repo and moves on.

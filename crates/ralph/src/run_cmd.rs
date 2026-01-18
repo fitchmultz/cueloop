@@ -223,14 +223,6 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
         find_task_status(&queue_file, &done_file, task_id)
             .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
 
-    if task_status == TaskStatus::Blocked {
-        if is_dirty {
-            gitutil::revert_uncommitted(&resolved.repo_root)?;
-            bail!("task {task_id} was marked blocked; reverted uncommitted changes");
-        }
-        bail!("task {task_id} was marked blocked; cannot auto-revert committed changes");
-    }
-
     if is_dirty {
         if let Err(err) = run_make_ci(&resolved.repo_root) {
             gitutil::revert_uncommitted(&resolved.repo_root)?;
@@ -257,18 +249,13 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
         task_status = status_after;
         in_done = in_done_after;
 
-        if task_status == TaskStatus::Blocked {
-            gitutil::revert_uncommitted(&resolved.repo_root)?;
-            bail!("task {task_id} was marked blocked; reverted uncommitted changes");
-        }
-
         if task_status != TaskStatus::Done {
             if in_done {
                 gitutil::revert_uncommitted(&resolved.repo_root)?;
                 bail!("task {task_id} is archived but not done");
             }
             let now = timeutil::now_utc_rfc3339()?;
-            queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None, None)?;
+            queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None)?;
             queue::save_queue(&resolved.queue_path, &queue_file)?;
         }
 
@@ -301,7 +288,7 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
             bail!("task {task_id} is archived but not done");
         }
         let now = timeutil::now_utc_rfc3339()?;
-        queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None, None)?;
+        queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None)?;
         queue::save_queue(&resolved.queue_path, &queue_file)?;
         changed = true;
     }
@@ -427,7 +414,6 @@ mod tests {
             created_at: None,
             updated_at: None,
             completed_at: None,
-            blocked_reason: None,
         }
     }
 

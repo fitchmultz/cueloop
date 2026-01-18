@@ -41,12 +41,12 @@ Convert findings into executable YAML tasks and insert them into `.ralph/queue.y
 - Queue order is priority: the run loop selects the first `todo` task from the TOP of the queue.
 - Before finishing, re-read the entire `.ralph/queue.yaml` task list top-to-bottom.
 - Reorder ALL `todo` tasks into the most logical execution order based on dependencies and leverage (schema/contract tasks before implementation tasks that depend on them; safety/infra before UX polish).
-- Do NOT reorder tasks that are not `todo` (`doing`, `blocked`, `done`) unless absolutely necessary; prefer to keep them in place.
+- Do NOT reorder tasks that are not `todo` (`doing`, `done`) unless absolutely necessary; prefer to keep them in place.
 - Avoid churn when there is no benefit: only move tasks when it materially improves dependency order or execution efficiency.
 
 ## YAML QUEUE CONTRACT (DO NOT DEVIATE)
 - Root: `version: 1` and `tasks: [...]`
-- Allowed task statuses: `todo`, `doing`, `blocked`, `done`
+- Allowed task statuses: `todo`, `doing`, `done`
 
 ## YAML SAFETY
 - Do not include shell-escape artifacts like `\"` or `'\''` inside YAML values.

@@ -191,7 +191,6 @@ pub fn set_status(
     task_id: &str,
     status: TaskStatus,
     now_rfc3339: &str,
-    reason: Option<&str>,
     note: Option<&str>,
 ) -> Result<()> {
     let now = now_rfc3339.trim();
@@ -216,21 +215,9 @@ pub fn set_status(
     match status {
         TaskStatus::Done => {
             task.completed_at = Some(now.to_string());
-            task.blocked_reason = None;
-        }
-        TaskStatus::Blocked => {
-            task.completed_at = None;
-            if let Some(reason) = reason {
-                let redacted = redaction::redact_text(reason);
-                let trimmed = redacted.trim();
-                if !trimmed.is_empty() {
-                    task.blocked_reason = Some(sanitize_yaml_text("Reason: ", trimmed).to_string());
-                }
-            }
         }
         TaskStatus::Todo | TaskStatus::Doing => {
             task.completed_at = None;
-            task.blocked_reason = None;
         }
     }
 
@@ -539,7 +526,6 @@ mod tests {
             created_at: None,
             updated_at: None,
             completed_at: None,
-            blocked_reason: None,
         }
     }
 
@@ -570,52 +556,33 @@ mod tests {
             "RQ-0001",
             TaskStatus::Doing,
             now,
-            None,
             Some("started"),
         )?;
         let t = &queue.tasks[0];
         assert_eq!(t.status, TaskStatus::Doing);
         assert_eq!(t.updated_at.as_deref(), Some(now));
         assert_eq!(t.completed_at, None);
-        assert_eq!(t.blocked_reason, None);
         assert_eq!(t.notes, vec!["started".to_string()]);
 
-        let now2 = "2026-01-17T00:01:00Z";
-        set_status(
-            &mut queue,
-            "RQ-0001",
-            TaskStatus::Blocked,
-            now2,
-            Some("ci failed"),
-            None,
-        )?;
-        let t = &queue.tasks[0];
-        assert_eq!(t.status, TaskStatus::Blocked);
-        assert_eq!(t.updated_at.as_deref(), Some(now2));
-        assert_eq!(t.completed_at, None);
-        assert_eq!(t.blocked_reason.as_deref(), Some("ci failed"));
-
-        let now3 = "2026-01-17T00:02:00Z";
+        let now2 = "2026-01-17T00:02:00Z";
         set_status(
             &mut queue,
             "RQ-0001",
             TaskStatus::Done,
-            now3,
-            None,
+            now2,
             Some("completed"),
         )?;
         let t = &queue.tasks[0];
         assert_eq!(t.status, TaskStatus::Done);
-        assert_eq!(t.updated_at.as_deref(), Some(now3));
-        assert_eq!(t.completed_at.as_deref(), Some(now3));
-        assert_eq!(t.blocked_reason, None);
+        assert_eq!(t.updated_at.as_deref(), Some(now2));
+        assert_eq!(t.completed_at.as_deref(), Some(now2));
         assert!(t.notes.iter().any(|n| n == "completed"));
 
         Ok(())
     }
 
     #[test]
-    fn set_status_redacts_reason_and_note() -> Result<()> {
+    fn set_status_redacts_note() -> Result<()> {
         let mut queue = QueueFile {
             version: 1,
             tasks: vec![task("RQ-0001")],
@@ -625,14 +592,12 @@ mod tests {
         set_status(
             &mut queue,
             "RQ-0001",
-            TaskStatus::Blocked,
+            TaskStatus::Doing,
             now,
-            Some("token=abc12345"),
             Some("API_KEY=abc12345"),
         )?;
 
         let t = &queue.tasks[0];
-        assert_eq!(t.blocked_reason.as_deref(), Some("token=[REDACTED]"));
         assert_eq!(t.notes, vec!["API_KEY=[REDACTED]".to_string()]);
 
         Ok(())
@@ -649,14 +614,12 @@ mod tests {
         set_status(
             &mut queue,
             "RQ-0001",
-            TaskStatus::Blocked,
+            TaskStatus::Doing,
             now,
-            Some("`token` exposed"),
             Some("`make ci` failed"),
         )?;
 
         let t = &queue.tasks[0];
-        assert_eq!(t.blocked_reason.as_deref(), Some("Reason: `token` exposed"));
         assert_eq!(t.notes, vec!["Note: `make ci` failed".to_string()]);
 
         Ok(())

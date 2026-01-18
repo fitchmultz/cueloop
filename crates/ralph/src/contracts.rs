@@ -153,9 +153,6 @@ pub struct Task {
     pub updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<String>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub blocked_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
@@ -164,7 +161,6 @@ pub enum TaskStatus {
     #[default]
     Todo,
     Doing,
-    Blocked,
     Done,
 }
 
@@ -173,7 +169,6 @@ impl TaskStatus {
         match self {
             TaskStatus::Todo => "todo",
             TaskStatus::Doing => "doing",
-            TaskStatus::Blocked => "blocked",
             TaskStatus::Done => "done",
         }
     }

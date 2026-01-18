@@ -204,7 +204,6 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
         QueueCommand::SetStatus {
             task_id,
             status,
-            reason,
             note,
         } => {
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue set-status")?;
@@ -215,7 +214,6 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
                 &task_id,
                 status.into(),
                 &now,
-                reason.as_deref(),
                 note.as_deref(),
             )?;
             queue::save_queue(&resolved.queue_path, &queue_file)?;
@@ -608,8 +606,6 @@ enum QueueCommand {
         task_id: String,
         status: StatusArg,
         #[arg(long)]
-        reason: Option<String>,
-        #[arg(long)]
         note: Option<String>,
     },
 }
@@ -671,7 +667,6 @@ struct RunLoopArgs {
 enum StatusArg {
     Todo,
     Doing,
-    Blocked,
     Done,
 }
 
@@ -747,7 +742,6 @@ impl From<StatusArg> for contracts::TaskStatus {
         match value {
             StatusArg::Todo => contracts::TaskStatus::Todo,
             StatusArg::Doing => contracts::TaskStatus::Doing,
-            StatusArg::Blocked => contracts::TaskStatus::Blocked,
             StatusArg::Done => contracts::TaskStatus::Done,
         }
     }
@@ -855,7 +849,6 @@ mod tests {
             created_at: None,
             updated_at: None,
             completed_at: None,
-            blocked_reason: None,
         };
 
         let rendered = super::format_task_compact(&task);
@@ -878,7 +871,6 @@ mod tests {
             created_at: None,
             updated_at: None,
             completed_at: Some(" 2026-01-18T06:30:00Z ".to_string()),
-            blocked_reason: None,
         };
 
         let rendered = super::format_task_long(&task);

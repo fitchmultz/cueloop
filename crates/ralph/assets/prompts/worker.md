@@ -49,7 +49,7 @@ Ship correct, durable changes quickly and safely.
 - The queue is `.ralph/queue.yaml`.
 - Task order is priority (top is highest).
 - Each task has: `id`, `status`, `title`, `tags`, `scope`, `evidence`, `plan`.
-- Allowed status values: `todo`, `doing`, `blocked`, `done`.
+- Allowed status values: `todo`, `doing`, `done`.
 
 ## YAML SAFETY
 - Do not include shell-escape artifacts like `\"` or `'\''` inside YAML values.

@@ -34,7 +34,6 @@ fn make_task_with(id_num: u32, status: TaskStatus, id_prefix: &str, id_width: us
         created_at: None,
         updated_at: None,
         completed_at: None,
-        blocked_reason: None,
     }
 }
 
@@ -212,7 +211,7 @@ fn stress_queue_archive_and_mutate_cycles() -> Result<()> {
 
         for id_num in start..end {
             let id = format!("{ID_PREFIX}-{id_num:0width$}", width = ID_WIDTH);
-            let _ = queue::set_status(&mut current, &id, TaskStatus::Done, now, None, None);
+            let _ = queue::set_status(&mut current, &id, TaskStatus::Done, now, None);
         }
 
         queue::save_queue(&queue_path, &current).context("save active")?;
@@ -291,7 +290,7 @@ fn stress_queue_ops_burn_in_long() -> Result<()> {
         let start = 201 + iter * 10;
         for id_num in start..start + 5 {
             let id = format!("RQ-{id_num:0width$}", width = ID_WIDTH);
-            let _ = queue::set_status(&mut current, &id, TaskStatus::Done, now, None, None);
+            let _ = queue::set_status(&mut current, &id, TaskStatus::Done, now, None);
         }
 
         queue::save_queue(&queue_path, &current).context("save active")?;
