@@ -46,8 +46,14 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
         bail!("request text required");
     }
 
-    let before = queue::load_queue(&resolved.queue_path)
+    let (before, repaired_before) = queue::load_queue_with_repair(&resolved.queue_path)
         .with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
+    if repaired_before {
+        eprintln!(
+            ">> [RALPH] Repaired invalid YAML scalars in {}",
+            resolved.queue_path.display()
+        );
+    }
     let done = queue::load_queue_or_default(&resolved.done_path)
         .with_context(|| format!("read done {}", resolved.done_path.display()))?;
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {

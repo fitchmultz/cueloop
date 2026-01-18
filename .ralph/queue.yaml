@@ -1,25 +1,7 @@
 version: 1
 tasks:
 
-  - id: RQ-0063
-    status: todo
-    title: Use YAML repair when loading queue before task build
-    tags:
-      - rust
-      - queue
-      - ux
-    scope:
-      - crates/ralph/src/task_cmd.rs
-      - crates/ralph/src/queue.rs
-    evidence:
-      - task_cmd uses load_queue before running and only repairs after task build
-    plan:
-      - Switch pre-task queue load to load_queue_with_repair
-      - Emit a warning when repair modifies the queue
-      - Add a task build test covering preexisting colon scalars
-    request: scan finding
-    created_at: 2026-01-18T20:45:41Z
-    updated_at: 2026-01-18T20:45:41Z
+
 
   - id: RQ-0064
     status: todo
