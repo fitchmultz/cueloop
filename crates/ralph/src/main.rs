@@ -45,8 +45,11 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     match cmd {
         QueueCommand::Validate => {
-            let queue_file = queue::load_queue(&resolved.queue_path)?;
-            let done = queue::load_queue_or_default(&resolved.done_path)?;
+            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+            let (done, repaired_done) =
+                queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+            queue::warn_if_repaired(&resolved.done_path, repaired_done);
             let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
                 None
             } else {
@@ -60,8 +63,11 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
             )?;
         }
         QueueCommand::Next(args) => {
-            let queue_file = queue::load_queue(&resolved.queue_path)?;
-            let done = queue::load_queue_or_default(&resolved.done_path)?;
+            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+            let (done, repaired_done) =
+                queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+            queue::warn_if_repaired(&resolved.done_path, repaired_done);
             let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
                 None
             } else {
@@ -82,8 +88,11 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
             }
         }
         QueueCommand::NextId => {
-            let queue_file = queue::load_queue(&resolved.queue_path)?;
-            let done = queue::load_queue_or_default(&resolved.done_path)?;
+            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+            let (done, repaired_done) =
+                queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+            queue::warn_if_repaired(&resolved.done_path, repaired_done);
             let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
                 None
             } else {
@@ -98,8 +107,11 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
             println!("{next}");
         }
         QueueCommand::Show(args) => {
-            let queue_file = queue::load_queue(&resolved.queue_path)?;
-            let done = queue::load_queue_or_default(&resolved.done_path)?;
+            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+            let (done, repaired_done) =
+                queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+            queue::warn_if_repaired(&resolved.done_path, repaired_done);
             let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
                 None
             } else {
@@ -131,9 +143,13 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
                 bail!("--include-done and --only-done are mutually exclusive");
             }
 
-            let queue_file = queue::load_queue(&resolved.queue_path)?;
+            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
             let done = if args.include_done || args.only_done {
-                Some(queue::load_queue_or_default(&resolved.done_path)?)
+                let (done, repaired_done) =
+                    queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+                queue::warn_if_repaired(&resolved.done_path, repaired_done);
+                Some(done)
             } else {
                 None
             };
@@ -218,7 +234,9 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
             note,
         } => {
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue set-status")?;
-            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+            let (mut queue_file, repaired_queue) =
+                queue::load_queue_with_repair(&resolved.queue_path)?;
+            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
             let now = timeutil::now_utc_rfc3339()?;
             queue::set_status(
                 &mut queue_file,

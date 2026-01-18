@@ -46,8 +46,10 @@ pub fn run_one(
     agent_overrides: &AgentOverrides,
 ) -> Result<RunOutcome> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run one")?;
-    let queue_file = queue::load_queue(&resolved.queue_path)?;
-    let done = queue::load_queue_or_default(&resolved.done_path)?;
+    let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+    queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+    let (done, repaired_done) = queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+    queue::warn_if_repaired(&resolved.done_path, repaired_done);
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
         None
     } else {
@@ -205,8 +207,11 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
     let status = gitutil::status_porcelain(&resolved.repo_root)?;
     let is_dirty = !status.trim().is_empty();
 
-    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-    let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
+    let (mut queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+    queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+    let (mut done_file, repaired_done) =
+        queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+    queue::warn_if_repaired(&resolved.done_path, repaired_done);
     let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
         None
     } else {
@@ -229,8 +234,13 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
             bail!("make ci failed; reverted uncommitted changes: {:#}", err);
         }
 
-        queue_file = queue::load_queue(&resolved.queue_path)?;
-        done_file = queue::load_queue_or_default(&resolved.done_path)?;
+        let (reloaded_queue, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+        queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+        queue_file = reloaded_queue;
+        let (reloaded_done, repaired_done) =
+            queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+        queue::warn_if_repaired(&resolved.done_path, repaired_done);
+        done_file = reloaded_done;
         let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
             None
         } else {

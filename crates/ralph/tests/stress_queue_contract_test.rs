@@ -202,7 +202,12 @@ fn stress_queue_archive_and_mutate_cycles() -> Result<()> {
     let now = "2026-01-18T00:00:00Z";
 
     for iter in 0..profile.iterations {
-        let mut current = queue::load_queue(&queue_path).context("load active")?;
+        let (mut current, repaired_current) =
+            queue::load_queue_with_repair(&queue_path).context("load active")?;
+        anyhow::ensure!(
+            !repaired_current,
+            "unexpected repair on valid YAML (active)"
+        );
         let start = 1 + iter * profile.archive_batch;
         if start > profile.total_tasks {
             break;
@@ -218,10 +223,21 @@ fn stress_queue_archive_and_mutate_cycles() -> Result<()> {
         let _report = queue::archive_done_tasks(&queue_path, &done_path, ID_PREFIX, ID_WIDTH)
             .with_context(|| format!("archive iteration {iter}"))?;
 
-        let active_reloaded = queue::load_queue(&queue_path).context("reload active")?;
-        let done_reloaded = queue::load_queue_or_default(&done_path).context("reload done")?;
-        queue::validate_queue_set(&active_reloaded, Some(&done_reloaded), ID_PREFIX, ID_WIDTH)
-            .context("validate after iteration")?;
+        let active_reloaded =
+            queue::load_queue_with_repair(&queue_path).context("reload active")?;
+        anyhow::ensure!(
+            !active_reloaded.1,
+            "unexpected repair on valid YAML (active)"
+        );
+        let done_reloaded = queue::load_queue_with_repair(&done_path).context("reload done")?;
+        anyhow::ensure!(!done_reloaded.1, "unexpected repair on valid YAML (done)");
+        queue::validate_queue_set(
+            &active_reloaded.0,
+            Some(&done_reloaded.0),
+            ID_PREFIX,
+            ID_WIDTH,
+        )
+        .context("validate after iteration")?;
     }
 
     Ok(())
@@ -283,7 +299,12 @@ fn stress_queue_ops_burn_in_long() -> Result<()> {
             .with_context(|| format!("archive iteration {iter}"))?;
         let _ = report;
 
-        let mut current = queue::load_queue(&queue_path).context("load active")?;
+        let (mut current, repaired_current) =
+            queue::load_queue_with_repair(&queue_path).context("load active")?;
+        anyhow::ensure!(
+            !repaired_current,
+            "unexpected repair on valid YAML (active)"
+        );
         let now = "2026-01-18T00:00:00Z";
 
         // Mark a deterministic slice of todo tasks as done each iteration.
@@ -296,10 +317,21 @@ fn stress_queue_ops_burn_in_long() -> Result<()> {
         queue::save_queue(&queue_path, &current).context("save active")?;
 
         // Reload both and validate invariants.
-        let active_reloaded = queue::load_queue(&queue_path).context("reload active")?;
-        let done_reloaded = queue::load_queue_or_default(&done_path).context("reload done")?;
-        queue::validate_queue_set(&active_reloaded, Some(&done_reloaded), ID_PREFIX, ID_WIDTH)
-            .context("validate after iteration")?;
+        let active_reloaded =
+            queue::load_queue_with_repair(&queue_path).context("reload active")?;
+        anyhow::ensure!(
+            !active_reloaded.1,
+            "unexpected repair on valid YAML (active)"
+        );
+        let done_reloaded = queue::load_queue_with_repair(&done_path).context("reload done")?;
+        anyhow::ensure!(!done_reloaded.1, "unexpected repair on valid YAML (done)");
+        queue::validate_queue_set(
+            &active_reloaded.0,
+            Some(&done_reloaded.0),
+            ID_PREFIX,
+            ID_WIDTH,
+        )
+        .context("validate after iteration")?;
     }
 
     Ok(())

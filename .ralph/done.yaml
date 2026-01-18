@@ -849,3 +849,51 @@ tasks:
     created_at: 2026-01-18T20:45:41Z
     updated_at: 2026-01-18T21:32:30Z
     completed_at: 2026-01-18T21:32:30Z
+
+  - id: RQ-0066
+    status: done
+    title: Repair YAML list scalars that look like mappings
+    tags:
+      - rust
+      - queue
+      - correctness
+    scope:
+      - crates/ralph/src/queue.rs
+    evidence:
+      - repair_yaml_scalars skips quoting list items when looks_like_mapping returns true
+    plan:
+      - Adjust list item repair logic to quote ambiguous scalars like foo: bar
+      - Add tests for evidence and plan list items containing colon patterns
+      - Confirm mapping detection still works for real mappings
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T23:10:00Z
+    completed_at: 2026-01-18T23:10:00Z
+    notes:
+      - Quoted mapping-like list-item scalars during YAML repair
+      - Ensured done.yaml loads are repair aware across workflows
+      - Added integration coverage for mapping-like list items
+
+  - id: RQ-0067
+    status: done
+    title: Expand YAML scalar repair to colon variants beyond colon space
+    tags:
+      - rust
+      - queue
+      - correctness
+    scope:
+      - crates/ralph/src/queue.rs
+    evidence:
+      - should_quote_scalar only checks for colon space so colon tab or trailing colon are missed
+    plan:
+      - Extend scalar detection to colon followed by whitespace or end of line
+      - Add tests for colon tab and trailing colon values
+      - Verify repaired YAML parses and validates
+    request: scan finding
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T23:10:00Z
+    completed_at: 2026-01-18T23:10:00Z
+    notes:
+      - Expanded scalar detection to colon whitespace and end of line
+      - Added coverage for trailing colon and tab variants
+      - Added done.yaml repair integration test

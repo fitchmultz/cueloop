@@ -28,6 +28,8 @@ tasks:
     plan:
       - Repair YAML scalars with colons
       - Test task build behavior
+    notes:
+      - key: value
 "#;
 
     fs::write(&queue_path, queue_with_colon_scalars).context("write queue with colon scalars")?;
@@ -49,6 +51,7 @@ tasks:
         before.tasks[0].title, "Fix colon: in this title",
         "title with colon space should be preserved correctly"
     );
+    assert_eq!(before.tasks[0].notes, vec!["key: value".to_string()]);
 
     // Verify the file was actually repaired on disk
     let file_content = fs::read_to_string(&queue_path)?;
@@ -62,6 +65,7 @@ tasks:
             || file_content.contains("- \"contains colon: in evidence\""),
         "evidence list item with colon should be quoted"
     );
+    assert!(file_content.contains("- 'key: value'"));
 
     Ok(())
 }

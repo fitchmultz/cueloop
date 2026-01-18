@@ -21,28 +21,20 @@ pub fn acquire_queue_lock(repo_root: &Path, label: &str) -> Result<fsutil::DirLo
     fsutil::acquire_dir_lock(&lock_dir, label)
 }
 
-pub fn load_queue(path: &Path) -> Result<QueueFile> {
-    let raw = std::fs::read_to_string(path)
-        .map_err(|err| {
-            if err.kind() == std::io::ErrorKind::NotFound {
-                anyhow!(
-                    "queue file not found: {}; run `ralph init` or inspect paths via `ralph config paths`",
-                    path.display()
-                )
-            } else {
-                anyhow::anyhow!(err).context(format!("read queue file {}", path.display()))
-            }
-        })?;
-    let queue: QueueFile = serde_yaml::from_str(&raw)
-        .with_context(|| format!("parse queue YAML {}", path.display()))?;
-    Ok(queue)
+pub fn load_queue_or_default_with_repair(path: &Path) -> Result<(QueueFile, bool)> {
+    if !path.exists() {
+        return Ok((QueueFile::default(), false));
+    }
+    load_queue_with_repair(path)
 }
 
-pub fn load_queue_or_default(path: &Path) -> Result<QueueFile> {
-    if !path.exists() {
-        return Ok(QueueFile::default());
+pub fn warn_if_repaired(path: &Path, repaired: bool) {
+    if repaired {
+        eprintln!(
+            ">> [RALPH] Repaired invalid YAML scalars in {}",
+            path.display()
+        );
     }
-    load_queue(path)
 }
 
 pub fn load_queue_with_repair(path: &Path) -> Result<(QueueFile, bool)> {
@@ -171,8 +163,10 @@ pub fn archive_done_tasks(
     id_prefix: &str,
     id_width: usize,
 ) -> Result<ArchiveReport> {
-    let mut active = load_queue(queue_path)?;
-    let mut done = load_queue_or_default(done_path)?;
+    let (mut active, repaired_active) = load_queue_with_repair(queue_path)?;
+    warn_if_repaired(queue_path, repaired_active);
+    let (mut done, repaired_done) = load_queue_or_default_with_repair(done_path)?;
+    warn_if_repaired(done_path, repaired_done);
 
     validate_queue_set(&active, Some(&done), id_prefix, id_width)?;
 
@@ -303,7 +297,7 @@ fn repair_yaml_scalars(raw: &str) -> Option<String> {
 
         if let Some(rest) = trimmed.strip_prefix("- ") {
             let indent = line.len() - trimmed.len();
-            if indent > 2 && should_quote_scalar(rest) && !looks_like_mapping(rest) {
+            if indent > 2 && (should_quote_scalar(rest) || looks_like_mapping(rest)) {
                 let escaped = escape_single_quotes(rest.trim());
                 updated = format!("{}- '{}'", " ".repeat(indent), escaped);
                 changed = true;
@@ -343,7 +337,21 @@ fn should_quote_scalar(value: &str) -> bool {
     {
         return false;
     }
-    trimmed.contains(": ")
+    has_colon_needing_quote(trimmed)
+}
+
+fn has_colon_needing_quote(value: &str) -> bool {
+    let mut chars = value.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == ':' {
+            match chars.peek() {
+                Some(next) if next.is_whitespace() => return true,
+                None => return true,
+                _ => {}
+            }
+        }
+    }
+    false
 }
 
 fn looks_like_mapping(value: &str) -> bool {
@@ -694,6 +702,10 @@ tasks:
       - queues can break: null tasks
     plan:
       - Fix parsing: add a safe default
+    notes:
+      - key: value
+      - trailing:
+      - tab:	value
 "#;
         std::fs::write(&queue_path, raw)?;
 
@@ -703,12 +715,23 @@ tasks:
             queue.tasks[0].title,
             "Normalize empty queue YAML and handle tasks: null safely"
         );
+        assert_eq!(
+            queue.tasks[0].notes,
+            vec![
+                "key: value".to_string(),
+                "trailing:".to_string(),
+                "tab:\tvalue".to_string()
+            ]
+        );
 
         let repaired_raw = std::fs::read_to_string(&queue_path)?;
         assert!(repaired_raw
             .contains("title: 'Normalize empty queue YAML and handle tasks: null safely'"));
         assert!(repaired_raw.contains("- 'queues can break: null tasks'"));
         assert!(repaired_raw.contains("- 'Fix parsing: add a safe default'"));
+        assert!(repaired_raw.contains("- 'key: value'"));
+        assert!(repaired_raw.contains("- 'trailing:'"));
+        assert!(repaired_raw.contains("- 'tab:\tvalue'"));
         Ok(())
     }
 
@@ -731,13 +754,17 @@ tasks:
     plan:
       - Repair YAML scalars with colons
       - Test queue repair behavior
+    notes:
+      - map: value
+      - trailing:
 "#;
         std::fs::write(&queue_path, raw)?;
 
         let report = repair_queue(&queue_path)?;
         assert!(report.repaired, "repair should have occurred");
 
-        let queue = load_queue(&queue_path)?;
+        let (queue, repaired) = load_queue_with_repair(&queue_path)?;
+        assert!(!repaired, "repaired queue should parse cleanly");
         assert_eq!(queue.tasks.len(), 1);
         assert_eq!(queue.tasks[0].id, "RQ-0001");
         assert_eq!(queue.tasks[0].title, "Fix colon: in this title");
@@ -753,6 +780,8 @@ tasks:
                 || file_content.contains("- \"contains colon: in evidence\""),
             "evidence list item with colon should be quoted"
         );
+        assert!(file_content.contains("- 'map: value'"));
+        assert!(file_content.contains("- 'trailing:'"));
         Ok(())
     }
 
@@ -773,7 +802,8 @@ tasks:
             "repair should not have occurred for valid YAML"
         );
 
-        let queue_after = load_queue(&queue_path)?;
+        let (queue_after, repaired) = load_queue_with_repair(&queue_path)?;
+        assert!(!repaired, "expected valid queue to parse cleanly");
         assert_eq!(queue_after.tasks.len(), 1);
         assert_eq!(queue_after.tasks[0].id, "RQ-0001");
         Ok(())
@@ -845,10 +875,15 @@ tasks:
         );
         assert!(report.skipped_ids.is_empty());
 
-        let active_after = load_queue(&queue_path)?;
+        let (active_after, repaired_active) = load_queue_with_repair(&queue_path)?;
+        assert!(
+            !repaired_active,
+            "expected valid active queue after archive"
+        );
         assert!(active_after.tasks.is_empty());
 
-        let done_after = load_queue(&done_path)?;
+        let (done_after, repaired_done) = load_queue_with_repair(&done_path)?;
+        assert!(!repaired_done, "expected valid done queue after archive");
         assert_eq!(done_after.tasks.len(), 3);
 
         let report2 = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
@@ -970,5 +1005,15 @@ tasks:
         assert_eq!(found_done.id, "RQ-0002");
 
         assert!(find_task_across(&active, Some(&done), "RQ-9999").is_none());
+    }
+
+    #[test]
+    fn load_queue_or_default_with_repair_returns_default_when_missing() -> Result<()> {
+        let dir = TempDir::new()?;
+        let queue_path = dir.path().join("missing.yaml");
+        let (queue, repaired) = load_queue_or_default_with_repair(&queue_path)?;
+        assert!(!repaired);
+        assert!(queue.tasks.is_empty());
+        Ok(())
     }
 }

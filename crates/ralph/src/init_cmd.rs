@@ -110,9 +110,11 @@ mod tests {
         assert!(report.queue_created);
         assert!(report.done_created);
         assert!(report.config_created);
-        let queue = crate::queue::load_queue(&resolved.queue_path)?;
+        let (queue, repaired_queue) = crate::queue::load_queue_with_repair(&resolved.queue_path)?;
+        assert!(!repaired_queue);
         assert_eq!(queue.version, 1);
-        let done = crate::queue::load_queue(&resolved.done_path)?;
+        let (done, repaired_done) = crate::queue::load_queue_with_repair(&resolved.done_path)?;
+        assert!(!repaired_done);
         assert_eq!(done.version, 1);
         let raw_cfg = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
         let cfg: Config = serde_yaml::from_str(&raw_cfg)?;

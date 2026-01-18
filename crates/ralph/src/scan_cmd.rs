@@ -33,8 +33,9 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             return Err(err);
         }
     };
-    let done = queue::load_queue_or_default(&resolved.done_path)
+    let (done, repaired_done) = queue::load_queue_or_default_with_repair(&resolved.done_path)
         .with_context(|| format!("read done {}", resolved.done_path.display()))?;
+    queue::warn_if_repaired(&resolved.done_path, repaired_done);
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
         None
     } else {
@@ -103,8 +104,10 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         }
     };
 
-    let done_after = queue::load_queue_or_default(&resolved.done_path)
-        .with_context(|| format!("read done {}", resolved.done_path.display()))?;
+    let (done_after, repaired_done_after) =
+        queue::load_queue_or_default_with_repair(&resolved.done_path)
+            .with_context(|| format!("read done {}", resolved.done_path.display()))?;
+    queue::warn_if_repaired(&resolved.done_path, repaired_done_after);
     let done_after_ref = if done_after.tasks.is_empty() && !resolved.done_path.exists() {
         None
     } else {

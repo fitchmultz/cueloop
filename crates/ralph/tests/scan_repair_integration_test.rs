@@ -23,6 +23,8 @@ tasks:
     plan:
       - Repair YAML scalars with colons
       - Test scan behavior
+    notes:
+      - key: value
 "#;
 
     // Create .ralph directory and write the queue
@@ -46,6 +48,7 @@ tasks:
         queue.tasks[0].title, "Fix colon: in this title",
         "title with colon space should be preserved correctly"
     );
+    assert_eq!(queue.tasks[0].notes, vec!["key: value".to_string()]);
 
     // Verify the file was actually repaired on disk
     let file_content = fs::read_to_string(&queue_path)?;
@@ -54,6 +57,7 @@ tasks:
             || file_content.contains("title: \"Fix colon: in this title\""),
         "file on disk should have quoted colon scalar"
     );
+    assert!(file_content.contains("- 'key: value'"));
 
     Ok(())
 }

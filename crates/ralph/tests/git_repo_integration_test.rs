@@ -97,6 +97,32 @@ tasks: []
     Ok(())
 }
 
+fn write_done_with_mapping_notes(dir: &Path) -> Result<()> {
+    let ralph_dir = dir.join(".ralph");
+    std::fs::create_dir_all(&ralph_dir).context("create .ralph dir")?;
+    let done_path = ralph_dir.join("done.yaml");
+
+    let done = r#"version: 1
+tasks:
+  - id: RQ-0099
+    status: done
+    title: Done task
+    tags:
+      - rust
+    scope:
+      - crates/ralph
+    evidence:
+      - done evidence
+    plan:
+      - done plan
+    notes:
+      - key: value
+"#;
+
+    std::fs::write(&done_path, done).context("write done.yaml")?;
+    Ok(())
+}
+
 #[test]
 fn init_and_validate_work_in_fresh_git_repo() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
@@ -231,6 +257,35 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
     anyhow::ensure!(
         done_content.contains("RQ-0001"),
         "task should be moved to done"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn queue_validate_repairs_done_yaml_mapping_notes() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    git_init(dir.path())?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    write_valid_single_todo_queue(dir.path())?;
+    write_done_with_mapping_notes(dir.path())?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "validate"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph queue validate failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let done_content = std::fs::read_to_string(dir.path().join(".ralph/done.yaml"))?;
+    anyhow::ensure!(
+        done_content.contains("- 'key: value'") || done_content.contains("- \"key: value\""),
+        "expected done.yaml to be repaired and quoted"
     );
 
     Ok(())

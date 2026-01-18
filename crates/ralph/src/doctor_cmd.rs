@@ -36,14 +36,17 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
     // 2. Queue Checks
     println!("Checking Ralph queue...");
     if resolved.queue_path.exists() {
-        match queue::load_queue(&resolved.queue_path) {
-            Ok(q) => match queue::validate_queue(&q, &resolved.id_prefix, resolved.id_width) {
-                Ok(_) => println!("  [OK] queue valid ({} tasks)", q.tasks.len()),
-                Err(e) => {
-                    println!("  [FAIL] queue validation failed: {}", e);
-                    failures.push("queue validation failed");
+        match queue::load_queue_with_repair(&resolved.queue_path) {
+            Ok((q, repaired)) => {
+                queue::warn_if_repaired(&resolved.queue_path, repaired);
+                match queue::validate_queue(&q, &resolved.id_prefix, resolved.id_width) {
+                    Ok(_) => println!("  [OK] queue valid ({} tasks)", q.tasks.len()),
+                    Err(e) => {
+                        println!("  [FAIL] queue validation failed: {}", e);
+                        failures.push("queue validation failed");
+                    }
                 }
-            },
+            }
             Err(e) => {
                 println!("  [FAIL] failed to load queue: {}", e);
                 failures.push("queue load failed");
