@@ -118,3 +118,44 @@ fn doctor_warns_on_missing_upstream() -> Result<()> {
     assert!(stdout.contains("[WARN] no upstream configured"));
     Ok(())
 }
+
+#[test]
+fn doctor_fails_with_nonexistent_runner_binary() -> Result<()> {
+    let dir = TempDir::new()?;
+    // Setup valid repo
+    Command::new("git")
+        .current_dir(dir.path())
+        .arg("init")
+        .status()?;
+
+    // Setup ralph
+    Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .args(["init", "--force"])
+        .status()?;
+
+    // Configure a non-existent runner binary
+    let config_path = dir.path().join(".ralph/config.yaml");
+    let config_content = r#"version: 1
+agent:
+  runner: opencode
+  opencode_bin: "this-binary-does-not-exist-xyz123"
+"#;
+    std::fs::write(&config_path, config_content)?;
+
+    let output = Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .arg("doctor")
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Should fail
+    assert!(!output.status.success());
+    // Should report the failure with the binary name
+    let combined_output = format!("{}\n{}", stdout, stderr);
+    assert!(combined_output.contains("this-binary-does-not-exist-xyz123"));
+    assert!(combined_output.contains("[FAIL]"));
+    Ok(())
+}

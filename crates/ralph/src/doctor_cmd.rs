@@ -98,13 +98,30 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
 }
 
 fn check_command(bin: &str, args: &[&str]) -> Result<()> {
-    match Command::new(bin)
+    let output = Command::new(bin)
         .args(args)
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-    {
-        Ok(_) => Ok(()),
-        Err(e) => Err(anyhow::anyhow!("{}", e)),
+        .stderr(std::process::Stdio::piped())
+        .output()?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stderr_msg = if stderr.trim().is_empty() {
+            format!(
+                "command '{}' {:?} failed with exit status: {}",
+                bin, args, output.status
+            )
+        } else {
+            format!(
+                "command '{}' {:?} failed with exit status {}: {}",
+                bin,
+                args,
+                output.status,
+                stderr.trim()
+            )
+        };
+        Err(anyhow::anyhow!(stderr_msg))
     }
 }

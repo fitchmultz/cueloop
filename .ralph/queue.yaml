@@ -1,23 +1,5 @@
 version: 1
 tasks:
-  - id: RQ-0060
-    status: todo
-    title: Doctor check_command should fail on non-zero exit status
-    tags:
-      - rust
-      - ux
-      - tooling
-    scope:
-      - crates/ralph/src/doctor_cmd.rs
-    evidence:
-      - check_command returns Ok even when the command exits non-zero
-    plan:
-      - Validate command exit status and surface failures
-      - Include stderr in the error message for debugging
-      - Add a unit test or integration case for a failing command
-    request: scan finding
-    created_at: 2026-01-18T20:45:41Z
-    updated_at: 2026-01-18T20:45:41Z
   - id: RQ-0062
     status: todo
     title: Use YAML repair when loading queue before scan
