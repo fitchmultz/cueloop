@@ -14,6 +14,8 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     // Prevents catastrophic data loss if scan fails and reverts uncommitted changes.
     gitutil::require_clean_repo(&resolved.repo_root)?;
 
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "scan")?;
+
     let before = queue::load_queue(&resolved.queue_path)
         .with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
     let done = queue::load_queue_or_default(&resolved.done_path)

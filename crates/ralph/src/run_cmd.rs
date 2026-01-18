@@ -45,6 +45,7 @@ pub fn run_one(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
 ) -> Result<RunOutcome> {
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run one")?;
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {

@@ -40,6 +40,8 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
     // Enforce the "repo is clean before any agent run" assumption.
     gitutil::require_clean_repo(&resolved.repo_root)?;
 
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task build")?;
+
     if opts.request.trim().is_empty() {
         bail!("request text required");
     }

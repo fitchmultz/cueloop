@@ -1,7 +1,211 @@
-use anyhow::{Context, Result};
+use crate::timeutil;
+use anyhow::{anyhow, Context, Result};
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+#[derive(Debug)]
+pub struct DirLock {
+    lock_dir: PathBuf,
+    owner_path: PathBuf,
+}
+
+impl Drop for DirLock {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.owner_path);
+        let _ = fs::remove_dir(&self.lock_dir);
+    }
+}
+
+struct LockOwner {
+    pid: u32,
+    started_at: String,
+    command: String,
+    label: String,
+}
+
+impl LockOwner {
+    fn render(&self) -> String {
+        format!(
+            "pid: {}\nstarted_at: {}\ncommand: {}\nlabel: {}\n",
+            self.pid, self.started_at, self.command, self.label
+        )
+    }
+}
+
+pub fn queue_lock_dir(repo_root: &Path) -> PathBuf {
+    repo_root.join(".ralph").join("lock")
+}
+
+pub fn acquire_dir_lock(lock_dir: &Path, label: &str) -> Result<DirLock> {
+    if let Some(parent) = lock_dir.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("create lock parent {}", parent.display()))?;
+    }
+
+    match fs::create_dir(lock_dir) {
+        Ok(()) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
+            let mut owner_unreadable = false;
+            let owner = match read_lock_owner(lock_dir) {
+                Ok(owner) => owner,
+                Err(_) => {
+                    owner_unreadable = true;
+                    None
+                }
+            };
+
+            let mut msg = if let Some(owner) = owner {
+                let mut base = format!(
+                    "queue lock is held by pid {} (label: {}, started_at: {}, command: {}) at {}",
+                    owner.pid,
+                    owner.label,
+                    owner.started_at,
+                    owner.command,
+                    lock_dir.display()
+                );
+                if let Some(false) = pid_is_running(owner.pid) {
+                    base.push_str(" (stale pid)");
+                }
+                base
+            } else {
+                format!(
+                    "queue lock is already held at {} (owner metadata missing)",
+                    lock_dir.display()
+                )
+            };
+
+            if owner_unreadable {
+                msg.push_str(" (owner metadata unreadable)");
+            }
+
+            msg.push_str(&format!(
+                "; remove {} if you are sure no other ralph process is running",
+                lock_dir.display()
+            ));
+            return Err(anyhow!(msg));
+        }
+        Err(err) => {
+            return Err(anyhow!(err))
+                .with_context(|| format!("create lock dir {}", lock_dir.display()));
+        }
+    }
+
+    let label = label.trim();
+    let label = if label.is_empty() {
+        "unspecified"
+    } else {
+        label
+    };
+    let owner = LockOwner {
+        pid: std::process::id(),
+        started_at: timeutil::now_utc_rfc3339()?,
+        command: command_line(),
+        label: label.to_string(),
+    };
+
+    let owner_path = lock_dir.join("owner");
+    if let Err(err) = write_lock_owner(&owner_path, &owner) {
+        let _ = fs::remove_file(&owner_path);
+        let _ = fs::remove_dir(lock_dir);
+        return Err(err);
+    }
+
+    Ok(DirLock {
+        lock_dir: lock_dir.to_path_buf(),
+        owner_path,
+    })
+}
+
+fn write_lock_owner(owner_path: &Path, owner: &LockOwner) -> Result<()> {
+    let mut file = fs::File::create(owner_path)
+        .with_context(|| format!("create lock owner {}", owner_path.display()))?;
+    file.write_all(owner.render().as_bytes())
+        .context("write lock owner")?;
+    file.flush().context("flush lock owner")?;
+    file.sync_all().context("sync lock owner")?;
+    if let Some(parent) = owner_path.parent() {
+        sync_dir_best_effort(parent);
+    }
+    Ok(())
+}
+
+fn read_lock_owner(lock_dir: &Path) -> Result<Option<LockOwner>> {
+    let owner_path = lock_dir.join("owner");
+    let raw = match fs::read_to_string(&owner_path) {
+        Ok(raw) => raw,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(err) => {
+            return Err(anyhow!(err))
+                .with_context(|| format!("read lock owner {}", owner_path.display()))
+        }
+    };
+    Ok(parse_lock_owner(&raw))
+}
+
+fn parse_lock_owner(raw: &str) -> Option<LockOwner> {
+    let mut pid = None;
+    let mut started_at = None;
+    let mut command = None;
+    let mut label = None;
+
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Some((key, value)) = trimmed.split_once(':') {
+            let value = value.trim().to_string();
+            match key.trim() {
+                "pid" => pid = value.parse::<u32>().ok(),
+                "started_at" => started_at = Some(value),
+                "command" => command = Some(value),
+                "label" => label = Some(value),
+                _ => {}
+            }
+        }
+    }
+
+    let pid = pid?;
+    Some(LockOwner {
+        pid,
+        started_at: started_at.unwrap_or_else(|| "unknown".to_string()),
+        command: command.unwrap_or_else(|| "unknown".to_string()),
+        label: label.unwrap_or_else(|| "unknown".to_string()),
+    })
+}
+
+fn pid_is_running(pid: u32) -> Option<bool> {
+    #[cfg(unix)]
+    {
+        let result = unsafe { libc::kill(pid as i32, 0) };
+        if result == 0 {
+            return Some(true);
+        }
+        let err = std::io::Error::last_os_error();
+        if err.raw_os_error() == Some(libc::ESRCH) {
+            return Some(false);
+        }
+        None
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = pid;
+        None
+    }
+}
+
+fn command_line() -> String {
+    let args: Vec<String> = std::env::args().collect();
+    let joined = args.join(" ");
+    let trimmed = joined.trim();
+    if trimmed.is_empty() {
+        "unknown".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
 
 pub fn write_atomic(path: &Path, contents: &[u8]) -> Result<()> {
     let dir = path

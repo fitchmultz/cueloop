@@ -11,6 +11,11 @@ pub struct ArchiveReport {
     pub skipped_ids: Vec<String>,
 }
 
+pub fn acquire_queue_lock(repo_root: &Path, label: &str) -> Result<fsutil::DirLock> {
+    let lock_dir = fsutil::queue_lock_dir(repo_root);
+    fsutil::acquire_dir_lock(&lock_dir, label)
+}
+
 pub fn load_queue(path: &Path) -> Result<QueueFile> {
     let raw = std::fs::read_to_string(path)
         .map_err(|err| {

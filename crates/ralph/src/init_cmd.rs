@@ -1,6 +1,7 @@
 use crate::config;
 use crate::contracts::{Config, QueueFile};
 use crate::fsutil;
+use crate::queue;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
@@ -18,6 +19,8 @@ pub struct InitReport {
 pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitReport> {
     let ralph_dir = resolved.repo_root.join(".ralph");
     fs::create_dir_all(&ralph_dir).with_context(|| format!("create {}", ralph_dir.display()))?;
+
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "init")?;
 
     let queue_created = write_queue(&resolved.queue_path, opts.force)?;
     let done_created = write_done(&resolved.done_path, opts.force)?;

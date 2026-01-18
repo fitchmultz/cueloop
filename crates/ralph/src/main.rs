@@ -184,6 +184,7 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
             }
         }
         QueueCommand::Done => {
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue done")?;
             let report = queue::archive_done_tasks(
                 &resolved.queue_path,
                 &resolved.done_path,
@@ -206,6 +207,7 @@ fn handle_queue(cmd: QueueCommand) -> Result<()> {
             reason,
             note,
         } => {
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue set-status")?;
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
             let now = timeutil::now_utc_rfc3339()?;
             queue::set_status(
