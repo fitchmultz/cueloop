@@ -8,5 +8,4 @@ ralph_tui/ralph
 .ralph/cache/
 .ralph/logs/
 target/
-!target/release/ralph*
 .ralph/lock
