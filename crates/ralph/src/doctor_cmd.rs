@@ -38,7 +38,11 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
     // 2. Queue Checks
     println!("Checking Ralph queue...");
     if resolved.queue_path.exists() {
-        match queue::load_queue_with_repair(&resolved.queue_path) {
+        match queue::load_queue_with_repair(
+            &resolved.queue_path,
+            &resolved.id_prefix,
+            resolved.id_width,
+        ) {
             Ok((q, repaired)) => {
                 queue::warn_if_repaired(&resolved.queue_path, repaired);
                 match queue::validate_queue(&q, &resolved.id_prefix, resolved.id_width) {
@@ -65,7 +69,11 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
     // 2b. Done Archive Checks
     println!("Checking Ralph done archive...");
     if resolved.done_path.exists() {
-        match queue::load_queue_with_repair(&resolved.done_path) {
+        match queue::load_queue_with_repair(
+            &resolved.done_path,
+            &resolved.id_prefix,
+            resolved.id_width,
+        ) {
             Ok((d, repaired)) => {
                 queue::warn_if_repaired(&resolved.done_path, repaired);
                 match queue::validate_queue(&d, &resolved.id_prefix, resolved.id_width) {

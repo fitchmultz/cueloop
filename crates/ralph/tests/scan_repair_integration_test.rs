@@ -32,8 +32,8 @@ tasks:
     fs::write(&queue_path, queue_with_colon_scalars).context("write queue with colon scalars")?;
 
     // Load the queue with repair
-    let (queue, repaired) =
-        ralph::queue::load_queue_with_repair(&queue_path).context("load queue with repair")?;
+    let (queue, repaired) = ralph::queue::load_queue_with_repair(&queue_path, "RQ", 4)
+        .context("load queue with repair")?;
 
     // Verify repair happened
     assert!(

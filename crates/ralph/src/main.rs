@@ -55,11 +55,19 @@ fn load_and_validate_queues(
     resolved: &config::Resolved,
     include_done: bool,
 ) -> Result<(QueueFile, Option<QueueFile>)> {
-    let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+    let (queue_file, repaired_queue) = queue::load_queue_with_repair(
+        &resolved.queue_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
     queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
 
     let done_file = if include_done {
-        let (done, repaired_done) = queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+        let (done, repaired_done) = queue::load_queue_or_default_with_repair(
+            &resolved.done_path,
+            &resolved.id_prefix,
+            resolved.id_width,
+        )?;
         queue::warn_if_repaired(&resolved.done_path, repaired_done);
         Some(done)
     } else {
@@ -198,7 +206,8 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Repair => {
             let _queue_lock =
                 queue::acquire_queue_lock(&resolved.repo_root, "queue repair", force)?;
-            let report = queue::repair_queue(&resolved.queue_path)?;
+            let report =
+                queue::repair_queue(&resolved.queue_path, &resolved.id_prefix, resolved.id_width)?;
             if report.repaired {
                 log::info!("Repaired queue YAML.");
             } else {
@@ -212,8 +221,11 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         } => {
             let _queue_lock =
                 queue::acquire_queue_lock(&resolved.repo_root, "queue set-status", force)?;
-            let (mut queue_file, repaired_queue) =
-                queue::load_queue_with_repair(&resolved.queue_path)?;
+            let (mut queue_file, repaired_queue) = queue::load_queue_with_repair(
+                &resolved.queue_path,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )?;
             queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
             let now = timeutil::now_utc_rfc3339()?;
             queue::set_status(

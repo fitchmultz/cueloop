@@ -39,7 +39,11 @@ pub fn read_request_from_args_or_stdin(args: &[String]) -> Result<String> {
 
 pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result<()> {
     // Enforce the "repo is clean before any agent run" assumption.
-    gitutil::require_clean_repo(&resolved.repo_root, opts.force)?;
+    gitutil::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        opts.force,
+        &[".ralph/queue.yaml", ".ralph/done.yaml"],
+    )?;
 
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task build", opts.force)?;
 
@@ -47,16 +51,21 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
         bail!("request text required");
     }
 
-    let (before, repaired_before) = queue::load_queue_with_repair(&resolved.queue_path)
-        .with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
+    let (before, repaired_before) =
+        queue::load_queue_with_repair(&resolved.queue_path, &resolved.id_prefix, resolved.id_width)
+            .with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
     if repaired_before {
         log::warn!(
-            "Repaired invalid YAML scalars in {}",
+            "Repaired queue YAML format issues in {}",
             resolved.queue_path.display()
         );
     }
-    let (done, repaired_done) = queue::load_queue_or_default_with_repair(&resolved.done_path)
-        .with_context(|| format!("read done {}", resolved.done_path.display()))?;
+    let (done, repaired_done) = queue::load_queue_or_default_with_repair(
+        &resolved.done_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )
+    .with_context(|| format!("read done {}", resolved.done_path.display()))?;
     queue::warn_if_repaired(&resolved.done_path, repaired_done);
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
         None
@@ -119,13 +128,17 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
         }
     };
 
-    let mut after = match queue::load_queue_with_repair(&resolved.queue_path)
-        .with_context(|| format!("read queue {}", resolved.queue_path.display()))
+    let mut after = match queue::load_queue_with_repair(
+        &resolved.queue_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )
+    .with_context(|| format!("read queue {}", resolved.queue_path.display()))
     {
         Ok((queue, repaired)) => {
             if repaired {
                 log::warn!(
-                    "Repaired invalid YAML scalars in {}",
+                    "Repaired queue YAML format issues in {}",
                     resolved.queue_path.display()
                 );
             }
@@ -137,9 +150,12 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
         }
     };
 
-    let (done_after, repaired_done_after) =
-        queue::load_queue_or_default_with_repair(&resolved.done_path)
-            .with_context(|| format!("read done {}", resolved.done_path.display()))?;
+    let (done_after, repaired_done_after) = queue::load_queue_or_default_with_repair(
+        &resolved.done_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )
+    .with_context(|| format!("read done {}", resolved.done_path.display()))?;
     queue::warn_if_repaired(&resolved.done_path, repaired_done_after);
     let done_after_ref = if done_after.tasks.is_empty() && !resolved.done_path.exists() {
         None

@@ -48,9 +48,17 @@ pub fn run_one(
     force: bool,
 ) -> Result<RunOutcome> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run one", force)?;
-    let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+    let (queue_file, repaired_queue) = queue::load_queue_with_repair(
+        &resolved.queue_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
     queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
-    let (done, repaired_done) = queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+    let (done, repaired_done) = queue::load_queue_or_default_with_repair(
+        &resolved.done_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
     queue::warn_if_repaired(&resolved.done_path, repaired_done);
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
         None
@@ -84,7 +92,11 @@ pub fn run_one(
 
     // Require a clean repo before we invoke the runner.
     // This prevents accidental destruction of unrelated user work on failure recovery.
-    gitutil::require_clean_repo(&resolved.repo_root, force)?;
+    gitutil::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        force,
+        &[".ralph/queue.yaml", ".ralph/done.yaml"],
+    )?;
 
     let settings = resolve_run_agent_settings(resolved, &task, agent_overrides)?;
 
@@ -181,10 +193,17 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
     let status = gitutil::status_porcelain(&resolved.repo_root)?;
     let is_dirty = !status.trim().is_empty();
 
-    let (mut queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+    let (mut queue_file, repaired_queue) = queue::load_queue_with_repair(
+        &resolved.queue_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
     queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
-    let (mut done_file, repaired_done) =
-        queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+    let (mut done_file, repaired_done) = queue::load_queue_or_default_with_repair(
+        &resolved.done_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
     queue::warn_if_repaired(&resolved.done_path, repaired_done);
     let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
         None
@@ -208,11 +227,18 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
             bail!("make ci failed; reverted uncommitted changes: {:#}", err);
         }
 
-        let (reloaded_queue, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+        let (reloaded_queue, repaired_queue) = queue::load_queue_with_repair(
+            &resolved.queue_path,
+            &resolved.id_prefix,
+            resolved.id_width,
+        )?;
         queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
         queue_file = reloaded_queue;
-        let (reloaded_done, repaired_done) =
-            queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+        let (reloaded_done, repaired_done) = queue::load_queue_or_default_with_repair(
+            &resolved.done_path,
+            &resolved.id_prefix,
+            resolved.id_width,
+        )?;
         queue::warn_if_repaired(&resolved.done_path, repaired_done);
         done_file = reloaded_done;
         let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
@@ -253,7 +279,11 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
         let commit_message = format_task_commit_message(task_id, &task_title);
         gitutil::commit_all(&resolved.repo_root, &commit_message)?;
         push_if_ahead(&resolved.repo_root)?;
-        gitutil::require_clean_repo(&resolved.repo_root, false)?;
+        gitutil::require_clean_repo_ignoring_paths(
+            &resolved.repo_root,
+            false,
+            &[".ralph/queue.yaml", ".ralph/done.yaml"],
+        )?;
         return Ok(());
     }
 
@@ -290,7 +320,11 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
     let commit_message = format_task_commit_message(task_id, &task_title);
     gitutil::commit_all(&resolved.repo_root, &commit_message)?;
     push_if_ahead(&resolved.repo_root)?;
-    gitutil::require_clean_repo(&resolved.repo_root, false)?;
+    gitutil::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        false,
+        &[".ralph/queue.yaml", ".ralph/done.yaml"],
+    )?;
     Ok(())
 }
 

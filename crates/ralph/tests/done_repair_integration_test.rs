@@ -26,7 +26,7 @@ tasks:
 
     fs::write(&done_path, raw).context("write done yaml")?;
 
-    let (done, repaired) = ralph::queue::load_queue_or_default_with_repair(&done_path)?;
+    let (done, repaired) = ralph::queue::load_queue_or_default_with_repair(&done_path, "RQ", 4)?;
     assert!(repaired, "expected done.yaml repair");
     assert_eq!(done.tasks.len(), 1);
     assert_eq!(done.tasks[0].notes, vec!["key: value".to_string()]);

@@ -154,11 +154,11 @@ fn stress_queue_ops_large_scale() -> Result<()> {
     let (queue_path, done_path) = write_queue_files(&dir, &active, &done)?;
 
     let (reloaded_active, repaired_active) =
-        queue::load_queue_with_repair(&queue_path).context("load active")?;
+        queue::load_queue_with_repair(&queue_path, ID_PREFIX, ID_WIDTH).context("load active")?;
     anyhow::ensure!(!repaired_active, "unexpected repair on valid YAML (active)");
 
     let (reloaded_done, repaired_done) =
-        queue::load_queue_with_repair(&done_path).context("load done")?;
+        queue::load_queue_with_repair(&done_path, ID_PREFIX, ID_WIDTH).context("load done")?;
     anyhow::ensure!(!repaired_done, "unexpected repair on valid YAML (done)");
 
     queue::validate_queue_set(&reloaded_active, Some(&reloaded_done), ID_PREFIX, ID_WIDTH)
@@ -210,7 +210,8 @@ fn stress_queue_archive_and_mutate_cycles() -> Result<()> {
 
     for iter in 0..profile.iterations {
         let (mut current, repaired_current) =
-            queue::load_queue_with_repair(&queue_path).context("load active")?;
+            queue::load_queue_with_repair(&queue_path, ID_PREFIX, ID_WIDTH)
+                .context("load active")?;
         anyhow::ensure!(
             !repaired_current,
             "unexpected repair on valid YAML (active)"
@@ -230,13 +231,14 @@ fn stress_queue_archive_and_mutate_cycles() -> Result<()> {
         let _report = queue::archive_done_tasks(&queue_path, &done_path, ID_PREFIX, ID_WIDTH)
             .with_context(|| format!("archive iteration {iter}"))?;
 
-        let active_reloaded =
-            queue::load_queue_with_repair(&queue_path).context("reload active")?;
+        let active_reloaded = queue::load_queue_with_repair(&queue_path, ID_PREFIX, ID_WIDTH)
+            .context("reload active")?;
         anyhow::ensure!(
             !active_reloaded.1,
             "unexpected repair on valid YAML (active)"
         );
-        let done_reloaded = queue::load_queue_with_repair(&done_path).context("reload done")?;
+        let done_reloaded = queue::load_queue_with_repair(&done_path, ID_PREFIX, ID_WIDTH)
+            .context("reload done")?;
         anyhow::ensure!(!done_reloaded.1, "unexpected repair on valid YAML (done)");
         queue::validate_queue_set(
             &active_reloaded.0,
@@ -257,7 +259,7 @@ fn stress_queue_repair_large_yaml_scalars() -> Result<()> {
     let raw = build_raw_yaml_with_colons(2000, ID_PREFIX, ID_WIDTH);
     std::fs::write(&queue_path, raw).context("write raw queue")?;
 
-    let (queue, repaired) = queue::load_queue_with_repair(&queue_path)?;
+    let (queue, repaired) = queue::load_queue_with_repair(&queue_path, ID_PREFIX, ID_WIDTH)?;
     anyhow::ensure!(repaired, "expected repair for colon scalars");
     anyhow::ensure!(queue.tasks.len() == 2000, "unexpected task count");
 
@@ -307,7 +309,8 @@ fn stress_queue_ops_burn_in_long() -> Result<()> {
         let _ = report;
 
         let (mut current, repaired_current) =
-            queue::load_queue_with_repair(&queue_path).context("load active")?;
+            queue::load_queue_with_repair(&queue_path, ID_PREFIX, ID_WIDTH)
+                .context("load active")?;
         anyhow::ensure!(
             !repaired_current,
             "unexpected repair on valid YAML (active)"
@@ -324,13 +327,14 @@ fn stress_queue_ops_burn_in_long() -> Result<()> {
         queue::save_queue(&queue_path, &current).context("save active")?;
 
         // Reload both and validate invariants.
-        let active_reloaded =
-            queue::load_queue_with_repair(&queue_path).context("reload active")?;
+        let active_reloaded = queue::load_queue_with_repair(&queue_path, ID_PREFIX, ID_WIDTH)
+            .context("reload active")?;
         anyhow::ensure!(
             !active_reloaded.1,
             "unexpected repair on valid YAML (active)"
         );
-        let done_reloaded = queue::load_queue_with_repair(&done_path).context("reload done")?;
+        let done_reloaded = queue::load_queue_with_repair(&done_path, ID_PREFIX, ID_WIDTH)
+            .context("reload done")?;
         anyhow::ensure!(!done_reloaded.1, "unexpected repair on valid YAML (done)");
         queue::validate_queue_set(
             &active_reloaded.0,

@@ -13,17 +13,25 @@ pub struct ScanOptions {
 
 pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     // Prevents catastrophic data loss if scan fails and reverts uncommitted changes.
-    gitutil::require_clean_repo(&resolved.repo_root, opts.force)?;
+    gitutil::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        opts.force,
+        &[".ralph/queue.yaml", ".ralph/done.yaml"],
+    )?;
 
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "scan", opts.force)?;
 
-    let before = match queue::load_queue_with_repair(&resolved.queue_path)
-        .with_context(|| format!("read queue {}", resolved.queue_path.display()))
+    let before = match queue::load_queue_with_repair(
+        &resolved.queue_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )
+    .with_context(|| format!("read queue {}", resolved.queue_path.display()))
     {
         Ok((queue, repaired)) => {
             if repaired {
                 log::warn!(
-                    "Repaired invalid YAML scalars in {}",
+                    "Repaired queue YAML format issues in {}",
                     resolved.queue_path.display()
                 );
             }
@@ -34,8 +42,12 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             return Err(err);
         }
     };
-    let (done, repaired_done) = queue::load_queue_or_default_with_repair(&resolved.done_path)
-        .with_context(|| format!("read done {}", resolved.done_path.display()))?;
+    let (done, repaired_done) = queue::load_queue_or_default_with_repair(
+        &resolved.done_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )
+    .with_context(|| format!("read done {}", resolved.done_path.display()))?;
     queue::warn_if_repaired(&resolved.done_path, repaired_done);
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
         None
@@ -97,13 +109,17 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         }
     };
 
-    let mut after = match queue::load_queue_with_repair(&resolved.queue_path)
-        .with_context(|| format!("read queue {}", resolved.queue_path.display()))
+    let mut after = match queue::load_queue_with_repair(
+        &resolved.queue_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )
+    .with_context(|| format!("read queue {}", resolved.queue_path.display()))
     {
         Ok((queue, repaired)) => {
             if repaired {
                 log::warn!(
-                    "Repaired invalid YAML scalars in {}",
+                    "Repaired queue YAML format issues in {}",
                     resolved.queue_path.display()
                 );
             }
@@ -115,9 +131,12 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         }
     };
 
-    let (done_after, repaired_done_after) =
-        queue::load_queue_or_default_with_repair(&resolved.done_path)
-            .with_context(|| format!("read done {}", resolved.done_path.display()))?;
+    let (done_after, repaired_done_after) = queue::load_queue_or_default_with_repair(
+        &resolved.done_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )
+    .with_context(|| format!("read done {}", resolved.done_path.display()))?;
     queue::warn_if_repaired(&resolved.done_path, repaired_done_after);
     let done_after_ref = if done_after.tasks.is_empty() && !resolved.done_path.exists() {
         None

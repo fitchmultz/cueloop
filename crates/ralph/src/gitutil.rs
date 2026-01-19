@@ -65,6 +65,7 @@ pub fn status_porcelain(repo_root: &Path) -> Result<String> {
 
 // require_clean_repo fails if the repo has any uncommitted changes.
 // This enforces the assumption that the repo is clean before any agent run.
+#[allow(dead_code)]
 pub fn require_clean_repo(repo_root: &Path, force: bool) -> Result<()> {
     let status = status_porcelain(repo_root)?;
     if status.trim().is_empty() {
@@ -113,6 +114,95 @@ pub fn require_clean_repo(repo_root: &Path, force: bool) -> Result<()> {
 
     msg.push_str("\n\nUse --force to bypass this check if you are sure.");
     bail!(msg);
+}
+
+pub fn require_clean_repo_ignoring_paths(
+    repo_root: &Path,
+    force: bool,
+    allowed_paths: &[&str],
+) -> Result<()> {
+    let status = status_porcelain(repo_root)?;
+    if status.trim().is_empty() {
+        return Ok(());
+    }
+
+    if force {
+        return Ok(());
+    }
+
+    let mut tracked = Vec::new();
+    let mut untracked = Vec::new();
+
+    for line in status.lines() {
+        let trimmed = line.trim_start();
+        let path = parse_status_path(trimmed).unwrap_or("");
+        if !path_is_allowed(path, allowed_paths) {
+            if trimmed.starts_with("??") {
+                untracked.push(line);
+            } else {
+                tracked.push(line);
+            }
+        }
+    }
+
+    if tracked.is_empty() && untracked.is_empty() {
+        return Ok(());
+    }
+
+    let mut msg = String::from("repo is dirty; commit/stash your changes before running Ralph.");
+
+    if !tracked.is_empty() {
+        msg.push_str("\n\nTracked changes (suggest 'git stash' or 'git commit'):");
+        for line in tracked.iter().take(10) {
+            msg.push_str("\n  ");
+            msg.push_str(line);
+        }
+        if tracked.len() > 10 {
+            msg.push_str(&format!("\n  ...and {} more", tracked.len() - 10));
+        }
+    }
+
+    if !untracked.is_empty() {
+        msg.push_str("\n\nUntracked files (suggest 'git clean -fd' or 'git add'):");
+        for line in untracked.iter().take(10) {
+            msg.push_str("\n  ");
+            msg.push_str(line);
+        }
+        if untracked.len() > 10 {
+            msg.push_str(&format!("\n  ...and {} more", untracked.len() - 10));
+        }
+    }
+
+    msg.push_str("\n\nUse --force to bypass this check if you are sure.");
+    bail!(msg);
+}
+
+fn parse_status_path(line: &str) -> Option<&str> {
+    let trimmed = line.trim_start();
+    if trimmed.len() < 3 {
+        return None;
+    }
+    let status = &trimmed[..2];
+    let rest = trimmed.get(2..)?.trim();
+    if status == "??" {
+        return Some(rest);
+    }
+    if let Some((_, path)) = rest.rsplit_once(" -> ") {
+        return Some(path.trim());
+    }
+    Some(rest)
+}
+
+fn path_is_allowed(path: &str, allowed_paths: &[&str]) -> bool {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let normalized = trimmed.strip_prefix("./").unwrap_or(trimmed);
+    allowed_paths.iter().any(|allowed| {
+        let allowed_norm = allowed.strip_prefix("./").unwrap_or(allowed);
+        normalized == allowed_norm
+    })
 }
 
 fn git_run(repo_root: &Path, args: &[&str]) -> Result<()> {

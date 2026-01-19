@@ -1,6 +1,7 @@
 use crate::contracts::{QueueFile, Task, TaskStatus};
 use crate::fsutil;
 use crate::redaction;
+use crate::timeutil;
 use anyhow::{anyhow, bail, Context, Result};
 use std::collections::HashSet;
 use std::path::Path;
@@ -22,26 +23,45 @@ pub fn acquire_queue_lock(repo_root: &Path, label: &str, force: bool) -> Result<
     fsutil::acquire_dir_lock(&lock_dir, label, force)
 }
 
-pub fn load_queue_or_default_with_repair(path: &Path) -> Result<(QueueFile, bool)> {
+pub fn load_queue_or_default_with_repair(
+    path: &Path,
+    id_prefix: &str,
+    id_width: usize,
+) -> Result<(QueueFile, bool)> {
     if !path.exists() {
         return Ok((QueueFile::default(), false));
     }
-    load_queue_with_repair(path)
+    load_queue_with_repair(path, id_prefix, id_width)
 }
 
 pub fn warn_if_repaired(path: &Path, repaired: bool) {
     if repaired {
-        log::warn!("Repaired invalid YAML scalars in {}", path.display());
+        log::warn!("Repaired queue YAML format issues in {}", path.display());
     }
 }
 
-pub fn load_queue_with_repair(path: &Path) -> Result<(QueueFile, bool)> {
+pub fn load_queue_with_repair(
+    path: &Path,
+    id_prefix: &str,
+    id_width: usize,
+) -> Result<(QueueFile, bool)> {
     let raw = std::fs::read_to_string(path)
         .with_context(|| format!("read queue file {}", path.display()))?;
-    match serde_yaml::from_str::<QueueFile>(&raw) {
-        Ok(queue) => Ok((queue, false)),
+    let parsed = serde_yaml::from_str::<QueueFile>(&raw);
+    match parsed {
+        Ok(queue) => {
+            if let Some(repaired) = repair_yaml(&raw, id_prefix, id_width) {
+                let queue: QueueFile = serde_yaml::from_str(&repaired)
+                    .with_context(|| format!("parse repaired queue YAML {}", path.display()))?;
+                fsutil::write_atomic(path, repaired.as_bytes())
+                    .with_context(|| format!("write repaired queue YAML {}", path.display()))?;
+                Ok((queue, true))
+            } else {
+                Ok((queue, false))
+            }
+        }
         Err(err) => {
-            let repaired = repair_yaml(&raw)
+            let repaired = repair_yaml(&raw, id_prefix, id_width)
                 .ok_or_else(|| anyhow!("parse queue YAML {}: {err}", path.display()))?;
             let queue: QueueFile = serde_yaml::from_str(&repaired)
                 .with_context(|| format!("parse repaired queue YAML {}", path.display()))?;
@@ -52,13 +72,24 @@ pub fn load_queue_with_repair(path: &Path) -> Result<(QueueFile, bool)> {
     }
 }
 
-pub fn repair_queue(path: &Path) -> Result<RepairReport> {
+pub fn repair_queue(path: &Path, id_prefix: &str, id_width: usize) -> Result<RepairReport> {
     let raw = std::fs::read_to_string(path)
         .with_context(|| format!("read queue file {}", path.display()))?;
-    match serde_yaml::from_str::<QueueFile>(&raw) {
-        Ok(_) => Ok(RepairReport { repaired: false }),
+    let parsed = serde_yaml::from_str::<QueueFile>(&raw);
+    match parsed {
+        Ok(_) => {
+            if let Some(repaired) = repair_yaml(&raw, id_prefix, id_width) {
+                let _queue: QueueFile = serde_yaml::from_str(&repaired)
+                    .with_context(|| format!("parse repaired queue YAML {}", path.display()))?;
+                fsutil::write_atomic(path, repaired.as_bytes())
+                    .with_context(|| format!("write repaired queue YAML {}", path.display()))?;
+                Ok(RepairReport { repaired: true })
+            } else {
+                Ok(RepairReport { repaired: false })
+            }
+        }
         Err(_) => {
-            let repaired = repair_yaml(&raw)
+            let repaired = repair_yaml(&raw, id_prefix, id_width)
                 .ok_or_else(|| anyhow!("unable to repair queue YAML {}", path.display()))?;
             let _queue: QueueFile = serde_yaml::from_str(&repaired)
                 .with_context(|| format!("parse repaired queue YAML {}", path.display()))?;
@@ -161,9 +192,10 @@ pub fn archive_done_tasks(
     id_prefix: &str,
     id_width: usize,
 ) -> Result<ArchiveReport> {
-    let (mut active, repaired_active) = load_queue_with_repair(queue_path)?;
+    let (mut active, repaired_active) = load_queue_with_repair(queue_path, id_prefix, id_width)?;
     warn_if_repaired(queue_path, repaired_active);
-    let (mut done, repaired_done) = load_queue_or_default_with_repair(done_path)?;
+    let (mut done, repaired_done) =
+        load_queue_or_default_with_repair(done_path, id_prefix, id_width)?;
     warn_if_repaired(done_path, repaired_done);
 
     validate_queue_set(&active, Some(&done), id_prefix, id_width)?;
@@ -280,7 +312,7 @@ fn sanitize_yaml_text(prefix: &str, value: &str) -> String {
     trimmed.to_string()
 }
 
-fn repair_yaml(raw: &str) -> Option<String> {
+fn repair_yaml(raw: &str, id_prefix: &str, id_width: usize) -> Option<String> {
     let mut changed = false;
     let mut updated = raw.to_string();
 
@@ -291,6 +323,11 @@ fn repair_yaml(raw: &str) -> Option<String> {
 
     if let Some(scalars) = repair_yaml_scalars(&updated) {
         updated = scalars;
+        changed = true;
+    }
+
+    if let Some(structured) = repair_queue_schema(&updated, id_prefix, id_width) {
+        updated = structured;
         changed = true;
     }
 
@@ -375,6 +412,212 @@ fn repair_yaml_scalars(raw: &str) -> Option<String> {
         Some(out)
     } else {
         None
+    }
+}
+
+fn repair_queue_schema(raw: &str, id_prefix: &str, id_width: usize) -> Option<String> {
+    let mut changed = false;
+    let mut queue: QueueFile = serde_yaml::from_str(raw).ok()?;
+
+    if queue.version != 1 {
+        queue.version = 1;
+        changed = true;
+    }
+
+    let mut ids = Vec::new();
+    let mut id_changed = false;
+    for task in queue.tasks.iter_mut() {
+        let trimmed = task.id.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        match parse_any_task_id(trimmed) {
+            Some(value) => {
+                let prefix = normalize_prefix(id_prefix);
+                let normalized = format_id(&prefix, value, id_width);
+                if normalized != trimmed {
+                    task.id = normalized;
+                    id_changed = true;
+                }
+                ids.push(value);
+            }
+            None => continue,
+        }
+    }
+
+    let mut next_value = if ids.is_empty() {
+        1
+    } else {
+        ids.into_iter().max().unwrap_or(0).saturating_add(1)
+    };
+
+    for task in queue.tasks.iter_mut() {
+        if task.id.trim().is_empty() {
+            let prefix = normalize_prefix(id_prefix);
+            task.id = format_id(&prefix, next_value, id_width);
+            next_value = next_value.saturating_add(1);
+            id_changed = true;
+        }
+
+        let trimmed = task.id.trim();
+        if let Some(value) = parse_any_task_id(trimmed) {
+            let prefix = normalize_prefix(id_prefix);
+            let normalized = format_id(&prefix, value, id_width);
+            if normalized != trimmed {
+                task.id = normalized;
+                id_changed = true;
+            }
+        }
+    }
+
+    if id_changed {
+        ensure_unique_task_ids(&mut queue, id_prefix, id_width);
+        changed = true;
+    }
+
+    let now = timeutil::now_utc_rfc3339().ok();
+    if normalize_task_fields(&mut queue, now.as_deref()) {
+        changed = true;
+    }
+
+    if changed {
+        serde_yaml::to_string(&queue).ok()
+    } else {
+        None
+    }
+}
+
+fn normalize_task_fields(queue: &mut QueueFile, now: Option<&str>) -> bool {
+    let mut changed = false;
+
+    for task in queue.tasks.iter_mut() {
+        if task.title.trim().is_empty() {
+            task.title = "Untitled task".to_string();
+            changed = true;
+        } else if task.title != task.title.trim() {
+            task.title = task.title.trim().to_string();
+            changed = true;
+        }
+
+        changed |= normalize_string_list(&mut task.tags, "unspecified");
+        changed |= normalize_string_list(&mut task.scope, "unspecified");
+        changed |= normalize_string_list(&mut task.evidence, "pending evidence");
+        changed |= normalize_string_list(&mut task.plan, "pending plan");
+        changed |= normalize_string_list(&mut task.notes, "");
+
+        if task.request.as_ref().is_none_or(|r| r.trim().is_empty()) {
+            task.request = Some("scan repair".to_string());
+            changed = true;
+        } else if let Some(value) = task.request.as_ref() {
+            let trimmed = value.trim();
+            if trimmed != value {
+                task.request = Some(trimmed.to_string());
+                changed = true;
+            }
+        }
+
+        if normalize_optional_timestamp(&mut task.created_at, now) {
+            changed = true;
+        }
+        if normalize_optional_timestamp(&mut task.updated_at, now) {
+            changed = true;
+        }
+        if normalize_optional_timestamp(&mut task.completed_at, None) {
+            changed = true;
+        }
+    }
+
+    changed
+}
+
+fn normalize_string_list(values: &mut Vec<String>, fallback: &str) -> bool {
+    let mut changed = false;
+    let mut normalized = Vec::new();
+    for value in values.iter() {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            changed = true;
+            continue;
+        }
+        if trimmed != value {
+            changed = true;
+        }
+        normalized.push(trimmed.to_string());
+    }
+
+    if *values != normalized {
+        *values = normalized;
+        changed = true;
+    }
+
+    if values.is_empty() && !fallback.is_empty() {
+        values.push(fallback.to_string());
+        changed = true;
+    }
+
+    changed
+}
+
+fn normalize_optional_timestamp(value: &mut Option<String>, fallback: Option<&str>) -> bool {
+    let Some(current) = value.as_ref() else {
+        if let Some(fallback) = fallback {
+            if !fallback.trim().is_empty() {
+                *value = Some(fallback.trim().to_string());
+                return true;
+            }
+        }
+        return false;
+    };
+    let trimmed = current.trim();
+    if trimmed.is_empty() {
+        if let Some(fallback) = fallback {
+            if !fallback.trim().is_empty() {
+                *value = Some(fallback.trim().to_string());
+                return true;
+            }
+        }
+        *value = None;
+        return true;
+    }
+
+    if trimmed == current {
+        return false;
+    }
+
+    *value = Some(trimmed.to_string());
+    true
+}
+
+fn parse_any_task_id(raw: &str) -> Option<u32> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some((_, suffix)) = trimmed.split_once('-') {
+        return suffix.trim().parse::<u32>().ok();
+    }
+
+    trimmed.parse::<u32>().ok()
+}
+
+fn ensure_unique_task_ids(queue: &mut QueueFile, id_prefix: &str, id_width: usize) {
+    let expected_prefix = normalize_prefix(id_prefix);
+    let mut seen = HashSet::new();
+    let mut max_value = 0u32;
+
+    for task in queue.tasks.iter() {
+        if let Some(value) = parse_any_task_id(task.id.trim()) {
+            max_value = max_value.max(value);
+        }
+    }
+
+    for task in queue.tasks.iter_mut() {
+        let trimmed = task.id.trim().to_string();
+        if !seen.insert(trimmed.clone()) {
+            max_value = max_value.saturating_add(1);
+            task.id = format_id(&expected_prefix, max_value, id_width);
+        }
     }
 }
 
@@ -1015,10 +1258,13 @@ tasks:
       - key: value
       - trailing:
       - tab:\tvalue
+    request: test
+    created_at: 2026-01-18T00:00:00Z
+    updated_at: 2026-01-18T00:00:00Z
 "#;
         std::fs::write(&queue_path, raw)?;
 
-        let (queue, repaired) = load_queue_with_repair(&queue_path)?;
+        let (queue, repaired) = load_queue_with_repair(&queue_path, "RQ", 4)?;
         assert!(repaired);
         assert_eq!(
             queue.tasks[0].title,
@@ -1068,7 +1314,7 @@ tasks:
 "#;
         std::fs::write(&queue_path, raw)?;
 
-        let (queue, repaired) = load_queue_with_repair(&queue_path)?;
+        let (queue, repaired) = load_queue_with_repair(&queue_path, "RQ", 4)?;
         assert!(repaired);
         assert_eq!(queue.tasks.len(), 1);
 
@@ -1100,13 +1346,16 @@ tasks:
     notes:
       - map: value
       - trailing:
+    request: test
+    created_at: 2026-01-18T00:00:00Z
+    updated_at: 2026-01-18T00:00:00Z
 "#;
         std::fs::write(&queue_path, raw)?;
 
-        let report = repair_queue(&queue_path)?;
+        let report = repair_queue(&queue_path, "RQ", 4)?;
         assert!(report.repaired, "repair should have occurred");
 
-        let (queue, repaired) = load_queue_with_repair(&queue_path)?;
+        let (queue, repaired) = load_queue_with_repair(&queue_path, "RQ", 4)?;
         assert!(!repaired, "repaired queue should parse cleanly");
         assert_eq!(queue.tasks.len(), 1);
         assert_eq!(queue.tasks[0].id, "RQ-0001");
@@ -1139,13 +1388,13 @@ tasks:
         };
         save_queue(&queue_path, &queue)?;
 
-        let report = repair_queue(&queue_path)?;
+        let report = repair_queue(&queue_path, "RQ", 4)?;
         assert!(
             !report.repaired,
             "repair should not have occurred for valid YAML"
         );
 
-        let (queue_after, repaired) = load_queue_with_repair(&queue_path)?;
+        let (queue_after, repaired) = load_queue_with_repair(&queue_path, "RQ", 4)?;
         assert!(!repaired, "expected valid queue to parse cleanly");
         assert_eq!(queue_after.tasks.len(), 1);
         assert_eq!(queue_after.tasks[0].id, "RQ-0001");
@@ -1217,14 +1466,14 @@ tasks:
             vec!["RQ-0001".to_string(), "RQ-0003".to_string()]
         );
 
-        let (active_after, repaired_active) = load_queue_with_repair(&queue_path)?;
+        let (active_after, repaired_active) = load_queue_with_repair(&queue_path, "RQ", 4)?;
         assert!(
             !repaired_active,
             "expected valid active queue after archive"
         );
         assert!(active_after.tasks.is_empty());
 
-        let (done_after, repaired_done) = load_queue_with_repair(&done_path)?;
+        let (done_after, repaired_done) = load_queue_with_repair(&done_path, "RQ", 4)?;
         assert!(!repaired_done, "expected valid done queue after archive");
         assert_eq!(done_after.tasks.len(), 3);
 
@@ -1352,7 +1601,7 @@ tasks:
     fn load_queue_or_default_with_repair_returns_default_when_missing() -> Result<()> {
         let dir = TempDir::new()?;
         let queue_path = dir.path().join("missing.yaml");
-        let (queue, repaired) = load_queue_or_default_with_repair(&queue_path)?;
+        let (queue, repaired) = load_queue_or_default_with_repair(&queue_path, "RQ", 4)?;
         assert!(!repaired);
         assert!(queue.tasks.is_empty());
         Ok(())
