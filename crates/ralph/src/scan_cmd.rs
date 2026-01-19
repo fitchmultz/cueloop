@@ -13,7 +13,7 @@ pub struct ScanOptions {
 
 pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     // Prevents catastrophic data loss if scan fails and reverts uncommitted changes.
-    gitutil::require_clean_repo(&resolved.repo_root)?;
+    gitutil::require_clean_repo(&resolved.repo_root, opts.force)?;
 
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "scan", opts.force)?;
 

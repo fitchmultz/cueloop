@@ -84,7 +84,7 @@ pub fn run_one(
 
     // Require a clean repo before we invoke the runner.
     // This prevents accidental destruction of unrelated user work on failure recovery.
-    gitutil::require_clean_repo(&resolved.repo_root)?;
+    gitutil::require_clean_repo(&resolved.repo_root, force)?;
 
     let settings = resolve_run_agent_settings(resolved, &task, agent_overrides)?;
 
@@ -253,7 +253,7 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
         let commit_message = format_task_commit_message(task_id, &task_title);
         gitutil::commit_all(&resolved.repo_root, &commit_message)?;
         push_if_ahead(&resolved.repo_root)?;
-        gitutil::require_clean_repo(&resolved.repo_root)?;
+        gitutil::require_clean_repo(&resolved.repo_root, false)?;
         return Ok(());
     }
 
@@ -290,7 +290,7 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
     let commit_message = format_task_commit_message(task_id, &task_title);
     gitutil::commit_all(&resolved.repo_root, &commit_message)?;
     push_if_ahead(&resolved.repo_root)?;
-    gitutil::require_clean_repo(&resolved.repo_root)?;
+    gitutil::require_clean_repo(&resolved.repo_root, false)?;
     Ok(())
 }
 

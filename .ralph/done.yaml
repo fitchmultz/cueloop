@@ -221,3 +221,26 @@ tasks:
     created_at: 2026-01-18T22:00:00Z
     updated_at: 2026-01-18T22:15:00Z
     completed_at: 2026-01-18T22:45:00Z
+  - id: RQ-0080
+    status: done
+    title: Improve gitutil::require_clean_repo error message
+    tags:
+      - rust
+      - ux
+    scope:
+      - crates/ralph/src/gitutil.rs
+    evidence:
+      - current error bails with raw porcelain output; lacks actionable bypass/stash advice
+    plan:
+      - Update error message to suggest 'git stash' or using '--force' (if applicable)
+      - Distinguish between untracked and tracked changes in the message
+    notes:
+      - Updated `require_clean_repo` to parse `git status --porcelain` and distinguish tracked vs untracked changes.
+      - Added helpful suggestions (`git stash`, `git commit`, `git clean -fd`, `git add`) and mentioned `--force`.
+      - Added a `force` parameter to `require_clean_repo` to allow bypassing the check via the global `--force` CLI flag.
+      - Updated all callers in `run_cmd.rs`, `scan_cmd.rs`, and `task_cmd.rs` to pass the `force` flag.
+      - Added integration test `run_one_succeeds_when_repo_is_dirty_and_force_is_used` in `git_repo_integration_test.rs`.
+    request: scan finding
+    created_at: 2026-01-18T22:00:00Z
+    updated_at: 2026-01-18T22:50:00Z
+    completed_at: 2026-01-18T22:50:00Z

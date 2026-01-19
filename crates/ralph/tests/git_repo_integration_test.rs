@@ -182,6 +182,66 @@ fn run_one_refuses_to_run_when_repo_is_dirty_and_a_todo_exists() -> Result<()> {
 }
 
 #[test]
+fn run_one_succeeds_when_repo_is_dirty_and_force_is_used() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    git_init(dir.path())?;
+
+    // Ensure ralph runtime files exist.
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Ensure there is a todo item.
+    write_valid_single_todo_queue(dir.path())?;
+
+    // Make the repo dirty with an untracked file.
+    std::fs::write(dir.path().join("untracked.txt"), "dirty").context("write dirty file")?;
+
+    // Create a dummy Makefile for post_run_supervise
+    std::fs::write(dir.path().join("Makefile"), "ci:\n\t@echo 'CI passed'\n")
+        .context("write Makefile")?;
+
+    // Create a fake runner that succeeds (does nothing)
+    let bin_dir = dir.path().join("bin");
+    std::fs::create_dir(&bin_dir)?;
+    let runner_path = bin_dir.join("codex");
+    let script = "#!/bin/sh\nexit 0\n";
+    std::fs::write(&runner_path, script)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&runner_path)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&runner_path, perms)?;
+    }
+
+    let path_env = std::env::join_paths(std::iter::once(bin_dir).chain(std::env::split_paths(
+        &std::env::var("PATH").unwrap_or_default(),
+    )))?;
+
+    // Use --force to bypass the dirty repo check.
+    let output = Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .env("PATH", path_env)
+        .arg("--force")
+        .arg("run")
+        .arg("one")
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    anyhow::ensure!(
+        output.status.success(),
+        "run one failed with --force on dirty repo\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
     git_init(dir.path())?;

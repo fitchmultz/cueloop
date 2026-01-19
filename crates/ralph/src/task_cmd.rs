@@ -39,7 +39,7 @@ pub fn read_request_from_args_or_stdin(args: &[String]) -> Result<String> {
 
 pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result<()> {
     // Enforce the "repo is clean before any agent run" assumption.
-    gitutil::require_clean_repo(&resolved.repo_root)?;
+    gitutil::require_clean_repo(&resolved.repo_root, opts.force)?;
 
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task build", opts.force)?;
 
