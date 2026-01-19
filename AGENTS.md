@@ -3,9 +3,6 @@
 ## Project Structure & Source of Truth
 - `crates/ralph/`: **Active** Rust CLI (the Rust rewrite).
   - Run locally via `cargo run -p ralph -- <command>`
-- `ralph_tui/`: **Reference only** Go-based TUI/CLI (deprecated, retained for reference).
-  - This was the previous Go implementation; now superseded by the Rust CLI.
-  - Kept for historical reference and potential code patterns.
 - `.ralph/`: Repo-local runtime state for the Rust CLI.
   - `.ralph/queue.yaml` is the **source of truth** for active work.
   - `.ralph/done.yaml` archives completed tasks (same schema as queue).
