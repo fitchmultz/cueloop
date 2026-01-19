@@ -1,5 +1,7 @@
 use crate::contracts::{AgentConfig, Model, ReasoningEffort, Runner, TaskAgent};
+use crate::redaction::{redact_text, RedactedString};
 use anyhow::{anyhow, bail, Context, Result};
+use std::fmt;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
@@ -27,15 +29,18 @@ pub enum RunnerError {
         source: std::io::Error,
     },
 
-    #[error("runner exited non-zero (code={code})")]
+    #[error("runner exited non-zero (code={code})\nstdout: {stdout}\nstderr: {stderr}")]
     NonZeroExit {
         code: i32,
-        stdout: String,
-        stderr: String,
+        stdout: RedactedString,
+        stderr: RedactedString,
     },
 
-    #[error("runner terminated by signal")]
-    TerminatedBySignal { stdout: String, stderr: String },
+    #[error("runner terminated by signal\nstdout: {stdout}\nstderr: {stderr}")]
+    TerminatedBySignal {
+        stdout: RedactedString,
+        stderr: RedactedString,
+    },
 
     #[error("runner interrupted")]
     Interrupted,
@@ -112,6 +117,28 @@ pub struct RunnerOutput {
     pub status: ExitStatus,
     pub stdout: String,
     pub stderr: String,
+}
+
+impl fmt::Display for RunnerOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "status: {}\nstdout: {}\nstderr: {}",
+            self.status,
+            redact_text(&self.stdout),
+            redact_text(&self.stderr)
+        )
+    }
+}
+
+impl fmt::Debug for RunnerOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RunnerOutput")
+            .field("status", &self.status)
+            .field("stdout", &redact_text(&self.stdout))
+            .field("stderr", &redact_text(&self.stderr))
+            .finish()
+    }
 }
 
 impl RunnerOutput {}
@@ -247,13 +274,13 @@ pub fn run_prompt(
         if let Some(code) = output.status.code() {
             return Err(RunnerError::NonZeroExit {
                 code,
-                stdout: output.stdout,
-                stderr: output.stderr,
+                stdout: output.stdout.into(),
+                stderr: output.stderr.into(),
             });
         } else {
             return Err(RunnerError::TerminatedBySignal {
-                stdout: output.stdout,
-                stderr: output.stderr,
+                stdout: output.stdout.into(),
+                stderr: output.stderr.into(),
             });
         }
     }
@@ -655,5 +682,33 @@ mod tests {
     fn resolve_model_for_runner_replaces_codex_default_for_gemini() {
         let model = resolve_model_for_runner(Runner::Gemini, None, None, Some(Model::Gpt52Codex));
         assert_eq!(model.as_str(), DEFAULT_GEMINI_MODEL);
+    }
+
+    #[test]
+    fn runner_error_nonzero_exit_redacts_output() {
+        let err = RunnerError::NonZeroExit {
+            code: 1,
+            stdout: "out: API_KEY=secret123".into(),
+            stderr: "err: bearer abc123def456".into(),
+        };
+        let msg = format!("{}", err);
+        assert!(msg.contains("API_KEY=[REDACTED]"));
+        assert!(msg.contains("bearer [REDACTED]"));
+        assert!(!msg.contains("secret123"));
+        assert!(!msg.contains("abc123def456"));
+    }
+
+    #[test]
+    fn runner_output_display_redacts_output() {
+        let output = RunnerOutput {
+            status: ExitStatus::default(), // success usually
+            stdout: "out: API_KEY=secret123".to_string(),
+            stderr: "err: bearer abc123def456".to_string(),
+        };
+        let msg = format!("{}", output);
+        assert!(msg.contains("API_KEY=[REDACTED]"));
+        assert!(msg.contains("bearer [REDACTED]"));
+        assert!(!msg.contains("secret123"));
+        assert!(!msg.contains("abc123def456"));
     }
 }

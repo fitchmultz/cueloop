@@ -1,5 +1,5 @@
 use crate::contracts::{Model, ProjectType, QueueFile, ReasoningEffort, Runner};
-use crate::{config, gitutil, outpututil, prompts, queue, redaction, runner};
+use crate::{config, gitutil, outpututil, prompts, queue, runner};
 use anyhow::{bail, Context, Result};
 use std::collections::HashSet;
 use std::io::Read;
@@ -132,7 +132,7 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
             stdout: _,
             stderr,
         }) => {
-            let redacted = redaction::redact_text(&stderr);
+            let redacted = stderr.to_string();
             let tail = outpututil::tail_lines(
                 &redacted,
                 outpututil::OUTPUT_TAIL_LINES,
@@ -148,7 +148,7 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
             bail!("Task builder failed: the agent exited with a non-zero code ({code}). Uncommitted changes were reverted. Rerunning the command is recommended after investigating the cause.");
         }
         Err(runner::RunnerError::TerminatedBySignal { stdout: _, stderr }) => {
-            let redacted = redaction::redact_text(&stderr);
+            let redacted = stderr.to_string();
             let tail = outpututil::tail_lines(
                 &redacted,
                 outpututil::OUTPUT_TAIL_LINES,

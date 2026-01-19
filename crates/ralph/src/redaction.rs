@@ -5,6 +5,38 @@ use std::fmt;
 const REDACTED: &str = "[REDACTED]";
 const MIN_ENV_VALUE_LEN: usize = 6;
 
+/// A wrapper around `String` that applies redaction when displayed via `Display` or `Debug`.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct RedactedString(pub String);
+
+impl From<String> for RedactedString {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&str> for RedactedString {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+impl fmt::Display for RedactedString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", redact_text(&self.0))
+    }
+}
+
+impl fmt::Debug for RedactedString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "RedactedString({:#?})", redact_text(&self.0))
+        } else {
+            write!(f, "RedactedString({:?})", redact_text(&self.0))
+        }
+    }
+}
+
 /// A wrapper around `anyhow::Error` that applies redaction when displayed via `Display` or `Debug`.
 #[allow(dead_code)]
 pub struct RedactedError(pub anyhow::Error);

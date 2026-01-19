@@ -1,7 +1,7 @@
 use crate::config;
 use crate::contracts::{Model, ProjectType, QueueFile, ReasoningEffort, Runner, TaskStatus};
 use crate::gitutil::GitError;
-use crate::{gitutil, outpututil, prompts, queue, redaction, runner, timeutil};
+use crate::{gitutil, outpututil, prompts, queue, runner, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -175,7 +175,7 @@ pub fn run_one(
             stdout: _,
             stderr,
         }) => {
-            let redacted = redaction::redact_text(&stderr);
+            let redacted = stderr.to_string();
             let tail = outpututil::tail_lines(
                 &redacted,
                 outpututil::OUTPUT_TAIL_LINES,
@@ -191,7 +191,7 @@ pub fn run_one(
             bail!("Runner failed: the agent exited with a non-zero code ({code}). Uncommitted changes were reverted. Rerunning the task is recommended after investigating the cause.");
         }
         Err(runner::RunnerError::TerminatedBySignal { stdout: _, stderr }) => {
-            let redacted = redaction::redact_text(&stderr);
+            let redacted = stderr.to_string();
             let tail = outpututil::tail_lines(
                 &redacted,
                 outpututil::OUTPUT_TAIL_LINES,

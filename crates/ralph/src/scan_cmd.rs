@@ -1,5 +1,5 @@
 use crate::contracts::{Model, ProjectType, QueueFile, ReasoningEffort, Runner};
-use crate::{config, gitutil, outpututil, prompts, queue, redaction, runner};
+use crate::{config, gitutil, outpututil, prompts, queue, runner};
 use anyhow::{bail, Context, Result};
 use std::collections::HashSet;
 
@@ -113,7 +113,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             stdout: _,
             stderr,
         }) => {
-            let redacted = redaction::redact_text(&stderr);
+            let redacted = stderr.to_string();
             let tail = outpututil::tail_lines(
                 &redacted,
                 outpututil::OUTPUT_TAIL_LINES,
@@ -129,7 +129,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             bail!("Scan runner failed: the agent exited with a non-zero code ({code}). Uncommitted changes were reverted. Rerunning the command is recommended after investigating the cause.");
         }
         Err(runner::RunnerError::TerminatedBySignal { stdout: _, stderr }) => {
-            let redacted = redaction::redact_text(&stderr);
+            let redacted = stderr.to_string();
             let tail = outpututil::tail_lines(
                 &redacted,
                 outpututil::OUTPUT_TAIL_LINES,
