@@ -1,5 +1,29 @@
 version: 1
 tasks:
+  - id: RQ-0076
+    status: done
+    title: Audit and harden YAML repair logic in queue.rs
+    tags:
+      - rust
+      - correctness
+      - safety
+    scope:
+      - crates/ralph/src/queue.rs
+    evidence:
+      - repair_yaml_scalars uses brittle string manipulation and basic prefix/substring checks
+    plan:
+      - Expand test suite with complex/nested YAML breakage
+      - Explore more robust repair strategies (e.g., partial parsing or selective escaping)
+      - Ensure repair logic handles all standard scalar types and edge-case colons
+    notes:
+      - Added comprehensive test suite in `crates/ralph/tests/yaml_repair_test.rs` covering edge cases.
+      - Hardened `repair_yaml_scalars` to prevent quoting of task object fields (e.g. `id`, `title`) when indented > 2 spaces.
+      - Introduced `is_task_field_key` and `looks_like_task_start` helper functions.
+      - Verified fixes with new tests and existing stress tests.
+    request: scan finding
+    created_at: 2026-01-18T22:00:00Z
+    updated_at: 2026-01-19T01:45:00Z
+    completed_at: 2026-01-19T01:45:00Z
   - id: RQ-0069
     status: done
     title: Backfill missing request and timestamps after scan or task build
@@ -107,20 +131,20 @@ tasks:
     status: done
     title: Refactor main.rs to centralize queue loading and validation
     tags:
-    - rust
-    - refactor
+      - rust
+      - refactor
     scope:
-    - crates/ralph/src/main.rs
+      - crates/ralph/src/main.rs
     evidence:
-    - handle_queue repeats loading/validation boilerplate in 5+ subcommands
+      - handle_queue repeats loading/validation boilerplate in 5+ subcommands
     plan:
-    - Extract common load/validate logic into a helper function in main.rs or a new module
-    - Update handle_queue subcommands to use the helper
-    - Verify no regression in error messages or behavior
+      - Extract common load/validate logic into a helper function in main.rs or a new module
+      - Update handle_queue subcommands to use the helper
+      - Verify no regression in error messages or behavior
     notes:
-    - Extracted load_and_validate_queues helper function in crates/ralph/src/main.rs.
-    - Updated handle_queue to use the helper in Validate, Next, NextId, Show, and List commands.
-    - Verified functionality with cargo run -p ralph -- queue validate and make ci.
+      - Extracted load_and_validate_queues helper function in crates/ralph/src/main.rs.
+      - Updated handle_queue to use the helper in Validate, Next, NextId, Show, and List commands.
+      - Verified functionality with cargo run -p ralph -- queue validate and make ci.
     request: scan finding
     created_at: 2026-01-18T22:00:00Z
     updated_at: 2026-01-19T01:00:00Z
@@ -129,23 +153,23 @@ tasks:
     status: done
     title: Centralize RunnerKind and Model resolution logic
     tags:
-    - rust
-    - refactor
+      - rust
+      - refactor
     scope:
-    - crates/ralph/src/main.rs
-    - crates/ralph/src/run_cmd.rs
-    - crates/ralph/src/runner.rs
+      - crates/ralph/src/main.rs
+      - crates/ralph/src/run_cmd.rs
+      - crates/ralph/src/runner.rs
     evidence:
-    - resolve_agent_args (main.rs) and resolve_run_agent_settings (run_cmd.rs) overlap significantly
+      - resolve_agent_args (main.rs) and resolve_run_agent_settings (run_cmd.rs) overlap significantly
     plan:
-    - Consolidate resolution logic into runner.rs or a dedicated settings module
-    - 'Ensure consistent precedence: CLI > task.agent > project config > global config > built-in'
-    - Update main.rs, task_cmd.rs, scan_cmd.rs, and run_cmd.rs to use the centralized logic
+      - Consolidate resolution logic into runner.rs or a dedicated settings module
+      - "Ensure consistent precedence: CLI > task.agent > project config > global config > built-in"
+      - Update main.rs, task_cmd.rs, scan_cmd.rs, and run_cmd.rs to use the centralized logic
     notes:
-    - Created `runner::AgentSettings` struct and `resolve_agent_settings` function in `crates/ralph/src/runner.rs`.
-    - Updated `crates/ralph/src/main.rs` to use `resolve_agent_settings` for `task` and `scan` commands.
-    - Updated `crates/ralph/src/run_cmd.rs` to use `resolve_agent_settings` for `run one` and `run loop`.
-    - Verified with `make ci`.
+      - Created `runner::AgentSettings` struct and `resolve_agent_settings` function in `crates/ralph/src/runner.rs`.
+      - Updated `crates/ralph/src/main.rs` to use `resolve_agent_settings` for `task` and `scan` commands.
+      - Updated `crates/ralph/src/run_cmd.rs` to use `resolve_agent_settings` for `run one` and `run loop`.
+      - Verified with `make ci`.
     request: scan finding
     created_at: 2026-01-18T22:00:00Z
     updated_at: 2026-01-19T01:30:00Z
@@ -154,22 +178,22 @@ tasks:
     status: done
     title: Audit and harden YAML repair logic in queue.rs
     tags:
-    - rust
-    - correctness
-    - safety
+      - rust
+      - correctness
+      - safety
     scope:
-    - crates/ralph/src/queue.rs
+      - crates/ralph/src/queue.rs
     evidence:
-    - repair_yaml_scalars uses brittle string manipulation and basic prefix/substring checks
+      - repair_yaml_scalars uses brittle string manipulation and basic prefix/substring checks
     plan:
-    - Expand test suite with complex/nested YAML breakage
-    - Explore more robust repair strategies (e.g., partial parsing or selective escaping)
-    - Ensure repair logic handles all standard scalar types and edge-case colons
+      - Expand test suite with complex/nested YAML breakage
+      - Explore more robust repair strategies (e.g., partial parsing or selective escaping)
+      - Ensure repair logic handles all standard scalar types and edge-case colons
     notes:
-    - Added comprehensive test suite in `crates/ralph/tests/yaml_repair_test.rs` covering edge cases.
-    - Hardened `repair_yaml_scalars` to prevent quoting of task object fields (e.g. `id`, `title`) when indented > 2 spaces.
-    - Introduced `is_task_field_key` and `looks_like_task_start` helper functions.
-    - Verified fixes with new tests and existing stress tests.
+      - Added comprehensive test suite in `crates/ralph/tests/yaml_repair_test.rs` covering edge cases.
+      - Hardened `repair_yaml_scalars` to prevent quoting of task object fields (e.g. `id`, `title`) when indented > 2 spaces.
+      - Introduced `is_task_field_key` and `looks_like_task_start` helper functions.
+      - Verified fixes with new tests and existing stress tests.
     request: scan finding
     created_at: 2026-01-18T22:00:00Z
     updated_at: 2026-01-19T01:45:00Z
