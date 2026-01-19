@@ -19,7 +19,7 @@ mod task_cmd;
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use crate::contracts::{Runner as RunnerKind, Task, TaskStatus};
+use crate::contracts::{QueueFile, Runner as RunnerKind, Task, TaskStatus};
 
 fn main() {
     if let Err(err) = run() {
@@ -42,44 +42,42 @@ fn run() -> Result<()> {
     }
 }
 
+fn load_and_validate_queues(
+    resolved: &config::Resolved,
+    include_done: bool,
+) -> Result<(QueueFile, Option<QueueFile>)> {
+    let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
+    queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+
+    let done_file = if include_done {
+        let (done, repaired_done) = queue::load_queue_or_default_with_repair(&resolved.done_path)?;
+        queue::warn_if_repaired(&resolved.done_path, repaired_done);
+        Some(done)
+    } else {
+        None
+    };
+
+    let done_ref = done_file
+        .as_ref()
+        .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+
+    if let Some(d) = done_ref {
+        queue::validate_queue_set(&queue_file, Some(d), &resolved.id_prefix, resolved.id_width)?;
+    } else {
+        queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
+    }
+
+    Ok((queue_file, done_file))
+}
+
 fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     match cmd {
         QueueCommand::Validate => {
-            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
-            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
-            let (done, repaired_done) =
-                queue::load_queue_or_default_with_repair(&resolved.done_path)?;
-            queue::warn_if_repaired(&resolved.done_path, repaired_done);
-            let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
-                None
-            } else {
-                Some(&done)
-            };
-            queue::validate_queue_set(
-                &queue_file,
-                done_ref,
-                &resolved.id_prefix,
-                resolved.id_width,
-            )?;
+            load_and_validate_queues(&resolved, true)?;
         }
         QueueCommand::Next(args) => {
-            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
-            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
-            let (done, repaired_done) =
-                queue::load_queue_or_default_with_repair(&resolved.done_path)?;
-            queue::warn_if_repaired(&resolved.done_path, repaired_done);
-            let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
-                None
-            } else {
-                Some(&done)
-            };
-            queue::validate_queue_set(
-                &queue_file,
-                done_ref,
-                &resolved.id_prefix,
-                resolved.id_width,
-            )?;
+            let (queue_file, _) = load_and_validate_queues(&resolved, true)?;
             let next = queue::next_todo_task(&queue_file)
                 .ok_or_else(|| anyhow::anyhow!("no todo tasks found"))?;
             if args.with_title {
@@ -89,16 +87,10 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
             }
         }
         QueueCommand::NextId => {
-            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
-            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
-            let (done, repaired_done) =
-                queue::load_queue_or_default_with_repair(&resolved.done_path)?;
-            queue::warn_if_repaired(&resolved.done_path, repaired_done);
-            let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
-                None
-            } else {
-                Some(&done)
-            };
+            let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
+            let done_ref = done_file
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
             let next = queue::next_id_across(
                 &queue_file,
                 done_ref,
@@ -108,23 +100,10 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
             println!("{next}");
         }
         QueueCommand::Show(args) => {
-            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
-            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
-            let (done, repaired_done) =
-                queue::load_queue_or_default_with_repair(&resolved.done_path)?;
-            queue::warn_if_repaired(&resolved.done_path, repaired_done);
-            let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
-                None
-            } else {
-                Some(&done)
-            };
-
-            queue::validate_queue_set(
-                &queue_file,
-                done_ref,
-                &resolved.id_prefix,
-                resolved.id_width,
-            )?;
+            let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
+            let done_ref = done_file
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
 
             let task = queue::find_task_across(&queue_file, done_ref, &args.task_id)
                 .ok_or_else(|| anyhow::anyhow!("task not found: {}", args.task_id.trim()))?;
@@ -144,30 +123,11 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 bail!("--include-done and --only-done are mutually exclusive");
             }
 
-            let (queue_file, repaired_queue) = queue::load_queue_with_repair(&resolved.queue_path)?;
-            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
-            let done = if args.include_done || args.only_done {
-                let (done, repaired_done) =
-                    queue::load_queue_or_default_with_repair(&resolved.done_path)?;
-                queue::warn_if_repaired(&resolved.done_path, repaired_done);
-                Some(done)
-            } else {
-                None
-            };
-            let done_ref = done
+            let (queue_file, done_file) =
+                load_and_validate_queues(&resolved, args.include_done || args.only_done)?;
+            let done_ref = done_file
                 .as_ref()
                 .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
-
-            if let Some(done_ref) = done_ref {
-                queue::validate_queue_set(
-                    &queue_file,
-                    Some(done_ref),
-                    &resolved.id_prefix,
-                    resolved.id_width,
-                )?;
-            } else {
-                queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
-            }
 
             let statuses: Vec<TaskStatus> = args.status.into_iter().map(|s| s.into()).collect();
             let limit = resolve_list_limit(args.limit, args.all);

@@ -1,23 +1,5 @@
 version: 1
 tasks:
-- id: RQ-0074
-  status: todo
-  title: Refactor main.rs to centralize queue loading and validation
-  tags:
-  - rust
-  - refactor
-  scope:
-  - crates/ralph/src/main.rs
-  evidence:
-  - handle_queue repeats loading/validation boilerplate in 5+ subcommands
-  plan:
-  - Extract common load/validate logic into a helper function in main.rs or a new module
-  - Update handle_queue subcommands to use the helper
-  - Verify no regression in error messages or behavior
-  notes: []
-  request: scan finding
-  created_at: 2026-01-18T22:00:00Z
-  updated_at: 2026-01-18T22:00:00Z
 - id: RQ-0075
   status: todo
   title: Centralize RunnerKind and Model resolution logic
