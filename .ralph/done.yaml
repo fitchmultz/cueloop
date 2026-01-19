@@ -825,3 +825,29 @@ tasks:
     created_at: 2026-01-19T04:00:47Z
     updated_at: 2026-01-19T05:23:13Z
     completed_at: 2026-01-19T05:26:29Z
+  - id: RQ-0098
+    status: done
+    title: Add debug logging for config resolution and repo root discovery
+    tags:
+      - rust
+      - logging
+      - config
+    scope:
+      - crates/ralph/src/config.rs
+    evidence:
+      - |-
+        `find_repo_root` and `resolve_from_cwd` operate silently. If configuration
+        loading fails or picks the wrong directory, it's difficult to debug without code changes.
+    plan:
+      - Add `log::debug!` statements to `find_repo_root` showing each directory checked.
+      - Log the paths of global and project config files being loaded.
+      - Log the final resolved paths for queue, done, and root.
+    notes:
+      - Added `log::debug!` statements to `find_repo_root` showing each directory checked during root discovery.
+      - Added debug logs for global and project config loading in `resolve_from_cwd`.
+      - Logged final resolved paths for `repo_root`, `queue_path`, and `done_path`.
+      - Verified with `make ci`.
+    request: scan finding
+    created_at: 2026-01-19T04:00:47Z
+    updated_at: 2026-01-18T20:11:00Z
+    completed_at: 2026-01-18T20:30:00Z

@@ -28,6 +28,7 @@ struct ConfigLayer {
 
 pub fn resolve_from_cwd() -> Result<Resolved> {
     let cwd = env::current_dir().context("resolve current working directory")?;
+    log::debug!("resolving configuration from cwd: {}", cwd.display());
     let repo_root = find_repo_root(&cwd);
 
     let global_path = global_config_path();
@@ -36,7 +37,9 @@ pub fn resolve_from_cwd() -> Result<Resolved> {
     let mut cfg = Config::default();
 
     if let Some(path) = global_path.as_ref() {
+        log::debug!("checking global config at: {}", path.display());
         if path.exists() {
+            log::debug!("loading global config: {}", path.display());
             let layer = load_layer(path)
                 .with_context(|| format!("load global config {}", path.display()))?;
             cfg = apply_layer(cfg, layer)
@@ -44,7 +47,9 @@ pub fn resolve_from_cwd() -> Result<Resolved> {
         }
     }
 
+    log::debug!("checking project config at: {}", project_path.display());
     if project_path.exists() {
+        log::debug!("loading project config: {}", project_path.display());
         let layer = load_layer(&project_path)
             .with_context(|| format!("load project config {}", project_path.display()))?;
         cfg = apply_layer(cfg, layer)
@@ -57,6 +62,10 @@ pub fn resolve_from_cwd() -> Result<Resolved> {
     let id_width = resolve_id_width(&cfg)?;
     let queue_path = resolve_queue_path(&repo_root, &cfg)?;
     let done_path = resolve_done_path(&repo_root, &cfg)?;
+
+    log::debug!("resolved repo_root: {}", repo_root.display());
+    log::debug!("resolved queue_path: {}", queue_path.display());
+    log::debug!("resolved done_path: {}", done_path.display());
 
     Ok(Resolved {
         config: cfg,
@@ -205,16 +214,24 @@ fn project_config_path(repo_root: &Path) -> PathBuf {
 }
 
 fn find_repo_root(start: &Path) -> PathBuf {
+    log::debug!("searching for repo root starting from: {}", start.display());
     for dir in start.ancestors() {
+        log::debug!("checking directory: {}", dir.display());
         let ralph_dir = dir.join(".ralph");
         if ralph_dir.is_dir()
             && (ralph_dir.join("queue.yaml").is_file() || ralph_dir.join("config.yaml").is_file())
         {
+            log::debug!("found repo root at: {} (via .ralph/)", dir.display());
             return dir.to_path_buf();
         }
         if dir.join(".git").exists() {
+            log::debug!("found repo root at: {} (via .git/)", dir.display());
             return dir.to_path_buf();
         }
     }
+    log::debug!(
+        "no repo root found, using start directory: {}",
+        start.display()
+    );
     start.to_path_buf()
 }
