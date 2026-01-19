@@ -239,7 +239,10 @@ fn run_gemini(work_dir: &Path, bin: &str, model: Model, prompt: &str) -> Result<
     let mut cmd = Command::new(bin);
     cmd.current_dir(work_dir);
     ensure_self_on_path(&mut cmd);
-    cmd.arg("--model").arg(model.as_str());
+    cmd.arg("--model")
+        .arg(model.as_str())
+        .arg("--approval-mode")
+        .arg("yolo");
     run_with_streaming(cmd, Some(prompt.as_bytes()), bin)
 }
 
