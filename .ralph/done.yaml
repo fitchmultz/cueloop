@@ -437,3 +437,24 @@ tasks:
     created_at: 2026-01-18T22:00:00Z
     updated_at: 2026-01-18T22:05:00Z
     completed_at: 2026-01-18T22:10:00Z
+  - id: RQ-0089
+    status: done
+    title: Update all rust cargo dependencies to the latest version and run `make ci` to verify everything still works
+    tags:
+      - rust
+    scope:
+      - Cargo.toml
+    evidence:
+      - some dependencies are out of date
+    plan:
+      - Update all dependencies to the latest version
+      - Run make ci to verify everything still works
+    notes:
+      - Updated `thiserror` from 1.0 to 2.0 in `crates/ralph/Cargo.toml`.
+      - Updated all other dependencies to their exact latest versions in `crates/ralph/Cargo.toml`.
+      - Verified with `make ci` (all 153 tests passed).
+      - Confirmed `Cargo.lock` is updated and synchronized.
+    request: scan finding
+    created_at: 2026-01-18T22:00:00Z
+    updated_at: 2026-01-18T22:57:00Z
+    completed_at: 2026-01-18T22:57:00Z

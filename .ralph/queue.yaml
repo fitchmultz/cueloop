@@ -1,21 +1,5 @@
 version: 1
 tasks:
-  - id: RQ-0089
-    status: todo
-    title: Update all rust cargo dependencies to the latest version and run `make ci` to verify everything still works
-    tags:
-      - rust
-    scope:
-      - Cargo.toml
-    evidence:
-      - some dependencies are out of date
-    plan:
-      - Update all dependencies to the latest version
-      - Run make ci to verify everything still works
-    notes: []
-    request: scan finding
-    created_at: 2026-01-18T22:00:00Z
-    updated_at: 2026-01-18T22:00:00Z
   - id: RQ-0090
     status: todo
     title: Add .ralph/README.md creation to `ralph init` when loop prompts reference it
