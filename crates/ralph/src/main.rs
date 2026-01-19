@@ -238,6 +238,61 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 }
             }
         }
+        QueueCommand::Search(args) => {
+            if args.include_done && args.only_done {
+                bail!("Conflicting flags: --include-done and --only-done are mutually exclusive. Choose either to include done tasks or to only search done tasks.");
+            }
+
+            let (queue_file, done_file) =
+                load_and_validate_queues(&resolved, args.include_done || args.only_done)?;
+            let done_ref = done_file
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+
+            let statuses: Vec<TaskStatus> = args.status.into_iter().map(|s| s.into()).collect();
+
+            // Pre-filter by status/tag/scope using filter_tasks
+            let mut prefiltered: Vec<&Task> = Vec::new();
+            if !args.only_done {
+                prefiltered.extend(queue::filter_tasks(
+                    &queue_file,
+                    &statuses,
+                    &args.tag,
+                    &args.scope,
+                    None,
+                ));
+            }
+            if args.include_done || args.only_done {
+                if let Some(done_ref) = done_ref {
+                    prefiltered.extend(queue::filter_tasks(
+                        done_ref,
+                        &statuses,
+                        &args.tag,
+                        &args.scope,
+                        None,
+                    ));
+                }
+            }
+
+            // Apply content search
+            let results = queue::search_tasks(
+                prefiltered.into_iter(),
+                &args.query,
+                args.regex,
+                args.match_case,
+            )?;
+
+            let limit = resolve_list_limit(args.limit, args.all);
+            let max = limit.unwrap_or(usize::MAX);
+            for task in results.into_iter().take(max) {
+                match args.format {
+                    QueueListFormat::Compact => {
+                        println!("{}", outpututil::format_task_compact(task))
+                    }
+                    QueueListFormat::Long => println!("{}", outpututil::format_task_detailed(task)),
+                }
+            }
+        }
         QueueCommand::Done => {
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue done", force)?;
             let report = queue::archive_done_tasks(
@@ -724,6 +779,11 @@ enum QueueCommand {
     Show(QueueShowArgs),
     /// List tasks in queue order.
     List(QueueListArgs),
+    /// Search tasks by content (title, evidence, plan, notes).
+    #[command(
+        after_long_help = "Examples:\n  ralph queue search \"authentication\"\n  ralph queue search \"RQ-\\d{4}\" --regex\n  ralph queue search \"TODO\" --match-case\n  ralph queue search \"fix\" --status todo --tag rust"
+    )]
+    Search(QueueSearchArgs),
     /// Move completed tasks from queue.yaml to done.yaml.
     #[command(after_long_help = "Example:\n  ralph queue done")]
     Done,
@@ -932,6 +992,56 @@ struct QueueSortArgs {
     /// Sort in descending order (highest priority first).
     #[arg(long)]
     descending: bool,
+}
+
+#[derive(Args)]
+#[command(
+    after_long_help = "Examples:\n  ralph queue search \"authentication\"\n  ralph queue search \"RQ-\\d{4}\" --regex\n  ralph queue search \"TODO\" --match-case\n  ralph queue search \"fix\" --status todo --tag rust"
+)]
+struct QueueSearchArgs {
+    /// Search query (substring or regex pattern).
+    #[arg(value_name = "QUERY")]
+    query: String,
+
+    /// Interpret query as a regular expression.
+    #[arg(long)]
+    regex: bool,
+
+    /// Case-sensitive search (default: case-insensitive).
+    #[arg(long)]
+    match_case: bool,
+
+    /// Filter by status (repeatable).
+    #[arg(long, value_enum)]
+    status: Vec<StatusArg>,
+
+    /// Filter by tag (repeatable, case-insensitive).
+    #[arg(long)]
+    tag: Vec<String>,
+
+    /// Filter by scope token (repeatable, case-insensitive; substring match).
+    #[arg(long)]
+    scope: Vec<String>,
+
+    /// Include tasks from .ralph/done.yaml in search.
+    #[arg(long)]
+    include_done: bool,
+
+    /// Only search tasks in .ralph/done.yaml (ignores active queue).
+    #[arg(long)]
+    only_done: bool,
+
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = QueueListFormat::Compact)]
+    format: QueueListFormat,
+
+    /// Maximum results to show (0 = no limit).
+    #[arg(long, default_value_t = 50)]
+    limit: u32,
+
+    /// Show all results (ignores --limit).
+    #[arg(long)]
+    all: bool,
 }
 
 #[derive(Args)]
