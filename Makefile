@@ -8,7 +8,7 @@ BIN_NAME ?= ralph
 install: build-release
 	@bin_dir="$(BIN_DIR)"; \
 	if [ ! -w "$$bin_dir" ]; then \
-		bin_dir="$(CURDIR)/.local/bin"; \
+		bin_dir="$(HOME)/.local/bin"; \
 		echo "install: $(BIN_DIR) not writable; using $$bin_dir"; \
 	fi; \
 	mkdir -p "$$bin_dir"; \
