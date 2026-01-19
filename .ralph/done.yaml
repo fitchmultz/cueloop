@@ -973,3 +973,33 @@ tasks:
   created_at: 2026-01-19T19:39:21Z
   updated_at: 2026-01-19T19:42:32.176827Z
   completed_at: 2026-01-19T19:42:32.176827Z
+- id: RQ-0150
+  status: done
+  title: Make RepoPrompt context_builder mandatory for Claude plan generation
+  tags:
+  - rust
+  - runner
+  - prompts
+  - reprompt
+  scope:
+  - crates/ralph/src/runner.rs
+  evidence:
+  - The generate_claude_plan function (line 510) creates a planning prompt but does not mandate RepoPrompt context_builder usage
+  - Current planning prompt says "Analyze the codebase and generate a plan, but DO NOT make any edits"
+  - RepoPrompt context_builder tool is available but not explicitly required for plan generation
+  - 'User explicitly requested: "Modify the prompt sent to the claude plan loop to make using the Repo Prompt context_builder tool to generate the plan mandatory"'
+  plan:
+  - Modify the generate_claude_plan function planning_prompt to explicitly require using RepoPrompt context_builder
+  - 'Add mandatory instruction: "You MUST use the RepoPrompt context_builder tool to generate the plan. Do not proceed without using context_builder first."'
+  - Update the planning mode prompt to emphasize that context_builder is a non-optional requirement
+  - Harden language that stresses that the plan generation phase is ONLY for plan generation, even after the Repo Prompt plan is provided. ONLY Phase 2 implements the plan. Phase 1 is only for plan generation.
+  - Test by running two-pass plan mode and verifying context_builder is used
+  - Run make ci to ensure tests pass
+  notes:
+  - Required Claude planning prompts to mandate RepoPrompt context_builder usage and reinforce plan-only phase.
+  - Added a dedicated planning prompt builder with unit coverage for the mandatory language.
+  - Verified with make ci.
+  request: Modify the prompt sent to the claude plan loop to make using the Repo Prompt context_builder tool to generate the plan mandatory.
+  created_at: 2025-01-19T17:00:00Z
+  updated_at: 2026-01-19T20:08:57Z
+  completed_at: 2026-01-19T20:08:57Z

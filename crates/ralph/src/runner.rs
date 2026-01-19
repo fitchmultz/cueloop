@@ -1,3 +1,5 @@
+//! Runner orchestration for executing tasks across supported CLIs and parsing outputs.
+
 use crate::contracts::{
     AgentConfig, ClaudePermissionMode, Model, ReasoningEffort, Runner, TaskAgent,
 };
@@ -515,11 +517,7 @@ fn generate_claude_plan(
     timeout: Option<Duration>,
 ) -> Result<RunnerOutput, RunnerError> {
     // Add planning constraint to the prompt
-    let planning_prompt = format!(
-        "PLANNING MODE: You are in planning mode. Analyze the codebase and generate a plan, \
-        but DO NOT make any edits or changes. Only explore using tools, then output your plan.\n\n{}",
-        prompt
-    );
+    let planning_prompt = build_claude_planning_prompt(prompt);
 
     let mut cmd = Command::new(bin);
     cmd.current_dir(work_dir);
@@ -534,6 +532,17 @@ fn generate_claude_plan(
         .arg("--verbose");
 
     run_with_streaming_json(cmd, Some(planning_prompt.as_bytes()), bin, timeout)
+}
+
+fn build_claude_planning_prompt(prompt: &str) -> String {
+    format!(
+        "PLANNING MODE: You are in planning mode. You MUST use the RepoPrompt context_builder tool \
+        to generate the plan. Do not proceed without using context_builder first. Analyze the \
+        codebase and generate a plan, but DO NOT make any edits or changes. Only explore using tools, \
+        then output your plan. This phase is ONLY for plan generation; do not implement anything, \
+        even after the plan is produced. Implementation happens only in phase 2.\n\n{}",
+        prompt
+    )
 }
 
 /// Parse stream-json output and extract the result field
@@ -1107,5 +1116,17 @@ mod tests {
         assert!(msg.contains("bearer [REDACTED]"));
         assert!(!msg.contains("secret123"));
         assert!(!msg.contains("abc123def456"));
+    }
+
+    #[test]
+    fn build_claude_planning_prompt_requires_context_builder_and_plan_only() {
+        let user_prompt = "Do the thing.";
+        let planning_prompt = build_claude_planning_prompt(user_prompt);
+
+        assert!(planning_prompt.contains("MUST use the RepoPrompt context_builder tool"));
+        assert!(planning_prompt.contains("DO NOT make any edits"));
+        assert!(planning_prompt.contains("ONLY for plan generation"));
+        assert!(planning_prompt.contains("Implementation happens only in phase 2"));
+        assert!(planning_prompt.ends_with(user_prompt));
     }
 }
