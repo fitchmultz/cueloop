@@ -725,18 +725,29 @@ fn display_filtered_json(json: &JsonValue, sink: &StreamSink) -> anyhow::Result<
         }
     }
 
-    // Display tool use events for visibility
+    // Display tool use events and text content for visibility
     if let Some(event_type) = json.get("type").and_then(|t| t.as_str()) {
         if event_type == "assistant" {
             if let Some(message) = json.get("message") {
                 if let Some(content) = message.get("content").and_then(|c| c.as_array()) {
                     for item in content {
                         if let Some(item_type) = item.get("type").and_then(|t| t.as_str()) {
-                            if item_type == "tool_use" {
-                                if let Some(name) = item.get("name").and_then(|n| n.as_str()) {
-                                    let msg = format!("[Using: {}]\n", name);
-                                    sink.write_all(msg.as_bytes())?;
+                            match item_type {
+                                "text" => {
+                                    // Display text content from Claude
+                                    if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                        sink.write_all(text.as_bytes())?;
+                                        sink.write_all(b"\n")?;
+                                    }
                                 }
+                                "tool_use" => {
+                                    // Display tool use as [Using: ToolName]
+                                    if let Some(name) = item.get("name").and_then(|n| n.as_str()) {
+                                        let msg = format!("[Using: {}]\n", name);
+                                        sink.write_all(msg.as_bytes())?;
+                                    }
+                                }
+                                _ => {}
                             }
                         }
                     }

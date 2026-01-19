@@ -1,5 +1,5 @@
 use crate::contracts::{ClaudePermissionMode, Model, ProjectType, ReasoningEffort, Runner};
-use crate::{config, gitutil, prompts, queue, runner, runutil, timeutil};
+use crate::{config, prompts, queue, runner, runutil, timeutil};
 use anyhow::{bail, Context, Result};
 use std::io::Read;
 
@@ -37,13 +37,6 @@ pub fn read_request_from_args_or_stdin(args: &[String]) -> Result<String> {
 }
 
 pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result<()> {
-    // Enforce the "repo is clean before any agent run" assumption.
-    gitutil::require_clean_repo_ignoring_paths(
-        &resolved.repo_root,
-        opts.force,
-        &[".ralph/queue.yaml", ".ralph/done.yaml"],
-    )?;
-
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task build", opts.force)?;
 
     if opts.request.trim().is_empty() {
@@ -102,20 +95,21 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
             timeout: None,
             two_pass_plan,
             permission_mode,
+            revert_on_error: false,
         },
         runutil::RunnerErrorMessages {
             log_label: "task builder",
-            interrupted_msg: "Task builder interrupted: the agent run was canceled. Uncommitted changes were reverted to maintain a clean repo state.",
+            interrupted_msg: "Task builder interrupted: the agent run was canceled.",
             timeout_msg: "Task builder timed out: the agent run exceeded the time limit. Changes in the working tree were NOT reverted; review the repo state manually.",
-            terminated_msg: "Task builder terminated: the agent was stopped by a signal. Uncommitted changes were reverted. Rerunning the command is recommended.",
+            terminated_msg: "Task builder terminated: the agent was stopped by a signal. Review uncommitted changes before rerunning.",
             non_zero_msg: |code| {
                 format!(
-                    "Task builder failed: the agent exited with a non-zero code ({code}). Uncommitted changes were reverted. Rerunning the command is recommended after investigating the cause."
+                    "Task builder failed: the agent exited with a non-zero code ({code}). Review uncommitted changes before rerunning."
                 )
             },
             other_msg: |err| {
                 format!(
-                    "Task builder failed: the agent could not be started or encountered an error. Uncommitted changes were reverted. Error: {:#}",
+                    "Task builder failed: the agent could not be started or encountered an error. Error: {:#}",
                     err
                 )
             },
@@ -139,7 +133,6 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
             queue
         }
         Err(err) => {
-            gitutil::revert_uncommitted(&resolved.repo_root)?;
             return Err(err);
         }
     };
@@ -156,17 +149,13 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
     } else {
         Some(&done_after)
     };
-    if let Err(err) = queue::validate_queue_set(
+    queue::validate_queue_set(
         &after,
         done_after_ref,
         &resolved.id_prefix,
         resolved.id_width,
     )
-    .context("validate queue set after task build")
-    {
-        gitutil::revert_uncommitted(&resolved.repo_root)?;
-        return Err(err);
-    }
+    .context("validate queue set after task build")?;
 
     let added = queue::added_tasks(&before_ids, &after);
     if !added.is_empty() {

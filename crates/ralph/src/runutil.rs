@@ -16,6 +16,9 @@ pub struct RunnerInvocation<'a> {
     pub timeout: Option<Duration>,
     pub two_pass_plan: bool,
     pub permission_mode: Option<ClaudePermissionMode>,
+    /// If true, revert uncommitted changes on runner errors.
+    /// Set to false for task build to preserve user's existing work.
+    pub revert_on_error: bool,
 }
 
 pub struct RunnerErrorMessages<'a, FNonZero, FOther>
@@ -49,6 +52,7 @@ where
         timeout,
         two_pass_plan,
         permission_mode,
+        revert_on_error,
     } = invocation;
     let RunnerErrorMessages {
         log_label,
@@ -72,7 +76,9 @@ where
     ) {
         Ok(output) => Ok(output),
         Err(runner::RunnerError::Interrupted) => {
-            gitutil::revert_uncommitted(repo_root)?;
+            if revert_on_error {
+                gitutil::revert_uncommitted(repo_root)?;
+            }
             bail!("{}", interrupted_msg);
         }
         Err(runner::RunnerError::Timeout) => {
@@ -80,16 +86,22 @@ where
         }
         Err(runner::RunnerError::NonZeroExit { code, stderr, .. }) => {
             log_stderr_tail(log_label, &stderr.to_string());
-            gitutil::revert_uncommitted(repo_root)?;
+            if revert_on_error {
+                gitutil::revert_uncommitted(repo_root)?;
+            }
             bail!("{}", non_zero_msg(code));
         }
         Err(runner::RunnerError::TerminatedBySignal { stderr, .. }) => {
             log_stderr_tail(log_label, &stderr.to_string());
-            gitutil::revert_uncommitted(repo_root)?;
+            if revert_on_error {
+                gitutil::revert_uncommitted(repo_root)?;
+            }
             bail!("{}", terminated_msg);
         }
         Err(err) => {
-            gitutil::revert_uncommitted(repo_root)?;
+            if revert_on_error {
+                gitutil::revert_uncommitted(repo_root)?;
+            }
             bail!("{}", other_msg(err));
         }
     }

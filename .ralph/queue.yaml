@@ -1,5 +1,28 @@
 version: 1
 tasks:
+- id: RQ-0149
+  status: todo
+  title: Update AGENTS.md to use make ci instead of cargo build/test
+  tags:
+  - docs
+  - ci
+  - agents
+  scope:
+  - AGENTS.md
+  evidence:
+  - AGENTS.md line 30 already mentions run 'make ci' as the gate
+  - The "Build, Test, and Development Commands" section (line 11-21) lists individual cargo commands
+  - User requested agents run 'make ci' instead of 'cargo build' or 'cargo test' directly
+  - make ci includes generate, format, type-check, lint, build, test, install (comprehensive gate)
+  plan:
+  - Add a note or bullet in AGENTS.md emphasizing that agents should run 'make ci' as the comprehensive gate
+  - Clarify that individual cargo commands (cargo test, cargo build) are for development/iteration, not the final gate
+  - Ensure the documentation distinguishes between "development commands" and "CI gate requirements"
+  - Test by verifying the language explicitly directs agents to use 'make ci' for validation
+  notes: []
+  request: Update the AGENTS.md file, which already mentions running the 'make ci' gate, to have the agents run 'make ci' instead of 'cargo build' or 'cargo test' directly as the make ci gate includes both steps and is more comprehensive.
+  created_at: 2026-01-19T19:39:21Z
+  updated_at: 2026-01-19T19:39:21Z
 - id: RQ-0148
   status: todo
   title: Change done.yaml archival behavior to append completed tasks to the END

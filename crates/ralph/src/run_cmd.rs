@@ -154,6 +154,7 @@ pub fn run_one(
             timeout: None,
             two_pass_plan,
             permission_mode,
+            revert_on_error: true,
         },
         runutil::RunnerErrorMessages {
             log_label: "runner",
