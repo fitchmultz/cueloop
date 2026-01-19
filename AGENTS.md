@@ -9,6 +9,10 @@
   - Prompt templates are embedded in the Rust CLI; repo-local overrides can be placed in `.ralph/prompts/*.md`.
 
 ## Build, Test, and Development Commands (Rust)
+
+**REQUIRED CI GATE**: `make ci` — **Agents MUST run this before claiming task completion, committing, or merging PRs.** This is the validation gate that must pass for any work to be considered complete.
+
+**Development/iteration commands** (for rapid testing, not a substitute for `make ci`):
 - `cargo test -p ralph`
 - `cargo run -p ralph -- queue validate`
 - `cargo run -p ralph -- init`
