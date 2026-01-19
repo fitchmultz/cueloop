@@ -260,6 +260,7 @@ pub fn resolve_model_for_runner(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_prompt(
     runner: Runner,
     work_dir: &Path,
@@ -268,6 +269,7 @@ pub fn run_prompt(
     reasoning_effort: Option<ReasoningEffort>,
     prompt: &str,
     timeout: Option<Duration>,
+    two_pass_plan: bool,
 ) -> Result<RunnerOutput, RunnerError> {
     validate_model_for_runner(runner, &model).map_err(RunnerError::Other)?;
     let prepared_prompt = prepare_prompt(runner, prompt);
@@ -284,7 +286,14 @@ pub fn run_prompt(
             run_opencode(work_dir, bins.opencode, model, &prepared_prompt, timeout)?
         }
         Runner::Gemini => run_gemini(work_dir, bins.gemini, model, &prepared_prompt, timeout)?,
-        Runner::Claude => run_claude(work_dir, bins.claude, model, &prepared_prompt, timeout)?,
+        Runner::Claude => run_claude(
+            work_dir,
+            bins.claude,
+            model,
+            &prepared_prompt,
+            timeout,
+            two_pass_plan,
+        )?,
     };
 
     if !output.status.success() {
@@ -401,6 +410,21 @@ fn run_claude(
     model: Model,
     prompt: &str,
     timeout: Option<Duration>,
+    two_pass_plan: bool,
+) -> Result<RunnerOutput, RunnerError> {
+    if two_pass_plan {
+        run_claude_two_pass(work_dir, bin, model, prompt, timeout)
+    } else {
+        run_claude_direct(work_dir, bin, model, prompt, timeout)
+    }
+}
+
+fn run_claude_direct(
+    work_dir: &Path,
+    bin: &str,
+    model: Model,
+    prompt: &str,
+    timeout: Option<Duration>,
 ) -> Result<RunnerOutput, RunnerError> {
     let mut cmd = Command::new(bin);
     cmd.current_dir(work_dir);
@@ -408,6 +432,68 @@ fn run_claude(
     cmd.arg("-p") // Print mode (headless, skips workspace trust)
         .arg("--model")
         .arg(model.as_str());
+    run_with_streaming(cmd, Some(prompt.as_bytes()), bin, timeout)
+}
+
+fn run_claude_two_pass(
+    work_dir: &Path,
+    bin: &str,
+    model: Model,
+    prompt: &str,
+    timeout: Option<Duration>,
+) -> Result<RunnerOutput, RunnerError> {
+    log::info!("Claude two-pass mode: generating plan first");
+
+    // Pass 1: Generate plan in plan mode
+    let plan_output = match generate_claude_plan(work_dir, bin, &model, prompt, timeout) {
+        Ok(plan) => plan,
+        Err(e) => {
+            log::warn!(
+                "Plan generation failed: {}, falling back to direct implementation",
+                e
+            );
+            return run_claude_direct(work_dir, bin, model, prompt, timeout);
+        }
+    };
+
+    // Pass 2: Implement with acceptEdits mode
+    let implementation_prompt = format!("Implement this plan:\n\n{}", plan_output.stdout.trim());
+
+    log::info!(
+        "Claude two-pass mode: implementing plan ({} bytes)",
+        implementation_prompt.len()
+    );
+
+    let mut cmd = Command::new(bin);
+    cmd.current_dir(work_dir);
+    ensure_self_on_path(&mut cmd);
+    cmd.arg("-p")
+        .arg("--model")
+        .arg(model.as_str())
+        .arg("--permission-mode")
+        .arg("acceptEdits");
+
+    run_with_streaming(cmd, Some(implementation_prompt.as_bytes()), bin, timeout)
+}
+
+fn generate_claude_plan(
+    work_dir: &Path,
+    bin: &str,
+    model: &Model,
+    prompt: &str,
+    timeout: Option<Duration>,
+) -> Result<RunnerOutput, RunnerError> {
+    let mut cmd = Command::new(bin);
+    cmd.current_dir(work_dir);
+    ensure_self_on_path(&mut cmd);
+    cmd.arg("-p")
+        .arg("--model")
+        .arg(model.as_str())
+        .arg("--permission-mode")
+        .arg("plan")
+        .arg("--output-format")
+        .arg("json");
+
     run_with_streaming(cmd, Some(prompt.as_bytes()), bin, timeout)
 }
 

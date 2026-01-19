@@ -14,6 +14,7 @@ pub struct RunnerInvocation<'a> {
     pub reasoning_effort: Option<ReasoningEffort>,
     pub prompt: &'a str,
     pub timeout: Option<Duration>,
+    pub two_pass_plan: bool,
 }
 
 pub struct RunnerErrorMessages<'a, FNonZero, FOther>
@@ -45,6 +46,7 @@ where
         reasoning_effort,
         prompt,
         timeout,
+        two_pass_plan,
     } = invocation;
     let RunnerErrorMessages {
         log_label,
@@ -63,6 +65,7 @@ where
         reasoning_effort,
         prompt,
         timeout,
+        two_pass_plan,
     ) {
         Ok(output) => Ok(output),
         Err(runner::RunnerError::Interrupted) => {

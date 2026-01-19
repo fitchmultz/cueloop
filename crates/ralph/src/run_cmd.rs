@@ -138,6 +138,7 @@ pub fn run_one(
     let template = prompts::load_worker_prompt(&resolved.repo_root)?;
     let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
     let prompt = prompts::render_worker_prompt(&template, project_type)?;
+    let two_pass_plan = resolved.config.agent.two_pass_plan.unwrap_or(true);
 
     let _output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
@@ -148,6 +149,7 @@ pub fn run_one(
             reasoning_effort: settings.reasoning_effort,
             prompt: &prompt,
             timeout: None,
+            two_pass_plan,
         },
         runutil::RunnerErrorMessages {
             log_label: "runner",
@@ -404,6 +406,7 @@ mod tests {
                 opencode_bin: Some("opencode".to_string()),
                 gemini_bin: Some("gemini".to_string()),
                 claude_bin: Some("claude".to_string()),
+                two_pass_plan: Some(true),
             },
             queue: QueueConfig {
                 file: Some(PathBuf::from(".ralph/queue.yaml")),

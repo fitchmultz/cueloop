@@ -84,6 +84,11 @@ pub struct AgentConfig {
 
     /// Override the claude executable name/path (default is "claude" if None).
     pub claude_bin: Option<String>,
+
+    /// Enable two-pass plan-then-implement workflow (default: true).
+    /// When enabled, Claude first generates a plan in plan mode, then implements it.
+    /// Currently supported for Claude runner only.
+    pub two_pass_plan: Option<bool>,
 }
 
 impl AgentConfig {
@@ -108,6 +113,9 @@ impl AgentConfig {
         }
         if other.claude_bin.is_some() {
             self.claude_bin = other.claude_bin;
+        }
+        if other.two_pass_plan.is_some() {
+            self.two_pass_plan = other.two_pass_plan;
         }
     }
 }
@@ -319,6 +327,7 @@ impl Default for Config {
                 opencode_bin: Some("opencode".to_string()),
                 gemini_bin: Some("gemini".to_string()),
                 claude_bin: Some("claude".to_string()),
+                two_pass_plan: Some(true),
             },
         }
     }

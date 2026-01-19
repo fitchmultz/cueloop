@@ -86,6 +86,7 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
     )?;
 
     let bins = runner::resolve_binaries(&resolved.config.agent);
+    let two_pass_plan = resolved.config.agent.two_pass_plan.unwrap_or(true);
     let _output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
             repo_root: &resolved.repo_root,
@@ -95,6 +96,7 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
             reasoning_effort: opts.reasoning_effort,
             prompt: &prompt,
             timeout: None,
+            two_pass_plan,
         },
         runutil::RunnerErrorMessages {
             log_label: "task builder",
