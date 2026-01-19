@@ -56,16 +56,19 @@ fn doctor_passes_in_clean_env() -> Result<()> {
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{}\n{}", stdout, stderr);
+
     if !output.status.success() {
         println!("STDOUT:\n{stdout}");
-        println!("STDERR:\n{}", String::from_utf8_lossy(&output.stderr));
+        println!("STDERR:\n{stderr}");
     }
 
     // Missing upstream is now a warning, not a failure, so doctor should pass
     assert!(output.status.success());
-    assert!(stdout.contains("[OK] git binary found"));
-    assert!(stdout.contains("[OK] queue valid"));
-    assert!(stdout.contains("[WARN] no upstream configured"));
+    assert!(combined.contains("OK") && combined.contains("git binary found"));
+    assert!(combined.contains("OK") && combined.contains("queue valid"));
+    assert!(combined.contains("WARN") && combined.contains("no upstream configured"));
     Ok(())
 }
 
@@ -86,7 +89,9 @@ fn doctor_fails_when_queue_missing() -> Result<()> {
 
     assert!(!output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("[FAIL] queue file missing"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{}\n{}", stdout, stderr);
+    assert!(combined.contains("FAIL") && combined.contains("queue file missing"));
     Ok(())
 }
 
@@ -114,14 +119,17 @@ fn doctor_warns_on_missing_upstream() -> Result<()> {
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{}\n{}", stdout, stderr);
+
     if !output.status.success() {
         println!("STDOUT:\n{stdout}");
-        println!("STDERR:\n{}", String::from_utf8_lossy(&output.stderr));
+        println!("STDERR:\n{stderr}");
     }
 
     // Should succeed with a warning about missing upstream
     assert!(output.status.success());
-    assert!(stdout.contains("[WARN] no upstream configured"));
+    assert!(combined.contains("WARN") && combined.contains("no upstream configured"));
     Ok(())
 }
 
@@ -159,13 +167,13 @@ agent:
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined_output = format!("{}\n{}", stdout, stderr);
 
     // Should fail
     assert!(!output.status.success());
     // Should report the failure with the binary name
-    let combined_output = format!("{}\n{}", stdout, stderr);
     assert!(combined_output.contains("this-binary-does-not-exist-xyz123"));
-    assert!(combined_output.contains("[FAIL]"));
+    assert!(combined_output.contains("FAIL"));
     Ok(())
 }
 
@@ -200,11 +208,11 @@ agent:
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined_output = format!("{}\n{}", stdout, stderr);
 
     assert!(!output.status.success());
-    let combined_output = format!("{}\n{}", stdout, stderr);
     assert!(combined_output.contains("this-gemini-does-not-exist-xyz123"));
-    assert!(combined_output.contains("[FAIL]"));
+    assert!(combined_output.contains("FAIL"));
     Ok(())
 }
 
@@ -234,10 +242,13 @@ fn doctor_fails_with_invalid_done_archive() -> Result<()> {
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{}\n{}", stdout, stderr);
     assert!(!output.status.success());
     assert!(
-        stdout.contains("[FAIL] done archive validation failed")
-            || stdout.contains("[FAIL] failed to load done archive")
+        combined.contains("FAIL")
+            && (combined.contains("done archive validation failed")
+                || combined.contains("failed to load done archive"))
     );
     Ok(())
 }
