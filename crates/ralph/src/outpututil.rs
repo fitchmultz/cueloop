@@ -1,3 +1,7 @@
+use colored::Colorize;
+
+use crate::contracts::{Task, TaskStatus};
+
 pub const OUTPUT_TAIL_LINES: usize = 20;
 pub const OUTPUT_TAIL_LINE_MAX_CHARS: usize = 200;
 
@@ -42,6 +46,70 @@ pub fn tail_lines(text: &str, max_lines: usize, max_chars: usize) -> Vec<String>
         .into_iter()
         .map(|line| truncate_chars(line.trim(), max_chars))
         .collect()
+}
+
+pub fn style_status(status: TaskStatus) -> colored::ColoredString {
+    match status {
+        TaskStatus::Todo => "todo".blue(),
+        TaskStatus::Doing => "doing".yellow().bold(),
+        TaskStatus::Done => "done".green(),
+    }
+}
+
+pub fn format_task_compact(task: &Task) -> String {
+    format!(
+        "{}\t{}	{}",
+        task.id.trim(),
+        style_status(task.status),
+        task.title.trim()
+    )
+}
+
+pub fn format_task_detailed(task: &Task) -> String {
+    fn join_trimmed(values: &[String]) -> String {
+        values
+            .iter()
+            .map(|v| v.trim())
+            .filter(|v| !v.is_empty())
+            .collect::<Vec<&str>>()
+            .join(",")
+    }
+
+    let tags = join_trimmed(&task.tags);
+    let scope = join_trimmed(&task.scope);
+    let updated_at = task.updated_at.as_deref().unwrap_or("").trim();
+    let completed_at = task.completed_at.as_deref().unwrap_or("").trim();
+
+    format!(
+        "{}\t{}	{}	{}	{}	{}	{}",
+        task.id.trim(),
+        style_status(task.status),
+        task.title.trim(),
+        tags,
+        scope,
+        updated_at,
+        completed_at
+    )
+}
+
+#[allow(dead_code)]
+pub fn print_success(msg: &str) {
+    println!("{} {}", "SUCCESS:".green().bold(), msg);
+}
+
+#[allow(dead_code)]
+pub fn print_info(msg: &str) {
+    println!("{} {}", "INFO:".blue().bold(), msg);
+}
+
+#[allow(dead_code)]
+pub fn print_warn(msg: &str) {
+    eprintln!("{} {}", "WARN:".yellow().bold(), msg);
+}
+
+#[allow(dead_code)]
+pub fn print_error(msg: &str) {
+    eprintln!("{} {}", "ERROR:".red().bold(), msg);
 }
 
 #[cfg(test)]
@@ -116,5 +184,40 @@ mod tests {
         let text = "line1\nline2";
         let tail = tail_lines(text, 10, 100);
         assert_eq!(tail, vec!["line1", "line2"]);
+    }
+
+    #[test]
+    fn format_task_compact_contains_styled_status() {
+        // We can't easily assert exact ANSI codes without being brittle,
+        // but we can check the plain text parts are there.
+        let task = Task {
+            id: "RQ-123".into(),
+            status: TaskStatus::Todo,
+            title: "My Task".into(),
+            ..Default::default()
+        };
+        let out = format_task_compact(&task);
+        assert!(out.contains("RQ-123"));
+        assert!(out.contains("My Task"));
+        assert!(out.contains("todo")); // ANSI codes surround "todo"
+    }
+
+    #[test]
+    fn format_task_detailed_formatting() {
+        let task = Task {
+            id: "RQ-123".into(),
+            status: TaskStatus::Done,
+            title: "My Task".into(),
+            tags: vec!["t1".into(), "t2".into()],
+            scope: vec!["s1".into()],
+            completed_at: Some("2026-01-01".into()),
+            ..Default::default()
+        };
+        let out = format_task_detailed(&task);
+        assert!(out.contains("RQ-123"));
+        assert!(out.contains("done"));
+        assert!(out.contains("t1,t2"));
+        assert!(out.contains("s1"));
+        assert!(out.contains("2026-01-01"));
     }
 }

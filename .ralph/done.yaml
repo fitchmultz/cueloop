@@ -484,3 +484,29 @@ tasks:
     created_at: 2026-01-19T03:36:03Z
     updated_at: 2026-01-19T03:49:54Z
     completed_at: 2026-01-19T03:56:00Z
+  - id: RQ-0093
+    status: done
+    title: Implement centralized CLI output utility for consistent formatting
+    tags:
+      - rust
+      - ux
+      - utility
+    scope:
+      - crates/ralph/src/outpututil.rs
+    evidence:
+      - |-
+        `outpututil.rs` is currently very minimal. CLI output patterns like task lists,
+        status reports, and error summaries are implemented ad-hoc in various command modules.
+    plan:
+      - Expand `outpututil.rs` with helpers for common CLI output patterns (e.g., info/success/warning prefixes).
+      - Add support for basic ANSI colors/styles if appropriate (mimicking project conventions).
+      - Provide a standardized way to print task summaries used by `queue list` and `run`.
+    notes:
+      - Added `colored` dependency to `crates/ralph/Cargo.toml`.
+      - Expanded `outpututil.rs` with `print_info`, `print_success`, `print_warn`, `print_error` helpers.
+      - Implemented `format_task_compact` and `format_task_detailed` in `outpututil.rs` with status coloring.
+      - Refactored `main.rs` to use the centralized formatting logic.
+    request: scan finding
+    created_at: 2026-01-19T04:00:47Z
+    updated_at: 2026-01-19T05:00:00Z
+    completed_at: 2026-01-19T05:00:00Z

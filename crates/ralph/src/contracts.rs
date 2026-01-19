@@ -202,7 +202,7 @@ pub struct QueueFile {
 
 /* ------------------------------ Task (YAML) ------------------------------ */
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Task {
     pub id: String,

@@ -131,7 +131,7 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                     print!("{rendered}");
                 }
                 QueueShowFormat::Compact => {
-                    println!("{}", format_task_compact(task));
+                    println!("{}", outpututil::format_task_compact(task));
                 }
             }
         }
@@ -174,8 +174,10 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
             let max = limit.unwrap_or(usize::MAX);
             for task in tasks.into_iter().take(max) {
                 match args.format {
-                    QueueListFormat::Compact => println!("{}", format_task_compact(task)),
-                    QueueListFormat::Long => println!("{}", format_task_long(task)),
+                    QueueListFormat::Compact => {
+                        println!("{}", outpututil::format_task_compact(task))
+                    }
+                    QueueListFormat::Long => println!("{}", outpututil::format_task_detailed(task)),
                 }
             }
         }
@@ -443,37 +445,6 @@ fn resolve_agent_args(
     };
 
     runner::resolve_agent_settings(runner_kind, model, effort, None, &resolved.config.agent)
-}
-
-fn format_task_compact(task: &Task) -> String {
-    format!("{}\t{}\t{}", task.id.trim(), task.status, task.title.trim())
-}
-
-fn format_task_long(task: &Task) -> String {
-    fn join_trimmed(values: &[String]) -> String {
-        values
-            .iter()
-            .map(|v| v.trim())
-            .filter(|v| !v.is_empty())
-            .collect::<Vec<&str>>()
-            .join(",")
-    }
-
-    let tags = join_trimmed(&task.tags);
-    let scope = join_trimmed(&task.scope);
-    let updated_at = task.updated_at.as_deref().unwrap_or("").trim();
-    let completed_at = task.completed_at.as_deref().unwrap_or("").trim();
-
-    format!(
-        "{}\t{}\t{}\t{}\t{}\t{}\t{}",
-        task.id.trim(),
-        task.status,
-        task.title.trim(),
-        tags,
-        scope,
-        updated_at,
-        completed_at
-    )
 }
 
 fn resolve_list_limit(limit: u32, all: bool) -> Option<usize> {
@@ -824,7 +795,7 @@ impl From<StatusArg> for contracts::TaskStatus {
 
 #[cfg(test)]
 mod tests {
-    use super::contracts::{QueueFile, Task, TaskStatus};
+    use super::contracts::{QueueFile, TaskStatus};
     use anyhow::Context;
     use std::ffi::OsString;
     use std::path::PathBuf;
@@ -906,53 +877,6 @@ mod tests {
 
         assert_eq!(left, right);
         Ok(())
-    }
-
-    #[test]
-    fn format_task_compact_trims_fields() {
-        let task = Task {
-            id: " RQ-0001 ".to_string(),
-            status: TaskStatus::Doing,
-            title: "  Fix bug  ".to_string(),
-            tags: vec![],
-            scope: vec![],
-            evidence: vec!["e".to_string()],
-            plan: vec!["p".to_string()],
-            notes: vec![],
-            request: None,
-            agent: None,
-            created_at: None,
-            updated_at: None,
-            completed_at: None,
-        };
-
-        let rendered = super::format_task_compact(&task);
-        assert_eq!(rendered, "RQ-0001\tdoing\tFix bug");
-    }
-
-    #[test]
-    fn format_task_long_trims_and_renders_optional_timestamps() {
-        let task = Task {
-            id: " RQ-0001 ".to_string(),
-            status: TaskStatus::Done,
-            title: "  Ship it  ".to_string(),
-            tags: vec![" rust ".to_string(), "queue".to_string()],
-            scope: vec![" crates/ralph/src/main.rs ".to_string()],
-            evidence: vec!["e".to_string()],
-            plan: vec!["p".to_string()],
-            notes: vec![],
-            request: None,
-            agent: None,
-            created_at: None,
-            updated_at: None,
-            completed_at: Some(" 2026-01-18T06:30:00Z ".to_string()),
-        };
-
-        let rendered = super::format_task_long(&task);
-        assert_eq!(
-            rendered,
-            "RQ-0001\tdone\tShip it\trust,queue\tcrates/ralph/src/main.rs\t\t2026-01-18T06:30:00Z"
-        );
     }
 
     #[test]
