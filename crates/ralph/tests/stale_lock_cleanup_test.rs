@@ -21,7 +21,7 @@ fn acquire_dir_lock_auto_cleans_stale_lock_when_forced() -> Result<()> {
 
     // Attempting to acquire without force should fail.
     let err = fsutil::acquire_dir_lock(&lock_dir, "new-proc", false).unwrap_err();
-    assert!(format!("{err:#}").contains("stale pid"));
+    assert!(format!("{err:#}").to_lowercase().contains("stale pid"));
 
     // Attempting to acquire with force should succeed.
     let _lock =
@@ -48,8 +48,9 @@ fn acquire_dir_lock_does_not_clean_active_lock_even_if_forced() -> Result<()> {
     // Attempting to acquire with force should still fail because the PID is active.
     let err = fsutil::acquire_dir_lock(&lock_dir, "proc2", true).unwrap_err();
     let msg = format!("{err:#}");
-    assert!(msg.contains("queue lock is held by pid"));
-    assert!(!msg.contains("stale pid"));
+    assert!(msg.to_lowercase().contains("lock already held"));
+    assert!(msg.to_lowercase().contains("pid:"));
+    assert!(!msg.to_lowercase().contains("stale pid"));
 
     Ok(())
 }

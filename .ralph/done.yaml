@@ -721,3 +721,29 @@ tasks:
       - Ensured that error messages provide actionable advice (e.g., specific config keys or flags to set).
       - Updated unit tests and contract tests to reflect the new improved error messages.
       - Verified that `make ci` passes with all tests updated.
+  - id: RQ-0096
+    status: done
+    title: Improve fsutil::acquire_dir_lock error messages
+    tags:
+      - rust
+      - error-handling
+      - fs
+    scope:
+      - crates/ralph/src/fsutil.rs
+    evidence:
+      - |-
+        `acquire_dir_lock` builds a very long, complex error message as a single string.
+        It's hard to read and doesn't clearly separate the state from the suggested fix.
+    plan:
+      - Refactor the error message generation in `acquire_dir_lock` for better readability.
+      - Use newlines and clear sections (Lock Holder, Started At, Suggested Action).
+      - Ensure the message provides specific `rm` commands for the lock directory.
+    notes:
+      - Refactored `acquire_dir_lock` to use a structured error message format.
+      - Added `format_lock_error` helper for clear separation of state and suggested actions.
+      - Updated `stale_lock_cleanup_test.rs` to reflect the new message format.
+      - Verified that `make ci` passes with the changes.
+    request: scan finding
+    created_at: 2026-01-19T04:00:47Z
+    updated_at: 2026-01-18T22:38:00Z
+    completed_at: 2026-01-19T05:12:00Z

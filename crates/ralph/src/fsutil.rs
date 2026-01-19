@@ -65,41 +65,7 @@ pub fn acquire_dir_lock(lock_dir: &Path, label: &str, force: bool) -> Result<Dir
                 return acquire_dir_lock(lock_dir, label, false);
             }
 
-            let mut msg = if let Some(owner) = owner {
-                let mut base = format!(
-                    "queue lock is held by pid {} (label: {}, started_at: {}, command: {}) at {}",
-                    owner.pid,
-                    owner.label,
-                    owner.started_at,
-                    owner.command,
-                    lock_dir.display()
-                );
-                if is_stale {
-                    base.push_str(" (stale pid)");
-                }
-                base
-            } else {
-                format!(
-                    "queue lock is already held at {} (owner metadata missing)",
-                    lock_dir.display()
-                )
-            };
-
-            if owner_unreadable {
-                msg.push_str(" (owner metadata unreadable)");
-            }
-
-            if is_stale {
-                msg.push_str(&format!(
-                    "; use --force or remove {} to unlock",
-                    lock_dir.display()
-                ));
-            } else {
-                msg.push_str(&format!(
-                    "; remove {} if you are sure no other ralph process is running",
-                    lock_dir.display()
-                ));
-            }
+            let msg = format_lock_error(lock_dir, owner.as_ref(), is_stale, owner_unreadable);
             return Err(anyhow!(msg));
         }
         Err(err) => {
@@ -132,6 +98,49 @@ pub fn acquire_dir_lock(lock_dir: &Path, label: &str, force: bool) -> Result<Dir
         lock_dir: lock_dir.to_path_buf(),
         owner_path,
     })
+}
+
+fn format_lock_error(
+    lock_dir: &Path,
+    owner: Option<&LockOwner>,
+    is_stale: bool,
+    owner_unreadable: bool,
+) -> String {
+    let mut msg = format!("Queue lock already held at: {}", lock_dir.display());
+    if is_stale {
+        msg.push_str(" (STALE PID)");
+    }
+    if owner_unreadable {
+        msg.push_str(" (owner metadata unreadable)");
+    }
+
+    msg.push_str("\n\nLock Holder:");
+    if let Some(owner) = owner {
+        msg.push_str(&format!(
+            "\n  PID: {}{}\n  Label: {}\n  Started At: {}\n  Command: {}",
+            owner.pid,
+            if is_stale { " (not running)" } else { "" },
+            owner.label,
+            owner.started_at,
+            owner.command
+        ));
+    } else {
+        msg.push_str("\n  (owner metadata missing)");
+    }
+
+    msg.push_str("\n\nSuggested Action:");
+    if is_stale {
+        msg.push_str(&format!(
+            "\n  The process that held this lock is no longer running.\n  Use --force to automatically clear it, or remove the directory manually:\n  rm -rf {}",
+            lock_dir.display()
+        ));
+    } else {
+        msg.push_str(&format!(
+            "\n  If you are sure no other ralph process is running, remove the lock directory:\n  rm -rf {}",
+            lock_dir.display()
+        ));
+    }
+    msg
 }
 
 fn write_lock_owner(owner_path: &Path, owner: &LockOwner) -> Result<()> {
