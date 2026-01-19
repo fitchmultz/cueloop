@@ -8,7 +8,10 @@ pub fn redact_text(value: &str) -> String {
 
     let with_pairs = redact_key_value_pairs(value);
     let with_bearer = redact_bearer_tokens(&with_pairs);
-    redact_sensitive_env_values(&with_bearer)
+    let with_aws = redact_aws_keys(&with_bearer);
+    let with_ssh = redact_ssh_keys(&with_aws);
+    let with_hex = redact_hex_tokens(&with_ssh);
+    redact_sensitive_env_values(&with_hex)
 }
 
 pub fn looks_sensitive_env_key(key: &str) -> bool {
@@ -32,6 +35,119 @@ pub fn is_path_like_env_key(key: &str) -> bool {
         normalize_key(key).as_str(),
         "CWD" | "HOME" | "OLDPWD" | "PATH" | "PWD" | "TEMP" | "TMP" | "TMPDIR"
     )
+}
+
+fn redact_aws_keys(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let mut i = 0;
+
+    while i < bytes.len() {
+        // Look for AKIA...
+        if i + 20 <= bytes.len() && &bytes[i..i + 4] == b"AKIA" {
+            let mut all_caps_alphanum = true;
+            for j in 0..16 {
+                let b = bytes[i + 4 + j];
+                if !(b.is_ascii_uppercase() || b.is_ascii_digit()) {
+                    all_caps_alphanum = false;
+                    break;
+                }
+            }
+            if all_caps_alphanum {
+                let word_boundary_start = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+                let word_boundary_end =
+                    i + 20 == bytes.len() || !bytes[i + 20].is_ascii_alphanumeric();
+
+                if word_boundary_start && word_boundary_end {
+                    out.push_str(REDACTED);
+                    i += 20;
+                    continue;
+                }
+            }
+        }
+
+        // Generic AWS secret lookahead (40 chars)
+        // [0-9a-zA-Z/+=]{40}
+        if i + 40 <= bytes.len() {
+            let mut is_secret = true;
+            for j in 0..40 {
+                let b = bytes[i + j];
+                if !(b.is_ascii_alphanumeric() || b == b'/' || b == b'+' || b == b'=') {
+                    is_secret = false;
+                    break;
+                }
+            }
+            if is_secret {
+                let word_boundary_start = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+                let word_boundary_end =
+                    i + 40 == bytes.len() || !bytes[i + 40].is_ascii_alphanumeric();
+
+                if word_boundary_start && word_boundary_end {
+                    // Check if it's near "secret" or "key" or "aws" or "akia"
+                    // to reduce false positives if we wanted, but for now let's be aggressive.
+                    out.push_str(REDACTED);
+                    i += 40;
+                    continue;
+                }
+            }
+        }
+
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
+}
+
+fn redact_ssh_keys(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+
+    while i < text.len() {
+        if text[i..].starts_with("-----BEGIN") {
+            if let Some(end_marker_pos) = text[i..].find("-----END") {
+                if let Some(final_dash_pos) = text[i + end_marker_pos + 8..].find("-----") {
+                    let total_end = i + end_marker_pos + 8 + final_dash_pos + 5;
+                    out.push_str(REDACTED);
+                    i = total_end;
+                    continue;
+                }
+            }
+        }
+        out.push(text.as_bytes()[i] as char);
+        i += 1;
+    }
+    out
+}
+
+fn redact_hex_tokens(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let mut i = 0;
+
+    while i < bytes.len() {
+        let ch = bytes[i] as char;
+        if ch.is_ascii_hexdigit() {
+            let start = i;
+            while i < bytes.len() && (bytes[i] as char).is_ascii_hexdigit() {
+                i += 1;
+            }
+            let len = i - start;
+            if len >= 32 {
+                let word_boundary_start = start == 0 || !bytes[start - 1].is_ascii_alphanumeric();
+                let word_boundary_end = i == bytes.len() || !bytes[i].is_ascii_alphanumeric();
+
+                if word_boundary_start && word_boundary_end {
+                    out.push_str(REDACTED);
+                    continue;
+                }
+            }
+            out.push_str(&text[start..i]);
+        } else {
+            out.push(ch);
+            i += 1;
+        }
+    }
+    out
 }
 
 fn redact_key_value_pairs(text: &str) -> String {
@@ -64,6 +180,70 @@ fn redact_key_value_pairs(text: &str) -> String {
                 while cursor < chars.len() && chars[cursor].is_whitespace() && chars[cursor] != '\n'
                 {
                     cursor += 1;
+                }
+
+                // Handle YAML-style multi-line indicators
+                if cursor < chars.len() && (chars[cursor] == '|' || chars[cursor] == '>') {
+                    let mut value_end = cursor + 1;
+                    // Skip to end of block
+                    // In a simplified way: find next non-indented line or end of string
+                    // This is hard without full YAML parsing, but we can look for markers or just redact a lot.
+
+                    // Actually, if it's multi-line, it often has indentation.
+                    // Let's find the first line after this and check its indentation.
+                    while value_end < chars.len() && chars[value_end] != '\n' {
+                        value_end += 1;
+                    }
+                    if value_end < chars.len() {
+                        value_end += 1; // skip \n
+                    }
+
+                    let _block_start = value_end;
+                    let mut indent = 0;
+                    while value_end + indent < chars.len()
+                        && chars[value_end + indent].is_whitespace()
+                        && chars[value_end + indent] != '\n'
+                    {
+                        indent += 1;
+                    }
+
+                    if indent > 0 {
+                        // Redact until we find a line with less indentation
+                        let mut current = value_end;
+                        while current < chars.len() {
+                            let mut line_indent = 0;
+                            while current + line_indent < chars.len()
+                                && chars[current + line_indent].is_whitespace()
+                                && chars[current + line_indent] != '\n'
+                            {
+                                line_indent += 1;
+                            }
+                            if current + line_indent < chars.len()
+                                && chars[current + line_indent] == '\n'
+                            {
+                                // Empty line, skip
+                                current += line_indent + 1;
+                                continue;
+                            }
+                            if line_indent < indent && current < chars.len() {
+                                // End of block
+                                break;
+                            }
+                            // Move to next line
+                            while current < chars.len() && chars[current] != '\n' {
+                                current += 1;
+                            }
+                            if current < chars.len() {
+                                current += 1;
+                            }
+                        }
+                        value_end = current;
+                    }
+
+                    out.extend(chars[i..cursor].iter());
+                    out.push_str(REDACTED);
+                    i = value_end;
+                    continue;
                 }
 
                 let value_start = cursor;

@@ -1,23 +1,5 @@
 version: 1
 tasks:
-  - id: RQ-0081
-    status: todo
-    title: Expand redaction.rs with more sensitive patterns
-    tags:
-      - rust
-      - security
-    scope:
-      - crates/ralph/src/redaction.rs
-    evidence:
-      - current redaction is limited to bearer tokens and some env var keys
-    plan:
-      - Add patterns for AWS keys, SSH private key headers, and generic hex tokens
-      - Improve key-value pair detection for multi-line values
-      - Add tests for new patterns
-    notes: []
-    request: scan finding
-    created_at: 2026-01-18T22:00:00Z
-    updated_at: 2026-01-18T22:00:00Z
   - id: RQ-0082
     status: todo
     title: Integrate a logging crate (e.g., env_logger) for output control
