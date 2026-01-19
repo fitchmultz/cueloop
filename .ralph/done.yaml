@@ -413,3 +413,27 @@ tasks:
     created_at: 2026-01-18T22:00:00Z
     updated_at: 2026-01-18T22:36:20Z
     completed_at: 2026-01-19T03:55:00Z
+  - id: RQ-0088
+    status: done
+    title: Audit CLI help strings for completeness and consistency
+    tags:
+      - rust
+      - ux
+    scope:
+      - crates/ralph/src/main.rs
+    evidence:
+      - some subcommands have more detailed help/examples than others
+    plan:
+      - Review all long_help and after_long_help strings in main.rs
+      - Ensure consistent formatting for examples and runner/model notes
+      - Verify all subcommands have at least one clear example
+    notes:
+      - Added about and after_long_help with examples to all subcommands in main.rs.
+      - Added doc comments to StatusArg, QueueShowFormat, and QueueListFormat for better ValueEnum help.
+      - Ensured consistent example formatting across all commands.
+      - Fixed missing about for scan and init subcommands.
+      - Verified with cargo run -p ralph -- --help and subcommands.
+    request: scan finding
+    created_at: 2026-01-18T22:00:00Z
+    updated_at: 2026-01-18T22:05:00Z
+    completed_at: 2026-01-18T22:10:00Z

@@ -1,23 +1,5 @@
 version: 1
 tasks:
-  - id: RQ-0088
-    status: todo
-    title: Audit CLI help strings for completeness and consistency
-    tags:
-      - rust
-      - ux
-    scope:
-      - crates/ralph/src/main.rs
-    evidence:
-      - some subcommands have more detailed help/examples than others
-    plan:
-      - Review all long_help and after_long_help strings in main.rs
-      - Ensure consistent formatting for examples and runner/model notes
-      - Verify all subcommands have at least one clear example
-    notes: []
-    request: scan finding
-    created_at: 2026-01-18T22:00:00Z
-    updated_at: 2026-01-18T22:00:00Z
   - id: RQ-0089
     status: todo
     title: Update all rust cargo dependencies to the latest version and run `make ci` to verify everything still works
@@ -49,6 +31,7 @@ tasks:
       - Detect when loop prompts reference .ralph/README.md
       - Create .ralph/README.md during `ralph init` when referenced
       - Add tests to cover prompt references and init behavior
-    notes:
+    notes: []
+    request: scan repair
     created_at: 2026-01-19T03:36:03Z
     updated_at: 2026-01-19T03:36:03Z

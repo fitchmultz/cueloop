@@ -508,12 +508,14 @@ enum Command {
     Scan(ScanArgs),
     Init(InitArgs),
     /// Verify environment readiness and configuration.
+    #[command(after_long_help = "Example:\n  ralph doctor")]
     Doctor,
 }
 
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph queue next-id"
+    about = "Inspect and manage the task queue",
+    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph queue next-id\n  ralph queue set-status RQ-0001 doing --note \"Starting work\""
 )]
 struct QueueArgs {
     #[command(subcommand)]
@@ -521,6 +523,10 @@ struct QueueArgs {
 }
 
 #[derive(Args)]
+#[command(
+    about = "Inspect and manage Ralph configuration",
+    after_long_help = "Examples:\n  ralph config show\n  ralph config paths"
+)]
 struct ConfigArgs {
     #[command(subcommand)]
     command: ConfigCommand,
@@ -537,12 +543,20 @@ struct RunArgs {
 }
 
 #[derive(Args)]
+#[command(
+    about = "Create and build tasks from freeform requests",
+    after_long_help = "Examples:\n  ralph task build \"Add tests for the new queue logic\"\n  ralph task build --runner opencode --model gpt-5.2 \"Fix CLI help strings\""
+)]
 struct TaskArgs {
     #[command(subcommand)]
     command: TaskCommand,
 }
 
 #[derive(Args)]
+#[command(
+    about = "Bootstrap Ralph files in the current repository",
+    after_long_help = "Examples:\n  ralph init\n  ralph init --force"
+)]
 struct InitArgs {
     /// Overwrite existing files if they already exist.
     #[arg(long)]
@@ -551,6 +565,10 @@ struct InitArgs {
 
 #[derive(Subcommand)]
 enum TaskCommand {
+    /// Build a new task from a natural language request.
+    #[command(
+        after_long_help = "Example:\n  ralph task build \"Add tests for the new queue logic\""
+    )]
     Build(TaskBuildArgs),
 }
 
@@ -587,6 +605,7 @@ struct TaskBuildArgs {
 
 #[derive(Args)]
 #[command(
+    about = "Scan the repository for new tasks and focus areas",
     after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nExamples:\n  ralph scan --focus \"production readiness gaps\"\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI and safety gaps\"\n  ralph scan --runner gemini --model gemini-3-flash-preview --focus \"risk audit\"\n  ralph scan --runner codex --model gpt-5.2-codex --effort high --focus \"queue correctness\""
 )]
 struct ScanArgs {
@@ -611,22 +630,31 @@ struct ScanArgs {
 #[derive(Subcommand)]
 enum QueueCommand {
     /// Validate the active queue (and done archive if present).
+    #[command(after_long_help = "Example:\n  ralph queue validate")]
     Validate,
     /// Print the next todo task (ID by default).
+    #[command(after_long_help = "Examples:\n  ralph queue next\n  ralph queue next --with-title")]
     Next(QueueNextArgs),
     /// Print the next available task ID (across queue + done archive).
+    #[command(after_long_help = "Example:\n  ralph queue next-id")]
     NextId,
     /// Show a task by ID.
     Show(QueueShowArgs),
     /// List tasks in queue order.
     List(QueueListArgs),
     /// Move completed tasks from queue.yaml to done.yaml.
+    #[command(after_long_help = "Example:\n  ralph queue done")]
     Done,
     /// Remove the queue lock file.
+    #[command(after_long_help = "Example:\n  ralph queue unlock")]
     Unlock,
     /// Repair invalid YAML scalars in the queue file.
+    #[command(after_long_help = "Example:\n  ralph queue repair")]
     Repair,
     /// Update a task status in the active queue.
+    #[command(
+        after_long_help = "Example:\n  ralph queue set-status RQ-0001 doing --note \"Starting work\""
+    )]
     SetStatus {
         task_id: String,
         status: StatusArg,
@@ -637,7 +665,11 @@ enum QueueCommand {
 
 #[derive(Subcommand)]
 enum ConfigCommand {
+    /// Show the resolved Ralph configuration (YAML).
+    #[command(after_long_help = "Example:\n  ralph config show")]
     Show,
+    /// Print paths to the queue, done archive, and config files.
+    #[command(after_long_help = "Example:\n  ralph config paths")]
     Paths,
 }
 
@@ -690,26 +722,34 @@ struct RunLoopArgs {
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[clap(rename_all = "snake_case")]
 enum StatusArg {
+    /// Task is waiting to be started.
     Todo,
+    /// Task is currently being worked on.
     Doing,
+    /// Task is complete.
     Done,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[clap(rename_all = "snake_case")]
 enum QueueShowFormat {
+    /// Full YAML representation of the task.
     Yaml,
+    /// Compact tab-separated summary (ID, status, title).
     Compact,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[clap(rename_all = "snake_case")]
 enum QueueListFormat {
+    /// Compact tab-separated summary (ID, status, title).
     Compact,
+    /// Detailed tab-separated format including tags, scope, and timestamps.
     Long,
 }
 
 #[derive(Args)]
+#[command(after_long_help = "Example:\n  ralph queue next --with-title")]
 struct QueueNextArgs {
     /// Include the task title after the ID.
     #[arg(long)]
@@ -717,6 +757,9 @@ struct QueueNextArgs {
 }
 
 #[derive(Args)]
+#[command(
+    after_long_help = "Examples:\n  ralph queue show RQ-0001\n  ralph queue show RQ-0001 --format compact"
+)]
 struct QueueShowArgs {
     /// Task ID to show.
     #[arg(value_name = "TASK_ID")]
@@ -728,6 +771,9 @@ struct QueueShowArgs {
 }
 
 #[derive(Args)]
+#[command(
+    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue list --status doing --scope crates/ralph\n  ralph queue list --include-done --limit 20\n  ralph queue list --only-done --all"
+)]
 struct QueueListArgs {
     /// Filter by status (repeatable).
     #[arg(long, value_enum)]
