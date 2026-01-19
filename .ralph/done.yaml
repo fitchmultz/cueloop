@@ -293,3 +293,25 @@ tasks:
     created_at: 2026-01-18T22:00:00Z
     updated_at: 2026-01-18T23:36:00Z
     completed_at: 2026-01-19T02:48:00Z
+  - id: RQ-0083
+    status: done
+    title: Improve run_loop reporting and remaining tasks count
+    tags:
+      - rust
+      - ux
+    scope:
+      - crates/ralph/src/run_cmd.rs
+    evidence:
+      - run_loop doesn't report how many todo tasks remain or total progress
+    plan:
+      - Count initial todo tasks before starting loop
+      - Report "Task X of Y" or "Z tasks remaining" in the loop output
+    notes:
+      - Count initial todo tasks at the start of the loop.
+      - Log "Starting run loop with X todo tasks."
+      - Log "Completed task_id (X/Y)" after each successful task.
+      - Log "No more todo tasks remaining." when the queue is exhausted.
+    request: scan finding
+    created_at: 2026-01-18T22:00:00Z
+    updated_at: 2026-01-18T22:00:00Z
+    completed_at: 2026-01-18T22:15:00Z

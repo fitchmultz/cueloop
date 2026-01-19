@@ -26,6 +26,27 @@ pub struct RunLoopOptions {
 
 pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()> {
     let mut completed = 0u32;
+
+    let (queue_file, repaired) = queue::load_queue_with_repair(
+        &resolved.queue_path,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
+    queue::warn_if_repaired(&resolved.queue_path, repaired);
+
+    let initial_todo_count = queue_file
+        .tasks
+        .iter()
+        .filter(|t| t.status == TaskStatus::Todo)
+        .count() as u32;
+
+    if initial_todo_count == 0 {
+        log::info!("No todo tasks found.");
+        return Ok(());
+    }
+
+    log::info!("Starting run loop with {initial_todo_count} todo tasks.");
+
     loop {
         if opts.max_tasks != 0 && completed >= opts.max_tasks {
             log::info!("Reached max task limit ({completed}).");
@@ -33,10 +54,13 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
         }
 
         match run_one(resolved, &opts.agent_overrides, opts.force)? {
-            RunOutcome::NoTodo => return Ok(()),
+            RunOutcome::NoTodo => {
+                log::info!("No more todo tasks remaining.");
+                return Ok(());
+            }
             RunOutcome::Ran { task_id } => {
                 completed += 1;
-                log::info!("Completed {task_id}.");
+                log::info!("Completed {task_id} ({completed}/{initial_todo_count}).");
             }
         }
     }
