@@ -1,7 +1,7 @@
 version: 1
 tasks:
   - id: RQ-0095
-    status: doing
+    status: todo
     title: Implement a logging wrapper with automatic redaction
     tags:
       - rust
