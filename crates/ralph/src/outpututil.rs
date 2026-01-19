@@ -1,6 +1,6 @@
 use colored::Colorize;
 
-use crate::contracts::{Task, TaskStatus};
+use crate::contracts::{Task, TaskPriority, TaskStatus};
 
 pub const OUTPUT_TAIL_LINES: usize = 20;
 pub const OUTPUT_TAIL_LINE_MAX_CHARS: usize = 200;
@@ -53,6 +53,16 @@ pub fn style_status(status: TaskStatus) -> colored::ColoredString {
         TaskStatus::Todo => "todo".blue(),
         TaskStatus::Doing => "doing".yellow().bold(),
         TaskStatus::Done => "done".green(),
+        TaskStatus::Rejected => "rejected".red(),
+    }
+}
+
+pub fn style_priority(priority: TaskPriority) -> colored::ColoredString {
+    match priority {
+        TaskPriority::Critical => "critical".red().bold(),
+        TaskPriority::High => "high".yellow().bold(),
+        TaskPriority::Medium => "medium".blue(),
+        TaskPriority::Low => "low".dimmed(),
     }
 }
 
@@ -82,9 +92,10 @@ pub fn format_task_commit_message(task_id: &str, title: &str) -> String {
 
 pub fn format_task_compact(task: &Task) -> String {
     format!(
-        "{}\t{}\t{}",
+        "{}\t{}\t{}\t{}",
         task.id.trim(),
         style_status(task.status),
+        style_priority(task.priority),
         task.title.trim()
     )
 }
@@ -96,9 +107,10 @@ pub fn format_task_detailed(task: &Task) -> String {
     let completed_at = task.completed_at.as_deref().unwrap_or("").trim();
 
     format!(
-        "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
         task.id.trim(),
         style_status(task.status),
+        style_priority(task.priority),
         task.title.trim(),
         tags,
         scope,
@@ -226,5 +238,37 @@ mod tests {
         assert!(out.contains("t1,t2"));
         assert!(out.contains("s1"));
         assert!(out.contains("2026-01-01"));
+    }
+
+    #[test]
+    fn format_task_compact_includes_priority() {
+        use crate::contracts::TaskPriority;
+        let task = Task {
+            id: "RQ-123".into(),
+            status: TaskStatus::Todo,
+            priority: TaskPriority::High,
+            title: "My Task".into(),
+            ..Default::default()
+        };
+        let out = format_task_compact(&task);
+        assert!(out.contains("RQ-123"));
+        assert!(out.contains("high")); // Priority is shown
+        assert!(out.contains("todo"));
+        assert!(out.contains("My Task"));
+    }
+
+    #[test]
+    fn style_priority_returns_correct_styles() {
+        use crate::contracts::TaskPriority;
+        let critical = style_priority(TaskPriority::Critical);
+        let high = style_priority(TaskPriority::High);
+        let medium = style_priority(TaskPriority::Medium);
+        let low = style_priority(TaskPriority::Low);
+
+        // Check that each contains the expected text (we can't easily test ANSI codes)
+        assert!(critical.to_string().contains("critical"));
+        assert!(high.to_string().contains("high"));
+        assert!(medium.to_string().contains("medium"));
+        assert!(low.to_string().contains("low"));
     }
 }

@@ -30,6 +30,7 @@ Optional hint scope (may be empty):
 - Task required keys:
   - `id` (use `ralph queue next`)
   - `status` (always `todo` for new tasks)
+  - `priority` (one of: `critical`, `high`, `medium`, `low`; defaults to `medium` if omitted)
   - `title` (short, outcome-sized)
   - `tags` (non-empty)
   - `scope` (non-empty; paths and/or commands)
@@ -39,6 +40,12 @@ Optional hint scope (may be empty):
   - `created_at` (non-empty; current UTC RFC3339 time)
   - `updated_at` (non-empty; current UTC RFC3339 time)
 - Optional keys: `notes`, `agent`, `completed_at`, `depends_on`
+
+## PRIORITY ASSIGNMENT GUIDANCE
+- `critical`: Security vulnerabilities, data loss risks, blocking CI/CD, production outages
+- `high`: User-facing bugs, performance regressions, important feature completions
+- `medium`: Standard feature work, improvements, refactoring (most common default)
+- `low`: Nice-to-haves, polish, documentation updates, low-impact optimizations
 
 ## YAML SAFETY
 - Do not include shell-escape artifacts like `\"` or `'\''` inside YAML values.

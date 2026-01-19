@@ -262,7 +262,7 @@ pub fn set_status(
     task.updated_at = Some(now.to_string());
 
     match status {
-        TaskStatus::Done => {
+        TaskStatus::Done | TaskStatus::Rejected => {
             task.completed_at = Some(now.to_string());
         }
         TaskStatus::Todo | TaskStatus::Doing => {
@@ -790,6 +790,7 @@ fn is_task_field_key(key: &str) -> bool {
         key,
         "id" | "status"
             | "title"
+            | "priority"
             | "tags"
             | "scope"
             | "evidence"
@@ -1018,6 +1019,23 @@ pub fn backfill_missing_fields(
     }
 }
 
+pub fn sort_tasks_by_priority(queue: &mut QueueFile, descending: bool) {
+    queue.tasks.sort_by(|a, b| {
+        // Since Ord has Critical > High > Medium > Low (semantically),
+        // we reverse for descending to put higher priority first
+        let ord = if descending {
+            a.priority.cmp(&b.priority).reverse()
+        } else {
+            a.priority.cmp(&b.priority)
+        };
+        // Use task ID as tiebreaker for stable ordering
+        match ord {
+            std::cmp::Ordering::Equal => a.id.cmp(&b.id),
+            other => other,
+        }
+    });
+}
+
 pub fn filter_tasks<'a>(
     queue: &'a QueueFile,
     statuses: &[TaskStatus],
@@ -1232,19 +1250,20 @@ pub fn are_dependencies_met(task: &Task, active: &QueueFile, done: Option<&Queue
         if dep_id == task_id {
             return false;
         }
-        // Check if dependency exists and is Done in active queue
-        let met = active
-            .tasks
-            .iter()
-            .any(|t| t.id.trim() == dep_id && t.status == TaskStatus::Done);
+        // Check if dependency exists and is Done or Rejected in active queue
+        let met = active.tasks.iter().any(|t| {
+            t.id.trim() == dep_id
+                && (t.status == TaskStatus::Done || t.status == TaskStatus::Rejected)
+        });
         if met {
             continue;
         }
-        // Check if dependency exists and is Done in done archive
+        // Check if dependency exists and is Done or Rejected in done archive
         let done_met = done.is_some_and(|d| {
-            d.tasks
-                .iter()
-                .any(|t| t.id.trim() == dep_id && t.status == TaskStatus::Done)
+            d.tasks.iter().any(|t| {
+                t.id.trim() == dep_id
+                    && (t.status == TaskStatus::Done || t.status == TaskStatus::Rejected)
+            })
         });
         if !done_met {
             return false;
@@ -1439,6 +1458,7 @@ mod tests {
             id: id.to_string(),
             status,
             title: "Test task".to_string(),
+            priority: Default::default(),
             tags,
             scope: vec!["crates/ralph".to_string()],
             evidence: vec!["observed".to_string()],
@@ -2162,5 +2182,64 @@ tasks:
         assert_eq!(queue.tasks[0].created_at, None);
         assert_eq!(queue.tasks[0].updated_at, None);
         Ok(())
+    }
+
+    #[test]
+    fn sort_tasks_by_priority_descending() {
+        use crate::contracts::TaskPriority;
+        let mut queue = QueueFile {
+            version: 1,
+            tasks: vec![
+                task_with("RQ-0001", TaskStatus::Todo, vec![]),
+                task_with("RQ-0002", TaskStatus::Todo, vec![]),
+                task_with("RQ-0003", TaskStatus::Todo, vec![]),
+            ],
+        };
+        queue.tasks[0].priority = TaskPriority::Low;
+        queue.tasks[1].priority = TaskPriority::Critical;
+        queue.tasks[2].priority = TaskPriority::High;
+
+        sort_tasks_by_priority(&mut queue, true);
+
+        assert_eq!(queue.tasks[0].id, "RQ-0002"); // Critical first
+        assert_eq!(queue.tasks[1].id, "RQ-0003"); // High second
+        assert_eq!(queue.tasks[2].id, "RQ-0001"); // Low last
+    }
+
+    #[test]
+    fn sort_tasks_by_priority_ascending() {
+        use crate::contracts::TaskPriority;
+        let mut queue = QueueFile {
+            version: 1,
+            tasks: vec![
+                task_with("RQ-0001", TaskStatus::Todo, vec![]),
+                task_with("RQ-0002", TaskStatus::Todo, vec![]),
+                task_with("RQ-0003", TaskStatus::Todo, vec![]),
+            ],
+        };
+        queue.tasks[0].priority = TaskPriority::Low;
+        queue.tasks[1].priority = TaskPriority::Critical;
+        queue.tasks[2].priority = TaskPriority::High;
+
+        sort_tasks_by_priority(&mut queue, false);
+
+        assert_eq!(queue.tasks[0].id, "RQ-0001"); // Low first
+        assert_eq!(queue.tasks[1].id, "RQ-0003"); // High second
+        assert_eq!(queue.tasks[2].id, "RQ-0002"); // Critical last
+    }
+
+    #[test]
+    fn task_defaults_to_medium_priority() {
+        use crate::contracts::TaskPriority;
+        let task = task("RQ-0001");
+        assert_eq!(task.priority, TaskPriority::Medium);
+    }
+
+    #[test]
+    fn priority_ord_implements_correct_ordering() {
+        use crate::contracts::TaskPriority;
+        assert!(TaskPriority::Critical > TaskPriority::High);
+        assert!(TaskPriority::High > TaskPriority::Medium);
+        assert!(TaskPriority::Medium > TaskPriority::Low);
     }
 }

@@ -244,6 +244,9 @@ pub struct Task {
     pub title: String,
 
     #[serde(default)]
+    pub priority: TaskPriority,
+
+    #[serde(default)]
     pub tags: Vec<String>,
 
     #[serde(default)]
@@ -286,6 +289,59 @@ pub enum TaskStatus {
     Todo,
     Doing,
     Done,
+    Rejected,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskPriority {
+    Critical,
+    High,
+    #[default]
+    Medium,
+    Low,
+}
+
+// Custom PartialOrd implementation: Critical > High > Medium > Low
+impl PartialOrd for TaskPriority {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// Custom Ord implementation: Critical > High > Medium > Low (semantically)
+// Higher priority = Greater in comparison, so Critical > High > Medium > Low
+impl Ord for TaskPriority {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Compare by weight: higher weight = higher priority = Greater
+        self.weight().cmp(&other.weight())
+    }
+}
+
+impl TaskPriority {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TaskPriority::Critical => "critical",
+            TaskPriority::High => "high",
+            TaskPriority::Medium => "medium",
+            TaskPriority::Low => "low",
+        }
+    }
+
+    pub fn weight(self) -> u8 {
+        match self {
+            TaskPriority::Critical => 3,
+            TaskPriority::High => 2,
+            TaskPriority::Medium => 1,
+            TaskPriority::Low => 0,
+        }
+    }
+}
+
+impl std::fmt::Display for TaskPriority {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 impl TaskStatus {
@@ -294,6 +350,7 @@ impl TaskStatus {
             TaskStatus::Todo => "todo",
             TaskStatus::Doing => "doing",
             TaskStatus::Done => "done",
+            TaskStatus::Rejected => "rejected",
         }
     }
 }

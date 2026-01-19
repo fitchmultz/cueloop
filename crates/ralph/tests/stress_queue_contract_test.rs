@@ -24,6 +24,7 @@ fn make_task_with(id_num: u32, status: TaskStatus, id_prefix: &str, id_width: us
         id: format!("{id_prefix}-{id_num:0width$}", width = id_width),
         status,
         title: format!("Task {id_num}"),
+        priority: Default::default(),
         tags: vec!["rust".to_string()],
         scope: vec!["crates/ralph".to_string()],
         evidence: vec!["stress fixture".to_string()],

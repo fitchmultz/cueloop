@@ -449,6 +449,7 @@ mod tests {
             id: "RQ-0001".to_string(),
             status: TaskStatus::Todo,
             title: "Test task".to_string(),
+            priority: Default::default(),
             tags: vec!["rust".to_string()],
             scope: vec!["crates/ralph".to_string()],
             evidence: vec!["observed".to_string()],

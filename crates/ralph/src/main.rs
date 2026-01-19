@@ -201,6 +201,32 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 tasks
             };
 
+            // Apply sort if specified
+            let tasks = if let Some(ref sort_by) = args.sort_by {
+                match sort_by.as_str() {
+                    "priority" => {
+                        let mut sorted = tasks;
+                        sorted.sort_by(|a, b| {
+                            // Since Ord has Critical > High > Medium > Low (semantically),
+                            // we reverse for descending to put higher priority first
+                            let ord = if args.descending {
+                                a.priority.cmp(&b.priority).reverse()
+                            } else {
+                                a.priority.cmp(&b.priority)
+                            };
+                            match ord {
+                                std::cmp::Ordering::Equal => a.id.cmp(&b.id),
+                                other => other,
+                            }
+                        });
+                        sorted
+                    }
+                    _ => tasks,
+                }
+            } else {
+                tasks
+            };
+
             let max = limit.unwrap_or(usize::MAX);
             for task in tasks.into_iter().take(max) {
                 match args.format {
@@ -268,6 +294,34 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 note.as_deref(),
             )?;
             queue::save_queue(&resolved.queue_path, &queue_file)?;
+        }
+        QueueCommand::Sort(args) => {
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue sort", force)?;
+            let (mut queue_file, repaired_queue) = queue::load_queue_with_repair(
+                &resolved.queue_path,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )?;
+            queue::warn_if_repaired(&resolved.queue_path, repaired_queue);
+
+            match args.sort_by.as_str() {
+                "priority" => {
+                    queue::sort_tasks_by_priority(&mut queue_file, args.descending);
+                }
+                _ => {
+                    bail!(
+                        "Unsupported sort field: {}. Supported fields: priority",
+                        args.sort_by
+                    );
+                }
+            }
+
+            queue::save_queue(&resolved.queue_path, &queue_file)?;
+            log::info!(
+                "Queue sorted by {} (descending: {}).",
+                args.sort_by,
+                args.descending
+            );
         }
     }
     Ok(())
@@ -667,6 +721,9 @@ enum QueueCommand {
         #[arg(long)]
         note: Option<String>,
     },
+    /// Sort tasks by priority (reorders the queue file).
+    #[command(after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --descending")]
+    Sort(QueueSortArgs),
 }
 
 #[derive(Subcommand)]
@@ -734,6 +791,8 @@ enum StatusArg {
     Doing,
     /// Task is complete.
     Done,
+    /// Task was rejected (dependents can proceed).
+    Rejected,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -816,6 +875,26 @@ struct QueueListArgs {
     /// Show all tasks (ignores --limit).
     #[arg(long)]
     all: bool,
+
+    /// Sort by field (e.g., priority).
+    #[arg(long)]
+    sort_by: Option<String>,
+
+    /// Sort in descending order.
+    #[arg(long)]
+    descending: bool,
+}
+
+#[derive(Args)]
+#[command(after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --descending")]
+struct QueueSortArgs {
+    /// Sort by field (default: priority).
+    #[arg(long, default_value = "priority")]
+    sort_by: String,
+
+    /// Sort in descending order (highest priority first).
+    #[arg(long)]
+    descending: bool,
 }
 
 impl From<StatusArg> for contracts::TaskStatus {
@@ -824,6 +903,7 @@ impl From<StatusArg> for contracts::TaskStatus {
             StatusArg::Todo => contracts::TaskStatus::Todo,
             StatusArg::Doing => contracts::TaskStatus::Doing,
             StatusArg::Done => contracts::TaskStatus::Done,
+            StatusArg::Rejected => contracts::TaskStatus::Rejected,
         }
     }
 }
