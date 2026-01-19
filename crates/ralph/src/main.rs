@@ -7,6 +7,7 @@ mod init_cmd;
 mod outpututil;
 mod queue;
 mod redaction;
+mod reports;
 mod run_cmd;
 mod runutil;
 mod timeutil;
@@ -322,6 +323,27 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 args.sort_by,
                 args.descending
             );
+        }
+        QueueCommand::Stats(args) => {
+            let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
+            let done_ref = done_file
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+            reports::print_stats(&queue_file, done_ref, &args.tag)?;
+        }
+        QueueCommand::History(args) => {
+            let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
+            let done_ref = done_file
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+            reports::print_history(&queue_file, done_ref, args.days)?;
+        }
+        QueueCommand::Burndown(args) => {
+            let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
+            let done_ref = done_file
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+            reports::print_burndown(&queue_file, done_ref, args.days)?;
         }
     }
     Ok(())
@@ -724,6 +746,21 @@ enum QueueCommand {
     /// Sort tasks by priority (reorders the queue file).
     #[command(after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --descending")]
     Sort(QueueSortArgs),
+    /// Show task statistics (completion rate, avg duration, tag breakdown).
+    #[command(
+        after_long_help = "Examples:\n  ralph queue stats\n  ralph queue stats --tag rust --tag cli"
+    )]
+    Stats(QueueStatsArgs),
+    /// Show task history timeline (creation/completion events by day).
+    #[command(
+        after_long_help = "Examples:\n  ralph queue history\n  ralph queue history --days 14"
+    )]
+    History(QueueHistoryArgs),
+    /// Show burndown chart of remaining tasks over time.
+    #[command(
+        after_long_help = "Examples:\n  ralph queue burndown\n  ralph queue burndown --days 30"
+    )]
+    Burndown(QueueBurndownArgs),
 }
 
 #[derive(Subcommand)]
@@ -895,6 +932,32 @@ struct QueueSortArgs {
     /// Sort in descending order (highest priority first).
     #[arg(long)]
     descending: bool,
+}
+
+#[derive(Args)]
+#[command(
+    after_long_help = "Examples:\n  ralph queue stats\n  ralph queue stats --tag rust --tag cli"
+)]
+struct QueueStatsArgs {
+    /// Filter by tag (repeatable, case-insensitive).
+    #[arg(long)]
+    tag: Vec<String>,
+}
+
+#[derive(Args)]
+#[command(after_long_help = "Examples:\n  ralph queue history\n  ralph queue history --days 14")]
+struct QueueHistoryArgs {
+    /// Number of days to show (default: 7).
+    #[arg(long, default_value_t = 7)]
+    days: u32,
+}
+
+#[derive(Args)]
+#[command(after_long_help = "Examples:\n  ralph queue burndown\n  ralph queue burndown --days 30")]
+struct QueueBurndownArgs {
+    /// Number of days to show (default: 7).
+    #[arg(long, default_value_t = 7)]
+    days: u32,
 }
 
 impl From<StatusArg> for contracts::TaskStatus {
