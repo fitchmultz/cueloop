@@ -589,3 +589,28 @@ tasks:
     created_at: 2026-01-19T04:00:47Z
     updated_at: 2026-01-18T10:15:00Z
     completed_at: 2026-01-18T10:15:00Z
+  - id: RQ-0091
+    status: done
+    title: Standardize top-level error formatting and redaction in main.rs
+    tags:
+      - rust
+      - safety
+      - ux
+    scope:
+      - crates/ralph/src/main.rs
+    evidence:
+      - |-
+        Top-level error handling in `main.rs` uses `eprintln!("Error: {:#}", err);`.
+        This is unformatted and does not redact potential secrets contained in error messages.
+    plan:
+      - Integrate `redaction::redact_text` into the top-level error printing in `main.rs`.
+      - Use consistent formatting (e.g., bold or color) for "Error:" prefix.
+      - Ensure nested errors (via `{:#}`) are also redacted.
+    notes:
+      - Integrated redaction::redact_text into top-level error handling in main.rs.
+      - Standardized "Error:" prefix with bold red formatting.
+      - Verified with cargo run and manual error triggering.
+    request: scan finding
+    created_at: 2026-01-19T04:00:47Z
+    updated_at: 2026-01-19T04:46:56Z
+    completed_at: 2026-01-19T04:48:40Z

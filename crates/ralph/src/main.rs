@@ -23,7 +23,10 @@ use crate::contracts::{QueueFile, Runner as RunnerKind, Task, TaskStatus};
 
 fn main() {
     if let Err(err) = run() {
-        eprintln!("Error: {:#}", err);
+        use colored::Colorize;
+        let msg = format!("{:#}", err);
+        let redacted = redaction::redact_text(&msg);
+        eprintln!("{} {}", "Error:".red().bold(), redacted);
         std::process::exit(1);
     }
 }
