@@ -27,3 +27,27 @@ tasks:
       - Updated task_cmd.rs to backfill new tasks after runner succeeds
       - Added 6 tests covering backfill behavior (populate, skip existing, empty string handling)
       - All tests pass and make ci completes successfully
+  - id: RQ-0070
+    status: done
+    title: Validate RFC3339 timestamps in set_status and queue validation
+    tags:
+      - rust
+      - correctness
+      - queue
+    scope:
+      - crates/ralph/src/queue.rs
+    evidence:
+      - set_status only checks now is non-empty and validation never parses timestamps
+    plan:
+      - Parse timestamps with time::OffsetDateTime and reject invalid formats
+      - Validate created_at updated_at and completed_at when present
+      - Add tests for invalid timestamp handling
+    request: scan finding
+    notes:
+      - Added RFC3339 validation for created_at, updated_at, and completed_at in queue.rs
+      - Updated set_status to validate incoming timestamps
+      - Added parsing and macros features to time crate dependency
+      - Added regression tests for invalid timestamp formats
+    created_at: 2026-01-18T20:45:41Z
+    updated_at: 2026-01-18T20:55:00Z
+    completed_at: 2026-01-18T20:55:00Z

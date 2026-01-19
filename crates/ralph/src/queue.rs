@@ -4,6 +4,8 @@ use crate::redaction;
 use anyhow::{anyhow, bail, Context, Result};
 use std::collections::HashSet;
 use std::path::Path;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 #[derive(Debug, Clone)]
 pub struct ArchiveReport {
@@ -206,6 +208,12 @@ pub fn set_status(
     if now.is_empty() {
         bail!("now timestamp is required");
     }
+    OffsetDateTime::parse(now, &Rfc3339).with_context(|| {
+        format!(
+            "now timestamp must be a valid RFC3339 UTC timestamp (got: {})",
+            now
+        )
+    })?;
 
     let needle = task_id.trim();
     if needle.is_empty() {
@@ -611,8 +619,42 @@ fn validate_task_required_fields(index: usize, task: &Task) -> Result<()> {
     ensure_list_non_empty("evidence", index, &task.id, &task.evidence)?;
     ensure_list_non_empty("plan", index, &task.id, &task.plan)?;
     ensure_field_present("request", index, &task.id, task.request.as_deref())?;
-    ensure_field_present("created_at", index, &task.id, task.created_at.as_deref())?;
-    ensure_field_present("updated_at", index, &task.id, task.updated_at.as_deref())?;
+
+    if let Some(ts) = task.created_at.as_deref() {
+        validate_rfc3339("created_at", index, &task.id, ts)?;
+    } else {
+        bail!("task[{}] created_at is required (id={})", index, task.id);
+    }
+
+    if let Some(ts) = task.updated_at.as_deref() {
+        validate_rfc3339("updated_at", index, &task.id, ts)?;
+    } else {
+        bail!("task[{}] updated_at is required (id={})", index, task.id);
+    }
+
+    if let Some(ts) = task.completed_at.as_deref() {
+        validate_rfc3339("completed_at", index, &task.id, ts)?;
+    }
+
+    Ok(())
+}
+
+fn validate_rfc3339(label: &str, index: usize, id: &str, value: &str) -> Result<()> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        bail!(
+            "task[{}] {} is required and must be non-empty (id={})",
+            index,
+            label,
+            id
+        );
+    }
+    OffsetDateTime::parse(trimmed, &Rfc3339).with_context(|| {
+        format!(
+            "task[{}] {} must be a valid RFC3339 UTC timestamp (got: {}, id={})",
+            index, label, trimmed, id
+        )
+    })?;
     Ok(())
 }
 
@@ -785,6 +827,31 @@ mod tests {
         };
         let err = validate_queue(&queue, "RQ", 4).unwrap_err();
         assert!(format!("{err}").contains("updated_at is required"));
+    }
+
+    #[test]
+    fn validate_rejects_invalid_rfc3339() {
+        let mut task = task("RQ-0001");
+        task.created_at = Some("not a date".to_string());
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task],
+        };
+        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+        assert!(format!("{err}").contains("must be a valid RFC3339 UTC timestamp"));
+    }
+
+    #[test]
+    fn set_status_rejects_invalid_rfc3339() -> Result<()> {
+        let mut queue = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0001")],
+        };
+
+        let err =
+            set_status(&mut queue, "RQ-0001", TaskStatus::Doing, "invalid", None).unwrap_err();
+        assert!(format!("{err}").contains("must be a valid RFC3339 UTC timestamp"));
+        Ok(())
     }
 
     #[test]

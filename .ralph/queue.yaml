@@ -1,23 +1,5 @@
 version: 1
 tasks:
-  - id: RQ-0070
-    status: todo
-    title: Validate RFC3339 timestamps in set_status and queue validation
-    tags:
-      - rust
-      - correctness
-      - queue
-    scope:
-      - crates/ralph/src/queue.rs
-    evidence:
-      - set_status only checks now is non-empty and validation never parses timestamps
-    plan:
-      - Parse timestamps with time::OffsetDateTime and reject invalid formats
-      - Validate created_at updated_at and completed_at when present
-      - Add tests for invalid timestamp handling
-    request: scan finding
-    created_at: 2026-01-18T20:45:41Z
-    updated_at: 2026-01-18T20:45:41Z
   - id: RQ-0072
     status: todo
     title: Introduce canonical .env and .env.example and load dotenv in CLI
