@@ -59,6 +59,7 @@ const OPENCODE_PROMPT_FILE_MESSAGE: &str = "Follow the attached prompt file verb
 const GEMINI_PROMPT_PREFIX: &str =
     "If RepoPrompt tools are available, you MUST use them for file search, reading, and edits (do not bypass them).";
 const DEFAULT_GEMINI_MODEL: &str = "gemini-3-flash-preview";
+const DEFAULT_CLAUDE_MODEL: &str = "sonnet";
 
 struct CtrlCState {
     active_pgid: Mutex<Option<i32>>,
@@ -209,16 +210,19 @@ pub struct RunnerBinaries<'a> {
     pub codex: &'a str,
     pub opencode: &'a str,
     pub gemini: &'a str,
+    pub claude: &'a str,
 }
 
 pub fn resolve_binaries(agent: &AgentConfig) -> RunnerBinaries<'_> {
     let codex = agent.codex_bin.as_deref().unwrap_or("codex");
     let opencode = agent.opencode_bin.as_deref().unwrap_or("opencode");
     let gemini = agent.gemini_bin.as_deref().unwrap_or("gemini");
+    let claude = agent.claude_bin.as_deref().unwrap_or("claude");
     RunnerBinaries {
         codex,
         opencode,
         gemini,
+        claude,
     }
 }
 
@@ -227,6 +231,7 @@ pub fn default_model_for_runner(runner: Runner) -> Model {
         Runner::Codex => Model::Gpt52Codex,
         Runner::Opencode => Model::Glm47,
         Runner::Gemini => Model::Custom(DEFAULT_GEMINI_MODEL.to_string()),
+        Runner::Claude => Model::Custom(DEFAULT_CLAUDE_MODEL.to_string()),
     }
 }
 
@@ -279,6 +284,7 @@ pub fn run_prompt(
             run_opencode(work_dir, bins.opencode, model, &prepared_prompt, timeout)?
         }
         Runner::Gemini => run_gemini(work_dir, bins.gemini, model, &prepared_prompt, timeout)?,
+        Runner::Claude => run_claude(work_dir, bins.claude, model, &prepared_prompt, timeout)?,
     };
 
     if !output.status.success() {
@@ -386,6 +392,22 @@ fn run_gemini(
         .arg(model.as_str())
         .arg("--approval-mode")
         .arg("yolo");
+    run_with_streaming(cmd, Some(prompt.as_bytes()), bin, timeout)
+}
+
+fn run_claude(
+    work_dir: &Path,
+    bin: &str,
+    model: Model,
+    prompt: &str,
+    timeout: Option<Duration>,
+) -> Result<RunnerOutput, RunnerError> {
+    let mut cmd = Command::new(bin);
+    cmd.current_dir(work_dir);
+    ensure_self_on_path(&mut cmd);
+    cmd.arg("-p") // Print mode (headless, skips workspace trust)
+        .arg("--model")
+        .arg(model.as_str());
     run_with_streaming(cmd, Some(prompt.as_bytes()), bin, timeout)
 }
 
@@ -693,6 +715,12 @@ mod tests {
     fn resolve_model_for_runner_replaces_codex_default_for_gemini() {
         let model = resolve_model_for_runner(Runner::Gemini, None, None, Some(Model::Gpt52Codex));
         assert_eq!(model.as_str(), DEFAULT_GEMINI_MODEL);
+    }
+
+    #[test]
+    fn resolve_model_for_runner_defaults_for_claude() {
+        let model = resolve_model_for_runner(Runner::Claude, None, None, None);
+        assert_eq!(model.as_str(), DEFAULT_CLAUDE_MODEL);
     }
 
     #[test]

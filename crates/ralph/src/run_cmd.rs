@@ -403,6 +403,7 @@ mod tests {
                 codex_bin: Some("codex".to_string()),
                 opencode_bin: Some("opencode".to_string()),
                 gemini_bin: Some("gemini".to_string()),
+                claude_bin: Some("claude".to_string()),
             },
             queue: QueueConfig {
                 file: Some(PathBuf::from(".ralph/queue.yaml")),

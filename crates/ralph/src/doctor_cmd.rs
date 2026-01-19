@@ -124,6 +124,12 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
             .gemini_bin
             .as_deref()
             .unwrap_or("gemini"),
+        Runner::Claude => resolved
+            .config
+            .agent
+            .claude_bin
+            .as_deref()
+            .unwrap_or("claude"),
     };
 
     if let Err(e) = check_command(bin_name, &["--version"]) {

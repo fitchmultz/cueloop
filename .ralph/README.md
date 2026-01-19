@@ -45,14 +45,16 @@ Defaults are embedded in the Rust CLI. To override prompts for this repo, create
 
 Missing files fall back to the embedded defaults. Overrides must keep required placeholders.
 
-## Runners (OpenCode + Gemini)
+## Runners (OpenCode + Gemini + Claude)
 
-Ralph can use the OpenCode or Gemini CLI as a runner.
+Ralph can use the OpenCode, Gemini, or Claude CLI as a runner.
 
 One-off usage:
 - `cargo run -p ralph -- task build --runner opencode --model gpt-5.2 "Add tests for X"`
 - `cargo run -p ralph -- scan --runner opencode --model gpt-5.2 --focus "CI gaps"`
 - `cargo run -p ralph -- scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"`
+- `cargo run -p ralph -- scan --runner claude --model sonnet --focus "risk audit"`
+- `cargo run -p ralph -- task build --runner claude --model opus "Add tests for X"`
 
 Defaults via config (`.ralph/config.yaml` or `~/.config/ralph/config.yaml`):
 
@@ -63,10 +65,11 @@ agent:
   model: gpt-5.2
   opencode_bin: opencode
   gemini_bin: gemini
+  claude_bin: claude
 ```
 
-Allowed models: `gpt-5.2-codex`, `gpt-5.2`, `zai-coding-plan/glm-4.7`, `gemini-3-pro-preview`, `gemini-3-flash-preview`. Note: Codex
-supports only `gpt-5.2-codex` and `gpt-5.2`; OpenCode/Gemini accept arbitrary model IDs.
+Allowed models: `gpt-5.2-codex`, `gpt-5.2`, `zai-coding-plan/glm-4.7`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `sonnet`, `opus`. Note: Codex
+supports only `gpt-5.2-codex` and `gpt-5.2`; OpenCode/Gemini/Claude accept arbitrary model IDs.
 
 Gemini runner prepends a RepoPrompt tooling instruction at the top of every prompt.
 

@@ -148,6 +148,11 @@ fn validate_config(cfg: &Config) -> Result<()> {
             bail!("Empty agent.gemini_bin: binary path is required if specified. Set the path to the gemini binary in your config.");
         }
     }
+    if let Some(bin) = &cfg.agent.claude_bin {
+        if bin.trim().is_empty() {
+            bail!("Empty agent.claude_bin: binary path is required if specified. Set the path to the claude binary in your config.");
+        }
+    }
 
     Ok(())
 }

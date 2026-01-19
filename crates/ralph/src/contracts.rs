@@ -81,6 +81,9 @@ pub struct AgentConfig {
 
     /// Override the gemini executable name/path (default is "gemini" if None).
     pub gemini_bin: Option<String>,
+
+    /// Override the claude executable name/path (default is "claude" if None).
+    pub claude_bin: Option<String>,
 }
 
 impl AgentConfig {
@@ -103,6 +106,9 @@ impl AgentConfig {
         if other.gemini_bin.is_some() {
             self.gemini_bin = other.gemini_bin;
         }
+        if other.claude_bin.is_some() {
+            self.claude_bin = other.claude_bin;
+        }
     }
 }
 
@@ -121,6 +127,7 @@ pub enum Runner {
     Codex,
     Opencode,
     Gemini,
+    Claude,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -311,6 +318,7 @@ impl Default for Config {
                 codex_bin: Some("codex".to_string()),
                 opencode_bin: Some("opencode".to_string()),
                 gemini_bin: Some("gemini".to_string()),
+                claude_bin: Some("claude".to_string()),
             },
         }
     }

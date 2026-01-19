@@ -138,6 +138,19 @@ fn run_one_accepts_runner_and_model_overrides_without_todo_tasks() -> Result<()>
         "expected NoTodo message\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
+    let (status, stdout, stderr) = run_in_dir(
+        dir.path(),
+        &["run", "one", "--runner", "claude", "--model", "sonnet"],
+    );
+    anyhow::ensure!(
+        status.success(),
+        "expected success (NoTodo) with valid claude overrides\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    anyhow::ensure!(
+        stdout.contains("No todo tasks found") || stderr.contains("No todo tasks found"),
+        "expected NoTodo message\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
     Ok(())
 }
 
@@ -153,7 +166,7 @@ fn run_one_rejects_invalid_runner_flag() -> Result<()> {
 
     assert_failure(status, &stdout, &stderr);
     anyhow::ensure!(
-        stderr.contains("--runner must be 'codex', 'opencode', or 'gemini'"),
+        stderr.contains("--runner must be 'codex', 'opencode', 'gemini', or 'claude'"),
         "expected helpful runner error\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 

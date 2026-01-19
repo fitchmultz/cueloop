@@ -217,6 +217,45 @@ agent:
 }
 
 #[test]
+fn doctor_fails_with_nonexistent_claude_binary() -> Result<()> {
+    let dir = TempDir::new()?;
+    Command::new("git")
+        .current_dir(dir.path())
+        .arg("init")
+        .status()?;
+
+    Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .args(["init", "--force"])
+        .status()?;
+
+    // Setup Makefile
+    std::fs::write(dir.path().join("Makefile"), "ci:\n\tcargo test\n")?;
+
+    let config_path = dir.path().join(".ralph/config.yaml");
+    let config_content = r#"version: 1
+agent:
+  runner: claude
+  claude_bin: "this-claude-does-not-exist-xyz123"
+"#;
+    std::fs::write(&config_path, config_content)?;
+
+    let output = Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .arg("doctor")
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined_output = format!("{}\n{}", stdout, stderr);
+
+    assert!(!output.status.success());
+    assert!(combined_output.contains("this-claude-does-not-exist-xyz123"));
+    assert!(combined_output.contains("FAIL"));
+    Ok(())
+}
+
+#[test]
 fn doctor_fails_with_invalid_done_archive() -> Result<()> {
     let dir = TempDir::new()?;
     Command::new("git")
