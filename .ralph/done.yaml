@@ -197,3 +197,27 @@ tasks:
     created_at: 2026-01-18T22:00:00Z
     updated_at: 2026-01-18T22:30:00Z
     completed_at: 2026-01-18T22:30:00Z
+  - id: RQ-0079
+    status: done
+    title: Audit TaskStatus serialization for consistent snake_case
+    tags:
+      - rust
+      - consistency
+    scope:
+      - crates/ralph/src/contracts.rs
+    evidence:
+      - internal enums are mapped manually; ensure serde(rename_all = "snake_case") is respected everywhere
+    plan:
+      - Verify all TaskStatus usages in YAML match "todo", "doing", "done"
+      - Audit other enums (Runner, Model, ReasoningEffort) for consistency
+    notes:
+      - Audited crates/ralph/src/contracts.rs and confirmed all public enums (ProjectType, Runner, ReasoningEffort, TaskStatus) use #[serde(rename_all = "snake_case")].
+      - Audited crates/ralph/src/main.rs and confirmed all ValueEnum implementations (StatusArg, QueueShowFormat, QueueListFormat) use #[clap(rename_all = "snake_case")].
+      - Verified Model uses manual serialization with specific kebab-case strings which is consistent with its cross-tool requirements.
+      - Verified all current TaskStatus usages in .ralph/queue.yaml and .ralph/done.yaml correctly use "todo", "doing", and "done".
+      - Confirmed is_task_field_key in queue.rs uses consistent snake_case for field matching.
+      - make ci passed successfully.
+    request: scan finding
+    created_at: 2026-01-18T22:00:00Z
+    updated_at: 2026-01-18T22:15:00Z
+    completed_at: 2026-01-18T22:45:00Z

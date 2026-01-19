@@ -1,22 +1,5 @@
 version: 1
 tasks:
-  - id: RQ-0079
-    status: todo
-    title: Audit TaskStatus serialization for consistent snake_case
-    tags:
-      - rust
-      - consistency
-    scope:
-      - crates/ralph/src/contracts.rs
-    evidence:
-      - internal enums are mapped manually; ensure serde(rename_all = "snake_case") is respected everywhere
-    plan:
-      - Verify all TaskStatus usages in YAML match "todo", "doing", "done"
-      - Audit other enums (Runner, Model, ReasoningEffort) for consistency
-    notes: []
-    request: scan finding
-    created_at: 2026-01-18T22:00:00Z
-    updated_at: 2026-01-18T22:00:00Z
   - id: RQ-0080
     status: todo
     title: Improve gitutil::require_clean_repo error message
