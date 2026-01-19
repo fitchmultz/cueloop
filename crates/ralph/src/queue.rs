@@ -321,6 +321,11 @@ fn repair_yaml(raw: &str, id_prefix: &str, id_width: usize) -> Option<String> {
         changed = true;
     }
 
+    if let Some(list_fix) = repair_yaml_list_fields(&updated) {
+        updated = list_fix;
+        changed = true;
+    }
+
     if let Some(scalars) = repair_yaml_scalars(&updated) {
         updated = scalars;
         changed = true;
@@ -354,6 +359,154 @@ fn repair_yaml_structure(raw: &str) -> Option<String> {
         };
 
         out.push_str(&updated);
+        out.push('\n');
+    }
+
+    if changed {
+        Some(out)
+    } else {
+        None
+    }
+}
+
+fn repair_yaml_list_fields(raw: &str) -> Option<String> {
+    let mut changed = false;
+    let mut out = String::new();
+    let mut lines = raw.lines().peekable();
+
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim_start();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            out.push_str(line);
+            out.push('\n');
+            continue;
+        }
+
+        let indent = line.len() - trimmed.len();
+        if let Some((key_raw, rest_raw)) = trimmed.split_once(':') {
+            let key = key_raw.trim();
+            if is_list_field_key(key) {
+                let rest = rest_raw.trim_start();
+                if rest.is_empty() {
+                    let mut block_lines = Vec::new();
+                    let mut consumed_any = false;
+                    while let Some(next) = lines.peek().copied() {
+                        let next_trim = next.trim_start();
+                        if next_trim.is_empty() {
+                            consumed_any = true;
+                            lines.next();
+                            block_lines.push(String::new());
+                            continue;
+                        }
+                        let next_indent = next.len() - next_trim.len();
+                        if next_indent <= indent {
+                            break;
+                        }
+                        if next_trim.starts_with("- ") {
+                            break;
+                        }
+                        consumed_any = true;
+                        lines.next();
+                        block_lines.push(next_trim.to_string());
+                    }
+                    if consumed_any {
+                        changed = true;
+                        out.push_str(&" ".repeat(indent));
+                        out.push_str(key);
+                        out.push_str(":\n");
+                        out.push_str(&" ".repeat(indent + 2));
+                        out.push_str("- |\n");
+                        for block in block_lines {
+                            out.push_str(&" ".repeat(indent + 4));
+                            out.push_str(&block);
+                            out.push('\n');
+                        }
+                        continue;
+                    }
+                } else if rest.starts_with('|') || rest.starts_with('>') {
+                    let indicator = rest.chars().next().unwrap_or('|');
+                    let mut block_lines = Vec::new();
+                    while let Some(next) = lines.peek().copied() {
+                        let next_trim = next.trim_start();
+                        if next_trim.is_empty() {
+                            lines.next();
+                            block_lines.push(String::new());
+                            continue;
+                        }
+                        let next_indent = next.len() - next_trim.len();
+                        if next_indent <= indent {
+                            break;
+                        }
+                        lines.next();
+                        block_lines.push(next_trim.to_string());
+                    }
+                    if !block_lines.is_empty() {
+                        changed = true;
+                        out.push_str(&" ".repeat(indent));
+                        out.push_str(key);
+                        out.push_str(":\n");
+                        out.push_str(&" ".repeat(indent + 2));
+                        out.push_str("- ");
+                        out.push(indicator);
+                        out.push('\n');
+                        for block in block_lines {
+                            out.push_str(&" ".repeat(indent + 4));
+                            out.push_str(&block);
+                            out.push('\n');
+                        }
+                        continue;
+                    }
+                } else if !rest.starts_with('[') && !rest.starts_with('{') && !rest.starts_with('-')
+                {
+                    let mut block_lines = vec![rest.trim().to_string()];
+                    while let Some(next) = lines.peek().copied() {
+                        let next_trim = next.trim_start();
+                        if next_trim.is_empty() {
+                            lines.next();
+                            block_lines.push(String::new());
+                            continue;
+                        }
+                        let next_indent = next.len() - next_trim.len();
+                        if next_indent <= indent {
+                            break;
+                        }
+                        if next_trim.starts_with("- ") {
+                            break;
+                        }
+                        lines.next();
+                        block_lines.push(next_trim.to_string());
+                    }
+                    if block_lines.len() > 1 {
+                        changed = true;
+                        out.push_str(&" ".repeat(indent));
+                        out.push_str(key);
+                        out.push_str(":\n");
+                        out.push_str(&" ".repeat(indent + 2));
+                        out.push_str("- |\n");
+                        for block in block_lines {
+                            out.push_str(&" ".repeat(indent + 4));
+                            out.push_str(&block);
+                            out.push('\n');
+                        }
+                        continue;
+                    }
+
+                    let mut quoted_changed = false;
+                    let quoted = quote_scalar_for_yaml(rest.trim(), &mut quoted_changed);
+                    changed = true;
+                    out.push_str(&" ".repeat(indent));
+                    out.push_str(key);
+                    out.push_str(":\n");
+                    out.push_str(&" ".repeat(indent + 2));
+                    out.push_str("- ");
+                    out.push_str(&quoted);
+                    out.push('\n');
+                    continue;
+                }
+            }
+        }
+
+        out.push_str(line);
         out.push('\n');
     }
 
@@ -637,6 +790,10 @@ fn is_task_field_key(key: &str) -> bool {
             | "updated_at"
             | "completed_at"
     )
+}
+
+fn is_list_field_key(key: &str) -> bool {
+    matches!(key, "tags" | "scope" | "evidence" | "plan" | "notes")
 }
 
 fn looks_like_task_start(value: &str) -> bool {

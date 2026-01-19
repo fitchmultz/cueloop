@@ -208,3 +208,72 @@ tasks:
     assert!(queue.tasks[0].request.as_ref().is_some());
     Ok(())
 }
+
+#[test]
+fn repair_converts_block_scalar_list_fields() -> anyhow::Result<()> {
+    let dir = TempDir::new()?;
+    let path = dir.path().join("queue.yaml");
+    let broken = r#"
+version: 1
+tasks:
+  - id: 1
+    status: todo
+    title: Evidence is a block scalar
+    tags: [rust]
+    scope: [crates]
+    evidence: |
+      Evidence line one
+      Evidence line two
+    plan:
+      - step one
+    request: scan finding
+    created_at: 2026-01-18T00:00:00Z
+    updated_at: 2026-01-18T00:00:00Z
+"#;
+    fs::write(&path, broken)?;
+
+    let report = queue::repair_queue(&path, "RQ", 4)?;
+    assert!(report.repaired);
+
+    let (queue, repaired) = queue::load_queue_with_repair(&path, "RQ", 4)?;
+    assert!(!repaired);
+    assert_eq!(queue.tasks.len(), 1);
+    assert_eq!(queue.tasks[0].evidence.len(), 1);
+    assert!(queue.tasks[0].evidence[0].contains("Evidence line one"));
+    assert!(queue.tasks[0].evidence[0].contains("Evidence line two"));
+    Ok(())
+}
+
+#[test]
+fn repair_converts_multiline_plain_scalar_list_fields() -> anyhow::Result<()> {
+    let dir = TempDir::new()?;
+    let path = dir.path().join("queue.yaml");
+    let broken = r#"
+version: 1
+tasks:
+  - id: 2
+    status: todo
+    title: Evidence is a multiline plain scalar
+    tags: [rust]
+    scope: [crates]
+    evidence: First line
+      Second line continues
+    plan:
+      - step one
+    request: scan finding
+    created_at: 2026-01-18T00:00:00Z
+    updated_at: 2026-01-18T00:00:00Z
+"#;
+    fs::write(&path, broken)?;
+
+    let report = queue::repair_queue(&path, "RQ", 4)?;
+    assert!(report.repaired);
+
+    let (queue, repaired) = queue::load_queue_with_repair(&path, "RQ", 4)?;
+    assert!(!repaired);
+    assert_eq!(queue.tasks.len(), 1);
+    assert_eq!(queue.tasks[0].evidence.len(), 1);
+    assert!(queue.tasks[0].evidence[0].contains("First line"));
+    assert!(queue.tasks[0].evidence[0].contains("Second line continues"));
+    Ok(())
+}
