@@ -1757,7 +1757,7 @@ tasks:
     - Added Stats, History, Burndown variants to QueueCommand enum
     - Updated handle_queue to load active+done tasks and dispatch to reports functions
     - Duration calculation uses completed_at - created_at for Done tasks only
-    - Burndown logic: Open tasks at day D = created_at <= D AND (completed_at IS NULL OR completed_at > D)
+    - 'Burndown logic: Open tasks at day D = created_at <= D AND (completed_at IS NULL OR completed_at > D)'
     - Tag filtering is case-insensitive, inclusive OR for multiple tags
     - Added unit tests for duration formatting, date parsing, and calculation logic
     - Verified with make ci (all 111 tests passed)
