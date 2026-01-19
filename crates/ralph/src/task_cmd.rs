@@ -86,7 +86,9 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
     )?;
 
     let bins = runner::resolve_binaries(&resolved.config.agent);
-    let two_pass_plan = resolved.config.agent.two_pass_plan.unwrap_or(true);
+    // Two-pass mode disabled for task build (only generates task, should not implement)
+    let two_pass_plan = false;
+
     let _output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
             repo_root: &resolved.repo_root,
