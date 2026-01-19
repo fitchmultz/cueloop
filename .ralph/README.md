@@ -8,7 +8,7 @@ usage and migration guidance.
 
 - `.ralph/queue.yaml` — YAML task queue (source of truth for active work).
 - `.ralph/done.yaml` — YAML archive of completed tasks (same schema as queue).
-- `ralph/prompts/` — optional prompt overrides (defaults are embedded in the Rust CLI).
+- `.ralph/prompts/` — optional prompt overrides (defaults are embedded in the Rust CLI).
 
 ## Minimal Rust Commands
 
@@ -37,11 +37,11 @@ usage and migration guidance.
 ## Prompt Overrides
 
 Defaults are embedded in the Rust CLI. To override prompts for this repo, create files under
-`ralph/prompts/`:
+`.ralph/prompts/`:
 
-- `ralph/prompts/worker.md`
-- `ralph/prompts/task_builder.md`
-- `ralph/prompts/scan.md`
+- `.ralph/prompts/worker.md`
+- `.ralph/prompts/task_builder.md`
+- `.ralph/prompts/scan.md`
 
 Missing files fall back to the embedded defaults. Overrides must keep required placeholders.
 

@@ -1,10 +1,16 @@
 use crate::config;
 use crate::contracts::{Config, QueueFile};
 use crate::fsutil;
+use crate::prompts;
 use crate::queue;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
+
+const DEFAULT_RALPH_README: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/ralph_readme.md"
+));
 
 pub struct InitOptions {
     pub force: bool,
@@ -22,6 +28,7 @@ pub struct InitReport {
     pub queue_status: FileInitStatus,
     pub done_status: FileInitStatus,
     pub config_status: FileInitStatus,
+    pub readme_status: Option<FileInitStatus>,
 }
 
 pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitReport> {
@@ -48,10 +55,17 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
         .ok_or_else(|| anyhow::anyhow!("project config path unavailable"))?;
     let config_status = write_config(config_path, opts.force)?;
 
+    let mut readme_status = None;
+    if prompts::prompts_reference_readme(&resolved.repo_root)? {
+        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        readme_status = Some(write_readme(&readme_path, opts.force)?);
+    }
+
     Ok(InitReport {
         queue_status,
         done_status,
         config_status,
+        readme_status,
     })
 }
 
@@ -127,6 +141,18 @@ fn write_config(path: &Path, force: bool) -> Result<FileInitStatus> {
     Ok(FileInitStatus::Created)
 }
 
+fn write_readme(path: &Path, force: bool) -> Result<FileInitStatus> {
+    if path.exists() && !force {
+        return Ok(FileInitStatus::Valid);
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
+    }
+    fsutil::write_atomic(path, DEFAULT_RALPH_README.as_bytes())
+        .with_context(|| format!("write readme {}", path.display()))?;
+    Ok(FileInitStatus::Created)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -164,6 +190,7 @@ mod tests {
         assert_eq!(report.queue_status, FileInitStatus::Created);
         assert_eq!(report.done_status, FileInitStatus::Created);
         assert_eq!(report.config_status, FileInitStatus::Created);
+        assert_eq!(report.readme_status, Some(FileInitStatus::Created));
         let (queue, repaired_queue) = crate::queue::load_queue_with_repair(
             &resolved.queue_path,
             &resolved.id_prefix,
@@ -181,6 +208,10 @@ mod tests {
         let raw_cfg = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
         let cfg: Config = serde_yaml::from_str(&raw_cfg)?;
         assert_eq!(cfg.version, 1);
+        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        assert!(readme_path.exists());
+        let readme_raw = std::fs::read_to_string(readme_path)?;
+        assert!(readme_raw.contains("# Ralph (Rust rewrite) runtime files"));
         Ok(())
     }
 
@@ -205,6 +236,7 @@ mod tests {
         assert_eq!(report.queue_status, FileInitStatus::Valid);
         assert_eq!(report.done_status, FileInitStatus::Valid);
         assert_eq!(report.config_status, FileInitStatus::Valid);
+        assert_eq!(report.readme_status, Some(FileInitStatus::Created));
         let raw = std::fs::read_to_string(&resolved.queue_path)?;
         assert!(raw.contains("Keep"));
         let done_raw = std::fs::read_to_string(&resolved.done_path)?;
@@ -233,6 +265,7 @@ mod tests {
         assert_eq!(report.queue_status, FileInitStatus::Created);
         assert_eq!(report.done_status, FileInitStatus::Created);
         assert_eq!(report.config_status, FileInitStatus::Created);
+        assert_eq!(report.readme_status, Some(FileInitStatus::Created));
         let cfg_raw = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
         let cfg: Config = serde_yaml::from_str(&cfg_raw)?;
         assert_eq!(cfg.project_type, Some(ProjectType::Code));
@@ -274,6 +307,31 @@ mod tests {
         assert_eq!(report.queue_status, FileInitStatus::Repaired);
         let raw = std::fs::read_to_string(&resolved.queue_path)?;
         assert!(raw.contains("'title with: colon'"));
+        Ok(())
+    }
+
+    #[test]
+    fn init_skips_readme_when_not_referenced() -> Result<()> {
+        let dir = TempDir::new()?;
+        let resolved = resolved_for(&dir);
+
+        // Override worker prompt to NOT reference readme
+        let overrides = resolved.repo_root.join(".ralph/prompts");
+        fs::create_dir_all(&overrides)?;
+        fs::write(overrides.join("worker.md"), "no reference")?;
+        fs::write(overrides.join("task_builder.md"), "no reference")?;
+        fs::write(overrides.join("scan.md"), "no reference")?;
+
+        let report = run_init(
+            &resolved,
+            InitOptions {
+                force: false,
+                force_lock: false,
+            },
+        )?;
+        assert_eq!(report.readme_status, None);
+        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        assert!(!readme_path.exists());
         Ok(())
     }
 }

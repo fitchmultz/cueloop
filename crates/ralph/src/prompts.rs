@@ -4,9 +4,9 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-const WORKER_PROMPT_REL_PATH: &str = "ralph/prompts/worker.md";
-const TASK_BUILDER_PROMPT_REL_PATH: &str = "ralph/prompts/task_builder.md";
-const SCAN_PROMPT_REL_PATH: &str = "ralph/prompts/scan.md";
+const WORKER_PROMPT_REL_PATH: &str = ".ralph/prompts/worker.md";
+const TASK_BUILDER_PROMPT_REL_PATH: &str = ".ralph/prompts/task_builder.md";
+const SCAN_PROMPT_REL_PATH: &str = ".ralph/prompts/scan.md";
 
 const DEFAULT_WORKER_PROMPT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -20,6 +20,16 @@ const DEFAULT_SCAN_PROMPT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/prompts/scan.md"
 ));
+
+pub fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
+    let worker = load_worker_prompt(repo_root)?;
+    let task_builder = load_task_builder_prompt(repo_root)?;
+    let scan = load_scan_prompt(repo_root)?;
+
+    Ok(worker.contains(".ralph/README.md")
+        || task_builder.contains(".ralph/README.md")
+        || scan.contains(".ralph/README.md"))
+}
 
 pub fn load_worker_prompt(repo_root: &Path) -> Result<String> {
     load_prompt_with_fallback(
@@ -244,7 +254,7 @@ mod tests {
     #[test]
     fn load_worker_prompt_uses_override_when_present() -> Result<()> {
         let dir = TempDir::new()?;
-        let overrides = dir.path().join("ralph/prompts");
+        let overrides = dir.path().join(".ralph/prompts");
         fs::create_dir_all(&overrides)?;
         fs::write(overrides.join("worker.md"), "override")?;
         let prompt = load_worker_prompt(dir.path())?;

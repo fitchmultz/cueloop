@@ -293,6 +293,10 @@ fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
 
     report_status("queue", report.queue_status, &resolved.queue_path);
     report_status("done", report.done_status, &resolved.done_path);
+    if let Some(status) = report.readme_status {
+        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        report_status("readme", status, &readme_path);
+    }
     if let Some(path) = resolved.project_config_path.as_ref() {
         report_status("config", report.config_status, path);
     } else {

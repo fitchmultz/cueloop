@@ -1,21 +1,2 @@
 version: 1
-tasks:
-  - id: RQ-0090
-    status: todo
-    title: Add .ralph/README.md creation to `ralph init` when loop prompts reference it
-    tags:
-      - rust
-      - docs
-    scope:
-      - crates/ralph/src/init_cmd.rs
-      - .ralph/README.md
-    evidence:
-      - loop prompts can include .ralph/README.md, but init does not ensure it exists
-    plan:
-      - Detect when loop prompts reference .ralph/README.md
-      - Create .ralph/README.md during `ralph init` when referenced
-      - Add tests to cover prompt references and init behavior
-    notes: []
-    request: scan repair
-    created_at: 2026-01-19T03:36:03Z
-    updated_at: 2026-01-19T03:36:03Z
+tasks: []

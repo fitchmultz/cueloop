@@ -8,7 +8,7 @@ The canonical implementation is the Rust CLI in `crates/ralph/`.
 
 - Queue (source of truth): `.ralph/queue.yaml`
 - Done archive: `.ralph/done.yaml`
-- Prompt templates: built-in defaults; override in `ralph/prompts/`
+- Prompt templates: built-in defaults; override in `.ralph/prompts/`
 - **Production Verification:** See `.ralph/README.md`.
 
 ## Quick Start (Rust)
@@ -34,9 +34,9 @@ The canonical implementation is the Rust CLI in `crates/ralph/`.
 
 Ralph embeds default prompts in the Rust binary. To override them for a repo, add files here:
 
-- `ralph/prompts/worker.md`
-- `ralph/prompts/task_builder.md`
-- `ralph/prompts/scan.md`
+- `.ralph/prompts/worker.md`
+- `.ralph/prompts/task_builder.md`
+- `.ralph/prompts/scan.md`
 
 If a file is missing, Ralph falls back to the embedded default. Any override must keep required
 placeholders (for example `{{USER_REQUEST}}` in the task builder prompt).
