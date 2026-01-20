@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0164",
-      "status": "todo",
-      "title": "Graceful shutdown on Ctrl+C in 'run loop'",
-      "priority": "high",
-      "tags": [
-        "rust",
-        "cli",
-        "signal-handling",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/run.rs"
-      ],
-      "evidence": [
-        "Ctrl+C currently causes abrupt termination",
-        "User request: 'Graceful shutdown on Ctrl+C in run loop (High)'"
-      ],
-      "plan": [
-        "Add tokio::signal::ctrl_c handler to run loop",
-        "Set shutdown flag on SIGINT",
-        "Complete current task cleanup before exit",
-        "Add tests for shutdown behavior"
-      ],
-      "notes": [],
-      "request": "New Tasks (Top 10): 2. RQ-0149: Graceful shutdown on Ctrl+C in 'run loop' (High)",
-      "created_at": "2026-01-20T18:00:00Z",
-      "updated_at": "2026-01-20T18:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0165",
       "status": "todo",
       "title": "Implement 'ralph queue repair' command",
