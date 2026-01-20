@@ -12,6 +12,7 @@ pub mod fsutil;
 pub mod gitutil;
 pub mod init_cmd;
 pub mod outpututil;
+pub mod prompt_cmd;
 pub mod promptflow;
 pub mod prompts;
 pub mod queue;
