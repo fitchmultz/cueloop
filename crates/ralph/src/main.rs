@@ -17,6 +17,7 @@ mod prompts;
 mod runner;
 mod scan_cmd;
 mod task_cmd;
+mod tui;
 
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -450,20 +451,51 @@ fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     match cmd {
         RunCommand::One(args) => {
-            let overrides = resolve_run_agent_overrides(&args.agent)?;
-            let _ = run_cmd::run_one(&resolved, &overrides, force)?;
-            Ok(())
+            if args.interactive {
+                let task_id = tui::run_tui(&resolved.queue_path, |_task_id| {
+                    // In TUI mode, we don't execute tasks within the TUI
+                    // The task_id is returned after TUI exits
+                    Ok(false)
+                })?;
+
+                // Execute the selected task (if any)
+                if let Some(task_id) = task_id {
+                    let overrides = resolve_run_agent_overrides(&args.agent)?;
+                    run_cmd::run_one_with_id(&resolved, &overrides, force, &task_id)?;
+                }
+                Ok(())
+            } else {
+                let overrides = resolve_run_agent_overrides(&args.agent)?;
+                let _ = run_cmd::run_one(&resolved, &overrides, force)?;
+                Ok(())
+            }
         }
         RunCommand::Loop(args) => {
-            let overrides = resolve_run_agent_overrides(&args.agent)?;
-            run_cmd::run_loop(
-                &resolved,
-                run_cmd::RunLoopOptions {
-                    max_tasks: args.max_tasks,
-                    agent_overrides: overrides,
-                    force,
-                },
-            )
+            if args.interactive {
+                // In loop mode, run TUI repeatedly until user quits or no tasks remain
+                loop {
+                    let task_id = tui::run_tui(&resolved.queue_path, |_task_id| Ok(false))?;
+
+                    match task_id {
+                        Some(task_id) => {
+                            let overrides = resolve_run_agent_overrides(&args.agent)?;
+                            run_cmd::run_one_with_id(&resolved, &overrides, force, &task_id)?;
+                        }
+                        None => break, // User quit without selecting a task
+                    }
+                }
+                Ok(())
+            } else {
+                let overrides = resolve_run_agent_overrides(&args.agent)?;
+                run_cmd::run_loop(
+                    &resolved,
+                    run_cmd::RunLoopOptions {
+                        max_tasks: args.max_tasks,
+                        agent_overrides: overrides,
+                        force,
+                    },
+                )
+            }
         }
     }
 }
@@ -841,6 +873,10 @@ struct RunAgentArgs {
 
 #[derive(Args)]
 struct RunOneArgs {
+    /// Launch interactive TUI mode for task selection and management.
+    #[arg(short = 'i', long)]
+    interactive: bool,
+
     #[command(flatten)]
     agent: RunAgentArgs,
 }
@@ -850,6 +886,10 @@ struct RunLoopArgs {
     /// Maximum tasks to run before stopping (0 = no limit).
     #[arg(long, default_value_t = 0)]
     max_tasks: u32,
+
+    /// Launch interactive TUI mode for task selection and management.
+    #[arg(short = 'i', long)]
+    interactive: bool,
 
     #[command(flatten)]
     agent: RunAgentArgs,

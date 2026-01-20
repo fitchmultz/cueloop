@@ -62,6 +62,94 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
     }
 }
 
+pub fn run_one_with_id(
+    resolved: &config::Resolved,
+    agent_overrides: &AgentOverrides,
+    force: bool,
+    task_id: &str,
+) -> Result<()> {
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run one with id", force)?;
+    let queue_file = queue::load_queue(&resolved.queue_path)?;
+    let done = queue::load_queue_or_default(&resolved.done_path)?;
+    let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
+        None
+    } else {
+        Some(&done)
+    };
+    queue::validate_queue_set(
+        &queue_file,
+        done_ref,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
+
+    let task = queue::find_task_across(&queue_file, done_ref, task_id)
+        .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
+
+    // Require a clean repo before we invoke the runner.
+    gitutil::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        force,
+        &[".ralph/queue.json", ".ralph/done.json"],
+    )?;
+
+    let settings = resolve_run_agent_settings(resolved, task, agent_overrides)?;
+
+    log::info!(
+        "Executing {task_id}: {title} (runner: {runner:?}, model: {model})",
+        title = task.title,
+        runner = settings.runner,
+        model = settings.model.as_str()
+    );
+    let start = std::time::Instant::now();
+
+    let bins = runner::resolve_binaries(&resolved.config.agent);
+
+    let template = prompts::load_worker_prompt(&resolved.repo_root)?;
+    let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
+    let prompt = prompts::render_worker_prompt(&template, project_type)?;
+    let two_pass_plan = resolved.config.agent.two_pass_plan.unwrap_or(true);
+    let permission_mode = resolved.config.agent.claude_permission_mode;
+
+    let _output = runutil::run_prompt_with_handling(
+        runutil::RunnerInvocation {
+            repo_root: &resolved.repo_root,
+            runner_kind: settings.runner,
+            bins,
+            model: settings.model,
+            reasoning_effort: settings.reasoning_effort,
+            prompt: &prompt,
+            timeout: None,
+            two_pass_plan,
+            permission_mode,
+            revert_on_error: true,
+        },
+        runutil::RunnerErrorMessages {
+            log_label: "runner",
+            interrupted_msg: "Runner interrupted: the execution was canceled by the user or system. Uncommitted changes were reverted to maintain a clean repo state.",
+            timeout_msg: "Runner timed out: the execution exceeded the allowed time limit. Changes in the working tree were NOT reverted; review the repo state manually.",
+            terminated_msg: "Runner terminated: the agent was stopped by a signal. Uncommitted changes were reverted. Rerunning the task is recommended.",
+            non_zero_msg: |code| {
+                format!(
+                    "Runner failed: the agent exited with a non-zero code ({code}). Uncommitted changes were reverted. Rerunning the task is recommended after investigating the cause."
+                )
+            },
+            other_msg: |err| {
+                format!(
+                    "Runner invocation failed: the agent could not be started or encountered an error. Uncommitted changes were reverted. Rerunning the task is recommended. Error: {:#}",
+                    err
+                )
+            },
+        },
+    )?;
+
+    let duration = start.elapsed();
+    log::info!("Runner completed successfully for {task_id} in {duration:?}.");
+
+    post_run_supervise(resolved, task_id)?;
+    Ok(())
+}
+
 pub fn run_one(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
