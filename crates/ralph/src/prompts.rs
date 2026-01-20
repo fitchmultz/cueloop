@@ -30,10 +30,18 @@ You are running in a RepoPrompt-enabled environment. You MUST use the available 
 "#;
 
 pub const REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION: &str = r#"
-## PLANNING REQUIREMENT: Use context_builder with plan response type
+## PLANNING REQUIREMENT: Use context_builder and passthrough the plan verbatim
 To generate the plan, you MUST use the `context_builder` tool.
 1. Provide an extensively detailed `instructions` argument to `context_builder` that describes the task.
 2. MANDATORY: set `response_type` to "plan". The context_builder MUST be executed with a plan requested as the response type.
+3. VERBATIM OUTPUT: Once `context_builder` returns, you MUST output its plan EXACTLY AS-IS, with zero edits, summarization, or reformatting.
+4. WRAP EXACTLY: Output MUST be wrapped in:
+<<RALPH_PLAN_BEGIN>>
+<verbatim plan from context_builder>
+
+---
+
+Proceed with the implementation of the plan above.
 "#;
 
 /// Instructions for implementation phase: complete task and run CI.

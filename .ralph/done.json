@@ -1246,7 +1246,7 @@
         "cargo test -p ralph"
       ],
       "evidence": [
-        "User request: Error: Provider returned error thread 'main' (15281963) panicked at crates/ralph/src/redaction.rs:235:16: byte index 2634 is not a char boundary; it is inside '\u00e2' (bytes 2633..2635) of |  Read     AGENTS.md"
+        "User request: Error: Provider returned error thread 'main' (15281963) panicked at crates/ralph/src/redaction.rs:235:16: byte index 2634 is not a char boundary; it is inside 'â' (bytes 2633..2635) of |  Read     AGENTS.md"
       ],
       "plan": [
         "Reproduce the panic path in redaction and identify the slicing logic at the reported location.",
@@ -1260,7 +1260,7 @@
         "Added a non-ASCII regression test for redact_text.",
         "Ran `cargo test -p ralph`."
       ],
-      "request": "This error popped up while running a loop in a different repo. Fix. Error: Provider returned error thread 'main' (15281963) panicked at crates/ralph/src/redaction.rs:235:16: byte index 2634 is not a char boundary; it is inside '\u00e2' (bytes 2633..2635) of |  Read     AGENTS.md",
+      "request": "This error popped up while running a loop in a different repo. Fix. Error: Provider returned error thread 'main' (15281963) panicked at crates/ralph/src/redaction.rs:235:16: byte index 2634 is not a char boundary; it is inside 'â' (bytes 2633..2635) of |  Read     AGENTS.md",
       "created_at": "2026-01-19T05:45:41+00:00",
       "updated_at": "2026-01-19T05:50:46+00:00",
       "completed_at": "2026-01-19T05:50:46+00:00",
@@ -3085,6 +3085,47 @@
       "created_at": "2026-01-20T18:00:00Z",
       "updated_at": "2026-01-20T22:05:00Z",
       "completed_at": "2026-01-20T22:05:46Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0176",
+      "status": "done",
+      "title": "Enforce verbatim RepoPrompt plan passthrough in Phase 1",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "prompts",
+        "repoprompt"
+      ],
+      "scope": [
+        "crates/ralph/src/promptflow.rs",
+        "crates/ralph/src/prompts.rs"
+      ],
+      "evidence": [
+        "User request: Update Phase 1 planning prompt to enforce that RepoPrompt-generated plans must be passed through verbatim without alteration",
+        "When --rp-on is enabled, agents receive plans from context_builder and should output them unchanged wrapped in <<RALPH_PLAN_BEGIN>>/<<RALPH_PLAN_END>> markers",
+        "Current behavior may allow agents to modify/summarize/restructure RP-generated plans",
+        "Target files: promptflow.rs and prompts.rs contain RP-related planning instructions"
+      ],
+      "plan": [
+        "Examine current Phase 1 planning prompt construction in promptflow.rs and prompts.rs",
+        "Identify where RepoPrompt context_builder results are integrated into the prompt",
+        "Add explicit instructions that when RP is enabled (--rp-on), the plan from context_builder must be passed verbatim without modification, summarization, or restructuring",
+        "Ensure instructions specify wrapping the plan exactly as received in <<RALPH_PLAN_BEGIN>>/<<RALPH_PLAN_END>> markers",
+        "Preserve existing behavior when RP is disabled (--rp-off): agents generate their own plans",
+        "Add tests to verify RP-generated plan passthrough behavior"
+      ],
+      "notes": [
+        "Updated REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION to enforce verbatim plan passthrough",
+        "Added explicit instruction that context_builder output must be output exactly as-is",
+        "Added requirement to wrap plan in <<RALPH_PLAN_BEGIN>>/<<RALPH_PLAN_END>> markers",
+        "Added transition to implementation phase after plan output"
+      ],
+      "request": "Update Phase 1 planning prompt to enforce that RepoPrompt-generated plans must be passed through verbatim without alteration. When RP tools are enabled (--rp-on), the agent receives a plan from context_builder and should include it in the output exactly as received, wrapped in <<RALPH_PLAN_BEGIN>>/<<RALPH_PLAN_END>> markers without modification, summarization, or restructuring. If RP is disabled, current behavior (agent generates its own plan) should remain unchanged. Target only the RP-related planning instructions in promptflow.rs and prompts.rs.",
+      "created_at": "2026-01-20T22:42:24Z",
+      "updated_at": "2026-01-20T22:59:35.930150000Z",
+      "completed_at": "2026-01-20T22:59:35.930150000Z",
       "depends_on": [],
       "custom_fields": {}
     }
