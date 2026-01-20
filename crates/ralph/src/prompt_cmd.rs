@@ -174,6 +174,11 @@ pub fn build_worker_prompt(
         require_repoprompt: opts.repoprompt_required,
     };
 
+    let load_completion_checklist = || -> Result<String> {
+        let template = prompts::load_completion_checklist(&resolved.repo_root)?;
+        prompts::render_completion_checklist(&template, &resolved.config)
+    };
+
     let prompt = match opts.mode {
         WorkerMode::Phase1 => promptflow::build_phase1_prompt(&base_prompt, &task_id, &policy),
         WorkerMode::Phase2 => {
@@ -183,10 +188,17 @@ pub fn build_worker_prompt(
                 opts.plan_text,
                 opts.plan_file,
             )?;
-            promptflow::build_phase2_prompt(&plan_text, &policy)
+            let completion_checklist = load_completion_checklist()?;
+            promptflow::build_phase2_prompt(&plan_text, &completion_checklist, &policy)
         }
         WorkerMode::Single => {
-            promptflow::build_single_phase_prompt(&base_prompt, &task_id, &policy)
+            let completion_checklist = load_completion_checklist()?;
+            promptflow::build_single_phase_prompt(
+                &base_prompt,
+                &completion_checklist,
+                &task_id,
+                &policy,
+            )
         }
     };
 

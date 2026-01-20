@@ -88,6 +88,7 @@ fn worker_phase1_includes_markers_and_optional_rp() -> Result<()> {
     assert!(prompt.contains(promptflow::RALPH_PHASE1_PLAN_BEGIN));
     assert!(prompt.contains(promptflow::RALPH_PHASE1_PLAN_END));
     assert!(prompt.contains(ralph::prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
+    assert!(!prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
     Ok(())
 }
 
@@ -110,7 +111,12 @@ fn worker_single_phase_includes_completion_workflow() -> Result<()> {
     )?;
 
     assert!(prompt.contains("single-pass execution mode"));
-    assert!(prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
+    assert_eq!(
+        prompt
+            .match_indices("IMPLEMENTATION COMPLETION CHECKLIST")
+            .count(),
+        1
+    );
     Ok(())
 }
 
@@ -134,7 +140,7 @@ fn worker_phase2_requires_plan_text() -> Result<()> {
 
     assert!(prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 2"));
     assert!(prompt.contains("PLAN BODY"));
-    assert!(prompt.contains(ralph::prompts::TASK_COMPLETION_WORKFLOW));
+    assert!(prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
     Ok(())
 }
 
@@ -160,7 +166,7 @@ fn worker_phase2_uses_placeholder_when_no_plan_found() -> Result<()> {
     assert!(prompt.contains("*No plan file found*"));
     assert!(prompt.contains("No plan file was found at"));
     assert!(prompt.contains("Please proceed with implementation based on the task requirements"));
-    assert!(prompt.contains(ralph::prompts::TASK_COMPLETION_WORKFLOW));
+    assert!(prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
     Ok(())
 }
 

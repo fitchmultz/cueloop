@@ -232,7 +232,10 @@ fn run_one_impl(
         );
 
         log::info!("Phase 2/2 (Implementation) for {task_id}...");
-        let p2_prompt = build_phase2_prompt(&plan_text, &policy);
+        let checklist_template = prompts::load_completion_checklist(&resolved.repo_root)?;
+        let completion_checklist =
+            prompts::render_completion_checklist(&checklist_template, &resolved.config)?;
+        let p2_prompt = build_phase2_prompt(&plan_text, &completion_checklist, &policy);
         execute_runner_pass(
             resolved,
             &settings,
@@ -248,7 +251,10 @@ fn run_one_impl(
     }
 
     // phases == 1: Single-pass execution
-    let prompt = build_single_phase_prompt(&base_prompt, &task_id, &policy);
+    let checklist_template = prompts::load_completion_checklist(&resolved.repo_root)?;
+    let completion_checklist =
+        prompts::render_completion_checklist(&checklist_template, &resolved.config)?;
+    let prompt = build_single_phase_prompt(&base_prompt, &completion_checklist, &task_id, &policy);
     execute_runner_pass(
         resolved,
         &settings,

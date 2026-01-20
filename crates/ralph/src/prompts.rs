@@ -1,3 +1,5 @@
+//! Prompt template loading, rendering, and validation utilities.
+
 use crate::contracts::{Config, ProjectType};
 use anyhow::{bail, Context, Result};
 use regex::Regex;
@@ -9,6 +11,7 @@ use std::path::Path;
 const WORKER_PROMPT_REL_PATH: &str = ".ralph/prompts/worker.md";
 const TASK_BUILDER_PROMPT_REL_PATH: &str = ".ralph/prompts/task_builder.md";
 const SCAN_PROMPT_REL_PATH: &str = ".ralph/prompts/scan.md";
+const COMPLETION_CHECKLIST_REL_PATH: &str = ".ralph/prompts/completion_checklist.md";
 
 const DEFAULT_WORKER_PROMPT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -21,6 +24,10 @@ const DEFAULT_TASK_BUILDER_PROMPT: &str = include_str!(concat!(
 const DEFAULT_SCAN_PROMPT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/prompts/scan.md"
+));
+const DEFAULT_COMPLETION_CHECKLIST: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/prompts/completion_checklist.md"
 ));
 
 /// Instructions for tooling requirements when RepoPrompt is required.
@@ -42,19 +49,6 @@ To generate the plan, you MUST use the `context_builder` tool.
 ---
 
 Proceed with the implementation of the plan above.
-"#;
-
-/// Instructions for implementation phase: complete task and run CI.
-pub const TASK_COMPLETION_WORKFLOW: &str = r#"
-## IMPLEMENTATION COMPLETION CHECKLIST
-When implementation is complete, you MUST:
-1. Run `ralph queue complete <TASK_ID> done --note "<note>"` to mark the task complete and move it from `.ralph/queue.json` to `.ralph/done.json`
-   - Use `rejected` instead of `done` when appropriate; only `done` and `rejected` are valid completion statuses
-   - Provide 1-5 summary notes using repeated `--note` flags (each note should be a short bullet)
-   - Do NOT manually edit `.ralph/queue.json` or `.ralph/done.json` to complete tasks
-2. Run `make ci` - must pass 100% (fix issues and re-run until green)
-3. Commit all changes: `RQ-####: <short summary>`
-4. Push and verify `git status --porcelain` is empty
 "#;
 
 pub fn wrap_with_repoprompt_requirement(prompt: &str, required: bool) -> String {
@@ -188,10 +182,12 @@ pub fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
     let worker = load_worker_prompt(repo_root)?;
     let task_builder = load_task_builder_prompt(repo_root)?;
     let scan = load_scan_prompt(repo_root)?;
+    let completion_checklist = load_completion_checklist(repo_root)?;
 
     Ok(worker.contains(".ralph/README.md")
         || task_builder.contains(".ralph/README.md")
-        || scan.contains(".ralph/README.md"))
+        || scan.contains(".ralph/README.md")
+        || completion_checklist.contains(".ralph/README.md"))
 }
 
 pub fn load_worker_prompt(repo_root: &Path) -> Result<String> {
@@ -200,6 +196,16 @@ pub fn load_worker_prompt(repo_root: &Path) -> Result<String> {
         WORKER_PROMPT_REL_PATH,
         DEFAULT_WORKER_PROMPT,
         "worker",
+    )
+}
+
+/// Load the completion checklist template (overridable).
+pub fn load_completion_checklist(repo_root: &Path) -> Result<String> {
+    load_prompt_with_fallback(
+        repo_root,
+        COMPLETION_CHECKLIST_REL_PATH,
+        DEFAULT_COMPLETION_CHECKLIST,
+        "completion checklist",
     )
 }
 
@@ -246,6 +252,13 @@ pub fn render_worker_prompt(
     let rendered = rendered.replace("{{INTERACTIVE_INSTRUCTIONS}}", "");
     ensure_no_unresolved_placeholders(&rendered, "worker")?;
     Ok(rendered)
+}
+
+/// Render the completion checklist after expanding variables.
+pub fn render_completion_checklist(template: &str, config: &Config) -> Result<String> {
+    let expanded = expand_variables(template, config)?;
+    ensure_no_unresolved_placeholders(&expanded, "completion checklist")?;
+    Ok(expanded)
 }
 
 pub fn load_task_builder_prompt(repo_root: &Path) -> Result<String> {
@@ -438,6 +451,34 @@ mod tests {
         let dir = TempDir::new()?;
         let prompt = load_worker_prompt(dir.path())?;
         assert!(prompt.contains("# MISSION"));
+        Ok(())
+    }
+
+    #[test]
+    fn default_worker_prompt_excludes_completion_checklist() -> Result<()> {
+        let dir = TempDir::new()?;
+        let prompt = load_worker_prompt(dir.path())?;
+        assert!(!prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
+        assert!(!prompt.contains("END-OF-TURN CHECKLIST"));
+        Ok(())
+    }
+
+    #[test]
+    fn load_completion_checklist_falls_back_to_embedded_default_when_missing() -> Result<()> {
+        let dir = TempDir::new()?;
+        let checklist = load_completion_checklist(dir.path())?;
+        assert!(checklist.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
+        Ok(())
+    }
+
+    #[test]
+    fn load_completion_checklist_uses_override_when_present() -> Result<()> {
+        let dir = TempDir::new()?;
+        let overrides = dir.path().join(".ralph/prompts");
+        fs::create_dir_all(&overrides)?;
+        fs::write(overrides.join("completion_checklist.md"), "override")?;
+        let checklist = load_completion_checklist(dir.path())?;
+        assert_eq!(checklist, "override");
         Ok(())
     }
 

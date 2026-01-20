@@ -1,3 +1,5 @@
+//! Prompt construction for worker run phases.
+
 use crate::contracts::Runner;
 use crate::fsutil;
 use crate::prompts;
@@ -113,7 +115,11 @@ Do NOT switch tasks: plan ONLY for the current task and ignore any other IDs men
 }
 
 /// Build the prompt for Phase 2 (Implementation).
-pub fn build_phase2_prompt(plan_text: &str, policy: &PromptPolicy) -> String {
+pub fn build_phase2_prompt(
+    plan_text: &str,
+    completion_checklist: &str,
+    policy: &PromptPolicy,
+) -> String {
     let mut instructions = String::new();
 
     // 1. Heading
@@ -127,8 +133,11 @@ pub fn build_phase2_prompt(plan_text: &str, policy: &PromptPolicy) -> String {
     }
 
     // 3. Completion workflow
-    instructions.push_str(prompts::TASK_COMPLETION_WORKFLOW);
-    instructions.push('\n');
+    let checklist = completion_checklist.trim();
+    if !checklist.is_empty() {
+        instructions.push_str(checklist);
+        instructions.push_str("\n\n");
+    }
 
     // 4. The Plan
     instructions.push_str("# APPROVED PLAN\n\n");
@@ -144,6 +153,7 @@ pub fn build_phase2_prompt(plan_text: &str, policy: &PromptPolicy) -> String {
 /// Build the prompt for Single Phase (Plan + Implement).
 pub fn build_single_phase_prompt(
     base_worker_prompt: &str,
+    completion_checklist: &str,
     _task_id: &str,
     policy: &PromptPolicy,
 ) -> String {
@@ -158,8 +168,11 @@ pub fn build_single_phase_prompt(
     instructions.push_str("Task status is already set to `doing` by Ralph. Do NOT change it.\n\n");
 
     // 2. Completion workflow
-    instructions.push_str(prompts::TASK_COMPLETION_WORKFLOW);
-    instructions.push('\n');
+    let checklist = completion_checklist.trim();
+    if !checklist.is_empty() {
+        instructions.push_str(checklist);
+        instructions.push_str("\n\n");
+    }
 
     // 3. Single-pass semantics: planning is optional.
     instructions.push_str(

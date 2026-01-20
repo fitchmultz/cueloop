@@ -3,7 +3,7 @@
   "tasks": [
     {
       "id": "RQ-0175",
-      "status": "todo",
+      "status": "doing",
       "title": "Audit and consolidate prompt sources - eliminate END-OF-TURN CHECKLIST duplication",
       "priority": "medium",
       "tags": [
@@ -34,7 +34,7 @@
       "notes": [],
       "request": "Audit and consolidate prompt sources - there's duplication between assets/prompts/worker.md END-OF-TURN CHECKLIST and prompts.rs::TASK_COMPLETION_WORKFLOW constant. Investigate which is used when, consolidate to single source of truth, and eliminate drift.",
       "created_at": "2026-01-20T22:39:38Z",
-      "updated_at": "2026-01-20T22:39:38Z",
+      "updated_at": "2026-01-20T23:11:13.837179000Z",
       "depends_on": [],
       "custom_fields": {}
     },

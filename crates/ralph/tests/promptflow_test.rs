@@ -21,6 +21,7 @@ fn build_phase1_prompt_contains_required_elements() {
     assert!(prompt.contains(RALPH_PHASE1_PLAN_BEGIN));
     assert!(prompt.contains(RALPH_PHASE1_PLAN_END));
     assert!(prompt.contains(base));
+    assert!(!prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
 }
 
 #[test]
@@ -40,15 +41,16 @@ fn build_phase1_prompt_omits_rp_if_disabled() {
 #[test]
 fn build_phase2_prompt_contains_required_elements() {
     let plan = "My Plan";
+    let checklist = "## IMPLEMENTATION COMPLETION CHECKLIST\n- done";
     let policy = PromptPolicy {
         require_repoprompt: true,
     };
 
-    let prompt = promptflow::build_phase2_prompt(plan, &policy);
+    let prompt = promptflow::build_phase2_prompt(plan, checklist, &policy);
 
     assert!(prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 2"));
     assert!(prompt.contains(prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
-    assert!(prompt.contains(prompts::TASK_COMPLETION_WORKFLOW));
+    assert!(prompt.contains(checklist));
     assert!(prompt.contains("APPROVED PLAN"));
     assert!(prompt.contains(plan));
 }
@@ -56,16 +58,17 @@ fn build_phase2_prompt_contains_required_elements() {
 #[test]
 fn build_single_phase_prompt_contains_required_elements() {
     let base = "BASE_PROMPT";
+    let checklist = "## IMPLEMENTATION COMPLETION CHECKLIST\n- done";
     let task_id = "RQ-1234";
     let policy = PromptPolicy {
         require_repoprompt: true,
     };
 
-    let prompt = promptflow::build_single_phase_prompt(base, task_id, &policy);
+    let prompt = promptflow::build_single_phase_prompt(base, checklist, task_id, &policy);
 
     assert!(prompt.contains("TOOLING REQUIREMENT: RepoPrompt"));
     assert!(!prompt.contains(prompts::REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION));
-    assert!(prompt.contains(prompts::TASK_COMPLETION_WORKFLOW));
+    assert!(prompt.contains(checklist));
     assert!(prompt.contains("single-pass execution mode"));
     assert!(prompt.contains(base));
 }
