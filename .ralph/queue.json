@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0163",
-      "status": "todo",
-      "title": "Safeguard scan results by saving raw output before revert",
-      "priority": "high",
-      "tags": [
-        "rust",
-        "cli",
-        "scan",
-        "data-loss"
-      ],
-      "scope": [
-        "crates/ralph/src/scan.rs",
-        "crates/ralph/src/queue.rs"
-      ],
-      "evidence": [
-        "Scan results may be lost if git revert fails",
-        "User request: 'Safeguard scan results by saving raw output before revert (High)'"
-      ],
-      "plan": [
-        "Add intermediate save of scan results to temp file before git operations",
-        "Implement recovery path to load from temp if revert fails",
-        "Add tests for temp file save and recovery scenarios"
-      ],
-      "notes": [],
-      "request": "New Tasks (Top 10): 1. RQ-0137: Safeguard scan results by saving raw output before revert (High)",
-      "created_at": "2026-01-20T18:00:00Z",
-      "updated_at": "2026-01-20T18:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0164",
       "status": "todo",
       "title": "Graceful shutdown on Ctrl+C in 'run loop'",

@@ -1,7 +1,7 @@
 //! Shared helpers for runner invocations with consistent error handling.
 
 use crate::contracts::{ClaudePermissionMode, Model, ReasoningEffort, Runner};
-use crate::{gitutil, outpututil, runner};
+use crate::{fsutil, gitutil, outpututil, runner};
 use anyhow::{bail, Result};
 use std::path::Path;
 use std::time::Duration;
@@ -85,19 +85,45 @@ where
         Err(runner::RunnerError::Timeout) => {
             bail!("{}", timeout_msg);
         }
-        Err(runner::RunnerError::NonZeroExit { code, stderr, .. }) => {
+        Err(runner::RunnerError::NonZeroExit {
+            code,
+            stdout,
+            stderr,
+        }) => {
             log_stderr_tail(log_label, &stderr.to_string());
+            let mut safeguard_msg = String::new();
             if revert_on_error {
+                if !stdout.0.is_empty() {
+                    match fsutil::safeguard_text_dump("runner_error", &stdout.to_string()) {
+                        Ok(path) => {
+                            safeguard_msg = format!("\n(raw stdout saved to {})", path.display());
+                        }
+                        Err(err) => {
+                            log::warn!("failed to save safeguard dump: {}", err);
+                        }
+                    }
+                }
                 gitutil::revert_uncommitted(repo_root)?;
             }
-            bail!("{}", non_zero_msg(code));
+            bail!("{}{}", non_zero_msg(code), safeguard_msg);
         }
-        Err(runner::RunnerError::TerminatedBySignal { stderr, .. }) => {
+        Err(runner::RunnerError::TerminatedBySignal { stdout, stderr }) => {
             log_stderr_tail(log_label, &stderr.to_string());
+            let mut safeguard_msg = String::new();
             if revert_on_error {
+                if !stdout.0.is_empty() {
+                    match fsutil::safeguard_text_dump("runner_error", &stdout.to_string()) {
+                        Ok(path) => {
+                            safeguard_msg = format!("\n(raw stdout saved to {})", path.display());
+                        }
+                        Err(err) => {
+                            log::warn!("failed to save safeguard dump: {}", err);
+                        }
+                    }
+                }
                 gitutil::revert_uncommitted(repo_root)?;
             }
-            bail!("{}", terminated_msg);
+            bail!("{}{}", terminated_msg, safeguard_msg);
         }
         Err(err) => {
             if revert_on_error {

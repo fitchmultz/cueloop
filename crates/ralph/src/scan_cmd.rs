@@ -1,5 +1,5 @@
 use crate::contracts::{ClaudePermissionMode, Model, ProjectType, ReasoningEffort, Runner};
-use crate::{config, gitutil, prompts, queue, runner, runutil, timeutil};
+use crate::{config, fsutil, gitutil, prompts, queue, runner, runutil, timeutil};
 use anyhow::{Context, Result};
 
 pub struct ScanOptions {
@@ -51,7 +51,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     // Force BypassPermissions for scan (needs tool access for exploration)
     let permission_mode = Some(ClaudePermissionMode::BypassPermissions);
 
-    let _output = runutil::run_prompt_with_handling(
+    let output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
             repo_root: &resolved.repo_root,
             runner_kind: opts.runner,
@@ -88,8 +88,17 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     {
         Ok(queue) => queue,
         Err(err) => {
+            let mut safeguard_msg = String::new();
+            match fsutil::safeguard_text_dump("scan_error", &output.stdout) {
+                Ok(path) => {
+                    safeguard_msg = format!("\n(raw stdout saved to {})", path.display());
+                }
+                Err(e) => {
+                    log::warn!("failed to save safeguard dump: {}", e);
+                }
+            }
             gitutil::revert_uncommitted(&resolved.repo_root)?;
-            return Err(err);
+            return Err(err).context(safeguard_msg);
         }
     };
 
@@ -108,8 +117,17 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     )
     .context("validate queue set after scan")
     {
+        let mut safeguard_msg = String::new();
+        match fsutil::safeguard_text_dump("scan_validation_error", &output.stdout) {
+            Ok(path) => {
+                safeguard_msg = format!("\n(raw stdout saved to {})", path.display());
+            }
+            Err(e) => {
+                log::warn!("failed to save safeguard dump: {}", e);
+            }
+        }
         gitutil::revert_uncommitted(&resolved.repo_root)?;
-        return Err(err);
+        return Err(err).context(safeguard_msg);
     }
 
     let added = queue::added_tasks(&before_ids, &after);

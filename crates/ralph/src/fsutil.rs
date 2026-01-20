@@ -146,6 +146,17 @@ pub fn create_ralph_temp_dir(label: &str) -> Result<tempfile::TempDir> {
     Ok(dir)
 }
 
+pub fn safeguard_text_dump(label: &str, content: &str) -> Result<PathBuf> {
+    let temp_dir = create_ralph_temp_dir(label)?;
+    let output_path = temp_dir.path().join("output.txt");
+    fs::write(&output_path, content)
+        .with_context(|| format!("write safeguard dump to {}", output_path.display()))?;
+
+    // Persist the temp dir so it's not deleted when the TempDir object is dropped.
+    let dir_path = temp_dir.keep();
+    Ok(dir_path.join("output.txt"))
+}
+
 pub fn acquire_dir_lock(lock_dir: &Path, label: &str, force: bool) -> Result<DirLock> {
     log::debug!(
         "acquiring dir lock: {} (label: {})",

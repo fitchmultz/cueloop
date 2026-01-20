@@ -2964,6 +2964,43 @@
       "completed_at": "2026-01-20T21:08:07Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0163",
+      "status": "done",
+      "title": "Safeguard scan results by saving raw output before revert",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "cli",
+        "scan",
+        "data-loss"
+      ],
+      "scope": [
+        "crates/ralph/src/scan.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "Scan results may be lost if git revert fails",
+        "User request: 'Safeguard scan results by saving raw output before revert (High)'"
+      ],
+      "plan": [
+        "Add intermediate save of scan results to temp file before git operations",
+        "Implement recovery path to load from temp if revert fails",
+        "Add tests for temp file save and recovery scenarios"
+      ],
+      "notes": [
+        "Implemented fsutil::safeguard_text_dump to save LLM output to temp directory.",
+        "Enhanced runutil::run_prompt_with_handling to save stdout before git revert on runner errors.",
+        "Modified scan_cmd::run_scan to save raw LLM results if validation or queue load fails after execution.",
+        "Added integration tests in crates/ralph/tests/safeguard_integration_test.rs verifying data persistence on failure."
+      ],
+      "request": "New Tasks (Top 10): 1. RQ-0137: Safeguard scan results by saving raw output before revert (High)",
+      "created_at": "2026-01-20T18:00:00Z",
+      "updated_at": "2026-01-20T21:13:20.022411000Z",
+      "completed_at": "2026-01-20T21:30:00Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
