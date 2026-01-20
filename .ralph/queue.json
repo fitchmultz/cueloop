@@ -2,6 +2,135 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0159",
+      "status": "todo",
+      "title": "Fix stale YAML documentation and CLI help strings",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "cli",
+        "cleanup"
+      ],
+      "scope": [
+        "README.md",
+        "crates/ralph/src/main.rs"
+      ],
+      "evidence": [
+        "Root README.md refers to .ralph/queue.yaml and .ralph/done.yaml",
+        "CLI help strings in main.rs mention .yaml config files",
+        "Implementation actually uses JSON (.ralph/queue.json, etc.)"
+      ],
+      "plan": [
+        "Search for '.yaml' in README.md and replace with '.json' where referring to Ralph files",
+        "Search for '.yaml' in crates/ralph/src/main.rs and replace with '.json' in help strings",
+        "Verify .ralph/README.md is already correct (as noted in request)",
+        "Run 'cargo run -p ralph -- --help' to verify CLI output"
+      ],
+      "notes": [],
+      "request": "Root README is stale and still claims YAML... CLI help text still references .yaml in multiple places",
+      "created_at": "2026-01-20T12:05:00Z",
+      "updated_at": "2026-01-20T12:05:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0160",
+      "status": "todo",
+      "title": "Fix TUI persistence, reloading, and scrolling logic",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "tui",
+        "bug"
+      ],
+      "scope": [
+        "crates/ralph/src/tui.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "TUI modifies in-memory App.queue but never calls queue::save_queue",
+        "Edits to title/status/deletion are lost on quit",
+        "UI does not reload queue from disk after running a task (stale state)",
+        "Scrolling logic updates offset but render loop draws all tasks (no slicing)"
+      ],
+      "plan": [
+        "In crates/ralph/src/tui.rs, add save_queue call in run_tui when app.dirty is true",
+        "In run_tui loop, reload queue from disk after runner_fn returns (to capture agent changes)",
+        "Update draw_task_list to slice app.queue.tasks using app.scroll and visible height",
+        "Ensure highlight index logic matches the visual slice"
+      ],
+      "notes": [],
+      "request": "TUI does not persist edits to disk... after a task run, the UI does not reload... TUI scrolling is not actually implemented",
+      "created_at": "2026-01-20T12:05:00Z",
+      "updated_at": "2026-01-20T12:05:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0161",
+      "status": "todo",
+      "title": "Fix 'Rejected' status semantics in archiving and prompts",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "logic",
+        "prompts"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/assets/prompts/worker.md"
+      ],
+      "evidence": [
+        "archive_done_tasks in queue.rs only moves 'done' tasks, stranding 'rejected' tasks",
+        "worker.md prompt claims allowed statuses are only todo, doing, done",
+        "post_run_supervise might treat non-done tasks as incomplete, overwriting rejected status"
+      ],
+      "plan": [
+        "Update crates/ralph/assets/prompts/worker.md to include 'rejected' in allowed statuses",
+        "Update archive_done_tasks in crates/ralph/src/queue.rs to move 'rejected' tasks to done.json",
+        "Review and fix post_run_supervise logic (in run_cmd.rs or similar) to respect 'rejected' status"
+      ],
+      "notes": [],
+      "request": "Rejected status semantics are inconsistent in prompts and archiving... archive_done_tasks only moves done tasks... post_run_supervise treats anything not done as needing to become done",
+      "created_at": "2026-01-20T12:05:00Z",
+      "updated_at": "2026-01-20T12:05:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0158",
+      "status": "todo",
+      "title": "Add interactive task decomposition to TUI",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "tui",
+        "agent",
+        "workflow"
+      ],
+      "scope": [
+        "crates/ralph/src/tui.rs",
+        "crates/ralph/src/task_cmd.rs"
+      ],
+      "evidence": [
+        "In the TUI, allow a user to select a generic task ... and hit a hotkey to have an Agent break it down into 5 sub-tasks"
+      ],
+      "plan": [
+        "Add 'Decompose' hotkey (e.g., 'D') to TUI task list",
+        "Implement TUI handler to trigger decomposition for selected task",
+        "Create prompt/agent logic to generate sub-tasks from a parent task",
+        "Insert generated sub-tasks into queue immediately after parent",
+        "Refresh TUI view to show new structure",
+        "Add tests for decomposition trigger"
+      ],
+      "notes": [],
+      "request": "Interactive Task Decomposition:\nNext Step: In the TUI, allow a user to select a generic task (e.g., Implement Auth) and hit a hotkey to have an Agent break it down into 5 sub-tasks, inserting them into the queue immediately.",
+      "created_at": "2026-01-20T12:00:00Z",
+      "updated_at": "2026-01-20T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0138",
       "status": "todo",
       "title": "Add task validation rules and custom schemas",
@@ -190,7 +319,7 @@
       "plan": [
         "Add pinned field to Task (boolean, default false)",
         "Add queue pin/unpin <task-id> commands",
-        "Update queue list to show pinned indicator (* or \ud83d\udccc)",
+        "Update queue list to show pinned indicator (* or 📌)",
         "Skip pinned tasks during auto-sort operations",
         "Require --force to edit pinned tasks",
         "Add tests for pin protection behavior"
