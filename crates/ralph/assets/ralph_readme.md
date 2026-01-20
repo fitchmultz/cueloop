@@ -55,16 +55,17 @@ Prompt templates support variable interpolation for environment variables and co
 
 Note: Standard placeholders like `{{USER_REQUEST}}` are still processed after variable expansion.
 
-## Runners (OpenCode + Gemini + Claude)
+## Runners (Codex + OpenCode + Gemini + Claude)
 
-Ralph can use the OpenCode, Gemini, or Claude CLI as a runner.
+Ralph can use Codex, OpenCode, Gemini, or Claude CLI as a runner.
 
 One-off usage:
 - `ralph task build --runner opencode --model gpt-5.2 "Add tests for X"`
 - `ralph scan --runner opencode --model gpt-5.2 --focus "CI gaps"`
 - `ralph scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"`
 - `ralph scan --runner claude --model sonnet --focus "risk audit"`
-- `ralph task build --runner claude --model opus "Add tests for X"`
+- `ralph task build --runner claude --model opus --rp-on "Add tests for X"`
+- `ralph run one --phase 1` (generate plan only)
 
 Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
 
@@ -72,12 +73,10 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
 {
   "version": 1,
   "agent": {
-    "runner": "opencode",
-    "model": "gpt-5.2",
-    "opencode_bin": "opencode",
-    "gemini_bin": "gemini",
-    "claude_bin": "claude",
-    "two_pass_plan": true
+    "runner": "claude",
+    "model": "sonnet",
+    "two_pass_plan": true,
+    "require_repoprompt": false
   }
 }
 ```
@@ -88,4 +87,14 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
 - **Gemini**: `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs
 - **Claude**: `sonnet` (default), `opus`, or arbitrary model IDs
 
-**Two-pass plan mode**: When enabled (`two_pass_plan: true`), Claude first generates a plan in plan mode, then implements it with auto-approval. This provides better structure and visibility into planned changes. If plan generation fails, falls back to direct implementation. Currently supported for Claude runner only; will expand to OpenCode in the future.
+### RepoPrompt Integration
+Ralph can explicitly require the usage of RepoPrompt tools. When enabled via config (`require_repoprompt: true`) or CLI (`--rp-on`), Ralph will:
+1. Instruct the agent to use RepoPrompt tools for exploration.
+2. During planning, require the agent to use the `context_builder` tool to gather context AND generate the plan in a single step.
+
+### Two-phase Planning
+When enabled (`two_pass_plan: true`, default: true), Ralph orchestrates execution in two phases for all runners:
+1. **Phase 1 (Planning)**: The agent generates a detailed plan and caches it in `.ralph/cache/plans/<TASK_ID>.md`.
+2. **Phase 2 (Implementation)**: The agent implements the cached plan.
+
+You can force a specific phase using `ralph run one --phase 1` or `ralph run one --phase 2`. Standalone Phase 1 execution allows for manual plan review before implementation.

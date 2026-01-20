@@ -22,8 +22,7 @@ fn test_runner_invocation_creation() {
         reasoning_effort: Some(ReasoningEffort::Medium),
         prompt: "test prompt",
         timeout: None,
-        two_pass_plan: false,
-        permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+        permission_mode: None,
         revert_on_error: true,
         output_handler: None,
     };
@@ -33,7 +32,6 @@ fn test_runner_invocation_creation() {
     assert_eq!(invocation.reasoning_effort, Some(ReasoningEffort::Medium));
     assert_eq!(invocation.prompt, "test prompt");
     assert!(invocation.timeout.is_none());
-    assert!(!invocation.two_pass_plan);
     assert!(invocation.revert_on_error);
 }
 
@@ -55,7 +53,6 @@ fn test_runner_invocation_with_timeout() {
         reasoning_effort: None,
         prompt: "test prompt",
         timeout: Some(Duration::from_secs(60)),
-        two_pass_plan: false,
         permission_mode: None,
         revert_on_error: false,
         output_handler: None,
@@ -91,7 +88,6 @@ fn test_runner_invocation_all_runners() {
             reasoning_effort: None,
             prompt: "test",
             timeout: None,
-            two_pass_plan: false,
             permission_mode: None,
             revert_on_error: false,
             output_handler: None,
@@ -126,44 +122,12 @@ fn test_runner_invocation_all_models() {
             reasoning_effort: None,
             prompt: "test",
             timeout: None,
-            two_pass_plan: false,
             permission_mode: None,
             revert_on_error: false,
             output_handler: None,
         };
         assert_eq!(invocation.model, model);
     }
-}
-
-#[test]
-fn test_runner_invocation_two_pass_plan() {
-    let temp_dir = std::env::temp_dir();
-    let repo_root = temp_dir.as_path();
-
-    let invocation = runutil::RunnerInvocation {
-        repo_root,
-        runner_kind: Runner::Claude,
-        bins: ralph::runner::RunnerBinaries {
-            codex: "codex",
-            opencode: "opencode",
-            gemini: "gemini",
-            claude: "claude",
-        },
-        model: Model::Gpt52,
-        reasoning_effort: None,
-        prompt: "test prompt",
-        timeout: None,
-        two_pass_plan: true,
-        permission_mode: Some(ClaudePermissionMode::AcceptEdits),
-        revert_on_error: true,
-        output_handler: None,
-    };
-
-    assert!(invocation.two_pass_plan);
-    assert_eq!(
-        invocation.permission_mode,
-        Some(ClaudePermissionMode::AcceptEdits)
-    );
 }
 
 #[test]
@@ -191,7 +155,6 @@ fn test_runner_invocation_all_permission_modes() {
             reasoning_effort: None,
             prompt: "test",
             timeout: None,
-            two_pass_plan: false,
             permission_mode: mode,
             revert_on_error: false,
             output_handler: None,
@@ -277,7 +240,6 @@ fn test_runner_invocation_various_timeouts() {
             reasoning_effort: None,
             prompt: "test",
             timeout,
-            two_pass_plan: false,
             permission_mode: None,
             revert_on_error: false,
             output_handler: None,
@@ -313,7 +275,6 @@ fn test_runner_invocation_all_reasoning_efforts() {
             reasoning_effort: effort,
             prompt: "test",
             timeout: None,
-            two_pass_plan: false,
             permission_mode: None,
             revert_on_error: false,
             output_handler: None,

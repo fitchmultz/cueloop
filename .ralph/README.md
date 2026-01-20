@@ -1,6 +1,6 @@
 # Ralph runtime files
 
-This repo is using Ralph. The `.ralph/` directory holds repo-local state. See the root `README.md` for usage details.
+This repo is using Ralph. The `.ralph/` directory holds repo-local state.
 
 ## Files
 
@@ -11,48 +11,61 @@ This repo is using Ralph. The `.ralph/` directory holds repo-local state. See th
 ## Minimal Rust Commands
 
 - Validate queue:
-  - `cargo run -p ralph -- queue validate`
+  - `ralph queue validate`
 - Bootstrap repo files (queue + done + config):
-  - `cargo run -p ralph -- init`
+  - `ralph init`
 - Inspect queue:
-  - `cargo run -p ralph -- queue list`
-  - `cargo run -p ralph -- queue list --status todo --tag rust`
-  - `cargo run -p ralph -- queue show RQ-0008`
-  - `cargo run -p ralph -- queue next --with-title`
+  - `ralph queue list`
+  - `ralph queue next --with-title`
 - Next task ID:
-  - `cargo run -p ralph -- queue next-id`
+  - `ralph queue next-id`
 - Archive completed tasks:
-  - `cargo run -p ralph -- queue done`
+  - `ralph queue done`
 - Build a task from a request:
-  - `cargo run -p ralph -- task build "<request>"`
+  - `ralph task build "<request>"`
 - Seed tasks from a scan:
-  - `cargo run -p ralph -- scan --focus "<focus>"`
+  - `ralph scan --focus "<focus>"`
 - Run one task:
-  - `cargo run -p ralph -- run one`
+  - `ralph run one`
 - Run multiple tasks:
-  - `cargo run -p ralph -- run loop --max-tasks 0`
+  - `ralph run loop --max-tasks 0`
 
-## Prompt Overrides
+## Template Variables
 
-Defaults are embedded in the Rust CLI. To override prompts for this repo, create files under
-`.ralph/prompts/`:
+Prompt templates support variable interpolation for environment variables and config values:
 
-- `.ralph/prompts/worker.md`
-- `.ralph/prompts/task_builder.md`
-- `.ralph/prompts/scan.md`
+### Environment Variables
+- `${VAR}` — expand environment variable (leaves literal if not set)
+- `${VAR:-default}` — expand with default value if not set
+- Example: `API endpoint: ${API_URL:-https://api.example.com}`
 
-Missing files fall back to the embedded defaults. Overrides must keep required placeholders.
+### Config Values
+- `{{config.section.key}}` — expand from config (supports nested paths)
+- Supported paths:
+  - `{{config.agent.runner}}` — current runner (e.g., `Claude`)
+  - `{{config.agent.model}}` — current model (e.g., `gpt-5.2-codex`)
+  - `{{config.queue.id_prefix}}` — task ID prefix (e.g., `RQ`)
+  - `{{config.queue.id_width}}` — task ID width (e.g., `4`)
+  - `{{config.project_type}}` — project type (e.g., `Code`)
+- Example: `Using {{config.agent.model}} via {{config.agent.runner}}`
 
-## Runners (OpenCode + Gemini + Claude)
+### Escaping
+- `$${VAR}` — escaped, outputs literal `${VAR}`
+- `\${VAR}` — escaped, outputs literal `${VAR}`
 
-Ralph can use the OpenCode, Gemini, or Claude CLI as a runner.
+Note: Standard placeholders like `{{USER_REQUEST}}` are still processed after variable expansion.
+
+## Runners (Codex + OpenCode + Gemini + Claude)
+
+Ralph can use Codex, OpenCode, Gemini, or Claude CLI as a runner.
 
 One-off usage:
-- `cargo run -p ralph -- task build --runner opencode --model gpt-5.2 "Add tests for X"`
-- `cargo run -p ralph -- scan --runner opencode --model gpt-5.2 --focus "CI gaps"`
-- `cargo run -p ralph -- scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"`
-- `cargo run -p ralph -- scan --runner claude --model sonnet --focus "risk audit"`
-- `cargo run -p ralph -- task build --runner claude --model opus "Add tests for X"`
+- `ralph task build --runner opencode --model gpt-5.2 "Add tests for X"`
+- `ralph scan --runner opencode --model gpt-5.2 --focus "CI gaps"`
+- `ralph scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"`
+- `ralph scan --runner claude --model sonnet --focus "risk audit"`
+- `ralph task build --runner claude --model opus --rp-on "Add tests for X"`
+- `ralph run one --phase 1` (generate plan only)
 
 Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
 
@@ -60,12 +73,10 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
 {
   "version": 1,
   "agent": {
-    "runner": "opencode",
-    "model": "gpt-5.2",
-    "opencode_bin": "opencode",
-    "gemini_bin": "gemini",
-    "claude_bin": "claude",
-    "two_pass_plan": true
+    "runner": "claude",
+    "model": "sonnet",
+    "two_pass_plan": true,
+    "require_repoprompt": false
   }
 }
 ```
@@ -76,56 +87,14 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
 - **Gemini**: `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs
 - **Claude**: `sonnet` (default), `opus`, or arbitrary model IDs
 
-**Two-pass plan mode**: When enabled (`two_pass_plan: true`), Claude first generates a plan in plan mode, then implements it with auto-approval. This provides better structure and visibility into planned changes. If plan generation fails, falls back to direct implementation. Currently supported for Claude runner only; will expand to OpenCode in the future.
+### RepoPrompt Integration
+Ralph can explicitly require the usage of RepoPrompt tools. When enabled via config (`require_repoprompt: true`) or CLI (`--rp-on`), Ralph will:
+1. Instruct the agent to use RepoPrompt tools for exploration.
+2. During planning, require the agent to use the `context_builder` tool to gather context AND generate the plan in a single step.
 
-Gemini runner prepends a RepoPrompt tooling instruction at the top of every prompt.
+### Two-phase Planning
+When enabled (`two_pass_plan: true`, default: true), Ralph orchestrates execution in two phases for all runners:
+1. **Phase 1 (Planning)**: The agent generates a detailed plan and caches it in `.ralph/cache/plans/<TASK_ID>.md`.
+2. **Phase 2 (Implementation)**: The agent implements the cached plan.
 
-## Supervisor Workflow (Rust)
-
-`ralph run one` (and `ralph run loop`) act as a lightweight supervisor around the execution agent.
-
-Core behavior:
-- Task order is priority: the first `todo` in `.ralph/queue.json` is selected.
-- The supervisor does NOT set `doing`; the agent does.
-- Completed tasks should be moved from `.ralph/queue.json` to `.ralph/done.json`.
-- Agents move completed tasks directly in the JSON files (not via `ralph queue done`).
-- `ralph queue done` can be used to clean up any remaining `done` tasks in the queue.
-- After the agent exits, the supervisor checks the repo state:
-  - If the repo is clean and the task is `done` (archived), it proceeds to the next task.
-  - If the repo is dirty, it runs `make ci`. On green, it commits + pushes all changes.
-  - If the task is not `done`, the supervisor sets `done`, archives the task, and commits + pushes.
-
-Common scenarios:
-- Agent completes normally (done + archive + CI + commit + push) -> supervisor sees clean repo and moves on.
-- Agent leaves dirty repo -> supervisor runs CI, archives, commits, pushes.
-- Agent forgets to mark `done` -> supervisor sets `done`, archives, commits, pushes.
-
-## Stress and Burn-In Tests
-
-Stress tests live in `crates/ralph/tests/stress_queue_contract_test.rs` and include large-scale queue operations, archive/mutate cycles, and JSON schema stress.
-
-Long-run burn-in is guarded by an env var so CI stays deterministic. The canonical way to run it is:
-- `make stress` (runs in release mode with burn-in enabled)
-
-Manual invocation:
-- `RALPH_STRESS_BURN_IN=1 cargo test -p ralph --test stress_queue_contract_test -- --ignored --nocapture`
-
-CI-safe stress coverage (already included in standard test runs):
-- `cargo test -p ralph --test stress_queue_contract_test`
-
-## Release Checklist
-
-Before tagging a release or deploying to production:
-
-1. **Clean Build & CI Gate**:
-   - Run `make clean`
-   - Run `make ci` (must pass 100%)
-2. **Stress Verification**:
-   - Run `make stress`
-   - Ensure no panics or timeouts under load.
-3. **Environment Check**:
-   - Run `cargo run -p ralph -- doctor` (or `ralph doctor` if installed)
-   - Verify all checks pass.
-4. **Manual sanity check**:
-   - `ralph queue list`
-   - `ralph queue next`
+You can force a specific phase using `ralph run one --phase 1` or `ralph run one --phase 2`. Standalone Phase 1 execution allows for manual plan review before implementation.

@@ -11,6 +11,7 @@ fn test_scan_options_default_values() {
         model: Model::Gpt52Codex,
         reasoning_effort: None,
         force: false,
+        repoprompt_required: false,
     };
 
     assert!(opts.focus.is_empty());
@@ -28,6 +29,7 @@ fn test_scan_options_with_focus() {
         model: Model::Gpt52Codex,
         reasoning_effort: None,
         force: false,
+        repoprompt_required: false,
     };
 
     assert_eq!(opts.focus, "test coverage");
@@ -49,6 +51,7 @@ fn test_scan_options_all_runners() {
             model: Model::Gpt52Codex,
             reasoning_effort: None,
             force: false,
+            repoprompt_required: false,
         };
         assert_eq!(opts.focus, "test");
     }
@@ -70,6 +73,7 @@ fn test_scan_options_all_models() {
             model,
             reasoning_effort: None,
             force: false,
+            repoprompt_required: false,
         };
         assert_eq!(opts.focus, "test");
     }
@@ -92,6 +96,7 @@ fn test_scan_options_all_reasoning_efforts() {
             model: Model::Gpt52Codex,
             reasoning_effort: effort,
             force: false,
+            repoprompt_required: false,
         };
         assert_eq!(opts.focus, "test");
     }
@@ -105,6 +110,7 @@ fn test_scan_options_with_force() {
         model: Model::Gpt52Codex,
         reasoning_effort: None,
         force: true,
+        repoprompt_required: false,
     };
 
     assert!(opts.force);
@@ -130,6 +136,7 @@ fn test_scan_options_various_focus_areas() {
             model: Model::Gpt52Codex,
             reasoning_effort: None,
             force: false,
+            repoprompt_required: false,
         };
         assert_eq!(opts.focus, focus);
     }
@@ -143,6 +150,7 @@ fn test_scan_options_empty_focus() {
         model: Model::Gpt52Codex,
         reasoning_effort: None,
         force: false,
+        repoprompt_required: false,
     };
 
     assert!(opts.focus.is_empty());
@@ -157,6 +165,7 @@ fn test_scan_options_whitespace_focus() {
         model: Model::Gpt52Codex,
         reasoning_effort: None,
         force: false,
+        repoprompt_required: false,
     };
 
     assert!(!opts.focus.is_empty());
@@ -181,6 +190,7 @@ fn test_scan_options_special_characters_in_focus() {
             model: Model::Gpt52Codex,
             reasoning_effort: None,
             force: false,
+            repoprompt_required: false,
         };
         assert_eq!(opts.focus, focus);
     }
@@ -203,6 +213,7 @@ fn test_scan_options_multilingual_focus() {
             model: Model::Gpt52Codex,
             reasoning_effort: None,
             force: false,
+            repoprompt_required: false,
         };
         assert_eq!(opts.focus, focus);
     }
@@ -224,6 +235,7 @@ fn test_scan_options_with_specific_file_paths() {
             model: Model::Gpt52Codex,
             reasoning_effort: None,
             force: false,
+            repoprompt_required: false,
         };
         assert_eq!(opts.focus, focus);
     }

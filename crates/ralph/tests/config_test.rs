@@ -531,6 +531,7 @@ fn test_agent_config_merge_from_partial() {
         claude_bin: None,
         two_pass_plan: Some(true),
         claude_permission_mode: None,
+        require_repoprompt: None,
     };
 
     let override_config = AgentConfig {
@@ -543,6 +544,7 @@ fn test_agent_config_merge_from_partial() {
         claude_bin: None,
         two_pass_plan: None,
         claude_permission_mode: None,
+        require_repoprompt: None,
     };
 
     base.merge_from(override_config);

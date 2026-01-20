@@ -8,6 +8,7 @@ pub struct ScanOptions {
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
     pub force: bool,
+    pub repoprompt_required: bool,
 }
 
 pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
@@ -40,12 +41,13 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
 
     let template = prompts::load_scan_prompt(&resolved.repo_root)?;
     let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
-    let prompt =
+    let mut prompt =
         prompts::render_scan_prompt(&template, &opts.focus, project_type, &resolved.config)?;
+
+    prompt = prompts::wrap_with_repoprompt_requirement(&prompt, opts.repoprompt_required);
 
     let bins = runner::resolve_binaries(&resolved.config.agent);
     // Two-pass mode disabled for scan (only generates findings, should not implement)
-    let two_pass_plan = false;
     // Force BypassPermissions for scan (needs tool access for exploration)
     let permission_mode = Some(ClaudePermissionMode::BypassPermissions);
 
@@ -58,7 +60,6 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             reasoning_effort: opts.reasoning_effort,
             prompt: &prompt,
             timeout: None,
-            two_pass_plan,
             permission_mode,
             revert_on_error: true,
             output_handler: None,

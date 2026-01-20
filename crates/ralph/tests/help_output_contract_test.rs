@@ -110,8 +110,39 @@ fn run_one_help_mentions_flags_and_examples() {
     assert_contains(&combined, "--runner");
     assert_contains(&combined, "--model");
     assert_contains(&combined, "--effort");
+    assert_contains(&combined, "--phase");
+    assert_contains(&combined, "--rp-on");
+    assert_contains(&combined, "--rp-off");
 
     // Examples should demonstrate explicit selection.
     assert_contains(&combined, "ralph run one");
     assert_contains(&combined, "--runner");
+}
+
+#[test]
+fn task_build_help_mentions_rp_flags() {
+    let (status, stdout, stderr) = run(&["task", "build", "--help"]);
+    assert!(
+        status.success(),
+        "expected `ralph task build --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+
+    assert_contains(&combined, "--rp-on");
+    assert_contains(&combined, "--rp-off");
+}
+
+#[test]
+fn scan_help_mentions_rp_flags() {
+    let (status, stdout, stderr) = run(&["scan", "--help"]);
+    assert!(
+        status.success(),
+        "expected `ralph scan --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+
+    assert_contains(&combined, "--rp-on");
+    assert_contains(&combined, "--rp-off");
 }

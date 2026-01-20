@@ -7,6 +7,7 @@ mod doctor_cmd;
 mod fsutil;
 mod init_cmd;
 mod outpututil;
+mod promptflow;
 mod queue;
 mod redaction;
 mod reports;
@@ -23,6 +24,7 @@ mod tui;
 
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use promptflow::RunPhase;
 
 use crate::contracts::{QueueFile, Runner as RunnerKind, Task, TaskStatus};
 
@@ -478,8 +480,10 @@ fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     match cmd {
         RunCommand::One(args) => {
+            let mut overrides = resolve_run_agent_overrides(&args.agent)?;
+            overrides.phase = args.phase;
+
             if args.interactive {
-                let overrides = resolve_run_agent_overrides(&args.agent)?;
                 // Capture the values we need by moving them into the factory
                 let resolved_clone = resolved.clone();
                 let runner_factory = move |task_id: String, handler: runner::OutputHandler| {
@@ -500,14 +504,14 @@ fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                 let _ = tui::run_tui(&resolved.queue_path, runner_factory)?;
                 Ok(())
             } else {
-                let overrides = resolve_run_agent_overrides(&args.agent)?;
                 let _ = run_cmd::run_one(&resolved, &overrides, force)?;
                 Ok(())
             }
         }
         RunCommand::Loop(args) => {
+            let overrides = resolve_run_agent_overrides(&args.agent)?;
+
             if args.interactive {
-                let overrides = resolve_run_agent_overrides(&args.agent)?;
                 // Capture the values we need by moving them into the factory
                 let resolved_clone = resolved.clone();
                 let runner_factory = move |task_id: String, handler: runner::OutputHandler| {
@@ -528,7 +532,6 @@ fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                 let _ = tui::run_tui(&resolved.queue_path, runner_factory)?;
                 Ok(())
             } else {
-                let overrides = resolve_run_agent_overrides(&args.agent)?;
                 run_cmd::run_loop(
                     &resolved,
                     run_cmd::RunLoopOptions {
@@ -564,10 +567,21 @@ fn handle_task(cmd: TaskCommand, force: bool) -> Result<()> {
                     model: settings.model,
                     reasoning_effort: settings.reasoning_effort,
                     force,
+                    repoprompt_required: resolve_rp_required(args.rp_on, args.rp_off, &resolved),
                 },
             )
         }
     }
+}
+
+fn resolve_rp_required(rp_on: bool, rp_off: bool, resolved: &config::Resolved) -> bool {
+    if rp_on {
+        return true;
+    }
+    if rp_off {
+        return false;
+    }
+    resolved.config.agent.require_repoprompt.unwrap_or(false)
 }
 
 fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
@@ -587,6 +601,7 @@ fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
             model: settings.model,
             reasoning_effort: settings.reasoning_effort,
             force,
+            repoprompt_required: resolve_rp_required(args.rp_on, args.rp_off, &resolved),
         },
     )
 }
@@ -625,10 +640,20 @@ fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<run_cmd::AgentOver
         runner::validate_model_for_runner(runner_kind, model)?;
     }
 
+    let repoprompt_required = if args.rp_on {
+        Some(true)
+    } else if args.rp_off {
+        Some(false)
+    } else {
+        None
+    };
+
     Ok(run_cmd::AgentOverrides {
         runner,
         model,
         reasoning_effort,
+        phase: None, // Set by caller if needed (run one)
+        repoprompt_required,
     })
 }
 
@@ -718,8 +743,8 @@ struct ConfigArgs {
 
 #[derive(Args)]
 #[command(
-    about = "Run the Ralph supervisor (executes queued tasks via codex/opencode/gemini)",
-    after_long_help = "Runner selection:\n  - `ralph run` selects runner/model/effort with this precedence:\n      1) CLI overrides (flags on `run one` / `run loop`)\n      2) the task's `agent` override (if present in .ralph/queue.json)\n      3) otherwise the resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\nNotes:\n  - Allowed runners: codex, opencode, gemini\n  - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini accept arbitrary model ids)\n  - `--effort` is codex-only and is ignored for opencode.\n\nTo change defaults for this repo, edit .ralph/config.json:\n  version: 1\n  agent:\n    runner: opencode\n    model: gpt-5.2\n    gemini_bin: gemini\n\nExamples:\n  ralph run one\n  ralph run one --runner opencode --model gpt-5.2\n  ralph run one --runner codex --model gpt-5.2-codex --effort high\n  ralph run one --runner gemini --model gemini-3-flash-preview\n  ralph run loop --max-tasks 0\n  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2"
+    about = "Run the Ralph supervisor (executes queued tasks via codex/opencode/gemini/claude)",
+    after_long_help = "Runner selection:\n  - `ralph run` selects runner/model/effort with this precedence:\n      1) CLI overrides (flags on `run one` / `run loop`)\n      2) the task's `agent` override (if present in .ralph/queue.json)\n      3) otherwise the resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\nNotes:\n  - Allowed runners: codex, opencode, gemini, claude\n  - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude accept arbitrary model ids)\n  - `--effort` is codex-only and is ignored for other runners.\n\nTo change defaults for this repo, edit .ralph/config.json:\n  version: 1\n  agent:\n    runner: claude\n    model: sonnet\n    gemini_bin: gemini\n\nExamples:\n  ralph run one\n  ralph run one --runner opencode --model gpt-5.2\n  ralph run one --runner codex --model gpt-5.2-codex --effort high\n  ralph run one --runner gemini --model gemini-3-flash-preview\n  ralph run loop --max-tasks 0\n  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2"
 )]
 struct RunArgs {
     #[command(subcommand)]
@@ -785,6 +810,14 @@ struct TaskBuildArgs {
     /// Ignored for opencode and gemini.
     #[arg(long)]
     effort: Option<String>,
+
+    /// Force RepoPrompt required (must use context_builder).
+    #[arg(long, conflicts_with = "rp_off")]
+    rp_on: bool,
+
+    /// Force RepoPrompt not required.
+    #[arg(long, conflicts_with = "rp_on")]
+    rp_off: bool,
 }
 
 #[derive(Args)]
@@ -809,6 +842,14 @@ struct ScanArgs {
     /// Ignored for opencode and gemini.
     #[arg(long)]
     effort: Option<String>,
+
+    /// Force RepoPrompt required (must use context_builder).
+    #[arg(long, conflicts_with = "rp_off")]
+    rp_on: bool,
+
+    /// Force RepoPrompt not required.
+    #[arg(long, conflicts_with = "rp_on")]
+    rp_off: bool,
 }
 
 #[derive(Subcommand)]
@@ -910,18 +951,26 @@ enum RunCommand {
 
 #[derive(Args, Clone, Debug, Default)]
 struct RunAgentArgs {
-    /// Runner override for this invocation (codex, opencode, gemini). Overrides task.agent and config.
+    /// Runner override for this invocation (codex, opencode, gemini, claude). Overrides task.agent and config.
     #[arg(long)]
     runner: Option<String>,
 
     /// Model override for this invocation. Overrides task.agent and config.
-    /// Allowed: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview (codex supports only gpt-5.2-codex/gpt-5.2; opencode/gemini accept arbitrary model ids).
+    /// Allowed: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus (codex supports only gpt-5.2-codex/gpt-5.2; opencode/gemini/claude accept arbitrary model ids).
     #[arg(long)]
     model: Option<String>,
 
-    /// Codex reasoning effort override (minimal, low, medium, high). Ignored for opencode and gemini.
+    /// Codex reasoning effort override (minimal, low, medium, high). Ignored for other runners.
     #[arg(long)]
     effort: Option<String>,
+
+    /// Force RepoPrompt required (must use context_builder).
+    #[arg(long, conflicts_with = "rp_off")]
+    rp_on: bool,
+
+    /// Force RepoPrompt not required.
+    #[arg(long, conflicts_with = "rp_on")]
+    rp_off: bool,
 }
 
 #[derive(Args)]
@@ -930,8 +979,21 @@ struct RunOneArgs {
     #[arg(short = 'i', long)]
     interactive: bool,
 
+    /// Force execution of specific phase (1=Plan, 2=Implement).
+    /// If omitted, runs both phases (if two-phase enabled).
+    #[arg(long, value_parser = parse_phase)]
+    phase: Option<RunPhase>,
+
     #[command(flatten)]
     agent: RunAgentArgs,
+}
+
+fn parse_phase(s: &str) -> Result<RunPhase, String> {
+    match s {
+        "1" => Ok(RunPhase::Phase1),
+        "2" => Ok(RunPhase::Phase2),
+        _ => Err(format!("invalid phase '{}', expected 1 or 2", s)),
+    }
 }
 
 #[derive(Args)]

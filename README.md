@@ -6,8 +6,8 @@ Ralph is a tool for managing AI agent loops with a structured YAML task queue.
 
 The Ralph CLI is in `crates/ralph/`.
 
-- Queue (source of truth): `.ralph/queue.yaml`
-- Done archive: `.ralph/done.yaml`
+- Queue (source of truth): `.ralph/queue.json`
+- Done archive: `.ralph/done.json`
 - Prompt templates: built-in defaults; override in `.ralph/prompts/`
 - **Production Verification:** See `.ralph/README.md`.
 
@@ -41,36 +41,31 @@ Ralph embeds default prompts in the Rust binary. To override them for a repo, ad
 If a file is missing, Ralph falls back to the embedded default. Any override must keep required
 placeholders (for example `{{USER_REQUEST}}` in the task builder prompt).
 
-## Runners (OpenCode + Gemini + Claude)
+## Runners (Codex + OpenCode + Gemini + Claude)
 
-Ralph supports the OpenCode, Gemini, and Claude CLIs as runners alongside Codex.
+Ralph supports Codex, OpenCode, Gemini, and Claude CLIs as runners.
 
 Quick usage:
-- Ensure `opencode` is installed and on `PATH` (or set `agent.opencode_bin`).
-- Ensure `gemini` is installed and on `PATH` (or set `agent.gemini_bin`).
-- Ensure `claude` is installed and on `PATH` (or set `agent.claude_bin`).
-- Use `--runner opencode` on `task build` or `scan`:
+- Ensure runner binaries are installed and on `PATH`.
+- Use `--runner <kind>` on `task build`, `scan`, or `run`:
   - `cargo run -p ralph -- task build --runner opencode --model gpt-5.2 "Add tests for X"`
   - `cargo run -p ralph -- scan --runner opencode --model gpt-5.2 --focus "CI gaps"`
-- Use `--runner gemini`:
-  - `cargo run -p ralph -- scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"`
-- Use `--runner claude`:
-  - `cargo run -p ralph -- scan --runner claude --model sonnet --focus "risk audit"`
-  - `cargo run -p ralph -- task build --runner claude --model opus "Add tests for X"`
+  - `cargo run -p ralph -- run one --runner claude --model opus`
 
 Defaults and config:
 - `ralph run one` pulls runner/model from the task `agent` block if present, otherwise from config.
-- Configure defaults in `.ralph/config.yaml` (or `~/.config/ralph/config.yaml`):
+- Configure defaults in `.ralph/config.json` (or `~/.config/ralph/config.json`):
 
-```yaml
-version: 1
-agent:
-  runner: opencode
-  model: gpt-5.2
-  opencode_bin: opencode
-  gemini_bin: gemini
-  claude_bin: claude
-  two_pass_plan: true
+```json
+{
+  "version": 1,
+  "agent": {
+    "runner": "claude",
+    "model": "sonnet",
+    "two_pass_plan": true,
+    "require_repoprompt": false
+  }
+}
 ```
 
 **Allowed models by runner:**
@@ -79,15 +74,21 @@ agent:
 - **Gemini**: `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs
 - **Claude**: `sonnet` (default), `opus`, or arbitrary model IDs
 
-**Two-pass plan mode**: When enabled (`two_pass_plan: true`), Claude first generates a plan in plan mode, then implements it with auto-approval. This provides better structure and visibility into planned changes. If plan generation fails, falls back to direct implementation. Currently supported for Claude runner only; will expand to OpenCode in the future.
+### RepoPrompt Integration
+Ralph can explicitly require RepoPrompt usage. When enabled via config (`require_repoprompt: true`) or CLI (`--rp-on`), Ralph instructs the agent to use RepoPrompt tools for exploration and planning.
 
-Gemini runner prepends a RepoPrompt tooling instruction at the top of every prompt.
+### Two-phase Planning
+When enabled (`two_pass_plan: true`, default: true), Ralph orchestrates execution in two phases for ALL runners:
+1. **Phase 1 (Planning)**: The agent generates a detailed plan and caches it in `.ralph/cache/plans/<TASK_ID>.md`.
+2. **Phase 2 (Implementation)**: The agent implements the cached plan.
+
+Use `ralph run one --phase 1` to generate a plan for manual review, then `ralph run one --phase 2` to execute it.
 
 ## Configuration
 
-Ralph uses a two-layer YAML config:
-- Global: `~/.config/ralph/config.yaml`
-- Project: `.ralph/config.yaml` (overrides global)
+Ralph uses a two-layer JSON config:
+- Global: `~/.config/ralph/config.json`
+- Project: `.ralph/config.json` (overrides global)
 
 ## Project Types
 

@@ -14,7 +14,6 @@ pub struct RunnerInvocation<'a> {
     pub reasoning_effort: Option<ReasoningEffort>,
     pub prompt: &'a str,
     pub timeout: Option<Duration>,
-    pub two_pass_plan: bool,
     pub permission_mode: Option<ClaudePermissionMode>,
     /// If true, revert uncommitted changes on runner errors.
     /// Set to false for task build to preserve user's existing work.
@@ -52,7 +51,6 @@ where
         reasoning_effort,
         prompt,
         timeout,
-        two_pass_plan,
         permission_mode,
         revert_on_error,
         output_handler,
@@ -74,7 +72,6 @@ where
         reasoning_effort,
         prompt,
         timeout,
-        two_pass_plan,
         permission_mode,
         output_handler,
     ) {

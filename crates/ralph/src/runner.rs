@@ -4,7 +4,6 @@ use crate::contracts::{
     AgentConfig, ClaudePermissionMode, Model, ReasoningEffort, Runner, TaskAgent,
 };
 use crate::fsutil;
-use crate::prompts::{TASK_COMPLETION_WORKFLOW, TASK_STATUS_DOING_INSTRUCTION};
 use crate::redaction::{redact_text, RedactedString};
 use anyhow::{anyhow, bail, Context, Result};
 use serde_json::Value as JsonValue;
@@ -67,8 +66,6 @@ pub enum RunnerError {
 }
 
 const OPENCODE_PROMPT_FILE_MESSAGE: &str = "Follow the attached prompt file verbatim.";
-const GEMINI_PROMPT_PREFIX: &str =
-    "If RepoPrompt tools are available, you MUST use them for file search, reading, and edits (do not bypass them).";
 const DEFAULT_GEMINI_MODEL: &str = "gemini-3-flash-preview";
 const DEFAULT_CLAUDE_MODEL: &str = "sonnet";
 const TEMP_RETENTION: Duration = Duration::from_secs(60 * 60 * 24 * 7);
@@ -288,19 +285,18 @@ pub fn run_prompt(
     reasoning_effort: Option<ReasoningEffort>,
     prompt: &str,
     timeout: Option<Duration>,
-    two_pass_plan: bool,
     permission_mode: Option<ClaudePermissionMode>,
     output_handler: Option<OutputHandler>,
 ) -> Result<RunnerOutput, RunnerError> {
     validate_model_for_runner(runner, &model).map_err(RunnerError::Other)?;
-    let prepared_prompt = prepare_prompt(runner, prompt);
+    // Gemini prefix logic removed as requested, now using raw prompt
     let output = match runner {
         Runner::Codex => run_codex(
             work_dir,
             bins.codex,
             model,
             reasoning_effort,
-            &prepared_prompt,
+            prompt,
             timeout,
             output_handler.clone(),
         )?,
@@ -308,16 +304,15 @@ pub fn run_prompt(
             work_dir,
             bins.opencode,
             &model,
-            &prepared_prompt,
+            prompt,
             timeout,
-            two_pass_plan,
             output_handler.clone(),
         )?,
         Runner::Gemini => run_gemini(
             work_dir,
             bins.gemini,
             model,
-            &prepared_prompt,
+            prompt,
             timeout,
             output_handler.clone(),
         )?,
@@ -325,9 +320,8 @@ pub fn run_prompt(
             work_dir,
             bins.claude,
             model,
-            &prepared_prompt,
+            prompt,
             timeout,
-            two_pass_plan,
             permission_mode,
             output_handler,
         )?,
@@ -349,18 +343,6 @@ pub fn run_prompt(
     }
 
     Ok(output)
-}
-
-fn prepare_prompt(runner: Runner, prompt: &str) -> String {
-    if runner == Runner::Gemini {
-        let trimmed = prompt.trim_start();
-        if trimmed.is_empty() {
-            return format!("{GEMINI_PROMPT_PREFIX}\n");
-        }
-        format!("{GEMINI_PROMPT_PREFIX}\n\n{prompt}")
-    } else {
-        prompt.to_string()
-    }
 }
 
 fn run_codex(
@@ -392,22 +374,6 @@ fn run_codex(
 }
 
 fn run_opencode(
-    work_dir: &Path,
-    bin: &str,
-    model: &Model,
-    prompt: &str,
-    timeout: Option<Duration>,
-    two_pass_plan: bool,
-    output_handler: Option<OutputHandler>,
-) -> Result<RunnerOutput, RunnerError> {
-    if two_pass_plan {
-        run_opencode_two_pass(work_dir, bin, model, prompt, timeout, output_handler)
-    } else {
-        run_opencode_direct(work_dir, bin, model, prompt, timeout, output_handler)
-    }
-}
-
-fn run_opencode_direct(
     work_dir: &Path,
     bin: &str,
     model: &Model,
@@ -448,93 +414,6 @@ fn run_opencode_direct(
     stream_command(cmd, None, bin, timeout, output_handler)
 }
 
-fn run_opencode_two_pass(
-    work_dir: &Path,
-    bin: &str,
-    model: &Model,
-    prompt: &str,
-    timeout: Option<Duration>,
-    output_handler: Option<OutputHandler>,
-) -> Result<RunnerOutput, RunnerError> {
-    log::info!("OpenCode two-pass mode: generating plan first");
-
-    // Pass 1: Generate plan
-    let plan_output = match generate_opencode_plan(work_dir, bin, model, prompt, timeout) {
-        Ok(plan) => plan,
-        Err(e) => {
-            log::warn!(
-                "Plan generation failed: {}, falling back to direct implementation",
-                e
-            );
-            return run_opencode_direct(work_dir, bin, model, prompt, timeout, output_handler);
-        }
-    };
-
-    // Extract plan from stdout (no JSON parsing needed for OpenCode)
-    let plan_text = plan_output.stdout.trim().to_string();
-
-    // Pass 2: Implement
-    let implementation_prompt = build_opencode_implementation_prompt(&plan_text);
-    log::info!(
-        "OpenCode two-pass mode: implementing plan ({} bytes)",
-        implementation_prompt.len()
-    );
-
-    run_opencode_direct(
-        work_dir,
-        bin,
-        model,
-        &implementation_prompt,
-        timeout,
-        output_handler,
-    )
-}
-
-fn generate_opencode_plan(
-    work_dir: &Path,
-    bin: &str,
-    model: &Model,
-    prompt: &str,
-    timeout: Option<Duration>,
-) -> Result<RunnerOutput, RunnerError> {
-    let planning_prompt = build_opencode_planning_prompt(prompt);
-    run_opencode_direct(work_dir, bin, model, &planning_prompt, timeout, None)
-}
-
-fn build_opencode_planning_prompt(prompt: &str) -> String {
-    format!(
-        r#"PLANNING MODE - PHASE 1 OF 2
-
-{TASK_STATUS_DOING_INSTRUCTION}
-
-## AFTER STATUS UPDATE: Read-only exploration
-- Use RepoPrompt context_builder to generate the plan
-- DO NOT make any other edits or changes
-- DO NOT implement anything
-- Only explore, then output your plan
-
-Implementation happens in Phase 2.
-
----
-
-{prompt}"#
-    )
-}
-
-fn build_opencode_implementation_prompt(plan_text: &str) -> String {
-    format!(
-        r#"IMPLEMENTATION MODE - PHASE 2 OF 2
-
-Implement the plan below completely and correctly.
-
-{TASK_COMPLETION_WORKFLOW}
-
-## PLAN TO IMPLEMENT:
-
-{plan_text}"#
-    )
-}
-
 fn run_gemini(
     work_dir: &Path,
     bin: &str,
@@ -553,41 +432,7 @@ fn run_gemini(
     stream_command(cmd, Some(prompt.as_bytes()), bin, timeout, output_handler)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn run_claude(
-    work_dir: &Path,
-    bin: &str,
-    model: Model,
-    prompt: &str,
-    timeout: Option<Duration>,
-    two_pass_plan: bool,
-    permission_mode: Option<ClaudePermissionMode>,
-    output_handler: Option<OutputHandler>,
-) -> Result<RunnerOutput, RunnerError> {
-    if two_pass_plan {
-        run_claude_two_pass(
-            work_dir,
-            bin,
-            model,
-            prompt,
-            timeout,
-            permission_mode,
-            output_handler,
-        )
-    } else {
-        run_claude_direct(
-            work_dir,
-            bin,
-            model,
-            prompt,
-            timeout,
-            permission_mode,
-            output_handler,
-        )
-    }
-}
-
-fn run_claude_direct(
     work_dir: &Path,
     bin: &str,
     model: Model,
@@ -616,154 +461,6 @@ fn permission_mode_to_arg(mode: ClaudePermissionMode) -> &'static str {
         ClaudePermissionMode::AcceptEdits => "acceptEdits",
         ClaudePermissionMode::BypassPermissions => "bypassPermissions",
     }
-}
-
-fn run_claude_two_pass(
-    work_dir: &Path,
-    bin: &str,
-    model: Model,
-    prompt: &str,
-    timeout: Option<Duration>,
-    permission_mode: Option<ClaudePermissionMode>,
-    output_handler: Option<OutputHandler>,
-) -> Result<RunnerOutput, RunnerError> {
-    log::info!("Claude two-pass mode: generating plan first");
-
-    // Pass 1: Generate plan with bypassPermissions + planning constraint
-    let plan_output = match generate_claude_plan(work_dir, bin, &model, prompt, timeout) {
-        Ok(plan) => plan,
-        Err(e) => {
-            log::warn!(
-                "Plan generation failed: {}, falling back to direct implementation",
-                e
-            );
-            return run_claude_direct(
-                work_dir,
-                bin,
-                model,
-                prompt,
-                timeout,
-                permission_mode,
-                output_handler,
-            );
-        }
-    };
-
-    // Extract plan from stream-json output
-    let plan_text = match parse_stream_json_plan(&plan_output.stdout) {
-        Ok(text) => text,
-        Err(e) => {
-            log::warn!(
-                "Failed to parse plan from stream-json: {}, using raw output",
-                e
-            );
-            plan_output.stdout.trim().to_string()
-        }
-    };
-
-    // Pass 2: Implement with configured permission mode
-    let implementation_prompt = build_claude_implementation_prompt(&plan_text);
-
-    log::info!(
-        "Claude two-pass mode: implementing plan ({} bytes)",
-        implementation_prompt.len()
-    );
-
-    run_claude_direct(
-        work_dir,
-        bin,
-        model,
-        &implementation_prompt,
-        timeout,
-        permission_mode,
-        output_handler,
-    )
-}
-
-fn generate_claude_plan(
-    work_dir: &Path,
-    bin: &str,
-    model: &Model,
-    prompt: &str,
-    timeout: Option<Duration>,
-) -> Result<RunnerOutput, RunnerError> {
-    // Add planning constraint to the prompt
-    let planning_prompt = build_claude_planning_prompt(prompt);
-
-    let mut cmd = Command::new(bin);
-    cmd.current_dir(work_dir);
-    ensure_self_on_path(&mut cmd);
-    cmd.arg("-p")
-        .arg("--model")
-        .arg(model.as_str())
-        .arg("--permission-mode")
-        .arg("bypassPermissions")
-        .arg("--output-format")
-        .arg("stream-json")
-        .arg("--verbose");
-
-    run_with_streaming_json(cmd, Some(planning_prompt.as_bytes()), bin, timeout, None)
-}
-
-fn build_claude_planning_prompt(prompt: &str) -> String {
-    format!(
-        r#"PLANNING MODE - PHASE 1 OF 2
-
-{TASK_STATUS_DOING_INSTRUCTION}
-
-## AFTER STATUS UPDATE: Read-only exploration
-- Use RepoPrompt context_builder to generate the plan
-- DO NOT make any other edits or changes
-- DO NOT implement anything
-- Only explore, then output your plan
-
-Implementation happens in Phase 2.
-
----
-
-{prompt}"#
-    )
-}
-
-fn build_claude_implementation_prompt(plan_text: &str) -> String {
-    format!(
-        r#"IMPLEMENTATION MODE - PHASE 2 OF 2
-
-Implement the plan below completely and correctly.
-
-{TASK_COMPLETION_WORKFLOW}
-
-## PLAN TO IMPLEMENT:
-
-{plan_text}"#
-    )
-}
-
-/// Parse stream-json output and extract the result field
-fn parse_stream_json_plan(json_output: &str) -> Result<String> {
-    let mut last_result = None;
-
-    for line in json_output.lines() {
-        if let Ok(json) = serde_json::from_str::<JsonValue>(line) {
-            if let Some(result) = json.get("result").and_then(|r| r.as_str()) {
-                last_result = Some(result.to_string());
-            }
-            // Log permission denials
-            if let Some(denials) = json.get("permission_denials").and_then(|d| d.as_array()) {
-                for denial in denials {
-                    if let Some(tool_name) = denial.get("tool_name").and_then(|t| t.as_str()) {
-                        if let Some(input) = denial.get("tool_input") {
-                            log::warn!("Permission denied: {} (input: {})", tool_name, input);
-                        } else {
-                            log::warn!("Permission denied: {}", tool_name);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    last_result.ok_or_else(|| anyhow!("No result field found in stream-json output"))
 }
 
 /// Stream JSON output with visual filtering
@@ -1243,7 +940,7 @@ fn wait_for_child(
                 }
                 return Ok(status);
             }
-            Ok(None) => {}
+            Ok(None) => {} // Continue waiting
             Err(e) => return Err(RunnerError::Io(e)),
         }
 
@@ -1373,53 +1070,5 @@ mod tests {
         assert!(msg.contains("bearer [REDACTED]"));
         assert!(!msg.contains("secret123"));
         assert!(!msg.contains("abc123def456"));
-    }
-
-    #[test]
-    fn build_claude_planning_prompt_requires_context_builder_and_plan_only() {
-        let user_prompt = "Do the thing.";
-        let planning_prompt = build_claude_planning_prompt(user_prompt);
-
-        assert!(planning_prompt.contains("PLANNING MODE - PHASE 1 OF 2"));
-        assert!(planning_prompt.contains("Set its `status` to `doing`"));
-        assert!(planning_prompt.contains("ONLY edit allowed during planning"));
-        assert!(planning_prompt.contains("Implementation happens in Phase 2"));
-        assert!(planning_prompt.ends_with(user_prompt));
-    }
-
-    #[test]
-    fn build_opencode_planning_prompt_requires_context_builder() {
-        let user_prompt = "Do the thing.";
-        let planning_prompt = build_opencode_planning_prompt(user_prompt);
-        assert!(planning_prompt.contains("PLANNING MODE - PHASE 1 OF 2"));
-        assert!(planning_prompt.contains("Set its `status` to `doing`"));
-        assert!(planning_prompt.contains("ONLY edit allowed during planning"));
-    }
-
-    #[test]
-    fn build_claude_implementation_prompt_contains_completion_workflow() {
-        let plan = "Step 1: Do this\nStep 2: Do that";
-        let impl_prompt = build_claude_implementation_prompt(plan);
-
-        assert!(impl_prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 2"));
-        assert!(impl_prompt.contains("Set task `status: done`"));
-        assert!(impl_prompt.contains("completed_at"));
-        assert!(impl_prompt.contains("Move task from `.ralph/queue.json`"));
-        assert!(impl_prompt.contains("`.ralph/done.json`"));
-        assert!(impl_prompt.contains("Run `make ci`"));
-        assert!(impl_prompt.contains("must pass 100%"));
-        assert!(impl_prompt.ends_with(plan));
-    }
-
-    #[test]
-    fn build_opencode_implementation_prompt_contains_completion_workflow() {
-        let plan = "Step 1: Do this\nStep 2: Do that";
-        let impl_prompt = build_opencode_implementation_prompt(plan);
-
-        assert!(impl_prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 2"));
-        assert!(impl_prompt.contains("Set task `status: done`"));
-        assert!(impl_prompt.contains("Run `make ci`"));
-        assert!(impl_prompt.contains("git status --porcelain"));
-        assert!(impl_prompt.ends_with(plan));
     }
 }

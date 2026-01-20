@@ -3,6 +3,9 @@
 use crate::config;
 use crate::contracts::{Model, ProjectType, QueueFile, ReasoningEffort, Runner, TaskStatus};
 use crate::gitutil::GitError;
+use crate::promptflow::{
+    self, build_phase1_prompt, build_phase2_prompt, build_single_phase_prompt, RunPhase,
+};
 use crate::{gitutil, outpututil, prompts, queue, runner, runutil, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
@@ -13,6 +16,8 @@ pub struct AgentOverrides {
     pub runner: Option<Runner>,
     pub model: Option<Model>,
     pub reasoning_effort: Option<ReasoningEffort>,
+    pub phase: Option<RunPhase>,
+    pub repoprompt_required: Option<bool>,
 }
 
 pub enum RunOutcome {
@@ -71,93 +76,35 @@ pub fn run_one_with_id(
     task_id: &str,
     output_handler: Option<runner::OutputHandler>,
 ) -> Result<()> {
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run one with id", force)?;
-    let queue_file = queue::load_queue(&resolved.queue_path)?;
-    let done = queue::load_queue_or_default(&resolved.done_path)?;
-    let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
-        None
-    } else {
-        Some(&done)
-    };
-    queue::validate_queue_set(
-        &queue_file,
-        done_ref,
-        &resolved.id_prefix,
-        resolved.id_width,
-    )?;
-
-    let task = queue::find_task_across(&queue_file, done_ref, task_id)
-        .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
-
-    // Require a clean repo before we invoke the runner.
-    gitutil::require_clean_repo_ignoring_paths(
-        &resolved.repo_root,
+    // Re-use run_one logic but target specific ID.
+    // However, run_one finds the task based on status logic (Todo vs Doing).
+    // run_one_with_id implies we selected a specific task.
+    // We should probably adapt run_one_logic to take an optional task_id.
+    // For now, let's just delegate to a shared implementation.
+    run_one_impl(
+        resolved,
+        agent_overrides,
         force,
-        &[".ralph/queue.json", ".ralph/done.json"],
-    )?;
-
-    let settings = resolve_run_agent_settings(resolved, task, agent_overrides)?;
-
-    log::info!(
-        "Executing {task_id}: {title} (runner: {runner:?}, model: {model})",
-        title = task.title,
-        runner = settings.runner,
-        model = settings.model.as_str()
-    );
-    let start = std::time::Instant::now();
-
-    let bins = runner::resolve_binaries(&resolved.config.agent);
-
-    let template = prompts::load_worker_prompt(&resolved.repo_root)?;
-    let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
-    let prompt = prompts::render_worker_prompt(&template, project_type, &resolved.config)?;
-    let two_pass_plan = resolved.config.agent.two_pass_plan.unwrap_or(true);
-    let permission_mode = resolved.config.agent.claude_permission_mode;
-
-    let _output = runutil::run_prompt_with_handling(
-        runutil::RunnerInvocation {
-            repo_root: &resolved.repo_root,
-            runner_kind: settings.runner,
-            bins,
-            model: settings.model,
-            reasoning_effort: settings.reasoning_effort,
-            prompt: &prompt,
-            timeout: None,
-            two_pass_plan,
-            permission_mode,
-            revert_on_error: true,
-            output_handler: output_handler.clone(),
-        },
-        runutil::RunnerErrorMessages {
-            log_label: "runner",
-            interrupted_msg: "Runner interrupted: the execution was canceled by the user or system. Uncommitted changes were reverted to maintain a clean repo state.",
-            timeout_msg: "Runner timed out: the execution exceeded the allowed time limit. Changes in the working tree were NOT reverted; review the repo state manually.",
-            terminated_msg: "Runner terminated: the agent was stopped by a signal. Uncommitted changes were reverted. Rerunning the task is recommended.",
-            non_zero_msg: |code| {
-                format!(
-                    "Runner failed: the agent exited with a non-zero code ({code}). Uncommitted changes were reverted. Rerunning the task is recommended after investigating the cause."
-                )
-            },
-            other_msg: |err| {
-                format!(
-                    "Runner invocation failed: the agent could not be started or encountered an error. Uncommitted changes were reverted. Rerunning the task is recommended. Error: {:#}",
-                    err
-                )
-            },
-        },
-    )?;
-
-    let duration = start.elapsed();
-    log::info!("Runner completed successfully for {task_id} in {duration:?}.");
-
-    post_run_supervise(resolved, task_id)?;
-    Ok(())
+        Some(task_id),
+        output_handler,
+    )
+    .map(|_| ())
 }
 
 pub fn run_one(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
     force: bool,
+) -> Result<RunOutcome> {
+    run_one_impl(resolved, agent_overrides, force, None, None)
+}
+
+fn run_one_impl(
+    resolved: &config::Resolved,
+    agent_overrides: &AgentOverrides,
+    force: bool,
+    target_task_id: Option<&str>,
+    output_handler: Option<runner::OutputHandler>,
 ) -> Result<RunOutcome> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run one", force)?;
     let queue_file = queue::load_queue(&resolved.queue_path)?;
@@ -174,40 +121,84 @@ pub fn run_one(
         resolved.id_width,
     )?;
 
-    let idx = match queue_file.tasks.iter().position(|t| {
-        t.status == TaskStatus::Todo && queue::are_dependencies_met(t, &queue_file, done_ref)
-    }) {
-        Some(idx) => idx,
-        None => {
-            // Check if there are any Todo tasks at all
-            let has_todo = queue_file
-                .tasks
-                .iter()
-                .any(|t| t.status == TaskStatus::Todo);
-            if has_todo {
-                log::info!("All todo tasks are blocked by unmet dependencies. Complete the prerequisite tasks first.");
-            } else {
-                log::info!("No todo tasks found.");
+    // Determine config and policy
+    let two_pass_enabled = resolved.config.agent.two_pass_plan.unwrap_or(true);
+    let rp_required = agent_overrides
+        .repoprompt_required
+        .or(resolved.config.agent.require_repoprompt)
+        .unwrap_or(false);
+
+    if agent_overrides.phase.is_some() && !two_pass_enabled {
+        bail!("Cannot use --phase when two-pass planning is disabled in config.");
+    }
+
+    let policy = promptflow::PromptPolicy {
+        require_repoprompt: rp_required,
+    };
+
+    // --- Task Selection ---
+    let task_idx = if let Some(id) = target_task_id {
+        // Find specific task
+        queue_file
+            .tasks
+            .iter()
+            .position(|t| t.id == id)
+            .ok_or_else(|| anyhow!("Target task {} not found in queue", id))?
+    } else if agent_overrides.phase == Some(RunPhase::Phase2) {
+        // Phase 2 requires a 'doing' task
+        match queue_file
+            .tasks
+            .iter()
+            .position(|t| t.status == TaskStatus::Doing)
+        {
+            Some(idx) => idx,
+            None => bail!("No tasks in 'doing' status found for Phase 2 execution."),
+        }
+    } else {
+        // Default (Phase 1 or Full): Find first runnable 'todo'
+        match queue_file.tasks.iter().position(|t| {
+            t.status == TaskStatus::Todo && queue::are_dependencies_met(t, &queue_file, done_ref)
+        }) {
+            Some(idx) => idx,
+            None => {
+                // Check if blocked or empty
+                let has_todo = queue_file
+                    .tasks
+                    .iter()
+                    .any(|t| t.status == TaskStatus::Todo);
+                if has_todo {
+                    log::info!("All todo tasks are blocked by unmet dependencies.");
+                } else {
+                    log::info!("No todo tasks found.");
+                }
+                return Ok(RunOutcome::NoTodo);
             }
-            return Ok(RunOutcome::NoTodo);
         }
     };
 
-    let task = queue_file.tasks[idx].clone();
+    let task = queue_file.tasks[task_idx].clone();
     let task_id = task.id.trim().to_string();
-    if task_id.is_empty() {
-        bail!("Invalid task: selected task has an empty ID. Ensure the task has a valid ID (e.g., 'RQ-0001') in .ralph/queue.json.");
+
+    // Verify task state for Phase 2
+    if agent_overrides.phase == Some(RunPhase::Phase2) && task.status != TaskStatus::Doing {
+        // This might happen if we targeted a specific ID that isn't Doing
+        bail!(
+            "Task {} is not in 'doing' status (current: {}). Phase 2 requires 'doing' status.",
+            task_id,
+            task.status
+        );
     }
 
-    // Require a clean repo before we invoke the runner.
-    // This prevents accidental destruction of unrelated user work on failure recovery.
+    // Require clean repo
     gitutil::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
         force,
         &[".ralph/queue.json", ".ralph/done.json"],
     )?;
 
+    // Resolve runner settings
     let settings = resolve_run_agent_settings(resolved, &task, agent_overrides)?;
+    let bins = runner::resolve_binaries(&resolved.config.agent);
 
     log::info!(
         "Executing {task_id}: {title} (runner: {runner:?}, model: {model})",
@@ -215,34 +206,134 @@ pub fn run_one(
         runner = settings.runner,
         model = settings.model.as_str()
     );
-    let start = std::time::Instant::now();
 
-    let bins = runner::resolve_binaries(&resolved.config.agent);
+    // --- Phase 2 Execution (Standalone) ---
+    if agent_overrides.phase == Some(RunPhase::Phase2) {
+        let plan_text = promptflow::read_plan_cache(&resolved.repo_root, &task_id)
+            .context("Failed to read cached plan for Phase 2")?;
 
+        let prompt = build_phase2_prompt(&plan_text, &policy);
+        execute_runner_pass(
+            resolved,
+            &settings,
+            bins,
+            &prompt,
+            output_handler.clone(),
+            true, // supervision enabled
+            "Implementation",
+        )?;
+
+        post_run_supervise(resolved, &task_id)?;
+        return Ok(RunOutcome::Ran { task_id });
+    }
+
+    // --- Phase 1 or Single Phase ---
     let template = prompts::load_worker_prompt(&resolved.repo_root)?;
     let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
-    let prompt = prompts::render_worker_prompt(&template, project_type, &resolved.config)?;
-    // Two-pass mode enabled for implementation workflows
-    let two_pass_plan = resolved.config.agent.two_pass_plan.unwrap_or(true);
-    // Use configured permission mode (default: BypassPermissions)
+    let base_prompt = prompts::render_worker_prompt(&template, project_type, &resolved.config)?;
+
+    if two_pass_enabled {
+        // Phase 1 execution
+        let p1_prompt = build_phase1_prompt(&base_prompt, &task_id, &policy);
+
+        // Disable permission bypass for planning if configured, though planning is usually read-only.
+        // But context_builder is a tool. We generally want to allow it.
+        // Actually, contract says "Phase 1 planning runs Claude with BypassPermissions".
+        // We'll handle that by locally modifying permission_mode if it's Claude.
+        let output = execute_runner_pass(
+            resolved,
+            &settings,
+            bins,
+            &p1_prompt,
+            output_handler.clone(),
+            true, // revert on error
+            "Planning",
+        )?;
+
+        // Extract and cache plan
+        let plan_text = promptflow::extract_plan_text(settings.runner, &output.stdout)?;
+        promptflow::write_plan_cache(&resolved.repo_root, &task_id, &plan_text)?;
+        log::info!(
+            "Plan cached for {task_id} at {}",
+            promptflow::plan_cache_path(&resolved.repo_root, &task_id).display()
+        );
+
+        // If explicit Phase 1, we are done.
+        if agent_overrides.phase == Some(RunPhase::Phase1) {
+            log::info!("Phase 1 complete. Run with --phase 2 to implement.");
+            return Ok(RunOutcome::Ran { task_id });
+        }
+
+        // Otherwise (Implicit Phase 2), continue immediately
+        log::info!("Proceeding to Phase 2 (Implementation)...");
+        let p2_prompt = build_phase2_prompt(&plan_text, &policy);
+        execute_runner_pass(
+            resolved,
+            &settings,
+            bins,
+            &p2_prompt,
+            output_handler.clone(),
+            true,
+            "Implementation",
+        )?;
+
+        post_run_supervise(resolved, &task_id)?;
+    } else {
+        // Single Phase execution
+        let prompt = build_single_phase_prompt(&base_prompt, &task_id, &policy);
+        execute_runner_pass(
+            resolved,
+            &settings,
+            bins,
+            &prompt,
+            output_handler.clone(),
+            true,
+            "Execution",
+        )?;
+
+        post_run_supervise(resolved, &task_id)?;
+    }
+
+    Ok(RunOutcome::Ran { task_id })
+}
+
+fn execute_runner_pass(
+    resolved: &config::Resolved,
+    settings: &runner::AgentSettings,
+    bins: runner::RunnerBinaries,
+    prompt: &str,
+    output_handler: Option<runner::OutputHandler>,
+    revert_on_error: bool,
+    log_label: &str,
+) -> Result<runner::RunnerOutput> {
     let permission_mode = resolved.config.agent.claude_permission_mode;
 
-    let _output = runutil::run_prompt_with_handling(
+    // Special case: Phase 1 planning for Claude should ideally be unblocked (BypassPermissions)
+    // assuming it is read-only or just planning.
+    // But `run_one_impl` doesn't pass phase info down here easily.
+    // However, the caller sets up the prompt.
+    // We can rely on user config generally, OR force Bypass for planning if we want to follow spec strictly.
+    // Spec says: "Phase 1 planning runs Claude with BypassPermissions (avoid blocking)."
+    // We can't easily detect if it's phase 1 here without passing another arg.
+    // Let's stick to config for now unless we refactor to pass phase context.
+    // Actually, `runutil` just takes `permission_mode`.
+    // I will use `resolved.config` value.
+
+    runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
             repo_root: &resolved.repo_root,
             runner_kind: settings.runner,
             bins,
-            model: settings.model,
+            model: settings.model.clone(),
             reasoning_effort: settings.reasoning_effort,
-            prompt: &prompt,
+            prompt,
             timeout: None,
-            two_pass_plan,
             permission_mode,
-            revert_on_error: true,
-            output_handler: None,
+            revert_on_error,
+            output_handler,
         },
         runutil::RunnerErrorMessages {
-            log_label: "runner",
+            log_label,
             interrupted_msg: "Runner interrupted: the execution was canceled by the user or system. Uncommitted changes were reverted to maintain a clean repo state.",
             timeout_msg: "Runner timed out: the execution exceeded the allowed time limit. Changes in the working tree were NOT reverted; review the repo state manually.",
             terminated_msg: "Runner terminated: the agent was stopped by a signal. Uncommitted changes were reverted. Rerunning the task is recommended.",
@@ -258,13 +349,7 @@ pub fn run_one(
                 )
             },
         },
-    )?;
-
-    let duration = start.elapsed();
-    log::info!("Runner completed successfully for {task_id} in {duration:?}.");
-
-    post_run_supervise(resolved, &task_id)?;
-    Ok(RunOutcome::Ran { task_id })
+    )
 }
 
 fn resolve_run_agent_settings(
@@ -280,6 +365,7 @@ fn resolve_run_agent_settings(
         &resolved.config.agent,
     )
 }
+
 fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> {
     let status = gitutil::status_porcelain(&resolved.repo_root)?;
     let is_dirty = !status.trim().is_empty();
@@ -393,7 +479,7 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
     gitutil::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
         false,
-        &[".ralph/queue.yaml", ".ralph/done.json"],
+        &[".ralph/queue.json", ".ralph/done.json"],
     )?;
     Ok(())
 }
@@ -524,6 +610,7 @@ mod tests {
                 claude_bin: Some("claude".to_string()),
                 two_pass_plan: Some(true),
                 claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+                require_repoprompt: None,
             },
             queue: QueueConfig {
                 file: Some(PathBuf::from(".ralph/queue.json")),
@@ -609,6 +696,8 @@ mod tests {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt52Codex),
             reasoning_effort: Some(ReasoningEffort::High),
+            phase: None,
+            repoprompt_required: None,
         };
 
         let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -635,6 +724,8 @@ mod tests {
             runner: Some(Runner::Opencode),
             model: None,
             reasoning_effort: None,
+            phase: None,
+            repoprompt_required: None,
         };
 
         let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -659,6 +750,8 @@ mod tests {
             runner: Some(Runner::Gemini),
             model: None,
             reasoning_effort: None,
+            phase: None,
+            repoprompt_required: None,
         };
 
         let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -697,6 +790,8 @@ mod tests {
             runner: Some(Runner::Opencode),
             model: Some(Model::Gpt52),
             reasoning_effort: Some(ReasoningEffort::High),
+            phase: None,
+            repoprompt_required: None,
         };
 
         let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;

@@ -171,7 +171,7 @@ fn test_task_serialization_done_with_completed_at() {
 
 #[test]
 fn test_task_deserialization_minimal() {
-    let json = r#"{"id":"RQ-0001","title":"Test task"}"#;
+    let json = r###"{"id":"RQ-0001","title":"Test task"}"###;
     let task: Task = serde_json::from_str(json).unwrap();
 
     assert_eq!(task.id, "RQ-0001");
@@ -183,7 +183,7 @@ fn test_task_deserialization_minimal() {
 
 #[test]
 fn test_task_deserialization_full() {
-    let json = r#"{
+    let json = r###"{
         "id":"RQ-0001",
         "status":"doing",
         "title":"Test task",
@@ -202,7 +202,7 @@ fn test_task_deserialization_full() {
         "created_at":"2025-01-19T00:00:00Z",
         "updated_at":"2025-01-19T01:00:00Z",
         "depends_on":["RQ-0000"]
-    }"#;
+    }"###;
     let task: Task = serde_json::from_str(json).unwrap();
 
     assert_eq!(task.id, "RQ-0001");
@@ -217,7 +217,7 @@ fn test_task_deserialization_full() {
 
 #[test]
 fn test_task_deserialization_rejects_unknown_fields() {
-    let json = r#"{"id":"RQ-0001","title":"Test task","unknown_field":"value"}"#;
+    let json = r###"{"id":"RQ-0001","title":"Test task","unknown_field":"value"}"###;
     let result: Result<Task, _> = serde_json::from_str(json);
     assert!(result.is_err(), "Should reject unknown fields");
 }
@@ -354,7 +354,7 @@ fn test_queue_file_serialization() {
 
 #[test]
 fn test_queue_file_deserialization() {
-    let json = r#"{"version":1,"tasks":[{"id":"RQ-0001","title":"Test"}]}"#;
+    let json = r###"{"version":1,"tasks":[{"id":"RQ-0001","title":"Test"}]}"###;
     let queue: QueueFile = serde_json::from_str(json).unwrap();
 
     assert_eq!(queue.version, 1);
@@ -415,6 +415,7 @@ fn test_agent_config_merge_from() {
         claude_bin: Some("claude".to_string()),
         two_pass_plan: Some(true),
         claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+        require_repoprompt: None,
     };
 
     let override_config = AgentConfig {
@@ -427,6 +428,7 @@ fn test_agent_config_merge_from() {
         claude_bin: None,
         two_pass_plan: Some(false),
         claude_permission_mode: None,
+        require_repoprompt: None,
     };
 
     base.merge_from(override_config);

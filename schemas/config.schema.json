@@ -13,6 +13,7 @@
         "model": "sonnet",
         "opencode_bin": "opencode",
         "reasoning_effort": "medium",
+        "require_repoprompt": false,
         "runner": "claude",
         "two_pass_plan": true
       },
@@ -129,6 +130,14 @@
             }
           ]
         },
+        "require_repoprompt": {
+          "description": "Require RepoPrompt usage during planning. If true, the agent must use the context_builder tool to generate the plan.",
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "runner": {
           "description": "Which harness to use by default.",
           "default": null,
@@ -142,7 +151,7 @@
           ]
         },
         "two_pass_plan": {
-          "description": "Enable two-pass plan-then-implement workflow (default: true). When enabled, Claude first generates a plan in plan mode, then implements it. Currently supported for Claude and OpenCode runners.",
+          "description": "Enable two-pass plan-then-implement workflow (default: true). When enabled, the agent first generates a plan, then implements it. Supported for all runners.",
           "default": null,
           "type": [
             "boolean",

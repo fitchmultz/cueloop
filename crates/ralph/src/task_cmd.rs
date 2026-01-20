@@ -14,6 +14,7 @@ pub struct TaskBuildOptions {
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
     pub force: bool,
+    pub repoprompt_required: bool,
 }
 
 fn read_request_from_args_or_reader(
@@ -73,7 +74,7 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
 
     let template = prompts::load_task_builder_prompt(&resolved.repo_root)?;
     let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
-    let prompt = prompts::render_task_builder_prompt(
+    let mut prompt = prompts::render_task_builder_prompt(
         &template,
         &opts.request,
         &opts.hint_tags,
@@ -82,9 +83,10 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
         &resolved.config,
     )?;
 
+    prompt = prompts::wrap_with_repoprompt_requirement(&prompt, opts.repoprompt_required);
+
     let bins = runner::resolve_binaries(&resolved.config.agent);
     // Two-pass mode disabled for task build (only generates task, should not implement)
-    let two_pass_plan = false;
     // Force BypassPermissions for task build (needs tool access for exploration)
     let permission_mode = Some(ClaudePermissionMode::BypassPermissions);
 
@@ -97,7 +99,6 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
             reasoning_effort: opts.reasoning_effort,
             prompt: &prompt,
             timeout: None,
-            two_pass_plan,
             permission_mode,
             revert_on_error: false,
             output_handler: None,
