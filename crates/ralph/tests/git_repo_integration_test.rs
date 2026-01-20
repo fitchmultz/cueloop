@@ -132,6 +132,23 @@ fn configure_runner(dir: &Path, runner: &str, model: &str, bin_path: Option<&Pat
     Ok(())
 }
 
+fn create_fake_runner(dir: &Path, runner: &str, script: &str) -> Result<PathBuf> {
+    let bin_dir = dir.join("bin");
+    std::fs::create_dir(&bin_dir)?;
+    let runner_path = bin_dir.join(runner);
+    std::fs::write(&runner_path, script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&runner_path)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&runner_path, perms)?;
+    }
+
+    Ok(runner_path)
+}
+
 #[test]
 fn init_and_validate_work_in_fresh_git_repo() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
@@ -207,20 +224,7 @@ fn run_one_succeeds_when_repo_is_dirty_and_force_is_used() -> Result<()> {
     std::fs::write(dir.path().join("Makefile"), "ci:\n\t@echo 'CI passed'\n")
         .context("write Makefile")?;
 
-    // Create a fake runner that succeeds (does nothing)
-    let bin_dir = dir.path().join("bin");
-    std::fs::create_dir(&bin_dir)?;
-    let runner_path = bin_dir.join("codex");
-    let script = "#!/bin/sh\nexit 0\n";
-    std::fs::write(&runner_path, script)?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&runner_path)?.permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&runner_path, perms)?;
-    }
-
+    let runner_path = create_fake_runner(dir.path(), "codex", "#!/bin/sh\nexit 0\n")?;
     configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
 
     // Use --force to bypass the dirty repo check.
@@ -270,22 +274,7 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
     // 2. Add a task
     write_valid_single_todo_queue(dir.path())?;
 
-    // 3. Create a fake runner that succeeds (does nothing)
-    let bin_dir = dir.path().join("bin");
-    std::fs::create_dir(&bin_dir)?;
-    let runner_path = bin_dir.join("codex");
-
-    let script = "#!/bin/sh\nexit 0\n";
-    std::fs::write(&runner_path, script)?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&runner_path)?.permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&runner_path, perms)?;
-    }
-
+    let runner_path = create_fake_runner(dir.path(), "codex", "#!/bin/sh\nexit 0\n")?;
     configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
 
     // 4. Run `ralph run one` with the fake runner
@@ -370,25 +359,6 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
     // Add a task to the queue.
     write_valid_single_todo_queue(dir.path())?;
 
-    // Modify the config to use codex runner instead of claude.
-    let config_path = dir.path().join(".ralph/config.json");
-    let mut config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
-            .context("parse config")?;
-    if let Some(agent) = config.get_mut("agent") {
-        if let Some(runner) = agent.get_mut("runner") {
-            *runner = serde_json::json!("codex");
-        }
-        if let Some(model) = agent.get_mut("model") {
-            *model = serde_json::json!("gpt-5.2-codex");
-        }
-    }
-    std::fs::write(
-        &config_path,
-        serde_json::to_string_pretty(&config).context("serialize config")?,
-    )
-    .context("write config")?;
-
     // Create a Makefile with a failing `ci` target.
     let makefile_content = r#"ci:
 	@echo 'CI failing'
@@ -397,23 +367,14 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
     std::fs::write(dir.path().join("Makefile"), makefile_content).context("write Makefile")?;
 
     // Create a "dirty runner" that creates a file and exits 0.
-    let bin_dir = dir.path().join("bin");
-    std::fs::create_dir(&bin_dir).context("create bin dir")?;
-    let runner_path = bin_dir.join("codex");
     let dirty_file = dir.path().join("dirty-file.txt");
     let script = format!(
         "#!/bin/sh\necho 'creating dirty file' > {}\nexit 0\n",
         dirty_file.display()
     );
-    std::fs::write(&runner_path, script).context("write runner script")?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&runner_path)?.permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&runner_path, perms)?;
-    }
+    let runner_path =
+        create_fake_runner(dir.path(), "codex", &script).context("write runner script")?;
+    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
 
     // Commit the setup so the repo starts clean.
     Command::new("git")
@@ -428,12 +389,8 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
         .context("git commit")?;
 
     // Run `ralph run one`.
-    let path_env = std::env::join_paths(std::iter::once(bin_dir).chain(std::env::split_paths(
-        &std::env::var("PATH").unwrap_or_default(),
-    )))?;
     let output = Command::new(ralph_bin())
         .current_dir(dir.path())
-        .env("PATH", path_env)
         .arg("run")
         .arg("one")
         .output()
