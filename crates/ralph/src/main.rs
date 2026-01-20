@@ -1,3 +1,5 @@
+//! Ralph CLI entrypoint and command routing.
+
 mod contracts;
 
 mod config;
@@ -99,17 +101,29 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
             load_and_validate_queues(&resolved, true)?;
         }
         QueueCommand::Next(args) => {
-            let (queue_file, _) = load_and_validate_queues(&resolved, true)?;
-            let next = queue::next_todo_task(&queue_file)
-                .ok_or_else(|| anyhow::anyhow!("no todo tasks found"))?;
-            if args.with_title {
-                println!(
-                    "{}",
-                    outpututil::format_task_id_title(&next.id, &next.title)
-                );
-            } else {
-                println!("{}", outpututil::format_task_id(&next.id));
+            let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
+            if let Some(next) = queue::next_todo_task(&queue_file) {
+                if args.with_title {
+                    println!(
+                        "{}",
+                        outpututil::format_task_id_title(&next.id, &next.title)
+                    );
+                } else {
+                    println!("{}", outpututil::format_task_id(&next.id));
+                }
+                return Ok(());
             }
+
+            let done_ref = done_file
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+            let next_id = queue::next_id_across(
+                &queue_file,
+                done_ref,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )?;
+            println!("{next_id}");
         }
         QueueCommand::NextId => {
             let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
