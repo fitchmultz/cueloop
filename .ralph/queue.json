@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0175",
-      "status": "doing",
-      "title": "Audit and consolidate prompt sources - eliminate END-OF-TURN CHECKLIST duplication",
-      "priority": "medium",
-      "tags": [
-        "rust",
-        "prompts",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/prompts.rs",
-        "crates/ralph/src/promptflow.rs",
-        "crates/ralph/assets/prompts/worker.md"
-      ],
-      "evidence": [
-        "User request: Audit and consolidate prompt sources - there's duplication between assets/prompts/worker.md END-OF-TURN CHECKLIST and prompts.rs::TASK_COMPLETION_WORKFLOW constant",
-        "worker.md lines 29-39 contain ralph queue complete instructions in END-OF-TURN CHECKLIST",
-        "prompts.rs lines 40-50 contain TASK_COMPLETION_WORKFLOW constant with similar ralph queue complete instructions",
-        "promptflow.rs uses TASK_COMPLETION_WORKFLOW in build_phase2_prompt (line 130) and build_single_phase_prompt (line 161)",
-        "worker.md is the embedded default loaded when no local override exists (load_prompt_with_fallback in prompts.rs)"
-      ],
-      "plan": [
-        "Trace prompt flow: identify when worker.md END-OF-TURN CHECKLIST is used vs when TASK_COMPLETION_WORKFLOW is used",
-        "Determine which source should be the single source of truth based on usage patterns",
-        "Consolidate to eliminate duplication: either remove END-OF-TURN CHECKLIST from worker.md or remove TASK_COMPLETION_WORKFLOW constant and reference worker.md content",
-        "Update promptflow.rs to use consolidated source appropriately",
-        "Add tests to verify prompt content consistency and prevent future drift",
-        "Update documentation if prompt architecture changes"
-      ],
-      "notes": [],
-      "request": "Audit and consolidate prompt sources - there's duplication between assets/prompts/worker.md END-OF-TURN CHECKLIST and prompts.rs::TASK_COMPLETION_WORKFLOW constant. Investigate which is used when, consolidate to single source of truth, and eliminate drift.",
-      "created_at": "2026-01-20T22:39:38Z",
-      "updated_at": "2026-01-20T23:11:13.837179000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0174",
       "status": "todo",
       "title": "Implement 'ralph queue complete' command to finish tasks",
