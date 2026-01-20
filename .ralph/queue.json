@@ -2,6 +2,111 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0176",
+      "status": "todo",
+      "title": "Enforce verbatim RepoPrompt plan passthrough in Phase 1",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "prompts",
+        "repoprompt"
+      ],
+      "scope": [
+        "crates/ralph/src/promptflow.rs",
+        "crates/ralph/src/prompts.rs"
+      ],
+      "evidence": [
+        "User request: Update Phase 1 planning prompt to enforce that RepoPrompt-generated plans must be passed through verbatim without alteration",
+        "When --rp-on is enabled, agents receive plans from context_builder and should output them unchanged wrapped in <<RALPH_PLAN_BEGIN>>/<<RALPH_PLAN_END>> markers",
+        "Current behavior may allow agents to modify/summarize/restructure RP-generated plans",
+        "Target files: promptflow.rs and prompts.rs contain RP-related planning instructions"
+      ],
+      "plan": [
+        "Examine current Phase 1 planning prompt construction in promptflow.rs and prompts.rs",
+        "Identify where RepoPrompt context_builder results are integrated into the prompt",
+        "Add explicit instructions that when RP is enabled (--rp-on), the plan from context_builder must be passed verbatim without modification, summarization, or restructuring",
+        "Ensure instructions specify wrapping the plan exactly as received in <<RALPH_PLAN_BEGIN>>/<<RALPH_PLAN_END>> markers",
+        "Preserve existing behavior when RP is disabled (--rp-off): agents generate their own plans",
+        "Add tests to verify RP-generated plan passthrough behavior"
+      ],
+      "notes": [],
+      "request": "Update Phase 1 planning prompt to enforce that RepoPrompt-generated plans must be passed through verbatim without alteration. When RP tools are enabled (--rp-on), the agent receives a plan from context_builder and should include it in the output exactly as received, wrapped in <<RALPH_PLAN_BEGIN>>/<<RALPH_PLAN_END>> markers without modification, summarization, or restructuring. If RP is disabled, current behavior (agent generates its own plan) should remain unchanged. Target only the RP-related planning instructions in promptflow.rs and prompts.rs.",
+      "created_at": "2026-01-20T22:42:24Z",
+      "updated_at": "2026-01-20T22:42:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0175",
+      "status": "todo",
+      "title": "Audit and consolidate prompt sources - eliminate END-OF-TURN CHECKLIST duplication",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "prompts",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/prompts.rs",
+        "crates/ralph/src/promptflow.rs",
+        "crates/ralph/assets/prompts/worker.md"
+      ],
+      "evidence": [
+        "User request: Audit and consolidate prompt sources - there's duplication between assets/prompts/worker.md END-OF-TURN CHECKLIST and prompts.rs::TASK_COMPLETION_WORKFLOW constant",
+        "worker.md lines 29-39 contain ralph queue complete instructions in END-OF-TURN CHECKLIST",
+        "prompts.rs lines 40-50 contain TASK_COMPLETION_WORKFLOW constant with similar ralph queue complete instructions",
+        "promptflow.rs uses TASK_COMPLETION_WORKFLOW in build_phase2_prompt (line 130) and build_single_phase_prompt (line 161)",
+        "worker.md is the embedded default loaded when no local override exists (load_prompt_with_fallback in prompts.rs)"
+      ],
+      "plan": [
+        "Trace prompt flow: identify when worker.md END-OF-TURN CHECKLIST is used vs when TASK_COMPLETION_WORKFLOW is used",
+        "Determine which source should be the single source of truth based on usage patterns",
+        "Consolidate to eliminate duplication: either remove END-OF-TURN CHECKLIST from worker.md or remove TASK_COMPLETION_WORKFLOW constant and reference worker.md content",
+        "Update promptflow.rs to use consolidated source appropriately",
+        "Add tests to verify prompt content consistency and prevent future drift",
+        "Update documentation if prompt architecture changes"
+      ],
+      "notes": [],
+      "request": "Audit and consolidate prompt sources - there's duplication between assets/prompts/worker.md END-OF-TURN CHECKLIST and prompts.rs::TASK_COMPLETION_WORKFLOW constant. Investigate which is used when, consolidate to single source of truth, and eliminate drift.",
+      "created_at": "2026-01-20T22:39:38Z",
+      "updated_at": "2026-01-20T22:39:38Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0174",
+      "status": "todo",
+      "title": "Implement 'ralph queue complete' command to finish tasks",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "cli",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "User request: 'Test complete command'",
+        "Existing queue.rs has complete_task function for moving tasks to done archive",
+        "CLI has queue complete subcommand defined in main.rs"
+      ],
+      "plan": [
+        "Review existing complete_task implementation in queue.rs",
+        "Verify CLI command routing for 'queue complete' in main.rs",
+        "Test the complete command with various status transitions (done, rejected)",
+        "Test with --note flag for adding completion notes",
+        "Add tests for edge cases (non-existent task, already terminal status)"
+      ],
+      "notes": [],
+      "request": "Test complete command",
+      "created_at": "2026-01-20T19:30:00Z",
+      "updated_at": "2026-01-20T19:30:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0167",
       "status": "todo",
       "title": "Implement 'ralph queue prune' to clean up done.json",

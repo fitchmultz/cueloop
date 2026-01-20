@@ -40,12 +40,13 @@ To generate the plan, you MUST use the `context_builder` tool.
 pub const TASK_COMPLETION_WORKFLOW: &str = r#"
 ## IMPLEMENTATION COMPLETION CHECKLIST
 When implementation is complete, you MUST:
-1. Set task `status: done` with `completed_at` timestamp
-2. Add 1-5 `notes` bullets (what changed, how to verify, what's next)
-3. Move task from `.ralph/queue.json` to END of `.ralph/done.json`
-4. Run `make ci` - must pass 100% (fix issues and re-run until green)
-5. Commit all changes: `RQ-####: <short summary>`
-6. Push and verify `git status --porcelain` is empty
+1. Run `ralph queue complete <TASK_ID> done --note "<note>"` to mark the task complete and move it from `.ralph/queue.json` to `.ralph/done.json`
+   - Use `rejected` instead of `done` when appropriate; only `done` and `rejected` are valid completion statuses
+   - Provide 1-5 summary notes using repeated `--note` flags (each note should be a short bullet)
+   - Do NOT manually edit `.ralph/queue.json` or `.ralph/done.json` to complete tasks
+2. Run `make ci` - must pass 100% (fix issues and re-run until green)
+3. Commit all changes: `RQ-####: <short summary>`
+4. Push and verify `git status --porcelain` is empty
 "#;
 
 pub fn wrap_with_repoprompt_requirement(prompt: &str, required: bool) -> String {

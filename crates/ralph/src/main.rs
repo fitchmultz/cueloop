@@ -316,6 +316,27 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 log::info!("Moved {} done task(s).", report.moved_ids.len());
             }
         }
+        QueueCommand::Complete(args) => {
+            let _queue_lock =
+                queue::acquire_queue_lock(&resolved.repo_root, "queue complete", force)?;
+            let status = match args.status {
+                StatusArg::Done => TaskStatus::Done,
+                StatusArg::Rejected => TaskStatus::Rejected,
+                _ => bail!("Invalid completion status: only 'done' or 'rejected' are allowed."),
+            };
+            let now = timeutil::now_utc_rfc3339()?;
+            queue::complete_task(
+                &resolved.queue_path,
+                &resolved.done_path,
+                &args.task_id,
+                status,
+                &now,
+                &args.note,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )?;
+            log::info!("Task {} completed and moved to done archive.", args.task_id);
+        }
         QueueCommand::Repair(args) => {
             let _queue_lock =
                 queue::acquire_queue_lock(&resolved.repo_root, "queue repair", force)?;
@@ -781,7 +802,7 @@ enum Command {
 #[derive(Args)]
 #[command(
     about = "Inspect and manage the task queue",
-    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph queue next-id\n  ralph queue set-status RQ-0001 doing --note \"Starting work\""
+    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph queue next-id\n  ralph queue complete RQ-0001 done --note \"Completed task\"\n  ralph queue set-status RQ-0001 doing --note \"Starting work\""
 )]
 struct QueueArgs {
     #[command(subcommand)]
@@ -1030,6 +1051,11 @@ enum QueueCommand {
     /// Move completed tasks from queue.json to done.json.
     #[command(after_long_help = "Example:\n  ralph queue done")]
     Done,
+    /// Complete a task and move it to the done archive.
+    #[command(
+        after_long_help = "Examples:\n  ralph queue complete RQ-0001 done\n  ralph queue complete RQ-0002 rejected --note \"No longer needed\""
+    )]
+    Complete(QueueCompleteArgs),
     /// Repair the queue and done files (fix missing fields, duplicates, timestamps).
     #[command(after_long_help = "Example:\n  ralph queue repair\n  ralph queue repair --dry-run")]
     Repair(RepairArgs),
@@ -1190,6 +1216,20 @@ struct QueueShowArgs {
     /// Output format.
     #[arg(long, value_enum, default_value_t = QueueShowFormat::Json)]
     format: QueueShowFormat,
+}
+
+#[derive(Args)]
+struct QueueCompleteArgs {
+    /// Task ID to complete.
+    task_id: String,
+
+    /// Completion status (done or rejected).
+    #[arg(value_enum)]
+    status: StatusArg,
+
+    /// Notes to append (repeatable).
+    #[arg(long)]
+    note: Vec<String>,
 }
 
 #[derive(Args)]

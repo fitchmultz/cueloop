@@ -302,6 +302,126 @@ pub fn archive_done_tasks(
     Ok(ArchiveReport { moved_ids })
 }
 
+/// Complete a single task and move it to the done archive.
+///
+/// Validates that the task exists in the active queue, is in a valid
+/// starting state (todo or doing), updates its status and timestamps,
+/// appends any provided notes, and atomically moves it from queue.json
+/// to the end of done.json.
+///
+/// # Arguments
+/// * `queue_path` - Path to the active queue file
+/// * `done_path` - Path to the done archive file (created if missing)
+/// * `task_id` - ID of the task to complete
+/// * `status` - Terminal status (Done or Rejected)
+/// * `now_rfc3339` - Current UTC timestamp as RFC3339 string
+/// * `notes` - Optional notes to append to the task
+/// * `id_prefix` - Expected task ID prefix (e.g., "RQ")
+/// * `id_width` - Expected numeric width for task IDs (e.g., 4)
+#[allow(clippy::too_many_arguments)]
+pub fn complete_task(
+    queue_path: &Path,
+    done_path: &Path,
+    task_id: &str,
+    status: TaskStatus,
+    now_rfc3339: &str,
+    notes: &[String],
+    id_prefix: &str,
+    id_width: usize,
+) -> Result<()> {
+    // Validate the completion status is terminal
+    match status {
+        TaskStatus::Done | TaskStatus::Rejected => {
+            // Valid terminal statuses
+        }
+        TaskStatus::Todo | TaskStatus::Doing => {
+            bail!(
+                "Invalid completion status: only 'done' or 'rejected' are allowed. Got: {:?}. Use 'ralph queue complete {} done' or 'ralph queue complete {} rejected'.",
+                status, task_id, task_id
+            );
+        }
+    }
+
+    // Load and validate the active queue
+    let mut active = load_queue(queue_path)?;
+    validate_queue(&active, id_prefix, id_width)?;
+
+    let needle = task_id.trim();
+    if needle.is_empty() {
+        bail!("Missing task_id: a task ID is required for this operation. Provide a valid ID (e.g., 'RQ-0001').");
+    }
+
+    // Find the task in the active queue
+    let task_idx = active
+        .tasks
+        .iter()
+        .position(|t| t.id.trim() == needle)
+        .ok_or_else(|| {
+            anyhow!(
+                "task not found in active queue: {}. Ensure the task exists in .ralph/queue.json.",
+                needle
+            )
+        })?;
+
+    let task = &active.tasks[task_idx];
+
+    // Validate that the task is in a state that can be completed
+    match task.status {
+        TaskStatus::Todo | TaskStatus::Doing => {
+            // Valid starting states
+        }
+        TaskStatus::Done | TaskStatus::Rejected => {
+            bail!(
+                "task {} is already in a terminal state: {:?}. Cannot complete a task that is already done or rejected.",
+                needle, task.status
+            );
+        }
+    }
+
+    // Remove the task from the active queue
+    let mut completed_task = active.tasks.remove(task_idx);
+
+    // Update the task with completion status and timestamps
+    let now = now_rfc3339.trim();
+    if now.is_empty() {
+        bail!("Missing timestamp: current time is required for this operation. Ensure a valid RFC3339 timestamp is provided.");
+    }
+    OffsetDateTime::parse(now, &Rfc3339).with_context(|| {
+        format!(
+            "now timestamp must be a valid RFC3339 UTC timestamp (got: {})",
+            now
+        )
+    })?;
+
+    completed_task.status = status;
+    completed_task.updated_at = Some(now.to_string());
+    completed_task.completed_at = Some(now.to_string());
+
+    // Append redacted notes
+    for note in notes {
+        let redacted = redaction::redact_text(note);
+        let trimmed = redacted.trim();
+        if !trimmed.is_empty() {
+            completed_task.notes.push(trimmed.to_string());
+        }
+    }
+
+    // Load or create the done archive
+    let mut done = load_queue_or_default(done_path)?;
+
+    // Validate the combined queue set (to catch duplicate IDs)
+    validate_queue_set(&active, Some(&done), id_prefix, id_width)?;
+
+    // Append the completed task to the done archive
+    done.tasks.push(completed_task);
+
+    // Save both files atomically
+    save_queue(done_path, &done)?;
+    save_queue(queue_path, &active)?;
+
+    Ok(())
+}
+
 pub fn set_status(
     queue: &mut QueueFile,
     task_id: &str,
@@ -1654,6 +1774,220 @@ mod tests {
         };
         let next = next_id_across(&active, Some(&done), "RQ", 4)?;
         assert_eq!(next, "RQ-0006");
+        Ok(())
+    }
+
+    #[test]
+    fn complete_task_moves_task_from_queue_to_done() -> Result<()> {
+        use tempfile::TempDir;
+
+        // Create a temp directory to hold queue and done files
+        let temp_dir = TempDir::new()?;
+        let queue_path = temp_dir.path().join("queue.json");
+        let done_path = temp_dir.path().join("done.json");
+
+        let queue_json = r#"{
+            "version": 1,
+            "tasks": [
+                {
+                    "id": "RQ-0001",
+                    "status": "doing",
+                    "title": "Test task",
+                    "priority": "medium",
+                    "tags": ["test"],
+                    "scope": ["crates/ralph"],
+                    "evidence": ["evidence"],
+                    "plan": ["plan"],
+                    "notes": [],
+                    "request": "test request",
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "depends_on": [],
+                    "custom_fields": {}
+                }
+            ]
+        }"#;
+        std::fs::write(&queue_path, queue_json)?;
+
+        let now = "2026-01-20T12:00:00Z";
+        complete_task(
+            &queue_path,
+            &done_path,
+            "RQ-0001",
+            TaskStatus::Done,
+            now,
+            &["Test note".to_string()],
+            "RQ",
+            4,
+        )?;
+
+        // Verify task was removed from queue
+        let queue_content = std::fs::read_to_string(&queue_path)?;
+        let queue: QueueFile = serde_json::from_str(&queue_content)?;
+        assert_eq!(queue.tasks.len(), 0);
+
+        // Verify task was added to done with correct status
+        let done_content = std::fs::read_to_string(&done_path)?;
+        let done: QueueFile = serde_json::from_str(&done_content)?;
+        assert_eq!(done.tasks.len(), 1);
+        assert_eq!(done.tasks[0].id, "RQ-0001");
+        assert_eq!(done.tasks[0].status, TaskStatus::Done);
+        assert_eq!(done.tasks[0].completed_at.as_deref(), Some(now));
+        assert_eq!(done.tasks[0].updated_at.as_deref(), Some(now));
+        assert_eq!(done.tasks[0].notes, vec!["Test note"]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn complete_task_rejects_non_terminal_status() -> Result<()> {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut queue_file = NamedTempFile::new()?;
+        let done_file = NamedTempFile::new()?;
+
+        let queue_json = r#"{
+            "version": 1,
+            "tasks": [
+                {
+                    "id": "RQ-0001",
+                    "status": "doing",
+                    "title": "Test task",
+                    "priority": "medium",
+                    "tags": ["test"],
+                    "scope": ["crates/ralph"],
+                    "evidence": ["evidence"],
+                    "plan": ["plan"],
+                    "notes": [],
+                    "request": "test request",
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "depends_on": [],
+                    "custom_fields": {}
+                }
+            ]
+        }"#;
+        queue_file.write_all(queue_json.as_bytes())?;
+        queue_file.flush()?;
+
+        let now = "2026-01-20T12:00:00Z";
+        let err = complete_task(
+            queue_file.path(),
+            done_file.path(),
+            "RQ-0001",
+            TaskStatus::Todo, // Invalid - not a terminal status
+            now,
+            &[],
+            "RQ",
+            4,
+        )
+        .unwrap_err();
+        assert!(format!("{err}")
+            .to_lowercase()
+            .contains("invalid completion status"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn complete_task_rejects_task_already_terminal() -> Result<()> {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut queue_file = NamedTempFile::new()?;
+        let done_file = NamedTempFile::new()?;
+
+        let queue_json = r#"{
+            "version": 1,
+            "tasks": [
+                {
+                    "id": "RQ-0001",
+                    "status": "done",
+                    "title": "Test task",
+                    "priority": "medium",
+                    "tags": ["test"],
+                    "scope": ["crates/ralph"],
+                    "evidence": ["evidence"],
+                    "plan": ["plan"],
+                    "notes": [],
+                    "request": "test request",
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "completed_at": "2026-01-01T00:00:00Z",
+                    "depends_on": [],
+                    "custom_fields": {}
+                }
+            ]
+        }"#;
+        queue_file.write_all(queue_json.as_bytes())?;
+        queue_file.flush()?;
+
+        let now = "2026-01-20T12:00:00Z";
+        let err = complete_task(
+            queue_file.path(),
+            done_file.path(),
+            "RQ-0001",
+            TaskStatus::Done,
+            now,
+            &[],
+            "RQ",
+            4,
+        )
+        .unwrap_err();
+        assert!(format!("{err}")
+            .to_lowercase()
+            .contains("already in a terminal state"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn complete_task_rejects_nonexistent_task() -> Result<()> {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut queue_file = NamedTempFile::new()?;
+        let done_file = NamedTempFile::new()?;
+
+        let queue_json = r#"{
+            "version": 1,
+            "tasks": [
+                {
+                    "id": "RQ-0002",
+                    "status": "todo",
+                    "title": "Other task",
+                    "priority": "medium",
+                    "tags": ["test"],
+                    "scope": ["crates/ralph"],
+                    "evidence": ["evidence"],
+                    "plan": ["plan"],
+                    "notes": [],
+                    "request": "test request",
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "depends_on": [],
+                    "custom_fields": {}
+                }
+            ]
+        }"#;
+        queue_file.write_all(queue_json.as_bytes())?;
+        queue_file.flush()?;
+
+        let now = "2026-01-20T12:00:00Z";
+        let err = complete_task(
+            queue_file.path(),
+            done_file.path(),
+            "RQ-0001", // Does not exist
+            TaskStatus::Done,
+            now,
+            &[],
+            "RQ",
+            4,
+        )
+        .unwrap_err();
+        assert!(format!("{err}").to_lowercase().contains("task not found"));
+
         Ok(())
     }
 }

@@ -27,12 +27,9 @@ Ship correct, durable changes quickly and safely.
 - Say explicitly that the run was stopped/canceled, summarize the current state, and give the exact next step to resume.
 
 ## END-OF-TURN CHECKLIST
-- The selected task status in `.ralph/queue.json` is updated correctly:
-  - `done` with `completed_at` when complete
-  - leave as `doing` or revert to `todo` if incomplete but not blocked
-- Do NOT set `status: blocked`.
-- Completed tasks are moved from `.ralph/queue.json` to the END of `.ralph/done.json` (same JSON schema).
-- Before committing/pushing, the completed task is removed from `.ralph/queue.json` and appended to `.ralph/done.json`.
+- If the task is complete, run `ralph queue complete <TASK_ID> done|rejected --note "<note>"` so it is removed from `.ralph/queue.json` and appended to `.ralph/done.json` with `completed_at`.
+- If the task is incomplete but not blocked, leave it in `.ralph/queue.json` as `doing` or revert to `todo` (do not set `blocked`).
+- Do NOT manually edit `.ralph/queue.json` or `.ralph/done.json` to complete tasks, and do not run `ralph queue done` for single-task completion.
 - `.ralph/queue.json` remains valid JSON and matches the queue contract.
 - CI gate is 100% clean: run `make ci` and fix all failures before ending your turn.
 - Git hygiene (leave a clean repo state for the next run):
@@ -51,7 +48,7 @@ Ship correct, durable changes quickly and safely.
 - Root: `{"version": 1, "tasks": [...]}`
 - Task order is priority (top is highest).
 - Each task has: `id`, `status`, `title`, `tags`, `scope`, `evidence`, `plan`.
-- Allowed status values: `todo`, `doing`, `done`.
+- Allowed status values: `todo`, `doing`, `done`, `rejected`.
 
 ## JSON SAFETY
 - JSON strings use double quotes; escape double quotes with backslash (`\"`).
@@ -66,12 +63,12 @@ Ship correct, durable changes quickly and safely.
    - Use unique IDs from `ralph queue next`.
    - Each new task must include concrete evidence and a clear plan.
 5. When complete:
-   - Set `status: done`
-   - Set `completed_at` to current UTC RFC3339 time
-   - Add 1-5 `notes` bullets summarizing what changed and how to verify
-   - Move the completed task from `.ralph/queue.json` to the END of `.ralph/done.json` (append to the END of the `tasks` list and remove it from the queue file). Create `.ralph/done.json` if missing; it uses the same `{"version": 1, "tasks": [...]}` schema as the queue. Do this by editing the files directly (do not run `ralph queue done`).
+   - Run `ralph queue complete <TASK_ID> done --note "<note>"` to mark the task complete and move it from `.ralph/queue.json` to `.ralph/done.json`.
+   - Use `rejected` instead of `done` when appropriate; only `done` and `rejected` are valid completion statuses.
+   - Provide 1-5 summary notes using repeated `--note` flags (each note should be a short bullet).
+   - Do NOT manually edit `.ralph/queue.json` or `.ralph/done.json` to complete tasks, and do not run `ralph queue done` for single-task completion.
    - Run `make ci` and ensure it passes.
-   - Commit and push all changes (including `.ralph/queue.json`) so the repo is clean for the next run. Do NOT commit/push until the task has been removed from `.ralph/queue.json` and appended to the END of `.ralph/done.json`.
+   - Commit and push all changes so the repo is clean for the next run. Do NOT commit/push until `ralph queue complete` has been run successfully.
 6. If you cannot complete the task:
    - Revert or discard partial changes so the repo is clean (do not leave failing WIP changes in the working tree).
    - Leave the task as `todo` (or `doing` if you plan to immediately resume in the same run).
