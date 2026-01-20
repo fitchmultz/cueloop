@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0165",
-      "status": "todo",
-      "title": "Implement 'ralph queue repair' command",
-      "priority": "high",
-      "tags": [
-        "rust",
-        "cli",
-        "queue",
-        "validation"
-      ],
-      "scope": [
-        "crates/ralph/src/queue.rs",
-        "crates/ralph/src/cli.rs"
-      ],
-      "evidence": [
-        "No way to fix corrupted queue files",
-        "User request: 'Implement ralph queue repair command (High)'",
-        "Note: Original RQ-0135 was rejected in done.json"
-      ],
-      "plan": [
-        "Add queue repair subcommand to CLI",
-        "Validate and fix JSON structure in queue.json and done.json",
-        "Remove duplicate IDs (prefer queue over done, prefer newer status)",
-        "Add missing required fields with defaults",
-        "Add tests for repair scenarios"
-      ],
-      "notes": [],
-      "request": "New Tasks (Top 10): 3. RQ-0135: Implement 'ralph queue repair' command (High)",
-      "created_at": "2026-01-20T18:00:00Z",
-      "updated_at": "2026-01-20T18:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0166",
       "status": "todo",
       "title": "Deduplicate agent argument resolution logic",
