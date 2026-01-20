@@ -308,7 +308,7 @@ pub enum TaskStatus {
     Rejected,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskPriority {
     Critical,

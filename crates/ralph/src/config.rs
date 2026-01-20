@@ -19,7 +19,7 @@ pub struct Resolved {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-struct ConfigLayer {
+pub struct ConfigLayer {
     pub version: Option<u32>,
     pub project_type: Option<ProjectType>,
     pub queue: QueueConfig,
@@ -79,14 +79,14 @@ pub fn resolve_from_cwd() -> Result<Resolved> {
     })
 }
 
-fn load_layer(path: &Path) -> Result<ConfigLayer> {
+pub fn load_layer(path: &Path) -> Result<ConfigLayer> {
     let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     let layer = serde_json::from_str::<ConfigLayer>(&raw)
         .with_context(|| format!("parse config {} as JSON", path.display()))?;
     Ok(layer)
 }
 
-fn apply_layer(mut base: Config, layer: ConfigLayer) -> Result<Config> {
+pub fn apply_layer(mut base: Config, layer: ConfigLayer) -> Result<Config> {
     if let Some(version) = layer.version {
         if version != 1 {
             bail!("Unsupported config version: {}. Ralph requires version 1. Update the 'version' field in your config file.", version);
@@ -104,7 +104,7 @@ fn apply_layer(mut base: Config, layer: ConfigLayer) -> Result<Config> {
     Ok(base)
 }
 
-fn validate_config(cfg: &Config) -> Result<()> {
+pub fn validate_config(cfg: &Config) -> Result<()> {
     if cfg.version != 1 {
         bail!("Unsupported config version: {}. Ralph requires version 1. Update the 'version' field in your config file.", cfg.version);
     }
@@ -157,7 +157,7 @@ fn validate_config(cfg: &Config) -> Result<()> {
     Ok(())
 }
 
-fn resolve_id_prefix(cfg: &Config) -> Result<String> {
+pub fn resolve_id_prefix(cfg: &Config) -> Result<String> {
     let raw = cfg.queue.id_prefix.as_deref().unwrap_or("RQ");
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -166,7 +166,7 @@ fn resolve_id_prefix(cfg: &Config) -> Result<String> {
     Ok(trimmed.to_uppercase())
 }
 
-fn resolve_id_width(cfg: &Config) -> Result<usize> {
+pub fn resolve_id_width(cfg: &Config) -> Result<usize> {
     let width = cfg.queue.id_width.unwrap_or(4) as usize;
     if width == 0 {
         bail!("Invalid queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .ralph/config.json or via --id-width.");
@@ -174,7 +174,7 @@ fn resolve_id_width(cfg: &Config) -> Result<usize> {
     Ok(width)
 }
 
-fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
+pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
     let value = cfg
         .queue
         .file
@@ -189,7 +189,7 @@ fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
     Ok(repo_root.join(value))
 }
 
-fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
+pub fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
     let value = cfg
         .queue
         .done_file
@@ -204,7 +204,7 @@ fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
     Ok(repo_root.join(value))
 }
 
-fn global_config_path() -> Option<PathBuf> {
+pub fn global_config_path() -> Option<PathBuf> {
     let base = if let Some(value) = env::var_os("XDG_CONFIG_HOME") {
         PathBuf::from(value)
     } else {
@@ -216,12 +216,12 @@ fn global_config_path() -> Option<PathBuf> {
     Some(json_path)
 }
 
-fn project_config_path(repo_root: &Path) -> PathBuf {
+pub fn project_config_path(repo_root: &Path) -> PathBuf {
     let ralph_dir = repo_root.join(".ralph");
     ralph_dir.join("config.json")
 }
 
-fn find_repo_root(start: &Path) -> PathBuf {
+pub fn find_repo_root(start: &Path) -> PathBuf {
     log::debug!("searching for repo root starting from: {}", start.display());
     for dir in start.ancestors() {
         log::debug!("checking directory: {}", dir.display());
