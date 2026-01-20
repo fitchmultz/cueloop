@@ -172,11 +172,14 @@ pub fn resolve_agent_settings(
         .or(config_agent.runner)
         .unwrap_or_default();
 
+    let runner_was_overridden = runner_override.is_some();
+
     let model = resolve_model_for_runner(
         runner,
         model_override,
         task_agent.and_then(|a| a.model.clone()),
         config_agent.model.clone(),
+        runner_was_overridden,
     );
 
     let effort_candidate = effort_override
@@ -249,6 +252,7 @@ pub fn resolve_model_for_runner(
     override_model: Option<Model>,
     task_model: Option<Model>,
     config_model: Option<Model>,
+    runner_was_overridden: bool,
 ) -> Model {
     let normalize_model = |model: Model| {
         if runner == Runner::Codex {
@@ -268,6 +272,10 @@ pub fn resolve_model_for_runner(
     }
     if let Some(model) = task_model {
         return normalize_model(model);
+    }
+
+    if runner_was_overridden {
+        return default_model_for_runner(runner);
     }
 
     match config_model {
@@ -1000,13 +1008,14 @@ mod tests {
 
     #[test]
     fn resolve_model_for_runner_defaults_for_gemini() {
-        let model = resolve_model_for_runner(Runner::Gemini, None, None, None);
+        let model = resolve_model_for_runner(Runner::Gemini, None, None, None, false);
         assert_eq!(model.as_str(), DEFAULT_GEMINI_MODEL);
     }
 
     #[test]
     fn resolve_model_for_runner_replaces_codex_default_for_gemini() {
-        let model = resolve_model_for_runner(Runner::Gemini, None, None, Some(Model::Gpt52Codex));
+        let model =
+            resolve_model_for_runner(Runner::Gemini, None, None, Some(Model::Gpt52Codex), false);
         assert_eq!(model.as_str(), DEFAULT_GEMINI_MODEL);
     }
 
@@ -1017,6 +1026,7 @@ mod tests {
             None,
             None,
             Some(Model::Custom("sonnet".to_string())),
+            false,
         );
         assert_eq!(model, Model::Gpt52Codex);
     }
@@ -1028,19 +1038,21 @@ mod tests {
             None,
             Some(Model::Custom("sonnet".to_string())),
             None,
+            false,
         );
         assert_eq!(model, Model::Gpt52Codex);
     }
 
     #[test]
     fn resolve_model_for_runner_normalizes_task_model_for_opencode() {
-        let model = resolve_model_for_runner(Runner::Opencode, None, Some(Model::Gpt52Codex), None);
+        let model =
+            resolve_model_for_runner(Runner::Opencode, None, Some(Model::Gpt52Codex), None, false);
         assert_eq!(model, Model::Glm47);
     }
 
     #[test]
     fn resolve_model_for_runner_defaults_for_claude() {
-        let model = resolve_model_for_runner(Runner::Claude, None, None, None);
+        let model = resolve_model_for_runner(Runner::Claude, None, None, None, false);
         assert_eq!(model.as_str(), DEFAULT_CLAUDE_MODEL);
     }
 
@@ -1070,5 +1082,45 @@ mod tests {
         assert!(msg.contains("bearer [REDACTED]"));
         assert!(!msg.contains("secret123"));
         assert!(!msg.contains("abc123def456"));
+    }
+
+    #[test]
+    fn resolve_model_for_runner_override_uses_runner_default_when_no_model() {
+        // When runner is overridden but model is not, use runner's default
+        // instead of falling back to config's model
+        let model = resolve_model_for_runner(
+            Runner::Opencode,
+            None,
+            None,
+            Some(Model::Custom("sonnet".to_string())),
+            true, // runner was overridden
+        );
+        assert_eq!(model, Model::Glm47);
+    }
+
+    #[test]
+    fn resolve_model_for_runner_override_with_explicit_model() {
+        // When both runner and model are overridden, use the explicit model
+        let model = resolve_model_for_runner(
+            Runner::Opencode,
+            Some(Model::Gpt52),
+            None,
+            Some(Model::Custom("sonnet".to_string())),
+            true,
+        );
+        assert_eq!(model, Model::Gpt52);
+    }
+
+    #[test]
+    fn resolve_model_for_runner_no_override_uses_config_model() {
+        // When runner is not overridden, use config model (with normalization)
+        let model = resolve_model_for_runner(
+            Runner::Codex,
+            None,
+            None,
+            Some(Model::Gpt52Codex),
+            false, // runner was not overridden
+        );
+        assert_eq!(model, Model::Gpt52Codex);
     }
 }

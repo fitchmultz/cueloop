@@ -158,8 +158,13 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
     }
 
     // 3b. Model Compatibility Check
-    let model =
-        runner::resolve_model_for_runner(runner, None, None, resolved.config.agent.model.clone());
+    let model = runner::resolve_model_for_runner(
+        runner,
+        None,
+        None,
+        resolved.config.agent.model.clone(),
+        false,
+    );
     if let Err(e) = runner::validate_model_for_runner(runner, &model) {
         outpututil::log_error(&format!("config model/runner mismatch: {}", e));
         failures.push("config model/runner mismatch");
