@@ -25,11 +25,16 @@
       "plan": [
         "Decide the canonical contract for required task fields (schema/docs vs validation) and document the decision.",
         "Update queue validation and backfill/repair logic to match the chosen contract.",
-        "Regenerate schema/docs/tests to reflect the new required/optional field set."
+        "Regenerate schema/docs/tests to reflect the new required/optional field set.",
+        "Ensure scan prompts, task builder prompts, etc reflect the actual required fields and schema decidied on.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0199",
@@ -53,11 +58,15 @@
       "plan": [
         "Track a remap map of old->new IDs during repair.",
         "Update depends_on entries across active and done tasks using the remap map.",
-        "Add/extend tests to assert dependencies are rewritten alongside ID remaps."
+        "Add/extend tests to assert dependencies are rewritten alongside ID remaps.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0200",
@@ -84,11 +93,15 @@
       "plan": [
         "Update validation to require completed_at when status is Done or Rejected.",
         "Ensure repair/backfill fills missing completed_at for terminal tasks.",
-        "Update schema/docs/tests to enforce terminal timestamp requirements."
+        "Update schema/docs/tests to enforce terminal timestamp requirements.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0201",
@@ -113,11 +126,15 @@
       "plan": [
         "Introduce a runnable-task selector that checks are_dependencies_met against queue/done.",
         "Use the runnable selector in queue next and worker prompt selection.",
-        "Add tests covering blocked dependencies for queue next and prompt worker selection."
+        "Add tests covering blocked dependencies for queue next and prompt worker selection.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0202",
@@ -141,11 +158,15 @@
       "plan": [
         "Decide whether queue done should archive rejected tasks alongside done tasks.",
         "Update archive_done_tasks logic and CLI/docs accordingly.",
-        "Add tests to cover rejected tasks being archived (or explicitly excluded)."
+        "Add tests to cover rejected tasks being archived (or explicitly excluded).",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0203",
@@ -167,11 +188,15 @@
       "plan": [
         "Return an error or reinitialize when config JSON is invalid and --force is not set.",
         "Add tests to ensure invalid config files are detected.",
-        "Update CLI/help/docs if behavior changes."
+        "Update CLI/help/docs if behavior changes.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0204",
@@ -194,11 +219,15 @@
       "plan": [
         "Run queue validation on existing queue/done files during init when not forcing.",
         "Surface clear errors when invariants fail.",
-        "Add tests covering invalid queue/done inputs."
+        "Add tests covering invalid queue/done inputs.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0205",
@@ -220,11 +249,15 @@
       "plan": [
         "Replace unwrap calls with error propagation and ensure terminal cleanup on failure.",
         "Add tests or integration coverage to confirm graceful error handling.",
-        "Verify TUI exits cleanly after an injected error."
+        "Verify TUI exits cleanly after an injected error.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0206",
@@ -247,11 +280,15 @@
       "plan": [
         "Thread now_rfc3339 into title update and set updated_at when the title changes.",
         "Add/adjust tests to assert updated_at changes on edit.",
-        "Ensure no regressions in TUI edit flows."
+        "Ensure no regressions in TUI edit flows.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0207",
@@ -274,11 +311,15 @@
       "plan": [
         "Decide which additional fields should be searchable (request, tags, scope, custom_fields) and update search logic.",
         "Update CLI help/docs to reflect the expanded search surface.",
-        "Add tests covering matches in the newly included fields."
+        "Add tests covering matches in the newly included fields.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0208",
@@ -300,11 +341,15 @@
       "plan": [
         "Switch to RegexBuilder and set case_insensitive when match_case is false.",
         "Add tests verifying case-insensitive regex behavior.",
-        "Update CLI help text if needed."
+        "Update CLI help text if needed.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0209",
@@ -326,11 +371,15 @@
       "plan": [
         "Introduce a ValueEnum for sort_by (e.g., priority) and use it in list and sort commands.",
         "Ensure invalid values are rejected by clap with clear errors.",
-        "Update docs/tests for the new enum-based sort flags."
+        "Update docs/tests for the new enum-based sort flags.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0210",
@@ -352,11 +401,15 @@
       "plan": [
         "Decide the default ordering (likely highest-first) and adjust defaults/flags accordingly.",
         "Update CLI help/examples and tests to match the new default.",
-        "Verify sorting behavior in queue sort and list."
+        "Verify sorting behavior in queue sort and list.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0211",
@@ -379,11 +432,15 @@
       "plan": [
         "Update config schema to restrict phases to 1, 2, or 3 (enum or min/max).",
         "Regenerate schema and update docs/examples.",
-        "Add tests to ensure schema and validation stay aligned."
+        "Add tests to ensure schema and validation stay aligned.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0212",
@@ -407,11 +464,15 @@
       "plan": [
         "Add concise module-level docstrings to the missing files.",
         "Keep descriptions consistent with existing module docs.",
-        "Verify linting/tests still pass."
+        "Verify linting/tests still pass.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0213",
@@ -433,11 +494,15 @@
       "plan": [
         "Decide whether rejected should count as completed (terminal) and update stats logic.",
         "Adjust output text to reflect the new definition.",
-        "Add tests for completion rate and active counts with rejected tasks."
+        "Add tests for completion rate and active counts with rejected tasks.",
+        "Ensure prompts reflect the desired and required functionality for this task."
       ],
+      "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z"
+      "updated_at": "2026-01-21T19:59:34Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
