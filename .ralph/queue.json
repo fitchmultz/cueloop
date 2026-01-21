@@ -2,68 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0169",
-      "status": "todo",
-      "title": "Optimize validate_queue_set for large done files",
-      "priority": "medium",
-      "tags": [
-        "rust",
-        "performance",
-        "queue",
-        "validation"
-      ],
-      "scope": [
-        "crates/ralph/src/queue.rs"
-      ],
-      "evidence": [
-        "validate_queue_set is slow with large done.json files",
-        "User request: 'New Tasks (Top 10): 7. RQ-0139: Optimize validate_queue_set for large done files (Medium)'"
-      ],
-      "plan": [
-        "Profile current validation to identify bottlenecks",
-        "Use HashSet for ID deduplication check instead of nested loops",
-        "Add streaming validation for very large files",
-        "Add benchmark tests for validation performance"
-      ],
-      "notes": [],
-      "request": "New Tasks (Top 10): 7. RQ-0139: Optimize validate_queue_set for large done files (Medium)",
-      "created_at": "2026-01-20T18:00:00Z",
-      "updated_at": "2026-01-20T18:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0170",
-      "status": "todo",
-      "title": "Implement 'ralph task edit' command",
-      "priority": "medium",
-      "tags": [
-        "rust",
-        "cli",
-        "task"
-      ],
-      "scope": [
-        "crates/ralph/src/task.rs",
-        "crates/ralph/src/cli.rs"
-      ],
-      "evidence": [
-        "No way to edit existing tasks from CLI",
-        "User request: 'New Tasks (Top 10): 8. RQ-0141: Implement ralph task edit command (Medium)'"
-      ],
-      "plan": [
-        "Add task edit subcommand with --id flag",
-        "Support editing title, status, priority, tags via flags",
-        "Support $EDITOR for full task JSON editing",
-        "Add tests for edit operations"
-      ],
-      "notes": [],
-      "request": "New Tasks (Top 10): 8. RQ-0141: Implement 'ralph task edit' command (Medium)",
-      "created_at": "2026-01-20T18:00:00Z",
-      "updated_at": "2026-01-20T18:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0171",
       "status": "todo",
       "title": "Support 'draft' task status",
