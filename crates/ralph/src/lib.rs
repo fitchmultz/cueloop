@@ -6,6 +6,8 @@
 //! integration/stress tests can exercise real behavior without mocks.
 
 pub mod agent;
+#[allow(dead_code)]
+pub mod cli;
 pub mod completions;
 pub mod config;
 pub mod contracts;
@@ -19,6 +21,7 @@ pub mod promptflow;
 pub mod prompts;
 pub mod queue;
 pub mod redaction;
+pub mod reports;
 pub mod run_cmd;
 pub mod runner;
 pub mod runutil;
