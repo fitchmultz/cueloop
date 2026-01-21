@@ -2,41 +2,106 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0190",
+      "id": "RQ-0172",
       "status": "todo",
-      "title": "Create simple Web UI for documentation",
+      "title": "Expose explicit ID targeting in 'ralph run one'",
       "priority": "medium",
       "tags": [
-        "web",
-        "ui",
-        "documentation",
-        "dark-mode"
+        "rust",
+        "cli",
+        "run",
+        "ux"
       ],
       "scope": [
-        "docs/",
-        "AGENTS.md",
-        "Makefile"
+        "crates/ralph/src/run.rs",
+        "crates/ralph/src/cli.rs"
       ],
       "evidence": [
-        "User requires a user-friendly Web UI for documentation purposes",
-        "Keep it super simple and lightweight",
-        "Ensure it uses dark mode by default, no toggle behavior needed",
-        "AGENTS.md must be updated with reminder to keep documentation up to date when defaults change, schemas change",
-        "Include everything configurable and customizable by the user, with examples"
+        "Cannot run a specific task by ID",
+        "User request: 'New Tasks (Top 10): 10. RQ-0148: Expose explicit ID targeting in ralph run one (Medium)'"
       ],
       "plan": [
-        "Create minimal HTML/CSS static documentation site in docs/ directory",
-        "Design with dark mode as the only theme (no toggle), using committed CSS variables for palette",
-        "Include comprehensive sections for all configuration options (global config, project config, CLI flags) with examples",
-        "Document high-level architecture and workflow without diving deep into non-configurable internals",
-        "Update AGENTS.md to add 'Documentation Maintenance' section with reminders to update docs when defaults, schemas, or configuration options change",
-        "Add make docs target to serve the documentation locally",
+        "Add --id flag to 'run one' command",
+        "When --id is specified, run that exact task instead of queue next",
+        "Validate task exists and is in runnable state",
+        "Add tests for ID targeting"
+      ],
+      "notes": [],
+      "request": "New Tasks (Top 10): 10. RQ-0148: Expose explicit ID targeting in 'ralph run one' (Medium)",
+      "created_at": "2026-01-20T18:00:00Z",
+      "updated_at": "2026-01-20T18:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0191",
+      "status": "todo",
+      "title": "Change queue behavior to always pull from top of file",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "queue",
+        "behavior",
+        "priority"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "AGENTS.md"
+      ],
+      "evidence": [
+        "User request: 'Modify queue behavior to ALWAYS pull from the top of the queue.json file, regardless of priority'",
+        "AGENTS.md line 30 states 'Task order is priority (top runs first)' which needs to be updated",
+        "Current next_todo_task function already pulls first todo task from file, but documentation suggests priority ordering"
+      ],
+      "plan": [
+        "Review all code paths that affect task selection order (next_todo_task, queue list, etc.)",
+        "Update AGENTS.md line 30 to clarify that file order is the source of truth",
+        "Ensure no automatic priority-based sorting happens during task execution",
+        "Preserve existing 'queue sort --by=priority' command for manual sorting when desired",
         "Run make ci to ensure build passes"
       ],
       "notes": [],
-      "request": "User requires a user friendly Web UI for documentation purposes. Keep it super simple and lightweight. Ensure it uses dark mode by default, no toggle behavior needed. AGENTS.md must be updated to contain a reminder to keep the documentation that gets created up to date when defaults change, schemas change, etc. Include everything that can be configured and customized by the user, with examples. No need to dive into the technical details of non-configurable details more than high level.",
+      "request": "Modify queue behavior to ALWAYS pull from the top of the queue.json file, regardless of priority.",
+      "created_at": "2026-01-21T15:43:13Z",
+      "updated_at": "2026-01-21T15:43:13Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0190",
+      "status": "todo",
+      "title": "Create organization documentation in Markdown",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "markdown",
+        "documentation",
+        "github"
+      ],
+      "scope": [
+        "docs/",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "evidence": [
+        "User requires organization documentation in Markdown viewable within the GitHub repo",
+        "Documentation should be repository-native (no custom web UI)",
+        "Ensure documentation covers configurable/customizable items with examples",
+        "AGENTS.md must be updated with reminder to keep documentation up to date when defaults or schemas change"
+      ],
+      "plan": [
+        "Create a Markdown documentation structure under docs/ suitable for GitHub viewing",
+        "Include comprehensive sections for all configuration options (global config, project config, CLI flags) with examples",
+        "Document high-level architecture and workflow without diving deep into non-configurable internals",
+        "Update README.md to link to the documentation index",
+        "Update AGENTS.md to add documentation maintenance reminders for defaults, schemas, and configuration changes",
+        "Run make ci to ensure build passes"
+      ],
+      "notes": [],
+      "request": "Change RQ-0190 to create organization documentation in Markdown that is viewable within the GitHub repo. Focus on repository-native docs (no custom web UI), include all configurable/customizable items with examples, and update AGENTS.md to remind maintainers to keep docs current when defaults or schemas change.",
       "created_at": "2026-01-21T14:26:59Z",
-      "updated_at": "2026-01-21T14:26:59Z",
+      "updated_at": "2026-01-21T15:42:01Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -216,38 +281,6 @@
       ],
       "notes": [],
       "request": "New Tasks (Top 10): 9. RQ-0147: Support 'draft' task status (Medium)",
-      "created_at": "2026-01-20T18:00:00Z",
-      "updated_at": "2026-01-20T18:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0172",
-      "status": "todo",
-      "title": "Expose explicit ID targeting in 'ralph run one'",
-      "priority": "medium",
-      "tags": [
-        "rust",
-        "cli",
-        "run",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/run.rs",
-        "crates/ralph/src/cli.rs"
-      ],
-      "evidence": [
-        "Cannot run a specific task by ID",
-        "User request: 'New Tasks (Top 10): 10. RQ-0148: Expose explicit ID targeting in ralph run one (Medium)'"
-      ],
-      "plan": [
-        "Add --id flag to 'run one' command",
-        "When --id is specified, run that exact task instead of queue next",
-        "Validate task exists and is in runnable state",
-        "Add tests for ID targeting"
-      ],
-      "notes": [],
-      "request": "New Tasks (Top 10): 10. RQ-0148: Expose explicit ID targeting in 'ralph run one' (Medium)",
       "created_at": "2026-01-20T18:00:00Z",
       "updated_at": "2026-01-20T18:00:00Z",
       "depends_on": [],
