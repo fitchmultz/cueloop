@@ -480,7 +480,7 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         }
         QueueCommand::Prune(args) => {
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue prune", force)?;
-            let report = queue::prune_done_tasks(
+            let report: queue::PruneReport = queue::prune_done_tasks(
                 &resolved.done_path,
                 queue::PruneOptions {
                     age_days: args.age,
