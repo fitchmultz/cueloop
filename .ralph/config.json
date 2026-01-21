@@ -9,7 +9,7 @@
   },
   "agent": {
     "runner": "gemini",
-    "model": "gemini-3-flash-preview",
+    "model": "gemini-3-pro-preview",
     "reasoning_effort": "low",
     "codex_bin": "codex",
     "opencode_bin": "opencode",
