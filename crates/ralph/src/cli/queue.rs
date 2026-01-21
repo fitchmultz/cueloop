@@ -15,7 +15,11 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         }
         QueueCommand::Next(args) => {
             let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
-            if let Some(next) = queue::next_todo_task(&queue_file) {
+            let done_ref = done_file
+                .as_ref()
+                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+
+            if let Some(next) = queue::next_runnable_task(&queue_file, done_ref) {
                 if args.with_title {
                     println!(
                         "{}",
@@ -27,9 +31,6 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 return Ok(());
             }
 
-            let done_ref = done_file
-                .as_ref()
-                .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
             let next_id = queue::next_id_across(
                 &queue_file,
                 done_ref,

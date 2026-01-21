@@ -225,41 +225,6 @@ pub(super) fn validate_task_id(
     Ok(value)
 }
 
-/// Check if all dependencies for a task are met (referenced tasks are Done).
-/// Dependencies are met if the referenced task is Done in either queue or done archive.
-pub fn are_dependencies_met(task: &Task, active: &QueueFile, done: Option<&QueueFile>) -> bool {
-    let task_id = task.id.trim();
-    for dep_id in &task.depends_on {
-        let dep_id = dep_id.trim();
-        if dep_id.is_empty() {
-            continue;
-        }
-        // Skip self-references (will be caught by validation)
-        if dep_id == task_id {
-            return false;
-        }
-        // Check if dependency exists and is Done or Rejected in active queue
-        let met = active.tasks.iter().any(|t| {
-            t.id.trim() == dep_id
-                && (t.status == TaskStatus::Done || t.status == TaskStatus::Rejected)
-        });
-        if met {
-            continue;
-        }
-        // Check if dependency exists and is Done or Rejected in done archive
-        let done_met = done.is_some_and(|d| {
-            d.tasks.iter().any(|t| {
-                t.id.trim() == dep_id
-                    && (t.status == TaskStatus::Done || t.status == TaskStatus::Rejected)
-            })
-        });
-        if !done_met {
-            return false;
-        }
-    }
-    true
-}
-
 fn validate_dependencies(active: &QueueFile, done: Option<&QueueFile>) -> Result<()> {
     let all_task_ids: HashSet<&str> = active
         .tasks

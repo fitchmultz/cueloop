@@ -118,7 +118,16 @@ fn resolve_worker_task_id(resolved: &config::Resolved, task_id: Option<String>) 
             return Ok(task.id.trim().to_string());
         }
 
-        if let Some(task) = queue::next_todo_task(&queue_file) {
+        let done_file = if resolved.done_path.exists() {
+            Some(
+                queue::load_queue(&resolved.done_path)
+                    .with_context(|| format!("read {}", resolved.done_path.display()))?,
+            )
+        } else {
+            None
+        };
+
+        if let Some(task) = queue::next_runnable_task(&queue_file, done_file.as_ref()) {
             return Ok(task.id.trim().to_string());
         }
     }

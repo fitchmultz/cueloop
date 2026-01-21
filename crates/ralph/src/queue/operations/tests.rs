@@ -763,3 +763,86 @@ fn complete_task_rejects_nonexistent_task() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_next_runnable_task_skips_blocked() {
+    let mut blocked = task("RQ-0002");
+    blocked.status = TaskStatus::Todo;
+    blocked.depends_on = vec!["RQ-0003".to_string()]; // Depends on RQ-0003
+
+    let mut blocker = task("RQ-0003");
+    blocker.status = TaskStatus::Todo;
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![blocked, blocker.clone()],
+    };
+
+    // blocked (RQ-0002) is first but blocked. blocker (RQ-0003) is second and runnable.
+    // So next_runnable_task should return RQ-0003.
+    let next = next_runnable_task(&queue, None).expect("should find runnable task");
+    assert_eq!(next.id, "RQ-0003");
+}
+
+#[test]
+fn test_next_runnable_task_returns_unblocked() {
+    let mut t1 = task("RQ-0002");
+    t1.status = TaskStatus::Todo;
+    t1.depends_on = vec!["RQ-0001".to_string()];
+
+    // Dependency is done in active queue (or done queue)
+    let mut t_dep = task("RQ-0001");
+    t_dep.status = TaskStatus::Done;
+    t_dep.completed_at = Some("2026-01-18T00:00:00Z".to_string());
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![t1],
+    };
+    let done_queue = QueueFile {
+        version: 1,
+        tasks: vec![t_dep],
+    };
+
+    let next = next_runnable_task(&queue, Some(&done_queue)).expect("should find runnable task");
+    assert_eq!(next.id, "RQ-0002");
+}
+
+#[test]
+fn test_next_runnable_task_skips_missing_dep() {
+    let mut t1 = task("RQ-0002");
+    t1.status = TaskStatus::Todo;
+    t1.depends_on = vec!["RQ-9999".to_string()]; // Missing
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![t1],
+    };
+
+    let next = next_runnable_task(&queue, None);
+    assert!(next.is_none());
+}
+
+#[test]
+fn test_next_runnable_task_skips_rejected_dep() {
+    let mut t1 = task("RQ-0002");
+    t1.status = TaskStatus::Todo;
+    t1.depends_on = vec!["RQ-0001".to_string()];
+
+    let mut t_rejected = task("RQ-0001");
+    t_rejected.status = TaskStatus::Rejected;
+    t_rejected.completed_at = Some("2026-01-18T00:00:00Z".to_string());
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![t1],
+    };
+    let done_queue = QueueFile {
+        version: 1,
+        tasks: vec![t_rejected],
+    };
+
+    // Strict check: Rejected is NOT Done, so it should be skipped
+    let next = next_runnable_task(&queue, Some(&done_queue));
+    assert!(next.is_none());
+}

@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0201",
-      "status": "todo",
-      "title": "Queue next/worker prompt should skip blocked tasks with unmet dependencies",
-      "priority": "medium",
-      "tags": [
-        "queue",
-        "ux",
-        "dependencies"
-      ],
-      "scope": [
-        "crates/ralph/src/queue/operations/query.rs",
-        "crates/ralph/src/cli/queue.rs",
-        "crates/ralph/src/prompt_cmd.rs",
-        "crates/ralph/src/queue/validation.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/queue/operations/query.rs next_todo_task returns first todo without dependency checks.",
-        "crates/ralph/src/cli/queue.rs QueueCommand::Next and crates/ralph/src/prompt_cmd.rs resolve_worker_task_id use next_todo_task, so they may return blocked tasks."
-      ],
-      "plan": [
-        "Introduce a runnable-task selector that checks are_dependencies_met against queue/done.",
-        "Use the runnable selector in queue next and worker prompt selection.",
-        "Add tests covering blocked dependencies for queue next and prompt worker selection.",
-        "Ensure prompts reflect the desired and required functionality for this task."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0202",
       "status": "todo",
       "title": "Archive rejected tasks in ralph queue done",
