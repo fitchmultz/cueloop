@@ -18,7 +18,7 @@
         "codex exec --json \"just say hi\""
       ],
       "evidence": [
-        "User request: \"Enahnce the streaming output for the codex runner. Switch to using 'codex exec --json' and capture the reasoning and agent_message. Maintain the streaming output. Run 'codex exec --help' to see the menu of options. Run 'codex exec --json \"just say hi\"' to see a sample output.\""
+        "User request: \"Enahnce the streaming output for the codex runner. Switch to using 'codex exec --json' and capture the reasoning and agent_message. Maintain the streaming output. Run 'codex exec --help' to see the menu of options. User has captured 'codex exec --json \"just say hi\"' in a file located at /tmp/codex-exec.log\""
       ],
       "plan": [
         "Locate Codex runner streaming implementation and identify where stdout/stderr events are parsed",
