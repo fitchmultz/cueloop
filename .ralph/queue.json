@@ -2,6 +2,37 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0214",
+      "status": "todo",
+      "title": "Audit CLI command overlap and consolidate without losing functionality",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "ux",
+        "docs"
+      ],
+      "scope": [
+        "crates/ralph/src/cli",
+        "docs/cli.md",
+        ".ralph/prompts"
+      ],
+      "evidence": [
+        "User request: \"Audit the cli commands and identify overlap and determine if we have some separation that can cause user confusion. Consolidating commands as long as functionality remains is acceptable. If any changes are made by the agent they must thoroughly check for prompts that may need updated.\""
+      ],
+      "plan": [
+        "Inventory CLI commands and flags to identify overlapping or confusing separations.",
+        "Propose and implement consolidation that preserves functionality, explicitly documenting any behavior changes.",
+        "Update CLI help/docs and any affected prompt templates for the consolidated command set.",
+        "Add or update tests to cover the new command structure and error cases."
+      ],
+      "notes": [],
+      "request": "Audit the cli commands and identify overlap and determine if we have some separation that can cause user confusion. COnsolidating commands as long as fucntionalit remains is acceptable. If any changes are made by the agent they must thoroughly check for prompts that may need updated.",
+      "created_at": "2026-01-21T21:52:21Z",
+      "updated_at": "2026-01-21T21:52:21Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0208",
       "status": "todo",
       "title": "Regex search should honor --match-case",
