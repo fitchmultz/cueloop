@@ -225,8 +225,7 @@ where
                     app_ref.detail_width = f.area().width.saturating_sub(4);
                     draw_ui(f, &mut app_ref)
                 })
-                .context("draw UI")
-                .unwrap();
+                .context("draw UI")?;
 
             // Check for runner events
             while let Ok(event) = rx.try_recv() {
@@ -296,11 +295,8 @@ where
             }
 
             // Handle events with timeout (for polling runner events)
-            if event::poll(Duration::from_millis(100))
-                .context("poll event")
-                .unwrap()
-            {
-                if let Event::Key(key) = event::read().context("read event").unwrap() {
+            if event::poll(Duration::from_millis(100)).context("poll event")? {
+                if let Event::Key(key) = event::read().context("read event")? {
                     // Ignore key release events
                     if key.kind == KeyEventKind::Release {
                         continue;
@@ -309,8 +305,8 @@ where
                     let mut app_ref = app.borrow_mut();
 
                     // Use of extracted handle_key_event function
-                    let now = timeutil::now_utc_rfc3339().unwrap();
-                    match handle_key_event(&mut app_ref, key.code, &now).unwrap() {
+                    let now = timeutil::now_utc_rfc3339()?;
+                    match handle_key_event(&mut app_ref, key.code, &now)? {
                         TuiAction::Quit => break,
                         TuiAction::Continue => {}
                         TuiAction::RunTask(task_id) => {

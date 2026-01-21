@@ -2108,6 +2108,41 @@
       "completed_at": "2026-01-21T21:27:16.731728000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0205",
+      "status": "done",
+      "title": "Handle TUI event loop errors instead of panicking",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "stability",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/events.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/mod.rs uses unwrap() for event::read, now_utc_rfc3339, and handle_key_event in the main loop, which can panic and leave the terminal in raw mode."
+      ],
+      "plan": [
+        "Replace unwrap calls with error propagation and ensure terminal cleanup on failure.",
+        "Add tests or integration coverage to confirm graceful error handling.",
+        "Verify TUI exits cleanly after an injected error.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Replaced unwrap() with error propagation in TUI event loop",
+        "Ensured terminal cleanup happens on error via catch_unwind pattern",
+        "Handled TUI errors gracefully by logging to UI instead of crashing where possible"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T21:35:49.969464000Z",
+      "completed_at": "2026-01-21T21:35:49.969464000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

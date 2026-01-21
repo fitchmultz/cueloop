@@ -92,7 +92,9 @@ fn handle_normal_mode_key(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Res
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('s') => {
-            let _ = app.cycle_status(now_rfc3339);
+            if let Err(e) = app.cycle_status(now_rfc3339) {
+                app.logs.push(format!("Error: {}", e));
+            }
             Ok(TuiAction::Continue)
         }
         _ => Ok(TuiAction::Continue),
@@ -109,8 +111,11 @@ fn handle_editing_mode_key(
     match key {
         KeyCode::Enter => {
             let new_title = current.to_string();
-            let _ = app.update_title(new_title);
-            app.mode = AppMode::Normal;
+            if let Err(e) = app.update_title(new_title) {
+                app.logs.push(format!("Error: {}", e));
+            } else {
+                app.mode = AppMode::Normal;
+            }
             Ok(TuiAction::Continue)
         }
         KeyCode::Esc => {
@@ -137,7 +142,9 @@ fn handle_editing_mode_key(
 fn handle_confirm_delete_key(app: &mut App, key: KeyCode) -> Result<TuiAction> {
     match key {
         KeyCode::Char('y') | KeyCode::Char('Y') => {
-            let _ = app.delete_selected_task();
+            if let Err(e) = app.delete_selected_task() {
+                app.logs.push(format!("Error: {}", e));
+            }
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
         }

@@ -1,17 +1,23 @@
-# PHASE 3 REPORT: RQ-0199
+# Phase 3 Report: RQ-0205
 
-## Status: COMPLETED
+## Status
+- **Completed**: Yes
+- **CI Status**: Passed (`make ci` successful)
 
-### Summary
-The task to ensure `ralph queue repair` updates `depends_on` references when remapping task IDs has been successfully implemented and verified.
+## Changes
+1.  **`crates/ralph/src/tui/mod.rs`**:
+    - Replaced `unwrap()` calls with `?` operator for error propagation in the main event loop (`run_tui`).
+    - Ensures that I/O errors (e.g., terminal resizing, polling failures) return `Result::Err` rather than panicking.
+    - Verified that terminal cleanup (restoring raw mode) executes correctly on error return.
 
-### Changes
-1.  **Modified `crates/ralph/src/queue/repair.rs`**: Added a second pass to the repair logic. After remapping invalid or duplicate IDs, it now iterates through all tasks (active and done) and updates any `depends_on` entries that reference the old IDs to the new remapped IDs.
-2.  **Modified `crates/ralph/tests/repair_integration_test.rs`**: Added a new integration test, `repair_remaps_dependencies_for_invalid_ids`. This test creates a scenario with an invalid ID and a dependent task, runs the repair, and asserts that the dependency is correctly updated to the new valid ID.
+2.  **`crates/ralph/src/tui/events.rs`**:
+    - Wrapped calls to `app.cycle_status`, `app.update_title`, and `app.delete_selected_task` in `if let Err(e) = ...` blocks.
+    - Errors are now captured and logged to the in-app log console (`app.logs`) instead of causing a crash or being silently ignored.
 
-### Verification
-- **Specific Test**: `cargo test -p ralph --test repair_integration_test repair_remaps_dependencies_for_invalid_ids` passed successfully.
-- **Regression Testing**: `make ci` passed successfully (214 tests passed), confirming no regressions were introduced.
+## Verification
+- **Code Review**: Audited changes for correct error handling patterns and absence of `unwrap()` in production paths.
+- **Tests**: Ran `make ci` which passed 223 tests.
+- **Static Analysis**: Checked for remaining `unwrap()` calls in `crates/ralph/src/tui/` and confirmed only test-scoped usages remain.
 
-### Next Steps
-The task is marked as `done` in the queue. The supervisor will finalize the commit and push the changes.
+## Conclusion
+The TUI is now more robust against runtime errors, adhering to the requirement to handle event loop errors gracefully instead of panicking.

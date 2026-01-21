@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0205",
-      "status": "todo",
-      "title": "Handle TUI event loop errors instead of panicking",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "stability",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/mod.rs",
-        "crates/ralph/src/tui/events.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/tui/mod.rs uses unwrap() for event::read, now_utc_rfc3339, and handle_key_event in the main loop, which can panic and leave the terminal in raw mode."
-      ],
-      "plan": [
-        "Replace unwrap calls with error propagation and ensure terminal cleanup on failure.",
-        "Add tests or integration coverage to confirm graceful error handling.",
-        "Verify TUI exits cleanly after an injected error.",
-        "Ensure prompts reflect the desired and required functionality for this task."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-21T19:59:34Z",
-      "updated_at": "2026-01-21T19:59:34Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0206",
       "status": "todo",
       "title": "Update TUI title edits to set updated_at",
