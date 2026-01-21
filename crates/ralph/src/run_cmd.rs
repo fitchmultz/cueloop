@@ -12,6 +12,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+mod logging;
 mod phases;
 
 // Preserve existing `run_cmd.rs` unit tests which call `apply_phase3_completion_signal` directly.
@@ -33,8 +34,6 @@ pub struct RunLoopOptions {
 }
 
 pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()> {
-    let mut completed = 0u32;
-
     let queue_file = queue::load_queue(&resolved.queue_path)?;
 
     let initial_todo_count = queue_file
@@ -44,29 +43,39 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
         .count() as u32;
 
     if initial_todo_count == 0 {
+        // Keep this phrase stable; some tests look for it.
         log::info!("No todo tasks found.");
         return Ok(());
     }
 
-    log::info!("Starting run loop with {initial_todo_count} todo tasks.");
+    let label = format!(
+        "RunLoop (todo={initial_todo_count}, max_tasks={})",
+        opts.max_tasks
+    );
 
-    loop {
-        if opts.max_tasks != 0 && completed >= opts.max_tasks {
-            log::info!("Reached max task limit ({completed}).");
-            return Ok(());
-        }
+    logging::with_scope(&label, || {
+        let mut completed = 0u32;
 
-        match run_one(resolved, &opts.agent_overrides, opts.force)? {
-            RunOutcome::NoTodo => {
-                log::info!("No more todo tasks remaining.");
+        loop {
+            if opts.max_tasks != 0 && completed >= opts.max_tasks {
+                log::info!("RunLoop: end (reached max task limit: {completed})");
                 return Ok(());
             }
-            RunOutcome::Ran { task_id } => {
-                completed += 1;
-                log::info!("Completed {task_id} ({completed}/{initial_todo_count}).");
+
+            match run_one(resolved, &opts.agent_overrides, opts.force)? {
+                RunOutcome::NoTodo => {
+                    log::info!("RunLoop: end (no more todo tasks remaining)");
+                    return Ok(());
+                }
+                RunOutcome::Ran { task_id } => {
+                    completed += 1;
+                    log::info!(
+                        "RunLoop: task-complete {task_id} ({completed}/{initial_todo_count})"
+                    );
+                }
             }
         }
-    }
+    })
 }
 
 pub fn run_one_with_id(
@@ -189,6 +198,8 @@ fn run_one_impl(
     let task = queue_file.tasks[task_idx].clone();
     let task_id = task.id.trim().to_string();
 
+    log::info!("RunOne: selected {task_id} (phases={phases})");
+
     // Require clean repo
     gitutil::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
@@ -204,51 +215,65 @@ fn run_one_impl(
     let bins = runner::resolve_binaries(&resolved.config.agent);
 
     log::info!(
-        "Executing {task_id}: {title} (runner: {runner:?}, model: {model})",
-        title = task.title,
+        "Task {task_id}: start (runner={runner:?}, model={model})",
         runner = settings.runner,
         model = settings.model.as_str()
     );
 
-    // --- Prompt Construction ---
-    let template = prompts::load_worker_prompt(&resolved.repo_root)?;
-    let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
-    let mut base_prompt = prompts::render_worker_prompt(&template, project_type, &resolved.config)?;
+    let exec_result: Result<()> = (|| {
+        // --- Prompt Construction ---
+        let template = prompts::load_worker_prompt(&resolved.repo_root)?;
+        let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
+        let mut base_prompt =
+            prompts::render_worker_prompt(&template, project_type, &resolved.config)?;
 
-    // Inject an authoritative task context block to prevent the agent from selecting
-    // a different task (e.g., "first todo" or "lowest ID") after Ralph marks the
-    // selected task as `doing`.
-    let task_context = task_context_for_prompt(&task)?;
-    base_prompt = format!("{task_context}\n\n---\n\n{base_prompt}");
+        // Inject an authoritative task context block to prevent the agent from selecting
+        // a different task (e.g., "first todo" or "lowest ID") after Ralph marks the
+        // selected task as `doing`.
+        let task_context = task_context_for_prompt(&task)?;
+        base_prompt = format!("{task_context}\n\n---\n\n{base_prompt}");
 
-    let invocation = phases::PhaseInvocation {
-        resolved,
-        settings: &settings,
-        bins,
-        task_id: &task_id,
-        base_prompt: &base_prompt,
-        policy: &policy,
-        output_handler: output_handler.clone(),
-        project_type,
-    };
+        let invocation = phases::PhaseInvocation {
+            resolved,
+            settings: &settings,
+            bins,
+            task_id: &task_id,
+            base_prompt: &base_prompt,
+            policy: &policy,
+            output_handler: output_handler.clone(),
+            project_type,
+        };
 
-    match phases {
-        2 => {
-            let plan_text = phases::execute_phase1_planning(&invocation, 2)?;
-            phases::execute_phase2_implementation(&invocation, 2, &plan_text)?;
+        match phases {
+            2 => {
+                let plan_text = phases::execute_phase1_planning(&invocation, 2)?;
+                phases::execute_phase2_implementation(&invocation, 2, &plan_text)?;
+            }
+            3 => {
+                let plan_text = phases::execute_phase1_planning(&invocation, 3)?;
+                phases::execute_phase2_implementation(&invocation, 3, &plan_text)?;
+                phases::execute_phase3_review(&invocation)?;
+            }
+            1 => {
+                phases::execute_single_phase(&invocation)?;
+            }
+            _ => unreachable!("phases must be validated to 1..=3"),
         }
-        3 => {
-            let plan_text = phases::execute_phase1_planning(&invocation, 3)?;
-            phases::execute_phase2_implementation(&invocation, 3, &plan_text)?;
-            phases::execute_phase3_review(&invocation)?;
+
+        Ok(())
+    })();
+
+    match exec_result {
+        Ok(()) => {
+            log::info!("Task {task_id}: end");
+            Ok(RunOutcome::Ran { task_id })
         }
-        1 => {
-            phases::execute_single_phase(&invocation)?;
+        Err(err) => {
+            // Keep task-level error concise; phase scopes will log detailed boundaries.
+            log::error!("Task {task_id}: error");
+            Err(err)
         }
-        _ => unreachable!("phases must be validated to 1..=3"),
     }
-
-    Ok(RunOutcome::Ran { task_id })
 }
 
 fn resolve_run_agent_settings(
@@ -299,36 +324,13 @@ fn mark_task_doing(resolved: &config::Resolved, task_id: &str) -> Result<()> {
 }
 
 fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> {
-    let status = gitutil::status_porcelain(&resolved.repo_root)?;
-    let is_dirty = !status.trim().is_empty();
+    let label = format!("PostRunSupervise for {}", task_id.trim());
+    logging::with_scope(&label, || {
+        let status = gitutil::status_porcelain(&resolved.repo_root)?;
+        let is_dirty = !status.trim().is_empty();
 
-    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-    let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
-    let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
-        None
-    } else {
-        Some(&done_file)
-    };
-    queue::validate_queue_set(
-        &queue_file,
-        done_ref,
-        &resolved.id_prefix,
-        resolved.id_width,
-    )?;
-
-    let (mut task_status, task_title, mut in_done) =
-        find_task_status(&queue_file, &done_file, task_id)
-            .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
-
-    if is_dirty {
-        warn_if_modified_lfs(&resolved.repo_root);
-        if let Err(err) = run_make_ci(&resolved.repo_root) {
-            gitutil::revert_uncommitted(&resolved.repo_root)?;
-            bail!("CI gate failed: 'make ci' did not pass after the task completed. Uncommitted changes were reverted. Fix the issues reported by CI and try again. Error: {:#}", err);
-        }
-
-        queue_file = queue::load_queue(&resolved.queue_path)?;
-        done_file = queue::load_queue_or_default(&resolved.done_path)?;
+        let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+        let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
         let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
             None
         } else {
@@ -341,28 +343,94 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
             resolved.id_width,
         )?;
 
-        let (status_after, _title_after, in_done_after) =
+        let (mut task_status, task_title, mut in_done) =
             find_task_status(&queue_file, &done_file, task_id)
                 .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
-        task_status = status_after;
-        in_done = in_done_after;
 
+        if is_dirty {
+            warn_if_modified_lfs(&resolved.repo_root);
+            if let Err(err) = run_make_ci(&resolved.repo_root) {
+                gitutil::revert_uncommitted(&resolved.repo_root)?;
+                bail!("CI gate failed: 'make ci' did not pass after the task completed. Uncommitted changes were reverted. Fix the issues reported by CI and try again. Error: {:#}", err);
+            }
+
+            queue_file = queue::load_queue(&resolved.queue_path)?;
+            done_file = queue::load_queue_or_default(&resolved.done_path)?;
+            let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
+                None
+            } else {
+                Some(&done_file)
+            };
+            queue::validate_queue_set(
+                &queue_file,
+                done_ref,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )?;
+
+            let (status_after, _title_after, in_done_after) =
+                find_task_status(&queue_file, &done_file, task_id)
+                    .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
+            task_status = status_after;
+            in_done = in_done_after;
+
+            if task_status != TaskStatus::Done {
+                if in_done {
+                    gitutil::revert_uncommitted(&resolved.repo_root)?;
+                    bail!("Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json.");
+                }
+                let now = timeutil::now_utc_rfc3339()?;
+                queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None)?;
+                queue::save_queue(&resolved.queue_path, &queue_file)?;
+            }
+
+            queue::archive_done_tasks(
+                &resolved.queue_path,
+                &resolved.done_path,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )?;
+
+            let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
+            gitutil::commit_all(&resolved.repo_root, &commit_message)?;
+            push_if_ahead(&resolved.repo_root)?;
+            gitutil::require_clean_repo_ignoring_paths(
+                &resolved.repo_root,
+                false,
+                &[".ralph/queue.json", ".ralph/done.json"],
+            )?;
+            return Ok(());
+        }
+
+        if task_status == TaskStatus::Done && in_done {
+            push_if_ahead(&resolved.repo_root)?;
+            return Ok(());
+        }
+
+        let mut changed = false;
         if task_status != TaskStatus::Done {
             if in_done {
-                gitutil::revert_uncommitted(&resolved.repo_root)?;
                 bail!("Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json.");
             }
             let now = timeutil::now_utc_rfc3339()?;
             queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None)?;
             queue::save_queue(&resolved.queue_path, &queue_file)?;
+            changed = true;
         }
 
-        queue::archive_done_tasks(
+        let report = queue::archive_done_tasks(
             &resolved.queue_path,
             &resolved.done_path,
             &resolved.id_prefix,
             resolved.id_width,
         )?;
+        if !report.moved_ids.is_empty() {
+            changed = true;
+        }
+
+        if !changed {
+            return Ok(());
+        }
 
         let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
         gitutil::commit_all(&resolved.repo_root, &commit_message)?;
@@ -372,48 +440,8 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
             false,
             &[".ralph/queue.json", ".ralph/done.json"],
         )?;
-        return Ok(());
-    }
-
-    if task_status == TaskStatus::Done && in_done {
-        push_if_ahead(&resolved.repo_root)?;
-        return Ok(());
-    }
-
-    let mut changed = false;
-    if task_status != TaskStatus::Done {
-        if in_done {
-            bail!("Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json.");
-        }
-        let now = timeutil::now_utc_rfc3339()?;
-        queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None)?;
-        queue::save_queue(&resolved.queue_path, &queue_file)?;
-        changed = true;
-    }
-
-    let report = queue::archive_done_tasks(
-        &resolved.queue_path,
-        &resolved.done_path,
-        &resolved.id_prefix,
-        resolved.id_width,
-    )?;
-    if !report.moved_ids.is_empty() {
-        changed = true;
-    }
-
-    if !changed {
-        return Ok(());
-    }
-
-    let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
-    gitutil::commit_all(&resolved.repo_root, &commit_message)?;
-    push_if_ahead(&resolved.repo_root)?;
-    gitutil::require_clean_repo_ignoring_paths(
-        &resolved.repo_root,
-        false,
-        &[".ralph/queue.json", ".ralph/done.json"],
-    )?;
-    Ok(())
+        Ok(())
+    })
 }
 
 fn warn_if_modified_lfs(repo_root: &Path) {
@@ -498,20 +526,22 @@ fn find_task_status(
 }
 
 fn run_make_ci(repo_root: &Path) -> Result<()> {
-    let status = Command::new("make")
-        .arg("ci")
-        .current_dir(repo_root)
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()
-        .with_context(|| format!("run make ci in {}", repo_root.display()))?;
+    logging::with_scope("CI gate (make ci)", || {
+        let status = Command::new("make")
+            .arg("ci")
+            .current_dir(repo_root)
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .with_context(|| format!("run make ci in {}", repo_root.display()))?;
 
-    if status.success() {
-        return Ok(());
-    }
+        if status.success() {
+            return Ok(());
+        }
 
-    bail!("CI failed: 'make ci' exited with code {:?}. Fix the linting, type-checking, or test failures before proceeding.", status.code())
+        bail!("CI failed: 'make ci' exited with code {:?}. Fix the linting, type-checking, or test failures before proceeding.", status.code())
+    })
 }
 
 #[cfg(test)]

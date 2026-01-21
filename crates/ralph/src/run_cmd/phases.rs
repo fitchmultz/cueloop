@@ -11,6 +11,8 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
 use std::process::Command;
 
+use super::logging;
+
 /// Shared inputs for executing a run phase workflow.
 ///
 /// This struct intentionally groups parameters to keep function signatures small and
@@ -35,43 +37,45 @@ pub struct ReviewContext {
 }
 
 pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> Result<String> {
-    log::info!("Phase 1/{total_phases} (Planning) for {}...", ctx.task_id);
+    let label = logging::phase_label(1, total_phases, "Planning", ctx.task_id);
 
-    let p1_prompt = promptflow::build_phase1_prompt(ctx.base_prompt, ctx.task_id, ctx.policy);
-    let output = execute_runner_pass(
-        ctx.resolved,
-        ctx.settings,
-        ctx.bins,
-        &p1_prompt,
-        ctx.output_handler.clone(),
-        true,
-        "Planning",
-    )?;
+    logging::with_scope(&label, || {
+        let p1_prompt = promptflow::build_phase1_prompt(ctx.base_prompt, ctx.task_id, ctx.policy);
+        let output = execute_runner_pass(
+            ctx.resolved,
+            ctx.settings,
+            ctx.bins,
+            &p1_prompt,
+            ctx.output_handler.clone(),
+            true,
+            "Planning",
+        )?;
 
-    // ENFORCEMENT: Phase 1 must not implement.
-    // It may only edit `.ralph/queue.json` / `.ralph/done.json` (status bookkeeping).
-    if let Err(err) = gitutil::require_clean_repo_ignoring_paths(
-        &ctx.resolved.repo_root,
-        false,
-        &[".ralph/queue.json", ".ralph/done.json"],
-    ) {
-        gitutil::revert_uncommitted(&ctx.resolved.repo_root)?;
-        bail!(
-            "Phase 1 violated plan-only contract: it modified files outside allowed queue bookkeeping. Reverted changes. Error: {:#}",
-            err
+        // ENFORCEMENT: Phase 1 must not implement.
+        // It may only edit `.ralph/queue.json` / `.ralph/done.json` (status bookkeeping).
+        if let Err(err) = gitutil::require_clean_repo_ignoring_paths(
+            &ctx.resolved.repo_root,
+            false,
+            &[".ralph/queue.json", ".ralph/done.json"],
+        ) {
+            gitutil::revert_uncommitted(&ctx.resolved.repo_root)?;
+            bail!(
+                "Phase 1 violated plan-only contract: it modified files outside allowed queue bookkeeping. Reverted changes. Error: {:#}",
+                err
+            );
+        }
+
+        // Extract and cache plan (STRICT: markers required)
+        let plan_text = promptflow::extract_plan_text(ctx.settings.runner, &output.stdout)?;
+        promptflow::write_plan_cache(&ctx.resolved.repo_root, ctx.task_id, &plan_text)?;
+        log::info!(
+            "Plan cached for {} at {}",
+            ctx.task_id,
+            promptflow::plan_cache_path(&ctx.resolved.repo_root, ctx.task_id).display()
         );
-    }
 
-    // Extract and cache plan (STRICT: markers required)
-    let plan_text = promptflow::extract_plan_text(ctx.settings.runner, &output.stdout)?;
-    promptflow::write_plan_cache(&ctx.resolved.repo_root, ctx.task_id, &plan_text)?;
-    log::info!(
-        "Plan cached for {} at {}",
-        ctx.task_id,
-        promptflow::plan_cache_path(&ctx.resolved.repo_root, ctx.task_id).display()
-    );
-
-    Ok(plan_text)
+        Ok(plan_text)
+    })
 }
 
 pub fn execute_phase2_implementation(
@@ -79,17 +83,42 @@ pub fn execute_phase2_implementation(
     total_phases: u8,
     plan_text: &str,
 ) -> Result<()> {
-    log::info!(
-        "Phase 2/{total_phases} (Implementation) for {}...",
-        ctx.task_id
-    );
+    let label = logging::phase_label(2, total_phases, "Implementation", ctx.task_id);
 
-    if total_phases == 3 {
-        let handoff_template = prompts::load_phase2_handoff_checklist(&ctx.resolved.repo_root)?;
-        let handoff_checklist =
-            prompts::render_phase2_handoff_checklist(&handoff_template, &ctx.resolved.config)?;
+    logging::with_scope(&label, || {
+        if total_phases == 3 {
+            let handoff_template = prompts::load_phase2_handoff_checklist(&ctx.resolved.repo_root)?;
+            let handoff_checklist =
+                prompts::render_phase2_handoff_checklist(&handoff_template, &ctx.resolved.config)?;
+            let p2_prompt =
+                promptflow::build_phase2_handoff_prompt(plan_text, &handoff_checklist, ctx.policy);
+
+            execute_runner_pass(
+                ctx.resolved,
+                ctx.settings,
+                ctx.bins,
+                &p2_prompt,
+                ctx.output_handler.clone(),
+                true,
+                "Implementation",
+            )?;
+
+            if let Err(err) = super::run_make_ci(&ctx.resolved.repo_root) {
+                gitutil::revert_uncommitted(&ctx.resolved.repo_root)?;
+                bail!(
+                    "CI gate failed after Phase 2. Uncommitted changes were reverted. Fix issues reported by CI and rerun. Error: {:#}",
+                    err
+                );
+            }
+
+            return Ok(());
+        }
+
+        let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
+        let completion_checklist =
+            prompts::render_completion_checklist(&checklist_template, &ctx.resolved.config)?;
         let p2_prompt =
-            promptflow::build_phase2_handoff_prompt(plan_text, &handoff_checklist, ctx.policy);
+            promptflow::build_phase2_prompt(plan_text, &completion_checklist, ctx.policy);
 
         execute_runner_pass(
             ctx.resolved,
@@ -101,125 +130,108 @@ pub fn execute_phase2_implementation(
             "Implementation",
         )?;
 
-        if let Err(err) = super::run_make_ci(&ctx.resolved.repo_root) {
-            gitutil::revert_uncommitted(&ctx.resolved.repo_root)?;
-            bail!(
-                "CI gate failed after Phase 2. Uncommitted changes were reverted. Fix issues reported by CI and rerun. Error: {:#}",
-                err
-            );
-        }
-
-        return Ok(());
-    }
-
-    let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
-    let completion_checklist =
-        prompts::render_completion_checklist(&checklist_template, &ctx.resolved.config)?;
-    let p2_prompt = promptflow::build_phase2_prompt(plan_text, &completion_checklist, ctx.policy);
-
-    execute_runner_pass(
-        ctx.resolved,
-        ctx.settings,
-        ctx.bins,
-        &p2_prompt,
-        ctx.output_handler.clone(),
-        true,
-        "Implementation",
-    )?;
-
-    super::post_run_supervise(ctx.resolved, ctx.task_id)?;
-    Ok(())
+        super::post_run_supervise(ctx.resolved, ctx.task_id)?;
+        Ok(())
+    })
 }
 
 pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
-    let review_context = collect_review_context(&ctx.resolved.repo_root)?;
-    let review_template = prompts::load_code_review_prompt(&ctx.resolved.repo_root)?;
-    let review_body = prompts::render_code_review_prompt(
-        &review_template,
-        ctx.task_id,
-        &review_context.status,
-        &review_context.diff,
-        &review_context.diff_staged,
-        ctx.project_type,
-        &ctx.resolved.config,
-    )?;
+    let label = logging::phase_label(3, 3, "Review", ctx.task_id);
 
-    let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
-    let completion_checklist =
-        prompts::render_completion_checklist(&checklist_template, &ctx.resolved.config)?;
-    let p3_prompt = promptflow::build_phase3_prompt(
-        ctx.base_prompt,
-        &review_body,
-        &completion_checklist,
-        ctx.policy,
-        ctx.task_id,
-    );
+    logging::with_scope(&label, || {
+        let review_context = collect_review_context(&ctx.resolved.repo_root)?;
+        let review_template = prompts::load_code_review_prompt(&ctx.resolved.repo_root)?;
+        let review_body = prompts::render_code_review_prompt(
+            &review_template,
+            ctx.task_id,
+            &review_context.status,
+            &review_context.diff,
+            &review_context.diff_staged,
+            ctx.project_type,
+            &ctx.resolved.config,
+        )?;
 
-    runutil::run_prompt_with_handling(
-        runutil::RunnerInvocation {
-            repo_root: &ctx.resolved.repo_root,
-            runner_kind: ctx.settings.runner,
-            bins: ctx.bins,
-            model: ctx.settings.model.clone(),
-            reasoning_effort: ctx.settings.reasoning_effort,
-            prompt: &p3_prompt,
-            timeout: None,
-            permission_mode: ctx.resolved.config.agent.claude_permission_mode,
-            revert_on_error: false,
-            output_handler: ctx.output_handler.clone(),
-        },
-        runutil::RunnerErrorMessages {
-            log_label: "Code review",
-            interrupted_msg: "Code review interrupted: the agent run was canceled. Review the working tree and rerun Phase 3 to complete the task.",
-            timeout_msg: "Code review timed out: the agent run exceeded the time limit. Review the working tree and rerun Phase 3 to complete the task.",
-            terminated_msg: "Code review terminated: the agent was stopped by a signal. Review the working tree and rerun Phase 3 to complete the task.",
-            non_zero_msg: |code| {
-                format!(
-                    "Code review failed: the agent exited with a non-zero code ({code}). Review the working tree and rerun Phase 3 to complete the task."
-                )
+        let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
+        let completion_checklist =
+            prompts::render_completion_checklist(&checklist_template, &ctx.resolved.config)?;
+        let p3_prompt = promptflow::build_phase3_prompt(
+            ctx.base_prompt,
+            &review_body,
+            &completion_checklist,
+            ctx.policy,
+            ctx.task_id,
+        );
+
+        runutil::run_prompt_with_handling(
+            runutil::RunnerInvocation {
+                repo_root: &ctx.resolved.repo_root,
+                runner_kind: ctx.settings.runner,
+                bins: ctx.bins,
+                model: ctx.settings.model.clone(),
+                reasoning_effort: ctx.settings.reasoning_effort,
+                prompt: &p3_prompt,
+                timeout: None,
+                permission_mode: ctx.resolved.config.agent.claude_permission_mode,
+                revert_on_error: false,
+                output_handler: ctx.output_handler.clone(),
             },
-            other_msg: |err| {
-                format!(
-                    "Code review failed: the agent could not be started or encountered an error. Review the working tree and rerun Phase 3. Error: {:#}",
-                    err
-                )
+            runutil::RunnerErrorMessages {
+                log_label: "Code review",
+                interrupted_msg: "Code review interrupted: the agent run was canceled. Review the working tree and rerun Phase 3 to complete the task.",
+                timeout_msg: "Code review timed out: the agent run exceeded the time limit. Review the working tree and rerun Phase 3 to complete the task.",
+                terminated_msg: "Code review terminated: the agent was stopped by a signal. Review the working tree and rerun Phase 3 to complete the task.",
+                non_zero_msg: |code| {
+                    format!(
+                        "Code review failed: the agent exited with a non-zero code ({code}). Review the working tree and rerun Phase 3 to complete the task."
+                    )
+                },
+                other_msg: |err| {
+                    format!(
+                        "Code review failed: the agent could not be started or encountered an error. Review the working tree and rerun Phase 3. Error: {:#}",
+                        err
+                    )
+                },
             },
-        },
-    )?;
+        )?;
 
-    if let Some(status) = apply_phase3_completion_signal(ctx.resolved, ctx.task_id)? {
-        if status == TaskStatus::Done {
-            super::post_run_supervise(ctx.resolved, ctx.task_id)?;
+        if let Some(status) = apply_phase3_completion_signal(ctx.resolved, ctx.task_id)? {
+            if status == TaskStatus::Done {
+                super::post_run_supervise(ctx.resolved, ctx.task_id)?;
+            }
         }
-    }
 
-    ensure_phase3_completion(ctx.resolved, ctx.task_id)?;
-    Ok(())
+        ensure_phase3_completion(ctx.resolved, ctx.task_id)?;
+        Ok(())
+    })
 }
 
 pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
-    let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
-    let completion_checklist =
-        prompts::render_completion_checklist(&checklist_template, &ctx.resolved.config)?;
-    let prompt = promptflow::build_single_phase_prompt(
-        ctx.base_prompt,
-        &completion_checklist,
-        ctx.task_id,
-        ctx.policy,
-    );
+    let label = logging::single_phase_label("SinglePhase (Execution)", ctx.task_id);
 
-    execute_runner_pass(
-        ctx.resolved,
-        ctx.settings,
-        ctx.bins,
-        &prompt,
-        ctx.output_handler.clone(),
-        true,
-        "Execution",
-    )?;
+    logging::with_scope(&label, || {
+        let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
+        let completion_checklist =
+            prompts::render_completion_checklist(&checklist_template, &ctx.resolved.config)?;
+        let prompt = promptflow::build_single_phase_prompt(
+            ctx.base_prompt,
+            &completion_checklist,
+            ctx.task_id,
+            ctx.policy,
+        );
 
-    super::post_run_supervise(ctx.resolved, ctx.task_id)?;
-    Ok(())
+        execute_runner_pass(
+            ctx.resolved,
+            ctx.settings,
+            ctx.bins,
+            &prompt,
+            ctx.output_handler.clone(),
+            true,
+            "Execution",
+        )?;
+
+        super::post_run_supervise(ctx.resolved, ctx.task_id)?;
+        Ok(())
+    })
 }
 
 pub fn execute_runner_pass(
