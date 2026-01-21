@@ -85,11 +85,12 @@ fn validate_task_required_fields(index: usize, task: &Task) -> Result<()> {
     if task.title.trim().is_empty() {
         bail!("Missing task title: task {} (index {}) is missing a 'title' field. Add a descriptive title (e.g., 'Fix login bug').", task.id, index);
     }
-    ensure_list_non_empty("tags", index, &task.id, &task.tags)?;
-    ensure_list_non_empty("scope", index, &task.id, &task.scope)?;
-    ensure_list_non_empty("evidence", index, &task.id, &task.evidence)?;
-    ensure_list_non_empty("plan", index, &task.id, &task.plan)?;
-    ensure_field_present("request", index, &task.id, task.request.as_deref())?;
+    ensure_list_valid("tags", index, &task.id, &task.tags)?;
+    ensure_list_valid("scope", index, &task.id, &task.scope)?;
+    ensure_list_valid("evidence", index, &task.id, &task.evidence)?;
+    ensure_list_valid("plan", index, &task.id, &task.plan)?;
+
+    // request is optional, so no ensure_field_present check needed.
 
     // Validate custom field keys
     for (key_idx, (key, _value)) in task.custom_fields.iter().enumerate() {
@@ -147,10 +148,7 @@ fn validate_rfc3339(label: &str, index: usize, id: &str, value: &str) -> Result<
     Ok(())
 }
 
-fn ensure_list_non_empty(label: &str, index: usize, id: &str, values: &[String]) -> Result<()> {
-    if values.is_empty() {
-        bail!("Empty {}: task {} (index {}) '{}' field cannot be empty. Add at least one item to the list.", label, id, index, label);
-    }
+fn ensure_list_valid(label: &str, index: usize, id: &str, values: &[String]) -> Result<()> {
     for (i, value) in values.iter().enumerate() {
         if value.trim().is_empty() {
             bail!(
@@ -164,19 +162,6 @@ fn ensure_list_non_empty(label: &str, index: usize, id: &str, values: &[String])
         }
     }
     Ok(())
-}
-
-fn ensure_field_present(label: &str, index: usize, id: &str, value: Option<&str>) -> Result<()> {
-    match value {
-        Some(v) if !v.trim().is_empty() => Ok(()),
-        _ => bail!(
-            "Missing {}: task {} (index {}) requires a non-empty '{}' field. Ensure the field is present and has a value.",
-            label,
-            id,
-            index,
-            label
-        ),
-    }
 }
 
 pub(super) fn validate_task_id(
@@ -433,27 +418,28 @@ mod tests {
     }
 
     #[test]
-    fn validate_rejects_missing_request() {
+    fn validate_allows_missing_request() {
         let mut task = task("RQ-0001");
         task.request = None;
         let queue = QueueFile {
             version: 1,
             tasks: vec![task],
         };
-        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
-        assert!(format!("{err}").contains("Missing request"));
+        assert!(validate_queue(&queue, "RQ", 4).is_ok());
     }
 
     #[test]
-    fn validate_rejects_empty_request() {
+    fn validate_allows_empty_lists() {
         let mut task = task("RQ-0001");
-        task.request = Some("".to_string());
+        task.tags = vec![];
+        task.scope = vec![];
+        task.evidence = vec![];
+        task.plan = vec![];
         let queue = QueueFile {
             version: 1,
             tasks: vec![task],
         };
-        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
-        assert!(format!("{err}").contains("Missing request"));
+        assert!(validate_queue(&queue, "RQ", 4).is_ok());
     }
 
     #[test]

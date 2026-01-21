@@ -19,19 +19,21 @@ Each task is an object with required and optional fields.
 Required:
 - `id` (string)
 - `title` (string)
+- `created_at` (string, RFC3339 UTC)
+- `updated_at` (string, RFC3339 UTC)
+- `tags` (list of strings, can be empty)
+- `scope` (list of strings, can be empty)
+- `evidence` (list of strings, can be empty)
+- `plan` (list of strings, can be empty)
+- `notes` (list of strings, can be empty)
+- `depends_on` (list of task IDs, can be empty)
+- `custom_fields` (map of strings, can be empty)
 
 Common optional fields:
 - `status`: `draft`, `todo`, `doing`, `done`, `rejected` (default: `todo`).
 - `priority`: `critical`, `high`, `medium`, `low` (default: `medium`).
-- `tags`: list of strings.
-- `scope`: list of strings.
-- `evidence`: list of strings.
-- `plan`: list of strings.
-- `notes`: list of strings.
-- `depends_on`: list of task IDs (must be Done before this task can run).
 - `request`: original human request (string or null).
-- `created_at`, `updated_at`, `completed_at`: RFC3339 UTC timestamps as strings.
-- `custom_fields`: key/value string map for extensions.
+- `completed_at`: RFC3339 UTC timestamp (string or null).
 - `agent`: per-task runner override (see below).
 
 Per-task agent overrides:
