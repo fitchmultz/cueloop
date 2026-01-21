@@ -214,3 +214,107 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
     // We can't easily regex timestamps but we know they are there if JSON is valid and parsing passed.
     Ok(())
 }
+
+#[test]
+fn repair_remaps_dependencies_for_invalid_ids() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Create broken queue.json
+    // - INVALID-1: Invalid ID format
+    // - RQ-0002: Depends on INVALID-1
+    let broken_queue = r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "INVALID-1",
+      "status": "todo",
+      "title": "Invalid ID task",
+      "tags": ["test"],
+      "scope": ["crates/ralph"],
+      "evidence": ["none"],
+      "plan": ["none"],
+      "request": "Test request",
+      "created_at": "2026-01-18T00:00:00.000000000Z",
+      "updated_at": "2026-01-18T00:00:00.000000000Z",
+      "completed_at": null,
+      "notes": [],
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0002",
+      "status": "todo",
+      "title": "Dependent task",
+      "tags": ["test"],
+      "scope": ["crates/ralph"],
+      "evidence": ["none"],
+      "plan": ["none"],
+      "request": "Test request",
+      "created_at": "2026-01-18T00:00:00.000000000Z",
+      "updated_at": "2026-01-18T00:00:00.000000000Z",
+      "completed_at": null,
+      "notes": [],
+      "depends_on": ["INVALID-1"],
+      "custom_fields": {}
+    }
+  ]
+}"#;
+
+    std::fs::write(dir.path().join(".ralph/queue.json"), broken_queue)?;
+
+    // Run repair
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "repair"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph queue repair failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let queue_str = std::fs::read_to_string(dir.path().join(".ralph/queue.json"))?;
+
+    // INVALID-1 should be remapped to RQ-0001 (since init likely created nothing or we overwrote it)
+    // Actually init creates nothing in queue.json usually, just structure.
+    // The test overwrote queue.json, so next available valid ID should be RQ-0001 or RQ-0003 depending on what RQ-0002 occupies.
+    // RQ-0002 is valid.
+    // So INVALID-1 should become RQ-0001 (or RQ-0003 if it scans and sees RQ-0002).
+
+    // Let's verify that INVALID-1 is GONE and replaced by a valid ID.
+    assert!(
+        !queue_str.contains("INVALID-1"),
+        "INVALID-1 should be remapped"
+    );
+
+    // Find the new ID for the first task
+    let queue: serde_json::Value = serde_json::from_str(&queue_str)?;
+    let tasks = queue["tasks"].as_array().expect("tasks array");
+
+    let task1 = tasks
+        .iter()
+        .find(|t| t["title"] == "Invalid ID task")
+        .expect("Task 1 found");
+    let new_id = task1["id"].as_str().expect("id string");
+
+    println!("Remapped ID: {}", new_id);
+    assert!(new_id.starts_with("RQ-"), "New ID should start with RQ-");
+
+    // Verify dependent task points to new ID
+    let task2 = tasks
+        .iter()
+        .find(|t| t["title"] == "Dependent task")
+        .expect("Task 2 found");
+    let depends_on = task2["depends_on"].as_array().expect("depends_on array");
+
+    assert_eq!(depends_on.len(), 1, "Should have 1 dependency");
+    assert_eq!(
+        depends_on[0].as_str(),
+        Some(new_id),
+        "Dependency should be updated to new ID"
+    );
+
+    Ok(())
+}

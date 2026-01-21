@@ -1858,6 +1858,43 @@
       "completed_at": "2026-01-21T20:41:39.708755000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0199",
+      "status": "done",
+      "title": "Repair queue ID remap must update depends_on references",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "dependencies",
+        "repair"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/repair.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/tests/repair_integration_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/repair.rs remaps task.id for duplicates/invalid IDs and records report.remapped_ids but does not update depends_on in other tasks.",
+        "validate_dependencies in crates/ralph/src/queue/validation.rs assumes depends_on IDs exist and will fail after remap unless references are updated."
+      ],
+      "plan": [
+        "Track a remap map of old->new IDs during repair.",
+        "Update depends_on entries across active and done tasks using the remap map.",
+        "Add/extend tests to assert dependencies are rewritten alongside ID remaps.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Updated repair.rs to perform a second pass updating dependencies using the remapped ID map.",
+        "Added integration test repair_remaps_dependencies_for_invalid_ids in repair_integration_test.rs.",
+        "Verified fix with cargo test and make ci."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T20:47:25.332837000Z",
+      "completed_at": "2026-01-21T20:47:25.332837000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

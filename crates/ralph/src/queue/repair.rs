@@ -132,6 +132,39 @@ pub fn repair_queue(
     repair_tasks(&mut active.tasks);
     repair_tasks(&mut done.tasks);
 
+    // Second pass: Update dependencies for remapped IDs
+    if !report.remapped_ids.is_empty() {
+        let remapped_map: std::collections::HashMap<String, String> =
+            report.remapped_ids.iter().cloned().collect();
+
+        let mut fix_dependencies = |tasks: &mut Vec<Task>| {
+            for task in tasks.iter_mut() {
+                let mut deps_modified = false;
+                for dep in task.depends_on.iter_mut() {
+                    if let Some(new_id) = remapped_map.get(dep) {
+                        *dep = new_id.clone();
+                        deps_modified = true;
+                    }
+                }
+                if deps_modified {
+                    // Only count as fixed if we haven't already counted it (simpler: just increment,
+                    // as 'fixed_tasks' is a count of tasks touched, strictly speaking we might want to track set of unique modified tasks
+                    // but usually a simple counter is enough for the report.
+                    // However, if we want to be precise: "Fixed missing fields in X tasks" vs "Fixed dependencies".
+                    // The report struct just has `fixed_tasks`.
+                    // If we modified fields in pass 1 AND deps in pass 2, it's the same task being fixed.
+                    // But `repair_tasks` already incremented if fields/ID changed.
+                    // To avoid double counting, we could assume `fixed_tasks` is just "operations performed" or track unique indices.
+                    // Given the current implementation just increments, let's just increment.
+                    report.fixed_tasks += 1;
+                }
+            }
+        };
+
+        fix_dependencies(&mut active.tasks);
+        fix_dependencies(&mut done.tasks);
+    }
+
     if !dry_run && !report.is_empty() {
         save_queue(queue_path, &active)?;
         save_queue(done_path, &done)?;
