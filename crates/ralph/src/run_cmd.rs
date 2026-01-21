@@ -4,10 +4,10 @@
 //! Phase-specific prompt/runner execution lives in `run_cmd::phases`.
 
 use crate::config;
-use crate::contracts::{ProjectType, QueueFile, TaskStatus};
+use crate::contracts::{GitRevertMode, ProjectType, QueueFile, TaskStatus};
 use crate::gitutil::GitError;
 use crate::promptflow;
-use crate::{gitutil, outpututil, prompts, queue, runner, timeutil};
+use crate::{gitutil, outpututil, prompts, queue, runner, runutil, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -144,6 +144,11 @@ fn run_one_impl(
         .or(resolved.config.agent.require_repoprompt)
         .unwrap_or(false);
 
+    let git_revert_mode = agent_overrides
+        .git_revert_mode
+        .or(resolved.config.agent.git_revert_mode)
+        .unwrap_or(GitRevertMode::Ask);
+
     let policy = promptflow::PromptPolicy {
         require_repoprompt: rp_required,
     };
@@ -242,6 +247,7 @@ fn run_one_impl(
             policy: &policy,
             output_handler: output_handler.clone(),
             project_type,
+            git_revert_mode,
         };
 
         match phases {
@@ -323,7 +329,11 @@ fn mark_task_doing(resolved: &config::Resolved, task_id: &str) -> Result<()> {
     Ok(())
 }
 
-fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> {
+fn post_run_supervise(
+    resolved: &config::Resolved,
+    task_id: &str,
+    git_revert_mode: GitRevertMode,
+) -> Result<()> {
     let label = format!("PostRunSupervise for {}", task_id.trim());
     logging::with_scope(&label, || {
         let status = gitutil::status_porcelain(&resolved.repo_root)?;
@@ -350,8 +360,19 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
         if is_dirty {
             warn_if_modified_lfs(&resolved.repo_root);
             if let Err(err) = run_make_ci(&resolved.repo_root) {
-                gitutil::revert_uncommitted(&resolved.repo_root)?;
-                bail!("CI gate failed: 'make ci' did not pass after the task completed. Uncommitted changes were reverted. Fix the issues reported by CI and try again. Error: {:#}", err);
+                let outcome = runutil::apply_git_revert_mode(
+                    &resolved.repo_root,
+                    git_revert_mode,
+                    "CI gate failure",
+                )?;
+                bail!(
+                    "{} Error: {:#}",
+                    runutil::format_revert_failure_message(
+                        "CI gate failed: 'make ci' did not pass after the task completed.",
+                        outcome,
+                    ),
+                    err
+                );
             }
 
             queue_file = queue::load_queue(&resolved.queue_path)?;
@@ -376,8 +397,20 @@ fn post_run_supervise(resolved: &config::Resolved, task_id: &str) -> Result<()> 
 
             if task_status != TaskStatus::Done {
                 if in_done {
-                    gitutil::revert_uncommitted(&resolved.repo_root)?;
-                    bail!("Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json.");
+                    let outcome = runutil::apply_git_revert_mode(
+                        &resolved.repo_root,
+                        git_revert_mode,
+                        "Task inconsistency detected",
+                    )?;
+                    bail!(
+                        "{}",
+                        runutil::format_revert_failure_message(
+                            &format!(
+                                "Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json."
+                            ),
+                            outcome,
+                        )
+                    );
                 }
                 let now = timeutil::now_utc_rfc3339()?;
                 queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None)?;
@@ -549,8 +582,8 @@ mod tests {
     use super::*;
     use crate::completions;
     use crate::contracts::{
-        AgentConfig, ClaudePermissionMode, Config, Model, QueueConfig, QueueFile, ReasoningEffort,
-        Runner, Task, TaskAgent, TaskStatus,
+        AgentConfig, ClaudePermissionMode, Config, GitRevertMode, Model, QueueConfig, QueueFile,
+        ReasoningEffort, Runner, Task, TaskAgent, TaskStatus,
     };
     use crate::queue;
     use std::path::PathBuf;
@@ -576,6 +609,7 @@ mod tests {
                 phases: Some(2),
                 claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
                 require_repoprompt: None,
+                git_revert_mode: Some(GitRevertMode::Ask),
             },
             queue: QueueConfig {
                 file: Some(PathBuf::from(".ralph/queue.json")),
@@ -632,6 +666,7 @@ mod tests {
                 phases: Some(3),
                 claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
                 require_repoprompt: None,
+                git_revert_mode: Some(GitRevertMode::Ask),
             },
             queue: QueueConfig {
                 file: Some(PathBuf::from(".ralph/queue.json")),
@@ -719,6 +754,7 @@ mod tests {
             reasoning_effort: Some(ReasoningEffort::High),
             phases: None,
             repoprompt_required: None,
+            git_revert_mode: None,
         };
 
         let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -747,6 +783,7 @@ mod tests {
             reasoning_effort: None,
             phases: None,
             repoprompt_required: None,
+            git_revert_mode: None,
         };
 
         let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -773,6 +810,7 @@ mod tests {
             reasoning_effort: None,
             phases: None,
             repoprompt_required: None,
+            git_revert_mode: None,
         };
 
         let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -813,6 +851,7 @@ mod tests {
             reasoning_effort: Some(ReasoningEffort::High),
             phases: None,
             repoprompt_required: None,
+            git_revert_mode: None,
         };
 
         let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;

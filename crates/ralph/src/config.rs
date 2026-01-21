@@ -251,3 +251,23 @@ pub fn find_repo_root(start: &Path) -> PathBuf {
     );
     start.to_path_buf()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contracts::GitRevertMode;
+
+    #[test]
+    fn apply_layer_overrides_git_revert_mode() -> Result<()> {
+        let base = Config::default();
+        let mut layer = ConfigLayer::default();
+        layer.agent.git_revert_mode = Some(GitRevertMode::Disabled);
+
+        let merged = apply_layer(base, layer)?;
+        assert_eq!(
+            merged.agent.git_revert_mode.unwrap_or(GitRevertMode::Ask),
+            GitRevertMode::Disabled
+        );
+        Ok(())
+    }
+}

@@ -10,6 +10,7 @@
         "claude_permission_mode": "bypass_permissions",
         "codex_bin": "codex",
         "gemini_bin": "gemini",
+        "git_revert_mode": "ask",
         "model": "sonnet",
         "opencode_bin": "opencode",
         "phases": 3,
@@ -98,6 +99,18 @@
             "null"
           ]
         },
+        "git_revert_mode": {
+          "description": "Controls automatic git revert behavior when runner or supervision errors occur.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/GitRevertMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "model": {
           "description": "Default model.",
           "default": null,
@@ -168,6 +181,14 @@
       "enum": [
         "accept_edits",
         "bypass_permissions"
+      ]
+    },
+    "GitRevertMode": {
+      "type": "string",
+      "enum": [
+        "ask",
+        "enabled",
+        "disabled"
       ]
     },
     "Model": {

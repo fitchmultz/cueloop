@@ -397,6 +397,8 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
         .current_dir(dir.path())
         .arg("run")
         .arg("one")
+        .arg("--git-revert-mode")
+        .arg("enabled")
         .output()
         .context("run ralph run one")?;
 
@@ -431,6 +433,144 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
     anyhow::ensure!(
         status_output.trim().is_empty(),
         "repo should be clean after rollback, but git status showed:\n{status_output}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_disabled() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    git_init(dir.path())?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    write_valid_single_todo_queue(dir.path())?;
+
+    let makefile_content = r#"ci:
+\t@echo 'CI failing'
+\texit 1
+"#;
+    std::fs::write(dir.path().join("Makefile"), makefile_content).context("write Makefile")?;
+
+    let dirty_file = dir.path().join("dirty-file.txt");
+    let script = format!(
+        "#!/bin/sh\necho 'creating dirty file' > {}\nexit 0\n",
+        dirty_file.display()
+    );
+    let runner_path =
+        create_fake_runner(dir.path(), "codex", &script).context("write runner script")?;
+    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+
+    Command::new("git")
+        .current_dir(dir.path())
+        .args(["add", "."])
+        .status()
+        .context("git add")?;
+    Command::new("git")
+        .current_dir(dir.path())
+        .args(["commit", "-m", "setup test env"])
+        .status()
+        .context("git commit")?;
+
+    let output = Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .arg("run")
+        .arg("one")
+        .arg("--git-revert-mode")
+        .arg("disabled")
+        .output()
+        .context("run ralph run one")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    anyhow::ensure!(
+        !output.status.success(),
+        "expected run one to fail due to CI\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        stderr.contains("CI gate failed") || stderr.contains("CI failed"),
+        "expected CI failure message in stderr\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        dirty_file.exists(),
+        "dirty file should remain when git revert is disabled"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_ask_non_tty() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    git_init(dir.path())?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    write_valid_single_todo_queue(dir.path())?;
+
+    let makefile_content = r#"ci:
+\t@echo 'CI failing'
+\texit 1
+"#;
+    std::fs::write(dir.path().join("Makefile"), makefile_content).context("write Makefile")?;
+
+    let dirty_file = dir.path().join("dirty-file.txt");
+    let script = format!(
+        "#!/bin/sh\necho 'creating dirty file' > {}\nexit 0\n",
+        dirty_file.display()
+    );
+    let runner_path =
+        create_fake_runner(dir.path(), "codex", &script).context("write runner script")?;
+    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+
+    Command::new("git")
+        .current_dir(dir.path())
+        .args(["add", "."])
+        .status()
+        .context("git add")?;
+    Command::new("git")
+        .current_dir(dir.path())
+        .args(["commit", "-m", "setup test env"])
+        .status()
+        .context("git commit")?;
+
+    let output = Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .arg("run")
+        .arg("one")
+        .arg("--git-revert-mode")
+        .arg("ask")
+        .output()
+        .context("run ralph run one")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    anyhow::ensure!(
+        !output.status.success(),
+        "expected run one to fail due to CI\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        stderr.contains("CI gate failed") || stderr.contains("CI failed"),
+        "expected CI failure message in stderr\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        dirty_file.exists(),
+        "dirty file should remain when ask mode runs non-interactively"
     );
 
     Ok(())

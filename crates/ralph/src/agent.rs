@@ -5,8 +5,8 @@
 //! and agent settings configuration.
 
 use crate::config;
-use crate::contracts::{Model, ReasoningEffort, Runner};
-use anyhow::{bail, Result};
+use crate::contracts::{GitRevertMode, Model, ReasoningEffort, Runner};
+use anyhow::{anyhow, bail, Result};
 use clap::Args;
 
 /// CLI arguments for agent configuration.
@@ -74,6 +74,10 @@ pub struct RunAgentArgs {
     /// Force RepoPrompt not required.
     #[arg(long, conflicts_with = "rp_on")]
     pub rp_off: bool,
+
+    /// Git revert mode for automatic error handling (ask, enabled, disabled).
+    #[arg(long, value_parser = ["ask", "enabled", "disabled"])]
+    pub git_revert_mode: Option<String>,
 }
 
 /// Agent overrides from CLI arguments.
@@ -90,6 +94,7 @@ pub struct AgentOverrides {
     /// - 3 => three-pass execution (plan, implement+CI, review+complete)
     pub phases: Option<u8>,
     pub repoprompt_required: Option<bool>,
+    pub git_revert_mode: Option<GitRevertMode>,
 }
 
 /// Parse a runner string into a Runner enum.
@@ -105,6 +110,11 @@ pub fn parse_runner(value: &str) -> Result<Runner> {
             value.trim()
         ),
     }
+}
+
+/// Parse git revert mode from a CLI string.
+pub fn parse_git_revert_mode(value: &str) -> Result<GitRevertMode> {
+    value.parse().map_err(|err: &str| anyhow!(err))
 }
 
 /// Resolve agent overrides from CLI arguments for run commands.
@@ -140,12 +150,18 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         None
     };
 
+    let git_revert_mode = match args.git_revert_mode.as_deref() {
+        Some(value) => Some(parse_git_revert_mode(value)?),
+        None => None,
+    };
+
     Ok(AgentOverrides {
         runner,
         model,
         reasoning_effort,
         phases: args.phases,
         repoprompt_required,
+        git_revert_mode,
     })
 }
 
@@ -188,6 +204,7 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
         reasoning_effort,
         phases: None,
         repoprompt_required,
+        git_revert_mode: None,
     })
 }
 
@@ -205,7 +222,7 @@ pub fn resolve_rp_required(rp_on: bool, rp_off: bool, resolved: &config::Resolve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contracts::{AgentConfig, ClaudePermissionMode, Config, QueueConfig};
+    use crate::contracts::{AgentConfig, ClaudePermissionMode, Config, GitRevertMode, QueueConfig};
     use tempfile::TempDir;
 
     fn resolved_with_defaults() -> config::Resolved {
@@ -224,6 +241,7 @@ mod tests {
                 phases: Some(2),
                 claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
                 require_repoprompt: None,
+                git_revert_mode: Some(GitRevertMode::Ask),
             },
             queue: QueueConfig::default(),
             ..Config::default()
@@ -293,6 +311,7 @@ mod tests {
         assert_eq!(overrides.model, Some(Model::Gpt52));
         assert_eq!(overrides.reasoning_effort, None);
         assert_eq!(overrides.repoprompt_required, None);
+        assert_eq!(overrides.git_revert_mode, None);
     }
 
     #[test]
@@ -307,6 +326,7 @@ mod tests {
 
         let overrides = resolve_agent_overrides(&args).unwrap();
         assert_eq!(overrides.repoprompt_required, Some(true));
+        assert_eq!(overrides.git_revert_mode, None);
     }
 
     #[test]
@@ -318,6 +338,7 @@ mod tests {
             phases: Some(2),
             rp_on: false,
             rp_off: false,
+            git_revert_mode: Some("enabled".to_string()),
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -325,5 +346,6 @@ mod tests {
         assert_eq!(overrides.model, Some(Model::Gpt52Codex));
         assert_eq!(overrides.reasoning_effort, Some(ReasoningEffort::High));
         assert_eq!(overrides.phases, Some(2));
+        assert_eq!(overrides.git_revert_mode, Some(GitRevertMode::Enabled));
     }
 }

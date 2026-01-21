@@ -81,7 +81,8 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
     "runner": "claude",
     "model": "sonnet",
     "phases": 3,
-    "require_repoprompt": false
+    "require_repoprompt": false,
+    "git_revert_mode": "ask"
   }
 }
 ```
@@ -105,4 +106,12 @@ Ralph supports a 3-phase workflow by default (configured via `agent.phases: 3`):
 
 Use `ralph run one --phases 3` for full 3-phase execution. You can also set `agent.phases` in config to control the default.
 
+### Git Revert Policy
+Ralph can control whether uncommitted changes are reverted when runner/supervision errors occur:
+- `ask` (default): prompt on stdin (non-interactive defaults to keep changes).
+- `enabled`: always revert uncommitted changes.
+- `disabled`: never revert automatically.
+
+Example:
+- `ralph run one --git-revert-mode disabled`
 

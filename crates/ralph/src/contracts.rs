@@ -96,6 +96,9 @@ pub struct AgentConfig {
     /// If true, agent must use of context_builder tool to generate a plan.
     pub require_repoprompt: Option<bool>,
 
+    /// Controls automatic git revert behavior when runner or supervision errors occur.
+    pub git_revert_mode: Option<GitRevertMode>,
+
     /// Number of execution phases (1, 2, or 3).
     /// 1 = single-pass, 2 = plan+implement, 3 = plan+implement+review.
     pub phases: Option<u8>,
@@ -133,6 +136,9 @@ impl AgentConfig {
         if other.require_repoprompt.is_some() {
             self.require_repoprompt = other.require_repoprompt;
         }
+        if other.git_revert_mode.is_some() {
+            self.git_revert_mode = other.git_revert_mode;
+        }
     }
 }
 
@@ -160,6 +166,28 @@ pub enum ClaudePermissionMode {
     #[default]
     AcceptEdits,
     BypassPermissions,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum GitRevertMode {
+    #[default]
+    Ask,
+    Enabled,
+    Disabled,
+}
+
+impl std::str::FromStr for GitRevertMode {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.trim().to_lowercase().as_str() {
+            "ask" => Ok(GitRevertMode::Ask),
+            "enabled" => Ok(GitRevertMode::Enabled),
+            "disabled" => Ok(GitRevertMode::Disabled),
+            _ => Err("git_revert_mode must be 'ask', 'enabled', or 'disabled'"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -434,7 +462,29 @@ impl Default for Config {
                 phases: Some(3),
                 claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
                 require_repoprompt: Some(false),
+                git_revert_mode: Some(GitRevertMode::Ask),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GitRevertMode;
+
+    #[test]
+    fn git_revert_mode_parses_snake_case() {
+        let mode: GitRevertMode = serde_json::from_str("\"ask\"").expect("ask");
+        assert_eq!(mode, GitRevertMode::Ask);
+        let mode: GitRevertMode = serde_json::from_str("\"enabled\"").expect("enabled");
+        assert_eq!(mode, GitRevertMode::Enabled);
+        let mode: GitRevertMode = serde_json::from_str("\"disabled\"").expect("disabled");
+        assert_eq!(mode, GitRevertMode::Disabled);
+    }
+
+    #[test]
+    fn git_revert_mode_from_str_rejects_invalid() {
+        let err = "wat".parse::<GitRevertMode>().expect_err("invalid");
+        assert!(err.contains("git_revert_mode"));
     }
 }

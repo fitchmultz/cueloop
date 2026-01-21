@@ -12,6 +12,7 @@ fn test_scan_options_default_values() {
         reasoning_effort: None,
         force: false,
         repoprompt_required: false,
+        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
     };
 
     assert!(opts.focus.is_empty());
@@ -30,6 +31,7 @@ fn test_scan_options_with_focus() {
         reasoning_effort: None,
         force: false,
         repoprompt_required: false,
+        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
     };
 
     assert_eq!(opts.focus, "test coverage");
@@ -52,6 +54,7 @@ fn test_scan_options_all_runners() {
             reasoning_effort: None,
             force: false,
             repoprompt_required: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         };
         assert_eq!(opts.focus, "test");
     }
@@ -74,6 +77,7 @@ fn test_scan_options_all_models() {
             reasoning_effort: None,
             force: false,
             repoprompt_required: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         };
         assert_eq!(opts.focus, "test");
     }
@@ -97,6 +101,7 @@ fn test_scan_options_all_reasoning_efforts() {
             reasoning_effort: effort,
             force: false,
             repoprompt_required: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         };
         assert_eq!(opts.focus, "test");
     }
@@ -111,6 +116,7 @@ fn test_scan_options_with_force() {
         reasoning_effort: None,
         force: true,
         repoprompt_required: false,
+        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
     };
 
     assert!(opts.force);
@@ -137,6 +143,7 @@ fn test_scan_options_various_focus_areas() {
             reasoning_effort: None,
             force: false,
             repoprompt_required: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         };
         assert_eq!(opts.focus, focus);
     }
@@ -151,6 +158,7 @@ fn test_scan_options_empty_focus() {
         reasoning_effort: None,
         force: false,
         repoprompt_required: false,
+        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
     };
 
     assert!(opts.focus.is_empty());
@@ -166,6 +174,7 @@ fn test_scan_options_whitespace_focus() {
         reasoning_effort: None,
         force: false,
         repoprompt_required: false,
+        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
     };
 
     assert!(!opts.focus.is_empty());
@@ -191,6 +200,7 @@ fn test_scan_options_special_characters_in_focus() {
             reasoning_effort: None,
             force: false,
             repoprompt_required: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         };
         assert_eq!(opts.focus, focus);
     }
@@ -214,6 +224,7 @@ fn test_scan_options_multilingual_focus() {
             reasoning_effort: None,
             force: false,
             repoprompt_required: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         };
         assert_eq!(opts.focus, focus);
     }
@@ -236,6 +247,7 @@ fn test_scan_options_with_specific_file_paths() {
             reasoning_effort: None,
             force: false,
             repoprompt_required: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         };
         assert_eq!(opts.focus, focus);
     }

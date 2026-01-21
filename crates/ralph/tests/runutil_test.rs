@@ -24,6 +24,7 @@ fn test_runner_invocation_creation() {
         timeout: None,
         permission_mode: None,
         revert_on_error: true,
+        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         output_handler: None,
     };
 
@@ -55,6 +56,7 @@ fn test_runner_invocation_with_timeout() {
         timeout: Some(Duration::from_secs(60)),
         permission_mode: None,
         revert_on_error: false,
+        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
         output_handler: None,
     };
 
@@ -90,6 +92,7 @@ fn test_runner_invocation_all_runners() {
             timeout: None,
             permission_mode: None,
             revert_on_error: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
             output_handler: None,
         };
         assert_eq!(invocation.runner_kind, runner);
@@ -124,6 +127,7 @@ fn test_runner_invocation_all_models() {
             timeout: None,
             permission_mode: None,
             revert_on_error: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
             output_handler: None,
         };
         assert_eq!(invocation.model, model);
@@ -157,6 +161,7 @@ fn test_runner_invocation_all_permission_modes() {
             timeout: None,
             permission_mode: mode,
             revert_on_error: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
             output_handler: None,
         };
         assert_eq!(invocation.permission_mode, mode);
@@ -242,6 +247,7 @@ fn test_runner_invocation_various_timeouts() {
             timeout,
             permission_mode: None,
             revert_on_error: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
             output_handler: None,
         };
         assert_eq!(invocation.timeout, timeout);
@@ -277,6 +283,7 @@ fn test_runner_invocation_all_reasoning_efforts() {
             timeout: None,
             permission_mode: None,
             revert_on_error: false,
+            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
             output_handler: None,
         };
         assert_eq!(invocation.reasoning_effort, effort);

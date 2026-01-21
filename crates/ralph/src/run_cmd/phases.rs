@@ -28,6 +28,7 @@ pub struct PhaseInvocation<'a> {
     pub policy: &'a promptflow::PromptPolicy,
     pub output_handler: Option<runner::OutputHandler>,
     pub project_type: ProjectType,
+    pub git_revert_mode: crate::contracts::GitRevertMode,
 }
 
 pub struct ReviewContext {
@@ -48,6 +49,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             &p1_prompt,
             ctx.output_handler.clone(),
             true,
+            ctx.git_revert_mode,
             "Planning",
         )?;
 
@@ -58,9 +60,17 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             false,
             &[".ralph/queue.json", ".ralph/done.json"],
         ) {
-            gitutil::revert_uncommitted(&ctx.resolved.repo_root)?;
+            let outcome = runutil::apply_git_revert_mode(
+                &ctx.resolved.repo_root,
+                ctx.git_revert_mode,
+                "Phase 1 plan-only violation",
+            )?;
             bail!(
-                "Phase 1 violated plan-only contract: it modified files outside allowed queue bookkeeping. Reverted changes. Error: {:#}",
+                "{} Error: {:#}",
+                runutil::format_revert_failure_message(
+                    "Phase 1 violated plan-only contract: it modified files outside allowed queue bookkeeping.",
+                    outcome,
+                ),
                 err
             );
         }
@@ -100,13 +110,22 @@ pub fn execute_phase2_implementation(
                 &p2_prompt,
                 ctx.output_handler.clone(),
                 true,
+                ctx.git_revert_mode,
                 "Implementation",
             )?;
 
             if let Err(err) = super::run_make_ci(&ctx.resolved.repo_root) {
-                gitutil::revert_uncommitted(&ctx.resolved.repo_root)?;
+                let outcome = runutil::apply_git_revert_mode(
+                    &ctx.resolved.repo_root,
+                    ctx.git_revert_mode,
+                    "Phase 2 CI failure",
+                )?;
                 bail!(
-                    "CI gate failed after Phase 2. Uncommitted changes were reverted. Fix issues reported by CI and rerun. Error: {:#}",
+                    "{} Error: {:#}",
+                    runutil::format_revert_failure_message(
+                        "CI gate failed after Phase 2. Fix issues reported by CI and rerun.",
+                        outcome,
+                    ),
                     err
                 );
             }
@@ -127,10 +146,11 @@ pub fn execute_phase2_implementation(
             &p2_prompt,
             ctx.output_handler.clone(),
             true,
+            ctx.git_revert_mode,
             "Implementation",
         )?;
 
-        super::post_run_supervise(ctx.resolved, ctx.task_id)?;
+        super::post_run_supervise(ctx.resolved, ctx.task_id, ctx.git_revert_mode)?;
         Ok(())
     })
 }
@@ -169,17 +189,18 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 bins: ctx.bins,
                 model: ctx.settings.model.clone(),
                 reasoning_effort: ctx.settings.reasoning_effort,
-                prompt: &p3_prompt,
-                timeout: None,
-                permission_mode: ctx.resolved.config.agent.claude_permission_mode,
-                revert_on_error: false,
-                output_handler: ctx.output_handler.clone(),
-            },
-            runutil::RunnerErrorMessages {
-                log_label: "Code review",
-                interrupted_msg: "Code review interrupted: the agent run was canceled. Review the working tree and rerun Phase 3 to complete the task.",
-                timeout_msg: "Code review timed out: the agent run exceeded the time limit. Review the working tree and rerun Phase 3 to complete the task.",
-                terminated_msg: "Code review terminated: the agent was stopped by a signal. Review the working tree and rerun Phase 3 to complete the task.",
+            prompt: &p3_prompt,
+            timeout: None,
+            permission_mode: ctx.resolved.config.agent.claude_permission_mode,
+            revert_on_error: false,
+            git_revert_mode: ctx.git_revert_mode,
+            output_handler: ctx.output_handler.clone(),
+        },
+        runutil::RunnerErrorMessages {
+            log_label: "Code review",
+            interrupted_msg: "Code review interrupted: the agent run was canceled. Review the working tree and rerun Phase 3 to complete the task.",
+            timeout_msg: "Code review timed out: the agent run exceeded the time limit. Review the working tree and rerun Phase 3 to complete the task.",
+            terminated_msg: "Code review terminated: the agent was stopped by a signal. Review the working tree and rerun Phase 3 to complete the task.",
                 non_zero_msg: |code| {
                     format!(
                         "Code review failed: the agent exited with a non-zero code ({code}). Review the working tree and rerun Phase 3 to complete the task."
@@ -196,7 +217,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
 
         if let Some(status) = apply_phase3_completion_signal(ctx.resolved, ctx.task_id)? {
             if status == TaskStatus::Done {
-                super::post_run_supervise(ctx.resolved, ctx.task_id)?;
+                super::post_run_supervise(ctx.resolved, ctx.task_id, ctx.git_revert_mode)?;
             }
         }
 
@@ -226,14 +247,16 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
             &prompt,
             ctx.output_handler.clone(),
             true,
+            ctx.git_revert_mode,
             "Execution",
         )?;
 
-        super::post_run_supervise(ctx.resolved, ctx.task_id)?;
+        super::post_run_supervise(ctx.resolved, ctx.task_id, ctx.git_revert_mode)?;
         Ok(())
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn execute_runner_pass(
     resolved: &config::Resolved,
     settings: &runner::AgentSettings,
@@ -241,6 +264,7 @@ pub fn execute_runner_pass(
     prompt: &str,
     output_handler: Option<runner::OutputHandler>,
     revert_on_error: bool,
+    git_revert_mode: crate::contracts::GitRevertMode,
     log_label: &str,
 ) -> Result<runner::RunnerOutput> {
     let permission_mode = resolved.config.agent.claude_permission_mode;
@@ -256,21 +280,22 @@ pub fn execute_runner_pass(
             timeout: None,
             permission_mode,
             revert_on_error,
+            git_revert_mode,
             output_handler,
         },
         runutil::RunnerErrorMessages {
             log_label,
-            interrupted_msg: "Runner interrupted: the execution was canceled by the user or system. Uncommitted changes were reverted to maintain a clean repo state.",
+            interrupted_msg: "Runner interrupted: the execution was canceled by the user or system.",
             timeout_msg: "Runner timed out: the execution exceeded the allowed time limit. Changes in the working tree were NOT reverted; review the repo state manually.",
-            terminated_msg: "Runner terminated: the agent was stopped by a signal. Uncommitted changes were reverted. Rerunning the task is recommended.",
+            terminated_msg: "Runner terminated: the agent was stopped by a signal. Rerunning the task is recommended.",
             non_zero_msg: |code| {
                 format!(
-                    "Runner failed: the agent exited with a non-zero code ({code}). Uncommitted changes were reverted. Rerunning the task is recommended after investigating the cause."
+                    "Runner failed: the agent exited with a non-zero code ({code}). Rerunning the task is recommended after investigating the cause."
                 )
             },
             other_msg: |err| {
                 format!(
-                    "Runner invocation failed: the agent could not be started or encountered an error. Uncommitted changes were reverted. Rerunning the task is recommended. Error: {:#}",
+                    "Runner invocation failed: the agent could not be started or encountered an error. Rerunning the task is recommended. Error: {:#}",
                     err
                 )
             },

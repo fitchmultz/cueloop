@@ -95,7 +95,7 @@ pub(crate) fn resolve_list_limit(limit: u32, all: bool) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Cli, Command};
+    use super::{run, Cli, Command};
     use clap::Parser;
 
     #[test]
@@ -117,5 +117,20 @@ mod tests {
             .expect("parse failure");
         let msg = err.to_string();
         assert!(msg.contains("invalid phase"), "unexpected error: {msg}");
+    }
+
+    #[test]
+    fn cli_parses_run_git_revert_mode() {
+        let cli = Cli::try_parse_from(["ralph", "run", "one", "--git-revert-mode", "disabled"])
+            .expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::One(args) => {
+                    assert_eq!(args.agent.git_revert_mode.as_deref(), Some("disabled"));
+                }
+                _ => panic!("expected run one command"),
+            },
+            _ => panic!("expected run command"),
+        }
     }
 }

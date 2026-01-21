@@ -31,6 +31,11 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
             reasoning_effort: settings.reasoning_effort,
             force,
             repoprompt_required: agent::resolve_rp_required(args.rp_on, args.rp_off, &resolved),
+            git_revert_mode: resolved
+                .config
+                .agent
+                .git_revert_mode
+                .unwrap_or(crate::contracts::GitRevertMode::Ask),
         },
     )
 }

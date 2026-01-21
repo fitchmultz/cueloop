@@ -101,6 +101,11 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
             timeout: None,
             permission_mode,
             revert_on_error: false,
+            git_revert_mode: resolved
+                .config
+                .agent
+                .git_revert_mode
+                .unwrap_or(crate::contracts::GitRevertMode::Ask),
             output_handler: None,
         },
         runutil::RunnerErrorMessages {

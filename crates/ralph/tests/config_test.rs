@@ -2,7 +2,7 @@
 
 use ralph::config;
 use ralph::contracts::{
-    AgentConfig, Config, Model, ProjectType, QueueConfig, ReasoningEffort, Runner,
+    AgentConfig, Config, GitRevertMode, Model, ProjectType, QueueConfig, ReasoningEffort, Runner,
 };
 use std::env;
 use std::fs;
@@ -532,6 +532,7 @@ fn test_agent_config_merge_from_partial() {
         phases: Some(2),
         claude_permission_mode: None,
         require_repoprompt: None,
+        git_revert_mode: Some(GitRevertMode::Ask),
     };
 
     let override_config = AgentConfig {
@@ -545,6 +546,7 @@ fn test_agent_config_merge_from_partial() {
         phases: Some(3),
         claude_permission_mode: None,
         require_repoprompt: None,
+        git_revert_mode: Some(GitRevertMode::Disabled),
     };
 
     base.merge_from(override_config);
