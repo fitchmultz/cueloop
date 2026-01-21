@@ -10,7 +10,7 @@
 
 use crate::contracts::{QueueFile, Task, TaskStatus};
 use anyhow::{Context, Result};
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use std::collections::HashSet;
 
 fn normalize_scope(value: &str) -> String {
@@ -88,7 +88,10 @@ pub fn search_tasks<'a>(
     }
 
     let matcher = if use_regex {
-        let regex = Regex::new(query).with_context(|| {
+        let regex = RegexBuilder::new(query)
+            .case_insensitive(!case_sensitive)
+            .build()
+            .with_context(|| {
             format!(
                 "Invalid regular expression pattern '{}'. Provide a valid regex pattern or use substring search without --regex.",
                 query
@@ -329,11 +332,13 @@ mod tests {
         t1.title = "Fix LOGIN bug".to_string();
 
         let tasks: Vec<&Task> = vec![&t1];
-        // Regex is case-sensitive by default, --match-case only affects substring mode
         let results = search_tasks(tasks.iter().copied(), "LOGIN", true, false)?;
         assert_eq!(results.len(), 1);
 
         let results = search_tasks(tasks.iter().copied(), "login", true, false)?;
+        assert_eq!(results.len(), 1);
+
+        let results = search_tasks(tasks.iter().copied(), "login", true, true)?;
         assert_eq!(results.len(), 0);
         Ok(())
     }

@@ -2252,6 +2252,41 @@
       "completed_at": "2026-01-21T22:02:07.154451000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0208",
+      "status": "done",
+      "title": "Regex search should honor --match-case",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "search",
+        "consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/search.rs",
+        "crates/ralph/tests/queue_search_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/search.rs builds Regex::new(query) without considering the match_case flag, so regex searches are always case-sensitive."
+      ],
+      "plan": [
+        "Switch to RegexBuilder and set case_insensitive when match_case is false.",
+        "Add tests verifying case-insensitive regex behavior.",
+        "Update CLI help text if needed.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Honor --match-case for regex search via RegexBuilder",
+        "Added regression coverage for regex case sensitivity",
+        "make ci passed"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:07:26.509576000Z",
+      "completed_at": "2026-01-21T22:07:26.509576000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
