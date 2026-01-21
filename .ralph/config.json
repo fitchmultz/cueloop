@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "project_type": "code",
+  "queue": {
+    "file": ".ralph/queue.json",
+    "done_file": ".ralph/done.json",
+    "id_prefix": "RQ",
+    "id_width": 4
+  },
+  "agent": {
+    "runner": "codex",
+    "model": "gpt-5.2-codex",
+    "reasoning_effort": "low",
+    "codex_bin": "codex",
+    "opencode_bin": "opencode",
+    "gemini_bin": "gemini",
+    "claude_bin": "claude",
+    "claude_permission_mode": "bypass_permissions",
+    "require_repoprompt": false,
+    "git_revert_mode": "ask",
+    "phases": 3
+  }
+}
