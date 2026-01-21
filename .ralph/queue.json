@@ -1,4 +1,443 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0198",
+      "status": "todo",
+      "title": "Align queue validation requirements with schema/docs/backfill",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "schema",
+        "docs"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/operations/mutation.rs",
+        "schemas/queue.schema.json",
+        "docs/queue-and-tasks.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/validation.rs enforces non-empty tags/scope/evidence/plan and requires request/created_at/updated_at via ensure_list_non_empty and ensure_field_present.",
+        "schemas/queue.schema.json only requires task id/title and treats other fields as optional/defaulted.",
+        "docs/queue-and-tasks.md lists tags/scope/evidence/plan/request/created_at/updated_at as optional fields."
+      ],
+      "plan": [
+        "Decide the canonical contract for required task fields (schema/docs vs validation) and document the decision.",
+        "Update queue validation and backfill/repair logic to match the chosen contract.",
+        "Regenerate schema/docs/tests to reflect the new required/optional field set."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0199",
+      "status": "todo",
+      "title": "Repair queue ID remap must update depends_on references",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "dependencies",
+        "repair"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/repair.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/tests/repair_integration_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/repair.rs remaps task.id for duplicates/invalid IDs and records report.remapped_ids but does not update depends_on in other tasks.",
+        "validate_dependencies in crates/ralph/src/queue/validation.rs assumes depends_on IDs exist and will fail after remap unless references are updated."
+      ],
+      "plan": [
+        "Track a remap map of old->new IDs during repair.",
+        "Update depends_on entries across active and done tasks using the remap map.",
+        "Add/extend tests to assert dependencies are rewritten alongside ID remaps."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0200",
+      "status": "todo",
+      "title": "Require completed_at for Done/Rejected tasks and backfill in repair",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "validation",
+        "reports"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/repair.rs",
+        "crates/ralph/src/queue/prune.rs",
+        "crates/ralph/src/reports.rs",
+        "docs/queue-and-tasks.md",
+        "schemas/queue.schema.json"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/validation.rs only validates completed_at if present and does not require it for Done/Rejected tasks.",
+        "crates/ralph/src/queue/prune.rs and crates/ralph/src/reports.rs rely on completed_at to compute ordering/age/durations."
+      ],
+      "plan": [
+        "Update validation to require completed_at when status is Done or Rejected.",
+        "Ensure repair/backfill fills missing completed_at for terminal tasks.",
+        "Update schema/docs/tests to enforce terminal timestamp requirements."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0201",
+      "status": "todo",
+      "title": "Queue next/worker prompt should skip blocked tasks with unmet dependencies",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "ux",
+        "dependencies"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations/query.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/prompt_cmd.rs",
+        "crates/ralph/src/queue/validation.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/operations/query.rs next_todo_task returns first todo without dependency checks.",
+        "crates/ralph/src/cli/queue.rs QueueCommand::Next and crates/ralph/src/prompt_cmd.rs resolve_worker_task_id use next_todo_task, so they may return blocked tasks."
+      ],
+      "plan": [
+        "Introduce a runnable-task selector that checks are_dependencies_met against queue/done.",
+        "Use the runnable selector in queue next and worker prompt selection.",
+        "Add tests covering blocked dependencies for queue next and prompt worker selection."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0202",
+      "status": "todo",
+      "title": "Archive rejected tasks in ralph queue done",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "workflow",
+        "consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations/archive.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/operations/archive.rs only moves TaskStatus::Done tasks to done.json.",
+        "docs/cli.md describes ralph task done as archiving done/rejected tasks, but ralph queue done leaves rejected tasks in the active queue."
+      ],
+      "plan": [
+        "Decide whether queue done should archive rejected tasks alongside done tasks.",
+        "Update archive_done_tasks logic and CLI/docs accordingly.",
+        "Add tests to cover rejected tasks being archived (or explicitly excluded)."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0203",
+      "status": "todo",
+      "title": "Init should fail fast on invalid config JSON instead of marking valid",
+      "priority": "medium",
+      "tags": [
+        "init",
+        "config",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/init_cmd.rs",
+        "crates/ralph/tests/init_cmd_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/init_cmd.rs write_config returns FileInitStatus::Valid even when serde_json::from_str::<Config> fails."
+      ],
+      "plan": [
+        "Return an error or reinitialize when config JSON is invalid and --force is not set.",
+        "Add tests to ensure invalid config files are detected.",
+        "Update CLI/help/docs if behavior changes."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0204",
+      "status": "todo",
+      "title": "Init should validate existing queue/done contents, not only parse JSON",
+      "priority": "medium",
+      "tags": [
+        "init",
+        "queue",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/init_cmd.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/tests/init_cmd_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/init_cmd.rs write_queue/write_done only load JSON without running queue::validate_queue, so structurally invalid tasks pass init validation."
+      ],
+      "plan": [
+        "Run queue validation on existing queue/done files during init when not forcing.",
+        "Surface clear errors when invariants fail.",
+        "Add tests covering invalid queue/done inputs."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0205",
+      "status": "todo",
+      "title": "Handle TUI event loop errors instead of panicking",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "stability",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/events.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/mod.rs uses unwrap() for event::read, now_utc_rfc3339, and handle_key_event in the main loop, which can panic and leave the terminal in raw mode."
+      ],
+      "plan": [
+        "Replace unwrap calls with error propagation and ensure terminal cleanup on failure.",
+        "Add tests or integration coverage to confirm graceful error handling.",
+        "Verify TUI exits cleanly after an injected error."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0206",
+      "status": "todo",
+      "title": "Update TUI title edits to set updated_at",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "queue",
+        "data-consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/tests/tui_contract_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/events.rs handle_editing_mode_key ignores now_rfc3339 and App::update_title does not set updated_at, so edits don't update timestamps."
+      ],
+      "plan": [
+        "Thread now_rfc3339 into title update and set updated_at when the title changes.",
+        "Add/adjust tests to assert updated_at changes on edit.",
+        "Ensure no regressions in TUI edit flows."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0207",
+      "status": "todo",
+      "title": "Include request/custom_fields/tags/scope in queue search",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "search",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/search.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/search.rs matches only title/evidence/plan/notes; request, tags, scope, and custom_fields are ignored."
+      ],
+      "plan": [
+        "Decide which additional fields should be searchable (request, tags, scope, custom_fields) and update search logic.",
+        "Update CLI help/docs to reflect the expanded search surface.",
+        "Add tests covering matches in the newly included fields."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0208",
+      "status": "todo",
+      "title": "Regex search should honor --match-case",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "search",
+        "consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/search.rs",
+        "crates/ralph/tests/queue_search_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/search.rs builds Regex::new(query) without considering the match_case flag, so regex searches are always case-sensitive."
+      ],
+      "plan": [
+        "Switch to RegexBuilder and set case_insensitive when match_case is false.",
+        "Add tests verifying case-insensitive regex behavior.",
+        "Update CLI help text if needed."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0209",
+      "status": "todo",
+      "title": "Validate sort-by values and use enum for list/sort",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs list sort_by ignores unknown values (falls back to unsorted) and sort_by is a free-form String in both list and sort commands."
+      ],
+      "plan": [
+        "Introduce a ValueEnum for sort_by (e.g., priority) and use it in list and sort commands.",
+        "Ensure invalid values are rejected by clap with clear errors.",
+        "Update docs/tests for the new enum-based sort flags."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0210",
+      "status": "todo",
+      "title": "Default queue sort should put highest priority first",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs QueueSortArgs defaults descending=false, so ralph queue sort orders lowest priority first unless --descending is provided."
+      ],
+      "plan": [
+        "Decide the default ordering (likely highest-first) and adjust defaults/flags accordingly.",
+        "Update CLI help/examples and tests to match the new default.",
+        "Verify sorting behavior in queue sort and list."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0211",
+      "status": "todo",
+      "title": "Align config schema phases constraints with runtime validation",
+      "priority": "medium",
+      "tags": [
+        "config",
+        "schema",
+        "validation"
+      ],
+      "scope": [
+        "schemas/config.schema.json",
+        "crates/ralph/src/config.rs",
+        "docs/configuration.md"
+      ],
+      "evidence": [
+        "schemas/config.schema.json allows agent.phases minimum 0 while crates/ralph/src/config.rs rejects any value outside 1..=3."
+      ],
+      "plan": [
+        "Update config schema to restrict phases to 1, 2, or 3 (enum or min/max).",
+        "Regenerate schema and update docs/examples.",
+        "Add tests to ensure schema and validation stay aligned."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0212",
+      "status": "todo",
+      "title": "Add missing module docstrings to core files",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "hygiene"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/lib.rs",
+        "crates/ralph/src/init_cmd.rs",
+        "crates/ralph/src/scan_cmd.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/config.rs, crates/ralph/src/lib.rs, crates/ralph/src/init_cmd.rs, and crates/ralph/src/scan_cmd.rs lack top-of-file //! module docstrings.",
+        "AGENTS.md requires every code file to have a docstring describing its purpose."
+      ],
+      "plan": [
+        "Add concise module-level docstrings to the missing files.",
+        "Keep descriptions consistent with existing module docs.",
+        "Verify linting/tests still pass."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    },
+    {
+      "id": "RQ-0213",
+      "status": "todo",
+      "title": "Treat rejected tasks as terminal in queue stats",
+      "priority": "low",
+      "tags": [
+        "reports",
+        "ux",
+        "metrics"
+      ],
+      "scope": [
+        "crates/ralph/src/reports.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/reports.rs computes completion rate using status==Done only, so rejected tasks are counted as active."
+      ],
+      "plan": [
+        "Decide whether rejected should count as completed (terminal) and update stats logic.",
+        "Adjust output text to reflect the new definition.",
+        "Add tests for completion rate and active counts with rejected tasks."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T19:59:34Z"
+    }
+  ]
 }
