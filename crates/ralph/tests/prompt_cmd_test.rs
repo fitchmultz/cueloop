@@ -117,6 +117,13 @@ fn worker_single_phase_includes_completion_workflow() -> Result<()> {
             .count(),
         1
     );
+
+    // Regression guard: in supervised runs, Ralph marks tasks as `doing` by modifying
+    // .ralph/queue.json, which makes the repo appear dirty. The worker prompt must
+    // explicitly allow this bookkeeping-only dirtiness to avoid unnecessary stops.
+    assert!(prompt.contains("IMPORTANT EXCEPTION (RALPH BOOKKEEPING)"));
+    assert!(prompt.contains(".ralph/queue.json"));
+    assert!(prompt.contains(".ralph/done.json"));
     Ok(())
 }
 

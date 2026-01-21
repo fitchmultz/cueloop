@@ -7,6 +7,17 @@ use std::path::Path;
 use std::process::Command;
 use thiserror::Error;
 
+fn git_base_command(repo_root: &Path) -> Command {
+    // Some environments (notably when fsmonitor is enabled but unhealthy) emit:
+    //   error: fsmonitor_ipc__send_query: ... '.git/fsmonitor--daemon.ipc'
+    // This is noisy and can confuse agents/automation. Disabling fsmonitor for
+    // Ralph’s git invocations avoids that class of failures.
+    let mut cmd = Command::new("git");
+    cmd.arg("-c").arg("core.fsmonitor=false");
+    cmd.arg("-C").arg(repo_root);
+    cmd
+}
+
 #[derive(Error, Debug)]
 pub enum GitError {
     #[error("repo is dirty; commit/stash your changes before running Ralph.{details}")]
@@ -74,9 +85,7 @@ fn classify_push_error(stderr: &str) -> GitError {
 
 // status_porcelain returns raw `git status --porcelain` output (may be empty).
 pub fn status_porcelain(repo_root: &Path) -> Result<String, GitError> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
+    let output = git_base_command(repo_root)
         .arg("status")
         .arg("--porcelain")
         .output()
@@ -228,9 +237,7 @@ fn path_is_allowed(path: &str, allowed_paths: &[&str]) -> bool {
 }
 
 fn git_run(repo_root: &Path, args: &[&str]) -> Result<(), GitError> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
+    let output = git_base_command(repo_root)
         .args(args)
         .output()
         .with_context(|| format!("run git {} in {}", args.join(" "), repo_root.display()))?;
@@ -284,9 +291,7 @@ pub fn commit_all(repo_root: &Path, message: &str) -> Result<(), GitError> {
 
 // upstream_ref returns the configured upstream for the current branch (e.g. "origin/main").
 pub fn upstream_ref(repo_root: &Path) -> Result<String, GitError> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
+    let output = git_base_command(repo_root)
         .arg("rev-parse")
         .arg("--abbrev-ref")
         .arg("--symbolic-full-name")
@@ -315,9 +320,7 @@ pub fn upstream_ref(repo_root: &Path) -> Result<String, GitError> {
 pub fn is_ahead_of_upstream(repo_root: &Path) -> Result<bool, GitError> {
     let upstream = upstream_ref(repo_root)?;
     let range = format!("{upstream}...HEAD");
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
+    let output = git_base_command(repo_root)
         .arg("rev-list")
         .arg("--left-right")
         .arg("--count")
@@ -351,9 +354,7 @@ pub fn is_ahead_of_upstream(repo_root: &Path) -> Result<bool, GitError> {
 
 // push_upstream pushes HEAD to the configured upstream.
 pub fn push_upstream(repo_root: &Path) -> Result<(), GitError> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
+    let output = git_base_command(repo_root)
         .arg("push")
         .output()
         .with_context(|| format!("run git push in {}", repo_root.display()))?;
@@ -387,9 +388,7 @@ pub fn has_lfs(repo_root: &Path) -> Result<bool> {
 
 // list_lfs_files returns a list of LFS-tracked files in the repository.
 pub fn list_lfs_files(repo_root: &Path) -> Result<Vec<String>> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
+    let output = git_base_command(repo_root)
         .args(["lfs", "ls-files"])
         .output()
         .with_context(|| format!("run git lfs ls-files in {}", repo_root.display()))?;

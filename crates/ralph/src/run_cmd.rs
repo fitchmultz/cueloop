@@ -789,18 +789,24 @@ struct ReviewContext {
 
 fn collect_review_context(repo_root: &Path) -> Result<ReviewContext> {
     let status = Command::new("git")
+        .arg("-c")
+        .arg("core.fsmonitor=false")
         .arg("-C")
         .arg(repo_root)
         .args(["status", "--porcelain"])
         .output()
         .with_context(|| format!("run git status --porcelain in {}", repo_root.display()))?;
     let diff = Command::new("git")
+        .arg("-c")
+        .arg("core.fsmonitor=false")
         .arg("-C")
         .arg(repo_root)
         .args(["diff"])
         .output()
         .with_context(|| format!("run git diff in {}", repo_root.display()))?;
     let diff_staged = Command::new("git")
+        .arg("-c")
+        .arg("core.fsmonitor=false")
         .arg("-C")
         .arg(repo_root)
         .args(["diff", "--staged"])

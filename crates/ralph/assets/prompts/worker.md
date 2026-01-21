@@ -25,6 +25,13 @@ Ship correct, durable changes quickly and safely.
 - If the repo is dirty before starting, stop and clean it. Do not stack new work on unrelated changes.
 - If the dirtiness is from prior iteration artifacts, reconcile those first, then ensure the working tree is clean before starting.
 
+### IMPORTANT EXCEPTION (RALPH BOOKKEEPING)
+When running under `ralph run ...` supervision, the repo may appear “dirty” *only* because Ralph updated:
+- `.ralph/queue.json` (e.g., setting the current task to `doing`)
+- `.ralph/done.json` (e.g., archiving/completing tasks)
+
+This is expected and safe. **Do NOT stop** (and do NOT ask for a human decision) if `git status --porcelain` shows changes *only* to those files.
+Stop only if **any other paths** are modified/untracked.
 ## STOP/CANCEL SEMANTICS
 - If you must stop mid-iteration, exit cleanly: do not mark the task as done and do not leave partial changes unreported.
 - Say explicitly that run was stopped/canceled, summarize the current state, and give the exact next step to resume.
