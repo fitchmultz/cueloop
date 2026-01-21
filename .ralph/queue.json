@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0186",
-      "status": "todo",
-      "title": "Refactor runner.rs: Extract runner execution module",
-      "priority": "medium",
-      "tags": [
-        "rust",
-        "refactoring",
-        "runner",
-        "execution"
-      ],
-      "scope": [
-        "crates/ralph/src/runner.rs",
-        "crates/ralph/src/runner/execution.rs"
-      ],
-      "evidence": [
-        "runner.rs is 1126 lines - too large for effective maintenance",
-        "Contains runner execution logic for Codex, OpenCode, Gemini, Claude",
-        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
-      ],
-      "plan": [
-        "Analyze runner.rs to identify logical groupings for extraction",
-        "Create crates/ralph/src/runner/execution.rs module",
-        "Extract core runner execution functions and types",
-        "Extract runner-specific logic (codex.rs, gemini.rs, claude.rs) if appropriate",
-        "Update runner.rs to use execution module",
-        "Run make ci to ensure no functionality changes"
-      ],
-      "notes": [],
-      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
-      "created_at": "2026-01-20T19:00:00Z",
-      "updated_at": "2026-01-20T19:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0187",
       "status": "todo",
       "title": "Refactor run_cmd.rs: Extract phase execution logic",

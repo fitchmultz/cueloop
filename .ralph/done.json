@@ -1258,6 +1258,47 @@
       "completed_at": "2026-01-21T06:46:44.704270000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0186",
+      "status": "done",
+      "title": "Refactor runner.rs: Extract runner execution module",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "runner",
+        "execution"
+      ],
+      "scope": [
+        "crates/ralph/src/runner.rs",
+        "crates/ralph/src/runner/execution.rs"
+      ],
+      "evidence": [
+        "runner.rs is 1126 lines - too large for effective maintenance",
+        "Contains runner execution logic for Codex, OpenCode, Gemini, Claude",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Analyze runner.rs to identify logical groupings for extraction",
+        "Create crates/ralph/src/runner/execution.rs module",
+        "Extract core runner execution functions and types",
+        "Extract runner-specific logic (codex.rs, gemini.rs, claude.rs) if appropriate",
+        "Update runner.rs to use execution module",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [
+        "Extracted runner execution logic into dedicated module",
+        "Reduced runner.rs from 1126 to 452 lines",
+        "Created execution.rs (712 lines) for low-level operations",
+        "All tests pass, make ci successful"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T08:15:06.281310000Z",
+      "completed_at": "2026-01-21T08:15:06.281310000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
