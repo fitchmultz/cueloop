@@ -1139,6 +1139,43 @@
       "completed_at": "2026-01-21T05:47:55.574543000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0183",
+      "status": "done",
+      "title": "Refactor main.rs: Extract CLI types to dedicated module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "cli",
+        "types"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/cli/types.rs"
+      ],
+      "evidence": [
+        "main.rs is 1724 lines - too large for effective maintenance",
+        "Contains many struct/enum definitions: Cli, Command, QueueArgs, ConfigArgs, RunArgs, TaskArgs, InitArgs, TaskCommand, TaskBuildArgs, ScanArgs, PromptArgs, PromptCommand, PromptWorkerArgs, PromptScanArgs, PromptTaskBuilderArgs, QueueCommand, ConfigCommand, RunCommand, RunOneArgs, RunLoopArgs, StatusArg, QueueShowFormat, QueueListFormat, QueueNextArgs, QueueShowArgs, QueueCompleteArgs, QueueListArgs, QueueSortArgs, QueueSearchArgs, QueueStatsArgs, QueueHistoryArgs, QueueBurndownArgs, RepairArgs, QueuePruneArgs",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/cli/types.rs module",
+        "Extract all CLI struct and enum definitions to cli/types.rs",
+        "Update main.rs to import CLI types from cli::types",
+        "Update cli handler modules to import types from cli::types",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T05:49:57.454375000Z",
+      "completed_at": "2026-01-21T05:49:57.454375000Z",
+      "depends_on": [
+        "RQ-0182"
+      ],
+      "custom_fields": {}
     }
   ]
 }
