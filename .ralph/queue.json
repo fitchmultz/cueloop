@@ -2,6 +2,484 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0177",
+      "status": "todo",
+      "title": "Refactor queue.rs: Extract validation module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/validation.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Validation functions (validate_queue, validate_queue_set, validate_task_required_fields, validate_rfc3339, validate_dependencies, are_dependencies_met) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/validation.rs module",
+        "Extract all validation functions: validate_queue, validate_queue_set, validate_task_required_fields, validate_rfc3339, ensure_list_non_empty, ensure_field_present, validate_task_id, validate_dependencies, are_dependencies_met, has_cycle",
+        "Move validation-related helper types (if any)",
+        "Update queue.rs to re-export validation module public functions",
+        "Run make ci to ensure no functionality changes",
+        "Update all imports in queue.rs and other files that use validation functions"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0178",
+      "status": "todo",
+      "title": "Refactor queue.rs: Extract pruning module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "pruning"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/prune.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Pruning functions (prune_done_tasks, prune_done_queue, parse_completed_at, compare_completed_desc) and types (PruneReport, PruneOptions) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/prune.rs module",
+        "Extract PruneReport, PruneOptions types and prune_done_tasks, prune_done_queue, parse_completed_at, compare_completed_desc functions",
+        "Update queue.rs to re-export pruning module public functions and types",
+        "Run make ci to ensure no functionality changes",
+        "Update imports in queue.rs and other files that use pruning functions"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0179",
+      "status": "todo",
+      "title": "Refactor queue.rs: Extract search and filter module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "search"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/search.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Search and filter functions (search_tasks, filter_tasks, SearchMatcher, normalize_scope, normalize_tag) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/search.rs module",
+        "Extract search_tasks, filter_tasks, SearchMatcher, normalize_scope, normalize_tag functions",
+        "Update queue.rs to re-export search module public functions",
+        "Run make ci to ensure no functionality changes",
+        "Update imports in queue.rs and other files that use search functions"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0180",
+      "status": "todo",
+      "title": "Refactor queue.rs: Extract task operations module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "task-operations"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/operations.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Task operation functions (complete_task, set_status, set_field, find_task, find_task_across, next_todo_task, delete_task, archive_done_tasks, sort_tasks_by_priority) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/operations.rs module",
+        "Extract task operation functions: complete_task, set_status, set_field, find_task, find_task_across, next_todo_task, delete_task, archive_done_tasks, sort_tasks_by_priority, added_tasks, backfill_missing_fields",
+        "Extract ArchiveReport type",
+        "Update queue.rs to re-export operations module public functions and types",
+        "Run make ci to ensure no functionality changes",
+        "Update imports in queue.rs and other files that use these functions"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0181",
+      "status": "todo",
+      "title": "Refactor queue.rs: Extract repair module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "repair"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/repair.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Repair functions (repair_queue, get_dependents) and RepairReport type can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/repair.rs module",
+        "Extract repair_queue, get_dependents functions and RepairReport type",
+        "Update queue.rs to re-export repair module public functions and types",
+        "Run make ci to ensure no functionality changes",
+        "Update imports in queue.rs and other files that use repair functions"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0182",
+      "status": "todo",
+      "title": "Refactor main.rs: Extract CLI handlers to dedicated modules",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "cli",
+        "command-handlers"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/cli/config.rs",
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/cli/scan.rs",
+        "crates/ralph/src/cli/init.rs",
+        "crates/ralph/src/cli/prompt.rs",
+        "crates/ralph/src/cli/doctor.rs"
+      ],
+      "evidence": [
+        "main.rs is 1724 lines - too large for effective maintenance",
+        "Contains handlers: handle_queue, handle_config, handle_run, handle_task, handle_scan, handle_init, handle_prompt, handle_doctor",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/cli/ directory with mod.rs",
+        "Extract handle_queue and Queue-related types to cli/queue.rs",
+        "Extract handle_config and Config-related types to cli/config.rs",
+        "Extract handle_run and Run-related types to cli/run.rs",
+        "Extract handle_task and Task-related types to cli/task.rs",
+        "Extract handle_scan and Scan-related types to cli/scan.rs",
+        "Extract handle_init and Init-related types to cli/init.rs",
+        "Extract handle_prompt and Prompt-related types to cli/prompt.rs",
+        "Extract handle_doctor to cli/doctor.rs",
+        "Update main.rs to use cli module handlers",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0183",
+      "status": "todo",
+      "title": "Refactor main.rs: Extract CLI types to dedicated module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "cli",
+        "types"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/cli/types.rs"
+      ],
+      "evidence": [
+        "main.rs is 1724 lines - too large for effective maintenance",
+        "Contains many struct/enum definitions: Cli, Command, QueueArgs, ConfigArgs, RunArgs, TaskArgs, InitArgs, TaskCommand, TaskBuildArgs, ScanArgs, PromptArgs, PromptCommand, PromptWorkerArgs, PromptScanArgs, PromptTaskBuilderArgs, QueueCommand, ConfigCommand, RunCommand, RunOneArgs, RunLoopArgs, StatusArg, QueueShowFormat, QueueListFormat, QueueNextArgs, QueueShowArgs, QueueCompleteArgs, QueueListArgs, QueueSortArgs, QueueSearchArgs, QueueStatsArgs, QueueHistoryArgs, QueueBurndownArgs, RepairArgs, QueuePruneArgs",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/cli/types.rs module",
+        "Extract all CLI struct and enum definitions to cli/types.rs",
+        "Update main.rs to import CLI types from cli::types",
+        "Update cli handler modules to import types from cli::types",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [
+        "RQ-0182"
+      ],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0184",
+      "status": "todo",
+      "title": "Refactor tui.rs: Extract rendering module",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "tui",
+        "rendering"
+      ],
+      "scope": [
+        "crates/ralph/src/tui.rs",
+        "crates/ralph/src/tui/render.rs"
+      ],
+      "evidence": [
+        "tui.rs is 1221 lines - too large for effective maintenance",
+        "Rendering functions (draw_ui, draw_execution_view, draw_task_list, draw_task_details, draw_confirm_dialog, status_color, priority_color, wrap_text) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/tui/render.rs module",
+        "Extract rendering functions: draw_ui, draw_execution_view, draw_task_list, draw_task_details, draw_confirm_dialog, status_color, priority_color, wrap_text",
+        "Update tui.rs to use render module for drawing operations",
+        "Run make ci to ensure no functionality changes",
+        "Verify TUI tests still pass"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0185",
+      "status": "todo",
+      "title": "Refactor tui.rs: Extract event handling module",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "tui",
+        "event-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/tui.rs",
+        "crates/ralph/src/tui/events.rs"
+      ],
+      "evidence": [
+        "tui.rs is 1221 lines - too large for effective maintenance",
+        "Event handling functions (handle_key_event, handle_normal_mode_key, handle_editing_mode_key, handle_confirm_delete_key, handle_executing_mode_key) and types (TuiAction, AppMode) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/tui/events.rs module",
+        "Extract event handling functions and types: handle_key_event, handle_normal_mode_key, handle_editing_mode_key, handle_confirm_delete_key, handle_executing_mode_key, TuiAction, AppMode",
+        "Update tui.rs to use events module for key handling",
+        "Run make ci to ensure no functionality changes",
+        "Verify TUI tests still pass"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0186",
+      "status": "todo",
+      "title": "Refactor runner.rs: Extract runner execution module",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "runner",
+        "execution"
+      ],
+      "scope": [
+        "crates/ralph/src/runner.rs",
+        "crates/ralph/src/runner/execution.rs"
+      ],
+      "evidence": [
+        "runner.rs is 1126 lines - too large for effective maintenance",
+        "Contains runner execution logic for Codex, OpenCode, Gemini, Claude",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Analyze runner.rs to identify logical groupings for extraction",
+        "Create crates/ralph/src/runner/execution.rs module",
+        "Extract core runner execution functions and types",
+        "Extract runner-specific logic (codex.rs, gemini.rs, claude.rs) if appropriate",
+        "Update runner.rs to use execution module",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0187",
+      "status": "todo",
+      "title": "Refactor run_cmd.rs: Extract phase execution logic",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "run",
+        "phase-execution"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/run_cmd/phases.rs"
+      ],
+      "evidence": [
+        "run_cmd.rs is 1114 lines - too large for effective maintenance",
+        "Contains phase execution logic (phase 1, 2, 3) mixed with run loop and task execution",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Analyze run_cmd.rs to identify phase-specific functions",
+        "Create crates/ralph/src/run_cmd/phases.rs module",
+        "Extract phase execution logic to dedicated functions/modules",
+        "Update run_cmd.rs to use phases module",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0188",
+      "status": "todo",
+      "title": "Refactor prompts.rs: Extract prompt templates by category",
+      "priority": "low",
+      "tags": [
+        "rust",
+        "refactoring",
+        "prompts",
+        "templates"
+      ],
+      "scope": [
+        "crates/ralph/src/prompts.rs",
+        "crates/ralph/src/prompts/task_builder.rs",
+        "crates/ralph/src/prompts/worker.rs",
+        "crates/ralph/src/prompts/scan.rs"
+      ],
+      "evidence": [
+        "prompts.rs is 756 lines - moderately large",
+        "Contains prompt templates for task builder, worker, and scan operations",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Analyze prompts.rs to categorize templates by purpose",
+        "Create prompts/ directory with mod.rs",
+        "Extract task builder prompts to prompts/task_builder.rs",
+        "Extract worker prompts to prompts/worker.rs",
+        "Extract scan prompts to prompts/scan.rs",
+        "Update prompts.rs to re-export from submodules",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0189",
+      "status": "todo",
+      "title": "Verify and consolidate refactored codebase",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "verification",
+        "cleanup"
+      ],
+      "scope": [
+        "crates/ralph/src/",
+        "make ci"
+      ],
+      "evidence": [
+        "After refactoring large files, need to verify functionality and consolidate any redundant code",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Run full test suite with make ci",
+        "Check for duplicate code across newly created modules",
+        "Consolidate any shared utilities that emerged during refactoring",
+        "Update module documentation (docstrings) for new modules",
+        "Verify all imports are clean and minimal",
+        "Check for any remaining files >800 lines that may need further splitting",
+        "Update CLAUDE.md if any project structure guidance changed"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-20T19:00:00Z",
+      "depends_on": [
+        "RQ-0177",
+        "RQ-0178",
+        "RQ-0179",
+        "RQ-0180",
+        "RQ-0181",
+        "RQ-0182",
+        "RQ-0183",
+        "RQ-0184",
+        "RQ-0185",
+        "RQ-0186",
+        "RQ-0187",
+        "RQ-0188"
+      ],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0169",
       "status": "todo",
       "title": "Optimize validate_queue_set for large done files",
@@ -17,7 +495,7 @@
       ],
       "evidence": [
         "validate_queue_set is slow with large done.json files",
-        "User request: 'Optimize validate_queue_set for large done files (Medium)'"
+        "User request: 'New Tasks (Top 10): 7. RQ-0139: Optimize validate_queue_set for large done files (Medium)'"
       ],
       "plan": [
         "Profile current validation to identify bottlenecks",
@@ -48,7 +526,7 @@
       ],
       "evidence": [
         "No way to edit existing tasks from CLI",
-        "User request: 'Implement ralph task edit command (Medium)'"
+        "User request: 'New Tasks (Top 10): 8. RQ-0141: Implement ralph task edit command (Medium)'"
       ],
       "plan": [
         "Add task edit subcommand with --id flag",
@@ -80,7 +558,7 @@
       ],
       "evidence": [
         "Need a way to create tasks that aren't ready to run",
-        "User request: 'Support draft task status (Medium)'"
+        "User request: 'New Tasks (Top 10): 9. RQ-0147: Support draft task status (Medium)'"
       ],
       "plan": [
         "Add 'draft' to task status enum",
@@ -113,7 +591,7 @@
       ],
       "evidence": [
         "Cannot run a specific task by ID",
-        "User request: 'Expose explicit ID targeting in ralph run one (Medium)'"
+        "User request: 'New Tasks (Top 10): 10. RQ-0148: Expose explicit ID targeting in ralph run one (Medium)'"
       ],
       "plan": [
         "Add --id flag to 'run one' command",
