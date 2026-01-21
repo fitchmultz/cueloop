@@ -2,8 +2,47 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0188",
+      "id": "RQ-0190",
       "status": "todo",
+      "title": "Create simple Web UI for documentation",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ui",
+        "documentation",
+        "dark-mode"
+      ],
+      "scope": [
+        "docs/",
+        "AGENTS.md",
+        "Makefile"
+      ],
+      "evidence": [
+        "User requires a user-friendly Web UI for documentation purposes",
+        "Keep it super simple and lightweight",
+        "Ensure it uses dark mode by default, no toggle behavior needed",
+        "AGENTS.md must be updated with reminder to keep documentation up to date when defaults change, schemas change",
+        "Include everything configurable and customizable by the user, with examples"
+      ],
+      "plan": [
+        "Create minimal HTML/CSS static documentation site in docs/ directory",
+        "Design with dark mode as the only theme (no toggle), using committed CSS variables for palette",
+        "Include comprehensive sections for all configuration options (global config, project config, CLI flags) with examples",
+        "Document high-level architecture and workflow without diving deep into non-configurable internals",
+        "Update AGENTS.md to add 'Documentation Maintenance' section with reminders to update docs when defaults, schemas, or configuration options change",
+        "Add make docs target to serve the documentation locally",
+        "Run make ci to ensure build passes"
+      ],
+      "notes": [],
+      "request": "User requires a user friendly Web UI for documentation purposes. Keep it super simple and lightweight. Ensure it uses dark mode by default, no toggle behavior needed. AGENTS.md must be updated to contain a reminder to keep the documentation that gets created up to date when defaults change, schemas change, etc. Include everything that can be configured and customized by the user, with examples. No need to dive into the technical details of non-configurable details more than high level.",
+      "created_at": "2026-01-21T14:26:59Z",
+      "updated_at": "2026-01-21T14:26:59Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0188",
+      "status": "doing",
       "title": "Refactor prompts.rs: Extract prompt templates by category",
       "priority": "low",
       "tags": [
@@ -35,7 +74,7 @@
       "notes": [],
       "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
       "created_at": "2026-01-20T19:00:00Z",
-      "updated_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T08:42:48.530846000Z",
       "depends_on": [],
       "custom_fields": {}
     },

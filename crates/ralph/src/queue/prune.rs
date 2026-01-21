@@ -70,7 +70,14 @@ pub fn prune_done_tasks(done_path: &Path, options: PruneOptions) -> Result<Prune
 fn prune_done_queue(tasks: &mut Vec<Task>, options: &PruneOptions) -> Result<PruneReport> {
     let now = timeutil::now_utc_rfc3339_or_fallback();
     let now_dt = parse_completed_at(&now).unwrap_or_else(OffsetDateTime::now_utc);
+    prune_done_queue_at(tasks, options, now_dt)
+}
 
+fn prune_done_queue_at(
+    tasks: &mut Vec<Task>,
+    options: &PruneOptions,
+    now_dt: OffsetDateTime,
+) -> Result<PruneReport> {
     let age_duration = options.age_days.map(|d| Duration::days(d as i64));
 
     // Sort indices by completion date descending (most recent first)
@@ -156,6 +163,22 @@ fn prune_done_queue(tasks: &mut Vec<Task>, options: &PruneOptions) -> Result<Pru
     })
 }
 
+#[cfg(test)]
+fn prune_done_tasks_at(
+    done_path: &Path,
+    options: PruneOptions,
+    now_dt: OffsetDateTime,
+) -> Result<PruneReport> {
+    let mut done = super::load_queue_or_default(done_path)?;
+    let report = prune_done_queue_at(&mut done.tasks, &options, now_dt)?;
+
+    if !options.dry_run && !report.pruned_ids.is_empty() {
+        super::save_queue(done_path, &done)?;
+    }
+
+    Ok(report)
+}
+
 /// Parse an RFC3339 timestamp into OffsetDateTime.
 /// Returns None if the timestamp is invalid.
 fn parse_completed_at(ts: &str) -> Option<OffsetDateTime> {
@@ -191,8 +214,14 @@ mod tests {
     use crate::contracts::{QueueFile, Task, TaskStatus};
     use std::collections::{HashMap, HashSet};
     use tempfile::TempDir;
+    use time::format_description::well_known::Rfc3339;
 
     use super::super::{load_queue, save_queue};
+
+    fn fixed_now() -> OffsetDateTime {
+        OffsetDateTime::parse("2026-01-20T12:00:00Z", &Rfc3339)
+            .expect("fixed timestamp should parse")
+    }
 
     /// Create a task with a specific completion timestamp.
     fn done_task_with_completed(id: &str, completed_at: &str) -> Task {
@@ -254,7 +283,7 @@ mod tests {
         };
 
         let mut done = load_queue(&done_path).unwrap();
-        let report = prune_done_queue(&mut done.tasks, &options).unwrap();
+        let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
         assert_eq!(report.pruned_ids, vec!["RQ-0001"]);
         assert_eq!(report.kept_ids.len(), 2);
@@ -288,7 +317,7 @@ mod tests {
         };
 
         let mut done = load_queue(&done_path).unwrap();
-        let report = prune_done_queue(&mut done.tasks, &options).unwrap();
+        let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
         assert_eq!(report.pruned_ids, vec!["RQ-0003"]);
         assert_eq!(report.kept_ids.len(), 2);
@@ -320,7 +349,7 @@ mod tests {
         };
 
         let mut done = load_queue(&done_path).unwrap();
-        let report = prune_done_queue(&mut done.tasks, &options).unwrap();
+        let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
         assert_eq!(report.kept_ids.len(), 2);
         assert!(report.kept_ids.contains(&"RQ-0003".to_string()));
@@ -358,7 +387,7 @@ mod tests {
         };
 
         let mut done = load_queue(&done_path).unwrap();
-        let report = prune_done_queue(&mut done.tasks, &options).unwrap();
+        let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
         assert_eq!(report.pruned_ids, vec!["RQ-0003"]);
         assert_eq!(report.kept_ids.len(), 3);
@@ -389,7 +418,7 @@ mod tests {
         };
 
         let mut done = load_queue(&done_path).unwrap();
-        let report = prune_done_queue(&mut done.tasks, &options).unwrap();
+        let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
         assert_eq!(report.pruned_ids, vec!["RQ-0001"]);
         assert_eq!(report.kept_ids.len(), 2);
@@ -420,7 +449,7 @@ mod tests {
             dry_run: true,
         };
 
-        let report = prune_done_tasks(&done_path, options).unwrap();
+        let report = prune_done_tasks_at(&done_path, options, fixed_now()).unwrap();
 
         assert_eq!(report.pruned_ids, vec!["RQ-0001"]);
 
@@ -451,7 +480,7 @@ mod tests {
             dry_run: false,
         };
 
-        prune_done_tasks(&done_path, options).unwrap();
+        prune_done_tasks_at(&done_path, options, fixed_now()).unwrap();
 
         let done_after = load_queue(&done_path).unwrap();
         assert_eq!(done_after.tasks.len(), 2);
@@ -483,7 +512,7 @@ mod tests {
         };
 
         let mut done = load_queue(&done_path).unwrap();
-        let report = prune_done_queue(&mut done.tasks, &options).unwrap();
+        let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
         assert_eq!(report.pruned_ids.len(), 2);
         assert!(report.pruned_ids.contains(&"RQ-0001".to_string()));
@@ -516,7 +545,7 @@ mod tests {
         };
 
         let mut done = load_queue(&done_path).unwrap();
-        let report = prune_done_queue(&mut done.tasks, &options).unwrap();
+        let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
         assert_eq!(report.pruned_ids, vec!["RQ-0001"]);
         assert_eq!(report.kept_ids, vec!["RQ-0002"]);

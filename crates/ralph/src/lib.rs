@@ -18,6 +18,7 @@ pub mod outpututil;
 pub mod prompt_cmd;
 pub mod promptflow;
 pub mod prompts;
+mod prompts_internal;
 pub mod queue;
 pub mod redaction;
 pub mod reports;
