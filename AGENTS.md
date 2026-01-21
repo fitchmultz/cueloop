@@ -34,7 +34,7 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
 - New tasks must include: `id`, `status`, `title`, `tags`, `scope`, `evidence`, `plan` (and typically `request`, `created_at`, `updated_at`).
 - Prompt templates are embedded in the Rust CLI; overrides can be placed in `.ralph/prompts/` and reference these files.
 - **Two-phase planning**: Agents in Phase 1 MUST output their plan wrapped in `<<RALPH_PLAN_BEGIN>>` and `<<RALPH_PLAN_END>>`.
-- **Supervision-aware completion**: `ralph queue complete` detects supervision and writes a completion signal to `.ralph/cache/completions/<TASK_ID>.json`. The supervisor consumes the signal, runs `queue::complete_task`, and then `post_run_supervise` (for done tasks) to finish CI/commit/push. This prevents lock contention while still recording the agent's completion intent.
+- **Supervision-aware completion**: `ralph task done` detects supervision and writes a completion signal to `.ralph/cache/completions/<TASK_ID>.json`. The supervisor consumes the signal, runs `queue::complete_task`, and then `post_run_supervise` (for done tasks) to finish CI/commit/push. This prevents lock contention while still recording the agent's completion intent.
 
 ## Git + CI Expectations (Current Rust State)
 - The execution agent owns the lifecycle: update queue status, run `make ci`, commit, and push.

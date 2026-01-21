@@ -100,10 +100,18 @@ pub fn render_code_review_prompt(
     };
 
     rendered = rendered.replace("{{TASK_ID}}", id);
-    rendered = rendered.replace("{{GIT_STATUS}}", git_status);
-    rendered = rendered.replace("{{GIT_DIFF}}", git_diff);
-    rendered = rendered.replace("{{GIT_DIFF_STAGED}}", git_diff_staged);
+
+    let rendered = rendered
+        .replace("{{GIT_STATUS}}", "__RALPH_GIT_STATUS__")
+        .replace("{{GIT_DIFF}}", "__RALPH_GIT_DIFF__")
+        .replace("{{GIT_DIFF_STAGED}}", "__RALPH_GIT_DIFF_STAGED__");
 
     ensure_no_unresolved_placeholders(&rendered, "code review")?;
+
+    let rendered = rendered
+        .replace("__RALPH_GIT_STATUS__", git_status)
+        .replace("__RALPH_GIT_DIFF__", git_diff)
+        .replace("__RALPH_GIT_DIFF_STAGED__", git_diff_staged);
+
     Ok(rendered)
 }

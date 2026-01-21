@@ -203,7 +203,7 @@ pub fn build_phase3_prompt(
 
     // 1. Heading
     instructions.push_str("# CODE REVIEW MODE - PHASE 3 OF 3\n\n");
-    instructions.push_str("Task status is already set to `doing` by Ralph. Do NOT change it (use `ralph queue complete` when finished).\n\n");
+    instructions.push_str("Task status is already set to `doing` by Ralph. Do NOT change it (use `ralph task done` when finished).\n\n");
 
     // 2. Override dirty-repo rule: Phase 3 expects pending changes from Phase 2.
     instructions.push_str("## PRE-FLIGHT OVERRIDE\n");

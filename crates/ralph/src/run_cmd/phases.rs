@@ -351,7 +351,7 @@ pub fn ensure_phase3_completion(resolved: &config::Resolved, task_id: &str) -> R
 
     if !in_done || !(status == TaskStatus::Done || status == TaskStatus::Rejected) {
         bail!(
-            "Phase 3 incomplete: task {task_id} is not archived with a terminal status. Run `ralph queue complete` in Phase 3 before finishing."
+            "Phase 3 incomplete: task {task_id} is not archived with a terminal status. Run `ralph task done` in Phase 3 before finishing."
         );
     }
 

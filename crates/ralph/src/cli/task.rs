@@ -3,7 +3,8 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use crate::{agent, config, runner, task_cmd};
+use crate::contracts::TaskStatus;
+use crate::{agent, completions, config, fsutil, queue, runner, task_cmd, timeutil};
 
 pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
@@ -21,6 +22,40 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             )?;
             crate::queue::save_queue(&resolved.queue_path, &queue_file)?;
             log::info!("Task {} marked ready (draft -> todo).", args.task_id);
+            Ok(())
+        }
+        Some(TaskCommand::Done(args)) => {
+            let status = match args.status {
+                TaskDoneStatus::Done => TaskStatus::Done,
+                TaskDoneStatus::Rejected => TaskStatus::Rejected,
+            };
+            let lock_dir = fsutil::queue_lock_dir(&resolved.repo_root);
+            if fsutil::is_supervising_process(&lock_dir)? {
+                let signal = completions::CompletionSignal {
+                    task_id: args.task_id.clone(),
+                    status,
+                    notes: args.note.clone(),
+                };
+                let path = completions::write_completion_signal(&resolved.repo_root, &signal)?;
+                log::info!(
+                    "Running under supervision - wrote completion signal at {}",
+                    path.display()
+                );
+                return Ok(());
+            }
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task done", force)?;
+            let now = timeutil::now_utc_rfc3339()?;
+            queue::complete_task(
+                &resolved.queue_path,
+                &resolved.done_path,
+                &args.task_id,
+                status,
+                &now,
+                &args.note,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )?;
+            log::info!("Task {} completed and moved to done archive.", args.task_id);
             Ok(())
         }
         Some(TaskCommand::Build(args)) => {
@@ -101,7 +136,7 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
 #[command(
     about = "Create and build tasks from freeform requests",
     subcommand_required = false,
-    after_long_help = "Examples:\n  ralph task \"Add tests for the new queue logic\"\n  ralph task --runner opencode --model gpt-5.2 \"Fix CLI help strings\"\n  ralph task ready RQ-0005\n  ralph task build \"(explicit build subcommand still works)\""
+    after_long_help = "Examples:\n  ralph task \"Add tests for the new queue logic\"\n  ralph task --runner opencode --model gpt-5.2 \"Fix CLI help strings\"\n  ralph task ready RQ-0005\n  ralph task done RQ-0001 done --note \"Finished work\"\n  ralph task build \"(explicit build subcommand still works)\""
 )]
 pub struct TaskArgs {
     #[command(subcommand)]
@@ -123,6 +158,11 @@ pub enum TaskCommand {
         after_long_help = "Examples:\n  ralph task ready RQ-0005\n  ralph task ready RQ-0005 --note \"Ready for implementation\""
     )]
     Ready(TaskReadyArgs),
+    /// Complete a task and move it to the done archive.
+    #[command(
+        after_long_help = "Examples:\n  ralph task done RQ-0001 done\n  ralph task done RQ-0002 rejected --note \"No longer needed\""
+    )]
+    Done(TaskDoneArgs),
 }
 
 #[derive(Args)]
@@ -169,4 +209,27 @@ pub struct TaskReadyArgs {
     /// Optional note to append when marking ready.
     #[arg(long)]
     pub note: Option<String>,
+}
+
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+#[clap(rename_all = "snake_case")]
+pub enum TaskDoneStatus {
+    /// Task is complete.
+    Done,
+    /// Task was rejected (dependents can proceed).
+    Rejected,
+}
+
+#[derive(Args)]
+pub struct TaskDoneArgs {
+    /// Task ID to complete.
+    pub task_id: String,
+
+    /// Completion status (done or rejected).
+    #[arg(value_enum)]
+    pub status: TaskDoneStatus,
+
+    /// Notes to append (repeatable).
+    #[arg(long)]
+    pub note: Vec<String>,
 }

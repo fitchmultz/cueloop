@@ -200,4 +200,33 @@ mod tests {
             _ => panic!("expected task command"),
         }
     }
+
+    #[test]
+    fn cli_parses_task_done_subcommand() {
+        let cli = Cli::try_parse_from(["ralph", "task", "done", "RQ-0001", "done"]).expect("parse");
+        match cli.command {
+            Command::Task(task::TaskArgs { command, .. }) => match command {
+                Some(task::TaskCommand::Done(args)) => {
+                    assert_eq!(args.task_id, "RQ-0001");
+                    assert!(matches!(args.status, task::TaskDoneStatus::Done));
+                }
+                _ => panic!("expected task done command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn cli_rejects_queue_complete_subcommand() {
+        let result = Cli::try_parse_from(["ralph", "queue", "complete", "RQ-0001", "done"]);
+        assert!(
+            result.is_err(),
+            "expected queue complete to be rejected after migration to task done"
+        );
+        let msg = result.err().unwrap().to_string().to_lowercase();
+        assert!(
+            msg.contains("unrecognized") || msg.contains("unexpected") || msg.contains("unknown"),
+            "unexpected error: {msg}"
+        );
+    }
 }

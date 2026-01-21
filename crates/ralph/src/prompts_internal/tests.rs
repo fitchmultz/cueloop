@@ -262,6 +262,26 @@ fn render_code_review_prompt_replaces_placeholders() -> Result<()> {
     assert!(rendered.contains("STATUS"));
     assert!(rendered.contains("DIFF"));
     assert!(rendered.contains("STAGED"));
+    assert!(rendered.contains("PROJECT TYPE: CODE"));
+    Ok(())
+}
+
+#[test]
+fn render_code_review_prompt_allows_placeholder_like_git_output() -> Result<()> {
+    let template = "ID={{TASK_ID}}\n{{GIT_STATUS}}\n{{GIT_DIFF}}\n{{GIT_DIFF_STAGED}}\n";
+    let config = default_config();
+    let rendered = render_code_review_prompt(
+        template,
+        "RQ-0001",
+        "STATUS {{TASK_ID}}",
+        "DIFF {{GIT_STATUS}}",
+        "STAGED {{GIT_DIFF}}",
+        ProjectType::Code,
+        &config,
+    )?;
+    assert!(rendered.contains("STATUS {{TASK_ID}}"));
+    assert!(rendered.contains("DIFF {{GIT_STATUS}}"));
+    assert!(rendered.contains("STAGED {{GIT_DIFF}}"));
     Ok(())
 }
 

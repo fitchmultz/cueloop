@@ -18,6 +18,7 @@ ralph --force queue done
 - `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude).
 - `ralph task`: create a task from a request (default subcommand; `ralph task build` still works).
 - `ralph task ready`: promote a draft task to todo.
+- `ralph task done`: mark a task done/rejected and archive it.
 - `ralph scan`: generate new tasks via scanning.
 - `ralph prompt <subcommand>`: render compiled prompts.
 - `ralph config <subcommand>`: inspect config and paths.
@@ -47,7 +48,6 @@ ralph run one --runner codex --model gpt-5.2-codex --effort high
 - `list`: list tasks with filtering and sorting.
 - `search`: search task content with filters.
 - `done`: move done tasks from queue to archive.
-- `complete`: mark a task done/rejected and archive it.
 - `repair`: repair queue/done files.
 - `unlock`: remove queue lock.
 - `set-status`: update a task status in the active queue.
@@ -57,6 +57,8 @@ ralph run one --runner codex --model gpt-5.2-codex --effort high
 - `history`: show task history timeline.
 - `burndown`: show remaining-task burndown.
 - `schema`: print the queue JSON schema.
+
+Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID> <done|rejected>` for single-task completion.
 
 ### Common Flags and Arguments
 - `next`: `--with-title`
@@ -79,7 +81,6 @@ ralph run one --runner codex --model gpt-5.2-codex --effort high
   - `--include-done` / `--only-done`
   - `--format <compact|long>`
   - `--limit <N>` / `--all`
-- `complete`: `TASK_ID` `STATUS` and `--note "..."` (repeatable)
 - `set-status`: `TASK_ID` `STATUS` and optional `--note "..."`
 - `set-field`: `TASK_ID` `KEY` `VALUE`
 - `sort`: `--sort-by <field>` and `--descending`
@@ -102,7 +103,6 @@ ralph queue list --filter-deps RQ-0100
 ralph queue search "RQ-\\d{4}" --regex
 ralph queue show RQ-0001 --format compact
 ralph queue next --with-title
-ralph queue complete RQ-0001 done --note "Finished work"
 ralph queue set-status RQ-0002 doing --note "Starting work"
 ralph queue set-field RQ-0003 severity high
 ralph queue prune --age 30 --status done --keep-last 50
@@ -153,6 +153,7 @@ Examples:
 ralph task "Add integration tests"
 ralph task --tags cli,rust --scope crates/ralph "Fix queue parsing"
 ralph task ready RQ-0005
+ralph task done RQ-0001 done --note "Finished work"
 echo "Triage flaky CI" | ralph task --runner codex --model gpt-5.2-codex --effort medium
 ralph task build "Explicit build subcommand still works"
 ```
