@@ -289,6 +289,15 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 note.as_deref(),
             )?;
             queue::save_queue(&resolved.queue_path, &queue_file)?;
+            log::info!(
+                "Updated task {} to status {}.",
+                task_id,
+                match status {
+                    SetStatusArg::Draft => "draft",
+                    SetStatusArg::Todo => "todo",
+                    SetStatusArg::Doing => "doing",
+                }
+            );
         }
         QueueCommand::SetField {
             task_id,
@@ -431,11 +440,11 @@ pub enum QueueCommand {
     Unlock,
     /// Update a task status in the active queue.
     #[command(
-        after_long_help = "Example:\n  ralph queue set-status RQ-0001 doing --note \"Starting work\""
+        after_long_help = "Example:\n  ralph queue set-status RQ-0001 doing --note \"Starting work\"\n\nNote: Use `ralph task done <TASK_ID> <done|rejected>` for terminal completion."
     )]
     SetStatus {
         task_id: String,
-        status: StatusArg,
+        status: SetStatusArg,
         #[arg(long)]
         note: Option<String>,
     },
@@ -486,6 +495,17 @@ pub enum StatusArg {
     Done,
     /// Task was rejected (dependents can proceed).
     Rejected,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+#[clap(rename_all = "snake_case")]
+pub enum SetStatusArg {
+    /// Task is a draft and not ready to run.
+    Draft,
+    /// Task is waiting to be started.
+    Todo,
+    /// Task is currently being worked on.
+    Doing,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -704,6 +724,16 @@ impl From<StatusArg> for contracts::TaskStatus {
             StatusArg::Doing => contracts::TaskStatus::Doing,
             StatusArg::Done => contracts::TaskStatus::Done,
             StatusArg::Rejected => contracts::TaskStatus::Rejected,
+        }
+    }
+}
+
+impl From<SetStatusArg> for contracts::TaskStatus {
+    fn from(value: SetStatusArg) -> Self {
+        match value {
+            SetStatusArg::Draft => contracts::TaskStatus::Draft,
+            SetStatusArg::Todo => contracts::TaskStatus::Todo,
+            SetStatusArg::Doing => contracts::TaskStatus::Doing,
         }
     }
 }

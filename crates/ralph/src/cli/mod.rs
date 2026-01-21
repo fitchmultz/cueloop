@@ -229,4 +229,15 @@ mod tests {
             "unexpected error: {msg}"
         );
     }
+
+    #[test]
+    fn cli_rejects_queue_set_status_done() {
+        let result = Cli::try_parse_from(["ralph", "queue", "set-status", "RQ-0001", "done"]);
+        assert!(result.is_err(), "expected set-status done to be rejected");
+        let msg = result.err().unwrap().to_string().to_lowercase();
+        assert!(
+            msg.contains("invalid value") || msg.contains("possible values"),
+            "unexpected error: {msg}"
+        );
+    }
 }

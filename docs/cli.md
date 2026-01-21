@@ -58,7 +58,7 @@ ralph run one --runner codex --model gpt-5.2-codex --effort high
 - `burndown`: show remaining-task burndown.
 - `schema`: print the queue JSON schema.
 
-Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID> <done|rejected>` for single-task completion.
+Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID> <done|rejected>` for single-task completion. `ralph queue set-status` only supports `draft`, `todo`, and `doing`.
 
 ### Common Flags and Arguments
 - `next`: `--with-title`
@@ -81,7 +81,7 @@ Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID> <d
   - `--include-done` / `--only-done`
   - `--format <compact|long>`
   - `--limit <N>` / `--all`
-- `set-status`: `TASK_ID` `STATUS` and optional `--note "..."`
+- `set-status`: `TASK_ID` `STATUS` and optional `--note "..."` (status = `draft|todo|doing`)
 - `set-field`: `TASK_ID` `KEY` `VALUE`
 - `sort`: `--sort-by <field>` and `--descending`
 - `stats`: `--tag <tag>` (repeatable)
