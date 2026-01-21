@@ -127,8 +127,8 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                         let mut sorted = tasks;
                         sorted.sort_by(|a, b| {
                             // Since Ord has Critical > High > Medium > Low (semantically),
-                            // we reverse for descending to put higher priority first
-                            let ord = if args.descending {
+                            // we reverse for descending to put higher priority first.
+                            let ord = if args.order.is_descending() {
                                 a.priority.cmp(&b.priority).reverse()
                             } else {
                                 a.priority.cmp(&b.priority)
@@ -317,16 +317,12 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
 
             match args.sort_by {
                 QueueSortBy::Priority => {
-                    queue::sort_tasks_by_priority(&mut queue_file, args.descending);
+                    queue::sort_tasks_by_priority(&mut queue_file, args.order.is_descending());
                 }
             }
 
             queue::save_queue(&resolved.queue_path, &queue_file)?;
-            log::info!(
-                "Queue sorted by {} (descending: {}).",
-                args.sort_by,
-                args.descending
-            );
+            log::info!("Queue sorted by {} (order: {}).", args.sort_by, args.order);
         }
         QueueCommand::Stats(args) => {
             let (queue_file, done_file) = load_and_validate_queues(&resolved, true)?;
@@ -453,7 +449,9 @@ pub enum QueueCommand {
         value: String,
     },
     /// Sort tasks by priority (reorders the queue file).
-    #[command(after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --descending")]
+    #[command(
+        after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --order descending\n  ralph queue sort --order ascending"
+    )]
     Sort(QueueSortArgs),
     /// Show task statistics (completion rate, avg duration, tag breakdown).
     #[command(
@@ -601,21 +599,44 @@ pub struct QueueListArgs {
     #[arg(long, value_enum)]
     pub sort_by: Option<QueueSortBy>,
 
-    /// Sort in descending order.
-    #[arg(long)]
-    pub descending: bool,
+    /// Sort order (default: descending).
+    #[arg(long, value_enum, default_value_t = QueueSortOrder::Descending)]
+    pub order: QueueSortOrder,
 }
 
 #[derive(Args)]
-#[command(after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --descending")]
+#[command(
+    after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --order descending\n  ralph queue sort --order ascending"
+)]
 pub struct QueueSortArgs {
     /// Sort by field (supported: priority; default: priority).
     #[arg(long, value_enum, default_value_t = QueueSortBy::Priority)]
     pub sort_by: QueueSortBy,
 
-    /// Sort in descending order (highest priority first).
-    #[arg(long)]
-    pub descending: bool,
+    /// Sort order (default: descending, highest priority first).
+    #[arg(long, value_enum, default_value_t = QueueSortOrder::Descending)]
+    pub order: QueueSortOrder,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum QueueSortOrder {
+    Ascending,
+    Descending,
+}
+
+impl QueueSortOrder {
+    fn is_descending(self) -> bool {
+        matches!(self, QueueSortOrder::Descending)
+    }
+}
+
+impl std::fmt::Display for QueueSortOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QueueSortOrder::Ascending => f.write_str("ascending"),
+            QueueSortOrder::Descending => f.write_str("descending"),
+        }
+    }
 }
 
 #[derive(Args)]

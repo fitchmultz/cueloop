@@ -151,7 +151,14 @@ fn queue_list_sorts_by_priority_descending() -> Result<()> {
 
     let (status, stdout, stderr) = run_in_dir(
         dir.path(),
-        &["queue", "list", "--sort-by", "priority", "--descending"],
+        &[
+            "queue",
+            "list",
+            "--sort-by",
+            "priority",
+            "--order",
+            "descending",
+        ],
     );
     anyhow::ensure!(
         status.success(),
@@ -172,6 +179,67 @@ fn queue_list_sorts_by_priority_descending() -> Result<()> {
 }
 
 #[test]
+fn queue_list_defaults_to_descending_priority() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    init_repo(dir.path())?;
+    write_queue(dir.path())?;
+
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["queue", "list", "--sort-by", "priority"]);
+    anyhow::ensure!(
+        status.success(),
+        "queue list failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let ids: Vec<&str> = stdout
+        .lines()
+        .filter_map(|line| line.split('\t').next())
+        .collect();
+    let expected = vec!["RQ-0002", "RQ-0003", "RQ-0001"];
+    anyhow::ensure!(
+        ids == expected,
+        "unexpected sort order: {ids:?} (expected {expected:?})"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn queue_list_sorts_by_priority_ascending() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    init_repo(dir.path())?;
+    write_queue(dir.path())?;
+
+    let (status, stdout, stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "queue",
+            "list",
+            "--sort-by",
+            "priority",
+            "--order",
+            "ascending",
+        ],
+    );
+    anyhow::ensure!(
+        status.success(),
+        "queue list failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let ids: Vec<&str> = stdout
+        .lines()
+        .filter_map(|line| line.split('\t').next())
+        .collect();
+    let expected = vec!["RQ-0001", "RQ-0003", "RQ-0002"];
+    anyhow::ensure!(
+        ids == expected,
+        "unexpected sort order: {ids:?} (expected {expected:?})"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn queue_sort_reorders_queue_by_priority_descending() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
     init_repo(dir.path())?;
@@ -179,8 +247,90 @@ fn queue_sort_reorders_queue_by_priority_descending() -> Result<()> {
 
     let (status, stdout, stderr) = run_in_dir(
         dir.path(),
-        &["queue", "sort", "--sort-by", "priority", "--descending"],
+        &[
+            "queue",
+            "sort",
+            "--sort-by",
+            "priority",
+            "--order",
+            "descending",
+        ],
     );
+    anyhow::ensure!(
+        status.success(),
+        "queue sort failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let queue_str =
+        std::fs::read_to_string(dir.path().join(".ralph/queue.json")).context("read queue")?;
+    let queue: Value = serde_json::from_str(&queue_str).context("parse queue json")?;
+    let tasks = queue["tasks"]
+        .as_array()
+        .context("queue tasks should be array")?;
+    let ids: Vec<&str> = tasks
+        .iter()
+        .filter_map(|task| task["id"].as_str())
+        .collect();
+
+    let expected = vec!["RQ-0002", "RQ-0003", "RQ-0001"];
+    anyhow::ensure!(
+        ids == expected,
+        "unexpected queue order: {ids:?} (expected {expected:?})"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn queue_sort_reorders_queue_by_priority_ascending() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    init_repo(dir.path())?;
+    write_queue(dir.path())?;
+
+    let (status, stdout, stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "queue",
+            "sort",
+            "--sort-by",
+            "priority",
+            "--order",
+            "ascending",
+        ],
+    );
+    anyhow::ensure!(
+        status.success(),
+        "queue sort failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let queue_str =
+        std::fs::read_to_string(dir.path().join(".ralph/queue.json")).context("read queue")?;
+    let queue: Value = serde_json::from_str(&queue_str).context("parse queue json")?;
+    let tasks = queue["tasks"]
+        .as_array()
+        .context("queue tasks should be array")?;
+    let ids: Vec<&str> = tasks
+        .iter()
+        .filter_map(|task| task["id"].as_str())
+        .collect();
+
+    let expected = vec!["RQ-0001", "RQ-0003", "RQ-0002"];
+    anyhow::ensure!(
+        ids == expected,
+        "unexpected queue order: {ids:?} (expected {expected:?})"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn queue_sort_defaults_to_descending_priority() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    init_repo(dir.path())?;
+    write_queue(dir.path())?;
+
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["queue", "sort", "--sort-by", "priority"]);
     anyhow::ensure!(
         status.success(),
         "queue sort failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

@@ -71,7 +71,7 @@ Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID> <d
   - `--include-done` / `--only-done`
   - `--format <compact|long>`
   - `--limit <N>` / `--all`
-  - `--sort-by <priority>` / `--descending`
+  - `--sort-by <priority>` / `--order <ascending|descending>`
 - `search`:
   - `QUERY`
   - `--regex` / `--match-case`
@@ -83,7 +83,7 @@ Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID> <d
   - `--limit <N>` / `--all`
 - `set-status`: `TASK_ID` `STATUS` and optional `--note "..."` (status = `draft|todo|doing`)
 - `set-field`: `TASK_ID` `KEY` `VALUE`
-- `sort`: `--sort-by <priority>` and `--descending`
+- `sort`: `--sort-by <priority>` and `--order <ascending|descending>`
 - `stats`: `--tag <tag>` (repeatable)
 - `history`: `--days <N>`
 - `burndown`: `--days <N>`
@@ -100,7 +100,7 @@ ralph queue list --status todo --tag rust
 ralph queue list --status draft
 ralph queue list --include-done --limit 20
 ralph queue list --filter-deps RQ-0100
-ralph queue list --sort-by priority --descending
+ralph queue list --sort-by priority --order descending
 ralph queue search "RQ-\\d{4}" --regex
 ralph queue show RQ-0001 --format compact
 ralph queue next --with-title

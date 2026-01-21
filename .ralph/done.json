@@ -2322,6 +2322,41 @@
       "completed_at": "2026-01-21T22:18:26.585009000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0210",
+      "status": "done",
+      "title": "Default queue sort should put highest priority first",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs QueueSortArgs defaults descending=false, so ralph queue sort orders lowest priority first unless --descending is provided."
+      ],
+      "plan": [
+        "Decide the default ordering (likely highest-first) and adjust defaults/flags accordingly.",
+        "Update CLI help/examples and tests to match the new default.",
+        "Verify sorting behavior in queue sort and list.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "add ascending order coverage for queue list/sort",
+        "keep default descending order for priority sorting",
+        "update tests to reflect new --order flag"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:26:07.437965000Z",
+      "completed_at": "2026-01-21T22:26:07.437965000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
