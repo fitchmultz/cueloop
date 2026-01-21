@@ -1,3 +1,4 @@
+use crate::completions;
 use crate::config;
 use crate::contracts::{ProjectType, QueueFile, TaskStatus};
 use crate::gitutil::GitError;
@@ -358,6 +359,12 @@ fn run_one_impl(
             },
         )?;
 
+        if let Some(status) = apply_phase3_completion_signal(resolved, &task_id)? {
+            if status == TaskStatus::Done {
+                post_run_supervise(resolved, &task_id)?;
+            }
+        }
+
         ensure_phase3_completion(resolved, &task_id)?;
         return Ok(RunOutcome::Ran { task_id });
     }
@@ -674,6 +681,34 @@ fn run_make_ci(repo_root: &Path) -> Result<()> {
     bail!("CI failed: 'make ci' exited with code {:?}. Fix the linting, type-checking, or test failures before proceeding.", status.code())
 }
 
+fn apply_phase3_completion_signal(
+    resolved: &config::Resolved,
+    task_id: &str,
+) -> Result<Option<TaskStatus>> {
+    let Some(signal) = completions::take_completion_signal(&resolved.repo_root, task_id)? else {
+        return Ok(None);
+    };
+
+    let now = timeutil::now_utc_rfc3339()?;
+    let status = signal.status;
+    queue::complete_task(
+        &resolved.queue_path,
+        &resolved.done_path,
+        task_id,
+        status,
+        &now,
+        &signal.notes,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
+    log::info!(
+        "Supervisor finalized task {} with status {:?} from Phase 3 completion signal.",
+        task_id,
+        status
+    );
+    Ok(Some(status))
+}
+
 fn ensure_phase3_completion(resolved: &config::Resolved, task_id: &str) -> Result<()> {
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
@@ -750,10 +785,12 @@ fn normalize_git_output(value: String, empty_label: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::completions;
     use crate::contracts::{
-        AgentConfig, ClaudePermissionMode, Config, Model, QueueConfig, ReasoningEffort, Runner,
-        Task, TaskAgent, TaskStatus,
+        AgentConfig, ClaudePermissionMode, Config, Model, QueueConfig, QueueFile, ReasoningEffort,
+        Runner, Task, TaskAgent, TaskStatus,
     };
+    use crate::queue;
     use std::path::PathBuf;
     use tempfile::TempDir;
 
@@ -814,6 +851,62 @@ mod tests {
             agent: None,
             created_at: None,
             updated_at: None,
+            completed_at: None,
+            depends_on: vec![],
+            custom_fields: std::collections::HashMap::new(),
+        }
+    }
+
+    fn resolved_with_repo_root(repo_root: PathBuf) -> config::Resolved {
+        let cfg = Config {
+            agent: AgentConfig {
+                runner: Some(Runner::Codex),
+                model: Some(Model::Gpt52Codex),
+                reasoning_effort: Some(ReasoningEffort::Medium),
+                codex_bin: Some("codex".to_string()),
+                opencode_bin: Some("opencode".to_string()),
+                gemini_bin: Some("gemini".to_string()),
+                claude_bin: Some("claude".to_string()),
+                phases: Some(3),
+                claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+                require_repoprompt: None,
+            },
+            queue: QueueConfig {
+                file: Some(PathBuf::from(".ralph/queue.json")),
+                done_file: Some(PathBuf::from(".ralph/done.json")),
+                id_prefix: Some("RQ".to_string()),
+                id_width: Some(4),
+            },
+            ..Config::default()
+        };
+
+        config::Resolved {
+            config: cfg,
+            repo_root: repo_root.clone(),
+            queue_path: repo_root.join(".ralph/queue.json"),
+            done_path: repo_root.join(".ralph/done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: Some(repo_root.join(".ralph/config.json")),
+        }
+    }
+
+    fn task_with_status(status: TaskStatus) -> Task {
+        Task {
+            id: "RQ-0001".to_string(),
+            status,
+            title: "Test task".to_string(),
+            priority: Default::default(),
+            tags: vec!["rust".to_string()],
+            scope: vec!["crates/ralph".to_string()],
+            evidence: vec!["observed".to_string()],
+            plan: vec!["do thing".to_string()],
+            notes: vec![],
+            request: Some("test request".to_string()),
+            agent: None,
+            created_at: Some("2026-01-18T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-18T00:00:00Z".to_string()),
             completed_at: None,
             depends_on: vec![],
             custom_fields: std::collections::HashMap::new(),
@@ -964,6 +1057,58 @@ mod tests {
         assert_eq!(settings.runner, Runner::Opencode);
         assert_eq!(settings.model, Model::Gpt52);
         assert_eq!(settings.reasoning_effort, None);
+        Ok(())
+    }
+
+    #[test]
+    fn apply_phase3_completion_signal_moves_task_and_clears_signal() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = resolved_with_repo_root(temp.path().to_path_buf());
+
+        let queue_file = QueueFile {
+            version: 1,
+            tasks: vec![task_with_status(TaskStatus::Doing)],
+        };
+        queue::save_queue(&resolved.queue_path, &queue_file)?;
+
+        let signal = completions::CompletionSignal {
+            task_id: "RQ-0001".to_string(),
+            status: TaskStatus::Done,
+            notes: vec!["Reviewed".to_string()],
+        };
+        completions::write_completion_signal(&resolved.repo_root, &signal)?;
+
+        let status = apply_phase3_completion_signal(&resolved, "RQ-0001")?;
+        assert_eq!(status, Some(TaskStatus::Done));
+
+        let done = queue::load_queue(&resolved.done_path)?;
+        assert_eq!(done.tasks.len(), 1);
+        assert_eq!(done.tasks[0].id, "RQ-0001");
+        assert_eq!(done.tasks[0].status, TaskStatus::Done);
+        assert_eq!(done.tasks[0].notes, vec!["Reviewed".to_string()]);
+
+        let remaining = queue::load_queue(&resolved.queue_path)?;
+        assert!(remaining.tasks.is_empty());
+
+        let signal_after = completions::read_completion_signal(&resolved.repo_root, "RQ-0001")?;
+        assert!(signal_after.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn apply_phase3_completion_signal_missing_returns_none() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = resolved_with_repo_root(temp.path().to_path_buf());
+
+        let queue_file = QueueFile {
+            version: 1,
+            tasks: vec![task_with_status(TaskStatus::Doing)],
+        };
+        queue::save_queue(&resolved.queue_path, &queue_file)?;
+
+        let status = apply_phase3_completion_signal(&resolved, "RQ-0001")?;
+        assert!(status.is_none());
         Ok(())
     }
 }

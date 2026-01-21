@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0174",
-      "status": "todo",
-      "title": "Implement 'ralph queue complete' command to finish tasks",
-      "priority": "high",
-      "tags": [
-        "rust",
-        "cli",
-        "queue"
-      ],
-      "scope": [
-        "crates/ralph/src/main.rs",
-        "crates/ralph/src/queue.rs"
-      ],
-      "evidence": [
-        "User request: 'Test complete command'",
-        "Existing queue.rs has complete_task function for moving tasks to done archive",
-        "CLI has queue complete subcommand defined in main.rs"
-      ],
-      "plan": [
-        "Review existing complete_task implementation in queue.rs",
-        "Verify CLI command routing for 'queue complete' in main.rs",
-        "Test the complete command with various status transitions (done, rejected)",
-        "Test with --note flag for adding completion notes",
-        "Add tests for edge cases (non-existent task, already terminal status)"
-      ],
-      "notes": [],
-      "request": "Test complete command",
-      "created_at": "2026-01-20T19:30:00Z",
-      "updated_at": "2026-01-20T19:30:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0167",
       "status": "todo",
       "title": "Implement 'ralph queue prune' to clean up done.json",

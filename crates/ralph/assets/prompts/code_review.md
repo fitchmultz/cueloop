@@ -34,5 +34,5 @@ Task ID: {{TASK_ID}}
 1. Review the diff against the standards above. Identify bugs, regressions, missing tests, and incomplete requirements.
 2. Make refinements to address any issues or to simplify/centralize the solution.
 3. If you change anything, re-run `make ci` until green.
-4. Once satisfied, run `ralph queue complete <TASK_ID> done --note "<note>"` (or `rejected` if appropriate).
-5. Commit all changes with `RQ-####: <short summary>` and push.
+4. Once satisfied, run `ralph queue complete {{TASK_ID}} done --note "<note>"` (or `rejected` if appropriate). This signals the supervisor to finalize the task.
+5. Do NOT commit or push; the supervisor will run final `make ci`, commit, and push after completion.

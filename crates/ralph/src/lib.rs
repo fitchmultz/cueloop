@@ -6,6 +6,7 @@
 //! integration/stress tests can exercise real behavior without mocks.
 
 pub mod agent;
+pub mod completions;
 pub mod config;
 pub mod contracts;
 pub mod doctor_cmd;

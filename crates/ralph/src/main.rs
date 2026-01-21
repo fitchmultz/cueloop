@@ -1,6 +1,7 @@
 //! Ralph CLI entrypoint and command routing.
 
 mod agent;
+mod completions;
 mod contracts;
 
 mod config;
@@ -317,20 +318,27 @@ fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
             }
         }
         QueueCommand::Complete(args) => {
-            let lock_dir = fsutil::queue_lock_dir(&resolved.repo_root);
-            if fsutil::is_supervising_process(&lock_dir)? {
-                log::info!(
-                    "Running under supervision - task completion will be handled by supervisor process"
-                );
-                return Ok(());
-            }
-            let _queue_lock =
-                queue::acquire_queue_lock(&resolved.repo_root, "queue complete", force)?;
             let status = match args.status {
                 StatusArg::Done => TaskStatus::Done,
                 StatusArg::Rejected => TaskStatus::Rejected,
                 _ => bail!("Invalid completion status: only 'done' or 'rejected' are allowed."),
             };
+            let lock_dir = fsutil::queue_lock_dir(&resolved.repo_root);
+            if fsutil::is_supervising_process(&lock_dir)? {
+                let signal = completions::CompletionSignal {
+                    task_id: args.task_id.clone(),
+                    status,
+                    notes: args.note.clone(),
+                };
+                let path = completions::write_completion_signal(&resolved.repo_root, &signal)?;
+                log::info!(
+                    "Running under supervision - wrote completion signal at {}",
+                    path.display()
+                );
+                return Ok(());
+            }
+            let _queue_lock =
+                queue::acquire_queue_lock(&resolved.repo_root, "queue complete", force)?;
             let now = timeutil::now_utc_rfc3339()?;
             queue::complete_task(
                 &resolved.queue_path,
