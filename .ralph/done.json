@@ -2287,6 +2287,41 @@
       "completed_at": "2026-01-21T22:07:26.509576000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0209",
+      "status": "done",
+      "title": "Validate sort-by values and use enum for list/sort",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs list sort_by ignores unknown values (falls back to unsorted) and sort_by is a free-form String in both list and sort commands."
+      ],
+      "plan": [
+        "Introduce a ValueEnum for sort_by (e.g., priority) and use it in list and sort commands.",
+        "Ensure invalid values are rejected by clap with clear errors.",
+        "Update docs/tests for the new enum-based sort flags.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Validated sort-by now uses ValueEnum for list/sort",
+        "Added CLI integration tests for invalid sort-by and priority ordering",
+        "Docs updated with sort-by example"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:18:26.585009000Z",
+      "completed_at": "2026-01-21T22:18:26.585009000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

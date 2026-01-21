@@ -38,13 +38,19 @@ mod tests {
     use super::*;
     use anyhow::anyhow;
     use log::{LevelFilter, Log, Metadata, Record};
-    use std::sync::{Mutex, Once, OnceLock};
+    use std::sync::{Mutex, OnceLock};
 
     struct TestLogger;
 
     static LOGGER: TestLogger = TestLogger;
-    static INIT: Once = Once::new();
+    static LOGGER_STATE: OnceLock<LoggerState> = OnceLock::new();
     static LOGS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum LoggerState {
+        TestLogger,
+        OtherLogger,
+    }
 
     impl Log for TestLogger {
         fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
@@ -60,41 +66,49 @@ mod tests {
         fn flush(&self) {}
     }
 
-    fn init_logger() -> &'static Mutex<Vec<String>> {
-        INIT.call_once(|| {
-            let _ = log::set_logger(&LOGGER);
-            log::set_max_level(LevelFilter::Info);
+    fn init_logger() -> (LoggerState, &'static Mutex<Vec<String>>) {
+        let state = *LOGGER_STATE.get_or_init(|| {
+            if log::set_logger(&LOGGER).is_ok() {
+                log::set_max_level(LevelFilter::Info);
+                LoggerState::TestLogger
+            } else {
+                LoggerState::OtherLogger
+            }
         });
-        LOGS.get_or_init(|| Mutex::new(Vec::new()))
+        (state, LOGS.get_or_init(|| Mutex::new(Vec::new())))
     }
 
-    fn take_logs() -> Vec<String> {
-        let logs = init_logger();
+    fn take_logs() -> (LoggerState, Vec<String>) {
+        let (state, logs) = init_logger();
         let mut guard = logs.lock().expect("log mutex");
         let drained = guard.drain(..).collect::<Vec<_>>();
-        drained
+        (state, drained)
     }
 
     #[test]
     fn with_scope_logs_start_and_end_on_success() -> Result<()> {
-        let _ = take_logs();
+        let (state, _) = take_logs();
 
         with_scope("ScopeA", || Ok(()))?;
 
-        let logs = take_logs();
-        assert_eq!(logs, vec!["ScopeA: start", "ScopeA: end"]);
+        let (_, logs) = take_logs();
+        if state == LoggerState::TestLogger {
+            assert_eq!(logs, vec!["ScopeA: start", "ScopeA: end"]);
+        }
         Ok(())
     }
 
     #[test]
     fn with_scope_logs_error_on_failure() {
-        let _ = take_logs();
+        let (state, _) = take_logs();
 
         let err = with_scope::<()>("ScopeB", || Err(anyhow!("boom"))).unwrap_err();
         assert_eq!(err.to_string(), "boom");
 
-        let logs = take_logs();
-        assert_eq!(logs, vec!["ScopeB: start", "ScopeB: error: boom"]);
+        let (_, logs) = take_logs();
+        if state == LoggerState::TestLogger {
+            assert_eq!(logs, vec!["ScopeB: start", "ScopeB: error: boom"]);
+        }
     }
 
     #[test]

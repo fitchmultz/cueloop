@@ -121,9 +121,9 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
             };
 
             // Apply sort if specified
-            let tasks = if let Some(ref sort_by) = args.sort_by {
-                match sort_by.as_str() {
-                    "priority" => {
+            let tasks = if let Some(sort_by) = args.sort_by {
+                match sort_by {
+                    QueueSortBy::Priority => {
                         let mut sorted = tasks;
                         sorted.sort_by(|a, b| {
                             // Since Ord has Critical > High > Medium > Low (semantically),
@@ -140,7 +140,6 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                         });
                         sorted
                     }
-                    _ => tasks,
                 }
             } else {
                 tasks
@@ -316,15 +315,9 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue sort", force)?;
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
-            match args.sort_by.as_str() {
-                "priority" => {
+            match args.sort_by {
+                QueueSortBy::Priority => {
                     queue::sort_tasks_by_priority(&mut queue_file, args.descending);
-                }
-                _ => {
-                    bail!(
-                        "Unsupported sort field: {}. Supported fields: priority",
-                        args.sort_by
-                    );
                 }
             }
 
@@ -526,6 +519,21 @@ pub enum QueueListFormat {
     Long,
 }
 
+#[derive(Clone, Copy, Debug, ValueEnum)]
+#[clap(rename_all = "snake_case")]
+pub enum QueueSortBy {
+    /// Sort by priority.
+    Priority,
+}
+
+impl std::fmt::Display for QueueSortBy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QueueSortBy::Priority => f.write_str("priority"),
+        }
+    }
+}
+
 #[derive(Args)]
 #[command(after_long_help = "Example:\n  ralph queue next --with-title")]
 pub struct QueueNextArgs {
@@ -589,9 +597,9 @@ pub struct QueueListArgs {
     #[arg(long)]
     pub all: bool,
 
-    /// Sort by field (e.g., priority).
-    #[arg(long)]
-    pub sort_by: Option<String>,
+    /// Sort by field (supported: priority).
+    #[arg(long, value_enum)]
+    pub sort_by: Option<QueueSortBy>,
 
     /// Sort in descending order.
     #[arg(long)]
@@ -601,9 +609,9 @@ pub struct QueueListArgs {
 #[derive(Args)]
 #[command(after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --descending")]
 pub struct QueueSortArgs {
-    /// Sort by field (default: priority).
-    #[arg(long, default_value = "priority")]
-    pub sort_by: String,
+    /// Sort by field (supported: priority; default: priority).
+    #[arg(long, value_enum, default_value_t = QueueSortBy::Priority)]
+    pub sort_by: QueueSortBy,
 
     /// Sort in descending order (highest priority first).
     #[arg(long)]
