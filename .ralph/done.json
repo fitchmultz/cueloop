@@ -2573,6 +2573,39 @@
       "completed_at": "2026-01-22T03:55:09.249675000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0218",
+      "status": "done",
+      "title": "Prevent silent data loss when TUI auto-save fails",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "queue",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs"
+      ],
+      "evidence": [
+        "In `crates/ralph/src/tui/mod.rs`, the auto-save branch logs an error but still clears `app_ref.dirty`, losing pending changes if save fails."
+      ],
+      "plan": [
+        "Keep `dirty` true on save failures and surface an on-screen error/state.",
+        "Add a retry path (manual or automatic) instead of clearing the dirty flag.",
+        "Add tests to verify dirty is preserved on save errors."
+      ],
+      "notes": [
+        "Kept TUI dirty state on auto-save failures and surfaces save-error indicator.",
+        "Added auto-save helper tests for success, failure, and recovery paths.",
+        "Updated help footer rendering to flag save errors."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T04:06:24.269547000Z",
+      "completed_at": "2026-01-22T04:06:24.269547000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

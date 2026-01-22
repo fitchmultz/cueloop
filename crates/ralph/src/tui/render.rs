@@ -464,40 +464,7 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     }
 
     // Draw help footer at bottom of screen
-    let help_text = match &app.mode {
-        AppMode::Normal => vec![
-            Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":quit "),
-            Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":nav "),
-            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":run "),
-            Span::styled("d", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":del "),
-            Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":edit "),
-            Span::styled("s", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":status"),
-        ],
-        AppMode::EditingTitle(_) => vec![
-            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":save "),
-            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":cancel"),
-        ],
-        AppMode::ConfirmDelete => vec![
-            Span::styled("y", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":yes "),
-            Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":no "),
-            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":cancel"),
-        ],
-        AppMode::Executing { .. } => vec![
-            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":return to list (task continues)"),
-        ],
-    };
+    let help_text = help_footer_spans(app);
 
     let help_paragraph = Paragraph::new(Line::from(help_text))
         .alignment(Alignment::Center)
@@ -569,9 +536,59 @@ fn priority_color(priority: TaskPriority) -> Color {
     }
 }
 
+fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
+    let mut help_text = match &app.mode {
+        AppMode::Normal => vec![
+            Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":quit "),
+            Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":nav "),
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":run "),
+            Span::styled("d", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":del "),
+            Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":edit "),
+            Span::styled("s", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":status"),
+        ],
+        AppMode::EditingTitle(_) => vec![
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":save "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
+        AppMode::ConfirmDelete => vec![
+            Span::styled("y", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":yes "),
+            Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":no "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
+        AppMode::Executing { .. } => vec![
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":return to list (task continues)"),
+        ],
+    };
+
+    if app.save_error.is_some() {
+        help_text.push(Span::raw(" "));
+        help_text.push(Span::styled("|", Style::default().fg(Color::DarkGray)));
+        help_text.push(Span::raw(" "));
+        help_text.push(Span::styled(
+            "SAVE ERROR",
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        ));
+    }
+
+    help_text
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::contracts::QueueFile;
 
     #[test]
     fn wrap_text_returns_nonempty_for_nonempty_input() {
@@ -597,5 +614,16 @@ mod tests {
         assert_eq!(priority_color(TaskPriority::High), Color::Yellow);
         assert_eq!(priority_color(TaskPriority::Medium), Color::Blue);
         assert_eq!(priority_color(TaskPriority::Low), Color::DarkGray);
+    }
+
+    #[test]
+    fn help_footer_includes_save_error_indicator() {
+        let mut app = App::new(QueueFile::default());
+        app.save_error = Some("failed to save".to_string());
+
+        let help_text = help_footer_spans(&app);
+        let rendered = format!("{:?}", help_text);
+
+        assert!(rendered.contains("SAVE ERROR"));
     }
 }

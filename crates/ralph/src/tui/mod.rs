@@ -47,6 +47,8 @@ pub struct App {
     pub detail_width: u16,
     /// Flag indicating if queue was modified (needs save)
     pub dirty: bool,
+    /// Last auto-save error message, if any.
+    pub save_error: Option<String>,
     /// Execution logs (when in Executing mode)
     pub logs: Vec<String>,
     /// Scroll offset for execution logs
@@ -67,6 +69,7 @@ impl App {
             scroll: 0,
             detail_width: 60,
             dirty: false,
+            save_error: None,
             logs: Vec::new(),
             log_scroll: 0,
             autoscroll: true,
@@ -171,6 +174,27 @@ impl App {
     }
 }
 
+fn auto_save_if_dirty(app: &mut App, queue_path: &std::path::Path) {
+    if !app.dirty {
+        return;
+    }
+
+    match queue::save_queue(queue_path, &app.queue) {
+        Ok(()) => {
+            app.dirty = false;
+            app.save_error = None;
+        }
+        Err(e) => {
+            let message = format!("ERROR saving queue: {}", e);
+            let should_log = app.save_error.as_deref() != Some(message.as_str());
+            app.save_error = Some(message.clone());
+            if should_log {
+                app.logs.push(message);
+            }
+        }
+    }
+}
+
 /// Event sent from the runner thread to the TUI.
 enum RunnerEvent {
     /// Output chunk received
@@ -266,6 +290,7 @@ where
                                     app_ref.selected = app_ref.queue.tasks.len() - 1;
                                 }
                                 app_ref.dirty = false;
+                                app_ref.save_error = None;
                             }
                             Err(e) => {
                                 app_ref.logs.push(format!("ERROR reloading queue: {}", e));
@@ -289,12 +314,7 @@ where
             // Auto-save if dirty
             if app.borrow().dirty {
                 let mut app_ref = app.borrow_mut();
-                if let Err(e) = queue::save_queue(queue_path, &app_ref.queue) {
-                    app_ref.logs.push(format!("ERROR saving queue: {}", e));
-                    // Don't clear dirty flag so we retry? Or clear to avoid spam?
-                    // Let's clear it to avoid infinite error loops in the UI
-                }
-                app_ref.dirty = false;
+                auto_save_if_dirty(&mut app_ref, queue_path);
             }
 
             // Handle events with timeout (for polling runner events)
@@ -606,6 +626,62 @@ mod tests {
             .err()
             .expect("expected validation error");
         assert!(err.to_string().contains("Mismatched task ID prefix"));
+        Ok(())
+    }
+
+    #[test]
+    fn auto_save_clears_dirty_on_success() -> Result<()> {
+        let temp = TempDir::new()?;
+        let queue_path = temp.path().join("queue.json");
+        let queue = QueueFile::default();
+        let mut app = App::new(queue);
+        app.dirty = true;
+
+        auto_save_if_dirty(&mut app, &queue_path);
+
+        assert!(!app.dirty);
+        assert!(app.save_error.is_none());
+        assert!(queue_path.exists());
+        Ok(())
+    }
+
+    #[test]
+    fn auto_save_keeps_dirty_on_failure_and_dedupes_logs() -> Result<()> {
+        let temp = TempDir::new()?;
+        let queue_path = temp.path().join("queue_dir");
+        std::fs::create_dir_all(&queue_path)?;
+        let queue = QueueFile::default();
+        let mut app = App::new(queue);
+        app.dirty = true;
+
+        auto_save_if_dirty(&mut app, &queue_path);
+        assert!(app.dirty);
+        assert!(app.save_error.is_some());
+        assert_eq!(app.logs.len(), 1);
+
+        auto_save_if_dirty(&mut app, &queue_path);
+        assert!(app.dirty);
+        assert_eq!(app.logs.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn auto_save_clears_error_after_recovery() -> Result<()> {
+        let temp = TempDir::new()?;
+        let bad_path = temp.path().join("queue_dir");
+        std::fs::create_dir_all(&bad_path)?;
+        let good_path = temp.path().join("queue.json");
+        let queue = QueueFile::default();
+        let mut app = App::new(queue);
+        app.dirty = true;
+
+        auto_save_if_dirty(&mut app, &bad_path);
+        assert!(app.dirty);
+        assert!(app.save_error.is_some());
+
+        auto_save_if_dirty(&mut app, &good_path);
+        assert!(!app.dirty);
+        assert!(app.save_error.is_none());
         Ok(())
     }
 }
