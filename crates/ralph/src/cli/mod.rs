@@ -96,7 +96,7 @@ pub(crate) fn resolve_list_limit(limit: u32, all: bool) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::{run, Cli, Command};
-    use crate::cli::task;
+    use crate::cli::{queue, task};
     use clap::Parser;
 
     #[test]
@@ -108,6 +108,18 @@ mod tests {
                 "expected queue command, got {:?}",
                 std::mem::discriminant(&other)
             ),
+        }
+    }
+
+    #[test]
+    fn cli_parses_queue_archive_subcommand() {
+        let cli = Cli::try_parse_from(["ralph", "queue", "archive"]).expect("parse");
+        match cli.command {
+            Command::Queue(queue::QueueArgs { command }) => match command {
+                queue::QueueCommand::Archive => {}
+                _ => panic!("expected queue archive command"),
+            },
+            _ => panic!("expected queue command"),
         }
     }
 
@@ -203,12 +215,11 @@ mod tests {
 
     #[test]
     fn cli_parses_task_done_subcommand() {
-        let cli = Cli::try_parse_from(["ralph", "task", "done", "RQ-0001", "done"]).expect("parse");
+        let cli = Cli::try_parse_from(["ralph", "task", "done", "RQ-0001"]).expect("parse");
         match cli.command {
             Command::Task(task::TaskArgs { command, .. }) => match command {
                 Some(task::TaskCommand::Done(args)) => {
                     assert_eq!(args.task_id, "RQ-0001");
-                    assert!(matches!(args.status, task::TaskDoneStatus::Done));
                 }
                 _ => panic!("expected task done command"),
             },
@@ -217,26 +228,26 @@ mod tests {
     }
 
     #[test]
-    fn cli_rejects_queue_complete_subcommand() {
-        let result = Cli::try_parse_from(["ralph", "queue", "complete", "RQ-0001", "done"]);
-        assert!(
-            result.is_err(),
-            "expected queue complete to be rejected after migration to task done"
-        );
-        let msg = result.err().unwrap().to_string().to_lowercase();
-        assert!(
-            msg.contains("unrecognized") || msg.contains("unexpected") || msg.contains("unknown"),
-            "unexpected error: {msg}"
-        );
+    fn cli_parses_task_reject_subcommand() {
+        let cli = Cli::try_parse_from(["ralph", "task", "reject", "RQ-0002"]).expect("parse");
+        match cli.command {
+            Command::Task(task::TaskArgs { command, .. }) => match command {
+                Some(task::TaskCommand::Reject(args)) => {
+                    assert_eq!(args.task_id, "RQ-0002");
+                }
+                _ => panic!("expected task reject command"),
+            },
+            _ => panic!("expected task command"),
+        }
     }
 
     #[test]
-    fn cli_rejects_queue_set_status_done() {
-        let result = Cli::try_parse_from(["ralph", "queue", "set-status", "RQ-0001", "done"]);
-        assert!(result.is_err(), "expected set-status done to be rejected");
+    fn cli_rejects_queue_set_status_subcommand() {
+        let result = Cli::try_parse_from(["ralph", "queue", "set-status", "RQ-0001", "doing"]);
+        assert!(result.is_err(), "expected queue set-status to be rejected");
         let msg = result.err().unwrap().to_string().to_lowercase();
         assert!(
-            msg.contains("invalid value") || msg.contains("possible values"),
+            msg.contains("unrecognized") || msg.contains("unexpected") || msg.contains("unknown"),
             "unexpected error: {msg}"
         );
     }

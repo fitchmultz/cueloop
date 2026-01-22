@@ -9,16 +9,17 @@ Purpose: Summarize Ralph commands, flags, and customization points with examples
 Examples:
 ```bash
 ralph --verbose queue list
-ralph --force queue done
+ralph --force queue archive
 ```
 
 ## Core Commands
 - `ralph init`: bootstrap `.ralph/queue.json`, `.ralph/done.json`, and `.ralph/config.json`.
-- `ralph queue <subcommand>`: validate, list, search, and update tasks.
+- `ralph queue <subcommand>`: validate, list, search, and batch-maintain tasks.
 - `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude).
 - `ralph task`: create a task from a request (default subcommand; `ralph task build` still works).
 - `ralph task ready`: promote a draft task to todo.
-- `ralph task done`: mark a task done/rejected and archive it.
+- `ralph task done`: mark a task done and archive it.
+- `ralph task reject`: mark a task rejected and archive it.
 - `ralph scan`: generate new tasks via scanning.
 - `ralph prompt <subcommand>`: render compiled prompts.
 - `ralph config <subcommand>`: inspect config and paths.
@@ -47,18 +48,16 @@ ralph run one --runner codex --model gpt-5.2-codex --effort high
 - `show`: show a task by ID.
 - `list`: list tasks with filtering and sorting.
 - `search`: search task content (title, evidence, plan, notes, request, tags, scope, custom fields) with filters.
-- `done`: move completed tasks (done/rejected) from queue to archive.
+- `archive`: move completed tasks (done/rejected) from queue to archive.
 - `repair`: repair queue/done files.
 - `unlock`: remove queue lock.
-- `set-status`: update a task status in the active queue.
-- `set-field`: set a custom field on a task.
 - `sort`: reorder queue by priority (or another field).
 - `stats`: show queue statistics (terminal = done + rejected).
 - `history`: show task history timeline.
 - `burndown`: show remaining-task burndown.
 - `schema`: print the queue JSON schema.
 
-Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID> <done|rejected>` for single-task completion. `ralph queue set-status` only supports `draft`, `todo`, and `doing`.
+Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID>` or `ralph task reject <TASK_ID>` for single-task completion.
 
 ### Common Flags and Arguments
 - `next`: `--with-title`
@@ -81,8 +80,6 @@ Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID> <d
   - `--include-done` / `--only-done`
   - `--format <compact|long>`
   - `--limit <N>` / `--all`
-- `set-status`: `TASK_ID` `STATUS` and optional `--note "..."` (status = `draft|todo|doing`)
-- `set-field`: `TASK_ID` `KEY` `VALUE`
 - `sort`: `--sort-by <priority>` and `--order <ascending|descending>`
 - `stats`: `--tag <tag>` (repeatable)
 - `history`: `--days <N>`
@@ -104,8 +101,7 @@ ralph queue list --sort-by priority --order descending
 ralph queue search "RQ-\\d{4}" --regex
 ralph queue show RQ-0001 --format compact
 ralph queue next --with-title
-ralph queue set-status RQ-0002 doing --note "Starting work"
-ralph queue set-field RQ-0003 severity high
+ralph queue archive
 ralph queue prune --age 30 --status done --keep-last 50
 ralph queue repair --dry-run
 ```
@@ -154,7 +150,10 @@ Examples:
 ralph task "Add integration tests"
 ralph task --tags cli,rust --scope crates/ralph "Fix queue parsing"
 ralph task ready RQ-0005
-ralph task done RQ-0001 done --note "Finished work"
+ralph task status doing --note "Starting work" RQ-0001
+ralph task field severity high RQ-0001
+ralph task done --note "Finished work" RQ-0001
+ralph task reject --note "No longer needed" RQ-0002
 echo "Triage flaky CI" | ralph task --runner codex --model gpt-5.2-codex --effort medium
 ralph task build "Explicit build subcommand still works"
 ```

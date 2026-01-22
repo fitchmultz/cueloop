@@ -34,7 +34,7 @@ Start with `docs/index.md` for configuration, queue/task schema, CLI usage, work
 - Execute the next task (first `todo` task in queue order):
   - `cargo run -p ralph -- run one`
 - Archive completed tasks:
-  - `cargo run -p ralph -- queue done`
+  - `cargo run -p ralph -- queue archive`
 
 ## Prompt Overrides
 

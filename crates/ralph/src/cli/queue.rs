@@ -5,7 +5,7 @@ use clap::{Args, Subcommand, ValueEnum};
 
 use super::{load_and_validate_queues, resolve_list_limit};
 use crate::contracts::{Task, TaskStatus};
-use crate::{config, contracts, fsutil, outpututil, queue, reports, timeutil};
+use crate::{config, contracts, fsutil, outpututil, queue, reports};
 
 pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
@@ -210,8 +210,9 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
                 }
             }
         }
-        QueueCommand::Done => {
-            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue done", force)?;
+        QueueCommand::Archive => {
+            let _queue_lock =
+                queue::acquire_queue_lock(&resolved.repo_root, "queue archive", force)?;
             let report = queue::archive_done_tasks(
                 &resolved.queue_path,
                 &resolved.done_path,
@@ -270,46 +271,6 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
             } else {
                 log::info!("Queue is not locked.");
             }
-        }
-        QueueCommand::SetStatus {
-            task_id,
-            status,
-            note,
-        } => {
-            let _queue_lock =
-                queue::acquire_queue_lock(&resolved.repo_root, "queue set-status", force)?;
-            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-            let now = timeutil::now_utc_rfc3339()?;
-            queue::set_status(
-                &mut queue_file,
-                &task_id,
-                status.into(),
-                &now,
-                note.as_deref(),
-            )?;
-            queue::save_queue(&resolved.queue_path, &queue_file)?;
-            log::info!(
-                "Updated task {} to status {}.",
-                task_id,
-                match status {
-                    SetStatusArg::Draft => "draft",
-                    SetStatusArg::Todo => "todo",
-                    SetStatusArg::Doing => "doing",
-                }
-            );
-        }
-        QueueCommand::SetField {
-            task_id,
-            key,
-            value,
-        } => {
-            let _queue_lock =
-                queue::acquire_queue_lock(&resolved.repo_root, "queue set-field", force)?;
-            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-            let now = timeutil::now_utc_rfc3339()?;
-            queue::set_field(&mut queue_file, &task_id, &key, &value, &now)?;
-            queue::save_queue(&resolved.queue_path, &queue_file)?;
-            log::info!("Set field '{}' on task {}.", key, task_id);
         }
         QueueCommand::Sort(args) => {
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue sort", force)?;
@@ -386,7 +347,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Inspect and manage the task queue",
-    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph queue next-id\n  ralph queue set-status RQ-0001 doing --note \"Starting work\""
+    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph queue next-id\n  ralph queue archive"
 )]
 pub struct QueueArgs {
     #[command(subcommand)]
@@ -396,80 +357,71 @@ pub struct QueueArgs {
 #[derive(Subcommand)]
 pub enum QueueCommand {
     /// Validate the active queue (and done archive if present).
-    #[command(after_long_help = "Example:\n  ralph queue validate")]
+    #[command(after_long_help = "Example:\n ralph queue validate")]
     Validate,
+
     /// Prune tasks from the done archive based on age, status, or keep-last rules.
     #[command(
-        after_long_help = "Prune removes old tasks from .ralph/done.json while preserving recent history.\n\nSafety:\n  --keep-last always protects the N most recently completed tasks (by completed_at).\n  If no filters are provided, all tasks are pruned except those protected by --keep-last.\n  Missing or invalid completed_at timestamps are treated as oldest for keep-last ordering\n  but do NOT match the age filter (safety-first).\n\nExamples:\n  ralph queue prune --dry-run --age 30 --status rejected\n  ralph queue prune --keep-last 100\n  ralph queue prune --age 90\n  ralph queue prune --age 30 --status done --keep-last 50"
+        after_long_help = "Prune removes old tasks from .ralph/done.json while preserving recent history.\n\nSafety:\n --keep-last always protects the N most recently completed tasks (by completed_at).\n If no filters are provided, all tasks are pruned except those protected by --keep-last.\n Missing or invalid completed_at timestamps are treated as oldest for keep-last ordering\n but do NOT match the age filter (safety-first).\n\nExamples:\n ralph queue prune --dry-run --age 30 --status rejected\n ralph queue prune --keep-last 100\n ralph queue prune --age 90\n ralph queue prune --age 30 --status done --keep-last 50"
     )]
     Prune(QueuePruneArgs),
+
     /// Print the next todo task (ID by default).
-    #[command(after_long_help = "Examples:\n  ralph queue next\n  ralph queue next --with-title")]
+    #[command(after_long_help = "Examples:\n ralph queue next\n ralph queue next --with-title")]
     Next(QueueNextArgs),
+
     /// Print the next available task ID (across queue + done archive).
-    #[command(after_long_help = "Example:\n  ralph queue next-id")]
+    #[command(after_long_help = "Example:\n ralph queue next-id")]
     NextId,
+
     /// Show a task by ID.
     Show(QueueShowArgs),
+
     /// List tasks in queue order.
     List(QueueListArgs),
+
     /// Search tasks by content (title, evidence, plan, notes, request, tags, scope, custom fields).
     #[command(
-        after_long_help = "Examples:\n  ralph queue search \"authentication\"\n  ralph queue search \"RQ-\\d{4}\" --regex\n  ralph queue search \"TODO\" --match-case\n  ralph queue search \"fix\" --status todo --tag rust"
+        after_long_help = "Examples:\n ralph queue search \"authentication\"\n ralph queue search \"RQ-\\d{4}\" --regex\n ralph queue search \"TODO\" --match-case\n ralph queue search \"fix\" --status todo --tag rust"
     )]
     Search(QueueSearchArgs),
+
     /// Move completed tasks from queue.json to done.json.
-    #[command(after_long_help = "Example:\n  ralph queue done")]
-    Done,
+    #[command(after_long_help = "Example:\n ralph queue archive")]
+    Archive,
+
     /// Repair the queue and done files (fix missing fields, duplicates, timestamps).
-    #[command(after_long_help = "Example:\n  ralph queue repair\n  ralph queue repair --dry-run")]
+    #[command(after_long_help = "Example:\n ralph queue repair\n ralph queue repair --dry-run")]
     Repair(RepairArgs),
+
     /// Remove the queue lock file.
-    #[command(after_long_help = "Example:\n  ralph queue unlock")]
+    #[command(after_long_help = "Example:\n ralph queue unlock")]
     Unlock,
-    /// Update a task status in the active queue.
-    #[command(
-        after_long_help = "Example:\n  ralph queue set-status RQ-0001 doing --note \"Starting work\"\n\nNote: Use `ralph task done <TASK_ID> <done|rejected>` for terminal completion."
-    )]
-    SetStatus {
-        task_id: String,
-        status: SetStatusArg,
-        #[arg(long)]
-        note: Option<String>,
-    },
-    /// Set a custom field on a task.
-    #[command(
-        after_long_help = "Examples:\n  ralph queue set-field RQ-0001 severity high\n  ralph queue set-field RQ-0002 complexity \"O(n log n)\""
-    )]
-    SetField {
-        task_id: String,
-        /// Custom field key (must not contain whitespace).
-        key: String,
-        /// Custom field value.
-        value: String,
-    },
+
     /// Sort tasks by priority (reorders the queue file).
     #[command(
-        after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --order descending\n  ralph queue sort --order ascending"
+        after_long_help = "Examples:\n ralph queue sort\n ralph queue sort --order descending\n ralph queue sort --order ascending"
     )]
     Sort(QueueSortArgs),
+
     /// Show task statistics (completion rate, avg duration, tag breakdown).
     #[command(
-        after_long_help = "Examples:\n  ralph queue stats\n  ralph queue stats --tag rust --tag cli"
+        after_long_help = "Examples:\n ralph queue stats\n ralph queue stats --tag rust --tag cli"
     )]
     Stats(QueueStatsArgs),
+
     /// Show task history timeline (creation/completion events by day).
-    #[command(
-        after_long_help = "Examples:\n  ralph queue history\n  ralph queue history --days 14"
-    )]
+    #[command(after_long_help = "Examples:\n ralph queue history\n ralph queue history --days 14")]
     History(QueueHistoryArgs),
+
     /// Show burndown chart of remaining tasks over time.
     #[command(
-        after_long_help = "Examples:\n  ralph queue burndown\n  ralph queue burndown --days 30"
+        after_long_help = "Examples:\n ralph queue burndown\n ralph queue burndown --days 30"
     )]
     Burndown(QueueBurndownArgs),
+
     /// Print the JSON schema for the queue file.
-    #[command(after_long_help = "Example:\n  ralph queue schema")]
+    #[command(after_long_help = "Example:\n ralph queue schema")]
     Schema,
 }
 
@@ -486,17 +438,6 @@ pub enum StatusArg {
     Done,
     /// Task was rejected (dependents can proceed).
     Rejected,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-#[clap(rename_all = "snake_case")]
-pub enum SetStatusArg {
-    /// Task is a draft and not ready to run.
-    Draft,
-    /// Task is waiting to be started.
-    Todo,
-    /// Task is currently being worked on.
-    Doing,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -753,16 +694,6 @@ impl From<StatusArg> for contracts::TaskStatus {
             StatusArg::Doing => contracts::TaskStatus::Doing,
             StatusArg::Done => contracts::TaskStatus::Done,
             StatusArg::Rejected => contracts::TaskStatus::Rejected,
-        }
-    }
-}
-
-impl From<SetStatusArg> for contracts::TaskStatus {
-    fn from(value: SetStatusArg) -> Self {
-        match value {
-            SetStatusArg::Draft => contracts::TaskStatus::Draft,
-            SetStatusArg::Todo => contracts::TaskStatus::Todo,
-            SetStatusArg::Doing => contracts::TaskStatus::Doing,
         }
     }
 }

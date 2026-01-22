@@ -8,6 +8,7 @@ use crate::{agent, completions, config, fsutil, queue, runner, task_cmd, timeuti
 
 pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
+
     match args.command {
         Some(TaskCommand::Ready(args)) => {
             let _queue_lock =
@@ -24,40 +25,74 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             log::info!("Task {} marked ready (draft -> todo).", args.task_id);
             Ok(())
         }
-        Some(TaskCommand::Done(args)) => {
-            let status = match args.status {
-                TaskDoneStatus::Done => TaskStatus::Done,
-                TaskDoneStatus::Rejected => TaskStatus::Rejected,
-            };
-            let lock_dir = fsutil::queue_lock_dir(&resolved.repo_root);
-            if fsutil::is_supervising_process(&lock_dir)? {
-                let signal = completions::CompletionSignal {
-                    task_id: args.task_id.clone(),
-                    status,
-                    notes: args.note.clone(),
-                };
-                let path = completions::write_completion_signal(&resolved.repo_root, &signal)?;
-                log::info!(
-                    "Running under supervision - wrote completion signal at {}",
-                    path.display()
-                );
-                return Ok(());
+
+        Some(TaskCommand::Status(args)) => {
+            let status: TaskStatus = args.status.into();
+
+            match status {
+                TaskStatus::Done => complete_task_or_signal(
+                    &resolved,
+                    &args.task_id,
+                    TaskStatus::Done,
+                    &[],
+                    force,
+                    "task done",
+                ),
+                TaskStatus::Rejected => complete_task_or_signal(
+                    &resolved,
+                    &args.task_id,
+                    TaskStatus::Rejected,
+                    &[],
+                    force,
+                    "task reject",
+                ),
+                TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing => {
+                    let _queue_lock =
+                        queue::acquire_queue_lock(&resolved.repo_root, "task status", force)?;
+                    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+                    let now = timeutil::now_utc_rfc3339()?;
+                    queue::set_status(
+                        &mut queue_file,
+                        &args.task_id,
+                        status,
+                        &now,
+                        args.note.as_deref(),
+                    )?;
+                    queue::save_queue(&resolved.queue_path, &queue_file)?;
+                    log::info!("Updated task {} to status {}.", args.task_id, status);
+                    Ok(())
+                }
             }
-            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task done", force)?;
+        }
+
+        Some(TaskCommand::Done(args)) => complete_task_or_signal(
+            &resolved,
+            &args.task_id,
+            TaskStatus::Done,
+            &args.note,
+            force,
+            "task done",
+        ),
+
+        Some(TaskCommand::Reject(args)) => complete_task_or_signal(
+            &resolved,
+            &args.task_id,
+            TaskStatus::Rejected,
+            &args.note,
+            force,
+            "task reject",
+        ),
+
+        Some(TaskCommand::Field(args)) => {
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task field", force)?;
+            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
             let now = timeutil::now_utc_rfc3339()?;
-            queue::complete_task(
-                &resolved.queue_path,
-                &resolved.done_path,
-                &args.task_id,
-                status,
-                &now,
-                &args.note,
-                &resolved.id_prefix,
-                resolved.id_width,
-            )?;
-            log::info!("Task {} completed and moved to done archive.", args.task_id);
+            queue::set_field(&mut queue_file, &args.task_id, &args.key, &args.value, &now)?;
+            queue::save_queue(&resolved.queue_path, &queue_file)?;
+            log::info!("Set field '{}' on task {}.", args.key, args.task_id);
             Ok(())
         }
+
         Some(TaskCommand::Build(args)) => {
             let request = task_cmd::read_request_from_args_or_stdin(&args.request)?;
             let overrides = agent::resolve_agent_overrides(&agent::AgentArgs {
@@ -93,6 +128,7 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                 },
             )
         }
+
         None => {
             let args = args.build;
             let request = task_cmd::read_request_from_args_or_stdin(&args.request)?;
@@ -132,11 +168,54 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
     }
 }
 
+fn complete_task_or_signal(
+    resolved: &config::Resolved,
+    task_id: &str,
+    status: TaskStatus,
+    notes: &[String],
+    force: bool,
+    lock_label: &str,
+) -> Result<()> {
+    let lock_dir = fsutil::queue_lock_dir(&resolved.repo_root);
+    if fsutil::is_supervising_process(&lock_dir)? {
+        let signal = completions::CompletionSignal {
+            task_id: task_id.to_string(),
+            status,
+            notes: notes.to_vec(),
+        };
+        let path = completions::write_completion_signal(&resolved.repo_root, &signal)?;
+        log::info!(
+            "Running under supervision - wrote completion signal at {}",
+            path.display()
+        );
+        return Ok(());
+    }
+
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, lock_label, force)?;
+    let now = timeutil::now_utc_rfc3339()?;
+    queue::complete_task(
+        &resolved.queue_path,
+        &resolved.done_path,
+        task_id,
+        status,
+        &now,
+        notes,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
+    log::info!(
+        "Task {} completed (status: {}) and moved to done archive.",
+        task_id,
+        status
+    );
+    Ok(())
+}
+
 #[derive(Args)]
 #[command(
     about = "Create and build tasks from freeform requests",
     subcommand_required = false,
-    after_long_help = "Examples:\n  ralph task \"Add tests for the new queue logic\"\n  ralph task --runner opencode --model gpt-5.2 \"Fix CLI help strings\"\n  ralph task ready RQ-0005\n  ralph task done RQ-0001 done --note \"Finished work\"\n  ralph task build \"(explicit build subcommand still works)\""
+    after_long_help = "Examples:\n ralph task \"Add tests for the new queue logic\"\n ralph task --runner opencode --model gpt-5.2 \"Fix CLI help strings\"\n ralph task ready RQ-0005\n ralph task status doing --note \"Starting work\" RQ-0001\n ralph task field severity high RQ-0003\n ralph task done --note \"Finished work\" RQ-0001\n ralph task reject --note \"No longer needed\" RQ-0002\n ralph task build \"(explicit build subcommand still works)\""
 )]
 pub struct TaskArgs {
     #[command(subcommand)]
@@ -150,19 +229,42 @@ pub struct TaskArgs {
 pub enum TaskCommand {
     /// Build a new task from a natural language request.
     #[command(
-        after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nExamples:\n  ralph task \"Add integration tests for run one\"\n  ralph task --tags cli,rust \"Refactor queue parsing\"\n  ralph task --scope crates/ralph \"Fix TUI rendering bug\"\n  ralph task --runner opencode --model gpt-5.2 \"Add docs for OpenCode setup\"\n  ralph task --runner gemini --model gemini-3-flash-preview \"Draft risk checklist\"\n  ralph task --runner codex --model gpt-5.2-codex --effort high \"Fix queue validation\"\n  ralph task --rp-on \"Audit error handling\"\n  ralph task --rp-off \"Quick typo fix\"\n  echo \"Triage flaky CI\" | ralph task --runner codex --model gpt-5.2-codex --effort medium\n\nExplicit subcommand:\n  ralph task build \"Add integration tests for run one\""
+        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nExamples:\n ralph task \"Add integration tests for run one\"\n ralph task --tags cli,rust \"Refactor queue parsing\"\n ralph task --scope crates/ralph \"Fix TUI rendering bug\"\n ralph task --runner opencode --model gpt-5.2 \"Add docs for OpenCode setup\"\n ralph task --runner gemini --model gemini-3-flash-preview \"Draft risk checklist\"\n ralph task --runner codex --model gpt-5.2-codex --effort high \"Fix queue validation\"\n ralph task --rp-on \"Audit error handling\"\n ralph task --rp-off \"Quick typo fix\"\n echo \"Triage flaky CI\" | ralph task --runner codex --model gpt-5.2-codex --effort medium\n\nExplicit subcommand:\n ralph task build \"Add integration tests for run one\""
     )]
     Build(TaskBuildArgs),
+
     /// Promote a draft task to todo.
     #[command(
-        after_long_help = "Examples:\n  ralph task ready RQ-0005\n  ralph task ready RQ-0005 --note \"Ready for implementation\""
+        after_long_help = "Examples:\n ralph task ready RQ-0005\n ralph task ready --note \"Ready for implementation\" RQ-0005"
     )]
     Ready(TaskReadyArgs),
-    /// Complete a task and move it to the done archive.
+
+    /// Update a task's status (draft, todo, doing, done, rejected).
+    ///
+    /// Note: terminal statuses (done, rejected) complete and archive the task.
     #[command(
-        after_long_help = "Examples:\n  ralph task done RQ-0001 done\n  ralph task done RQ-0002 rejected --note \"No longer needed\""
+        after_long_help = "Examples:\n ralph task status doing RQ-0001\n ralph task status doing --note \"Starting work\" RQ-0001\n ralph task status todo --note \"Back to backlog\" RQ-0001\n ralph task status done RQ-0001\n ralph task status rejected --note \"Invalid request\" RQ-0002"
+    )]
+    Status(TaskStatusArgs),
+
+    /// Complete a task as done and move it to the done archive.
+    #[command(
+        after_long_help = "Examples:\n ralph task done RQ-0001\n ralph task done --note \"Finished work\" --note \"make ci green\" RQ-0001"
     )]
     Done(TaskDoneArgs),
+
+    /// Complete a task as rejected and move it to the done archive.
+    #[command(
+        alias = "rejected",
+        after_long_help = "Examples:\n ralph task reject RQ-0002\n ralph task reject --note \"No longer needed\" RQ-0002"
+    )]
+    Reject(TaskRejectArgs),
+
+    /// Set a custom field on a task.
+    #[command(
+        after_long_help = "Examples:\n ralph task field severity high RQ-0001\n ralph task field complexity \"O(n log n)\" RQ-0002"
+    )]
+    Field(TaskFieldArgs),
 }
 
 #[derive(Args)]
@@ -203,33 +305,88 @@ pub struct TaskBuildArgs {
 
 #[derive(Args)]
 pub struct TaskReadyArgs {
-    /// Draft task ID to promote.
-    pub task_id: String,
-
     /// Optional note to append when marking ready.
     #[arg(long)]
     pub note: Option<String>,
+
+    /// Draft task ID to promote.
+    #[arg(value_name = "TASK_ID")]
+    pub task_id: String,
 }
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 #[clap(rename_all = "snake_case")]
-pub enum TaskDoneStatus {
-    /// Task is complete.
+pub enum TaskStatusArg {
+    /// Task is a draft and not ready to run.
+    Draft,
+    /// Task is waiting to be started.
+    Todo,
+    /// Task is currently being worked on.
+    Doing,
+    /// Task is complete (terminal, archived).
     Done,
-    /// Task was rejected (dependents can proceed).
+    /// Task was rejected (terminal, archived).
     Rejected,
+}
+
+impl From<TaskStatusArg> for TaskStatus {
+    fn from(value: TaskStatusArg) -> Self {
+        match value {
+            TaskStatusArg::Draft => TaskStatus::Draft,
+            TaskStatusArg::Todo => TaskStatus::Todo,
+            TaskStatusArg::Doing => TaskStatus::Doing,
+            TaskStatusArg::Done => TaskStatus::Done,
+            TaskStatusArg::Rejected => TaskStatus::Rejected,
+        }
+    }
+}
+
+#[derive(Args)]
+pub struct TaskStatusArgs {
+    /// Optional note to append.
+    #[arg(long)]
+    pub note: Option<String>,
+
+    /// New status.
+    #[arg(value_enum)]
+    pub status: TaskStatusArg,
+
+    /// Task ID to update.
+    #[arg(value_name = "TASK_ID")]
+    pub task_id: String,
 }
 
 #[derive(Args)]
 pub struct TaskDoneArgs {
-    /// Task ID to complete.
-    pub task_id: String,
-
-    /// Completion status (done or rejected).
-    #[arg(value_enum)]
-    pub status: TaskDoneStatus,
-
     /// Notes to append (repeatable).
     #[arg(long)]
     pub note: Vec<String>,
+
+    /// Task ID to complete.
+    #[arg(value_name = "TASK_ID")]
+    pub task_id: String,
+}
+
+#[derive(Args)]
+pub struct TaskRejectArgs {
+    /// Notes to append (repeatable).
+    #[arg(long)]
+    pub note: Vec<String>,
+
+    /// Task ID to reject.
+    #[arg(value_name = "TASK_ID")]
+    pub task_id: String,
+}
+
+#[derive(Args)]
+pub struct TaskFieldArgs {
+    /// Custom field key (must not contain whitespace).
+    pub key: String,
+
+    /// Custom field value.
+    pub value: String,
+
+    /// Task ID to update.
+    #[arg(value_name = "TASK_ID")]
+    pub task_id: String,
 }
