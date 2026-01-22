@@ -21,14 +21,16 @@ pub const REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION: &str = r#"
 To generate the plan, you MUST use the `context_builder` tool.
 1. Provide an extensively detailed `instructions` argument to `context_builder` that describes the CURRENT TASK (use the task context provided in the prompt; do not pick another task).
 2. MANDATORY: set `response_type` to "plan". The `context_builder` MUST be executed with a plan requested as the response type.
-3. VERBATIM OUTPUT: Once `context_builder` returns, you MUST output its plan EXACTLY AS-IS, with zero edits, summarization, or reformatting.
+3. VERBATIM OUTPUT WITH REQUIRED WRAPPERS: Once `context_builder` returns, you MUST output its plan content EXACTLY AS-IS (with zero edits, summarization, or reformatting), BUT you MUST wrap the entire plan in the required markers shown below.
 
 ## OUTPUT FORMAT (MANDATORY)
 You MUST output the plan wrapped in these exact markers:
 
 <<RALPH_PLAN_BEGIN>>
-<verbatim plan from context_builder>
+<verbatim plan content from context_builder goes here>
 <<RALPH_PLAN_END>>
+
+**CRITICAL:** The plan content from `context_builder` must be output verbatim (no changes), but it MUST be wrapped between `<<RALPH_PLAN_BEGIN>>` and `<<RALPH_PLAN_END>>`. Without these markers, Phase 1 will fail.
 
 Do NOT add any other text before, inside, or after the markers.
 Do NOT start implementation in Phase 1.
