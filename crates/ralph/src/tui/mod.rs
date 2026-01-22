@@ -17,6 +17,7 @@
 //! - `a`: Archive done/rejected tasks (confirmation)
 //! - `d`: Delete task (with confirmation)
 //! - `e`: Edit task title
+//! - `c`: Edit project config (.ralph/config.json)
 //! - `s`: Cycle status (Draft → Todo → Doing → Done → Rejected → Draft)
 //! - `f`: Cycle status filter (All → Todo → Doing → Done → Draft → Rejected → All)
 //! - `p`: Cycle priority (Low → Medium → High → Critical → Low)
@@ -39,7 +40,11 @@ use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
 
-use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use crate::config::{self, ConfigLayer};
+use crate::contracts::{
+    ClaudePermissionMode, GitRevertMode, Model, ProjectType, QueueFile, ReasoningEffort, Runner,
+    Task, TaskPriority, TaskStatus,
+};
 use crate::timeutil;
 use crate::{fsutil, queue};
 
@@ -71,6 +76,41 @@ pub struct FilterState {
     pub tags: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfigFieldKind {
+    Cycle,
+    Toggle,
+    Text,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfigKey {
+    ProjectType,
+    QueueFile,
+    QueueDoneFile,
+    QueueIdPrefix,
+    QueueIdWidth,
+    AgentRunner,
+    AgentModel,
+    AgentReasoningEffort,
+    AgentCodexBin,
+    AgentOpencodeBin,
+    AgentGeminiBin,
+    AgentClaudeBin,
+    AgentClaudePermissionMode,
+    AgentRequireRepoPrompt,
+    AgentGitRevertMode,
+    AgentPhases,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConfigEntry {
+    pub key: ConfigKey,
+    pub label: &'static str,
+    pub value: String,
+    pub kind: ConfigFieldKind,
+}
+
 /// Application state for the TUI.
 pub struct App {
     /// The active task queue.
@@ -89,6 +129,12 @@ pub struct App {
     pub dirty: bool,
     /// Flag indicating if done archive was modified (needs save).
     pub dirty_done: bool,
+    /// Project-specific config overrides (.ralph/config.json).
+    pub project_config: ConfigLayer,
+    /// Optional path to the project config.
+    pub project_config_path: Option<PathBuf>,
+    /// Flag indicating if project config was modified (needs save).
+    pub dirty_config: bool,
     /// Last auto-save error message, if any.
     pub save_error: Option<String>,
     /// Status message shown in the footer (user-visible feedback).
@@ -141,6 +187,9 @@ impl App {
             detail_width: 60,
             dirty: false,
             dirty_done: false,
+            project_config: ConfigLayer::default(),
+            project_config_path: None,
+            dirty_config: false,
             save_error: None,
             status_message: None,
             logs: Vec::new(),
@@ -486,6 +535,314 @@ impl App {
             .collect()
     }
 
+    pub(crate) fn config_entries(&self) -> Vec<ConfigEntry> {
+        vec![
+            ConfigEntry {
+                key: ConfigKey::ProjectType,
+                label: "project_type",
+                value: display_project_type(self.project_config.project_type),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::QueueFile,
+                label: "queue.file",
+                value: display_path(self.project_config.queue.file.as_ref()),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::QueueDoneFile,
+                label: "queue.done_file",
+                value: display_path(self.project_config.queue.done_file.as_ref()),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::QueueIdPrefix,
+                label: "queue.id_prefix",
+                value: display_string(self.project_config.queue.id_prefix.as_ref()),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::QueueIdWidth,
+                label: "queue.id_width",
+                value: display_u8(self.project_config.queue.id_width),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentRunner,
+                label: "agent.runner",
+                value: display_runner(self.project_config.agent.runner),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentModel,
+                label: "agent.model",
+                value: display_model(self.project_config.agent.model.as_ref()),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentReasoningEffort,
+                label: "agent.reasoning_effort",
+                value: display_reasoning_effort(self.project_config.agent.reasoning_effort),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentCodexBin,
+                label: "agent.codex_bin",
+                value: display_string(self.project_config.agent.codex_bin.as_ref()),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentOpencodeBin,
+                label: "agent.opencode_bin",
+                value: display_string(self.project_config.agent.opencode_bin.as_ref()),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentGeminiBin,
+                label: "agent.gemini_bin",
+                value: display_string(self.project_config.agent.gemini_bin.as_ref()),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentClaudeBin,
+                label: "agent.claude_bin",
+                value: display_string(self.project_config.agent.claude_bin.as_ref()),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentClaudePermissionMode,
+                label: "agent.claude_permission_mode",
+                value: display_claude_permission_mode(
+                    self.project_config.agent.claude_permission_mode,
+                ),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentRequireRepoPrompt,
+                label: "agent.require_repoprompt",
+                value: display_bool(self.project_config.agent.require_repoprompt),
+                kind: ConfigFieldKind::Toggle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentGitRevertMode,
+                label: "agent.git_revert_mode",
+                value: display_git_revert_mode(self.project_config.agent.git_revert_mode),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentPhases,
+                label: "agent.phases",
+                value: display_u8(self.project_config.agent.phases),
+                kind: ConfigFieldKind::Cycle,
+            },
+        ]
+    }
+
+    pub(crate) fn config_value_for_edit(&self, key: ConfigKey) -> String {
+        match key {
+            ConfigKey::QueueFile => self
+                .project_config
+                .queue
+                .file
+                .as_ref()
+                .map(|p: &PathBuf| p.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            ConfigKey::QueueDoneFile => self
+                .project_config
+                .queue
+                .done_file
+                .as_ref()
+                .map(|p: &PathBuf| p.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            ConfigKey::QueueIdPrefix => self
+                .project_config
+                .queue
+                .id_prefix
+                .as_ref()
+                .cloned()
+                .unwrap_or_default(),
+            ConfigKey::QueueIdWidth => self
+                .project_config
+                .queue
+                .id_width
+                .map(|v: u8| v.to_string())
+                .unwrap_or_default(),
+            ConfigKey::AgentModel => self
+                .project_config
+                .agent
+                .model
+                .as_ref()
+                .map(|v: &Model| v.as_str().to_string())
+                .unwrap_or_default(),
+            ConfigKey::AgentCodexBin => self
+                .project_config
+                .agent
+                .codex_bin
+                .as_ref()
+                .cloned()
+                .unwrap_or_default(),
+            ConfigKey::AgentOpencodeBin => self
+                .project_config
+                .agent
+                .opencode_bin
+                .as_ref()
+                .cloned()
+                .unwrap_or_default(),
+            ConfigKey::AgentGeminiBin => self
+                .project_config
+                .agent
+                .gemini_bin
+                .as_ref()
+                .cloned()
+                .unwrap_or_default(),
+            ConfigKey::AgentClaudeBin => self
+                .project_config
+                .agent
+                .claude_bin
+                .as_ref()
+                .cloned()
+                .unwrap_or_default(),
+            _ => String::new(),
+        }
+    }
+
+    pub(crate) fn apply_config_text_value(&mut self, key: ConfigKey, input: &str) -> Result<()> {
+        let trimmed = input.trim();
+        match key {
+            ConfigKey::QueueFile => {
+                self.project_config.queue.file = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(trimmed))
+                };
+            }
+            ConfigKey::QueueDoneFile => {
+                self.project_config.queue.done_file = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(trimmed))
+                };
+            }
+            ConfigKey::QueueIdPrefix => {
+                self.project_config.queue.id_prefix = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
+            ConfigKey::QueueIdWidth => {
+                self.project_config.queue.id_width = if trimmed.is_empty() {
+                    None
+                } else {
+                    let value: u8 = trimmed
+                        .parse()
+                        .map_err(|_| anyhow!("queue.id_width must be a valid number (e.g., 4)"))?;
+                    if value == 0 {
+                        bail!("queue.id_width must be greater than 0");
+                    }
+                    Some(value)
+                };
+            }
+            ConfigKey::AgentModel => {
+                self.project_config.agent.model = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.parse::<Model>().map_err(|msg| anyhow!(msg))?)
+                };
+            }
+            ConfigKey::AgentCodexBin => {
+                self.project_config.agent.codex_bin = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
+            ConfigKey::AgentOpencodeBin => {
+                self.project_config.agent.opencode_bin = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
+            ConfigKey::AgentGeminiBin => {
+                self.project_config.agent.gemini_bin = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
+            ConfigKey::AgentClaudeBin => {
+                self.project_config.agent.claude_bin = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
+            _ => {}
+        }
+        self.dirty_config = true;
+        Ok(())
+    }
+
+    pub(crate) fn cycle_config_value(&mut self, key: ConfigKey) {
+        match key {
+            ConfigKey::ProjectType => {
+                self.project_config.project_type =
+                    cycle_project_type(self.project_config.project_type);
+            }
+            ConfigKey::AgentRunner => {
+                self.project_config.agent.runner = cycle_runner(self.project_config.agent.runner);
+            }
+            ConfigKey::AgentReasoningEffort => {
+                self.project_config.agent.reasoning_effort =
+                    cycle_reasoning_effort(self.project_config.agent.reasoning_effort);
+            }
+            ConfigKey::AgentClaudePermissionMode => {
+                self.project_config.agent.claude_permission_mode =
+                    cycle_claude_permission_mode(self.project_config.agent.claude_permission_mode);
+            }
+            ConfigKey::AgentRequireRepoPrompt => {
+                self.project_config.agent.require_repoprompt =
+                    cycle_bool(self.project_config.agent.require_repoprompt);
+            }
+            ConfigKey::AgentGitRevertMode => {
+                self.project_config.agent.git_revert_mode =
+                    cycle_git_revert_mode(self.project_config.agent.git_revert_mode);
+            }
+            ConfigKey::AgentPhases => {
+                self.project_config.agent.phases = cycle_phases(self.project_config.agent.phases);
+            }
+            _ => {}
+        }
+        self.dirty_config = true;
+    }
+
+    pub(crate) fn clear_config_value(&mut self, key: ConfigKey) {
+        match key {
+            ConfigKey::ProjectType => self.project_config.project_type = None,
+            ConfigKey::QueueFile => self.project_config.queue.file = None,
+            ConfigKey::QueueDoneFile => self.project_config.queue.done_file = None,
+            ConfigKey::QueueIdPrefix => self.project_config.queue.id_prefix = None,
+            ConfigKey::QueueIdWidth => self.project_config.queue.id_width = None,
+            ConfigKey::AgentRunner => self.project_config.agent.runner = None,
+            ConfigKey::AgentModel => self.project_config.agent.model = None,
+            ConfigKey::AgentReasoningEffort => self.project_config.agent.reasoning_effort = None,
+            ConfigKey::AgentCodexBin => self.project_config.agent.codex_bin = None,
+            ConfigKey::AgentOpencodeBin => self.project_config.agent.opencode_bin = None,
+            ConfigKey::AgentGeminiBin => self.project_config.agent.gemini_bin = None,
+            ConfigKey::AgentClaudeBin => self.project_config.agent.claude_bin = None,
+            ConfigKey::AgentClaudePermissionMode => {
+                self.project_config.agent.claude_permission_mode = None;
+            }
+            ConfigKey::AgentRequireRepoPrompt => {
+                self.project_config.agent.require_repoprompt = None
+            }
+            ConfigKey::AgentGitRevertMode => self.project_config.agent.git_revert_mode = None,
+            ConfigKey::AgentPhases => self.project_config.agent.phases = None,
+        }
+        self.dirty_config = true;
+    }
+
     pub fn log_visible_lines(&self) -> usize {
         self.log_visible_lines.max(1)
     }
@@ -557,6 +914,10 @@ impl App {
             PaletteEntry {
                 cmd: PaletteCommand::EditTitle,
                 title: "Edit selected task title".to_string(),
+            },
+            PaletteEntry {
+                cmd: PaletteCommand::EditConfig,
+                title: "Edit project config".to_string(),
             },
             PaletteEntry {
                 cmd: PaletteCommand::Search,
@@ -684,6 +1045,13 @@ impl App {
                 } else {
                     self.set_status_message("No task selected");
                 }
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::EditConfig => {
+                self.mode = AppMode::EditingConfig {
+                    selected: 0,
+                    editing_value: None,
+                };
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::Search => {
@@ -884,7 +1252,12 @@ impl App {
     }
 }
 
-fn auto_save_if_dirty(app: &mut App, queue_path: &Path, done_path: &Path) {
+fn auto_save_if_dirty(
+    app: &mut App,
+    queue_path: &Path,
+    done_path: &Path,
+    project_config_path: Option<&Path>,
+) {
     let mut errors: Vec<String> = Vec::new();
 
     if app.dirty {
@@ -905,6 +1278,22 @@ fn auto_save_if_dirty(app: &mut App, queue_path: &Path, done_path: &Path) {
             }
             Err(e) => {
                 errors.push(format!("ERROR saving done: {}", e));
+            }
+        }
+    }
+
+    if app.dirty_config {
+        match project_config_path {
+            Some(path) => match config::save_layer(path, &app.project_config) {
+                Ok(()) => {
+                    app.dirty_config = false;
+                }
+                Err(e) => {
+                    errors.push(format!("ERROR saving config: {}", e));
+                }
+            },
+            None => {
+                errors.push("ERROR saving config: missing project config_path".to_string());
             }
         }
     }
@@ -1113,9 +1502,10 @@ where
             }
 
             // Auto-save if dirty.
-            if app.borrow().dirty || app.borrow().dirty_done {
+            if app.borrow().dirty || app.borrow().dirty_done || app.borrow().dirty_config {
                 let mut app_ref = app.borrow_mut();
-                auto_save_if_dirty(&mut app_ref, queue_path, done_path);
+                let config_path = app_ref.project_config_path.clone();
+                auto_save_if_dirty(&mut app_ref, queue_path, done_path, config_path.as_deref());
             }
 
             // Handle input events.
@@ -1174,7 +1564,170 @@ fn prepare_tui_session(
     app.id_prefix = resolved.id_prefix.clone();
     app.id_width = resolved.id_width;
     app.done_path = Some(resolved.done_path.clone());
+
+    let mut project_config = ConfigLayer::default();
+    let mut project_config_path = None;
+    if let Some(path) = resolved.project_config_path.as_ref() {
+        project_config_path = Some(path.clone());
+        if path.exists() {
+            project_config = config::load_layer(path)
+                .with_context(|| format!("load project config {}", path.display()))?;
+        }
+    }
+    app.project_config = project_config;
+    app.project_config_path = project_config_path;
+
     Ok((app, lock))
+}
+
+fn default_config_value() -> String {
+    "(global default)".to_string()
+}
+
+fn display_project_type(value: Option<ProjectType>) -> String {
+    match value {
+        Some(ProjectType::Code) => "code".to_string(),
+        Some(ProjectType::Docs) => "docs".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_runner(value: Option<Runner>) -> String {
+    match value {
+        Some(Runner::Codex) => "codex".to_string(),
+        Some(Runner::Opencode) => "opencode".to_string(),
+        Some(Runner::Gemini) => "gemini".to_string(),
+        Some(Runner::Claude) => "claude".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_reasoning_effort(value: Option<ReasoningEffort>) -> String {
+    match value {
+        Some(ReasoningEffort::Minimal) => "minimal".to_string(),
+        Some(ReasoningEffort::Low) => "low".to_string(),
+        Some(ReasoningEffort::Medium) => "medium".to_string(),
+        Some(ReasoningEffort::High) => "high".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_claude_permission_mode(value: Option<ClaudePermissionMode>) -> String {
+    match value {
+        Some(ClaudePermissionMode::AcceptEdits) => "accept_edits".to_string(),
+        Some(ClaudePermissionMode::BypassPermissions) => "bypass_permissions".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_git_revert_mode(value: Option<GitRevertMode>) -> String {
+    match value {
+        Some(GitRevertMode::Ask) => "ask".to_string(),
+        Some(GitRevertMode::Enabled) => "enabled".to_string(),
+        Some(GitRevertMode::Disabled) => "disabled".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_model(value: Option<&Model>) -> String {
+    match value {
+        Some(model) => model.as_str().to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_string(value: Option<&String>) -> String {
+    match value {
+        Some(text) if !text.trim().is_empty() => text.to_string(),
+        _ => default_config_value(),
+    }
+}
+
+fn display_path(value: Option<&PathBuf>) -> String {
+    match value {
+        Some(path) => path.to_string_lossy().to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_u8(value: Option<u8>) -> String {
+    match value {
+        Some(value) => value.to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_bool(value: Option<bool>) -> String {
+    match value {
+        Some(true) => "true".to_string(),
+        Some(false) => "false".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn cycle_project_type(value: Option<ProjectType>) -> Option<ProjectType> {
+    match value {
+        None => Some(ProjectType::Code),
+        Some(ProjectType::Code) => Some(ProjectType::Docs),
+        Some(ProjectType::Docs) => None,
+    }
+}
+
+fn cycle_runner(value: Option<Runner>) -> Option<Runner> {
+    match value {
+        None => Some(Runner::Codex),
+        Some(Runner::Codex) => Some(Runner::Opencode),
+        Some(Runner::Opencode) => Some(Runner::Gemini),
+        Some(Runner::Gemini) => Some(Runner::Claude),
+        Some(Runner::Claude) => None,
+    }
+}
+
+fn cycle_reasoning_effort(value: Option<ReasoningEffort>) -> Option<ReasoningEffort> {
+    match value {
+        None => Some(ReasoningEffort::Minimal),
+        Some(ReasoningEffort::Minimal) => Some(ReasoningEffort::Low),
+        Some(ReasoningEffort::Low) => Some(ReasoningEffort::Medium),
+        Some(ReasoningEffort::Medium) => Some(ReasoningEffort::High),
+        Some(ReasoningEffort::High) => None,
+    }
+}
+
+fn cycle_claude_permission_mode(
+    value: Option<ClaudePermissionMode>,
+) -> Option<ClaudePermissionMode> {
+    match value {
+        None => Some(ClaudePermissionMode::AcceptEdits),
+        Some(ClaudePermissionMode::AcceptEdits) => Some(ClaudePermissionMode::BypassPermissions),
+        Some(ClaudePermissionMode::BypassPermissions) => None,
+    }
+}
+
+fn cycle_git_revert_mode(value: Option<GitRevertMode>) -> Option<GitRevertMode> {
+    match value {
+        None => Some(GitRevertMode::Ask),
+        Some(GitRevertMode::Ask) => Some(GitRevertMode::Enabled),
+        Some(GitRevertMode::Enabled) => Some(GitRevertMode::Disabled),
+        Some(GitRevertMode::Disabled) => None,
+    }
+}
+
+fn cycle_bool(value: Option<bool>) -> Option<bool> {
+    match value {
+        None => Some(true),
+        Some(true) => Some(false),
+        Some(false) => None,
+    }
+}
+
+fn cycle_phases(value: Option<u8>) -> Option<u8> {
+    match value {
+        None => Some(1),
+        Some(1) => Some(2),
+        Some(2) => Some(3),
+        Some(3) => None,
+        Some(_) => None,
+    }
 }
 
 #[cfg(test)]
@@ -1261,20 +1814,34 @@ mod tests {
         let temp = TempDir::new()?;
         let queue_path = temp.path().join("queue.json");
         let done_path = temp.path().join("done.json");
+        let config_path = temp.path().join("config.json");
 
         let queue = QueueFile::default();
         let mut app = App::new(queue);
         app.dirty = true;
         app.dirty_done = true;
+        app.dirty_config = true;
+        app.project_config_path = Some(config_path.clone());
 
-        auto_save_if_dirty(&mut app, &queue_path, &done_path);
+        auto_save_if_dirty(&mut app, &queue_path, &done_path, Some(&config_path));
 
         assert!(!app.dirty);
         assert!(!app.dirty_done);
+        assert!(!app.dirty_config);
         assert!(app.save_error.is_none());
         assert!(queue_path.exists());
         assert!(done_path.exists());
+        assert!(config_path.exists());
         Ok(())
+    }
+
+    #[test]
+    fn config_text_entry_rejects_invalid_id_width() {
+        let mut app = App::new(QueueFile::default());
+        let err = app
+            .apply_config_text_value(ConfigKey::QueueIdWidth, "0")
+            .expect_err("invalid id_width");
+        assert!(err.to_string().contains("id_width"));
     }
 
     #[test]

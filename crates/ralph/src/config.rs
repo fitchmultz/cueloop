@@ -1,6 +1,7 @@
 //! Configuration resolution for Ralph, including global and project layers.
 
 use crate::contracts::{AgentConfig, Config, ProjectType, QueueConfig};
+use crate::fsutil;
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -86,6 +87,21 @@ pub fn load_layer(path: &Path) -> Result<ConfigLayer> {
     let layer = serde_json::from_str::<ConfigLayer>(&raw)
         .with_context(|| format!("parse config {} as JSON", path.display()))?;
     Ok(layer)
+}
+
+pub fn save_layer(path: &Path, layer: &ConfigLayer) -> Result<()> {
+    let mut to_save = layer.clone();
+    if to_save.version.is_none() {
+        to_save.version = Some(1);
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("create config directory {}", parent.display()))?;
+    }
+    let rendered = serde_json::to_string_pretty(&to_save).context("serialize config JSON")?;
+    fsutil::write_atomic(path, rendered.as_bytes())
+        .with_context(|| format!("write config JSON {}", path.display()))?;
+    Ok(())
 }
 
 pub fn apply_layer(mut base: Config, layer: ConfigLayer) -> Result<Config> {
@@ -177,7 +193,7 @@ pub fn resolve_id_prefix(cfg: &Config) -> Result<String> {
 pub fn resolve_id_width(cfg: &Config) -> Result<usize> {
     let width = cfg.queue.id_width.unwrap_or(4) as usize;
     if width == 0 {
-        bail!("Invalid queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .ralph/config.json or via --id-width.");
+        bail!("Invalid_queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .ralph/config.json or via --id-width.");
     }
     Ok(width)
 }
@@ -270,6 +286,19 @@ mod tests {
             merged.agent.git_revert_mode.unwrap_or(GitRevertMode::Ask),
             GitRevertMode::Disabled
         );
+        Ok(())
+    }
+
+    #[test]
+    fn save_layer_writes_version_and_round_trips() -> Result<()> {
+        let temp = tempfile::TempDir::new()?;
+        let path = temp.path().join("config.json");
+        let layer = ConfigLayer::default();
+
+        save_layer(&path, &layer)?;
+        let loaded = load_layer(&path)?;
+
+        assert_eq!(loaded.version, Some(1));
         Ok(())
     }
 }

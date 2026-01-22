@@ -7,7 +7,7 @@
 //! Public API is preserved via `crate::tui::draw_ui` re-exporting
 //! `render::draw_ui`.
 
-use super::{App, AppMode};
+use super::{App, AppMode, ConfigFieldKind};
 use crate::contracts::{TaskPriority, TaskStatus};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
@@ -71,6 +71,15 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
     // Command palette overlay.
     if let AppMode::CommandPalette { query, selected } = &app.mode {
         draw_command_palette(f, app, size, query, *selected);
+    }
+
+    // Config editor overlay.
+    if let AppMode::EditingConfig {
+        selected,
+        editing_value,
+    } = &app.mode
+    {
+        draw_config_editor(f, app, size, *selected, editing_value.as_deref());
     }
 
     // Footer (help + status).
@@ -897,6 +906,117 @@ fn priority_color(priority: TaskPriority) -> Color {
     }
 }
 
+fn truncate_to_width(value: &str, max: usize) -> String {
+    if value.len() <= max {
+        return value.to_string();
+    }
+    if max <= 3 {
+        return value.chars().take(max).collect();
+    }
+    let mut result = value
+        .chars()
+        .take(max.saturating_sub(3))
+        .collect::<String>();
+    result.push_str("...");
+    result
+}
+
+fn draw_config_editor(
+    f: &mut Frame<'_>,
+    app: &App,
+    area: Rect,
+    selected: usize,
+    editing_value: Option<&str>,
+) {
+    let entries = app.config_entries();
+    if entries.is_empty() {
+        return;
+    }
+
+    let popup_width = 86.min(area.width.saturating_sub(4)).max(40);
+    let popup_height = (entries.len() as u16 + 6)
+        .min(area.height.saturating_sub(4))
+        .max(8);
+
+    let popup_area = Rect {
+        x: (area.width.saturating_sub(popup_width)) / 2,
+        y: (area.height.saturating_sub(popup_height)) / 2,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    f.render_widget(Clear, popup_area);
+
+    let title = Line::from(vec![
+        Span::styled(
+            "Project Config",
+            Style::default().add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" "),
+        Span::styled("(.ralph/config.json)", Style::default().fg(Color::DarkGray)),
+    ]);
+
+    let block = Block::default().borders(Borders::ALL).title(title);
+    f.render_widget(block.clone(), popup_area);
+
+    let inner = block.inner(popup_area);
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)].as_ref())
+        .split(inner);
+
+    let list_area = layout[0];
+    let hint_area = layout[1];
+
+    let label_width = 24usize;
+
+    let items: Vec<ListItem> = entries
+        .iter()
+        .enumerate()
+        .take(list_area.height as usize)
+        .map(|(idx, entry)| {
+            let is_selected = idx == selected;
+            let mut value = entry.value.clone();
+            if is_selected && entry.kind == ConfigFieldKind::Text {
+                if let Some(editing) = editing_value {
+                    value = format!("{}_", editing);
+                }
+            }
+            let label = format!("{:label_width$}", entry.label);
+            let line_text = format!("{} {}", label, value);
+            let display = truncate_to_width(&line_text, list_area.width as usize);
+
+            let mut style = Style::default();
+            if entry.value == "(global default)" {
+                style = style.fg(Color::DarkGray);
+            }
+            if is_selected {
+                style = style.bg(Color::Blue).add_modifier(Modifier::BOLD);
+            }
+
+            ListItem::new(Line::from(Span::styled(display, style)))
+        })
+        .collect();
+
+    let list = List::new(items).block(Block::default());
+    f.render_widget(list, list_area);
+
+    let hint = Line::from(vec![
+        Span::styled("Enter/Space", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":edit "),
+        Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":clear "),
+        Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":close"),
+    ]);
+    f.render_widget(
+        Paragraph::new(hint)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::DarkGray)),
+        hint_area,
+    );
+}
+
 fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
     let mut help_text = match &app.mode {
         AppMode::Normal => vec![
@@ -922,6 +1042,8 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::raw(":search "),
             Span::styled("t", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":tags "),
+            Span::styled("c", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":config "),
             Span::styled("f", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":filter "),
             Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
@@ -956,6 +1078,16 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::raw(":apply "),
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
+        ],
+        AppMode::EditingConfig { .. } => vec![
+            Span::styled("Enter/Space", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":edit "),
+            Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":nav "),
+            Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":clear "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":close"),
         ],
         AppMode::CommandPalette { .. } => vec![
             Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
@@ -1068,6 +1200,15 @@ mod tests {
         let rendered = format!("{:?}", help_text);
 
         assert!(rendered.contains("SAVE ERROR"));
+    }
+
+    #[test]
+    fn help_footer_includes_config_hint() {
+        let app = App::new(QueueFile::default());
+        let help_text = help_footer_spans(&app);
+        let rendered = format!("{:?}", help_text);
+
+        assert!(rendered.contains(":config"));
     }
 
     #[test]

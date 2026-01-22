@@ -42,6 +42,11 @@ pub enum AppMode {
     Searching(String),
     /// Filtering tasks by tag list (comma-separated input)
     FilteringTags(String),
+    /// Editing project configuration
+    EditingConfig {
+        selected: usize,
+        editing_value: Option<String>,
+    },
     /// Command palette (":" style)
     CommandPalette { query: String, selected: usize },
     /// Confirming task deletion
@@ -63,6 +68,7 @@ pub enum PaletteCommand {
     ArchiveTerminal,
     NewTask,
     EditTitle,
+    EditConfig,
     Search,
     FilterTags,
     ClearFilters,
@@ -94,6 +100,10 @@ pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Resul
         }
         AppMode::Searching(ref current) => handle_searching_mode_key(app, key, current),
         AppMode::FilteringTags(ref current) => handle_filtering_tags_key(app, key, current),
+        AppMode::EditingConfig {
+            selected,
+            editing_value,
+        } => handle_editing_config_key(app, key, selected, editing_value),
         AppMode::CommandPalette { query, selected } => {
             handle_command_palette_key(app, key, &query, selected, now_rfc3339)
         }
@@ -141,6 +151,13 @@ fn handle_normal_mode_key(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Res
             if let Some(task) = app.selected_task() {
                 app.mode = AppMode::EditingTitle(task.title.clone());
             }
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('c') => {
+            app.mode = AppMode::EditingConfig {
+                selected: 0,
+                editing_value: None,
+            };
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('n') => {
@@ -298,6 +315,127 @@ fn handle_filtering_tags_key(app: &mut App, key: KeyCode, current: &str) -> Resu
             Ok(TuiAction::Continue)
         }
         _ => Ok(TuiAction::Continue),
+    }
+}
+
+fn handle_editing_config_key(
+    app: &mut App,
+    key: KeyCode,
+    selected: usize,
+    editing_value: Option<String>,
+) -> Result<TuiAction> {
+    let entries = app.config_entries();
+    if entries.is_empty() {
+        app.mode = AppMode::Normal;
+        app.set_status_message("No config fields available");
+        return Ok(TuiAction::Continue);
+    }
+    let max_index = entries.len().saturating_sub(1);
+    let selected = selected.min(max_index);
+    let entry = entries[selected].clone();
+
+    if let Some(mut value) = editing_value {
+        match key {
+            KeyCode::Enter => match app.apply_config_text_value(entry.key, &value) {
+                Ok(()) => {
+                    app.mode = AppMode::EditingConfig {
+                        selected,
+                        editing_value: None,
+                    };
+                    app.set_status_message("Config updated");
+                    Ok(TuiAction::Continue)
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error: {}", e));
+                    app.mode = AppMode::EditingConfig {
+                        selected,
+                        editing_value: Some(value),
+                    };
+                    Ok(TuiAction::Continue)
+                }
+            },
+            KeyCode::Esc => {
+                app.mode = AppMode::EditingConfig {
+                    selected,
+                    editing_value: None,
+                };
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char(c) => {
+                value.push(c);
+                app.mode = AppMode::EditingConfig {
+                    selected,
+                    editing_value: Some(value),
+                };
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Backspace => {
+                value.pop();
+                app.mode = AppMode::EditingConfig {
+                    selected,
+                    editing_value: Some(value),
+                };
+                Ok(TuiAction::Continue)
+            }
+            _ => Ok(TuiAction::Continue),
+        }
+    } else {
+        match key {
+            KeyCode::Esc => {
+                app.mode = AppMode::Normal;
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                let next_selected = selected.saturating_sub(1);
+                app.mode = AppMode::EditingConfig {
+                    selected: next_selected,
+                    editing_value: None,
+                };
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let next_selected = (selected + 1).min(max_index);
+                app.mode = AppMode::EditingConfig {
+                    selected: next_selected,
+                    editing_value: None,
+                };
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                if entry.kind == crate::tui::ConfigFieldKind::Text {
+                    let current = app.config_value_for_edit(entry.key);
+                    app.mode = AppMode::EditingConfig {
+                        selected,
+                        editing_value: Some(current),
+                    };
+                } else {
+                    app.cycle_config_value(entry.key);
+                    app.set_status_message("Config updated");
+                    app.mode = AppMode::EditingConfig {
+                        selected,
+                        editing_value: None,
+                    };
+                }
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char('x') => {
+                app.clear_config_value(entry.key);
+                app.set_status_message("Config cleared");
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char(c) => {
+                if entry.kind == crate::tui::ConfigFieldKind::Text {
+                    let mut current = app.config_value_for_edit(entry.key);
+                    current.push(c);
+                    app.mode = AppMode::EditingConfig {
+                        selected,
+                        editing_value: Some(current),
+                    };
+                }
+                Ok(TuiAction::Continue)
+            }
+            _ => Ok(TuiAction::Continue),
+        }
     }
 }
 
@@ -638,5 +776,70 @@ mod tests {
         assert_eq!(action, TuiAction::Continue);
         assert_eq!(app.mode, AppMode::Normal);
         assert_eq!(app.status_message.as_deref(), Some("No matching command"));
+    }
+
+    #[test]
+    fn c_enters_config_mode() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Char('c'), "2026-01-20T00:00:00Z").expect("key");
+
+        assert_eq!(action, TuiAction::Continue);
+        match app.mode {
+            AppMode::EditingConfig { .. } => {}
+            other => panic!("expected config mode, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn config_mode_cycles_project_type() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        app.mode = AppMode::EditingConfig {
+            selected: 0,
+            editing_value: None,
+        };
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(
+            app.project_config.project_type,
+            Some(crate::contracts::ProjectType::Code)
+        );
+        assert!(app.dirty_config);
+    }
+
+    #[test]
+    fn config_text_entry_updates_value() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        let idx = app
+            .config_entries()
+            .iter()
+            .position(|entry| entry.key == crate::tui::ConfigKey::QueueIdPrefix)
+            .expect("queue.id_prefix entry");
+        app.mode = AppMode::EditingConfig {
+            selected: idx,
+            editing_value: None,
+        };
+
+        let _ =
+            handle_key_event(&mut app, KeyCode::Char('X'), "2026-01-20T00:00:00Z").expect("key");
+        let _ = handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("key");
+
+        assert_eq!(app.project_config.queue.id_prefix.as_deref(), Some("X"));
     }
 }
