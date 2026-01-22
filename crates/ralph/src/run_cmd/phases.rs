@@ -34,7 +34,15 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
     let label = logging::phase_label(1, total_phases, "Planning", ctx.task_id);
 
     logging::with_scope(&label, || {
-        let p1_prompt = promptflow::build_phase1_prompt(ctx.base_prompt, ctx.task_id, ctx.policy);
+        let p1_template = prompts::load_worker_phase1_prompt(&ctx.resolved.repo_root)?;
+        let p1_prompt = promptflow::build_phase1_prompt(
+            &p1_template,
+            ctx.base_prompt,
+            ctx.task_id,
+            total_phases,
+            ctx.policy,
+            &ctx.resolved.config,
+        )?;
         let _output = execute_runner_pass(
             ctx.resolved,
             ctx.settings,
@@ -101,8 +109,17 @@ pub fn execute_phase2_implementation(
             let handoff_template = prompts::load_phase2_handoff_checklist(&ctx.resolved.repo_root)?;
             let handoff_checklist =
                 prompts::render_phase2_handoff_checklist(&handoff_template, &ctx.resolved.config)?;
-            let p2_prompt =
-                promptflow::build_phase2_handoff_prompt(plan_text, &handoff_checklist, ctx.policy);
+            let p2_template = prompts::load_worker_phase2_handoff_prompt(&ctx.resolved.repo_root)?;
+            let p2_prompt = promptflow::build_phase2_handoff_prompt(
+                &p2_template,
+                ctx.base_prompt,
+                plan_text,
+                &handoff_checklist,
+                ctx.task_id,
+                total_phases,
+                ctx.policy,
+                &ctx.resolved.config,
+            )?;
 
             execute_runner_pass(
                 ctx.resolved,
@@ -142,8 +159,17 @@ pub fn execute_phase2_implementation(
             ctx.task_id,
             &ctx.resolved.config,
         )?;
-        let p2_prompt =
-            promptflow::build_phase2_prompt(plan_text, &completion_checklist, ctx.policy);
+        let p2_template = prompts::load_worker_phase2_prompt(&ctx.resolved.repo_root)?;
+        let p2_prompt = promptflow::build_phase2_prompt(
+            &p2_template,
+            ctx.base_prompt,
+            plan_text,
+            &completion_checklist,
+            ctx.task_id,
+            total_phases,
+            ctx.policy,
+            &ctx.resolved.config,
+        )?;
 
         execute_runner_pass(
             ctx.resolved,
@@ -185,13 +211,17 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             ctx.task_id,
             &ctx.resolved.config,
         )?;
+        let p3_template = prompts::load_worker_phase3_prompt(&ctx.resolved.repo_root)?;
         let p3_prompt = promptflow::build_phase3_prompt(
+            &p3_template,
             ctx.base_prompt,
             &review_body,
-            &completion_checklist,
-            ctx.policy,
             ctx.task_id,
-        );
+            &completion_checklist,
+            3,
+            ctx.policy,
+            &ctx.resolved.config,
+        )?;
 
         runutil::run_prompt_with_handling(
             runutil::RunnerInvocation {
@@ -253,12 +283,15 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
             ctx.task_id,
             &ctx.resolved.config,
         )?;
+        let single_template = prompts::load_worker_single_phase_prompt(&ctx.resolved.repo_root)?;
         let prompt = promptflow::build_single_phase_prompt(
+            &single_template,
             ctx.base_prompt,
             &completion_checklist,
             ctx.task_id,
             ctx.policy,
-        );
+            &ctx.resolved.config,
+        )?;
 
         execute_runner_pass(
             ctx.resolved,

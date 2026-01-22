@@ -6,7 +6,7 @@ This repo is using Ralph. The `.ralph/` directory holds repo-local state.
 
 - `.ralph/queue.json` — JSON task queue (source of truth for active work).
 - `.ralph/done.json` — JSON archive of completed tasks (same schema as queue).
-- `.ralph/prompts/` — optional prompt overrides (defaults are embedded in the Rust CLI).
+- `.ralph/prompts/` — optional prompt overrides (defaults are embedded in the Rust CLI under `crates/ralph/assets/prompts/`).
 
 ## Minimal Rust Commands
 
@@ -56,6 +56,19 @@ Prompt templates support variable interpolation for environment variables and co
 - `\${VAR}` — escaped, outputs literal `${VAR}`
 
 Note: Standard placeholders like `{{USER_REQUEST}}` are still processed after variable expansion.
+
+## Prompt Organization
+
+Worker prompts are composed from a base prompt plus phase-specific wrappers:
+- Base: `.ralph/prompts/worker.md`
+- Phase wrappers: `.ralph/prompts/worker_phase1.md`, `.ralph/prompts/worker_phase2.md`,
+  `.ralph/prompts/worker_phase2_handoff.md`, `.ralph/prompts/worker_phase3.md`,
+  `.ralph/prompts/worker_single_phase.md`
+- Shared supporting prompts: `.ralph/prompts/completion_checklist.md`,
+  `.ralph/prompts/phase2_handoff_checklist.md`, `.ralph/prompts/code_review.md`
+
+If a repo-local override is missing, Ralph falls back to the embedded defaults in
+`crates/ralph/assets/prompts/`.
 
 ## Runners (Codex + OpenCode + Gemini + Claude)
 

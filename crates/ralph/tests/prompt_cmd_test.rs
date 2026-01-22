@@ -83,7 +83,7 @@ fn worker_phase1_includes_plan_cache_path_and_optional_rp() -> Result<()> {
         },
     )?;
 
-    assert!(prompt.contains("PLANNING MODE - PHASE 1 OF 2"));
+    assert!(prompt.contains("PLANNING MODE - PHASE 1 OF 3"));
     assert!(prompt.contains(".ralph/cache/plans/RQ-0001.md"));
     assert!(prompt.contains(ralph::prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
     assert!(!prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
@@ -143,9 +143,9 @@ fn worker_phase2_requires_plan_text() -> Result<()> {
         },
     )?;
 
-    assert!(prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 2"));
+    assert!(prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 3"));
     assert!(prompt.contains("PLAN BODY"));
-    assert!(prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
+    assert!(prompt.contains("PHASE 2 HANDOFF CHECKLIST"));
     Ok(())
 }
 
@@ -167,11 +167,11 @@ fn worker_phase2_uses_placeholder_when_no_plan_found() -> Result<()> {
         },
     )?;
 
-    assert!(prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 2"));
+    assert!(prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 3"));
     assert!(prompt.contains("*No plan file found*"));
     assert!(prompt.contains("No plan file was found at"));
     assert!(prompt.contains("Please proceed with implementation based on the task requirements"));
-    assert!(prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
+    assert!(prompt.contains("PHASE 2 HANDOFF CHECKLIST"));
     Ok(())
 }
 
@@ -240,7 +240,6 @@ fn worker_phase3_includes_code_review_prompt() -> Result<()> {
 
     assert!(prompt.contains("CODE REVIEW MODE - PHASE 3 OF 3"));
     assert!(prompt.contains("CODING STANDARDS"));
-    assert!(prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
     assert!(prompt.contains("PRE-FLIGHT OVERRIDE"));
     Ok(())
 }

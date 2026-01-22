@@ -1,0 +1,261 @@
+//! Worker phase prompt loading and rendering.
+//!
+//! This module centralizes phase-specific worker prompt templates so that
+//! Phase 1/2/3 and single-phase instructions are managed via prompt assets.
+
+use super::util::{ensure_no_unresolved_placeholders, load_prompt_with_fallback};
+use crate::contracts::Config;
+use anyhow::{bail, Result};
+
+const WORKER_PHASE1_PROMPT_REL_PATH: &str = ".ralph/prompts/worker_phase1.md";
+const WORKER_PHASE2_PROMPT_REL_PATH: &str = ".ralph/prompts/worker_phase2.md";
+const WORKER_PHASE2_HANDOFF_PROMPT_REL_PATH: &str = ".ralph/prompts/worker_phase2_handoff.md";
+const WORKER_PHASE3_PROMPT_REL_PATH: &str = ".ralph/prompts/worker_phase3.md";
+const WORKER_SINGLE_PHASE_PROMPT_REL_PATH: &str = ".ralph/prompts/worker_single_phase.md";
+
+const DEFAULT_WORKER_PHASE1_PROMPT: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/prompts/worker_phase1.md"
+));
+
+const DEFAULT_WORKER_PHASE2_PROMPT: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/prompts/worker_phase2.md"
+));
+
+const DEFAULT_WORKER_PHASE2_HANDOFF_PROMPT: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/prompts/worker_phase2_handoff.md"
+));
+
+const DEFAULT_WORKER_PHASE3_PROMPT: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/prompts/worker_phase3.md"
+));
+
+const DEFAULT_WORKER_SINGLE_PHASE_PROMPT: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/prompts/worker_single_phase.md"
+));
+
+pub fn load_worker_phase1_prompt(repo_root: &std::path::Path) -> Result<String> {
+    load_prompt_with_fallback(
+        repo_root,
+        WORKER_PHASE1_PROMPT_REL_PATH,
+        DEFAULT_WORKER_PHASE1_PROMPT,
+        "worker phase1",
+    )
+}
+
+pub fn load_worker_phase2_prompt(repo_root: &std::path::Path) -> Result<String> {
+    load_prompt_with_fallback(
+        repo_root,
+        WORKER_PHASE2_PROMPT_REL_PATH,
+        DEFAULT_WORKER_PHASE2_PROMPT,
+        "worker phase2",
+    )
+}
+
+pub fn load_worker_phase2_handoff_prompt(repo_root: &std::path::Path) -> Result<String> {
+    load_prompt_with_fallback(
+        repo_root,
+        WORKER_PHASE2_HANDOFF_PROMPT_REL_PATH,
+        DEFAULT_WORKER_PHASE2_HANDOFF_PROMPT,
+        "worker phase2 handoff",
+    )
+}
+
+pub fn load_worker_phase3_prompt(repo_root: &std::path::Path) -> Result<String> {
+    load_prompt_with_fallback(
+        repo_root,
+        WORKER_PHASE3_PROMPT_REL_PATH,
+        DEFAULT_WORKER_PHASE3_PROMPT,
+        "worker phase3",
+    )
+}
+
+pub fn load_worker_single_phase_prompt(repo_root: &std::path::Path) -> Result<String> {
+    load_prompt_with_fallback(
+        repo_root,
+        WORKER_SINGLE_PHASE_PROMPT_REL_PATH,
+        DEFAULT_WORKER_SINGLE_PHASE_PROMPT,
+        "worker single phase",
+    )
+}
+
+pub fn render_worker_phase1_prompt(
+    template: &str,
+    base_worker_prompt: &str,
+    task_id: &str,
+    total_phases: u8,
+    plan_path: &str,
+    repoprompt_required: bool,
+    config: &Config,
+) -> Result<String> {
+    let id = task_id.trim();
+    if id.is_empty() {
+        bail!("Missing task id: worker phase1 prompt requires a non-empty task id.");
+    }
+
+    let expanded = super::expand_variables(template, config)?;
+    let repoprompt_block = repoprompt_block(repoprompt_required, true);
+    let rendered = expanded
+        .replace("{{TASK_ID}}", id)
+        .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
+        .replace("{{PLAN_PATH}}", plan_path)
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+
+    ensure_no_unresolved_placeholders(&rendered, "worker phase1")?;
+    Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn render_worker_phase2_prompt(
+    template: &str,
+    base_worker_prompt: &str,
+    plan_text: &str,
+    checklist: &str,
+    task_id: &str,
+    total_phases: u8,
+    repoprompt_required: bool,
+    config: &Config,
+) -> Result<String> {
+    let expanded = super::expand_variables(template, config)?;
+    let repoprompt_block = repoprompt_block(repoprompt_required, false);
+    let rendered = expanded
+        .replace("{{PLAN_TEXT}}", plan_text.trim())
+        .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
+        .replace("{{TASK_ID}}", task_id.trim())
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+
+    ensure_no_unresolved_placeholders(&rendered, "worker phase2")?;
+    Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn render_worker_phase2_handoff_prompt(
+    template: &str,
+    base_worker_prompt: &str,
+    plan_text: &str,
+    checklist: &str,
+    task_id: &str,
+    total_phases: u8,
+    repoprompt_required: bool,
+    config: &Config,
+) -> Result<String> {
+    let expanded = super::expand_variables(template, config)?;
+    let repoprompt_block = repoprompt_block(repoprompt_required, false);
+    let rendered = expanded
+        .replace("{{PLAN_TEXT}}", plan_text.trim())
+        .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
+        .replace("{{TASK_ID}}", task_id.trim())
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+
+    ensure_no_unresolved_placeholders(&rendered, "worker phase2 handoff")?;
+    Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn render_worker_phase3_prompt(
+    template: &str,
+    base_worker_prompt: &str,
+    code_review_body: &str,
+    task_id: &str,
+    completion_checklist: &str,
+    total_phases: u8,
+    repoprompt_required: bool,
+    config: &Config,
+) -> Result<String> {
+    let expanded = super::expand_variables(template, config)?;
+    let mut review_body = code_review_body.trim().to_string();
+    if base_worker_prompt.contains("## PROJECT TYPE:") {
+        review_body = strip_project_type_guidance(&review_body);
+    }
+    let repoprompt_block = repoprompt_block(repoprompt_required, false);
+    let rendered = expanded
+        .replace("{{CODE_REVIEW_BODY}}", review_body.trim())
+        .replace("{{COMPLETION_CHECKLIST}}", completion_checklist.trim())
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
+        .replace("{{TASK_ID}}", task_id.trim())
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+
+    ensure_no_unresolved_placeholders(&rendered, "worker phase3")?;
+    Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
+}
+
+pub fn render_worker_single_phase_prompt(
+    template: &str,
+    base_worker_prompt: &str,
+    checklist: &str,
+    task_id: &str,
+    repoprompt_required: bool,
+    config: &Config,
+) -> Result<String> {
+    let id = task_id.trim();
+    if id.is_empty() {
+        bail!("Missing task id: worker single-phase prompt requires a non-empty task id.");
+    }
+
+    let expanded = super::expand_variables(template, config)?;
+    let repoprompt_block = repoprompt_block(repoprompt_required, false);
+    let rendered = expanded
+        .replace("{{TASK_ID}}", id)
+        .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+
+    ensure_no_unresolved_placeholders(&rendered, "worker single phase")?;
+    Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
+}
+
+fn repoprompt_block(required: bool, include_planning: bool) -> String {
+    if !required {
+        return String::new();
+    }
+
+    if include_planning {
+        format!(
+            "{}\n\n{}",
+            super::REPOPROMPT_REQUIRED_INSTRUCTION.trim(),
+            super::REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION.trim()
+        )
+    } else {
+        super::REPOPROMPT_REQUIRED_INSTRUCTION.trim().to_string()
+    }
+}
+
+fn clean_repoprompt_spacing(rendered: String, repoprompt_required: bool) -> String {
+    if repoprompt_required {
+        return rendered;
+    }
+
+    let mut cleaned = rendered.replace("\n\n\n", "\n\n");
+    while cleaned.contains("\n\n\n") {
+        cleaned = cleaned.replace("\n\n\n", "\n\n");
+    }
+    cleaned
+}
+
+fn strip_project_type_guidance(review_body: &str) -> String {
+    if let Some(start) = review_body.find("## PROJECT TYPE:") {
+        if let Some(end) = review_body[start..].find("\n## ") {
+            let end_idx = start + end + 1;
+            let mut stripped = String::new();
+            stripped.push_str(review_body[..start].trim_end());
+            if !stripped.is_empty() {
+                stripped.push('\n');
+                stripped.push('\n');
+            }
+            stripped.push_str(review_body[end_idx..].trim_start());
+            return stripped;
+        }
+        return review_body[..start].trim_end().to_string();
+    }
+    review_body.to_string()
+}

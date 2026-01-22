@@ -1,5 +1,6 @@
 //! Prompt construction for worker run phases.
 
+use crate::contracts::Config;
 use crate::fsutil;
 use crate::prompts;
 use anyhow::{bail, Result};
@@ -49,215 +50,112 @@ pub fn read_plan_cache(repo_root: &Path, task_id: &str) -> Result<String> {
 
 /// Build the prompt for Phase 1 (Planning).
 pub fn build_phase1_prompt(
+    template: &str,
     base_worker_prompt: &str,
     task_id: &str,
+    total_phases: u8,
     policy: &PromptPolicy,
-) -> String {
-    let mut instructions = String::new();
-
-    // 1. Heading
-    instructions.push_str("# PLANNING MODE - PHASE 1 OF 2\n\n");
-    instructions.push_str(&format!(
-        "CURRENT TASK: {}. Do NOT switch tasks.\n",
-        task_id.trim()
-    ));
-
-    // 2. RepoPrompt requirement (if enabled)
-    if policy.require_repoprompt {
-        instructions.push_str(prompts::REPOPROMPT_REQUIRED_INSTRUCTION);
-        instructions.push_str("\n\n");
-        instructions.push_str(prompts::REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION);
-        instructions.push('\n');
-    }
-
-    // 3. Planning-only constraint + Plan cache requirement
+    config: &Config,
+) -> Result<String> {
     let plan_path = format!(".ralph/cache/plans/{}.md", task_id.trim());
-    instructions.push_str(&format!(
-        r#"
-## OUTPUT REQUIREMENT: PLAN ONLY
-You are in Phase 1 (Planning). You must NOT implement the changes.
-Your goal is to understand the task, gather context, and produce a detailed plan.
-
-## STRICT PROHIBITIONS (PHASE 1 ONLY)
-**DO NOT DO ANY OF THE FOLLOWING:**
-- Create or modify any files, EXCEPT the plan cache file below (Ralph handles queue bookkeeping)
-- Run tests, `make ci`, or any validation commands
-- Execute `git add`, `git commit`, or `git push`
-- Write, edit, or change any source code, configuration, or documentation files
-- Make any implementation changes whatsoever
-
-**NO FILE EDITS ARE ALLOWED IN PHASE 1, EXCEPT writing the plan cache file below.**
-
-**IF YOU START IMPLEMENTING:**
-- STOP immediately
-- Revert any file changes you made
-
-## PLAN OUTPUT REQUIREMENT
-You MUST write the final plan directly to this file:
-
-{plan_path}
-
-**Do NOT print the plan in your reply.** The plan must be written to the file above.
-Use the available tooling to write the plan file directly.
-After writing the file, you may respond with a brief confirmation only.
-
-The plan should be detailed for Phase 2 implementation.
-Treat any `context_builder` response as planning input only. Do NOT start implementing code after you receive it.
-Do NOT switch tasks: plan ONLY for the current task and ignore any other IDs mentioned in tool output.
-"#,
-        plan_path = plan_path
-    ));
-
-    // 5. Divider and base prompt
-    format!("{}\n\n---\n\n{}", instructions.trim(), base_worker_prompt)
+    prompts::render_worker_phase1_prompt(
+        template,
+        base_worker_prompt,
+        task_id,
+        total_phases,
+        &plan_path,
+        policy.require_repoprompt,
+        config,
+    )
 }
 
 /// Build the prompt for Phase 2 (Implementation).
+#[allow(clippy::too_many_arguments)]
 pub fn build_phase2_prompt(
+    template: &str,
+    base_worker_prompt: &str,
     plan_text: &str,
     completion_checklist: &str,
+    task_id: &str,
+    total_phases: u8,
     policy: &PromptPolicy,
-) -> String {
-    let mut instructions = String::new();
-
-    // 1. Heading
-    instructions.push_str("# IMPLEMENTATION MODE - PHASE 2 OF 2\n\n");
-    instructions.push_str("Task status is already set to `doing` by Ralph. Do NOT change it.\n\n");
-
-    // 2. RepoPrompt requirement (optional in phase 2, but good for consistency)
-    if policy.require_repoprompt {
-        instructions.push_str(prompts::REPOPROMPT_REQUIRED_INSTRUCTION);
-        instructions.push_str("\n\n");
-    }
-
-    // 3. Completion workflow
-    let checklist = completion_checklist.trim();
-    if !checklist.is_empty() {
-        instructions.push_str(checklist);
-        instructions.push_str("\n\n");
-    }
-
-    // 4. The Plan
-    instructions.push_str("# APPROVED PLAN\n\n");
-    instructions.push_str(plan_text);
-    instructions.push_str("\n\n---\n\n");
-
-    // 5. Instruction to execute
-    instructions.push_str("Proceed with the implementation of the plan above.");
-
-    instructions
+    config: &Config,
+) -> Result<String> {
+    prompts::render_worker_phase2_prompt(
+        template,
+        base_worker_prompt,
+        plan_text,
+        completion_checklist,
+        task_id,
+        total_phases,
+        policy.require_repoprompt,
+        config,
+    )
 }
 
 /// Build the prompt for Phase 2 handoff (3-phase workflow).
+#[allow(clippy::too_many_arguments)]
 pub fn build_phase2_handoff_prompt(
+    template: &str,
+    base_worker_prompt: &str,
     plan_text: &str,
     handoff_checklist: &str,
+    task_id: &str,
+    total_phases: u8,
     policy: &PromptPolicy,
-) -> String {
-    let mut instructions = String::new();
-
-    // 1. Heading
-    instructions.push_str("# IMPLEMENTATION MODE - PHASE 2 OF 3\n\n");
-    instructions.push_str("Task status is already set to `doing` by Ralph. Do NOT change it.\n\n");
-
-    // 2. RepoPrompt requirement (optional in phase 2, but good for consistency)
-    if policy.require_repoprompt {
-        instructions.push_str(prompts::REPOPROMPT_REQUIRED_INSTRUCTION);
-        instructions.push_str("\n\n");
-    }
-
-    // 3. Handoff workflow
-    let checklist = handoff_checklist.trim();
-    if !checklist.is_empty() {
-        instructions.push_str(checklist);
-        instructions.push_str("\n\n");
-    }
-
-    // 4. The Plan
-    instructions.push_str("# APPROVED PLAN\n\n");
-    instructions.push_str(plan_text);
-    instructions.push_str("\n\n---\n\n");
-
-    // 5. Instruction to execute
-    instructions
-        .push_str("Proceed with the implementation of the plan above. Stop after Phase 2 handoff.");
-
-    instructions
+    config: &Config,
+) -> Result<String> {
+    prompts::render_worker_phase2_handoff_prompt(
+        template,
+        base_worker_prompt,
+        plan_text,
+        handoff_checklist,
+        task_id,
+        total_phases,
+        policy.require_repoprompt,
+        config,
+    )
 }
 
 /// Build the prompt for Phase 3 (Code Review).
+#[allow(clippy::too_many_arguments)]
 pub fn build_phase3_prompt(
+    template: &str,
     base_worker_prompt: &str,
     code_review_body: &str,
+    task_id: &str,
     completion_checklist: &str,
+    total_phases: u8,
     policy: &PromptPolicy,
-    _task_id: &str,
-) -> String {
-    let mut instructions = String::new();
-
-    // 1. Heading
-    instructions.push_str("# CODE REVIEW MODE - PHASE 3 OF 3\n\n");
-    instructions.push_str("Task status is already set to `doing` by Ralph. Do NOT change it (use `ralph task done` when finished).\n\n");
-
-    // 2. Override dirty-repo rule: Phase 3 expects pending changes from Phase 2.
-    instructions.push_str("## PRE-FLIGHT OVERRIDE\n");
-    instructions.push_str("The repo is expected to be dirty in Phase 3 due to Phase 2 changes. Do NOT stop because the working tree is dirty.\n\n");
-
-    // 3. RepoPrompt requirement
-    if policy.require_repoprompt {
-        instructions.push_str(prompts::REPOPROMPT_REQUIRED_INSTRUCTION);
-        instructions.push_str("\n\n");
-    }
-
-    // 4. Code review body + completion checklist
-    let review = code_review_body.trim();
-    if !review.is_empty() {
-        instructions.push_str(review);
-        instructions.push_str("\n\n");
-    }
-
-    let checklist = completion_checklist.trim();
-    if !checklist.is_empty() {
-        instructions.push_str(checklist);
-        instructions.push_str("\n\n");
-    }
-
-    // 5. Divider and base prompt
-    format!("{}\n\n---\n\n{}", instructions.trim(), base_worker_prompt)
+    config: &Config,
+) -> Result<String> {
+    prompts::render_worker_phase3_prompt(
+        template,
+        base_worker_prompt,
+        code_review_body,
+        task_id,
+        completion_checklist,
+        total_phases,
+        policy.require_repoprompt,
+        config,
+    )
 }
 
 /// Build the prompt for Single Phase (Plan + Implement).
 pub fn build_single_phase_prompt(
+    template: &str,
     base_worker_prompt: &str,
     completion_checklist: &str,
     task_id: &str,
     policy: &PromptPolicy,
-) -> String {
-    let mut instructions = String::new();
-
-    // 1. RepoPrompt requirement (tooling requirement only; no mandated planning tool step)
-    if policy.require_repoprompt {
-        instructions.push_str(prompts::REPOPROMPT_REQUIRED_INSTRUCTION);
-        instructions.push_str("\n\n");
-    }
-
-    instructions.push_str(&format!(
-        "CURRENT TASK: {}. Do NOT switch tasks.\n\n",
-        task_id.trim()
-    ));
-
-    // 2. Completion workflow
-    let checklist = completion_checklist.trim();
-    if !checklist.is_empty() {
-        instructions.push_str(checklist);
-        instructions.push_str("\n\n");
-    }
-
-    // 3. Single-pass semantics: planning is optional.
-    instructions.push_str(
-        "You are in single-pass execution mode. You may do brief planning, but you are NOT required to produce a separate plan first. Proceed directly to implementation.\n",
-    );
-
-    // 4. Divider and base prompt
-    format!("{}\n\n---\n\n{}", instructions.trim(), base_worker_prompt)
+    config: &Config,
+) -> Result<String> {
+    prompts::render_worker_single_phase_prompt(
+        template,
+        base_worker_prompt,
+        completion_checklist,
+        task_id,
+        policy.require_repoprompt,
+        config,
+    )
 }

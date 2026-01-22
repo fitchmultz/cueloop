@@ -93,7 +93,11 @@ mod tests {
 
         let (_, logs) = take_logs();
         if state == LoggerState::TestLogger {
-            assert_eq!(logs, vec!["ScopeA: start", "ScopeA: end"]);
+            if log::max_level() >= LevelFilter::Info {
+                assert_eq!(logs, vec!["ScopeA: start", "ScopeA: end"]);
+            } else {
+                assert_eq!(logs, Vec::<String>::new());
+            }
         }
         Ok(())
     }
@@ -107,7 +111,11 @@ mod tests {
 
         let (_, logs) = take_logs();
         if state == LoggerState::TestLogger {
-            assert_eq!(logs, vec!["ScopeB: start", "ScopeB: error: boom"]);
+            if log::max_level() >= LevelFilter::Info {
+                assert_eq!(logs, vec!["ScopeB: start", "ScopeB: error: boom"]);
+            } else {
+                assert_eq!(logs, vec!["ScopeB: error: boom"]);
+            }
         }
     }
 

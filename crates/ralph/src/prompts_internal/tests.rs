@@ -56,6 +56,38 @@ fn load_worker_prompt_falls_back_to_embedded_default_when_missing() -> Result<()
 }
 
 #[test]
+fn load_worker_phase1_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
+    let dir = TempDir::new()?;
+    let prompt = load_worker_phase1_prompt(dir.path())?;
+    assert!(prompt.contains("# PLANNING MODE"));
+    Ok(())
+}
+
+#[test]
+fn load_worker_phase2_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
+    let dir = TempDir::new()?;
+    let prompt = load_worker_phase2_prompt(dir.path())?;
+    assert!(prompt.contains("# IMPLEMENTATION MODE"));
+    Ok(())
+}
+
+#[test]
+fn load_worker_phase3_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
+    let dir = TempDir::new()?;
+    let prompt = load_worker_phase3_prompt(dir.path())?;
+    assert!(prompt.contains("# CODE REVIEW MODE"));
+    Ok(())
+}
+
+#[test]
+fn load_worker_single_phase_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
+    let dir = TempDir::new()?;
+    let prompt = load_worker_single_phase_prompt(dir.path())?;
+    assert!(prompt.contains("single-pass execution mode"));
+    Ok(())
+}
+
+#[test]
 fn default_task_builder_prompt_mentions_next_id_command() -> Result<()> {
     let dir = TempDir::new()?;
     let prompt = load_task_builder_prompt(dir.path())?;
@@ -109,6 +141,91 @@ fn load_worker_prompt_uses_override_when_present() -> Result<()> {
     fs::write(overrides.join("worker.md"), "override")?;
     let prompt = load_worker_prompt(dir.path())?;
     assert_eq!(prompt, "override");
+    Ok(())
+}
+
+#[test]
+fn render_worker_phase1_prompt_replaces_placeholders() -> Result<()> {
+    let template =
+        "ID={{TASK_ID}}\nPHASE={{TOTAL_PHASES}}\nPLAN={{PLAN_PATH}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+    let config = default_config();
+    let rendered = render_worker_phase1_prompt(
+        template,
+        "BASE",
+        "RQ-0001",
+        2,
+        ".ralph/cache/plans/RQ-0001.md",
+        true,
+        &config,
+    )?;
+    assert!(rendered.contains("ID=RQ-0001"));
+    assert!(rendered.contains("PHASE=2"));
+    assert!(rendered.contains("PLAN=.ralph/cache/plans/RQ-0001.md"));
+    assert!(rendered.contains("BASE"));
+    assert!(rendered.contains("TOOLING REQUIREMENT: RepoPrompt"));
+    assert!(rendered.contains("PLANNING REQUIREMENT"));
+    assert!(!rendered.contains("{{"));
+    Ok(())
+}
+
+#[test]
+fn render_worker_phase2_prompt_skips_repoprompt_when_not_required() -> Result<()> {
+    let template =
+        "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PLAN_TEXT}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+    let config = default_config();
+    let rendered = render_worker_phase2_prompt(
+        template,
+        "BASE",
+        "PLAN",
+        "CHECKLIST",
+        "RQ-0001",
+        2,
+        false,
+        &config,
+    )?;
+    assert!(rendered.contains("PHASE=2"));
+    assert!(rendered.contains("ID=RQ-0001"));
+    assert!(rendered.contains("PLAN"));
+    assert!(rendered.contains("CHECKLIST"));
+    assert!(rendered.contains("BASE"));
+    assert!(!rendered.contains("TOOLING REQUIREMENT: RepoPrompt"));
+    assert!(!rendered.contains("{{"));
+    Ok(())
+}
+
+#[test]
+fn render_worker_phase3_prompt_includes_review_and_base() -> Result<()> {
+    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{CODE_REVIEW_BODY}}\n{{COMPLETION_CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+    let config = default_config();
+    let rendered = render_worker_phase3_prompt(
+        template,
+        "BASE\n\n## PROJECT TYPE: CODE\n\nBase Guidance\n",
+        "REVIEW\n## PROJECT TYPE: CODE\n\nExtra\n\n## NEXT",
+        "RQ-0001",
+        "CHECKLIST",
+        3,
+        true,
+        &config,
+    )?;
+    assert!(rendered.contains("PHASE=3"));
+    assert!(rendered.contains("ID=RQ-0001"));
+    assert!(rendered.contains("REVIEW"));
+    assert!(rendered.contains("## NEXT"));
+    assert_eq!(rendered.matches("## PROJECT TYPE: CODE").count(), 1);
+    assert!(rendered.contains("CHECKLIST"));
+    assert!(rendered.contains("BASE"));
+    assert!(rendered.contains("TOOLING REQUIREMENT: RepoPrompt"));
+    assert!(!rendered.contains("{{"));
+    Ok(())
+}
+
+#[test]
+fn render_worker_single_phase_prompt_requires_task_id() -> Result<()> {
+    let template = "{{TASK_ID}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n";
+    let config = default_config();
+    let result =
+        render_worker_single_phase_prompt(template, "BASE", "CHECKLIST", "", false, &config);
+    assert!(result.is_err());
     Ok(())
 }
 

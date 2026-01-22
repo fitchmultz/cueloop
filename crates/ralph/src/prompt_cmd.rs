@@ -196,13 +196,30 @@ pub fn build_worker_prompt(
         require_repoprompt: opts.repoprompt_required,
     };
 
+    let configured_phases = resolved.config.agent.phases.unwrap_or(2);
+    let total_phases = match opts.mode {
+        WorkerMode::Phase3 => 3,
+        WorkerMode::Single => 1,
+        _ => configured_phases.clamp(2, 3),
+    };
+
     let load_completion_checklist = || -> Result<String> {
         let template = prompts::load_completion_checklist(&resolved.repo_root)?;
         prompts::render_completion_checklist(&template, &task_id, &resolved.config)
     };
 
     let prompt = match opts.mode {
-        WorkerMode::Phase1 => promptflow::build_phase1_prompt(&base_prompt, &task_id, &policy),
+        WorkerMode::Phase1 => {
+            let phase1_template = prompts::load_worker_phase1_prompt(&resolved.repo_root)?;
+            promptflow::build_phase1_prompt(
+                &phase1_template,
+                &base_prompt,
+                &task_id,
+                total_phases,
+                &policy,
+                &resolved.config,
+            )?
+        }
         WorkerMode::Phase2 => {
             let plan_text = load_plan_text_for_phase2(
                 &resolved.repo_root,
@@ -210,8 +227,36 @@ pub fn build_worker_prompt(
                 opts.plan_text,
                 opts.plan_file,
             )?;
-            let completion_checklist = load_completion_checklist()?;
-            promptflow::build_phase2_prompt(&plan_text, &completion_checklist, &policy)
+            if total_phases == 3 {
+                let handoff_template = prompts::load_phase2_handoff_checklist(&resolved.repo_root)?;
+                let handoff_checklist =
+                    prompts::render_phase2_handoff_checklist(&handoff_template, &resolved.config)?;
+                let phase2_template =
+                    prompts::load_worker_phase2_handoff_prompt(&resolved.repo_root)?;
+                promptflow::build_phase2_handoff_prompt(
+                    &phase2_template,
+                    &base_prompt,
+                    &plan_text,
+                    &handoff_checklist,
+                    &task_id,
+                    total_phases,
+                    &policy,
+                    &resolved.config,
+                )?
+            } else {
+                let completion_checklist = load_completion_checklist()?;
+                let phase2_template = prompts::load_worker_phase2_prompt(&resolved.repo_root)?;
+                promptflow::build_phase2_prompt(
+                    &phase2_template,
+                    &base_prompt,
+                    &plan_text,
+                    &completion_checklist,
+                    &task_id,
+                    total_phases,
+                    &policy,
+                    &resolved.config,
+                )?
+            }
         }
         WorkerMode::Phase3 => {
             let review_template = prompts::load_code_review_prompt(&resolved.repo_root)?;
@@ -222,22 +267,29 @@ pub fn build_worker_prompt(
                 &resolved.config,
             )?;
             let completion_checklist = load_completion_checklist()?;
+            let phase3_template = prompts::load_worker_phase3_prompt(&resolved.repo_root)?;
             promptflow::build_phase3_prompt(
+                &phase3_template,
                 &base_prompt,
                 &review_body,
-                &completion_checklist,
-                &policy,
                 &task_id,
-            )
+                &completion_checklist,
+                total_phases,
+                &policy,
+                &resolved.config,
+            )?
         }
         WorkerMode::Single => {
             let completion_checklist = load_completion_checklist()?;
+            let single_template = prompts::load_worker_single_phase_prompt(&resolved.repo_root)?;
             promptflow::build_single_phase_prompt(
+                &single_template,
                 &base_prompt,
                 &completion_checklist,
                 &task_id,
                 &policy,
-            )
+                &resolved.config,
+            )?
         }
     };
 

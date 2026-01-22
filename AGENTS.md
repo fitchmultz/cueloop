@@ -8,7 +8,7 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
 - `.ralph/`: Repo-local runtime state.
   - `.ralph/queue.json` is the **source of truth** for active work.
   - `.ralph/done.json` archives completed tasks (same schema as queue).
-  - Prompt templates are embedded in the Rust CLI; repo-local overrides can be placed in `.ralph/prompts/*.md`.
+  - Prompt templates are embedded in the Rust CLI and organized under `crates/ralph/assets/prompts/`; repo-local overrides can be placed in `.ralph/prompts/*.md`.
 
 ## Build, Test, and Development Commands (Rust)
 
@@ -32,7 +32,8 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
 - Source of truth is `.ralph/queue.json` (JSON). Task order follows file order (top runs first).
 - Completed tasks must be moved to `.ralph/done.json` and removed from `.ralph/queue.json`.
 - New tasks must include: `id`, `status`, `title`, `tags`, `scope`, `evidence`, `plan` (and typically `request`, `created_at`, `updated_at`).
-- Prompt templates are embedded in the Rust CLI; overrides can be placed in `.ralph/prompts/` and reference these files.
+- Prompt templates are embedded in the Rust CLI and organized under `crates/ralph/assets/prompts/`; overrides can be placed in `.ralph/prompts/` and reference these files.
+- Worker prompts are composed from a base prompt (`worker.md`) plus phase-specific wrappers (`worker_phase1.md`, `worker_phase2.md`, `worker_phase2_handoff.md`, `worker_phase3.md`, `worker_single_phase.md`).
 - **Two-phase planning**: Agents in Phase 1 MUST write their plan to `.ralph/cache/plans/<TASK_ID>.md` and avoid printing the plan inline.
 - **Supervision-aware completion**: `ralph task done` detects supervision and writes a completion signal to `.ralph/cache/completions/<TASK_ID>.json`. The supervisor consumes the signal, runs `queue::complete_task`, and then `post_run_supervise` (for done tasks) to finish CI/commit/push. This prevents lock contention while still recording the agent's completion intent.
 
