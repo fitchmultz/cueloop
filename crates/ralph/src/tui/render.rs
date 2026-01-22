@@ -7,7 +7,7 @@
 //! Public API is preserved via `crate::tui::draw_ui` re-exporting
 //! `render::draw_ui`.
 
-use super::{App, AppMode, ConfigFieldKind};
+use super::{App, AppMode, ConfigFieldKind, TaskEditKind};
 use crate::contracts::{TaskPriority, TaskStatus};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
@@ -80,6 +80,15 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
     } = &app.mode
     {
         draw_config_editor(f, app, size, *selected, editing_value.as_deref());
+    }
+
+    // Task editor overlay.
+    if let AppMode::EditingTask {
+        selected,
+        editing_value,
+    } = &app.mode
+    {
+        draw_task_editor(f, app, size, *selected, editing_value.as_deref());
     }
 
     // Footer (help + status).
@@ -375,19 +384,10 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     app.detail_width = area.width.saturating_sub(4); // Account for borders
 
     let title = match &app.mode {
-        AppMode::EditingTitle(title) => Line::from(vec![
-            Span::styled(
-                "Edit Title: ",
-                Style::default().add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                title,
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
-        ]),
+        AppMode::EditingTask { .. } => Line::from(Span::styled(
+            "Task Editor",
+            Style::default().add_modifier(Modifier::BOLD),
+        )),
         AppMode::CreatingTask(title) => Line::from(vec![
             Span::styled("New Task: ", Style::default().add_modifier(Modifier::BOLD)),
             Span::styled(
@@ -554,11 +554,6 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     }
 
     if let Some(task) = app.selected_task() {
-        let edited_title = match &app.mode {
-            AppMode::EditingTitle(current) => current.as_str(),
-            _ => task.title.as_str(),
-        };
-
         let mut lines = vec![
             Line::from(vec![
                 Span::styled("ID: ", Style::default().fg(Color::DarkGray)),
@@ -585,7 +580,7 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]),
         ];
 
-        for line in wrap_text(edited_title, app.detail_width as usize) {
+        for line in wrap_text(&task.title, app.detail_width as usize) {
             lines.push(Line::from(Span::styled(
                 line,
                 Style::default().add_modifier(Modifier::BOLD),
@@ -1017,6 +1012,112 @@ fn draw_config_editor(
     );
 }
 
+fn draw_task_editor(
+    f: &mut Frame<'_>,
+    app: &App,
+    area: Rect,
+    selected: usize,
+    editing_value: Option<&str>,
+) {
+    let entries = app.task_edit_entries();
+    if entries.is_empty() {
+        return;
+    }
+
+    let popup_width = 96.min(area.width.saturating_sub(4)).max(44);
+    let popup_height = (entries.len() as u16 + 7)
+        .min(area.height.saturating_sub(4))
+        .max(9);
+
+    let popup_area = Rect {
+        x: (area.width.saturating_sub(popup_width)) / 2,
+        y: (area.height.saturating_sub(popup_height)) / 2,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    f.render_widget(Clear, popup_area);
+
+    let title = Line::from(vec![Span::styled(
+        "Task Editor",
+        Style::default().add_modifier(Modifier::BOLD),
+    )]);
+
+    let block = Block::default().borders(Borders::ALL).title(title);
+    f.render_widget(block.clone(), popup_area);
+
+    let inner = block.inner(popup_area);
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(2)].as_ref())
+        .split(inner);
+
+    let list_area = layout[0];
+    let hint_area = layout[1];
+
+    let label_width = 18usize;
+
+    let items: Vec<ListItem> = entries
+        .iter()
+        .enumerate()
+        .take(list_area.height as usize)
+        .map(|(idx, entry)| {
+            let is_selected = idx == selected;
+            let mut value = entry.value.clone();
+            if is_selected {
+                match entry.kind {
+                    TaskEditKind::Cycle => {}
+                    TaskEditKind::Text
+                    | TaskEditKind::List
+                    | TaskEditKind::Map
+                    | TaskEditKind::OptionalText => {
+                        if let Some(editing) = editing_value {
+                            value = format!("{}_", editing);
+                        }
+                    }
+                }
+            }
+            let label = format!("{:label_width$}", entry.label);
+            let line_text = format!("{} {}", label, value);
+            let display = truncate_to_width(&line_text, list_area.width as usize);
+
+            let mut style = Style::default();
+            if entry.value == "(empty)" {
+                style = style.fg(Color::DarkGray);
+            }
+            if is_selected {
+                style = style.bg(Color::Blue).add_modifier(Modifier::BOLD);
+            }
+
+            ListItem::new(Line::from(Span::styled(display, style)))
+        })
+        .collect();
+
+    let list = List::new(items).block(Block::default());
+    f.render_widget(list, list_area);
+
+    let hint = Line::from(vec![
+        Span::styled("Enter/Space", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":edit "),
+        Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":nav "),
+        Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":clear "),
+        Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":close"),
+    ]);
+    let format_hint = Line::from(vec![
+        Span::styled("lists", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(": a, b, c  "),
+        Span::styled("maps", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(": key=value"),
+    ]);
+    let hint_paragraph = Paragraph::new(Text::from(vec![hint, format_hint]))
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::DarkGray));
+    f.render_widget(hint_paragraph, hint_area);
+}
+
 fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
     let mut help_text = match &app.mode {
         AppMode::Normal => vec![
@@ -1055,12 +1156,27 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::styled("r", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":refresh"),
         ],
-        AppMode::EditingTitle(_) => vec![
-            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":save "),
-            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":cancel"),
-        ],
+        AppMode::EditingTask { editing_value, .. } => {
+            if editing_value.is_some() {
+                vec![
+                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(":save "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(":cancel"),
+                ]
+            } else {
+                vec![
+                    Span::styled("Enter/Space", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(":edit "),
+                    Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(":nav "),
+                    Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(":clear "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(":close"),
+                ]
+            }
+        }
         AppMode::CreatingTask(_) => vec![
             Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":create "),

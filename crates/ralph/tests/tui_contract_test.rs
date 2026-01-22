@@ -9,6 +9,10 @@ use ralph::tui::{self, App, AppMode, TuiAction};
 
 /// Helper to create a test task.
 fn make_test_task(id: &str, title: &str, status: TaskStatus) -> Task {
+    let completed_at = match status {
+        TaskStatus::Done | TaskStatus::Rejected => Some("2026-01-19T00:00:00Z".to_string()),
+        _ => None,
+    };
     Task {
         id: id.to_string(),
         title: title.to_string(),
@@ -23,7 +27,7 @@ fn make_test_task(id: &str, title: &str, status: TaskStatus) -> Task {
         agent: None,
         created_at: Some("2026-01-19T00:00:00Z".to_string()),
         updated_at: Some("2026-01-19T00:00:00Z".to_string()),
-        completed_at: None,
+        completed_at,
         depends_on: vec![],
         custom_fields: std::collections::HashMap::new(),
     }
@@ -287,11 +291,16 @@ fn test_delete_selected_task_fails_with_no_selection() {
 }
 
 #[test]
-fn test_update_title_changes_title() {
+fn test_editing_task_updates_title() {
     let mut app = App::new(make_test_queue());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("New Title".to_string()),
+    };
 
-    app.update_title("New Title".to_string(), "2026-01-20T12:00:00Z")
-        .unwrap();
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T12:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
     assert_eq!(app.queue.tasks[0].title, "New Title");
     assert_eq!(
         app.queue.tasks[0].updated_at,
@@ -301,29 +310,44 @@ fn test_update_title_changes_title() {
 }
 
 #[test]
-fn test_update_title_rejects_empty_title() {
+fn test_editing_task_rejects_empty_title() {
     let mut app = App::new(make_test_queue());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("".to_string()),
+    };
 
-    assert!(app
-        .update_title("".to_string(), "2026-01-20T12:00:00Z")
-        .is_err());
-    assert!(app
-        .update_title("   ".to_string(), "2026-01-20T12:00:00Z")
-        .is_err());
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T12:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 0,
+            editing_value: Some(_)
+        }
+    ));
     assert!(!app.dirty); // Should not set dirty on failure
 }
 
 #[test]
-fn test_update_title_fails_with_no_selection() {
+fn test_editing_task_fails_with_no_selection() {
     let queue = QueueFile {
         version: 1,
         tasks: vec![],
     };
     let mut app = App::new(queue);
 
+    let action =
+        tui::handle_key_event(&mut app, KeyCode::Char('e'), "2026-01-20T12:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.mode, AppMode::Normal);
     assert!(app
-        .update_title("New Title".to_string(), "2026-01-20T12:00:00Z")
-        .is_err());
+        .status_message
+        .as_deref()
+        .unwrap_or_default()
+        .contains("No task"));
 }
 
 // Event handling tests
@@ -413,10 +437,13 @@ fn test_handle_key_event_e_enters_edit_mode() {
         tui::handle_key_event(&mut app, KeyCode::Char('e'), "2026-01-19T00:00:00Z").unwrap();
 
     assert_eq!(action, TuiAction::Continue);
-    match &app.mode {
-        AppMode::EditingTitle(title) => assert_eq!(title, "First Task"),
-        _ => panic!("Expected EditingTitle mode"),
-    }
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 0,
+            editing_value: None
+        }
+    ));
 }
 
 #[test]
@@ -435,42 +462,69 @@ fn test_handle_key_event_s_cycles_status() {
 #[test]
 fn test_handle_key_event_in_editing_mode_char() {
     let mut app = App::new(make_test_queue());
-    app.mode = AppMode::EditingTitle("Test".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("Test".to_string()),
+    };
 
     let action =
         tui::handle_key_event(&mut app, KeyCode::Char('X'), "2026-01-19T00:00:00Z").unwrap();
 
     assert_eq!(action, TuiAction::Continue);
     match &app.mode {
-        AppMode::EditingTitle(title) => assert_eq!(title, "TestX"),
-        _ => panic!("Expected EditingTitle mode"),
+        AppMode::EditingTask {
+            selected,
+            editing_value,
+        } => {
+            assert_eq!(*selected, 0);
+            assert_eq!(editing_value.as_deref(), Some("TestX"));
+        }
+        _ => panic!("Expected EditingTask mode"),
     }
 }
 
 #[test]
 fn test_handle_key_event_in_editing_mode_backspace() {
     let mut app = App::new(make_test_queue());
-    app.mode = AppMode::EditingTitle("Test".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("Test".to_string()),
+    };
 
     let action =
         tui::handle_key_event(&mut app, KeyCode::Backspace, "2026-01-19T00:00:00Z").unwrap();
 
     assert_eq!(action, TuiAction::Continue);
     match &app.mode {
-        AppMode::EditingTitle(title) => assert_eq!(title, "Tes"),
-        _ => panic!("Expected EditingTitle mode"),
+        AppMode::EditingTask {
+            selected,
+            editing_value,
+        } => {
+            assert_eq!(*selected, 0);
+            assert_eq!(editing_value.as_deref(), Some("Tes"));
+        }
+        _ => panic!("Expected EditingTask mode"),
     }
 }
 
 #[test]
 fn test_handle_key_event_in_editing_mode_enter_saves() {
     let mut app = App::new(make_test_queue());
-    app.mode = AppMode::EditingTitle("New Title".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("New Title".to_string()),
+    };
 
     let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-19T00:00:00Z").unwrap();
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::Normal);
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 0,
+            editing_value: None
+        }
+    ));
     assert_eq!(app.queue.tasks[0].title, "New Title");
     assert!(app.dirty);
 }
@@ -478,14 +532,126 @@ fn test_handle_key_event_in_editing_mode_enter_saves() {
 #[test]
 fn test_handle_key_event_in_editing_mode_esc_cancels() {
     let mut app = App::new(make_test_queue());
-    let original_title = app.queue.tasks[0].title.clone();
-    app.mode = AppMode::EditingTitle("Modified Title".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("Modified Title".to_string()),
+    };
 
     let action = tui::handle_key_event(&mut app, KeyCode::Esc, "2026-01-19T00:00:00Z").unwrap();
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::Normal);
-    assert_eq!(app.queue.tasks[0].title, original_title); // Title unchanged
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 0,
+            editing_value: None
+        }
+    ));
+}
+
+#[test]
+fn test_handle_key_event_editing_task_cycles_status() {
+    let mut app = App::new(make_test_queue());
+    app.mode = AppMode::EditingTask {
+        selected: 1,
+        editing_value: None,
+    };
+
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T12:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.queue.tasks[0].status, TaskStatus::Doing);
+    assert!(app.dirty);
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 1,
+            editing_value: None
+        }
+    ));
+}
+
+#[test]
+fn test_handle_key_event_editing_task_cycles_priority() {
+    let mut app = App::new(make_test_queue());
+    app.mode = AppMode::EditingTask {
+        selected: 2,
+        editing_value: None,
+    };
+
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T12:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.queue.tasks[0].priority, TaskPriority::High);
+    assert!(app.dirty);
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 2,
+            editing_value: None
+        }
+    ));
+}
+
+#[test]
+fn test_handle_key_event_editing_task_clears_list() {
+    let mut app = App::new(make_test_queue());
+    app.mode = AppMode::EditingTask {
+        selected: 3,
+        editing_value: None,
+    };
+
+    let action =
+        tui::handle_key_event(&mut app, KeyCode::Char('x'), "2026-01-20T12:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert!(app.queue.tasks[0].tags.is_empty());
+    assert!(app.dirty);
+}
+
+#[test]
+fn test_handle_key_event_editing_task_clears_custom_fields() {
+    let mut app = App::new(make_test_queue());
+    app.queue.tasks[0]
+        .custom_fields
+        .insert("owner".to_string(), "tui".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 10,
+        editing_value: None,
+    };
+
+    let action =
+        tui::handle_key_event(&mut app, KeyCode::Char('x'), "2026-01-20T12:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert!(app.queue.tasks[0].custom_fields.is_empty());
+    assert!(app.dirty);
+}
+
+#[test]
+fn test_handle_key_event_editing_task_validation_error_keeps_editing() {
+    let mut app = App::new(make_test_queue());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("".to_string()),
+    };
+
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T12:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 0,
+            editing_value: Some(_)
+        }
+    ));
+    assert!(app
+        .status_message
+        .as_deref()
+        .unwrap_or_default()
+        .contains("Error"));
+    assert_eq!(app.queue.tasks[0].title, "First Task");
 }
 
 #[test]
@@ -566,7 +732,7 @@ fn test_mode_transition_normal_to_editing() {
 
     let _ = tui::handle_key_event(&mut app, KeyCode::Char('e'), "2026-01-19T00:00:00Z").unwrap();
 
-    assert!(matches!(app.mode, AppMode::EditingTitle(_)));
+    assert!(matches!(app.mode, AppMode::EditingTask { .. }));
 }
 
 #[test]
@@ -590,23 +756,41 @@ fn test_mode_transition_normal_to_executing() {
 }
 
 #[test]
-fn test_mode_transition_editing_to_normal_on_save() {
+fn test_mode_transition_editing_to_list_on_save() {
     let mut app = App::new(make_test_queue());
-    app.mode = AppMode::EditingTitle("New Title".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("New Title".to_string()),
+    };
 
     let _ = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-19T00:00:00Z").unwrap();
 
-    assert_eq!(app.mode, AppMode::Normal);
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 0,
+            editing_value: None
+        }
+    ));
 }
 
 #[test]
-fn test_mode_transition_editing_to_normal_on_cancel() {
+fn test_mode_transition_editing_to_list_on_cancel() {
     let mut app = App::new(make_test_queue());
-    app.mode = AppMode::EditingTitle("New Title".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("New Title".to_string()),
+    };
 
     let _ = tui::handle_key_event(&mut app, KeyCode::Esc, "2026-01-19T00:00:00Z").unwrap();
 
-    assert_eq!(app.mode, AppMode::Normal);
+    assert!(matches!(
+        app.mode,
+        AppMode::EditingTask {
+            selected: 0,
+            editing_value: None
+        }
+    ));
 }
 
 #[test]

@@ -258,14 +258,18 @@ fn test_render_task_details_shows_timestamps() {
 }
 
 #[test]
-fn test_render_editing_title_mode() {
+fn test_render_editing_task_mode() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
-    app.mode = AppMode::EditingTitle("Modified Title".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("Modified Title".to_string()),
+    };
     let mut terminal = setup_test_terminal(80, 24);
 
     let output = get_rendered_output(&mut terminal, &mut app);
-    assert!(output.contains("Edit Title:"));
+    assert!(output.contains("Task Editor"));
+    assert!(output.contains("title"));
     assert!(output.contains("Modified Title"));
 }
 
@@ -449,7 +453,10 @@ fn test_render_help_footer_normal_mode() {
 fn test_render_help_footer_editing_mode() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
-    app.mode = AppMode::EditingTitle("test".to_string());
+    app.mode = AppMode::EditingTask {
+        selected: 0,
+        editing_value: Some("test".to_string()),
+    };
     let mut terminal = setup_test_terminal(80, 24);
 
     let output = get_rendered_output(&mut terminal, &mut app);

@@ -34,8 +34,11 @@ pub enum TuiAction {
 pub enum AppMode {
     /// Normal navigation mode
     Normal,
-    /// Editing task title
-    EditingTitle(String),
+    /// Editing task fields
+    EditingTask {
+        selected: usize,
+        editing_value: Option<String>,
+    },
     /// Creating a new task (title input)
     CreatingTask(String),
     /// Searching tasks (query input)
@@ -67,7 +70,7 @@ pub enum PaletteCommand {
     ToggleLoop,
     ArchiveTerminal,
     NewTask,
-    EditTitle,
+    EditTask,
     EditConfig,
     Search,
     FilterTags,
@@ -92,9 +95,10 @@ pub struct PaletteEntry {
 pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Result<TuiAction> {
     match app.mode.clone() {
         AppMode::Normal => handle_normal_mode_key(app, key, now_rfc3339),
-        AppMode::EditingTitle(ref current) => {
-            handle_editing_mode_key(app, key, current, now_rfc3339)
-        }
+        AppMode::EditingTask {
+            selected,
+            editing_value,
+        } => handle_editing_task_key(app, key, selected, editing_value, now_rfc3339),
         AppMode::CreatingTask(ref current) => {
             handle_creating_mode_key(app, key, current, now_rfc3339)
         }
@@ -148,8 +152,13 @@ fn handle_normal_mode_key(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Res
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('e') => {
-            if let Some(task) = app.selected_task() {
-                app.mode = AppMode::EditingTitle(task.title.clone());
+            if app.selected_task().is_some() {
+                app.mode = AppMode::EditingTask {
+                    selected: 0,
+                    editing_value: None,
+                };
+            } else {
+                app.set_status_message("No task selected");
             }
             Ok(TuiAction::Continue)
         }
@@ -190,40 +199,147 @@ fn handle_normal_mode_key(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Res
     }
 }
 
-/// Handle key events in EditingTitle mode.
-fn handle_editing_mode_key(
+/// Handle key events in EditingTask mode.
+fn handle_editing_task_key(
     app: &mut App,
     key: KeyCode,
-    current: &str,
+    selected: usize,
+    editing_value: Option<String>,
     now_rfc3339: &str,
 ) -> Result<TuiAction> {
-    match key {
-        KeyCode::Enter => {
-            let new_title = current.to_string();
-            if let Err(e) = app.update_title(new_title, now_rfc3339) {
-                app.set_status_message(format!("Error: {}", e));
-            } else {
-                app.mode = AppMode::Normal;
+    let entries = app.task_edit_entries();
+    if entries.is_empty() {
+        app.mode = AppMode::Normal;
+        app.set_status_message("No task fields available");
+        return Ok(TuiAction::Continue);
+    }
+    let max_index = entries.len().saturating_sub(1);
+    let selected = selected.min(max_index);
+    let entry = entries[selected].clone();
+
+    if let Some(mut value) = editing_value {
+        match key {
+            KeyCode::Enter => match app.apply_task_edit(entry.key, &value, now_rfc3339) {
+                Ok(()) => {
+                    app.mode = AppMode::EditingTask {
+                        selected,
+                        editing_value: None,
+                    };
+                    Ok(TuiAction::Continue)
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error: {}", e));
+                    app.mode = AppMode::EditingTask {
+                        selected,
+                        editing_value: Some(value),
+                    };
+                    Ok(TuiAction::Continue)
+                }
+            },
+            KeyCode::Esc => {
+                app.mode = AppMode::EditingTask {
+                    selected,
+                    editing_value: None,
+                };
+                Ok(TuiAction::Continue)
             }
-            Ok(TuiAction::Continue)
+            KeyCode::Char(c) => {
+                value.push(c);
+                app.mode = AppMode::EditingTask {
+                    selected,
+                    editing_value: Some(value),
+                };
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Backspace => {
+                value.pop();
+                app.mode = AppMode::EditingTask {
+                    selected,
+                    editing_value: Some(value),
+                };
+                Ok(TuiAction::Continue)
+            }
+            _ => Ok(TuiAction::Continue),
         }
-        KeyCode::Esc => {
-            app.mode = AppMode::Normal;
-            Ok(TuiAction::Continue)
+    } else {
+        match key {
+            KeyCode::Esc => {
+                app.mode = AppMode::Normal;
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                let next_selected = selected.saturating_sub(1);
+                app.mode = AppMode::EditingTask {
+                    selected: next_selected,
+                    editing_value: None,
+                };
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let next_selected = (selected + 1).min(max_index);
+                app.mode = AppMode::EditingTask {
+                    selected: next_selected,
+                    editing_value: None,
+                };
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                match entry.kind {
+                    crate::tui::TaskEditKind::Cycle => {
+                        if let Err(e) = app.apply_task_edit(entry.key, "", now_rfc3339) {
+                            app.set_status_message(format!("Error: {}", e));
+                        }
+                        app.mode = AppMode::EditingTask {
+                            selected,
+                            editing_value: None,
+                        };
+                    }
+                    crate::tui::TaskEditKind::Text
+                    | crate::tui::TaskEditKind::List
+                    | crate::tui::TaskEditKind::Map
+                    | crate::tui::TaskEditKind::OptionalText => {
+                        let current = app.task_value_for_edit(entry.key);
+                        app.mode = AppMode::EditingTask {
+                            selected,
+                            editing_value: Some(current),
+                        };
+                    }
+                }
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char('x') => {
+                match entry.kind {
+                    crate::tui::TaskEditKind::Cycle => {}
+                    crate::tui::TaskEditKind::Text
+                    | crate::tui::TaskEditKind::List
+                    | crate::tui::TaskEditKind::Map
+                    | crate::tui::TaskEditKind::OptionalText => {
+                        if let Err(e) = app.apply_task_edit(entry.key, "", now_rfc3339) {
+                            app.set_status_message(format!("Error: {}", e));
+                        }
+                    }
+                }
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char(c) => {
+                match entry.kind {
+                    crate::tui::TaskEditKind::Text
+                    | crate::tui::TaskEditKind::List
+                    | crate::tui::TaskEditKind::Map
+                    | crate::tui::TaskEditKind::OptionalText => {
+                        let mut current = app.task_value_for_edit(entry.key);
+                        current.push(c);
+                        app.mode = AppMode::EditingTask {
+                            selected,
+                            editing_value: Some(current),
+                        };
+                    }
+                    crate::tui::TaskEditKind::Cycle => {}
+                }
+                Ok(TuiAction::Continue)
+            }
+            _ => Ok(TuiAction::Continue),
         }
-        KeyCode::Char(c) => {
-            let mut new_title = current.to_string();
-            new_title.push(c);
-            app.mode = AppMode::EditingTitle(new_title);
-            Ok(TuiAction::Continue)
-        }
-        KeyCode::Backspace => {
-            let mut new_title = current.to_string();
-            new_title.pop();
-            app.mode = AppMode::EditingTitle(new_title);
-            Ok(TuiAction::Continue)
-        }
-        _ => Ok(TuiAction::Continue),
     }
 }
 

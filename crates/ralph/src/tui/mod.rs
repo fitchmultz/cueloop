@@ -2,7 +2,7 @@
 //!
 //! User-centric entry point features:
 //! - Queue browsing, filtering, search
-//! - Task editing (title) + create/delete
+//! - Task editing (full task fields) + create/delete
 //! - Execution (run selected) with live logs
 //! - Loop mode: auto-run next runnable tasks (`l` toggles)
 //! - Archive mode: move Done/Rejected tasks to done archive (`a` then confirm)
@@ -16,7 +16,7 @@
 //! - `l`: Toggle loop (auto-run next runnable tasks)
 //! - `a`: Archive done/rejected tasks (confirmation)
 //! - `d`: Delete task (with confirmation)
-//! - `e`: Edit task title
+//! - `e`: Edit task fields
 //! - `c`: Edit project config (.ralph/config.json)
 //! - `s`: Cycle status (Draft → Todo → Doing → Done → Rejected → Draft)
 //! - `f`: Cycle status filter (All → Todo → Doing → Done → Draft → Rejected → All)
@@ -35,10 +35,13 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 use crate::config::{self, ConfigLayer};
 use crate::contracts::{
@@ -81,6 +84,41 @@ pub enum ConfigFieldKind {
     Cycle,
     Toggle,
     Text,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskEditKind {
+    Cycle,
+    Text,
+    List,
+    Map,
+    OptionalText,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskEditKey {
+    Title,
+    Status,
+    Priority,
+    Tags,
+    Scope,
+    Evidence,
+    Plan,
+    Notes,
+    Request,
+    DependsOn,
+    CustomFields,
+    CreatedAt,
+    UpdatedAt,
+    CompletedAt,
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskEditEntry {
+    pub key: TaskEditKey,
+    pub label: &'static str,
+    pub value: String,
+    pub kind: TaskEditKind,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -288,56 +326,12 @@ impl App {
 
     /// Cycle the status of the selected task.
     pub fn cycle_status(&mut self, now_rfc3339: &str) -> Result<()> {
-        let task_id = self
-            .selected_task()
-            .map(|t| t.id.clone())
-            .ok_or_else(|| anyhow!("No task selected"))?;
-
-        let task = self
-            .selected_task_mut()
-            .ok_or_else(|| anyhow!("No task selected"))?;
-
-        let new_status = match task.status {
-            TaskStatus::Draft => TaskStatus::Todo,
-            TaskStatus::Todo => TaskStatus::Doing,
-            TaskStatus::Doing => TaskStatus::Done,
-            TaskStatus::Done => TaskStatus::Rejected,
-            TaskStatus::Rejected => TaskStatus::Draft,
-        };
-
-        task.status = new_status;
-        task.updated_at = Some(now_rfc3339.to_string());
-
-        match new_status {
-            TaskStatus::Done | TaskStatus::Rejected => {
-                task.completed_at = Some(now_rfc3339.to_string());
-            }
-            TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing => {
-                task.completed_at = None;
-            }
-        }
-
-        self.dirty = true;
-        self.rebuild_filtered_view_with_preferred(Some(&task_id));
-        Ok(())
+        self.apply_task_edit(TaskEditKey::Status, "", now_rfc3339)
     }
 
     /// Cycle the priority of the selected task.
     pub fn cycle_priority(&mut self, now_rfc3339: &str) -> Result<()> {
-        let task_id = self
-            .selected_task()
-            .map(|t| t.id.clone())
-            .ok_or_else(|| anyhow!("No task selected"))?;
-
-        let task = self
-            .selected_task_mut()
-            .ok_or_else(|| anyhow!("No task selected"))?;
-
-        task.priority = task.priority.cycle();
-        task.updated_at = Some(now_rfc3339.to_string());
-        self.dirty = true;
-        self.rebuild_filtered_view_with_preferred(Some(&task_id));
-        Ok(())
+        self.apply_task_edit(TaskEditKey::Priority, "", now_rfc3339)
     }
 
     /// Delete the selected task.
@@ -374,23 +368,243 @@ impl App {
         Ok(task)
     }
 
-    /// Update the title of the selected task.
-    pub fn update_title(&mut self, new_title: String, now_rfc3339: &str) -> Result<()> {
+    pub(crate) fn task_edit_entries(&self) -> Vec<TaskEditEntry> {
+        let Some(task) = self.selected_task() else {
+            return Vec::new();
+        };
+
+        vec![
+            TaskEditEntry {
+                key: TaskEditKey::Title,
+                label: "title",
+                value: task.title.clone(),
+                kind: TaskEditKind::Text,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::Status,
+                label: "status",
+                value: task.status.as_str().to_string(),
+                kind: TaskEditKind::Cycle,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::Priority,
+                label: "priority",
+                value: task.priority.as_str().to_string(),
+                kind: TaskEditKind::Cycle,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::Tags,
+                label: "tags",
+                value: display_list(&task.tags),
+                kind: TaskEditKind::List,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::Scope,
+                label: "scope",
+                value: display_list(&task.scope),
+                kind: TaskEditKind::List,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::Evidence,
+                label: "evidence",
+                value: display_list(&task.evidence),
+                kind: TaskEditKind::List,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::Plan,
+                label: "plan",
+                value: display_list(&task.plan),
+                kind: TaskEditKind::List,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::Notes,
+                label: "notes",
+                value: display_list(&task.notes),
+                kind: TaskEditKind::List,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::Request,
+                label: "request",
+                value: display_optional(task.request.as_deref()),
+                kind: TaskEditKind::OptionalText,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::DependsOn,
+                label: "depends_on",
+                value: display_list(&task.depends_on),
+                kind: TaskEditKind::List,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::CustomFields,
+                label: "custom_fields",
+                value: display_custom_fields(&task.custom_fields),
+                kind: TaskEditKind::Map,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::CreatedAt,
+                label: "created_at",
+                value: display_optional(task.created_at.as_deref()),
+                kind: TaskEditKind::OptionalText,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::UpdatedAt,
+                label: "updated_at",
+                value: display_optional(task.updated_at.as_deref()),
+                kind: TaskEditKind::OptionalText,
+            },
+            TaskEditEntry {
+                key: TaskEditKey::CompletedAt,
+                label: "completed_at",
+                value: display_optional(task.completed_at.as_deref()),
+                kind: TaskEditKind::OptionalText,
+            },
+        ]
+    }
+
+    pub(crate) fn task_value_for_edit(&self, key: TaskEditKey) -> String {
+        let Some(task) = self.selected_task() else {
+            return String::new();
+        };
+        match key {
+            TaskEditKey::Title => task.title.clone(),
+            TaskEditKey::Tags => task.tags.join(", "),
+            TaskEditKey::Scope => task.scope.join(", "),
+            TaskEditKey::Evidence => task.evidence.join(", "),
+            TaskEditKey::Plan => task.plan.join(", "),
+            TaskEditKey::Notes => task.notes.join(", "),
+            TaskEditKey::Request => task.request.clone().unwrap_or_default(),
+            TaskEditKey::DependsOn => task.depends_on.join(", "),
+            TaskEditKey::CustomFields => edit_custom_fields(&task.custom_fields),
+            TaskEditKey::CreatedAt => task.created_at.clone().unwrap_or_default(),
+            TaskEditKey::UpdatedAt => task.updated_at.clone().unwrap_or_default(),
+            TaskEditKey::CompletedAt => task.completed_at.clone().unwrap_or_default(),
+            TaskEditKey::Status | TaskEditKey::Priority => String::new(),
+        }
+    }
+
+    pub(crate) fn apply_task_edit(
+        &mut self,
+        key: TaskEditKey,
+        input: &str,
+        now_rfc3339: &str,
+    ) -> Result<()> {
         let task_id = self
             .selected_task()
             .map(|t| t.id.clone())
             .ok_or_else(|| anyhow!("No task selected"))?;
-
-        let task = self
-            .selected_task_mut()
+        let index = self
+            .selected_task_index()
+            .ok_or_else(|| anyhow!("No task selected"))?;
+        let previous = self
+            .queue
+            .tasks
+            .get(index)
+            .cloned()
             .ok_or_else(|| anyhow!("No task selected"))?;
 
-        if new_title.trim().is_empty() {
-            bail!("Title cannot be empty");
+        let task = self
+            .queue
+            .tasks
+            .get_mut(index)
+            .ok_or_else(|| anyhow!("No task selected"))?;
+
+        let trimmed = input.trim();
+
+        match key {
+            TaskEditKey::Title => {
+                if trimmed.is_empty() {
+                    bail!("Title cannot be empty");
+                }
+                task.title = trimmed.to_string();
+            }
+            TaskEditKey::Status => {
+                task.status = match task.status {
+                    TaskStatus::Draft => TaskStatus::Todo,
+                    TaskStatus::Todo => TaskStatus::Doing,
+                    TaskStatus::Doing => TaskStatus::Done,
+                    TaskStatus::Done => TaskStatus::Rejected,
+                    TaskStatus::Rejected => TaskStatus::Draft,
+                };
+                match task.status {
+                    TaskStatus::Done | TaskStatus::Rejected => {
+                        task.completed_at = Some(now_rfc3339.to_string());
+                    }
+                    TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing => {
+                        task.completed_at = None;
+                    }
+                }
+            }
+            TaskEditKey::Priority => {
+                task.priority = task.priority.cycle();
+            }
+            TaskEditKey::Tags => {
+                task.tags = Self::parse_list(trimmed);
+            }
+            TaskEditKey::Scope => {
+                task.scope = Self::parse_list(trimmed);
+            }
+            TaskEditKey::Evidence => {
+                task.evidence = Self::parse_list(trimmed);
+            }
+            TaskEditKey::Plan => {
+                task.plan = Self::parse_list(trimmed);
+            }
+            TaskEditKey::Notes => {
+                task.notes = Self::parse_list(trimmed);
+            }
+            TaskEditKey::Request => {
+                task.request = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
+            TaskEditKey::DependsOn => {
+                task.depends_on = Self::parse_list(trimmed);
+            }
+            TaskEditKey::CustomFields => {
+                task.custom_fields = Self::parse_custom_fields(trimmed)?;
+            }
+            TaskEditKey::CreatedAt => {
+                Self::validate_rfc3339_input("created_at", trimmed)?;
+                task.created_at = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
+            TaskEditKey::UpdatedAt => {
+                Self::validate_rfc3339_input("updated_at", trimmed)?;
+                task.updated_at = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
+            TaskEditKey::CompletedAt => {
+                Self::validate_rfc3339_input("completed_at", trimmed)?;
+                task.completed_at = if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                };
+            }
         }
 
-        task.title = new_title;
-        task.updated_at = Some(now_rfc3339.to_string());
+        if !matches!(key, TaskEditKey::UpdatedAt) {
+            task.updated_at = Some(now_rfc3339.to_string());
+        }
+
+        if let Err(err) = queue::validate_queue_set(
+            &self.queue,
+            Some(&self.done),
+            &self.id_prefix,
+            self.id_width,
+        ) {
+            self.queue.tasks[index] = previous;
+            return Err(err);
+        }
+
         self.dirty = true;
         self.set_status_message(format!("Updated {}", task_id));
         self.rebuild_filtered_view_with_preferred(Some(&task_id));
@@ -427,7 +641,7 @@ impl App {
             updated_at: Some(now_rfc3339.to_string()),
             completed_at: None,
             depends_on: vec![],
-            custom_fields: std::collections::HashMap::new(),
+            custom_fields: HashMap::new(),
         };
 
         self.queue.tasks.push(task);
@@ -524,6 +738,51 @@ impl App {
         let preferred_id = self.selected_task().map(|t| t.id.clone());
         self.filters = FilterState::default();
         self.rebuild_filtered_view_with_preferred(preferred_id.as_deref());
+    }
+
+    fn parse_list(input: &str) -> Vec<String> {
+        input
+            .split([',', '\n'])
+            .map(|item| item.trim().to_string())
+            .filter(|item| !item.is_empty())
+            .collect()
+    }
+
+    fn parse_custom_fields(input: &str) -> Result<HashMap<String, String>> {
+        let mut map = HashMap::new();
+        if input.trim().is_empty() {
+            return Ok(map);
+        }
+
+        for raw in input.split([',', '\n']) {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let (key, value) = trimmed
+                .split_once('=')
+                .ok_or_else(|| anyhow!("Custom field entry must be key=value"))?;
+            let key = key.trim();
+            if key.is_empty() {
+                bail!("Custom field key cannot be empty");
+            }
+            if key.chars().any(|c| c.is_whitespace()) {
+                bail!("Custom field keys cannot contain whitespace");
+            }
+            let value = value.trim();
+            map.insert(key.to_string(), value.to_string());
+        }
+        Ok(map)
+    }
+
+    fn validate_rfc3339_input(label: &str, value: &str) -> Result<()> {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            return Ok(());
+        }
+        OffsetDateTime::parse(trimmed, &Rfc3339)
+            .with_context(|| format!("{} must be a valid RFC3339 timestamp", label))?;
+        Ok(())
     }
 
     /// Parse comma or whitespace-separated tags from input string.
@@ -912,8 +1171,8 @@ impl App {
                 title: "Create new task".to_string(),
             },
             PaletteEntry {
-                cmd: PaletteCommand::EditTitle,
-                title: "Edit selected task title".to_string(),
+                cmd: PaletteCommand::EditTask,
+                title: "Edit selected task".to_string(),
             },
             PaletteEntry {
                 cmd: PaletteCommand::EditConfig,
@@ -1039,9 +1298,12 @@ impl App {
                 self.mode = AppMode::CreatingTask(String::new());
                 Ok(TuiAction::Continue)
             }
-            PaletteCommand::EditTitle => {
-                if let Some(task) = self.selected_task() {
-                    self.mode = AppMode::EditingTitle(task.title.clone());
+            PaletteCommand::EditTask => {
+                if self.selected_task().is_some() {
+                    self.mode = AppMode::EditingTask {
+                        selected: 0,
+                        editing_value: None,
+                    };
                 } else {
                     self.set_status_message("No task selected");
                 }
@@ -1665,6 +1927,47 @@ fn display_bool(value: Option<bool>) -> String {
     }
 }
 
+fn display_optional(value: Option<&str>) -> String {
+    match value {
+        Some(text) if !text.trim().is_empty() => text.to_string(),
+        _ => "(empty)".to_string(),
+    }
+}
+
+fn display_list(values: &[String]) -> String {
+    if values.is_empty() {
+        "(empty)".to_string()
+    } else {
+        values.join(", ")
+    }
+}
+
+fn display_custom_fields(values: &HashMap<String, String>) -> String {
+    if values.is_empty() {
+        return "(empty)".to_string();
+    }
+    let mut entries: Vec<(&String, &String)> = values.iter().collect();
+    entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+    entries
+        .into_iter()
+        .map(|(key, value)| format!("{}={}", key, value))
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
+fn edit_custom_fields(values: &HashMap<String, String>) -> String {
+    if values.is_empty() {
+        return String::new();
+    }
+    let mut entries: Vec<(&String, &String)> = values.iter().collect();
+    entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+    entries
+        .into_iter()
+        .map(|(key, value)| format!("{}={}", key, value))
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
 fn cycle_project_type(value: Option<ProjectType>) -> Option<ProjectType> {
     match value {
         None => Some(ProjectType::Code),
@@ -1807,6 +2110,150 @@ mod tests {
         assert!(app.dirty);
         assert_eq!(app.mode, AppMode::Normal);
         Ok(())
+    }
+
+    #[test]
+    fn apply_task_edit_parses_list_fields() -> Result<()> {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001", "Task 1", TaskStatus::Todo)],
+        };
+        let mut app = App::new(queue);
+
+        app.apply_task_edit(
+            TaskEditKey::Tags,
+            "alpha, beta,, gamma \n delta",
+            "2026-01-20T12:00:00Z",
+        )?;
+
+        assert_eq!(
+            app.queue.tasks[0].tags,
+            vec![
+                "alpha".to_string(),
+                "beta".to_string(),
+                "gamma".to_string(),
+                "delta".to_string()
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn apply_task_edit_custom_fields_parses_and_validates() -> Result<()> {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001", "Task 1", TaskStatus::Todo)],
+        };
+        let mut app = App::new(queue);
+
+        app.apply_task_edit(
+            TaskEditKey::CustomFields,
+            "foo=bar, baz=qux",
+            "2026-01-20T12:00:00Z",
+        )?;
+        assert_eq!(
+            app.queue.tasks[0]
+                .custom_fields
+                .get("foo")
+                .map(String::as_str),
+            Some("bar")
+        );
+        assert_eq!(
+            app.queue.tasks[0]
+                .custom_fields
+                .get("baz")
+                .map(String::as_str),
+            Some("qux")
+        );
+
+        let err = app
+            .apply_task_edit(
+                TaskEditKey::CustomFields,
+                "bad key=value",
+                "2026-01-20T12:10:00Z",
+            )
+            .expect_err("expected invalid custom field key");
+        assert!(err.to_string().contains("whitespace"));
+        assert_eq!(
+            app.queue.tasks[0]
+                .custom_fields
+                .get("foo")
+                .map(String::as_str),
+            Some("bar")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn apply_task_edit_clears_optional_field() -> Result<()> {
+        let mut task = make_test_task("RQ-0001", "Task 1", TaskStatus::Todo);
+        task.completed_at = Some("2026-01-20T00:00:00Z".to_string());
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task],
+        };
+        let mut app = App::new(queue);
+
+        app.apply_task_edit(TaskEditKey::CompletedAt, "", "2026-01-20T12:00:00Z")?;
+        assert!(app.queue.tasks[0].completed_at.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn apply_task_edit_rejects_invalid_updated_at() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001", "Task 1", TaskStatus::Todo)],
+        };
+        let mut app = App::new(queue);
+
+        let err = app
+            .apply_task_edit(
+                TaskEditKey::UpdatedAt,
+                "not-a-timestamp",
+                "2026-01-20T12:00:00Z",
+            )
+            .expect_err("expected invalid updated_at");
+        assert!(err.to_string().contains("updated_at"));
+    }
+
+    #[test]
+    fn apply_task_edit_preserves_manual_updated_at() -> Result<()> {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001", "Task 1", TaskStatus::Todo)],
+        };
+        let mut app = App::new(queue);
+
+        app.apply_task_edit(
+            TaskEditKey::UpdatedAt,
+            "2026-01-20T12:00:00Z",
+            "2026-01-22T12:00:00Z",
+        )?;
+
+        assert_eq!(
+            app.queue.tasks[0].updated_at.as_deref(),
+            Some("2026-01-20T12:00:00Z")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn apply_task_edit_rejects_invalid_dependency() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![
+                make_test_task("RQ-0001", "Task 1", TaskStatus::Todo),
+                make_test_task("RQ-0002", "Task 2", TaskStatus::Todo),
+            ],
+        };
+        let mut app = App::new(queue);
+
+        let err = app
+            .apply_task_edit(TaskEditKey::DependsOn, "RQ-9999", "2026-01-20T12:00:00Z")
+            .expect_err("expected invalid dependency");
+        assert!(err.to_string().contains("Invalid dependency"));
+        assert!(app.queue.tasks[0].depends_on.is_empty());
     }
 
     #[test]
