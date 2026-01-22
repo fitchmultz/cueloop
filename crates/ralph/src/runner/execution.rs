@@ -526,7 +526,6 @@ pub fn run_codex(
     ensure_self_on_path(&mut cmd);
     cmd.arg("exec")
         .arg("--json")
-        .arg("--full-auto")
         .arg("--model")
         .arg(model.as_str());
 
