@@ -1,8 +1,8 @@
 <!-- Purpose: Shared completion checklist injected into implementation-mode worker prompts. -->
 ## IMPLEMENTATION COMPLETION CHECKLIST
 When implementation is complete, you MUST:
-1. Run `ralph task done --note "<note>" <TASK_ID>` to move the task from `.ralph/queue.json` to `.ralph/done.json`.
-   - Use `ralph task reject --note "<note>" <TASK_ID>` when appropriate; only `done` and `rejected` are valid completion statuses.
+1. Run `ralph task done --note "<note>" {{TASK_ID}}` to move the task from `.ralph/queue.json` to `.ralph/done.json`.
+   - Use `ralph task reject --note "<note>" {{TASK_ID}}` when appropriate; only `done` and `rejected` are valid completion statuses.
    - Provide 1-5 summary notes using repeated `--note` flags (each note should be a short bullet).
 2. If the task is incomplete but you are stopping:
    - Leave it in `.ralph/queue.json` as `doing` (or revert to `todo` if not continuing).

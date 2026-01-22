@@ -107,6 +107,7 @@ pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result
                 .git_revert_mode
                 .unwrap_or(crate::contracts::GitRevertMode::Ask),
             output_handler: None,
+            revert_prompt: None,
         },
         runutil::RunnerErrorMessages {
             log_label: "task builder",

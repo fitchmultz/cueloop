@@ -42,7 +42,7 @@ pub struct WorkerPromptOptions {
     pub repoprompt_required: bool,
 
     /// Optional explicit plan file for Phase 2.
-    /// If omitted in Phase 2, we try the cached plan at `.ralph/cache/plans/<TASK_ID>.md`.
+    /// If omitted in Phase 2, we try the cached plan at `.ralph/cache/plans/{{TASK_ID}}.md`.
     pub plan_file: Option<PathBuf>,
     /// Optional inline plan override (takes precedence over plan_file/cache).
     pub plan_text: Option<String>,
@@ -189,7 +189,8 @@ pub fn build_worker_prompt(
 
     let template = prompts::load_worker_prompt(&resolved.repo_root)?;
     let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
-    let base_prompt = prompts::render_worker_prompt(&template, project_type, &resolved.config)?;
+    let base_prompt =
+        prompts::render_worker_prompt(&template, &task_id, project_type, &resolved.config)?;
 
     let policy = PromptPolicy {
         require_repoprompt: opts.repoprompt_required,
@@ -197,7 +198,7 @@ pub fn build_worker_prompt(
 
     let load_completion_checklist = || -> Result<String> {
         let template = prompts::load_completion_checklist(&resolved.repo_root)?;
-        prompts::render_completion_checklist(&template, &resolved.config)
+        prompts::render_completion_checklist(&template, &task_id, &resolved.config)
     };
 
     let prompt = match opts.mode {
@@ -217,9 +218,6 @@ pub fn build_worker_prompt(
             let review_body = prompts::render_code_review_prompt(
                 &review_template,
                 &task_id,
-                "(git status unavailable in prompt preview)",
-                "(git diff unavailable in prompt preview)",
-                "(git diff --staged unavailable in prompt preview)",
                 project_type,
                 &resolved.config,
             )?;

@@ -13,7 +13,7 @@ fn default_config() -> Config {
 fn render_worker_prompt_replaces_interactive_instructions() -> Result<()> {
     let template = "Hello\n{{INTERACTIVE_INSTRUCTIONS}}\n";
     let config = default_config();
-    let rendered = render_worker_prompt(template, ProjectType::Code, &config)?;
+    let rendered = render_worker_prompt(template, "RQ-0001", ProjectType::Code, &config)?;
     assert!(!rendered.contains("{{INTERACTIVE_INSTRUCTIONS}}"));
     Ok(())
 }
@@ -247,57 +247,29 @@ fn expand_variables_mixed_env_and_config() -> Result<()> {
 
 #[test]
 fn render_code_review_prompt_replaces_placeholders() -> Result<()> {
-    let template = "ID={{TASK_ID}}\n{{GIT_STATUS}}\n{{GIT_DIFF}}\n{{GIT_DIFF_STAGED}}\n";
+    let template = "ID={{TASK_ID}}\n";
     let config = default_config();
-    let rendered = render_code_review_prompt(
-        template,
-        "RQ-0001",
-        "STATUS",
-        "DIFF",
-        "STAGED",
-        ProjectType::Code,
-        &config,
-    )?;
+    let rendered = render_code_review_prompt(template, "RQ-0001", ProjectType::Code, &config)?;
     assert!(rendered.contains("ID=RQ-0001"));
-    assert!(rendered.contains("STATUS"));
-    assert!(rendered.contains("DIFF"));
-    assert!(rendered.contains("STAGED"));
     assert!(rendered.contains("PROJECT TYPE: CODE"));
     Ok(())
 }
 
 #[test]
-fn render_code_review_prompt_allows_placeholder_like_git_output() -> Result<()> {
-    let template = "ID={{TASK_ID}}\n{{GIT_STATUS}}\n{{GIT_DIFF}}\n{{GIT_DIFF_STAGED}}\n";
+fn render_code_review_prompt_allows_placeholder_like_text() -> Result<()> {
+    let template = "ID={{TASK_ID}}\nSome text with {{TASK_ID}} in it\n";
     let config = default_config();
-    let rendered = render_code_review_prompt(
-        template,
-        "RQ-0001",
-        "STATUS {{TASK_ID}}",
-        "DIFF {{GIT_STATUS}}",
-        "STAGED {{GIT_DIFF}}",
-        ProjectType::Code,
-        &config,
-    )?;
-    assert!(rendered.contains("STATUS {{TASK_ID}}"));
-    assert!(rendered.contains("DIFF {{GIT_STATUS}}"));
-    assert!(rendered.contains("STAGED {{GIT_DIFF}}"));
+    let rendered = render_code_review_prompt(template, "RQ-0001", ProjectType::Code, &config)?;
+    assert!(rendered.contains("ID=RQ-0001"));
+    assert!(rendered.contains("Some text with RQ-0001 in it"));
     Ok(())
 }
 
 #[test]
 fn render_code_review_prompt_fails_missing_task_id() -> Result<()> {
-    let template = "{{TASK_ID}}\n{{GIT_STATUS}}\n{{GIT_DIFF}}\n{{GIT_DIFF_STAGED}}\n";
+    let template = "{{TASK_ID}}\n";
     let config = default_config();
-    let result = render_code_review_prompt(
-        template,
-        "",
-        "STATUS",
-        "DIFF",
-        "STAGED",
-        ProjectType::Code,
-        &config,
-    );
+    let result = render_code_review_prompt(template, "", ProjectType::Code, &config);
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("task id"));
     Ok(())

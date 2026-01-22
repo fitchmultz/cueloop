@@ -3,7 +3,7 @@
 use anyhow::{anyhow, Result};
 use clap::Args;
 
-use crate::{agent, config, run_cmd, runner, tui};
+use crate::{agent, config, run_cmd, runner, runutil, tui};
 
 #[derive(Args)]
 #[command(
@@ -48,14 +48,24 @@ pub fn handle_tui(args: TuiArgs, force_lock: bool) -> Result<()> {
 
     // Capture the values we need by moving them into the factory.
     let resolved_clone = resolved.clone();
-    let runner_factory = move |task_id: String, handler: runner::OutputHandler| {
-        let resolved = resolved_clone.clone();
-        let overrides = overrides.clone();
-        let force = force_lock;
-        move || {
-            run_cmd::run_one_with_id_locked(&resolved, &overrides, force, &task_id, Some(handler))
-        }
-    };
+    let runner_factory =
+        move |task_id: String,
+              handler: runner::OutputHandler,
+              revert_prompt: runutil::RevertPromptHandler| {
+            let resolved = resolved_clone.clone();
+            let overrides = overrides.clone();
+            let force = force_lock;
+            move || {
+                run_cmd::run_one_with_id_locked(
+                    &resolved,
+                    &overrides,
+                    force,
+                    &task_id,
+                    Some(handler),
+                    Some(revert_prompt),
+                )
+            }
+        };
 
     let _ = tui::run_tui(
         &resolved,
@@ -69,6 +79,7 @@ pub fn handle_tui(args: TuiArgs, force_lock: bool) -> Result<()> {
 fn browse_only_runner(
     _task_id: String,
     _handler: runner::OutputHandler,
+    _revert_prompt: runutil::RevertPromptHandler,
 ) -> impl FnOnce() -> Result<()> + Send {
     move || {
         Err(anyhow!(
@@ -85,7 +96,9 @@ mod tests {
     #[test]
     fn browse_only_runner_rejects_execution() {
         let handler: runner::OutputHandler = Arc::new(Box::new(|_text: &str| {}));
-        let runner = browse_only_runner("RQ-0001".to_string(), handler);
+        let revert_prompt: runutil::RevertPromptHandler =
+            Arc::new(|_label: &str| runutil::RevertDecision::Keep);
+        let runner = browse_only_runner("RQ-0001".to_string(), handler, revert_prompt);
         let err = runner().expect_err("expected browse-only error");
         assert!(err
             .to_string()

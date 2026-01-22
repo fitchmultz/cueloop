@@ -14,6 +14,7 @@ pub(crate) fn post_run_supervise(
     resolved: &crate::config::Resolved,
     task_id: &str,
     git_revert_mode: GitRevertMode,
+    revert_prompt: Option<runutil::RevertPromptHandler>,
 ) -> Result<()> {
     let label = format!("PostRunSupervise for {}", task_id.trim());
     logging::with_scope(&label, || {
@@ -45,6 +46,7 @@ pub(crate) fn post_run_supervise(
                     &resolved.repo_root,
                     git_revert_mode,
                     "CI gate failure",
+                    revert_prompt.as_ref(),
                 )?;
                 bail!(
                     "{} Error: {:#}",
@@ -82,6 +84,7 @@ pub(crate) fn post_run_supervise(
                         &resolved.repo_root,
                         git_revert_mode,
                         "Task inconsistency detected",
+                        revert_prompt.as_ref(),
                     )?;
                     bail!(
                         "{}",

@@ -323,6 +323,24 @@ fn test_render_confirm_quit_dialog() {
 }
 
 #[test]
+fn test_render_confirm_revert_dialog() {
+    let queue = make_test_queue();
+    let mut app = App::new(queue);
+    let (tx, _rx) = std::sync::mpsc::channel();
+    app.mode = AppMode::ConfirmRevert {
+        label: "Phase 2 CI failure".to_string(),
+        reply_sender: tx,
+        previous_mode: Box::new(AppMode::Normal),
+    };
+    let mut terminal = setup_test_terminal(80, 24);
+
+    let output = get_rendered_output(&mut terminal, &mut app);
+    assert!(output.contains("Phase 2 CI failure"));
+    assert!(output.contains("revert"));
+    assert!(output.contains("uncommitted"));
+}
+
+#[test]
 fn test_render_executing_mode_shows_task_id() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
@@ -380,6 +398,53 @@ fn test_render_executing_mode_shows_logs() {
     assert!(output.contains("Log line 1"));
     assert!(output.contains("Log line 2"));
     assert!(output.contains("Log line 3"));
+}
+
+#[test]
+fn test_render_executing_mode_clears_shorter_lines() {
+    let queue = make_test_queue();
+    let mut app = App::new(queue);
+    app.mode = AppMode::Executing {
+        task_id: "RQ-0001".to_string(),
+    };
+    app.running_task_id = Some("RQ-0001".to_string());
+    let mut terminal = setup_test_terminal(40, 10);
+
+    app.logs = vec!["XXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string()];
+    let _ = get_rendered_output(&mut terminal, &mut app);
+
+    app.logs = vec!["short".to_string()];
+    let output = get_rendered_output(&mut terminal, &mut app);
+
+    assert!(output.contains("short"));
+    assert!(!output.contains('X'));
+}
+
+#[test]
+fn test_render_executing_mode_status_line_is_isolated() {
+    let queue = make_test_queue();
+    let mut app = App::new(queue);
+    app.mode = AppMode::Executing {
+        task_id: "RQ-0001".to_string(),
+    };
+    app.running_task_id = Some("RQ-0001".to_string());
+    app.logs = vec![
+        "LOG-ONE".to_string(),
+        "LOG-TWO".to_string(),
+        "LOG-THREE".to_string(),
+        "LOG-FOUR".to_string(),
+    ];
+    let mut terminal = setup_test_terminal(50, 10);
+
+    let output = get_rendered_output(&mut terminal, &mut app);
+    let status_line = output
+        .lines()
+        .find(|line| line.contains("Lines:"))
+        .expect("status line");
+    assert!(!status_line.contains("LOG-ONE"));
+    assert!(!status_line.contains("LOG-TWO"));
+    assert!(!status_line.contains("LOG-THREE"));
+    assert!(!status_line.contains("LOG-FOUR"));
 }
 
 #[test]

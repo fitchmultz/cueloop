@@ -9,14 +9,7 @@ Task ID: {{TASK_ID}}
 {{PROJECT_TYPE_GUIDANCE}}
 
 ## PENDING GIT CHANGES (FROM PHASE 2)
-### git status --porcelain
-{{GIT_STATUS}}
-
-### git diff
-{{GIT_DIFF}}
-
-### git diff --staged
-{{GIT_DIFF_STAGED}}
+- Execute the git diff command of your choice to view all changed files
 
 ## CODING STANDARDS (HARD REQUIREMENTS)
 - Required CI Gate: `make ci` must pass before completion.

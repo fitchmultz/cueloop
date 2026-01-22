@@ -52,10 +52,20 @@ pub fn load_phase2_handoff_checklist(repo_root: &std::path::Path) -> Result<Stri
     )
 }
 
-pub fn render_completion_checklist(template: &str, config: &Config) -> Result<String> {
+pub fn render_completion_checklist(
+    template: &str,
+    task_id: &str,
+    config: &Config,
+) -> Result<String> {
+    let id = task_id.trim();
+    if id.is_empty() {
+        bail!("Missing task id: completion checklist requires a non-empty task id.");
+    }
+
     let expanded = super::expand_variables(template, config)?;
-    ensure_no_unresolved_placeholders(&expanded, "completion checklist")?;
-    Ok(expanded)
+    let rendered = expanded.replace("{{TASK_ID}}", id);
+    ensure_no_unresolved_placeholders(&rendered, "completion checklist")?;
+    Ok(rendered)
 }
 
 pub fn render_phase2_handoff_checklist(template: &str, config: &Config) -> Result<String> {
@@ -67,23 +77,11 @@ pub fn render_phase2_handoff_checklist(template: &str, config: &Config) -> Resul
 pub fn render_code_review_prompt(
     template: &str,
     task_id: &str,
-    git_status: &str,
-    git_diff: &str,
-    git_diff_staged: &str,
     project_type: ProjectType,
     config: &Config,
 ) -> Result<String> {
     if !template.contains("{{TASK_ID}}") {
         bail!("Template error: code review prompt template is missing the required '{{TASK_ID}}' placeholder.");
-    }
-    if !template.contains("{{GIT_STATUS}}") {
-        bail!("Template error: code review prompt template is missing the required '{{GIT_STATUS}}' placeholder.");
-    }
-    if !template.contains("{{GIT_DIFF}}") {
-        bail!("Template error: code review prompt template is missing the required '{{GIT_DIFF}}' placeholder.");
-    }
-    if !template.contains("{{GIT_DIFF_STAGED}}") {
-        bail!("Template error: code review prompt template is missing the required '{{GIT_DIFF_STAGED}}' placeholder.");
     }
 
     let id = task_id.trim();
@@ -101,17 +99,7 @@ pub fn render_code_review_prompt(
 
     rendered = rendered.replace("{{TASK_ID}}", id);
 
-    let rendered = rendered
-        .replace("{{GIT_STATUS}}", "__RALPH_GIT_STATUS__")
-        .replace("{{GIT_DIFF}}", "__RALPH_GIT_DIFF__")
-        .replace("{{GIT_DIFF_STAGED}}", "__RALPH_GIT_DIFF_STAGED__");
-
     ensure_no_unresolved_placeholders(&rendered, "code review")?;
-
-    let rendered = rendered
-        .replace("__RALPH_GIT_STATUS__", git_status)
-        .replace("__RALPH_GIT_DIFF__", git_diff)
-        .replace("__RALPH_GIT_DIFF_STAGED__", git_diff_staged);
 
     Ok(rendered)
 }

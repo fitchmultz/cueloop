@@ -49,7 +49,7 @@ use crate::contracts::{
     Task, TaskPriority, TaskStatus,
 };
 use crate::timeutil;
-use crate::{fsutil, queue};
+use crate::{fsutil, queue, runutil};
 
 pub mod events;
 pub mod render;
@@ -1581,6 +1581,11 @@ enum RunnerEvent {
     Finished,
     /// Task failed with error
     Error(String),
+    /// Revert prompt requested by the runner.
+    RevertPrompt {
+        label: String,
+        reply: mpsc::Sender<runutil::RevertDecision>,
+    },
 }
 
 /// Run the TUI application with an active queue lock.
@@ -1594,7 +1599,10 @@ pub fn run_tui<F, E>(
     runner_factory: F,
 ) -> Result<Option<String>>
 where
-    F: Fn(String, crate::runner::OutputHandler) -> E + Send + Sync + 'static,
+    F: Fn(String, crate::runner::OutputHandler, runutil::RevertPromptHandler) -> E
+        + Send
+        + Sync
+        + 'static,
     E: FnOnce() -> Result<()> + Send + 'static,
 {
     let (mut app, _queue_lock) = prepare_tui_session(resolved, force_lock)?;
@@ -1619,11 +1627,26 @@ where
     let spawn_runner = |task_id: String, tx: mpsc::Sender<RunnerEvent>| {
         let tx_clone = tx.clone();
         let tx_clone_for_handler = tx.clone();
+        let tx_clone_for_prompt = tx.clone();
         let handler: crate::runner::OutputHandler = Arc::new(Box::new(move |text: &str| {
             let _ = tx_clone_for_handler.send(RunnerEvent::Output(text.to_string()));
         }));
 
-        let runner_fn = runner_factory(task_id.clone(), handler);
+        let revert_prompt: runutil::RevertPromptHandler = Arc::new(move |label: &str| {
+            let (reply_tx, reply_rx) = mpsc::channel();
+            if tx_clone_for_prompt
+                .send(RunnerEvent::RevertPrompt {
+                    label: label.to_string(),
+                    reply: reply_tx,
+                })
+                .is_err()
+            {
+                return runutil::RevertDecision::Keep;
+            }
+            reply_rx.recv().unwrap_or(runutil::RevertDecision::Keep)
+        });
+
+        let runner_fn = runner_factory(task_id.clone(), handler, revert_prompt);
         thread::spawn(move || match runner_fn() {
             Ok(()) => {
                 let _ = tx_clone.send(RunnerEvent::Finished);
@@ -1755,6 +1778,14 @@ where
                         ) {
                             app_ref.mode = AppMode::Normal;
                         }
+                    }
+                    RunnerEvent::RevertPrompt { label, reply } => {
+                        let previous_mode = app_ref.mode.clone();
+                        app_ref.mode = AppMode::ConfirmRevert {
+                            label,
+                            reply_sender: reply,
+                            previous_mode: Box::new(previous_mode),
+                        };
                     }
                 }
             }

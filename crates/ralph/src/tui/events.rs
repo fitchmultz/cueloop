@@ -13,8 +13,10 @@
 
 use anyhow::Result;
 use crossterm::event::KeyCode;
+use std::sync::mpsc;
 
 use super::App;
+use crate::runutil::RevertDecision;
 
 /// Actions that can result from handling a key event.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,7 +32,7 @@ pub enum TuiAction {
 }
 
 /// Interaction modes for the TUI.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum AppMode {
     /// Normal navigation mode
     Normal,
@@ -58,9 +60,78 @@ pub enum AppMode {
     ConfirmArchive,
     /// Confirming quit while a task is running
     ConfirmQuit,
+    /// Confirming revert of uncommitted changes.
+    ConfirmRevert {
+        label: String,
+        reply_sender: mpsc::Sender<RevertDecision>,
+        previous_mode: Box<AppMode>,
+    },
     /// Executing a task (live output view)
     Executing { task_id: String },
 }
+
+impl PartialEq for AppMode {
+    fn eq(&self, other: &Self) -> bool {
+        use AppMode::*;
+        match (self, other) {
+            (Normal, Normal) => true,
+            (
+                EditingTask {
+                    selected: left_selected,
+                    editing_value: left_value,
+                },
+                EditingTask {
+                    selected: right_selected,
+                    editing_value: right_value,
+                },
+            ) => left_selected == right_selected && left_value == right_value,
+            (CreatingTask(left), CreatingTask(right)) => left == right,
+            (Searching(left), Searching(right)) => left == right,
+            (FilteringTags(left), FilteringTags(right)) => left == right,
+            (
+                EditingConfig {
+                    selected: left_selected,
+                    editing_value: left_value,
+                },
+                EditingConfig {
+                    selected: right_selected,
+                    editing_value: right_value,
+                },
+            ) => left_selected == right_selected && left_value == right_value,
+            (
+                CommandPalette {
+                    query: left_query,
+                    selected: left_selected,
+                },
+                CommandPalette {
+                    query: right_query,
+                    selected: right_selected,
+                },
+            ) => left_query == right_query && left_selected == right_selected,
+            (ConfirmDelete, ConfirmDelete) => true,
+            (ConfirmArchive, ConfirmArchive) => true,
+            (ConfirmQuit, ConfirmQuit) => true,
+            (
+                ConfirmRevert {
+                    label: left_label,
+                    previous_mode: left_previous,
+                    ..
+                },
+                ConfirmRevert {
+                    label: right_label,
+                    previous_mode: right_previous,
+                    ..
+                },
+            ) => left_label == right_label && left_previous == right_previous,
+            (Executing { task_id: left_id }, Executing { task_id: right_id }) => {
+                left_id == right_id
+            }
+            _ => false,
+        }
+    }
+}
+
+impl Eq for AppMode {}
 
 /// High-level commands available in the command palette.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -114,6 +185,11 @@ pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Resul
         AppMode::ConfirmDelete => handle_confirm_delete_key(app, key),
         AppMode::ConfirmArchive => handle_confirm_archive_key(app, key, now_rfc3339),
         AppMode::ConfirmQuit => handle_confirm_quit_key(app, key),
+        AppMode::ConfirmRevert {
+            label,
+            reply_sender,
+            previous_mode,
+        } => handle_confirm_revert_key(app, key, &label, reply_sender, *previous_mode),
         AppMode::Executing { .. } => handle_executing_mode_key(app, key),
     }
 }
@@ -670,6 +746,36 @@ fn handle_confirm_quit_key(app: &mut App, key: KeyCode) -> Result<TuiAction> {
         }
         _ => Ok(TuiAction::Continue),
     }
+}
+
+/// Handle key events in ConfirmRevert mode.
+fn handle_confirm_revert_key(
+    app: &mut App,
+    key: KeyCode,
+    label: &str,
+    reply_sender: mpsc::Sender<RevertDecision>,
+    previous_mode: AppMode,
+) -> Result<TuiAction> {
+    let decision = match key {
+        KeyCode::Enter | KeyCode::Char('1') | KeyCode::Char('y') | KeyCode::Char('Y') => {
+            RevertDecision::Revert
+        }
+        KeyCode::Char('2') | KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+            RevertDecision::Keep
+        }
+        _ => return Ok(TuiAction::Continue),
+    };
+
+    if reply_sender.send(decision).is_err() {
+        app.set_status_message(format!("{label}: revert prompt expired"));
+    } else if decision == RevertDecision::Revert {
+        app.set_status_message(format!("{label}: reverting uncommitted changes"));
+    } else {
+        app.set_status_message(format!("{label}: keeping uncommitted changes"));
+    }
+
+    app.mode = previous_mode;
+    Ok(TuiAction::Continue)
 }
 
 /// Handle key events in Executing mode.

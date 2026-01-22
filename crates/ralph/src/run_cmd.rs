@@ -6,7 +6,7 @@
 use crate::config;
 use crate::contracts::{GitRevertMode, ProjectType, TaskStatus};
 use crate::promptflow;
-use crate::{gitutil, prompts, queue, runner, timeutil};
+use crate::{gitutil, prompts, queue, runner, runutil, timeutil};
 use anyhow::{bail, Context, Result};
 
 mod logging;
@@ -99,6 +99,7 @@ pub fn run_one_with_id(
     force: bool,
     task_id: &str,
     output_handler: Option<runner::OutputHandler>,
+    revert_prompt: Option<runutil::RevertPromptHandler>,
 ) -> Result<()> {
     // Re-use run_one logic but target specific ID.
     // However, run_one finds the task based on status logic (Todo vs Doing).
@@ -112,6 +113,7 @@ pub fn run_one_with_id(
         QueueLockMode::Acquire,
         Some(task_id),
         output_handler,
+        revert_prompt,
     )
     .map(|_| ())
 }
@@ -123,6 +125,7 @@ pub fn run_one_with_id_locked(
     force: bool,
     task_id: &str,
     output_handler: Option<runner::OutputHandler>,
+    revert_prompt: Option<runutil::RevertPromptHandler>,
 ) -> Result<()> {
     run_one_impl(
         resolved,
@@ -131,6 +134,7 @@ pub fn run_one_with_id_locked(
         QueueLockMode::Held,
         Some(task_id),
         output_handler,
+        revert_prompt,
     )
     .map(|_| ())
 }
@@ -147,6 +151,7 @@ pub fn run_one(
         QueueLockMode::Acquire,
         None,
         None,
+        None,
     )
 }
 
@@ -157,6 +162,7 @@ fn run_one_impl(
     lock_mode: QueueLockMode,
     target_task_id: Option<&str>,
     output_handler: Option<runner::OutputHandler>,
+    revert_prompt: Option<runutil::RevertPromptHandler>,
 ) -> Result<RunOutcome> {
     let _queue_lock = match lock_mode {
         QueueLockMode::Acquire => Some(queue::acquire_queue_lock(
@@ -254,7 +260,7 @@ fn run_one_impl(
         let template = prompts::load_worker_prompt(&resolved.repo_root)?;
         let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
         let mut base_prompt =
-            prompts::render_worker_prompt(&template, project_type, &resolved.config)?;
+            prompts::render_worker_prompt(&template, &task_id, project_type, &resolved.config)?;
 
         // Inject an authoritative task context block to prevent the agent from selecting
         // a different task (e.g., "first todo" or "lowest ID") after Ralph marks the
@@ -272,6 +278,7 @@ fn run_one_impl(
             output_handler: output_handler.clone(),
             project_type,
             git_revert_mode,
+            revert_prompt: revert_prompt.clone(),
         };
 
         match phases {
@@ -332,7 +339,7 @@ fn task_context_for_prompt(task: &crate::contracts::Task) -> Result<String> {
 You MUST work on this exact task and no other task.
 - Do NOT switch tasks based on queue order, "first todo", or "lowest ID".
 - Ignore `.ralph/done.json` except as historical reference if explicitly needed.
-- Ralph has already set this task to `doing`. Do NOT change task status manually.
+- Do NOT change task status manually.
 
 Task ID: {id}
 Title: {title}

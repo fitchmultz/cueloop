@@ -58,7 +58,7 @@ pub fn build_phase1_prompt(
     // 1. Heading
     instructions.push_str("# PLANNING MODE - PHASE 1 OF 2\n\n");
     instructions.push_str(&format!(
-        "CURRENT TASK: {} (Ralph has already set this task to `doing`). Do NOT switch tasks.\n\n",
+        "CURRENT TASK: {}. Do NOT switch tasks.\n",
         task_id.trim()
     ));
 
@@ -75,23 +75,22 @@ pub fn build_phase1_prompt(
     instructions.push_str(&format!(
         r#"
 ## OUTPUT REQUIREMENT: PLAN ONLY
-You are in Phase 1 (Planning). You must NOT implement the code yet.
+You are in Phase 1 (Planning). You must NOT implement the changes.
 Your goal is to understand the task, gather context, and produce a detailed plan.
 
 ## STRICT PROHIBITIONS (PHASE 1 ONLY)
 **DO NOT DO ANY OF THE FOLLOWING:**
-- Create or modify any files, except the plan cache file below (Ralph handles queue bookkeeping)
+- Create or modify any files, EXCEPT the plan cache file below (Ralph handles queue bookkeeping)
 - Run tests, `make ci`, or any validation commands
 - Execute `git add`, `git commit`, or `git push`
 - Write, edit, or change any source code, configuration, or documentation files
 - Make any implementation changes whatsoever
 
-**NO FILE EDITS ARE ALLOWED IN PHASE 1, except writing the plan cache file below.**
+**NO FILE EDITS ARE ALLOWED IN PHASE 1, EXCEPT writing the plan cache file below.**
 
 **IF YOU START IMPLEMENTING:**
 - STOP immediately
 - Revert any file changes you made
-- Return to planning mode
 
 ## PLAN OUTPUT REQUIREMENT
 You MUST write the final plan directly to this file:
@@ -100,9 +99,9 @@ You MUST write the final plan directly to this file:
 
 **Do NOT print the plan in your reply.** The plan must be written to the file above.
 Use the available tooling to write the plan file directly.
-After writing the file, you may respond with a brief confirmation only (no plan text).
+After writing the file, you may respond with a brief confirmation only.
 
-The plan should be detailed enough for Phase 2 implementation.
+The plan should be detailed for Phase 2 implementation.
 Treat any `context_builder` response as planning input only. Do NOT start implementing code after you receive it.
 Do NOT switch tasks: plan ONLY for the current task and ignore any other IDs mentioned in tool output.
 "#,
@@ -243,7 +242,7 @@ pub fn build_single_phase_prompt(
     }
 
     instructions.push_str(&format!(
-        "CURRENT TASK: {} (Ralph has already set this task to `doing`). Do NOT switch tasks.\n\n",
+        "CURRENT TASK: {}. Do NOT switch tasks.\n\n",
         task_id.trim()
     ));
 

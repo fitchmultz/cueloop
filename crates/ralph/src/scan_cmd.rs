@@ -43,6 +43,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             &resolved.repo_root,
             opts.git_revert_mode,
             "Scan validation failure (pre-run)",
+            None,
         )?;
         return Err(err).context(runutil::format_revert_failure_message(
             "Scan validation failed before run.",
@@ -76,6 +77,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             revert_on_error: true,
             git_revert_mode: opts.git_revert_mode,
             output_handler: None,
+            revert_prompt: None,
         },
         runutil::RunnerErrorMessages {
             log_label: "scan runner",
@@ -114,6 +116,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
                 &resolved.repo_root,
                 opts.git_revert_mode,
                 "Scan queue read failure",
+                None,
             )?;
             let context = format!(
                 "{}{}",
@@ -151,6 +154,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             &resolved.repo_root,
             opts.git_revert_mode,
             "Scan validation failure (post-run)",
+            None,
         )?;
         let context = format!("{}{}", "Scan validation failed after run.", safeguard_msg);
         return Err(err).context(runutil::format_revert_failure_message(&context, outcome));

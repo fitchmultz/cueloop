@@ -3,7 +3,7 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use crate::{agent, config, run_cmd, runner, tui};
+use crate::{agent, config, run_cmd, runner, runutil, tui};
 
 pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
@@ -14,27 +14,31 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
             if args.interactive {
                 // Capture the values we need by moving them into the factory
                 let resolved_clone = resolved.clone();
-                let runner_factory = move |task_id: String, handler: runner::OutputHandler| {
-                    let resolved = resolved_clone.clone();
-                    let overrides = overrides.clone();
-                    let force = force;
-                    move || {
-                        run_cmd::run_one_with_id_locked(
-                            &resolved,
-                            &overrides,
-                            force,
-                            &task_id,
-                            Some(handler),
-                        )
-                    }
-                };
+                let runner_factory =
+                    move |task_id: String,
+                          handler: runner::OutputHandler,
+                          revert_prompt: runutil::RevertPromptHandler| {
+                        let resolved = resolved_clone.clone();
+                        let overrides = overrides.clone();
+                        let force = force;
+                        move || {
+                            run_cmd::run_one_with_id_locked(
+                                &resolved,
+                                &overrides,
+                                force,
+                                &task_id,
+                                Some(handler),
+                                Some(revert_prompt),
+                            )
+                        }
+                    };
 
                 // Interactive one: open the TUI (no auto-loop).
                 let _ = tui::run_tui(&resolved, force, tui::TuiOptions::default(), runner_factory)?;
                 Ok(())
             } else {
                 if let Some(task_id) = args.id.as_deref() {
-                    run_cmd::run_one_with_id(&resolved, &overrides, force, task_id, None)?;
+                    run_cmd::run_one_with_id(&resolved, &overrides, force, task_id, None, None)?;
                 } else {
                     let _ = run_cmd::run_one(&resolved, &overrides, force)?;
                 }
@@ -47,20 +51,24 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
             if args.interactive {
                 // Capture the values we need by moving them into the factory
                 let resolved_clone = resolved.clone();
-                let runner_factory = move |task_id: String, handler: runner::OutputHandler| {
-                    let resolved = resolved_clone.clone();
-                    let overrides = overrides.clone();
-                    let force = force;
-                    move || {
-                        run_cmd::run_one_with_id_locked(
-                            &resolved,
-                            &overrides,
-                            force,
-                            &task_id,
-                            Some(handler),
-                        )
-                    }
-                };
+                let runner_factory =
+                    move |task_id: String,
+                          handler: runner::OutputHandler,
+                          revert_prompt: runutil::RevertPromptHandler| {
+                        let resolved = resolved_clone.clone();
+                        let overrides = overrides.clone();
+                        let force = force;
+                        move || {
+                            run_cmd::run_one_with_id_locked(
+                                &resolved,
+                                &overrides,
+                                force,
+                                &task_id,
+                                Some(handler),
+                                Some(revert_prompt),
+                            )
+                        }
+                    };
 
                 // Interactive loop: auto-start the loop in the TUI to match semantics.
                 let max = if args.max_tasks == 0 {

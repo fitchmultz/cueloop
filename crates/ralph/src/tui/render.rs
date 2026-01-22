@@ -24,40 +24,50 @@ use ratatui::{
 pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
     let size = f.area();
 
-    // Handle Executing mode separately (full-screen output view)
-    if matches!(app.mode, AppMode::Executing { .. }) {
-        draw_execution_view(f, app, size);
-        return;
-    }
-
-    // Reserve a footer row for help + status.
-    let outer = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(2), Constraint::Length(1)].as_ref())
-        .split(size);
-    let main = outer[0];
-    let footer = outer[1];
-
-    // Responsive main layout:
-    // - If narrow, stack list and details vertically.
-    // - If wide, split horizontally.
-    let chunks = if main.width < 90 {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
-            .split(main)
-    } else {
-        Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
-            .split(main)
+    // Handle Executing mode (full-screen output view), including modal prompts layered on top.
+    let show_execution = match app.mode.clone() {
+        AppMode::Executing { .. } => true,
+        AppMode::ConfirmRevert { previous_mode, .. } => {
+            matches!(*previous_mode, AppMode::Executing { .. })
+        }
+        _ => false,
     };
 
-    // Left/top panel: task list
-    draw_task_list(f, app, chunks[0]);
+    if show_execution {
+        draw_execution_view(f, app, size);
+    } else {
+        // Reserve a footer row for help + status.
+        let outer = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(2), Constraint::Length(1)].as_ref())
+            .split(size);
+        let main = outer[0];
+        let footer = outer[1];
 
-    // Right/bottom panel: task details
-    draw_task_details(f, app, chunks[1]);
+        // Responsive main layout:
+        // - If narrow, stack list and details vertically.
+        // - If wide, split horizontally.
+        let chunks = if main.width < 90 {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+                .split(main)
+        } else {
+            Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+                .split(main)
+        };
+
+        // Left/top panel: task list
+        draw_task_list(f, app, chunks[0]);
+
+        // Right/bottom panel: task details
+        draw_task_details(f, app, chunks[1]);
+
+        // Footer (help + status).
+        draw_footer(f, app, footer);
+    }
 
     // Confirmation dialogs.
     if app.mode == AppMode::ConfirmDelete {
@@ -66,6 +76,13 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
         draw_confirm_dialog(f, size, "Archive done/rejected tasks?", "(y/n)");
     } else if app.mode == AppMode::ConfirmQuit {
         draw_confirm_dialog(f, size, "Task still running. Quit?", "(y/n)");
+    } else if let AppMode::ConfirmRevert { label, .. } = &app.mode {
+        draw_confirm_dialog(
+            f,
+            size,
+            &format!("{label}: revert uncommitted changes?"),
+            "(1=revert (default), 2=keep)",
+        );
     }
 
     // Command palette overlay.
@@ -90,9 +107,6 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
     {
         draw_task_editor(f, app, size, *selected, editing_value.as_deref());
     }
-
-    // Footer (help + status).
-    draw_footer(f, app, footer);
 }
 
 /// Wrap text to fit within a given width.
@@ -148,8 +162,18 @@ fn draw_execution_view(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)].as_ref())
+        .split(inner);
+    let log_area = chunks[0];
+    let status_area = chunks[1];
+
+    f.render_widget(Clear, log_area);
+    f.render_widget(Clear, status_area);
+
     // Calculate visible log lines
-    let visible_height = inner.height.saturating_sub(2) as usize; // Leave room for borders
+    let visible_height = log_area.height as usize;
     app.set_log_visible_lines(visible_height);
     let log_count = app.logs.len();
     let start_idx = if app.log_scroll + visible_height > log_count {
@@ -178,7 +202,7 @@ fn draw_execution_view(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         .block(Block::default())
         .wrap(Wrap { trim: true });
 
-    f.render_widget(paragraph, inner);
+    f.render_widget(paragraph, log_area);
 
     // Draw status indicator at bottom
     let mut status_parts = vec![
@@ -223,13 +247,6 @@ fn draw_execution_view(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             "Waiting for output...",
             Style::default().fg(Color::DarkGray),
         )])
-    };
-
-    let status_area = Rect {
-        x: inner.x,
-        y: inner.y + inner.height.saturating_sub(1),
-        width: inner.width,
-        height: 1,
     };
 
     let status_paragraph = Paragraph::new(status_line);
@@ -1237,6 +1254,16 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
         ],
+        AppMode::ConfirmRevert { .. } => vec![
+            Span::styled("1", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":revert "),
+            Span::styled("2", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":keep "),
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":revert "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":keep"),
+        ],
         AppMode::Executing { .. } => vec![
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":return "),
@@ -1340,7 +1367,7 @@ mod tests {
 
         terminal.draw(|f| draw_ui(f, &mut app)).expect("draw ui");
 
-        let expected = 10usize.saturating_sub(2).saturating_sub(2).max(1);
+        let expected = 10usize.saturating_sub(2).saturating_sub(1).max(1);
         assert_eq!(app.log_visible_lines, expected);
     }
 }

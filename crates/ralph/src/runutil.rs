@@ -5,6 +5,7 @@ use crate::{fsutil, gitutil, outpututil, runner};
 use anyhow::{bail, Result};
 use std::io::{BufRead, BufReader, IsTerminal, Write};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 pub struct RunnerInvocation<'a> {
@@ -23,6 +24,8 @@ pub struct RunnerInvocation<'a> {
     pub git_revert_mode: GitRevertMode,
     /// Optional callback for streaming runner output.
     pub output_handler: Option<runner::OutputHandler>,
+    /// Optional handler for revert prompts (interactive UIs).
+    pub revert_prompt: Option<RevertPromptHandler>,
 }
 
 pub struct RunnerErrorMessages<'a, FNonZero, FOther>
@@ -44,6 +47,14 @@ pub enum RevertOutcome {
     Skipped { reason: String },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RevertDecision {
+    Revert,
+    Keep,
+}
+
+pub type RevertPromptHandler = Arc<dyn Fn(&str) -> RevertDecision + Send + Sync>;
+
 pub fn run_prompt_with_handling<FNonZero, FOther>(
     invocation: RunnerInvocation<'_>,
     messages: RunnerErrorMessages<'_, FNonZero, FOther>,
@@ -64,6 +75,7 @@ where
         revert_on_error,
         git_revert_mode,
         output_handler,
+        revert_prompt,
     } = invocation;
     let RunnerErrorMessages {
         log_label,
@@ -88,7 +100,12 @@ where
         Ok(output) => Ok(output),
         Err(runner::RunnerError::Interrupted) => {
             let message = if revert_on_error {
-                let outcome = apply_git_revert_mode(repo_root, git_revert_mode, log_label)?;
+                let outcome = apply_git_revert_mode(
+                    repo_root,
+                    git_revert_mode,
+                    log_label,
+                    revert_prompt.as_ref(),
+                )?;
                 format_revert_failure_message(interrupted_msg, outcome)
             } else {
                 interrupted_msg.to_string()
@@ -116,7 +133,12 @@ where
                         }
                     }
                 }
-                let outcome = apply_git_revert_mode(repo_root, git_revert_mode, log_label)?;
+                let outcome = apply_git_revert_mode(
+                    repo_root,
+                    git_revert_mode,
+                    log_label,
+                    revert_prompt.as_ref(),
+                )?;
                 let message = format_revert_failure_message(&non_zero_msg(code), outcome);
                 bail!("{}{}", message, safeguard_msg);
             }
@@ -136,7 +158,12 @@ where
                         }
                     }
                 }
-                let outcome = apply_git_revert_mode(repo_root, git_revert_mode, log_label)?;
+                let outcome = apply_git_revert_mode(
+                    repo_root,
+                    git_revert_mode,
+                    log_label,
+                    revert_prompt.as_ref(),
+                )?;
                 let message = format_revert_failure_message(terminated_msg, outcome);
                 bail!("{}{}", message, safeguard_msg);
             }
@@ -144,7 +171,12 @@ where
         }
         Err(err) => {
             let message = if revert_on_error {
-                let outcome = apply_git_revert_mode(repo_root, git_revert_mode, log_label)?;
+                let outcome = apply_git_revert_mode(
+                    repo_root,
+                    git_revert_mode,
+                    log_label,
+                    revert_prompt.as_ref(),
+                )?;
                 format_revert_failure_message(&other_msg(err), outcome)
             } else {
                 other_msg(err)
@@ -158,6 +190,7 @@ pub fn apply_git_revert_mode(
     repo_root: &Path,
     mode: GitRevertMode,
     prompt_label: &str,
+    revert_prompt: Option<&RevertPromptHandler>,
 ) -> Result<RevertOutcome> {
     match mode {
         GitRevertMode::Enabled => {
@@ -168,6 +201,9 @@ pub fn apply_git_revert_mode(
             reason: "git_revert_mode=disabled".to_string(),
         }),
         GitRevertMode::Ask => {
+            if let Some(prompt) = revert_prompt {
+                return apply_revert_decision(repo_root, prompt(prompt_label));
+            }
             let stdin = std::io::stdin();
             if !stdin.is_terminal() {
                 return Ok(RevertOutcome::Skipped {
@@ -175,15 +211,20 @@ pub fn apply_git_revert_mode(
                 });
             }
             let choice = prompt_revert_choice(prompt_label)?;
-            if choice == RevertDecision::Revert {
-                gitutil::revert_uncommitted(repo_root)?;
-                Ok(RevertOutcome::Reverted)
-            } else {
-                Ok(RevertOutcome::Skipped {
-                    reason: "user chose to keep changes".to_string(),
-                })
-            }
+            apply_revert_decision(repo_root, choice)
         }
+    }
+}
+
+fn apply_revert_decision(repo_root: &Path, decision: RevertDecision) -> Result<RevertOutcome> {
+    match decision {
+        RevertDecision::Revert => {
+            gitutil::revert_uncommitted(repo_root)?;
+            Ok(RevertOutcome::Reverted)
+        }
+        RevertDecision::Keep => Ok(RevertOutcome::Skipped {
+            reason: "user chose to keep changes".to_string(),
+        }),
     }
 }
 
@@ -192,12 +233,6 @@ pub fn format_revert_failure_message(base: &str, outcome: RevertOutcome) -> Stri
         RevertOutcome::Reverted => format!("{base} Uncommitted changes were reverted."),
         RevertOutcome::Skipped { reason } => format!("{base} Revert skipped ({reason})."),
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RevertDecision {
-    Revert,
-    Keep,
 }
 
 fn prompt_revert_choice(label: &str) -> Result<RevertDecision> {
@@ -247,6 +282,46 @@ fn log_stderr_tail(label: &str, stderr: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    fn init_git_repo(dir: &TempDir) {
+        Command::new("git")
+            .arg("init")
+            .current_dir(dir.path())
+            .output()
+            .expect("git init failed");
+
+        Command::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(dir.path())
+            .output()
+            .expect("git config user.email failed");
+
+        Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(dir.path())
+            .output()
+            .expect("git config user.name failed");
+    }
+
+    fn commit_file(dir: &TempDir, filename: &str, content: &str, message: &str) {
+        let file_path = dir.path().join(filename);
+        fs::write(&file_path, content).expect("write file");
+
+        Command::new("git")
+            .args(["add", filename])
+            .current_dir(dir.path())
+            .output()
+            .expect("git add failed");
+
+        Command::new("git")
+            .args(["commit", "-m", message])
+            .current_dir(dir.path())
+            .output()
+            .expect("git commit failed");
+    }
 
     fn decide_ask(stdin_is_terminal: bool, input: Option<&str>) -> RevertDecision {
         if !stdin_is_terminal {
@@ -270,5 +345,56 @@ mod tests {
         assert_eq!(parse_revert_response("n"), Some(RevertDecision::Keep));
         assert_eq!(parse_revert_response("no"), Some(RevertDecision::Keep));
         assert_eq!(parse_revert_response("wat"), None);
+    }
+
+    #[test]
+    fn apply_git_revert_mode_uses_prompt_handler_keep() {
+        let dir = TempDir::new().expect("temp dir");
+        init_git_repo(&dir);
+        commit_file(&dir, "file.txt", "original", "initial");
+
+        let file_path = dir.path().join("file.txt");
+        fs::write(&file_path, "modified").expect("modify file");
+
+        let handler: RevertPromptHandler = Arc::new(|_| RevertDecision::Keep);
+        let outcome = apply_git_revert_mode(
+            dir.path(),
+            GitRevertMode::Ask,
+            "test prompt",
+            Some(&handler),
+        )
+        .expect("apply revert mode");
+
+        assert_eq!(
+            outcome,
+            RevertOutcome::Skipped {
+                reason: "user chose to keep changes".to_string()
+            }
+        );
+        let contents = fs::read_to_string(&file_path).expect("read file");
+        assert_eq!(contents, "modified");
+    }
+
+    #[test]
+    fn apply_git_revert_mode_uses_prompt_handler_revert() {
+        let dir = TempDir::new().expect("temp dir");
+        init_git_repo(&dir);
+        commit_file(&dir, "file.txt", "original", "initial");
+
+        let file_path = dir.path().join("file.txt");
+        fs::write(&file_path, "modified").expect("modify file");
+
+        let handler: RevertPromptHandler = Arc::new(|_| RevertDecision::Revert);
+        let outcome = apply_git_revert_mode(
+            dir.path(),
+            GitRevertMode::Ask,
+            "test prompt",
+            Some(&handler),
+        )
+        .expect("apply revert mode");
+
+        assert_eq!(outcome, RevertOutcome::Reverted);
+        let contents = fs::read_to_string(&file_path).expect("read file");
+        assert_eq!(contents, "original");
     }
 }
