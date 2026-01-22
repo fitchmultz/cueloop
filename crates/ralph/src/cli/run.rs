@@ -3,7 +3,7 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use crate::{agent, config, run_cmd, runner, runutil, tui};
+use crate::{agent, config, run_cmd, runner, runutil, scan_cmd, tui};
 
 pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
@@ -12,6 +12,20 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
 
             if args.interactive {
+                let scan_settings = runner::resolve_agent_settings(
+                    overrides.runner,
+                    overrides.model.clone(),
+                    overrides.reasoning_effort,
+                    None,
+                    &resolved.config.agent,
+                )?;
+                let scan_repoprompt_required =
+                    agent::resolve_rp_required(args.agent.rp_on, args.agent.rp_off, &resolved);
+                let scan_git_revert_mode = overrides
+                    .git_revert_mode
+                    .or(resolved.config.agent.git_revert_mode)
+                    .unwrap_or(crate::contracts::GitRevertMode::Ask);
+
                 // Capture the values we need by moving them into the factory
                 let resolved_clone = resolved.clone();
                 let runner_factory =
@@ -32,9 +46,43 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                             )
                         }
                     };
+                let resolved_scan = resolved.clone();
+                let scan_factory =
+                    move |focus: String,
+                          handler: runner::OutputHandler,
+                          revert_prompt: runutil::RevertPromptHandler| {
+                        let resolved = resolved_scan.clone();
+                        let settings = scan_settings.clone();
+                        let force = force;
+                        let repoprompt_required = scan_repoprompt_required;
+                        let git_revert_mode = scan_git_revert_mode;
+                        move || {
+                            scan_cmd::run_scan(
+                                &resolved,
+                                scan_cmd::ScanOptions {
+                                    focus,
+                                    runner: settings.runner,
+                                    model: settings.model,
+                                    reasoning_effort: settings.reasoning_effort,
+                                    force,
+                                    repoprompt_required,
+                                    git_revert_mode,
+                                    lock_mode: scan_cmd::ScanLockMode::Held,
+                                    output_handler: Some(handler),
+                                    revert_prompt: Some(revert_prompt),
+                                },
+                            )
+                        }
+                    };
 
                 // Interactive one: open the TUI (no auto-loop).
-                let _ = tui::run_tui(&resolved, force, tui::TuiOptions::default(), runner_factory)?;
+                let _ = tui::run_tui(
+                    &resolved,
+                    force,
+                    tui::TuiOptions::default(),
+                    runner_factory,
+                    scan_factory,
+                )?;
                 Ok(())
             } else {
                 if let Some(task_id) = args.id.as_deref() {
@@ -49,6 +97,20 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
 
             if args.interactive {
+                let scan_settings = runner::resolve_agent_settings(
+                    overrides.runner,
+                    overrides.model.clone(),
+                    overrides.reasoning_effort,
+                    None,
+                    &resolved.config.agent,
+                )?;
+                let scan_repoprompt_required =
+                    agent::resolve_rp_required(args.agent.rp_on, args.agent.rp_off, &resolved);
+                let scan_git_revert_mode = overrides
+                    .git_revert_mode
+                    .or(resolved.config.agent.git_revert_mode)
+                    .unwrap_or(crate::contracts::GitRevertMode::Ask);
+
                 // Capture the values we need by moving them into the factory
                 let resolved_clone = resolved.clone();
                 let runner_factory =
@@ -66,6 +128,34 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                                 &task_id,
                                 Some(handler),
                                 Some(revert_prompt),
+                            )
+                        }
+                    };
+                let resolved_scan = resolved.clone();
+                let scan_factory =
+                    move |focus: String,
+                          handler: runner::OutputHandler,
+                          revert_prompt: runutil::RevertPromptHandler| {
+                        let resolved = resolved_scan.clone();
+                        let settings = scan_settings.clone();
+                        let force = force;
+                        let repoprompt_required = scan_repoprompt_required;
+                        let git_revert_mode = scan_git_revert_mode;
+                        move || {
+                            scan_cmd::run_scan(
+                                &resolved,
+                                scan_cmd::ScanOptions {
+                                    focus,
+                                    runner: settings.runner,
+                                    model: settings.model,
+                                    reasoning_effort: settings.reasoning_effort,
+                                    force,
+                                    repoprompt_required,
+                                    git_revert_mode,
+                                    lock_mode: scan_cmd::ScanLockMode::Held,
+                                    output_handler: Some(handler),
+                                    revert_prompt: Some(revert_prompt),
+                                },
                             )
                         }
                     };
@@ -83,7 +173,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     loop_include_draft: args.agent.include_draft,
                 };
 
-                let _ = tui::run_tui(&resolved, force, options, runner_factory)?;
+                let _ = tui::run_tui(&resolved, force, options, runner_factory, scan_factory)?;
                 Ok(())
             } else {
                 run_cmd::run_loop(

@@ -438,6 +438,19 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ]),
+        AppMode::Scanning(focus) => Line::from(vec![
+            Span::styled(
+                "Scan Focus: ",
+                Style::default().add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                focus,
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
+        ]),
         AppMode::CommandPalette { .. } => Line::from(Span::styled(
             "Task Details",
             Style::default().add_modifier(Modifier::BOLD),
@@ -562,6 +575,41 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "Press Enter to apply or Esc to cancel.",
+            Style::default().fg(Color::DarkGray),
+        )));
+        let text = Text::from(lines);
+        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+        f.render_widget(paragraph, inner);
+        return;
+    }
+
+    if let AppMode::Scanning(current) = &app.mode {
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled(
+                    "Scan Focus",
+                    Style::default().add_modifier(Modifier::UNDERLINED),
+                ),
+                Span::styled(":", Style::default()),
+            ]),
+            Line::from(""),
+        ];
+        let display = if current.is_empty() {
+            "(optional: describe what to scan for)"
+        } else {
+            current
+        };
+        for line in wrap_text(display, app.detail_width as usize) {
+            let style = if current.is_empty() {
+                Style::default().fg(Color::DarkGray)
+            } else {
+                Style::default().add_modifier(Modifier::BOLD)
+            };
+            lines.push(Line::from(Span::styled(line, style)));
+        }
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "Press Enter to start scan or Esc to cancel.",
             Style::default().fg(Color::DarkGray),
         )));
         let text = Text::from(lines);
@@ -1146,26 +1194,28 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::raw(":nav "),
             Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":run "),
-            Span::styled("l", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":loop "),
-            Span::styled("a", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":archive "),
             Span::styled("d", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":del "),
             Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":edit "),
-            Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":new "),
             Span::styled("/", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":search "),
             Span::styled("t", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":tags "),
-            Span::styled("c", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":config "),
             Span::styled("f", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":filter "),
             Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":clear "),
+            Span::styled("l", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":loop "),
+            Span::styled("a", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":archive "),
+            Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":new "),
+            Span::styled("g", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":scan "),
+            Span::styled("c", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":config "),
             Span::styled("s", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cycle "),
             Span::styled("p", Style::default().add_modifier(Modifier::BOLD)),
@@ -1227,6 +1277,12 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::raw(":run "),
             Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":select "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
+        AppMode::Scanning(_) => vec![
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":scan "),
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
         ],
@@ -1352,6 +1408,15 @@ mod tests {
         let rendered = format!("{:?}", help_text);
 
         assert!(rendered.contains(":config"));
+    }
+
+    #[test]
+    fn help_footer_includes_scan_hint() {
+        let app = App::new(QueueFile::default());
+        let help_text = help_footer_spans(&app);
+        let rendered = format!("{:?}", help_text);
+
+        assert!(rendered.contains(":scan"));
     }
 
     #[test]

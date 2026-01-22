@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0231",
-      "status": "todo",
-      "title": "Add ralph scan support in the TUI",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "scan",
-        "cli"
-      ],
-      "scope": [
-        "crates/ralph/src/tui",
-        "crates/ralph/src/cli",
-        "crates/ralph/src/commands"
-      ],
-      "evidence": [
-        "User request: \"Add 'ralph scan' support to the ralph tui\""
-      ],
-      "plan": [
-        "Review current TUI entrypoints and command wiring to identify where scan actions should live.",
-        "Implement TUI flow to configure and trigger `ralph scan` from within the interface.",
-        "Add tests covering the new TUI scan action, including failure modes and validation."
-      ],
-      "notes": [],
-      "request": "Add 'ralph scan' support to the ralph tui",
-      "created_at": "2026-01-22T16:20:33Z",
-      "updated_at": "2026-01-22T16:20:33Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0226",
       "status": "draft",
       "title": "Add in-TUI help overlay for keybindings",

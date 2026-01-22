@@ -27,6 +27,8 @@ pub enum TuiAction {
     Quit,
     /// Reload the queue from disk
     ReloadQueue,
+    /// Run a scan with the provided focus string.
+    RunScan(String),
     /// Run a specific task (transitions to Executing mode)
     RunTask(String),
 }
@@ -52,6 +54,8 @@ pub enum AppMode {
         selected: usize,
         editing_value: Option<String>,
     },
+    /// Running a scan (focus input)
+    Scanning(String),
     /// Command palette (":" style)
     CommandPalette { query: String, selected: usize },
     /// Confirming task deletion
@@ -98,6 +102,7 @@ impl PartialEq for AppMode {
                     editing_value: right_value,
                 },
             ) => left_selected == right_selected && left_value == right_value,
+            (Scanning(left), Scanning(right)) => left == right,
             (
                 CommandPalette {
                     query: left_query,
@@ -143,6 +148,7 @@ pub enum PaletteCommand {
     NewTask,
     EditTask,
     EditConfig,
+    ScanRepo,
     Search,
     FilterTags,
     ClearFilters,
@@ -179,6 +185,7 @@ pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Resul
             selected,
             editing_value,
         } => handle_editing_config_key(app, key, selected, editing_value),
+        AppMode::Scanning(ref current) => handle_scanning_mode_key(app, key, current),
         AppMode::CommandPalette { query, selected } => {
             handle_command_palette_key(app, key, &query, selected, now_rfc3339)
         }
@@ -243,6 +250,14 @@ fn handle_normal_mode_key(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Res
                 selected: 0,
                 editing_value: None,
             };
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('g') => {
+            if app.runner_active {
+                app.set_status_message("Runner already active");
+            } else {
+                app.mode = AppMode::Scanning(String::new());
+            }
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('n') => {
@@ -631,6 +646,38 @@ fn handle_editing_config_key(
     }
 }
 
+/// Handle key events in Scanning mode.
+fn handle_scanning_mode_key(app: &mut App, key: KeyCode, current: &str) -> Result<TuiAction> {
+    match key {
+        KeyCode::Enter => {
+            if app.runner_active {
+                app.set_status_message("Runner already active");
+                return Ok(TuiAction::Continue);
+            }
+            let focus = current.trim().to_string();
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::RunScan(focus))
+        }
+        KeyCode::Esc => {
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char(c) => {
+            let mut next = current.to_string();
+            next.push(c);
+            app.mode = AppMode::Scanning(next);
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Backspace => {
+            let mut next = current.to_string();
+            next.pop();
+            app.mode = AppMode::Scanning(next);
+            Ok(TuiAction::Continue)
+        }
+        _ => Ok(TuiAction::Continue),
+    }
+}
+
 /// Handle key events in CommandPalette mode.
 fn handle_command_palette_key(
     app: &mut App,
@@ -1016,6 +1063,94 @@ mod tests {
             AppMode::EditingConfig { .. } => {}
             other => panic!("expected config mode, got {:?}", other),
         }
+    }
+
+    #[test]
+    fn g_enters_scan_mode() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Char('g'), "2026-01-20T00:00:00Z").expect("key");
+
+        assert_eq!(action, TuiAction::Continue);
+        match app.mode {
+            AppMode::Scanning(_) => {}
+            other => panic!("expected scan mode, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn scan_mode_enter_runs_scan() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        app.mode = AppMode::Scanning("focus".to_string());
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("key");
+
+        assert_eq!(action, TuiAction::RunScan("focus".to_string()));
+        assert_eq!(app.mode, AppMode::Normal);
+    }
+
+    #[test]
+    fn scan_mode_escape_cancels() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        app.mode = AppMode::Scanning("focus".to_string());
+
+        let action = handle_key_event(&mut app, KeyCode::Esc, "2026-01-20T00:00:00Z").expect("key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::Normal);
+    }
+
+    #[test]
+    fn scan_palette_command_enters_scan_mode() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        app.mode = AppMode::CommandPalette {
+            query: "scan".to_string(),
+            selected: 0,
+        };
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("key");
+
+        assert_eq!(action, TuiAction::Continue);
+        match app.mode {
+            AppMode::Scanning(_) => {}
+            other => panic!("expected scan mode, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn scan_rejected_when_runner_active() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        app.runner_active = true;
+        app.mode = AppMode::Scanning("focus".to_string());
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.status_message.as_deref(), Some("Runner already active"));
     }
 
     #[test]

@@ -26,6 +26,7 @@
 //! - `/`: Search tasks by text
 //! - `t`: Filter tasks by tags
 //! - `x`: Clear active filters
+//! - `g`: Scan repository for new tasks
 //! - Executing view: `↑`/`↓`/`j`/`k` scroll, `PgUp`/`PgDn` page, `a` toggles auto-scroll, `l` stops loop
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -149,6 +150,12 @@ pub struct ConfigEntry {
     pub kind: ConfigFieldKind,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunningKind {
+    Task,
+    Scan { focus: String },
+}
+
 /// Application state for the TUI.
 pub struct App {
     /// The active task queue.
@@ -191,6 +198,8 @@ pub struct App {
     pub runner_active: bool,
     /// Task ID currently running, if any.
     pub running_task_id: Option<String>,
+    /// Kind of runner currently executing (task vs scan).
+    pub running_kind: Option<RunningKind>,
     /// Whether loop mode is active.
     pub loop_active: bool,
     /// When loop is enabled while a task is already running, do not count that finishing task.
@@ -237,6 +246,7 @@ impl App {
             list_height: 20,
             runner_active: false,
             running_task_id: None,
+            running_kind: None,
             loop_active: false,
             loop_arm_after_current: false,
             loop_ran: 0,
@@ -1179,6 +1189,10 @@ impl App {
                 title: "Edit project config".to_string(),
             },
             PaletteEntry {
+                cmd: PaletteCommand::ScanRepo,
+                title: "Scan repository for tasks".to_string(),
+            },
+            PaletteEntry {
                 cmd: PaletteCommand::Search,
                 title: "Search tasks".to_string(),
             },
@@ -1239,7 +1253,7 @@ impl App {
                     return Ok(TuiAction::Continue);
                 };
                 let task_id = task.id.clone();
-                self.start_execution(task_id.clone(), true, false);
+                self.start_task_execution(task_id.clone(), true, false);
                 Ok(TuiAction::RunTask(task_id))
             }
             PaletteCommand::RunNextRunnable => {
@@ -1251,7 +1265,7 @@ impl App {
                     self.set_status_message("No runnable tasks");
                     return Ok(TuiAction::Continue);
                 };
-                self.start_execution(task_id.clone(), true, false);
+                self.start_task_execution(task_id.clone(), true, false);
                 Ok(TuiAction::RunTask(task_id))
             }
             PaletteCommand::ToggleLoop => {
@@ -1278,7 +1292,7 @@ impl App {
                 };
 
                 self.set_status_message("Loop started");
-                self.start_execution(task_id.clone(), true, false);
+                self.start_task_execution(task_id.clone(), true, false);
                 Ok(TuiAction::RunTask(task_id))
             }
             PaletteCommand::ArchiveTerminal => {
@@ -1314,6 +1328,14 @@ impl App {
                     selected: 0,
                     editing_value: None,
                 };
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::ScanRepo => {
+                if self.runner_active {
+                    self.set_status_message("Runner already active");
+                } else {
+                    self.mode = AppMode::Scanning(String::new());
+                }
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::Search => {
@@ -1358,7 +1380,7 @@ impl App {
     }
 
     /// Start execution of a specific task.
-    fn start_execution(&mut self, task_id: String, focus_logs: bool, append_logs: bool) {
+    fn start_task_execution(&mut self, task_id: String, focus_logs: bool, append_logs: bool) {
         if append_logs && !self.logs.is_empty() {
             self.logs.push(String::new());
             self.logs.push(format!("=== Executing {} ===", task_id));
@@ -1371,9 +1393,40 @@ impl App {
 
         self.runner_active = true;
         self.running_task_id = Some(task_id.clone());
+        self.running_kind = Some(RunningKind::Task);
 
         if focus_logs {
             self.mode = AppMode::Executing { task_id };
+        }
+    }
+
+    /// Start execution of a scan.
+    fn start_scan_execution(&mut self, focus: String, focus_logs: bool, append_logs: bool) {
+        let label = scan_label(&focus);
+        if append_logs && !self.logs.is_empty() {
+            self.logs.push(String::new());
+            self.logs.push(format!("=== {} ===", label));
+        } else {
+            self.logs.clear();
+        }
+
+        self.log_scroll = 0;
+        self.autoscroll = true;
+
+        self.runner_active = true;
+        self.running_task_id = Some(label);
+        self.running_kind = Some(RunningKind::Scan {
+            focus: focus.clone(),
+        });
+
+        if self.loop_active {
+            self.loop_active = false;
+            self.loop_arm_after_current = false;
+            self.set_status_message("Loop stopped (scan run)");
+        }
+
+        if focus_logs {
+            self.mode = AppMode::Executing { task_id: focus };
         }
     }
 
@@ -1592,11 +1645,14 @@ enum RunnerEvent {
 ///
 /// The `runner_factory` creates a closure that executes a task when called.
 /// It receives a task ID and an output handler callback.
-pub fn run_tui<F, E>(
+/// The `scan_factory` creates a closure that runs a scan when called.
+/// It receives a scan focus string and an output handler callback.
+pub fn run_tui<F, E, S, SE>(
     resolved: &crate::config::Resolved,
     force_lock: bool,
     options: TuiOptions,
     runner_factory: F,
+    scan_factory: S,
 ) -> Result<Option<String>>
 where
     F: Fn(String, crate::runner::OutputHandler, runutil::RevertPromptHandler) -> E
@@ -1604,6 +1660,11 @@ where
         + Sync
         + 'static,
     E: FnOnce() -> Result<()> + Send + 'static,
+    S: Fn(String, crate::runner::OutputHandler, runutil::RevertPromptHandler) -> SE
+        + Send
+        + Sync
+        + 'static,
+    SE: FnOnce() -> Result<()> + Send + 'static,
 {
     let (mut app, _queue_lock) = prepare_tui_session(resolved, force_lock)?;
     let queue_path = &resolved.queue_path;
@@ -1623,9 +1684,7 @@ where
     // Create channels for runner events.
     let (tx, rx) = mpsc::channel::<RunnerEvent>();
 
-    // Helper to spawn runner work.
-    let spawn_runner = |task_id: String, tx: mpsc::Sender<RunnerEvent>| {
-        let tx_clone = tx.clone();
+    let build_handlers = |tx: &mpsc::Sender<RunnerEvent>| {
         let tx_clone_for_handler = tx.clone();
         let tx_clone_for_prompt = tx.clone();
         let handler: crate::runner::OutputHandler = Arc::new(Box::new(move |text: &str| {
@@ -1646,7 +1705,31 @@ where
             reply_rx.recv().unwrap_or(runutil::RevertDecision::Keep)
         });
 
+        (handler, revert_prompt)
+    };
+
+    // Helper to spawn task runner work.
+    let spawn_task = |task_id: String, tx: mpsc::Sender<RunnerEvent>| {
+        let tx_clone = tx.clone();
+        let (handler, revert_prompt) = build_handlers(&tx);
+
         let runner_fn = runner_factory(task_id.clone(), handler, revert_prompt);
+        thread::spawn(move || match runner_fn() {
+            Ok(()) => {
+                let _ = tx_clone.send(RunnerEvent::Finished);
+            }
+            Err(e) => {
+                let _ = tx_clone.send(RunnerEvent::Error(e.to_string()));
+            }
+        });
+    };
+
+    // Helper to spawn scan runner work.
+    let spawn_scan = |focus: String, tx: mpsc::Sender<RunnerEvent>| {
+        let tx_clone = tx.clone();
+        let (handler, revert_prompt) = build_handlers(&tx);
+
+        let runner_fn = scan_factory(focus.clone(), handler, revert_prompt);
         thread::spawn(move || match runner_fn() {
             Ok(()) => {
                 let _ = tx_clone.send(RunnerEvent::Finished);
@@ -1669,7 +1752,7 @@ where
             app_ref.loop_ran = 0;
             if !app_ref.runner_active {
                 if let Some(id) = app_ref.next_loop_task_id() {
-                    app_ref.start_execution(id.clone(), true, false);
+                    app_ref.start_task_execution(id.clone(), true, false);
                     initial_start = Some(id);
                 } else {
                     app_ref.loop_active = false;
@@ -1678,7 +1761,7 @@ where
             }
         }
         if let Some(id) = initial_start {
-            spawn_runner(id, tx.clone());
+            spawn_task(id, tx.clone());
         }
 
         // Main event loop.
@@ -1714,64 +1797,91 @@ where
                     RunnerEvent::Finished => {
                         app_ref.runner_active = false;
                         app_ref.running_task_id = None;
+                        let running_kind = app_ref.running_kind.take();
 
-                        // Reload both queues to capture changes made by the runner.
-                        app_ref.reload_queues_from_disk(queue_path, done_path);
-
-                        // If we were in a quit confirmation, leave it.
-                        if app_ref.mode == AppMode::ConfirmQuit {
-                            app_ref.mode = AppMode::Normal;
-                        }
-
-                        // Loop continuation logic.
-                        if app_ref.loop_active {
-                            if app_ref.loop_arm_after_current {
-                                app_ref.loop_arm_after_current = false;
-                            } else {
-                                app_ref.loop_ran = app_ref.loop_ran.saturating_add(1);
-                            }
-
-                            if let Some(max) = app_ref.loop_max_tasks {
-                                if app_ref.loop_ran >= max {
-                                    let loop_ran = app_ref.loop_ran;
-                                    app_ref.loop_active = false;
-                                    app_ref.set_status_message(format!(
-                                        "Loop finished (ran {}/{})",
-                                        loop_ran, max
-                                    ));
+                        match running_kind {
+                            Some(RunningKind::Scan { .. }) => {
+                                app_ref.reload_queues_from_disk(queue_path, done_path);
+                                app_ref.set_status_message("Scan completed");
+                                if matches!(
+                                    app_ref.mode,
+                                    AppMode::Executing { .. } | AppMode::ConfirmQuit
+                                ) {
+                                    app_ref.mode = AppMode::Normal;
                                 }
                             }
+                            Some(RunningKind::Task) | None => {
+                                // Reload both queues to capture changes made by the runner.
+                                app_ref.reload_queues_from_disk(queue_path, done_path);
 
-                            if app_ref.loop_active {
-                                if let Some(next_id) = app_ref.next_loop_task_id() {
-                                    let focus_logs =
-                                        matches!(app_ref.mode, AppMode::Executing { .. });
-                                    app_ref.start_execution(next_id.clone(), focus_logs, true);
-                                    next_to_start = Some(next_id);
-                                } else {
-                                    let loop_ran = app_ref.loop_ran;
-                                    app_ref.loop_active = false;
-                                    app_ref.set_status_message(format!(
-                                        "Loop complete (ran {})",
-                                        loop_ran
-                                    ));
+                                // If we were in a quit confirmation, leave it.
+                                if app_ref.mode == AppMode::ConfirmQuit {
+                                    app_ref.mode = AppMode::Normal;
+                                }
+
+                                // Loop continuation logic.
+                                if app_ref.loop_active {
+                                    if app_ref.loop_arm_after_current {
+                                        app_ref.loop_arm_after_current = false;
+                                    } else {
+                                        app_ref.loop_ran = app_ref.loop_ran.saturating_add(1);
+                                    }
+
+                                    if let Some(max) = app_ref.loop_max_tasks {
+                                        if app_ref.loop_ran >= max {
+                                            let loop_ran = app_ref.loop_ran;
+                                            app_ref.loop_active = false;
+                                            app_ref.set_status_message(format!(
+                                                "Loop finished (ran {}/{})",
+                                                loop_ran, max
+                                            ));
+                                        }
+                                    }
+
+                                    if app_ref.loop_active {
+                                        if let Some(next_id) = app_ref.next_loop_task_id() {
+                                            let focus_logs =
+                                                matches!(app_ref.mode, AppMode::Executing { .. });
+                                            app_ref.start_task_execution(
+                                                next_id.clone(),
+                                                focus_logs,
+                                                true,
+                                            );
+                                            next_to_start = Some(next_id);
+                                        } else {
+                                            let loop_ran = app_ref.loop_ran;
+                                            app_ref.loop_active = false;
+                                            app_ref.set_status_message(format!(
+                                                "Loop complete (ran {})",
+                                                loop_ran
+                                            ));
+                                        }
+                                    }
+                                } else if matches!(
+                                    app_ref.mode,
+                                    AppMode::Executing { .. } | AppMode::ConfirmQuit
+                                ) {
+                                    app_ref.mode = AppMode::Normal;
                                 }
                             }
-                        } else if matches!(
-                            app_ref.mode,
-                            AppMode::Executing { .. } | AppMode::ConfirmQuit
-                        ) {
-                            app_ref.mode = AppMode::Normal;
                         }
                     }
                     RunnerEvent::Error(msg) => {
                         app_ref.runner_active = false;
                         app_ref.running_task_id = None;
+                        let running_kind = app_ref.running_kind.take();
 
                         app_ref.loop_active = false;
                         app_ref.loop_arm_after_current = false;
 
-                        app_ref.set_status_message(format!("Runner error: {}", msg));
+                        match running_kind {
+                            Some(RunningKind::Scan { .. }) => {
+                                app_ref.set_status_message(format!("Scan error: {}", msg));
+                            }
+                            Some(RunningKind::Task) | None => {
+                                app_ref.set_status_message(format!("Runner error: {}", msg));
+                            }
+                        }
                         if matches!(
                             app_ref.mode,
                             AppMode::Executing { .. } | AppMode::ConfirmQuit
@@ -1791,7 +1901,7 @@ where
             }
 
             if let Some(id) = next_to_start {
-                spawn_runner(id, tx.clone());
+                spawn_task(id, tx.clone());
             }
 
             // Auto-save if dirty.
@@ -1818,7 +1928,12 @@ where
                         }
                         TuiAction::RunTask(task_id) => {
                             let tx_clone = tx.clone();
-                            spawn_runner(task_id, tx_clone);
+                            spawn_task(task_id, tx_clone);
+                        }
+                        TuiAction::RunScan(focus) => {
+                            app_ref.start_scan_execution(focus.clone(), true, false);
+                            let tx_clone = tx.clone();
+                            spawn_scan(focus, tx_clone);
                         }
                     }
                 }
@@ -1962,6 +2077,15 @@ fn display_optional(value: Option<&str>) -> String {
     match value {
         Some(text) if !text.trim().is_empty() => text.to_string(),
         _ => "(empty)".to_string(),
+    }
+}
+
+fn scan_label(focus: &str) -> String {
+    let trimmed = focus.trim();
+    if trimmed.is_empty() {
+        "scan: (all)".to_string()
+    } else {
+        format!("scan: {}", trimmed)
     }
 }
 
@@ -2359,5 +2483,28 @@ mod tests {
             Some("No done/rejected tasks to archive")
         );
         Ok(())
+    }
+
+    #[test]
+    fn palette_entries_include_scan_command() {
+        let app = App::new(QueueFile::default());
+        let entries = app.palette_entries("");
+        assert!(entries
+            .iter()
+            .any(|entry| matches!(entry.cmd, PaletteCommand::ScanRepo)));
+    }
+
+    #[test]
+    fn scan_label_formats_focus() {
+        assert_eq!(scan_label(""), "scan: (all)");
+        assert_eq!(scan_label("  security "), "scan: security");
+    }
+
+    #[test]
+    fn start_scan_execution_sets_running_label() {
+        let mut app = App::new(QueueFile::default());
+        app.start_scan_execution("focus".to_string(), false, false);
+        assert_eq!(app.running_task_id.as_deref(), Some("scan: focus"));
+        assert!(matches!(app.running_kind, Some(RunningKind::Scan { .. })));
     }
 }

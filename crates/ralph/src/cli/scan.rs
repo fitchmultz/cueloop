@@ -36,6 +36,9 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
                 .agent
                 .git_revert_mode
                 .unwrap_or(crate::contracts::GitRevertMode::Ask),
+            lock_mode: scan_cmd::ScanLockMode::Acquire,
+            output_handler: None,
+            revert_prompt: None,
         },
     )
 }

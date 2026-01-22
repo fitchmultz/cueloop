@@ -14,6 +14,18 @@ pub struct ScanOptions {
     pub force: bool,
     pub repoprompt_required: bool,
     pub git_revert_mode: GitRevertMode,
+    /// How to handle queue locking (acquire vs already-held by caller).
+    pub lock_mode: ScanLockMode,
+    /// Optional output handler for streaming scan output.
+    pub output_handler: Option<runner::OutputHandler>,
+    /// Optional revert prompt handler for interactive UIs.
+    pub revert_prompt: Option<runutil::RevertPromptHandler>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScanLockMode {
+    Acquire,
+    Held,
 }
 
 pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
@@ -24,7 +36,14 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         &[".ralph/queue.json", ".ralph/done.json"],
     )?;
 
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "scan", opts.force)?;
+    let _queue_lock = match opts.lock_mode {
+        ScanLockMode::Acquire => Some(queue::acquire_queue_lock(
+            &resolved.repo_root,
+            "scan",
+            opts.force,
+        )?),
+        ScanLockMode::Held => None,
+    };
 
     let before = queue::load_queue(&resolved.queue_path)
         .with_context(|| format!("read queue {}", resolved.queue_path.display()))?;
@@ -43,7 +62,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             &resolved.repo_root,
             opts.git_revert_mode,
             "Scan validation failure (pre-run)",
-            None,
+            opts.revert_prompt.as_ref(),
         )?;
         return Err(err).context(runutil::format_revert_failure_message(
             "Scan validation failed before run.",
@@ -76,8 +95,8 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             permission_mode,
             revert_on_error: true,
             git_revert_mode: opts.git_revert_mode,
-            output_handler: None,
-            revert_prompt: None,
+            output_handler: opts.output_handler.clone(),
+            revert_prompt: opts.revert_prompt.clone(),
         },
         runutil::RunnerErrorMessages {
             log_label: "scan runner",
@@ -116,7 +135,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
                 &resolved.repo_root,
                 opts.git_revert_mode,
                 "Scan queue read failure",
-                None,
+                opts.revert_prompt.as_ref(),
             )?;
             let context = format!(
                 "{}{}",
@@ -154,7 +173,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             &resolved.repo_root,
             opts.git_revert_mode,
             "Scan validation failure (post-run)",
-            None,
+            opts.revert_prompt.as_ref(),
         )?;
         let context = format!("{}{}", "Scan validation failed after run.", safeguard_msg);
         return Err(err).context(runutil::format_revert_failure_message(&context, outcome));

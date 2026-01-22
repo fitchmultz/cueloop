@@ -1,19 +1,26 @@
 // scan_cmd_test.rs - Unit tests for scan_cmd.rs (codebase scanning, focus filtering)
 
-use ralph::contracts::{Model, Runner};
+use ralph::contracts::{GitRevertMode, Model, Runner};
 use ralph::scan_cmd;
 
-#[test]
-fn test_scan_options_default_values() {
-    let opts = scan_cmd::ScanOptions {
+fn base_scan_options() -> scan_cmd::ScanOptions {
+    scan_cmd::ScanOptions {
         focus: String::new(),
         runner: Runner::Codex,
         model: Model::Gpt52Codex,
         reasoning_effort: None,
         force: false,
         repoprompt_required: false,
-        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
-    };
+        git_revert_mode: GitRevertMode::Ask,
+        lock_mode: scan_cmd::ScanLockMode::Acquire,
+        output_handler: None,
+        revert_prompt: None,
+    }
+}
+
+#[test]
+fn test_scan_options_default_values() {
+    let opts = base_scan_options();
 
     assert!(opts.focus.is_empty());
     assert_eq!(opts.runner, Runner::Codex);
@@ -26,12 +33,7 @@ fn test_scan_options_default_values() {
 fn test_scan_options_with_focus() {
     let opts = scan_cmd::ScanOptions {
         focus: "test coverage".to_string(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
-        force: false,
-        repoprompt_required: false,
-        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+        ..base_scan_options()
     };
 
     assert_eq!(opts.focus, "test coverage");
@@ -50,11 +52,7 @@ fn test_scan_options_all_runners() {
         let opts = scan_cmd::ScanOptions {
             focus: "test".to_string(),
             runner,
-            model: Model::Gpt52Codex,
-            reasoning_effort: None,
-            force: false,
-            repoprompt_required: false,
-            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+            ..base_scan_options()
         };
         assert_eq!(opts.focus, "test");
     }
@@ -74,10 +72,7 @@ fn test_scan_options_all_models() {
             focus: "test".to_string(),
             runner: Runner::Codex,
             model,
-            reasoning_effort: None,
-            force: false,
-            repoprompt_required: false,
-            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+            ..base_scan_options()
         };
         assert_eq!(opts.focus, "test");
     }
@@ -96,12 +91,8 @@ fn test_scan_options_all_reasoning_efforts() {
     for effort in efforts {
         let opts = scan_cmd::ScanOptions {
             focus: "test".to_string(),
-            runner: Runner::Codex,
-            model: Model::Gpt52Codex,
             reasoning_effort: effort,
-            force: false,
-            repoprompt_required: false,
-            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+            ..base_scan_options()
         };
         assert_eq!(opts.focus, "test");
     }
@@ -111,12 +102,8 @@ fn test_scan_options_all_reasoning_efforts() {
 fn test_scan_options_with_force() {
     let opts = scan_cmd::ScanOptions {
         focus: "security".to_string(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
         force: true,
-        repoprompt_required: false,
-        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+        ..base_scan_options()
     };
 
     assert!(opts.force);
@@ -138,12 +125,7 @@ fn test_scan_options_various_focus_areas() {
     for focus in focus_areas {
         let opts = scan_cmd::ScanOptions {
             focus: focus.to_string(),
-            runner: Runner::Codex,
-            model: Model::Gpt52Codex,
-            reasoning_effort: None,
-            force: false,
-            repoprompt_required: false,
-            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+            ..base_scan_options()
         };
         assert_eq!(opts.focus, focus);
     }
@@ -152,13 +134,7 @@ fn test_scan_options_various_focus_areas() {
 #[test]
 fn test_scan_options_empty_focus() {
     let opts = scan_cmd::ScanOptions {
-        focus: String::new(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
-        force: false,
-        repoprompt_required: false,
-        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+        ..base_scan_options()
     };
 
     assert!(opts.focus.is_empty());
@@ -169,12 +145,7 @@ fn test_scan_options_empty_focus() {
 fn test_scan_options_whitespace_focus() {
     let opts = scan_cmd::ScanOptions {
         focus: "   ".to_string(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
-        force: false,
-        repoprompt_required: false,
-        git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+        ..base_scan_options()
     };
 
     assert!(!opts.focus.is_empty());
@@ -195,12 +166,7 @@ fn test_scan_options_special_characters_in_focus() {
     for focus in special_focuses {
         let opts = scan_cmd::ScanOptions {
             focus: focus.to_string(),
-            runner: Runner::Codex,
-            model: Model::Gpt52Codex,
-            reasoning_effort: None,
-            force: false,
-            repoprompt_required: false,
-            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+            ..base_scan_options()
         };
         assert_eq!(opts.focus, focus);
     }
@@ -219,12 +185,7 @@ fn test_scan_options_multilingual_focus() {
     for focus in multilingual_focuses {
         let opts = scan_cmd::ScanOptions {
             focus: focus.to_string(),
-            runner: Runner::Codex,
-            model: Model::Gpt52Codex,
-            reasoning_effort: None,
-            force: false,
-            repoprompt_required: false,
-            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+            ..base_scan_options()
         };
         assert_eq!(opts.focus, focus);
     }
@@ -242,12 +203,7 @@ fn test_scan_options_with_specific_file_paths() {
     for focus in file_focuses {
         let opts = scan_cmd::ScanOptions {
             focus: focus.to_string(),
-            runner: Runner::Codex,
-            model: Model::Gpt52Codex,
-            reasoning_effort: None,
-            force: false,
-            repoprompt_required: false,
-            git_revert_mode: ralph::contracts::GitRevertMode::Ask,
+            ..base_scan_options()
         };
         assert_eq!(opts.focus, focus);
     }
