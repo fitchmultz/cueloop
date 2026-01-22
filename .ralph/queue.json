@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0231",
-      "status": "doing",
-      "title": "Make next-id generate unique IDs without queue mutation",
-      "priority": "medium",
-      "tags": [
-        "queue",
-        "cli",
-        "ids"
-      ],
-      "scope": [
-        "cargo run -p ralph -- queue next-id",
-        "crates/ralph/src/queue.rs",
-        "crates/ralph/src/cli/queue.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User reports `ralph queue next-id` returns the same ID when queue and done are empty, requiring sequential queue updates to generate multiple IDs.",
-        "User reports generating multiple tasks requires iterative insertions because next-id does not advance without queue mutation."
-      ],
-      "plan": [
-        "Locate next-id ID derivation and confirm behavior when queue/done are empty.",
-        "Implement a monotonic ID source that advances without requiring queue mutations (persisted counter or derived from done+queue with explicit increment logic).",
-        "Add CLI support for requesting multiple IDs in one invocation if appropriate and document the behavior.",
-        "Add tests for empty-queue behavior and multi-ID generation to prevent regressions."
-      ],
-      "notes": [],
-      "request": "Read the following excerpt from an agent run of ralph scan. We need to improve this.. \"The next-id command returns the same ID if queue and done are empty since it bases IDs on existing entries; to get unique IDs for multiple tasks, I must add each new task to the queue file before calling next-id again. This means generating all 15 tasks requires sequential steps of getting next-id, inserting that task, then repeating, rather than calling next-id upfront in a loop without updates. [Reasoning] **Planning ID generation via iterative queue updates** The best way to generate multiple unique IDs with 'ralph queue next-id' is to call it repeatedly, appending placeholder but valid tasks to the queue file each time to advance the ID counter. This maintains schema validity and satisfies the requirement to use the command for each ID. I'll script this process to incrementally build queue.json with stub tasks, then replace with final tasks later. [Reasoning] **Detailing comprehensive TUI task definitions for scripted insertion** I’m finalizing 16 well-documented tasks with concrete evidence, scoped file references, prioritized order, and explicit test plans. Next, I’ll script these as Python dicts to generate valid queue entries with incremental IDs—calling 'ralph queue next-id' per task—and write the full queue.json in one go, ensuring correctness and compliance. [Reasoning] **Planning task ID generation** The 'ralph queue next-id' command returns the same ID if the queue isn't updated, so to get unique IDs for multiple tasks, the queue must be updated after each insertion. Since repeatedly running the command without queue updates won't produce new IDs, the plan is to either update the queue incrementally after each task or run the command once, then generate subsequent IDs manually based on the initial output. [Reasoning] **Designing detailed TUI tasks list** I've enumerated 15+ concrete TUI improvement tasks with priorities, evidence from code, and stepwise plans. Next, I'll script inserting these tasks sequentially into the queue.json by repeatedly calling 'ralph queue next-id' and updating the queue file after each insertion to comply with ID generation rules.\"",
-      "created_at": "2026-01-22T02:57:59Z",
-      "updated_at": "2026-01-22T02:59:53.494404000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0215",
       "status": "todo",
       "title": "Add dedicated `ralph tui` entrypoint for browsing/management",
