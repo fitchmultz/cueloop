@@ -34,6 +34,8 @@ pub enum AppMode {
     Normal,
     /// Editing task title
     EditingTitle(String),
+    /// Creating a new task (title input)
+    CreatingTask(String),
     /// Confirming task deletion
     ConfirmDelete,
     /// Confirming quit while a task is running
@@ -51,6 +53,9 @@ pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Resul
         AppMode::Normal => handle_normal_mode_key(app, key, now_rfc3339),
         AppMode::EditingTitle(ref current) => {
             handle_editing_mode_key(app, key, current, now_rfc3339)
+        }
+        AppMode::CreatingTask(ref current) => {
+            handle_creating_mode_key(app, key, current, now_rfc3339)
         }
         AppMode::ConfirmDelete => handle_confirm_delete_key(app, key),
         AppMode::ConfirmQuit => handle_confirm_quit_key(app, key),
@@ -105,6 +110,10 @@ fn handle_normal_mode_key(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Res
             }
             Ok(TuiAction::Continue)
         }
+        KeyCode::Char('n') => {
+            app.mode = AppMode::CreatingTask(String::new());
+            Ok(TuiAction::Continue)
+        }
         KeyCode::Char('s') => {
             if let Err(e) = app.cycle_status(now_rfc3339) {
                 app.logs.push(format!("Error: {}", e));
@@ -153,6 +162,40 @@ fn handle_editing_mode_key(
             let mut new_title = current.to_string();
             new_title.pop();
             app.mode = AppMode::EditingTitle(new_title);
+            Ok(TuiAction::Continue)
+        }
+        _ => Ok(TuiAction::Continue),
+    }
+}
+
+/// Handle key events in CreatingTask mode.
+fn handle_creating_mode_key(
+    app: &mut App,
+    key: KeyCode,
+    current: &str,
+    now_rfc3339: &str,
+) -> Result<TuiAction> {
+    match key {
+        KeyCode::Enter => {
+            if let Err(e) = app.create_task_from_title(current, now_rfc3339) {
+                app.logs.push(format!("Error: {}", e));
+            }
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Esc => {
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char(c) => {
+            let mut new_title = current.to_string();
+            new_title.push(c);
+            app.mode = AppMode::CreatingTask(new_title);
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Backspace => {
+            let mut new_title = current.to_string();
+            new_title.pop();
+            app.mode = AppMode::CreatingTask(new_title);
             Ok(TuiAction::Continue)
         }
         _ => Ok(TuiAction::Continue),
@@ -453,5 +496,57 @@ mod tests {
         assert_eq!(action, TuiAction::Continue);
         assert_eq!(app.logs.len(), 1);
         assert!(app.logs[0].contains("No task selected"));
+    }
+
+    #[test]
+    fn new_key_enters_creation_mode() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+
+        let action = handle_key_event(&mut app, KeyCode::Char('n'), "2026-01-20T12:00:00Z")
+            .expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::CreatingTask(String::new()));
+    }
+
+    #[test]
+    fn creating_mode_enter_creates_task_and_returns_to_normal() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        app.mode = AppMode::CreatingTask("New task".to_string());
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T12:00:00Z").expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::Normal);
+        assert_eq!(app.queue.tasks.len(), 2);
+        assert_eq!(app.queue.tasks[1].title, "New task");
+    }
+
+    #[test]
+    fn creating_mode_rejects_empty_title_and_stays_in_mode() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        app.mode = AppMode::CreatingTask("   ".to_string());
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T12:00:00Z").expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::CreatingTask("   ".to_string()));
+        assert_eq!(app.queue.tasks.len(), 1);
+        assert_eq!(app.logs.len(), 1);
+        assert!(app.logs[0].contains("Title cannot be empty"));
     }
 }

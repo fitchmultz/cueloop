@@ -13,6 +13,7 @@
 //! - `s`: Cycle status (Draft → Todo → Doing → Done → Rejected → Draft)
 //! - `p`: Cycle priority (Low → Medium → High → Critical → Low)
 //! - `r`: Reload queue from disk
+//! - `n`: Create a new task
 //! - Executing view: `↑`/`↓`/`j`/`k` scroll, `PgUp`/`PgDn` page, `a` toggles auto-scroll
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -22,12 +23,12 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
 
-use crate::contracts::{QueueFile, Task, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 use crate::timeutil;
 use crate::{fsutil, queue};
 
@@ -65,6 +66,12 @@ pub struct App {
     pub list_height: usize,
     /// Whether a runner thread is currently executing a task.
     pub runner_active: bool,
+    /// Task ID prefix used for new task creation.
+    pub id_prefix: String,
+    /// Task ID width used for new task creation.
+    pub id_width: usize,
+    /// Optional path to the done queue for ID generation.
+    pub done_path: Option<PathBuf>,
 }
 
 impl App {
@@ -84,6 +91,9 @@ impl App {
             log_visible_lines: 20,
             list_height: 20,
             runner_active: false,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            done_path: None,
         }
     }
 
@@ -194,6 +204,54 @@ impl App {
         task.title = new_title;
         task.updated_at = Some(now_rfc3339.to_string());
         self.dirty = true;
+        Ok(())
+    }
+
+    /// Create a new task with default fields and the provided title.
+    pub fn create_task_from_title(&mut self, title: &str, now_rfc3339: &str) -> Result<()> {
+        let trimmed = title.trim();
+        if trimmed.is_empty() {
+            bail!("Title cannot be empty");
+        }
+
+        let done_queue = match self.done_path.as_ref() {
+            Some(path) if path.exists() => Some(queue::load_queue_or_default(path)?),
+            _ => None,
+        };
+        let next_id = queue::next_id_across(
+            &self.queue,
+            done_queue.as_ref(),
+            &self.id_prefix,
+            self.id_width,
+        )?;
+
+        let task = Task {
+            id: next_id,
+            title: trimmed.to_string(),
+            status: TaskStatus::Todo,
+            priority: TaskPriority::Medium,
+            tags: vec![],
+            scope: vec![],
+            evidence: vec![],
+            plan: vec![],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: Some(now_rfc3339.to_string()),
+            updated_at: Some(now_rfc3339.to_string()),
+            completed_at: None,
+            depends_on: vec![],
+            custom_fields: std::collections::HashMap::new(),
+        };
+
+        self.queue.tasks.push(task);
+        self.selected = self.queue.tasks.len().saturating_sub(1);
+        let list_height = self.list_height.max(1);
+        if self.selected >= self.scroll + list_height {
+            self.scroll = self.selected.saturating_sub(list_height.saturating_sub(1));
+        }
+        self.dirty = true;
+        self.mode = AppMode::Normal;
         Ok(())
     }
 
@@ -467,7 +525,11 @@ fn prepare_tui_session(
 ) -> Result<(App, fsutil::DirLock)> {
     let lock = queue::acquire_queue_lock(&resolved.repo_root, "tui", force_lock)?;
     let (queue, _done) = queue::load_and_validate_queues(resolved, true)?;
-    Ok((App::new(queue), lock))
+    let mut app = App::new(queue);
+    app.id_prefix = resolved.id_prefix.clone();
+    app.id_width = resolved.id_width;
+    app.done_path = Some(resolved.done_path.clone());
+    Ok((app, lock))
 }
 
 // Rendering (draw/layout/color helpers) lives in `crate::tui::render`.
@@ -686,6 +748,69 @@ mod tests {
         assert!(app
             .update_title("   ".to_string(), "2026-01-20T12:00:00Z")
             .is_err());
+    }
+
+    #[test]
+    fn app_create_task_from_title_appends_with_defaults() -> Result<()> {
+        let temp = TempDir::new()?;
+        let done_path = temp.path().join("done.json");
+        let mut done_task = make_test_task("RQ-0005", "Done Task", TaskStatus::Done);
+        done_task.completed_at = Some("2026-01-19T00:00:00Z".to_string());
+        let done_queue = QueueFile {
+            version: 1,
+            tasks: vec![done_task],
+        };
+        queue::save_queue(&done_path, &done_queue)?;
+
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0003", "Task 1", TaskStatus::Todo)],
+        };
+        let mut app = App::new(queue);
+        app.id_prefix = "RQ".to_string();
+        app.id_width = 4;
+        app.done_path = Some(done_path);
+        app.mode = AppMode::CreatingTask("New Task".to_string());
+
+        app.create_task_from_title("New Task", "2026-01-20T12:00:00Z")?;
+
+        assert_eq!(app.queue.tasks.len(), 2);
+        let task = &app.queue.tasks[1];
+        assert_eq!(task.id, "RQ-0006");
+        assert_eq!(task.title, "New Task");
+        assert_eq!(task.status, TaskStatus::Todo);
+        assert_eq!(task.priority, TaskPriority::Medium);
+        assert_eq!(task.created_at, Some("2026-01-20T12:00:00Z".to_string()));
+        assert_eq!(task.updated_at, Some("2026-01-20T12:00:00Z".to_string()));
+        assert!(task.completed_at.is_none());
+        assert!(task.tags.is_empty());
+        assert!(task.scope.is_empty());
+        assert!(task.evidence.is_empty());
+        assert!(task.plan.is_empty());
+        assert!(task.notes.is_empty());
+        assert!(task.depends_on.is_empty());
+        assert!(task.custom_fields.is_empty());
+        assert!(app.dirty);
+        assert_eq!(app.mode, AppMode::Normal);
+        Ok(())
+    }
+
+    #[test]
+    fn app_create_task_from_title_rejects_blank_title() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001", "Task 1", TaskStatus::Todo)],
+        };
+        let mut app = App::new(queue);
+        app.mode = AppMode::CreatingTask("   ".to_string());
+
+        let err = app
+            .create_task_from_title("   ", "2026-01-20T12:00:00Z")
+            .expect_err("expected blank title error");
+
+        assert!(err.to_string().contains("Title cannot be empty"));
+        assert_eq!(app.queue.tasks.len(), 1);
+        assert_eq!(app.mode, AppMode::CreatingTask("   ".to_string()));
     }
 
     #[test]

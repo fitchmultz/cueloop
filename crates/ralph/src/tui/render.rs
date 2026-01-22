@@ -244,8 +244,8 @@ fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
 fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     app.detail_width = area.width.saturating_sub(4); // Account for borders
 
-    let title = if let AppMode::EditingTitle(ref title) = &app.mode {
-        Line::from(vec![
+    let title = match &app.mode {
+        AppMode::EditingTitle(title) => Line::from(vec![
             Span::styled(
                 "Edit Title: ",
                 Style::default().add_modifier(Modifier::BOLD),
@@ -257,12 +257,21 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
-        ])
-    } else {
-        Line::from(Span::styled(
+        ]),
+        AppMode::CreatingTask(title) => Line::from(vec![
+            Span::styled("New Task: ", Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled(
+                title,
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
+        ]),
+        _ => Line::from(Span::styled(
             "Task Details",
             Style::default().add_modifier(Modifier::BOLD),
-        ))
+        )),
     };
 
     let block = Block::default().title(title).borders(Borders::ALL);
@@ -273,7 +282,51 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         vertical: 1,
     });
 
-    if let Some(task) = app.selected_task() {
+    if let AppMode::CreatingTask(current) = &app.mode {
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled("ID:       ", Style::default().fg(Color::DarkGray)),
+                Span::styled("(auto)", Style::default().fg(Color::DarkGray)),
+            ]),
+            Line::from(vec![
+                Span::styled("Status:   ", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    TaskStatus::Todo.as_str(),
+                    Style::default().fg(status_color(TaskStatus::Todo)),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled("Priority: ", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    TaskPriority::Medium.as_str(),
+                    Style::default().fg(priority_color(TaskPriority::Medium)),
+                ),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Title", Style::default().add_modifier(Modifier::UNDERLINED)),
+                Span::styled(":", Style::default()),
+            ]),
+        ];
+
+        let title_text = if current.is_empty() {
+            "(enter a title)"
+        } else {
+            current
+        };
+        for line in wrap_text(title_text, app.detail_width as usize) {
+            let style = if current.is_empty() {
+                Style::default().fg(Color::DarkGray)
+            } else {
+                Style::default().add_modifier(Modifier::BOLD)
+            };
+            lines.push(Line::from(Span::styled(line, style)));
+        }
+
+        let text = Text::from(lines);
+        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+        f.render_widget(paragraph, inner);
+    } else if let Some(task) = app.selected_task() {
         let mut lines = vec![
             Line::from(vec![
                 Span::styled("ID:       ", Style::default().fg(Color::DarkGray)),
@@ -461,6 +514,11 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 "  ralph task \"your request\"",
                 Style::default().fg(Color::Cyan),
             )),
+            Line::from(""),
+            Line::from(Span::styled(
+                "Press n to create one in the TUI.",
+                Style::default().fg(Color::DarkGray),
+            )),
         ]);
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         f.render_widget(paragraph, inner);
@@ -550,6 +608,8 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::raw(":del "),
             Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":edit "),
+            Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":new "),
             Span::styled("s", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":status "),
             Span::styled("p", Style::default().add_modifier(Modifier::BOLD)),
@@ -560,6 +620,12 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
         AppMode::EditingTitle(_) => vec![
             Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":save "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
+        AppMode::CreatingTask(_) => vec![
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":create "),
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
         ],

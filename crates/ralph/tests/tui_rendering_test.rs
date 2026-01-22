@@ -270,6 +270,31 @@ fn test_render_editing_title_mode() {
 }
 
 #[test]
+fn test_render_creating_task_mode_shows_prompt_and_title() {
+    let queue = make_test_queue();
+    let mut app = App::new(queue);
+    app.mode = AppMode::CreatingTask("New Task".to_string());
+    let mut terminal = setup_test_terminal(80, 24);
+
+    let output = get_rendered_output(&mut terminal, &mut app);
+    assert!(output.contains("New Task:"));
+    assert!(output.contains("New Task"));
+    assert!(output.contains("Status:"));
+    assert!(output.contains("Priority:"));
+}
+
+#[test]
+fn test_render_creating_task_mode_shows_placeholder_when_empty() {
+    let queue = make_test_queue();
+    let mut app = App::new(queue);
+    app.mode = AppMode::CreatingTask(String::new());
+    let mut terminal = setup_test_terminal(80, 24);
+
+    let output = get_rendered_output(&mut terminal, &mut app);
+    assert!(output.contains("(enter a title)"));
+}
+
+#[test]
 fn test_render_confirm_delete_dialog() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
@@ -415,6 +440,18 @@ fn test_render_help_footer_editing_mode() {
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Enter:save"));
+    assert!(output.contains("Esc:cancel"));
+}
+
+#[test]
+fn test_render_help_footer_creating_mode() {
+    let queue = make_test_queue();
+    let mut app = App::new(queue);
+    app.mode = AppMode::CreatingTask("new".to_string());
+    let mut terminal = setup_test_terminal(80, 24);
+
+    let output = get_rendered_output(&mut terminal, &mut app);
+    assert!(output.contains("Enter:create"));
     assert!(output.contains("Esc:cancel"));
 }
 

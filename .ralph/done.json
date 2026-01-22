@@ -2780,6 +2780,42 @@
       "completed_at": "2026-01-22T04:56:59.877332000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0224",
+      "status": "done",
+      "title": "Add TUI flow to create new tasks without leaving the UI",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/contracts.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events.rs` has no keybinding to create tasks; only delete/edit/status/run are supported.",
+        "`crates/ralph/src/tui/mod.rs` lacks any creation flow beyond loading an existing queue."
+      ],
+      "plan": [
+        "Design a minimal creation mode (title + status/priority defaults) and integrate with queue persistence.",
+        "Add keybinding (e.g., `n`) to enter creation mode and confirm/cancel behavior.",
+        "Add tests for creating tasks and validating required fields."
+      ],
+      "notes": [
+        "Add TUI create-task mode and defaults",
+        "Wire n keybinding and render/create UI",
+        "Add unit and rendering tests for create flow"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T05:08:36.749851000Z",
+      "completed_at": "2026-01-22T05:08:36.749851000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
