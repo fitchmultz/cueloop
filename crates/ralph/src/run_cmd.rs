@@ -23,6 +23,12 @@ pub(crate) use phases::apply_phase3_completion_signal;
 
 pub use crate::agent::AgentOverrides;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum QueueLockMode {
+    Acquire,
+    Held,
+}
+
 pub enum RunOutcome {
     NoTodo,
     Ran { task_id: String },
@@ -103,6 +109,26 @@ pub fn run_one_with_id(
         resolved,
         agent_overrides,
         force,
+        QueueLockMode::Acquire,
+        Some(task_id),
+        output_handler,
+    )
+    .map(|_| ())
+}
+
+/// Run a specific task when the queue lock is already held by the caller.
+pub fn run_one_with_id_locked(
+    resolved: &config::Resolved,
+    agent_overrides: &AgentOverrides,
+    force: bool,
+    task_id: &str,
+    output_handler: Option<runner::OutputHandler>,
+) -> Result<()> {
+    run_one_impl(
+        resolved,
+        agent_overrides,
+        force,
+        QueueLockMode::Held,
         Some(task_id),
         output_handler,
     )
@@ -114,17 +140,32 @@ pub fn run_one(
     agent_overrides: &AgentOverrides,
     force: bool,
 ) -> Result<RunOutcome> {
-    run_one_impl(resolved, agent_overrides, force, None, None)
+    run_one_impl(
+        resolved,
+        agent_overrides,
+        force,
+        QueueLockMode::Acquire,
+        None,
+        None,
+    )
 }
 
 fn run_one_impl(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
     force: bool,
+    lock_mode: QueueLockMode,
     target_task_id: Option<&str>,
     output_handler: Option<runner::OutputHandler>,
 ) -> Result<RunOutcome> {
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run one", force)?;
+    let _queue_lock = match lock_mode {
+        QueueLockMode::Acquire => Some(queue::acquire_queue_lock(
+            &resolved.repo_root,
+            "run one",
+            force,
+        )?),
+        QueueLockMode::Held => None,
+    };
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {

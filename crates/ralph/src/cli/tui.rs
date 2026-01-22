@@ -12,11 +12,16 @@ use crate::{config, runner, tui};
 )]
 pub struct TuiArgs {}
 
-pub fn handle_tui(_args: TuiArgs) -> Result<()> {
+pub fn handle_tui(_args: TuiArgs, force_lock: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     let runner_factory = browse_only_runner;
 
-    let _ = tui::run_tui(&resolved.queue_path, runner_factory)?;
+    let _ = tui::run_tui(
+        &resolved.queue_path,
+        &resolved.repo_root,
+        force_lock,
+        runner_factory,
+    )?;
     Ok(())
 }
 

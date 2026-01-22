@@ -1,6 +1,6 @@
 //! Unit tests for run command orchestration helpers.
 
-use super::{resolve_run_agent_settings, task_context_for_prompt};
+use super::{resolve_run_agent_settings, run_one_with_id_locked, task_context_for_prompt};
 use crate::completions;
 use crate::contracts::{
     AgentConfig, ClaudePermissionMode, Config, GitRevertMode, Model, QueueConfig, QueueFile,
@@ -129,6 +129,55 @@ fn task_with_status(status: TaskStatus) -> Task {
         depends_on: vec![],
         custom_fields: std::collections::HashMap::new(),
     }
+}
+
+#[test]
+fn run_one_with_id_locked_skips_reacquiring_queue_lock() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().to_path_buf();
+    let resolved = resolved_with_repo_root(repo_root.clone());
+
+    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    let task = Task {
+        id: "RQ-0001".to_string(),
+        status: TaskStatus::Done,
+        title: "Test task".to_string(),
+        priority: Default::default(),
+        tags: vec!["rust".to_string()],
+        scope: vec!["crates/ralph".to_string()],
+        evidence: vec!["observed".to_string()],
+        plan: vec!["do thing".to_string()],
+        notes: vec![],
+        request: Some("test request".to_string()),
+        agent: None,
+        created_at: Some("2026-01-18T00:00:00Z".to_string()),
+        updated_at: Some("2026-01-18T00:00:00Z".to_string()),
+        completed_at: Some("2026-01-18T01:00:00Z".to_string()),
+        depends_on: vec![],
+        custom_fields: std::collections::HashMap::new(),
+    };
+    queue::save_queue(
+        &resolved.queue_path,
+        &QueueFile {
+            version: 1,
+            tasks: vec![task],
+        },
+    )?;
+
+    let _lock = queue::acquire_queue_lock(&resolved.repo_root, "test lock", false)?;
+
+    let err = run_one_with_id_locked(
+        &resolved,
+        &super::AgentOverrides::default(),
+        false,
+        "RQ-0001",
+        None,
+    )
+    .expect_err("expected runnable status error");
+    let message = err.to_string();
+    assert!(message.contains("not runnable"));
+    assert!(!message.contains("Queue lock already held"));
+    Ok(())
 }
 
 #[test]

@@ -19,7 +19,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     let overrides = overrides.clone();
                     let force = force;
                     move || {
-                        run_cmd::run_one_with_id(
+                        run_cmd::run_one_with_id_locked(
                             &resolved,
                             &overrides,
                             force,
@@ -29,7 +29,12 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     }
                 };
                 // Tasks are executed within TUI, run_tui returns None
-                let _ = tui::run_tui(&resolved.queue_path, runner_factory)?;
+                let _ = tui::run_tui(
+                    &resolved.queue_path,
+                    &resolved.repo_root,
+                    force,
+                    runner_factory,
+                )?;
                 Ok(())
             } else {
                 if let Some(task_id) = args.id.as_deref() {
@@ -51,7 +56,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     let overrides = overrides.clone();
                     let force = force;
                     move || {
-                        run_cmd::run_one_with_id(
+                        run_cmd::run_one_with_id_locked(
                             &resolved,
                             &overrides,
                             force,
@@ -61,7 +66,12 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     }
                 };
                 // Tasks are executed within TUI, run_tui returns None
-                let _ = tui::run_tui(&resolved.queue_path, runner_factory)?;
+                let _ = tui::run_tui(
+                    &resolved.queue_path,
+                    &resolved.repo_root,
+                    force,
+                    runner_factory,
+                )?;
                 Ok(())
             } else {
                 run_cmd::run_loop(

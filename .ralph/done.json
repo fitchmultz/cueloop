@@ -2501,6 +2501,42 @@
       "completed_at": "2026-01-22T03:23:00.045898000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0216",
+      "status": "done",
+      "title": "Acquire queue lock for TUI sessions to prevent concurrent writes",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "queue",
+        "safety"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/mod.rs` `run_tui` loads/saves the queue but never calls `queue::acquire_queue_lock`.",
+        "Other mutating commands (e.g., `crates/ralph/src/run_cmd.rs`) take the queue lock before edits."
+      ],
+      "plan": [
+        "Thread `force`/lock intent into `run_tui` so TUI can acquire a queue lock for the session.",
+        "Acquire the lock before loading the queue and keep it alive for the TUI lifetime.",
+        "Add tests to ensure the TUI path requests a lock (unit test with a temporary repo)."
+      ],
+      "notes": [
+        "Lock TUI sessions by acquiring the queue lock upfront.",
+        "Avoid nested lock acquisition when running tasks from the TUI.",
+        "Added tests for lock behavior in TUI and run paths."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T03:39:30.996287000Z",
+      "completed_at": "2026-01-22T03:39:30.996287000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -25,8 +25,8 @@ use std::thread;
 use std::time::Duration;
 
 use crate::contracts::{QueueFile, Task, TaskStatus};
-use crate::queue;
 use crate::timeutil;
+use crate::{fsutil, queue};
 
 pub mod events;
 pub mod render;
@@ -182,7 +182,7 @@ enum RunnerEvent {
     Error(String),
 }
 
-/// Run the TUI application.
+/// Run the TUI application with an active queue lock.
 ///
 /// This function:
 /// 1. Sets up the terminal for TUI mode
@@ -192,14 +192,17 @@ enum RunnerEvent {
 ///
 /// The `runner_factory` creates a closure that executes a task when called.
 /// It receives a task ID and an output handler callback.
-pub fn run_tui<F, E>(queue_path: &Path, runner_factory: F) -> Result<Option<String>>
+pub fn run_tui<F, E>(
+    queue_path: &Path,
+    repo_root: &Path,
+    force_lock: bool,
+    runner_factory: F,
+) -> Result<Option<String>>
 where
     F: Fn(String, crate::runner::OutputHandler) -> E + Send + Sync + 'static,
     E: FnOnce() -> Result<()> + Send + 'static,
 {
-    // Load the queue
-    let queue = queue::load_queue(queue_path)?;
-    let app = App::new(queue.clone());
+    let (app, _queue_lock) = prepare_tui_session(queue_path, repo_root, force_lock)?;
 
     // Setup terminal
     enable_raw_mode().context("enable raw mode")?;
@@ -358,12 +361,24 @@ where
     }
 }
 
+/// Acquire the queue lock and load the queue for TUI usage.
+fn prepare_tui_session(
+    queue_path: &Path,
+    repo_root: &Path,
+    force_lock: bool,
+) -> Result<(App, fsutil::DirLock)> {
+    let lock = queue::acquire_queue_lock(repo_root, "tui", force_lock)?;
+    let queue = queue::load_queue(queue_path)?;
+    Ok((App::new(queue), lock))
+}
+
 // Rendering (draw/layout/color helpers) lives in `crate::tui::render`.
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::contracts::{Task, TaskPriority};
+    use tempfile::TempDir;
 
     fn make_test_task(id: &str, title: &str, status: TaskStatus) -> Task {
         Task {
@@ -531,5 +546,24 @@ mod tests {
         assert!(app
             .update_title("   ".to_string(), "2026-01-20T12:00:00Z")
             .is_err());
+    }
+
+    #[test]
+    fn prepare_tui_session_acquires_queue_lock() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let queue_path = ralph_dir.join("queue.json");
+        queue::save_queue(&queue_path, &QueueFile::default())?;
+
+        let (_app, _lock) = prepare_tui_session(&queue_path, repo_root, false)?;
+        let lock_dir = fsutil::queue_lock_dir(repo_root);
+        assert!(lock_dir.exists());
+
+        let err = queue::acquire_queue_lock(repo_root, "tui second", false)
+            .expect_err("expected lock to be held");
+        assert!(err.to_string().contains("Queue lock already held"));
+        Ok(())
     }
 }
