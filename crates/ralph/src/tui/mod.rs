@@ -19,7 +19,6 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::path::Path;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
@@ -193,8 +192,7 @@ enum RunnerEvent {
 /// The `runner_factory` creates a closure that executes a task when called.
 /// It receives a task ID and an output handler callback.
 pub fn run_tui<F, E>(
-    queue_path: &Path,
-    repo_root: &Path,
+    resolved: &crate::config::Resolved,
     force_lock: bool,
     runner_factory: F,
 ) -> Result<Option<String>>
@@ -202,7 +200,8 @@ where
     F: Fn(String, crate::runner::OutputHandler) -> E + Send + Sync + 'static,
     E: FnOnce() -> Result<()> + Send + 'static,
 {
-    let (app, _queue_lock) = prepare_tui_session(queue_path, repo_root, force_lock)?;
+    let (app, _queue_lock) = prepare_tui_session(resolved, force_lock)?;
+    let queue_path = &resolved.queue_path;
 
     // Setup terminal
     enable_raw_mode().context("enable raw mode")?;
@@ -363,12 +362,11 @@ where
 
 /// Acquire the queue lock and load the queue for TUI usage.
 fn prepare_tui_session(
-    queue_path: &Path,
-    repo_root: &Path,
+    resolved: &crate::config::Resolved,
     force_lock: bool,
 ) -> Result<(App, fsutil::DirLock)> {
-    let lock = queue::acquire_queue_lock(repo_root, "tui", force_lock)?;
-    let queue = queue::load_queue(queue_path)?;
+    let lock = queue::acquire_queue_lock(&resolved.repo_root, "tui", force_lock)?;
+    let (queue, _done) = queue::load_and_validate_queues(resolved, true)?;
     Ok((App::new(queue), lock))
 }
 
@@ -556,14 +554,58 @@ mod tests {
         std::fs::create_dir_all(&ralph_dir)?;
         let queue_path = ralph_dir.join("queue.json");
         queue::save_queue(&queue_path, &QueueFile::default())?;
+        let done_path = ralph_dir.join("done.json");
 
-        let (_app, _lock) = prepare_tui_session(&queue_path, repo_root, false)?;
+        let resolved = crate::config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.to_path_buf(),
+            queue_path: queue_path.clone(),
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let (_app, _lock) = prepare_tui_session(&resolved, false)?;
         let lock_dir = fsutil::queue_lock_dir(repo_root);
         assert!(lock_dir.exists());
 
         let err = queue::acquire_queue_lock(repo_root, "tui second", false)
             .expect_err("expected lock to be held");
         assert!(err.to_string().contains("Queue lock already held"));
+        Ok(())
+    }
+
+    #[test]
+    fn prepare_tui_session_rejects_invalid_queue() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let queue_path = ralph_dir.join("queue.json");
+        let mut queue = QueueFile::default();
+        queue
+            .tasks
+            .push(make_test_task("BAD-1", "Bad task", TaskStatus::Todo));
+        queue::save_queue(&queue_path, &queue)?;
+        let done_path = ralph_dir.join("done.json");
+
+        let resolved = crate::config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.to_path_buf(),
+            queue_path,
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let err = prepare_tui_session(&resolved, false)
+            .err()
+            .expect("expected validation error");
+        assert!(err.to_string().contains("Mismatched task ID prefix"));
         Ok(())
     }
 }

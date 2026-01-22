@@ -16,12 +16,7 @@ pub fn handle_tui(_args: TuiArgs, force_lock: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     let runner_factory = browse_only_runner;
 
-    let _ = tui::run_tui(
-        &resolved.queue_path,
-        &resolved.repo_root,
-        force_lock,
-        runner_factory,
-    )?;
+    let _ = tui::run_tui(&resolved, force_lock, runner_factory)?;
     Ok(())
 }
 

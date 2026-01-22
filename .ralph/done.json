@@ -2537,6 +2537,42 @@
       "completed_at": "2026-01-22T03:39:30.996287000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0217",
+      "status": "done",
+      "title": "Validate queue before launching TUI and surface errors",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "queue",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/cli/mod.rs",
+        "crates/ralph/src/queue/validation.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/mod.rs` uses `queue::load_queue` directly and does not call `validate_queue` or `validate_queue_set`.",
+        "`crates/ralph/src/cli/mod.rs` has `load_and_validate_queues`, but it is not used by the TUI path."
+      ],
+      "plan": [
+        "Validate the queue (and done archive if needed) before entering raw mode.",
+        "If validation fails, show a clear error and exit without leaving the terminal in raw mode.",
+        "Add tests covering invalid queue inputs for the TUI entrypoint."
+      ],
+      "notes": [
+        "Centralize queue+done validation in queue::load_and_validate_queues and reuse in TUI/CLI",
+        "Validate TUI startup against queue/done before raw mode",
+        "Add queue validation tests for missing done file + duplicate IDs"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T03:55:09.249675000Z",
+      "completed_at": "2026-01-22T03:55:09.249675000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

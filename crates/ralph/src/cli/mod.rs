@@ -62,30 +62,7 @@ pub(crate) fn load_and_validate_queues(
     resolved: &crate::config::Resolved,
     include_done: bool,
 ) -> Result<(QueueFile, Option<QueueFile>)> {
-    let queue_file = crate::queue::load_queue(&resolved.queue_path)?;
-
-    let done_file = if include_done {
-        Some(crate::queue::load_queue_or_default(&resolved.done_path)?)
-    } else {
-        None
-    };
-
-    let done_ref = done_file
-        .as_ref()
-        .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
-
-    if let Some(d) = done_ref {
-        crate::queue::validate_queue_set(
-            &queue_file,
-            Some(d),
-            &resolved.id_prefix,
-            resolved.id_width,
-        )?;
-    } else {
-        crate::queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
-    }
-
-    Ok((queue_file, done_file))
+    crate::queue::load_and_validate_queues(resolved, include_done)
 }
 
 pub(crate) fn resolve_list_limit(limit: u32, all: bool) -> Option<usize> {

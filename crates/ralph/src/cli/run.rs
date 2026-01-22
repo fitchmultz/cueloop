@@ -29,12 +29,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     }
                 };
                 // Tasks are executed within TUI, run_tui returns None
-                let _ = tui::run_tui(
-                    &resolved.queue_path,
-                    &resolved.repo_root,
-                    force,
-                    runner_factory,
-                )?;
+                let _ = tui::run_tui(&resolved, force, runner_factory)?;
                 Ok(())
             } else {
                 if let Some(task_id) = args.id.as_deref() {
@@ -66,12 +61,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     }
                 };
                 // Tasks are executed within TUI, run_tui returns None
-                let _ = tui::run_tui(
-                    &resolved.queue_path,
-                    &resolved.repo_root,
-                    force,
-                    runner_factory,
-                )?;
+                let _ = tui::run_tui(&resolved, force, runner_factory)?;
                 Ok(())
             } else {
                 run_cmd::run_loop(

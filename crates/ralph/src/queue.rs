@@ -6,6 +6,7 @@
 //! updating task status, repairing queue data, and pruning old tasks from
 //! the done archive.
 
+use crate::config::Resolved;
 use crate::contracts::{QueueFile, TaskStatus};
 use crate::fsutil;
 use anyhow::{Context, Result};
@@ -43,6 +44,32 @@ pub fn load_queue(path: &Path) -> Result<QueueFile> {
     let queue = serde_json::from_str::<QueueFile>(&raw)
         .with_context(|| format!("parse queue {} as JSON", path.display()))?;
     Ok(queue)
+}
+
+/// Load the active queue and optionally the done queue, validating both.
+pub fn load_and_validate_queues(
+    resolved: &Resolved,
+    include_done: bool,
+) -> Result<(QueueFile, Option<QueueFile>)> {
+    let queue_file = load_queue(&resolved.queue_path)?;
+
+    let done_file = if include_done {
+        Some(load_queue_or_default(&resolved.done_path)?)
+    } else {
+        None
+    };
+
+    let done_ref = done_file
+        .as_ref()
+        .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
+
+    if let Some(d) = done_ref {
+        validate_queue_set(&queue_file, Some(d), &resolved.id_prefix, resolved.id_width)?;
+    } else {
+        validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
+    }
+
+    Ok((queue_file, done_file))
 }
 
 pub fn save_queue(path: &Path, queue: &QueueFile) -> Result<()> {
@@ -102,6 +129,7 @@ mod tests {
     use super::*;
     use crate::contracts::{Task, TaskStatus};
     use std::collections::HashMap;
+    use tempfile::TempDir;
 
     fn task(id: &str) -> Task {
         task_with(id, TaskStatus::Todo, vec!["code".to_string()])
@@ -142,6 +170,84 @@ mod tests {
         };
         let next = next_id_across(&active, Some(&done), "RQ", 4)?;
         assert_eq!(next, "RQ-0010");
+        Ok(())
+    }
+
+    #[test]
+    fn load_and_validate_queues_allows_missing_done_file() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let queue_path = ralph_dir.join("queue.json");
+        save_queue(
+            &queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![task("RQ-0001")],
+            },
+        )?;
+        let done_path = ralph_dir.join("done.json");
+
+        let resolved = Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.to_path_buf(),
+            queue_path,
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let (queue, done) = load_and_validate_queues(&resolved, true)?;
+        assert_eq!(queue.tasks.len(), 1);
+        assert!(done.is_some());
+        assert!(done.unwrap().tasks.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn load_and_validate_queues_rejects_duplicate_ids_across_done() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let queue_path = ralph_dir.join("queue.json");
+        save_queue(
+            &queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![task("RQ-0001")],
+            },
+        )?;
+        let done_path = ralph_dir.join("done.json");
+        let mut done_task = task_with("RQ-0001", TaskStatus::Done, vec!["tag".to_string()]);
+        done_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());
+        save_queue(
+            &done_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![done_task],
+            },
+        )?;
+
+        let resolved = Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.to_path_buf(),
+            queue_path,
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let err =
+            load_and_validate_queues(&resolved, true).expect_err("expected duplicate id error");
+        assert!(err
+            .to_string()
+            .contains("Duplicate task ID detected across queue and done"));
         Ok(())
     }
 
