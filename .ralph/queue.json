@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0215",
-      "status": "todo",
-      "title": "Add dedicated `ralph tui` entrypoint for browsing/management",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "cli",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/mod.rs",
-        "crates/ralph/src/cli/run.rs",
-        "crates/ralph/src/tui/mod.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "`crates/ralph/src/cli/mod.rs` Command enum has no TUI subcommand; only Run/Queue/Task/etc.",
-        "`crates/ralph/src/cli/run.rs` is the only place that calls `tui::run_tui`, gated behind `--interactive` on `run one/loop`."
-      ],
-      "plan": [
-        "Add a `tui` subcommand (or equivalent) that launches `tui::run_tui` without requiring `run one/loop`.",
-        "Define a no-op runner factory or a browse-only mode so users can open the TUI without executing tasks.",
-        "Update CLI docs/help to include the new entrypoint and expected behavior.",
-        "Add CLI parse tests for the new subcommand and TUI entrypoint wiring."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-22T02:50:11Z",
-      "updated_at": "2026-01-22T02:50:11Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0216",
       "status": "todo",
       "title": "Acquire queue lock for TUI sessions to prevent concurrent writes",

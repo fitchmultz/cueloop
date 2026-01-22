@@ -12,6 +12,7 @@ pub mod queue;
 pub mod run;
 pub mod scan;
 pub mod task;
+pub mod tui;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -22,7 +23,7 @@ use crate::contracts::QueueFile;
 #[command(name = "ralph")]
 #[command(about = "Ralph")]
 #[command(
-    after_long_help = "Runner selection:\n  - CLI flags override project config, which overrides global config, which overrides built-in defaults.\n  - Default runner/model come from config files: project config (.ralph/config.json) > global config (~/.config/ralph/config.json) > built-in.\n  - `task` and `scan` accept --runner/--model/--effort as one-off overrides.\n  - `run one` and `run loop` accept --runner/--model/--effort as one-off overrides; otherwise they use task.agent overrides when present; otherwise config agent defaults.\n\nConfig example (.ralph/config.json):\n  {\n    \"version\": 1,\n    \"agent\": {\n      \"runner\": \"opencode\",\n      \"model\": \"gpt-5.2\",\n      \"opencode_bin\": \"opencode\",\n      \"gemini_bin\": \"gemini\",\n      \"claude_bin\": \"claude\"\n    }\n  }\n\nNotes:\n  - Allowed runners: codex, opencode, gemini, claude\n  - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude accept arbitrary model ids)\n  - Use -i/--interactive with `run one` or `run loop` to launch the TUI for task selection and management\n\nExamples:\n  ralph queue list\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI gaps\"\n  ralph task --runner codex --model gpt-5.2-codex --effort high \"Fix the flaky test\"\n  ralph scan --runner gemini --model gemini-3-flash-preview --focus \"risk audit\"\n  ralph scan --runner claude --model sonnet --focus \"risk audit\"\n  ralph task --runner claude --model opus \"Add tests for X\"\n  ralph run one\n  ralph run one -i\n  ralph run loop --max-tasks 1\n  ralph run loop -i"
+    after_long_help = "Runner selection:\n  - CLI flags override project config, which overrides global config, which overrides built-in defaults.\n  - Default runner/model come from config files: project config (.ralph/config.json) > global config (~/.config/ralph/config.json) > built-in.\n  - `task` and `scan` accept --runner/--model/--effort as one-off overrides.\n  - `run one` and `run loop` accept --runner/--model/--effort as one-off overrides; otherwise they use task.agent overrides when present; otherwise config agent defaults.\n\nConfig example (.ralph/config.json):\n  {\n    \"version\": 1,\n    \"agent\": {\n      \"runner\": \"opencode\",\n      \"model\": \"gpt-5.2\",\n      \"opencode_bin\": \"opencode\",\n      \"gemini_bin\": \"gemini\",\n      \"claude_bin\": \"claude\"\n    }\n  }\n\nNotes:\n  - Allowed runners: codex, opencode, gemini, claude\n  - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude accept arbitrary model ids)\n  - Use -i/--interactive with `run one` or `run loop` to launch the TUI for task execution\n  - Use `ralph tui` to browse/manage tasks without executing them\n\nExamples:\n  ralph queue list\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI gaps\"\n  ralph task --runner codex --model gpt-5.2-codex --effort high \"Fix the flaky test\"\n  ralph scan --runner gemini --model gemini-3-flash-preview --focus \"risk audit\"\n  ralph scan --runner claude --model sonnet --focus \"risk audit\"\n  ralph task --runner claude --model opus \"Add tests for X\"\n  ralph run one\n  ralph run one -i\n  ralph run loop --max-tasks 1\n  ralph run loop -i\n  ralph tui"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -45,6 +46,8 @@ pub enum Command {
     Task(task::TaskArgs),
     Scan(scan::ScanArgs),
     Init(init::InitArgs),
+    /// Launch the TUI for browsing and managing the queue.
+    Tui(tui::TuiArgs),
     /// Render and print the final compiled prompts used by Ralph (for debugging/auditing).
     #[command(
         after_long_help = "Examples:\n  ralph prompt worker --phase 1 --rp-on\n  ralph prompt worker --phase 2 --task-id RQ-0001 --plan-file .ralph/cache/plans/RQ-0001.md\n  ralph prompt scan --focus \"CI gaps\" --rp-off\n  ralph prompt task-builder --request \"Add tests\" --tags rust,tests --scope crates/ralph --rp-on\n"
@@ -95,7 +98,7 @@ pub(crate) fn resolve_list_limit(limit: u32, all: bool) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{run, Cli, Command};
+    use super::{run, tui, Cli, Command};
     use crate::cli::{queue, task};
     use clap::Parser;
 
@@ -250,5 +253,38 @@ mod tests {
             msg.contains("unrecognized") || msg.contains("unexpected") || msg.contains("unknown"),
             "unexpected error: {msg}"
         );
+    }
+
+    #[test]
+    fn cli_parses_run_one_interactive() {
+        let cli = Cli::try_parse_from(["ralph", "run", "one", "-i"]).expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::One(args) => assert!(args.interactive),
+                _ => panic!("expected run one command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_run_loop_interactive() {
+        let cli = Cli::try_parse_from(["ralph", "run", "loop", "-i"]).expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::Loop(args) => assert!(args.interactive),
+                _ => panic!("expected run loop command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_tui_command() {
+        let cli = Cli::try_parse_from(["ralph", "tui"]).expect("parse");
+        match cli.command {
+            Command::Tui(tui::TuiArgs {}) => {}
+            _ => panic!("expected tui command"),
+        }
     }
 }

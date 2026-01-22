@@ -45,5 +45,6 @@ fn run() -> Result<()> {
         cli::Command::Init(args) => cli::init::handle_init(args, cli.force),
         cli::Command::Prompt(args) => cli::prompt::handle_prompt(args),
         cli::Command::Doctor => cli::doctor::handle_doctor(),
+        cli::Command::Tui(args) => cli::tui::handle_tui(args),
     }
 }

@@ -135,6 +135,15 @@ ralph run loop --include-draft --max-tasks 1
 ralph run loop --git-revert-mode disabled --max-tasks 1
 ```
 
+## `ralph tui`
+Launch the interactive TUI in browse-only mode (no task execution). Use `ralph run one -i`
+or `ralph run loop -i` to run tasks from the TUI.
+
+Examples:
+```bash
+ralph tui
+```
+
 ## `ralph task`
 ### Flags
 - `REQUEST` (positional; if omitted, reads from stdin)
