@@ -28,8 +28,9 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                         )
                     }
                 };
-                // Tasks are executed within TUI, run_tui returns None
-                let _ = tui::run_tui(&resolved, force, runner_factory)?;
+
+                // Interactive one: open the TUI (no auto-loop).
+                let _ = tui::run_tui(&resolved, force, tui::TuiOptions::default(), runner_factory)?;
                 Ok(())
             } else {
                 if let Some(task_id) = args.id.as_deref() {
@@ -60,8 +61,21 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                         )
                     }
                 };
-                // Tasks are executed within TUI, run_tui returns None
-                let _ = tui::run_tui(&resolved, force, runner_factory)?;
+
+                // Interactive loop: auto-start the loop in the TUI to match semantics.
+                let max = if args.max_tasks == 0 {
+                    None
+                } else {
+                    Some(args.max_tasks)
+                };
+
+                let options = tui::TuiOptions {
+                    start_loop: true,
+                    loop_max_tasks: max,
+                    loop_include_draft: args.agent.include_draft,
+                };
+
+                let _ = tui::run_tui(&resolved, force, options, runner_factory)?;
                 Ok(())
             } else {
                 run_cmd::run_loop(
@@ -80,7 +94,44 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Run the Ralph supervisor (executes queued tasks via codex/opencode/gemini/claude)",
-    after_long_help = "Runner selection:\n  - `ralph run` selects runner/model/effort with this precedence:\n      1) CLI overrides (flags on `run one` / `run loop`)\n      2) the task's `agent` override (if present in .ralph/queue.json)\n      3) otherwise the resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\nNotes:\n  - Allowed runners: codex, opencode, gemini, claude\n  - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude accept arbitrary model ids)\n  - `--effort` is codex-only and is ignored for other runners.\n  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n  - `ralph run ... -i` launches the TUI with task execution enabled; `ralph tui` is browse-only.\n\nTo change defaults for this repo, edit .ralph/config.json:\n  version: 1\n  agent:\n    runner: claude\n    model: sonnet\n    gemini_bin: gemini\n\nExamples:\n  ralph run one\n  ralph run one --phases 2\n  ralph run one --phases 1\n  ralph run one --runner opencode --model gpt-5.2\n  ralph run one --runner codex --model gpt-5.2-codex --effort high\n  ralph run one --runner gemini --model gemini-3-flash-preview\n  ralph run one --include-draft\n  ralph run one --git-revert-mode disabled\n  ralph run loop --max-tasks 0\n  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n  ralph run loop --include-draft --max-tasks 1\n  ralph run loop --git-revert-mode ask --max-tasks 1\n  ralph run one -i\n  ralph run loop -i"
+    after_long_help = "Runner selection:\n\
+ - `ralph run` selects runner/model/effort with this precedence:\n\
+ 1) CLI overrides (flags on `run one` / `run loop`)\n\
+ 2) the task's `agent` override (if present in .ralph/queue.json)\n\
+ 3) otherwise the resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\
+\n\
+Notes:\n\
+ - Allowed runners: codex, opencode, gemini, claude\n\
+ - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude accept arbitrary model ids)\n\
+ - `--effort` is codex-only and is ignored for other runners.\n\
+ - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
+ - `ralph tui` launches the full interactive UI.\n\
+ - `ralph run one -i` and `ralph run loop -i` launch the same TUI for compatibility.\n\
+\n\
+To change defaults for this repo, edit .ralph/config.json:\n\
+ version: 1\n\
+ agent:\n\
+ runner: claude\n\
+ model: sonnet\n\
+ gemini_bin: gemini\n\
+\n\
+Examples:\n\
+ ralph run one\n\
+ ralph run one --phases 2\n\
+ ralph run one --phases 1\n\
+ ralph run one --runner opencode --model gpt-5.2\n\
+ ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
+ ralph run one --runner gemini --model gemini-3-flash-preview\n\
+ ralph run one --include-draft\n\
+ ralph run one --git-revert-mode disabled\n\
+ ralph run loop --max-tasks 0\n\
+ ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
+ ralph run loop --include-draft --max-tasks 1\n\
+ ralph run loop --git-revert-mode ask --max-tasks 1\n\
+ ralph tui\n\
+ ralph tui --read-only\n\
+ ralph run one -i\n\
+ ralph run loop -i"
 )]
 pub struct RunArgs {
     #[command(subcommand)]
@@ -91,12 +142,41 @@ pub struct RunArgs {
 pub enum RunCommand {
     #[command(
         about = "Run exactly one task (the first todo in .ralph/queue.json)",
-        after_long_help = "Runner selection (precedence):\n  1) CLI overrides (--runner/--model/--effort)\n  2) task.agent in .ralph/queue.json (if present)\n  3) config defaults (.ralph/config.json then ~/.config/ralph/config.json)\n\nExamples:\n  ralph run one\n  ralph run one --id RQ-0001\n  ralph run one -i\n  ralph run one --phases 3\n  ralph run one --phases 2\n  ralph run one --phases 1\n  ralph run one --runner opencode --model gpt-5.2\n  ralph run one --runner gemini --model gemini-3-flash-preview\n  ralph run one --runner codex --model gpt-5.2-codex --effort high\n  ralph run one --include-draft\n  ralph run one --git-revert-mode enabled\n  ralph run one --rp-on\n  ralph run one --rp-off"
+        after_long_help = "Runner selection (precedence):\n\
+ 1) CLI overrides (--runner/--model/--effort)\n\
+ 2) task.agent in .ralph/queue.json (if present)\n\
+ 3) config defaults (.ralph/config.json then ~/.config/ralph/config.json)\n\
+\n\
+Examples:\n\
+ ralph run one\n\
+ ralph run one --id RQ-0001\n\
+ ralph run one -i\n\
+ ralph run one --phases 3\n\
+ ralph run one --phases 2\n\
+ ralph run one --phases 1\n\
+ ralph run one --runner opencode --model gpt-5.2\n\
+ ralph run one --runner gemini --model gemini-3-flash-preview\n\
+ ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
+ ralph run one --include-draft\n\
+ ralph run one --git-revert-mode enabled\n\
+ ralph run one --rp-on\n\
+ ralph run one --rp-off\n\
+ ralph tui"
     )]
     One(RunOneArgs),
     #[command(
         about = "Run tasks repeatedly until no todo remain (or --max-tasks is reached)",
-        after_long_help = "Examples:\n  ralph run loop --max-tasks 0\n  ralph run loop --phases 3 --max-tasks 0\n  ralph run loop --phases 2 --max-tasks 0\n  ralph run loop --phases 1 --max-tasks 1\n  ralph run loop --max-tasks 3\n  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n  ralph run loop --include-draft --max-tasks 1\n  ralph run loop --git-revert-mode disabled --max-tasks 1\n  ralph run loop -i\n  ralph run loop --rp-on\n  ralph run loop --rp-off"
+        after_long_help = "Examples:\n\
+ ralph run loop --max-tasks 0\n\
+ ralph run loop --phases 3 --max-tasks 0\n\
+ ralph run loop --phases 2 --max-tasks 0\n\
+ ralph run loop --phases 1 --max-tasks 1\n\
+ ralph run loop --max-tasks 3\n\
+ ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
+ ralph run loop --include-draft --max-tasks 1\n\
+ ralph run loop --git-revert-mode disabled --max-tasks 1\n\
+ ralph run loop -i\n\
+ ralph tui"
     )]
     Loop(RunLoopArgs),
 }

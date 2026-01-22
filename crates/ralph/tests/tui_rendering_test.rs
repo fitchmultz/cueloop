@@ -223,7 +223,7 @@ fn test_render_task_details_shows_scope() {
 fn test_render_task_details_shows_evidence() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
-    let mut terminal = setup_test_terminal(80, 24);
+    let mut terminal = setup_test_terminal(120, 40);
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Evidence"));
@@ -235,7 +235,7 @@ fn test_render_task_details_shows_evidence() {
 fn test_render_task_details_shows_plan() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
-    let mut terminal = setup_test_terminal(80, 24);
+    let mut terminal = setup_test_terminal(120, 40);
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Plan"));
@@ -249,7 +249,7 @@ fn test_render_task_details_shows_plan() {
 fn test_render_task_details_shows_timestamps() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
-    let mut terminal = setup_test_terminal(80, 24);
+    let mut terminal = setup_test_terminal(120, 40);
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Created"));
@@ -325,6 +325,7 @@ fn test_render_executing_mode_shows_task_id() {
     app.mode = AppMode::Executing {
         task_id: "RQ-0001".to_string(),
     };
+    app.running_task_id = Some("RQ-0001".to_string());
     let mut terminal = setup_test_terminal(80, 24);
 
     let output = get_rendered_output(&mut terminal, &mut app);
@@ -537,7 +538,7 @@ fn test_render_task_with_notes() {
     let mut queue = make_test_queue();
     queue.tasks[0].notes = vec!["First note".to_string(), "Second note".to_string()];
     let mut app = App::new(queue);
-    let mut terminal = setup_test_terminal(80, 24);
+    let mut terminal = setup_test_terminal(120, 40);
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Notes"));
@@ -550,7 +551,7 @@ fn test_render_task_with_dependencies() {
     let mut queue = make_test_queue();
     queue.tasks[0].depends_on = vec!["RQ-0000".to_string(), "RQ-0002".to_string()];
     let mut app = App::new(queue);
-    let mut terminal = setup_test_terminal(80, 24);
+    let mut terminal = setup_test_terminal(120, 40);
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Depends On"));
@@ -587,7 +588,7 @@ fn test_render_with_multiple_tasks_in_list() {
 
     let queue = QueueFile { version: 1, tasks };
     let mut app = App::new(queue);
-    let mut terminal = setup_test_terminal(80, 24);
+    let mut terminal = setup_test_terminal(120, 40);
 
     let output = get_rendered_output(&mut terminal, &mut app);
     // Should show count of 10
@@ -710,7 +711,7 @@ fn test_render_with_multiline_evidence() {
         "Third evidence item".to_string(),
     ];
     let mut app = App::new(queue);
-    let mut terminal = setup_test_terminal(80, 24);
+    let mut terminal = setup_test_terminal(120, 40);
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Evidence"));

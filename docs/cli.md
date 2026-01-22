@@ -13,242 +13,80 @@ ralph --force queue archive
 ```
 
 ## Core Commands
-- `ralph init`: bootstrap `.ralph/queue.json`, `.ralph/done.json`, and `.ralph/config.json`.
-- `ralph queue <subcommand>`: validate, list, search, and batch-maintain tasks.
-- `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude).
-- `ralph task`: create a task from a request (default subcommand; `ralph task build` still works).
-- `ralph task ready`: promote a draft task to todo.
-- `ralph task done`: mark a task done and archive it.
-- `ralph task reject`: mark a task rejected and archive it.
-- `ralph scan`: generate new tasks via scanning.
-- `ralph prompt <subcommand>`: render compiled prompts.
-- `ralph config <subcommand>`: inspect config and paths.
-- `ralph doctor`: verify environment readiness.
 
-## Runner and Model Overrides
-These flags are supported on `task`, `scan`, `run one`, and `run loop` (see each section for full usage):
-- `--runner <codex|opencode|gemini|claude>`
-- `--model <model-id>`
-- `--effort <minimal|low|medium|high>` (codex only)
-- `--rp-on` / `--rp-off` (force RepoPrompt requirement on or off)
+* `ralph init`: bootstrap `.ralph/queue.json`, `.ralph/done.json`, and `.ralph/config.json`.
+* `ralph queue <subcommand>`: validate, list, search, and batch-maintain tasks.
+* `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude).
+* `ralph tui`: launch the interactive UI (queue + execution + loop).
+* `ralph task`: create a task from a request.
+* `ralph scan`: generate new tasks via scanning.
+* `ralph doctor`: verify environment readiness.
 
-Examples:
-```bash
-ralph task --runner opencode --model gpt-5.2 "Add tests for X"
-ralph scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
-ralph run one --runner codex --model gpt-5.2-codex --effort high
-```
+## `ralph tui`
 
-## `ralph queue`
-### Subcommands
-- `validate`: validate queue + done archive.
-- `prune`: prune old tasks from the done archive.
-- `next`: print next todo task ID (optionally with title).
-- `next-id`: print next available task ID.
-- `show`: show a task by ID.
-- `list`: list tasks with filtering and sorting.
-- `search`: search task content (title, evidence, plan, notes, request, tags, scope, custom fields) with filters.
-- `archive`: move completed tasks (done/rejected) from queue to archive.
-- `repair`: repair queue/done files.
-- `unlock`: remove queue lock.
-- `sort`: reorder queue by priority (or another field).
-- `stats`: show queue statistics (terminal = done + rejected).
-- `history`: show task history timeline.
-- `burndown`: show remaining-task burndown.
-- `schema`: print the queue JSON schema.
+Launch the interactive TUI. This is the primary user-facing entry point.
 
-Note: `ralph queue complete` has been removed. Use `ralph task done <TASK_ID>` or `ralph task reject <TASK_ID>` for single-task completion.
+Behavior:
 
-### Common Flags and Arguments
-- `next`: `--with-title`
-- `show`: `TASK_ID` and `--format <json|compact>`
-- `list`:
-  - `--status <draft|todo|doing|done|rejected>` (repeatable)
-  - `--tag <tag>` (repeatable)
-  - `--scope <token>` (repeatable)
-  - `--filter-deps <TASK_ID>`
-  - `--include-done` / `--only-done`
-  - `--format <compact|long>`
-  - `--limit <N>` / `--all`
-  - `--sort-by <priority>` / `--order <ascending|descending>`
-- `search`:
-  - `QUERY`
-  - `--regex` / `--match-case`
-  - `--status <draft|todo|doing|done|rejected>` (repeatable)
-  - `--tag <tag>` (repeatable)
-  - `--scope <token>` (repeatable)
-  - `--include-done` / `--only-done`
-  - `--format <compact|long>`
-  - `--limit <N>` / `--all`
-- `sort`: `--sort-by <priority>` and `--order <ascending|descending>`
-- `stats`: `--tag <tag>` (repeatable)
-- `history`: `--days <N>`
-- `burndown`: `--days <N>`
-- `prune`:
-  - `--age <days>`
-  - `--status <draft|todo|doing|done|rejected>` (repeatable)
-  - `--keep-last <N>`
-  - `--dry-run`
-- `repair`: `--dry-run`
+* Execution is enabled by default (press Enter to run selected task).
+* Use `--read-only` to disable execution.
+* Loop mode is available inside the TUI (press `l` to toggle).
+* Archive done/rejected tasks inside the TUI (press `a`, then confirm).
+* Use `:` to open the command palette for discoverability.
+* The footer shows status messages and errors as actions run.
 
 Examples:
+
 ```bash
-ralph queue list --status todo --tag rust
-ralph queue list --status draft
-ralph queue list --include-done --limit 20
-ralph queue list --filter-deps RQ-0100
-ralph queue list --sort-by priority --order descending
-ralph queue search "RQ-\\d{4}" --regex
-ralph queue show RQ-0001 --format compact
-ralph queue next --with-title
-ralph queue archive
-ralph queue prune --age 30 --status done --keep-last 50
-ralph queue repair --dry-run
+ralph tui
+ralph tui --read-only
+ralph tui --runner codex --model gpt-5.2-codex --effort high
 ```
 
 ## `ralph run`
-### Subcommands
-- `one`: run exactly one task (optionally by ID or via interactive TUI).
-- `loop`: run tasks until none remain (or `--max-tasks` reached).
 
-### Flags (run one / run loop)
-- `--runner <codex|opencode|gemini|claude>`
-- `--model <model-id>`
-- `--effort <minimal|low|medium|high>` (codex only)
-- `--phases <1|2|3>`
-- `--rp-on` / `--rp-off`
-- `--git-revert-mode <ask|enabled|disabled>`
-- `--include-draft`
-- `-i`, `--interactive`
-- `run one` only: `--id <TASK_ID>` (non-interactive only)
-- `run loop` only: `--max-tasks <N>`
+### Subcommands
+
+* `one`: run exactly one task (optionally by ID or via interactive TUI).
+* `loop`: run tasks until none remain (or `--max-tasks` reached).
+
+### Interactive flags
+
+* `ralph run one -i` launches the same TUI as `ralph tui`.
+* `ralph run loop -i` launches the same TUI and auto-starts loop mode.
 
 Examples:
+
 ```bash
 ralph run one
-ralph run one --id RQ-0001
 ralph run one -i
-ralph run one --phases 3
-ralph run one --include-draft
 ralph run loop --max-tasks 0
-ralph run loop --include-draft --max-tasks 1
-ralph run loop --git-revert-mode disabled --max-tasks 1
+ralph run loop -i --max-tasks 3
 ```
 
-## `ralph tui`
-Launch the interactive TUI in browse-only mode (no task execution). Use `ralph run one -i`
-or `ralph run loop -i` to run tasks from the TUI.
+## Runner and Model Overrides
+
+These flags are supported on `task`, `scan`, `run one`, `run loop`, and `tui`:
+
+* `--runner <codex|opencode|gemini|claude>`
+* `--model <model-id>`
+* `--effort <minimal|low|medium|high>` (codex only)
+* `--rp-on` / `--rp-off`
 
 Examples:
+
 ```bash
-ralph tui
-```
-
-## `ralph task`
-### Flags
-- `REQUEST` (positional; if omitted, reads from stdin)
-- `--tags <tag1,tag2>`
-- `--scope <path-or-token>`
-- `--runner <codex|opencode|gemini|claude>`
-- `--model <model-id>`
-- `--effort <minimal|low|medium|high>` (codex only)
-- `--rp-on` / `--rp-off`
-
-Examples:
-```bash
-ralph task "Add integration tests"
-ralph task --tags cli,rust --scope crates/ralph "Fix queue parsing"
-ralph task ready RQ-0005
-ralph task status doing --note "Starting work" RQ-0001
-ralph task field severity high RQ-0001
-ralph task done --note "Finished work" RQ-0001
-ralph task reject --note "No longer needed" RQ-0002
-echo "Triage flaky CI" | ralph task --runner codex --model gpt-5.2-codex --effort medium
-ralph task build "Explicit build subcommand still works"
-```
-
-## `ralph scan`
-### Flags
-- `--focus "..."`
-- `--runner <codex|opencode|gemini|claude>`
-- `--model <model-id>`
-- `--effort <minimal|low|medium|high>` (codex only)
-- `--rp-on` / `--rp-off`
-
-Examples:
-```bash
-ralph scan --focus "production readiness gaps"
-ralph scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
-```
-
-## `ralph prompt`
-### Subcommands and Flags
-- `worker`:
-  - `--single`
-  - `--phase <1|2|3>`
-  - `--task-id <TASK_ID>`
-  - `--plan-file <path>`
-  - `--plan-text "..."`
-  - `--rp-on` / `--rp-off`
-  - `--explain`
-- `scan`:
-  - `--focus "..."`
-  - `--rp-on` / `--rp-off`
-  - `--explain`
-- `task-builder`:
-  - `--request "..."`
-  - `--tags "..."`
-  - `--scope "..."`
-  - `--rp-on` / `--rp-off`
-  - `--explain`
-
-Examples:
-```bash
-ralph prompt worker --phase 1 --rp-on
-ralph prompt worker --single --explain
-ralph prompt scan --focus "risk audit" --rp-off
-ralph prompt task-builder --request "Add tests" --tags rust --scope crates/ralph
-```
-
-## `ralph config`
-### Subcommands
-- `show`: print resolved config JSON.
-- `paths`: print queue/done/config paths.
-- `schema`: print the config JSON schema.
-
-Examples:
-```bash
-ralph config show
-ralph config paths
-ralph config schema
-```
-
-## `ralph init`
-### Flags
-- `--force`: overwrite existing files.
-
-Behavior:
-- Creates `.ralph` directory and files if missing.
-- Validates existing `config.json`, `queue.json`, and `done.json` if they exist (fails if invalid unless `--force` is used).
-- Checks/creates `README.md` if referenced by prompts.
-
-Example:
-```bash
-ralph init --force
-```
-
-## `ralph doctor`
-No flags.
-
-Example:
-```bash
-ralph doctor
+ralph tui --runner claude --model opus
+ralph run one --runner codex --model gpt-5.2-codex --effort high
 ```
 
 ## Help Output
+
 For the full, authoritative list of flags and examples, run:
+
 ```bash
 ralph --help
+ralph tui --help
 ralph queue --help
 ralph run --help
 ```

@@ -30,24 +30,51 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
         return;
     }
 
-    // Main layout: split into left (task list) and right (details)
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+    // Reserve a footer row for help + status.
+    let outer = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(2), Constraint::Length(1)].as_ref())
         .split(size);
+    let main = outer[0];
+    let footer = outer[1];
 
-    // Left panel: task list
+    // Responsive main layout:
+    // - If narrow, stack list and details vertically.
+    // - If wide, split horizontally.
+    let chunks = if main.width < 90 {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+            .split(main)
+    } else {
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+            .split(main)
+    };
+
+    // Left/top panel: task list
     draw_task_list(f, app, chunks[0]);
 
-    // Right panel: task details
+    // Right/bottom panel: task details
     draw_task_details(f, app, chunks[1]);
 
-    // Draw confirmation dialog if in ConfirmDelete or ConfirmQuit mode
+    // Confirmation dialogs.
     if app.mode == AppMode::ConfirmDelete {
         draw_confirm_dialog(f, size, "Delete this task?", "(y/n)");
+    } else if app.mode == AppMode::ConfirmArchive {
+        draw_confirm_dialog(f, size, "Archive done/rejected tasks?", "(y/n)");
     } else if app.mode == AppMode::ConfirmQuit {
         draw_confirm_dialog(f, size, "Task still running. Quit?", "(y/n)");
     }
+
+    // Command palette overlay.
+    if let AppMode::CommandPalette { query, selected } = &app.mode {
+        draw_command_palette(f, app, size, query, *selected);
+    }
+
+    // Footer (help + status).
+    draw_footer(f, app, footer);
 }
 
 /// Wrap text to fit within a given width.
@@ -58,20 +85,42 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
         .collect()
 }
 
+/// Draw the footer area.
+fn draw_footer(f: &mut Frame<'_>, app: &App, area: Rect) {
+    let help_text = help_footer_spans(app);
+
+    let help_paragraph = Paragraph::new(Line::from(help_text))
+        .alignment(Alignment::Center)
+        .style(Style::default().bg(Color::DarkGray).fg(Color::White));
+
+    f.render_widget(help_paragraph, area);
+}
+
 /// Draw the execution view (full-screen output during task execution).
 fn draw_execution_view(f: &mut Frame<'_>, app: &mut App, area: Rect) {
-    let task_id = match &app.mode {
-        AppMode::Executing { task_id } => task_id.clone(),
-        _ => "Unknown".to_string(),
-    };
+    let task_id = app
+        .running_task_id
+        .as_deref()
+        .unwrap_or("Unknown")
+        .to_string();
 
     // Create a block with title
-    let title = Line::from(vec![
+    let mut title_spans = vec![
         Span::styled("Executing: ", Style::default().add_modifier(Modifier::BOLD)),
         Span::styled(&task_id, Style::default().fg(Color::Cyan)),
         Span::raw(" "),
         Span::styled("(Esc to return)", Style::default().fg(Color::DarkGray)),
-    ]);
+    ];
+
+    if app.loop_active {
+        title_spans.push(Span::raw(" "));
+        title_spans.push(Span::styled(
+            format!("[Loop: ON, ran {}]", app.loop_ran),
+            Style::default().fg(Color::Yellow),
+        ));
+    }
+
+    let title = Line::from(title_spans);
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -114,26 +163,43 @@ fn draw_execution_view(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     f.render_widget(paragraph, inner);
 
     // Draw status indicator at bottom
+    let mut status_parts = vec![
+        Span::raw("Lines: "),
+        Span::styled(format!("{}", log_count), Style::default().fg(Color::Cyan)),
+        Span::raw(" | Scroll: "),
+        Span::styled(
+            format!("{}/{}", app.log_scroll, log_count),
+            Style::default().fg(Color::Cyan),
+        ),
+        Span::raw(" | "),
+        Span::styled("Auto-scroll: ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            if app.autoscroll { "ON" } else { "OFF" },
+            Style::default().fg(if app.autoscroll {
+                Color::Green
+            } else {
+                Color::Red
+            }),
+        ),
+    ];
+
+    if app.loop_active {
+        status_parts.push(Span::raw(" | "));
+        status_parts.push(Span::styled(
+            format!("Loop ran {}", app.loop_ran),
+            Style::default().fg(Color::Yellow),
+        ));
+        if let Some(max) = app.loop_max_tasks {
+            status_parts.push(Span::raw(" / "));
+            status_parts.push(Span::styled(
+                format!("{}", max),
+                Style::default().fg(Color::Yellow),
+            ));
+        }
+    }
+
     let status_line = if log_count > 0 {
-        Line::from(vec![
-            Span::raw("Lines: "),
-            Span::styled(format!("{}", log_count), Style::default().fg(Color::Cyan)),
-            Span::raw(" | Scroll: "),
-            Span::styled(
-                format!("{}/{}", app.log_scroll, log_count),
-                Style::default().fg(Color::Cyan),
-            ),
-            Span::raw(" | "),
-            Span::styled("Auto-scroll: ", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                if app.autoscroll { "ON" } else { "OFF" },
-                Style::default().fg(if app.autoscroll {
-                    Color::Green
-                } else {
-                    Color::Red
-                }),
-            ),
-        ])
+        Line::from(status_parts)
     } else {
         Line::from(vec![Span::styled(
             "Waiting for output...",
@@ -162,17 +228,62 @@ fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         format!("{}", total_count)
     };
     let filter_summary = app.filter_summary();
-    let title = Line::from(vec![
+
+    let mut title_spans = vec![
         Span::styled("Tasks", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" ("),
         Span::styled(count_label, Style::default().fg(Color::DarkGray)),
-        Span::raw(")"),
-        Span::raw(" "),
+        Span::raw(") "),
         Span::styled(
             filter_summary.unwrap_or_default(),
             Style::default().fg(Color::DarkGray),
         ),
-    ]);
+    ];
+
+    if app.runner_active {
+        title_spans.push(Span::raw(" "));
+        title_spans.push(Span::styled("|", Style::default().fg(Color::DarkGray)));
+        title_spans.push(Span::raw(" "));
+        title_spans.push(Span::styled(
+            "RUNNING",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ));
+        if let Some(id) = app.running_task_id.as_deref() {
+            title_spans.push(Span::raw(" "));
+            title_spans.push(Span::styled(
+                id.to_string(),
+                Style::default().fg(Color::Cyan),
+            ));
+        }
+    }
+
+    if app.loop_active {
+        title_spans.push(Span::raw(" "));
+        title_spans.push(Span::styled("|", Style::default().fg(Color::DarkGray)));
+        title_spans.push(Span::raw(" "));
+        title_spans.push(Span::styled(
+            "LOOP",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ));
+        title_spans.push(Span::raw(" "));
+        title_spans.push(Span::styled(
+            format!("ran {}", app.loop_ran),
+            Style::default().fg(Color::Yellow),
+        ));
+        if let Some(max) = app.loop_max_tasks {
+            title_spans.push(Span::raw("/"));
+            title_spans.push(Span::styled(
+                format!("{}", max),
+                Style::default().fg(Color::Yellow),
+            ));
+        }
+    }
+
+    let title = Line::from(title_spans);
 
     let list_height = area.height.saturating_sub(2) as usize; // Subtract borders
     app.list_height = list_height;
@@ -209,7 +320,7 @@ fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 ])
             } else {
                 Line::from(vec![
-                    Span::raw("  "),
+                    Span::raw(" "),
                     Span::styled(&task.id, Style::default().fg(Color::DarkGray)),
                     Span::raw(" "),
                     Span::styled(task.status.as_str(), status_style),
@@ -301,6 +412,10 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ]),
+        AppMode::CommandPalette { .. } => Line::from(Span::styled(
+            "Task Details",
+            Style::default().add_modifier(Modifier::BOLD),
+        )),
         _ => Line::from(Span::styled(
             "Task Details",
             Style::default().add_modifier(Modifier::BOLD),
@@ -318,11 +433,11 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     if let AppMode::CreatingTask(current) = &app.mode {
         let mut lines = vec![
             Line::from(vec![
-                Span::styled("ID:       ", Style::default().fg(Color::DarkGray)),
+                Span::styled("ID: ", Style::default().fg(Color::DarkGray)),
                 Span::styled("(auto)", Style::default().fg(Color::DarkGray)),
             ]),
             Line::from(vec![
-                Span::styled("Status:   ", Style::default().fg(Color::DarkGray)),
+                Span::styled("Status: ", Style::default().fg(Color::DarkGray)),
                 Span::styled(
                     TaskStatus::Todo.as_str(),
                     Style::default().fg(status_color(TaskStatus::Todo)),
@@ -359,7 +474,10 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         let text = Text::from(lines);
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         f.render_widget(paragraph, inner);
-    } else if let AppMode::Searching(current) = &app.mode {
+        return;
+    }
+
+    if let AppMode::Searching(current) = &app.mode {
         let mut lines = vec![
             Line::from(vec![
                 Span::styled(
@@ -391,7 +509,10 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         let text = Text::from(lines);
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         f.render_widget(paragraph, inner);
-    } else if let AppMode::FilteringTags(current) = &app.mode {
+        return;
+    }
+
+    if let AppMode::FilteringTags(current) = &app.mode {
         let mut lines = vec![
             Line::from(vec![
                 Span::styled("Tags", Style::default().add_modifier(Modifier::UNDERLINED)),
@@ -420,14 +541,22 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         let text = Text::from(lines);
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         f.render_widget(paragraph, inner);
-    } else if let Some(task) = app.selected_task() {
+        return;
+    }
+
+    if let Some(task) = app.selected_task() {
+        let edited_title = match &app.mode {
+            AppMode::EditingTitle(current) => current.as_str(),
+            _ => task.title.as_str(),
+        };
+
         let mut lines = vec![
             Line::from(vec![
-                Span::styled("ID:       ", Style::default().fg(Color::DarkGray)),
+                Span::styled("ID: ", Style::default().fg(Color::DarkGray)),
                 Span::styled(&task.id, Style::default().add_modifier(Modifier::BOLD)),
             ]),
             Line::from(vec![
-                Span::styled("Status:   ", Style::default().fg(Color::DarkGray)),
+                Span::styled("Status: ", Style::default().fg(Color::DarkGray)),
                 Span::styled(
                     task.status.as_str(),
                     Style::default().fg(status_color(task.status)),
@@ -447,15 +576,13 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]),
         ];
 
-        // Title with word wrap
-        for line in wrap_text(&task.title, app.detail_width as usize) {
+        for line in wrap_text(edited_title, app.detail_width as usize) {
             lines.push(Line::from(Span::styled(
                 line,
                 Style::default().add_modifier(Modifier::BOLD),
             )));
         }
 
-        // Tags
         if !task.tags.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
@@ -465,7 +592,6 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]));
         }
 
-        // Scope
         if !task.scope.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
@@ -475,7 +601,6 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]));
         }
 
-        // Evidence
         if !task.evidence.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
@@ -488,14 +613,13 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             for item in &task.evidence {
                 for line in wrap_text(item, app.detail_width.saturating_sub(4) as usize) {
                     lines.push(Line::from(Span::styled(
-                        format!("  • {}", line),
+                        format!(" • {}", line),
                         Style::default(),
                     )));
                 }
             }
         }
 
-        // Plan
         if !task.plan.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
@@ -505,14 +629,13 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             for (i, item) in task.plan.iter().enumerate() {
                 for line in wrap_text(item, app.detail_width.saturating_sub(4) as usize) {
                     lines.push(Line::from(Span::styled(
-                        format!("  {}. {}", i + 1, line),
+                        format!(" {}. {}", i + 1, line),
                         Style::default(),
                     )));
                 }
             }
         }
 
-        // Notes
         if !task.notes.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
@@ -522,14 +645,13 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             for item in &task.notes {
                 for line in wrap_text(item, app.detail_width.saturating_sub(4) as usize) {
                     lines.push(Line::from(Span::styled(
-                        format!("  - {}", line),
+                        format!(" - {}", line),
                         Style::default().fg(Color::Yellow),
                     )));
                 }
             }
         }
 
-        // Dependencies
         if !task.depends_on.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
@@ -545,7 +667,6 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]));
         }
 
-        // Custom Fields
         if !task.custom_fields.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
@@ -559,7 +680,7 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             sorted_fields.sort_by_key(|&(k, _)| k);
             for (key, value) in sorted_fields {
                 for line in wrap_text(
-                    &format!("  • {}: {}", key, value),
+                    &format!(" • {}: {}", key, value),
                     app.detail_width.saturating_sub(4) as usize,
                 ) {
                     lines.push(Line::from(Span::styled(
@@ -570,7 +691,6 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             }
         }
 
-        // Timestamps
         lines.push(Line::from(""));
         lines.push(Line::from(vec![
             Span::styled(
@@ -598,14 +718,17 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         let text = Text::from(lines);
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         f.render_widget(paragraph, inner);
-    } else if app.queue.tasks.is_empty() {
+        return;
+    }
+
+    if app.queue.tasks.is_empty() {
         let text = Text::from(vec![
             Line::from(""),
             Line::from("No tasks in queue."),
             Line::from(""),
             Line::from("Create a task with:"),
             Line::from(Span::styled(
-                "  ralph task \"your request\"",
+                " ralph task \"your request\"",
                 Style::default().fg(Color::Cyan),
             )),
             Line::from(""),
@@ -616,50 +739,112 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         ]);
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         f.render_widget(paragraph, inner);
-    } else {
-        let filter_hint = app
-            .filter_summary()
-            .unwrap_or_else(|| "filters active".to_string());
-        let text = Text::from(vec![
-            Line::from(""),
-            Line::from("No tasks match current filters."),
-            Line::from(Span::styled(
-                filter_hint,
-                Style::default().fg(Color::DarkGray),
-            )),
-            Line::from(""),
-            Line::from(Span::styled(
-                "Press x to clear filters.",
-                Style::default().fg(Color::Yellow),
-            )),
-            Line::from(Span::styled(
-                "Press / to search or t to filter tags.",
-                Style::default().fg(Color::DarkGray),
-            )),
-        ]);
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        f.render_widget(paragraph, inner);
+        return;
     }
 
-    // Draw help footer at bottom of screen
-    let help_text = help_footer_spans(app);
-
-    let help_paragraph = Paragraph::new(Line::from(help_text))
-        .alignment(Alignment::Center)
-        .style(Style::default().bg(Color::DarkGray).fg(Color::White));
-
-    let help_area = Rect {
-        x: 0,
-        y: f.area().height.saturating_sub(1),
-        width: f.area().width,
-        height: 1,
-    };
-    f.render_widget(help_paragraph, help_area);
+    let filter_hint = app
+        .filter_summary()
+        .unwrap_or_else(|| "filters active".to_string());
+    let text = Text::from(vec![
+        Line::from(""),
+        Line::from("No tasks match current filters."),
+        Line::from(Span::styled(
+            filter_hint,
+            Style::default().fg(Color::DarkGray),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Press x to clear filters.",
+            Style::default().fg(Color::Yellow),
+        )),
+        Line::from(Span::styled(
+            "Press / to search or t to filter tags.",
+            Style::default().fg(Color::DarkGray),
+        )),
+    ]);
+    let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+    f.render_widget(paragraph, inner);
 }
 
-/// Draw the confirmation dialog for task deletion.
+/// Draw the command palette overlay.
+fn draw_command_palette(f: &mut Frame<'_>, app: &App, area: Rect, query: &str, selected: usize) {
+    let entries = app.palette_entries(query);
+
+    let popup_width = 70.min(area.width.saturating_sub(4));
+    let popup_height = (entries.len() as u16 + 4)
+        .min(area.height.saturating_sub(4))
+        .max(6);
+
+    let popup_area = Rect {
+        x: (area.width.saturating_sub(popup_width)) / 2,
+        y: (area.height.saturating_sub(popup_height)) / 2,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    f.render_widget(Clear, popup_area);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(Line::from(vec![
+            Span::styled("Command", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(" "),
+            Span::styled("(type to filter)", Style::default().fg(Color::DarkGray)),
+        ]));
+    f.render_widget(block.clone(), popup_area);
+
+    let inner = block.inner(popup_area);
+
+    let inner_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(1)].as_ref())
+        .split(inner);
+
+    let input = Line::from(vec![
+        Span::styled(
+            ":",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(query.to_string(), Style::default().fg(Color::Yellow)),
+        Span::styled("_", Style::default().fg(Color::Yellow)),
+    ]);
+    f.render_widget(Paragraph::new(input), inner_chunks[0]);
+
+    let list_height = inner_chunks[1].height as usize;
+    let visible_entries = entries.iter().take(list_height).collect::<Vec<_>>();
+
+    let items: Vec<ListItem> = if visible_entries.is_empty() {
+        vec![ListItem::new(Line::from(Span::styled(
+            "(no matches)",
+            Style::default().fg(Color::DarkGray),
+        )))]
+    } else {
+        visible_entries
+            .iter()
+            .enumerate()
+            .map(|(idx, entry)| {
+                let is_selected = idx == selected.min(visible_entries.len().saturating_sub(1));
+                let style = if is_selected {
+                    Style::default()
+                        .bg(Color::Blue)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+                ListItem::new(Line::from(Span::styled(entry.title.clone(), style)))
+            })
+            .collect()
+    };
+
+    let list = List::new(items).block(Block::default());
+    f.render_widget(list, inner_chunks[1]);
+}
+
+/// Draw the confirmation dialog for a destructive action.
 fn draw_confirm_dialog(f: &mut Frame<'_>, area: Rect, message: &str, hint: &str) {
-    let popup_width = 40.min(area.width.saturating_sub(4));
+    let popup_width = 44.min(area.width.saturating_sub(4));
     let popup_height = 6;
 
     let popup_area = Rect {
@@ -715,12 +900,18 @@ fn priority_color(priority: TaskPriority) -> Color {
 fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
     let mut help_text = match &app.mode {
         AppMode::Normal => vec![
+            Span::styled(":", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cmd "),
             Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":quit "),
             Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":nav "),
             Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":run "),
+            Span::styled("l", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":loop "),
+            Span::styled("a", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":archive "),
             Span::styled("d", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":del "),
             Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
@@ -766,7 +957,23 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
         ],
+        AppMode::CommandPalette { .. } => vec![
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":run "),
+            Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":select "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
         AppMode::ConfirmDelete => vec![
+            Span::styled("y", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":yes "),
+            Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":no "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
+        AppMode::ConfirmArchive => vec![
             Span::styled("y", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":yes "),
             Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
@@ -790,7 +997,9 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::styled("PgUp/PgDn", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":page "),
             Span::styled("a", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":autoscroll"),
+            Span::raw(":autoscroll "),
+            Span::styled("l", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":stop loop"),
         ],
     };
 
@@ -801,6 +1010,16 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
         help_text.push(Span::styled(
             "SAVE ERROR",
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        ));
+    }
+
+    if let Some(msg) = app.status_message.as_deref() {
+        help_text.push(Span::raw(" "));
+        help_text.push(Span::styled("|", Style::default().fg(Color::DarkGray)));
+        help_text.push(Span::raw(" "));
+        help_text.push(Span::styled(
+            msg.to_string(),
+            Style::default().fg(Color::Yellow),
         ));
     }
 
@@ -859,6 +1078,7 @@ mod tests {
         app.mode = AppMode::Executing {
             task_id: "RQ-0001".to_string(),
         };
+        app.running_task_id = Some("RQ-0001".to_string());
         app.log_visible_lines = 20;
 
         terminal.draw(|f| draw_ui(f, &mut app)).expect("draw ui");
