@@ -2,6 +2,70 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0236",
+      "status": "todo",
+      "title": "Fix TUI task-run viewer rendering and unblock phase-violation selection",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "bug",
+        "ux",
+        "tests"
+      ],
+      "scope": [
+        "crates/ralph/src/tui",
+        "crates/ralph/src/cli",
+        "crates/ralph/src/commands",
+        "crates/ralph/tests",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "User request: \"The TUI viewer is busted when running a task. See the screenshots here and fix. ''/Users/mitchfultz/Screenshots/Screenshot 2026-01-22 at 11.13.15 AM.png'' and ''/Users/mitchfultz/Screenshots/Screenshot 2026-01-22 at 11.13.48 AM.png''. Secondly, when issues arise, and I am prompted \"Phase X violations: revert uncommited changes\" I am unable to select an option so it hangs forever. I MUST be able to select an option. Figure it out. View the screenshots, fix the UI, figure out a way to test the actual visuals so this doesn't happen again or regress.\""
+      ],
+      "plan": [
+        "Reproduce the TUI task-run viewer rendering issue using the provided screenshots and identify the layout/viewport failure.",
+        "Fix the TUI rendering/layout bug so the task-run viewer is readable and stable across terminal sizes.",
+        "Fix input handling for the \"Phase X violations: revert uncommited changes\" prompt so selection always works and cannot hang.",
+        "Add automated visual or snapshot tests covering the task-run viewer and the phase-violation prompt to prevent regressions."
+      ],
+      "notes": [],
+      "request": "The TUI viewer is busted when running a task. See the screenshots here and fix. ''/Users/mitchfultz/Screenshots/Screenshot 2026-01-22 at 11.13.15 AM.png'' and ''/Users/mitchfultz/Screenshots/Screenshot 2026-01-22 at 11.13.48 AM.png''. Secondly, when issues arise, and I am prompted \"Phase X violations: revert uncommited changes\" I am unable to select an option so it hangs forever. I MUST be able to select an option. Figure it out. View the screenshots, fix the UI, figure out a way to test the actual visuals so this doesn't happen again or regress.",
+      "created_at": "2026-01-22T18:38:27Z",
+      "updated_at": "2026-01-22T18:38:27Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0235",
+      "status": "todo",
+      "title": "Add configurable CI gate command with opt-out",
+      "priority": "medium",
+      "tags": [
+        "ci",
+        "config",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src",
+        ".ralph/config.json",
+        "docs"
+      ],
+      "evidence": [
+        "User request: \"Currently all validation logic revolves around the 'make ci' gate. However, come projects do not have 'make ci'. We need to be able to allow customization of the CI gate command. Users can set the command to be valid based on the project, but it defaults to the current 'make ci'. If a user really wants to completely ignore any CI gate at all we should have a way to allow it.\""
+      ],
+      "plan": [
+        "Inspect current CI gate execution and config flow to identify where the command is hard-coded.",
+        "Add a configurable CI gate command with default of `make ci`, and allow explicit opt-out/disable behavior.",
+        "Update CLI/help/docs to describe configuration and opt-out, and add tests covering default, custom, and disabled gate behavior."
+      ],
+      "notes": [],
+      "request": "Currently all validation logic revolves around the 'make ci' gate. However, come projects do not have 'make ci'. We need to be able to allow customization of the CI gate command. Users can set the command to be valid based on the project, but it defaults to the current 'make ci'. If a user really wants to completely ignore any CI gate at all we should have a way to allow it.",
+      "created_at": "2026-01-22T18:37:08Z",
+      "updated_at": "2026-01-22T18:37:08Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0231",
       "status": "todo",
       "title": "Add ralph scan support in the TUI",
