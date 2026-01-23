@@ -2,6 +2,167 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0238",
+      "status": "todo",
+      "title": "Centralize interactive runner/scan factory setup for TUI and run",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "tui",
+        "refactor",
+        "duplication"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/cli/tui.rs",
+        "crates/ralph/src/cli/"
+      ],
+      "evidence": [
+        "Duplication audit: interactive TUI factory setup duplicated across CLI entrypoints and within handle_run; identical scan settings and factory closures in crates/ralph/src/cli/run.rs and crates/ralph/src/cli/tui.rs."
+      ],
+      "plan": [
+        "Identify the shared inputs (resolved config, overrides, force) used to build scan settings and factories in run and tui handlers.",
+        "Extract a shared helper that returns the runner_factory and scan_factory (and any computed scan settings) used by both entrypoints.",
+        "Update run and tui handlers to call the helper and preserve existing options behavior.",
+        "Add tests covering the shared factory construction path and ensure interactive branches still invoke run/scan with the same arguments."
+      ],
+      "notes": [],
+      "request": "Read .ralph/cache/reports/duplication_and_consistency_audit.md and create tasks in the queue.json. Make sure to add all available fields, use depends_on, etc. Feel free to combine items in the report into single tasks to be executed together if necessary.",
+      "created_at": "2026-01-23T15:28:48Z",
+      "updated_at": "2026-01-23T15:28:48Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0239",
+      "status": "todo",
+      "title": "Align archive and status transition policy across CLI and TUI",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "tui",
+        "cli",
+        "consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/queue/operations/archive.rs",
+        "crates/ralph/src/queue/operations/status.rs"
+      ],
+      "evidence": [
+        "Duplication audit: archive and status update logic duplicated in crates/ralph/src/tui/mod.rs and queue operations with differing timestamp handling and validation rules."
+      ],
+      "plan": [
+        "Confirm the intended archive and status-transition rules for CLI and TUI (timestamps, validation, allowed transitions).",
+        "Introduce a shared mutation policy helper in queue operations that applies the agreed rules.",
+        "Update TUI and CLI paths to use the shared helper and remove duplicated logic.",
+        "Add tests covering terminal archive stamping and invalid/valid status transitions across both surfaces."
+      ],
+      "notes": [],
+      "request": "Read .ralph/cache/reports/duplication_and_consistency_audit.md and create tasks in the queue.json. Make sure to add all available fields, use depends_on, etc. Feel free to combine items in the report into single tasks to be executed together if necessary.",
+      "created_at": "2026-01-23T15:28:48Z",
+      "updated_at": "2026-01-23T15:28:48Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0240",
+      "status": "todo",
+      "title": "Unify runnable task selection for loop/run across CLI and TUI",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "selection",
+        "tui",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/run_cmd/selection.rs",
+        "crates/ralph/src/queue/operations/query.rs"
+      ],
+      "evidence": [
+        "Duplication audit: TUI next_loop_task_id re-implements next runnable selection and differs from queue::next_runnable_task and run_cmd::select_run_one_task_index (Doing priority and validation behavior)."
+      ],
+      "plan": [
+        "Define the intended runnable-task selection policy for loop and run-one (Doing priority, draft handling, validation errors).",
+        "Extract or extend a shared selection helper to encode the agreed policy.",
+        "Update TUI loop and CLI run selection to call the shared helper.",
+        "Add tests for selection ordering, draft handling, and target-id validation errors."
+      ],
+      "notes": [],
+      "request": "Read .ralph/cache/reports/duplication_and_consistency_audit.md and create tasks in the queue.json. Make sure to add all available fields, use depends_on, etc. Feel free to combine items in the report into single tasks to be executed together if necessary.",
+      "created_at": "2026-01-23T15:28:48Z",
+      "updated_at": "2026-01-23T15:28:48Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0241",
+      "status": "todo",
+      "title": "Align CLI and TUI search/filter pipeline with shared core",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "search",
+        "tui",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/tui/mod.rs"
+      ],
+      "evidence": [
+        "Duplication audit: CLI supports scope filtering and regex/case-sensitive search while TUI has fixed case-insensitive non-regex search and no scope filter."
+      ],
+      "plan": [
+        "Define the shared search/filter semantics and which capabilities are surfaced in CLI vs TUI.",
+        "Introduce a shared filter/search core that accepts parameters for regex/case/scope behavior.",
+        "Update CLI and TUI to call the shared core with their respective options.",
+        "Add tests for regex/case/scope handling and TUI-specific defaults."
+      ],
+      "notes": [],
+      "request": "Read .ralph/cache/reports/duplication_and_consistency_audit.md and create tasks in the queue.json. Make sure to add all available fields, use depends_on, etc. Feel free to combine items in the report into single tasks to be executed together if necessary.",
+      "created_at": "2026-01-23T15:28:48Z",
+      "updated_at": "2026-01-23T15:28:48Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0242",
+      "status": "todo",
+      "title": "Consolidate formatting helpers and remove dead helper code",
+      "priority": "low",
+      "tags": [
+        "refactor",
+        "cleanup",
+        "tui",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/outpututil.rs",
+        "crates/ralph/src/tui/render.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/queue/operations/mutation.rs",
+        "crates/ralph/src/redaction.rs"
+      ],
+      "evidence": [
+        "Duplication audit: formatting helpers duplicated across CLI/TUI; dead helpers exist in queue/operations/mutation.rs and redaction.rs; redundant custom-field formatting in tui/mod.rs."
+      ],
+      "plan": [
+        "Identify shared semantic formatting behaviors that can be centralized without changing CLI/TUI presentation.",
+        "Consolidate duplicate formatting helpers and remove redundant custom-field formatting logic.",
+        "Remove dead helper code with allow(dead_code) where unused, updating tests accordingly.",
+        "Add tests for consolidated formatting and ensure removal does not regress existing outputs."
+      ],
+      "notes": [],
+      "request": "Read .ralph/cache/reports/duplication_and_consistency_audit.md and create tasks in the queue.json. Make sure to add all available fields, use depends_on, etc. Feel free to combine items in the report into single tasks to be executed together if necessary.",
+      "created_at": "2026-01-23T15:28:48Z",
+      "updated_at": "2026-01-23T15:28:48Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0237",
       "status": "todo",
       "title": "Add TUI flow to create a task from a description",
