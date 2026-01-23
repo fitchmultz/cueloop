@@ -3,7 +3,9 @@
 //! This module centralizes phase-specific worker prompt templates so that
 //! Phase 1/2/3 and single-phase instructions are managed via prompt assets.
 
-use super::util::{ensure_no_unresolved_placeholders, load_prompt_with_fallback};
+use super::util::{
+    ensure_no_unresolved_placeholders, escape_placeholder_like_text, load_prompt_with_fallback,
+};
 use crate::contracts::Config;
 use anyhow::{bail, Result};
 
@@ -123,6 +125,7 @@ pub fn render_worker_phase2_prompt(
 ) -> Result<String> {
     let expanded = super::expand_variables(template, config)?;
     let repoprompt_block = repoprompt_block(repoprompt_required, false);
+    let safe_plan_text = escape_placeholder_like_text(plan_text.trim());
     let rendered = expanded
         .replace("{{PLAN_TEXT}}", plan_text.trim())
         .replace("{{CHECKLIST}}", checklist.trim())
@@ -131,7 +134,14 @@ pub fn render_worker_phase2_prompt(
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
         .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
 
-    ensure_no_unresolved_placeholders(&rendered, "worker phase2")?;
+    let rendered_for_validation = expanded
+        .replace("{{PLAN_TEXT}}", safe_plan_text.trim())
+        .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
+        .replace("{{TASK_ID}}", task_id.trim())
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+    ensure_no_unresolved_placeholders(&rendered_for_validation, "worker phase2")?;
     Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
 }
 
@@ -148,6 +158,7 @@ pub fn render_worker_phase2_handoff_prompt(
 ) -> Result<String> {
     let expanded = super::expand_variables(template, config)?;
     let repoprompt_block = repoprompt_block(repoprompt_required, false);
+    let safe_plan_text = escape_placeholder_like_text(plan_text.trim());
     let rendered = expanded
         .replace("{{PLAN_TEXT}}", plan_text.trim())
         .replace("{{CHECKLIST}}", checklist.trim())
@@ -156,7 +167,14 @@ pub fn render_worker_phase2_handoff_prompt(
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
         .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
 
-    ensure_no_unresolved_placeholders(&rendered, "worker phase2 handoff")?;
+    let rendered_for_validation = expanded
+        .replace("{{PLAN_TEXT}}", safe_plan_text.trim())
+        .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
+        .replace("{{TASK_ID}}", task_id.trim())
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+    ensure_no_unresolved_placeholders(&rendered_for_validation, "worker phase2 handoff")?;
     Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
 }
 

@@ -184,6 +184,17 @@ pub fn unresolved_placeholders(rendered: &str) -> Vec<String> {
     unique
 }
 
+/// Escape placeholder-like tokens in user-provided prompt sections for validation.
+///
+/// This keeps literal `{{...}}` sequences in user text from triggering unresolved
+/// placeholder errors while still allowing templates to enforce required tokens.
+pub fn escape_placeholder_like_text(text: &str) -> String {
+    if !text.contains("{{") && !text.contains("}}") {
+        return text.to_string();
+    }
+    text.replace("{{", "{ {").replace("}}", "} }")
+}
+
 pub fn ensure_no_unresolved_placeholders(rendered: &str, label: &str) -> Result<()> {
     let placeholders = unresolved_placeholders(rendered);
     if !placeholders.is_empty() {

@@ -1,7 +1,8 @@
 //! Scan prompt loading and rendering.
 
 use super::util::{
-    ensure_no_unresolved_placeholders, load_prompt_with_fallback, project_type_guidance,
+    ensure_no_unresolved_placeholders, escape_placeholder_like_text, load_prompt_with_fallback,
+    project_type_guidance,
 };
 use crate::contracts::{Config, ProjectType};
 use anyhow::{bail, Result};
@@ -37,6 +38,13 @@ pub fn render_scan_prompt(
         format!("{}\n{}", expanded, guidance)
     };
     let rendered = rendered.replace("{{USER_FOCUS}}", focus);
-    ensure_no_unresolved_placeholders(&rendered, "scan")?;
+    let safe_focus = escape_placeholder_like_text(focus);
+    let rendered_for_validation = if expanded.contains("{{PROJECT_TYPE_GUIDANCE}}") {
+        expanded.replace("{{PROJECT_TYPE_GUIDANCE}}", guidance)
+    } else {
+        format!("{}\n{}", expanded, guidance)
+    }
+    .replace("{{USER_FOCUS}}", safe_focus.trim());
+    ensure_no_unresolved_placeholders(&rendered_for_validation, "scan")?;
     Ok(rendered)
 }

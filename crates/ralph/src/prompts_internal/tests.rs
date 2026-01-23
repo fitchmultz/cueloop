@@ -29,6 +29,16 @@ fn render_scan_prompt_replaces_focus_placeholder() -> Result<()> {
 }
 
 #[test]
+fn render_scan_prompt_allows_placeholder_like_focus() -> Result<()> {
+    let template = "FOCUS:\n{{USER_FOCUS}}\n";
+    let config = default_config();
+    let focus = "see {{config.agent.model}} here";
+    let rendered = render_scan_prompt(template, focus, ProjectType::Code, &config)?;
+    assert!(rendered.contains(focus));
+    Ok(())
+}
+
+#[test]
 fn render_task_builder_prompt_replaces_placeholders() -> Result<()> {
     let template = "Request:\n{{USER_REQUEST}}\nTags:\n{{HINT_TAGS}}\nScope:\n{{HINT_SCOPE}}\n";
     let config = default_config();
@@ -44,6 +54,23 @@ fn render_task_builder_prompt_replaces_placeholders() -> Result<()> {
     assert!(rendered.contains("code"));
     assert!(rendered.contains("repo"));
     assert!(!rendered.contains("{{USER_REQUEST}}"));
+    Ok(())
+}
+
+#[test]
+fn render_task_builder_prompt_allows_placeholder_like_request() -> Result<()> {
+    let template = "Request:\n{{USER_REQUEST}}\nTags:\n{{HINT_TAGS}}\nScope:\n{{HINT_SCOPE}}\n";
+    let config = default_config();
+    let request = "use {{config.agent.model}}";
+    let rendered = render_task_builder_prompt(
+        template,
+        request,
+        "code",
+        "repo",
+        ProjectType::Code,
+        &config,
+    )?;
+    assert!(rendered.contains(request));
     Ok(())
 }
 
@@ -190,6 +217,26 @@ fn render_worker_phase2_prompt_skips_repoprompt_when_not_required() -> Result<()
     assert!(rendered.contains("BASE"));
     assert!(!rendered.contains("TOOLING REQUIREMENT: RepoPrompt"));
     assert!(!rendered.contains("{{"));
+    Ok(())
+}
+
+#[test]
+fn render_worker_phase2_prompt_allows_placeholder_like_plan_text() -> Result<()> {
+    let template =
+        "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PLAN_TEXT}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+    let config = default_config();
+    let plan_text = "Use {{config.agent.git_commit_push_enabled}} to toggle behavior.";
+    let rendered = render_worker_phase2_prompt(
+        template,
+        "BASE",
+        plan_text,
+        "CHECKLIST",
+        "RQ-0001",
+        2,
+        false,
+        &config,
+    )?;
+    assert!(rendered.contains(plan_text));
     Ok(())
 }
 
