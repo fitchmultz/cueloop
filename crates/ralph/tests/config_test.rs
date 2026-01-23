@@ -539,6 +539,8 @@ fn test_agent_config_merge_from_partial() {
         runner: Some(Runner::Codex),
         model: Some(Model::Gpt52Codex),
         reasoning_effort: None,
+        iterations: Some(1),
+        followup_reasoning_effort: None,
         codex_bin: Some("codex".to_string()),
         opencode_bin: None,
         gemini_bin: None,
@@ -556,6 +558,8 @@ fn test_agent_config_merge_from_partial() {
         runner: None,
         model: Some(Model::Gpt52),
         reasoning_effort: Some(ReasoningEffort::High),
+        iterations: Some(2),
+        followup_reasoning_effort: Some(ReasoningEffort::Low),
         codex_bin: None,
         opencode_bin: Some("opencode".to_string()),
         gemini_bin: None,
@@ -574,6 +578,8 @@ fn test_agent_config_merge_from_partial() {
     assert_eq!(base.runner, Some(Runner::Codex));
     assert_eq!(base.model, Some(Model::Gpt52));
     assert_eq!(base.reasoning_effort, Some(ReasoningEffort::High));
+    assert_eq!(base.iterations, Some(2));
+    assert_eq!(base.followup_reasoning_effort, Some(ReasoningEffort::Low));
     assert_eq!(base.codex_bin, Some("codex".to_string()));
     assert_eq!(base.opencode_bin, Some("opencode".to_string()));
     assert_eq!(base.phases, Some(3));

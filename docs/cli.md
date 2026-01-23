@@ -83,6 +83,10 @@ ralph tui --runner codex --model gpt-5.2-codex --effort high
 * `one`: run exactly one task (optionally by ID or via interactive TUI).
 * `loop`: run tasks until none remain (or `--max-tasks` reached).
 
+Run iterations are controlled by config and task settings:
+- `agent.iterations` (config) or `task.agent.iterations` (per task) repeat the selected phases.
+- `agent.followup_reasoning_effort` or `task.agent.followup_reasoning_effort` applies to follow-up iterations.
+
 ### Interactive flags
 
 * `ralph run one -i` launches the same TUI as `ralph tui`.

@@ -118,6 +118,16 @@ fn get_config_value(config: &Config, path: &str) -> Result<String> {
             .reasoning_effort
             .map(|e| format!("{:?}", e))
             .ok_or_else(|| anyhow::anyhow!("agent.reasoning_effort not set")),
+        ["agent", "iterations"] => config
+            .agent
+            .iterations
+            .map(|value| value.to_string())
+            .ok_or_else(|| anyhow::anyhow!("agent.iterations not set")),
+        ["agent", "followup_reasoning_effort"] => config
+            .agent
+            .followup_reasoning_effort
+            .map(|e| format!("{:?}", e))
+            .ok_or_else(|| anyhow::anyhow!("agent.followup_reasoning_effort not set")),
         ["agent", "claude_permission_mode"] => config
             .agent
             .claude_permission_mode

@@ -3,7 +3,9 @@
 
 CURRENT TASK: {{TASK_ID}}. Do NOT switch tasks.
 
-Task status is already set to `doing` by Ralph. Do NOT change it (use `ralph task done` when finished).
+{{PHASE3_COMPLETION_GUIDANCE}}
+
+{{ITERATION_CONTEXT}}
 
 {{BASE_WORKER_PROMPT}}
 
@@ -15,6 +17,8 @@ Task status is already set to `doing` by Ralph. Do NOT change it (use `ralph tas
 The repo is expected to be dirty in Phase 3 due to Phase 2 changes. Do NOT stop because the working tree is dirty.
 
 {{CODE_REVIEW_BODY}}
+
+{{ITERATION_COMPLETION_BLOCK}}
 
 {{COMPLETION_CHECKLIST}}
 

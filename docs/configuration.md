@@ -23,6 +23,8 @@ Supported fields:
 - `model`: default model id (string).
 - `phases`: number of phases (1, 2, or 3).
 - `reasoning_effort`: `minimal`, `low`, `medium`, `high` (Codex only).
+- `iterations`: number of iterations to run per task (default: 1).
+- `followup_reasoning_effort`: reasoning effort for iterations after the first (Codex only).
 - `require_repoprompt`: `true` or `false`.
 - `git_revert_mode`: `ask`, `enabled`, or `disabled`.
 - `git_commit_push_enabled`: enable or disable automatic git commit/push after successful runs (default: `true`).
@@ -31,14 +33,20 @@ Supported fields:
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`: override runner executable path/name.
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
 
+Notes:
+- `followup_reasoning_effort` is ignored for non-Codex runners.
+
 Example:
 ```json
 {
   "version": 1,
   "agent": {
-    "runner": "claude",
-    "model": "sonnet",
+    "runner": "codex",
+    "model": "gpt-5.2-codex",
     "phases": 3,
+    "iterations": 2,
+    "reasoning_effort": "high",
+    "followup_reasoning_effort": "low",
     "require_repoprompt": false,
     "git_commit_push_enabled": true,
     "git_revert_mode": "ask",

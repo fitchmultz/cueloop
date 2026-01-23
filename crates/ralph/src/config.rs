@@ -157,6 +157,12 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
         }
     }
 
+    if let Some(iterations) = cfg.agent.iterations {
+        if iterations == 0 {
+            bail!("Invalid agent.iterations: {}. Iterations must be greater than 0. Update .ralph/config.json.", iterations);
+        }
+    }
+
     if let Some(bin) = &cfg.agent.codex_bin {
         if bin.trim().is_empty() {
             bail!("Empty agent.codex_bin: binary path is required if specified. Set the path to the codex binary in your config.");
@@ -339,5 +345,14 @@ mod tests {
         cfg.agent.ci_gate_enabled = Some(false);
 
         validate_config(&cfg).expect("validation should pass when disabled");
+    }
+
+    #[test]
+    fn validate_config_rejects_zero_iterations() {
+        let mut cfg = Config::default();
+        cfg.agent.iterations = Some(0);
+
+        let err = validate_config(&cfg).expect_err("expected validation to fail");
+        assert!(err.to_string().contains("agent.iterations"));
     }
 }

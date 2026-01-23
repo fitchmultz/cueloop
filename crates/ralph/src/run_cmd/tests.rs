@@ -1,12 +1,16 @@
 //! Unit tests for run command orchestration helpers.
 
-use super::{resolve_run_agent_settings, run_one_with_id_locked, task_context_for_prompt};
+use super::{
+    apply_followup_reasoning_effort, resolve_iteration_settings, resolve_run_agent_settings,
+    run_one_with_id_locked, task_context_for_prompt,
+};
 use crate::completions;
 use crate::contracts::{
     AgentConfig, ClaudePermissionMode, Config, GitRevertMode, Model, QueueConfig, QueueFile,
     ReasoningEffort, Runner, Task, TaskAgent, TaskStatus,
 };
 use crate::queue;
+use crate::runner;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -23,6 +27,8 @@ fn resolved_with_agent_defaults(
             runner,
             model,
             reasoning_effort: effort,
+            iterations: None,
+            followup_reasoning_effort: None,
             codex_bin: Some("codex".to_string()),
             opencode_bin: Some("opencode".to_string()),
             gemini_bin: Some("gemini".to_string()),
@@ -83,6 +89,8 @@ fn resolved_with_repo_root(repo_root: PathBuf) -> crate::config::Resolved {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt52Codex),
             reasoning_effort: Some(ReasoningEffort::Medium),
+            iterations: None,
+            followup_reasoning_effort: None,
             codex_bin: Some("codex".to_string()),
             opencode_bin: Some("opencode".to_string()),
             gemini_bin: Some("gemini".to_string()),
@@ -200,6 +208,8 @@ fn resolve_run_agent_settings_task_agent_overrides_config() -> anyhow::Result<()
         runner: Some(Runner::Opencode),
         model: Some(Model::Gpt52),
         reasoning_effort: Some(ReasoningEffort::High),
+        iterations: None,
+        followup_reasoning_effort: None,
     });
 
     let overrides = super::AgentOverrides::default();
@@ -223,6 +233,8 @@ fn resolve_run_agent_settings_cli_overrides_task_agent_and_config() -> anyhow::R
         runner: Some(Runner::Opencode),
         model: Some(Model::Gpt52),
         reasoning_effort: Some(ReasoningEffort::Low),
+        iterations: None,
+        followup_reasoning_effort: None,
     });
 
     let overrides = super::AgentOverrides {
@@ -339,6 +351,61 @@ fn resolve_run_agent_settings_effort_is_ignored_for_opencode() -> anyhow::Result
     assert_eq!(settings.model, Model::Gpt52);
     assert_eq!(settings.reasoning_effort, None);
     Ok(())
+}
+
+#[test]
+fn resolve_iteration_settings_defaults_to_one() -> anyhow::Result<()> {
+    let resolved = resolved_with_agent_defaults(None, None, None);
+    let task = base_task();
+
+    let settings = resolve_iteration_settings(&task, &resolved.config.agent)?;
+    assert_eq!(settings.count, 1);
+    assert_eq!(settings.followup_reasoning_effort, None);
+    Ok(())
+}
+
+#[test]
+fn resolve_iteration_settings_prefers_task_over_config() -> anyhow::Result<()> {
+    let mut resolved = resolved_with_agent_defaults(None, None, None);
+    resolved.config.agent.iterations = Some(3);
+    resolved.config.agent.followup_reasoning_effort = Some(ReasoningEffort::Low);
+
+    let mut task = base_task();
+    task.agent = Some(TaskAgent {
+        runner: None,
+        model: None,
+        reasoning_effort: None,
+        iterations: Some(2),
+        followup_reasoning_effort: Some(ReasoningEffort::High),
+    });
+
+    let settings = resolve_iteration_settings(&task, &resolved.config.agent)?;
+    assert_eq!(settings.count, 2);
+    assert_eq!(
+        settings.followup_reasoning_effort,
+        Some(ReasoningEffort::High)
+    );
+    Ok(())
+}
+
+#[test]
+fn apply_followup_reasoning_effort_overrides_codex_only() {
+    let base = runner::AgentSettings {
+        runner: Runner::Codex,
+        model: Model::Gpt52Codex,
+        reasoning_effort: Some(ReasoningEffort::Medium),
+    };
+    let updated = apply_followup_reasoning_effort(&base, Some(ReasoningEffort::High), true);
+    assert_eq!(updated.reasoning_effort, Some(ReasoningEffort::High));
+
+    let base_non_codex = runner::AgentSettings {
+        runner: Runner::Opencode,
+        model: Model::Glm47,
+        reasoning_effort: None,
+    };
+    let updated_non_codex =
+        apply_followup_reasoning_effort(&base_non_codex, Some(ReasoningEffort::High), true);
+    assert_eq!(updated_non_codex.reasoning_effort, None);
 }
 
 #[test]

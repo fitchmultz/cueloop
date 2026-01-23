@@ -77,6 +77,14 @@ pub struct AgentConfig {
     /// Default reasoning effort (only meaningful for Codex models).
     pub reasoning_effort: Option<ReasoningEffort>,
 
+    /// Number of iterations to run for each task (default: 1).
+    #[schemars(range(min = 1))]
+    pub iterations: Option<u8>,
+
+    /// Reasoning effort override for follow-up iterations (iterations > 1).
+    /// Only meaningful for Codex models.
+    pub followup_reasoning_effort: Option<ReasoningEffort>,
+
     /// Override the codex executable name/path (default is "codex" if None).
     pub codex_bin: Option<String>,
 
@@ -126,6 +134,12 @@ impl AgentConfig {
         }
         if other.reasoning_effort.is_some() {
             self.reasoning_effort = other.reasoning_effort;
+        }
+        if other.iterations.is_some() {
+            self.iterations = other.iterations;
+        }
+        if other.followup_reasoning_effort.is_some() {
+            self.followup_reasoning_effort = other.followup_reasoning_effort;
         }
         if other.codex_bin.is_some() {
             self.codex_bin = other.codex_bin;
@@ -337,7 +351,7 @@ pub struct Task {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request: Option<String>,
 
-    /// Optional per-task agent override (runner/model/effort).
+    /// Optional per-task agent override (runner/model/effort/iterations).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<TaskAgent>,
 
@@ -460,6 +474,15 @@ pub struct TaskAgent {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_effort: Option<ReasoningEffort>,
+
+    /// Number of iterations to run for this task (overrides config).
+    #[schemars(range(min = 1))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iterations: Option<u8>,
+
+    /// Reasoning effort override for follow-up iterations (iterations > 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub followup_reasoning_effort: Option<ReasoningEffort>,
 }
 
 /* ------------------------------ Defaults -------------------------------- */
@@ -488,6 +511,8 @@ impl Default for Config {
                 runner: Some(Runner::Claude),
                 model: Some(Model::Custom("sonnet".to_string())),
                 reasoning_effort: Some(ReasoningEffort::Medium),
+                iterations: Some(1),
+                followup_reasoning_effort: None,
                 codex_bin: Some("codex".to_string()),
                 opencode_bin: Some("opencode".to_string()),
                 gemini_bin: Some("gemini".to_string()),

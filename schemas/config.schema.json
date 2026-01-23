@@ -11,9 +11,11 @@
         "claude_bin": "claude",
         "claude_permission_mode": "bypass_permissions",
         "codex_bin": "codex",
+        "followup_reasoning_effort": null,
         "gemini_bin": "gemini",
         "git_commit_push_enabled": true,
         "git_revert_mode": "ask",
+        "iterations": 1,
         "model": "sonnet",
         "opencode_bin": "opencode",
         "phases": 3,
@@ -110,6 +112,18 @@
             "null"
           ]
         },
+        "followup_reasoning_effort": {
+          "description": "Reasoning effort override for follow-up iterations (iterations > 1). Only meaningful for Codex models.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ReasoningEffort"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "gemini_bin": {
           "description": "Override the gemini executable name/path (default is \"gemini\" if None).",
           "default": null,
@@ -137,6 +151,16 @@
               "type": "null"
             }
           ]
+        },
+        "iterations": {
+          "description": "Number of iterations to run for each task (default: 1).",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "minimum": 1.0
         },
         "model": {
           "description": "Default model.",

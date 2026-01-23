@@ -5,6 +5,8 @@ CURRENT TASK: {{TASK_ID}}. Do NOT switch tasks.
 
 Task status is already set to `doing` by Ralph. Do NOT change it.
 
+{{ITERATION_CONTEXT}}
+
 {{BASE_WORKER_PROMPT}}
 
 {{REPOPROMPT_BLOCK}}
@@ -18,5 +20,7 @@ Task status is already set to `doing` by Ralph. Do NOT change it.
 Proceed with the implementation of the plan above.
 
 ---
+
+{{ITERATION_COMPLETION_BLOCK}}
 
 {{CHECKLIST}}

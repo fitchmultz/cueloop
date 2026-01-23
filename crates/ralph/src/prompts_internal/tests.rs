@@ -150,12 +150,31 @@ fn load_completion_checklist_falls_back_to_embedded_default_when_missing() -> Re
 }
 
 #[test]
+fn load_iteration_checklist_falls_back_to_embedded_default_when_missing() -> Result<()> {
+    let dir = TempDir::new()?;
+    let checklist = load_iteration_checklist(dir.path())?;
+    assert!(checklist.contains("ITERATION CHECKLIST"));
+    Ok(())
+}
+
+#[test]
 fn load_completion_checklist_uses_override_when_present() -> Result<()> {
     let dir = TempDir::new()?;
     let overrides = dir.path().join(".ralph/prompts");
     fs::create_dir_all(&overrides)?;
     fs::write(overrides.join("completion_checklist.md"), "override")?;
     let checklist = load_completion_checklist(dir.path())?;
+    assert_eq!(checklist, "override");
+    Ok(())
+}
+
+#[test]
+fn load_iteration_checklist_uses_override_when_present() -> Result<()> {
+    let dir = TempDir::new()?;
+    let overrides = dir.path().join(".ralph/prompts");
+    fs::create_dir_all(&overrides)?;
+    fs::write(overrides.join("iteration_checklist.md"), "override")?;
+    let checklist = load_iteration_checklist(dir.path())?;
     assert_eq!(checklist, "override");
     Ok(())
 }
@@ -172,13 +191,24 @@ fn load_worker_prompt_uses_override_when_present() -> Result<()> {
 }
 
 #[test]
+fn render_iteration_checklist_replaces_task_id() -> Result<()> {
+    let template = "ID={{TASK_ID}}\n";
+    let config = default_config();
+    let rendered = render_iteration_checklist(template, "RQ-0001", &config)?;
+    assert!(rendered.contains("ID=RQ-0001"));
+    assert!(!rendered.contains("{{TASK_ID}}"));
+    Ok(())
+}
+
+#[test]
 fn render_worker_phase1_prompt_replaces_placeholders() -> Result<()> {
     let template =
-        "ID={{TASK_ID}}\nPHASE={{TOTAL_PHASES}}\nPLAN={{PLAN_PATH}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+        "ID={{TASK_ID}}\nPHASE={{TOTAL_PHASES}}\n{{ITERATION_CONTEXT}}\nPLAN={{PLAN_PATH}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
     let config = default_config();
     let rendered = render_worker_phase1_prompt(
         template,
         "BASE",
+        "ITERATION",
         "RQ-0001",
         2,
         ".ralph/cache/plans/RQ-0001.md",
@@ -198,13 +228,15 @@ fn render_worker_phase1_prompt_replaces_placeholders() -> Result<()> {
 #[test]
 fn render_worker_phase2_prompt_skips_repoprompt_when_not_required() -> Result<()> {
     let template =
-        "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PLAN_TEXT}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+        "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{ITERATION_CONTEXT}}\n{{PLAN_TEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
     let config = default_config();
     let rendered = render_worker_phase2_prompt(
         template,
         "BASE",
         "PLAN",
         "CHECKLIST",
+        "ITERATION",
+        "COMPLETE",
         "RQ-0001",
         2,
         false,
@@ -223,7 +255,7 @@ fn render_worker_phase2_prompt_skips_repoprompt_when_not_required() -> Result<()
 #[test]
 fn render_worker_phase2_prompt_allows_placeholder_like_plan_text() -> Result<()> {
     let template =
-        "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PLAN_TEXT}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+        "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{ITERATION_CONTEXT}}\n{{PLAN_TEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
     let config = default_config();
     let plan_text = "Use {{config.agent.git_commit_push_enabled}} to toggle behavior.";
     let rendered = render_worker_phase2_prompt(
@@ -231,6 +263,8 @@ fn render_worker_phase2_prompt_allows_placeholder_like_plan_text() -> Result<()>
         "BASE",
         plan_text,
         "CHECKLIST",
+        "ITERATION",
+        "COMPLETE",
         "RQ-0001",
         2,
         false,
@@ -242,7 +276,7 @@ fn render_worker_phase2_prompt_allows_placeholder_like_plan_text() -> Result<()>
 
 #[test]
 fn render_worker_phase3_prompt_includes_review_and_base() -> Result<()> {
-    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{CODE_REVIEW_BODY}}\n{{COMPLETION_CHECKLIST}}\n{{PHASE2_FINAL_RESPONSE}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PHASE3_COMPLETION_GUIDANCE}}\n{{ITERATION_CONTEXT}}\n{{CODE_REVIEW_BODY}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{COMPLETION_CHECKLIST}}\n{{PHASE2_FINAL_RESPONSE}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
     let config = default_config();
     let rendered = render_worker_phase3_prompt(
         template,
@@ -251,6 +285,9 @@ fn render_worker_phase3_prompt_includes_review_and_base() -> Result<()> {
         "PHASE2 RESPONSE",
         "RQ-0001",
         "CHECKLIST",
+        "ITERATION",
+        "COMPLETE",
+        "GUIDANCE",
         3,
         true,
         &config,
@@ -270,7 +307,7 @@ fn render_worker_phase3_prompt_includes_review_and_base() -> Result<()> {
 
 #[test]
 fn render_worker_phase3_prompt_allows_placeholder_like_phase2_response() -> Result<()> {
-    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{CODE_REVIEW_BODY}}\n{{COMPLETION_CHECKLIST}}\n{{PHASE2_FINAL_RESPONSE}}\n{{BASE_WORKER_PROMPT}}\n";
+    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PHASE3_COMPLETION_GUIDANCE}}\n{{ITERATION_CONTEXT}}\n{{CODE_REVIEW_BODY}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{COMPLETION_CHECKLIST}}\n{{PHASE2_FINAL_RESPONSE}}\n{{BASE_WORKER_PROMPT}}\n";
     let config = default_config();
     let phase2_text = "See {{config.agent.runner}} for the runner.";
     let rendered = render_worker_phase3_prompt(
@@ -280,6 +317,9 @@ fn render_worker_phase3_prompt_allows_placeholder_like_phase2_response() -> Resu
         phase2_text,
         "RQ-0001",
         "CHECKLIST",
+        "ITERATION",
+        "COMPLETE",
+        "GUIDANCE",
         3,
         false,
         &config,
@@ -290,10 +330,19 @@ fn render_worker_phase3_prompt_allows_placeholder_like_phase2_response() -> Resu
 
 #[test]
 fn render_worker_single_phase_prompt_requires_task_id() -> Result<()> {
-    let template = "{{TASK_ID}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n";
+    let template =
+        "{{TASK_ID}}\n{{ITERATION_CONTEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n";
     let config = default_config();
-    let result =
-        render_worker_single_phase_prompt(template, "BASE", "CHECKLIST", "", false, &config);
+    let result = render_worker_single_phase_prompt(
+        template,
+        "BASE",
+        "CHECKLIST",
+        "ITERATION",
+        "COMPLETE",
+        "",
+        false,
+        &config,
+    );
     assert!(result.is_err());
     Ok(())
 }

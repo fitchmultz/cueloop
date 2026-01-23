@@ -209,6 +209,9 @@ pub fn build_worker_prompt(
     let policy = PromptPolicy {
         require_repoprompt: opts.repoprompt_required,
     };
+    let iteration_context = "";
+    let iteration_completion_block = "";
+    let phase3_completion_guidance = prompts::PHASE3_COMPLETION_GUIDANCE_FINAL;
 
     let configured_phases = resolved.config.agent.phases.unwrap_or(2);
     let total_phases = match opts.mode {
@@ -228,6 +231,7 @@ pub fn build_worker_prompt(
             promptflow::build_phase1_prompt(
                 &phase1_template,
                 &base_prompt,
+                iteration_context,
                 &task_id,
                 total_phases,
                 &policy,
@@ -252,6 +256,8 @@ pub fn build_worker_prompt(
                     &base_prompt,
                     &plan_text,
                     &handoff_checklist,
+                    iteration_context,
+                    iteration_completion_block,
                     &task_id,
                     total_phases,
                     &policy,
@@ -265,6 +271,8 @@ pub fn build_worker_prompt(
                     &base_prompt,
                     &plan_text,
                     &completion_checklist,
+                    iteration_context,
+                    iteration_completion_block,
                     &task_id,
                     total_phases,
                     &policy,
@@ -291,6 +299,9 @@ pub fn build_worker_prompt(
                 &phase2_final_response,
                 &task_id,
                 &completion_checklist,
+                iteration_context,
+                iteration_completion_block,
+                phase3_completion_guidance,
                 total_phases,
                 &policy,
                 &resolved.config,
@@ -303,6 +314,8 @@ pub fn build_worker_prompt(
                 &single_template,
                 &base_prompt,
                 &completion_checklist,
+                iteration_context,
+                iteration_completion_block,
                 &task_id,
                 &policy,
                 &resolved.config,

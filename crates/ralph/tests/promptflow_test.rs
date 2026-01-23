@@ -17,7 +17,7 @@ fn build_phase1_prompt_contains_required_elements() {
     let template = prompts::load_worker_phase1_prompt(repo_root.path()).unwrap();
 
     let prompt =
-        promptflow::build_phase1_prompt(&template, base, task_id, 2, &policy, &config).unwrap();
+        promptflow::build_phase1_prompt(&template, base, "", task_id, 2, &policy, &config).unwrap();
 
     assert!(prompt.contains("PLANNING MODE - PHASE 1 OF 2"));
     assert!(prompt.contains("NO FILE EDITS ARE ALLOWED IN PHASE 1"));
@@ -41,7 +41,7 @@ fn build_phase1_prompt_omits_rp_if_disabled() {
     let template = prompts::load_worker_phase1_prompt(repo_root.path()).unwrap();
 
     let prompt =
-        promptflow::build_phase1_prompt(&template, base, task_id, 2, &policy, &config).unwrap();
+        promptflow::build_phase1_prompt(&template, base, "", task_id, 2, &policy, &config).unwrap();
 
     assert!(!prompt.contains(prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
     assert!(!prompt.contains(prompts::REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION));
@@ -63,6 +63,8 @@ fn build_phase2_prompt_contains_required_elements() {
         "BASE_PROMPT",
         plan,
         checklist,
+        "",
+        "",
         "RQ-1234",
         2,
         &policy,
@@ -92,7 +94,7 @@ fn build_single_phase_prompt_contains_required_elements() {
     let template = prompts::load_worker_single_phase_prompt(repo_root.path()).unwrap();
 
     let prompt = promptflow::build_single_phase_prompt(
-        &template, base, checklist, task_id, &policy, &config,
+        &template, base, checklist, "", "", task_id, &policy, &config,
     )
     .unwrap();
 
@@ -150,6 +152,8 @@ fn build_phase2_handoff_prompt_contains_required_elements() {
         "BASE_PROMPT",
         plan,
         checklist,
+        "",
+        "",
         "RQ-1234",
         3,
         &policy,
@@ -184,6 +188,9 @@ fn build_phase3_prompt_contains_required_elements() {
         phase2_final,
         "RQ-0001",
         "CHECKLIST",
+        "",
+        "",
+        prompts::PHASE3_COMPLETION_GUIDANCE_FINAL,
         3,
         &policy,
         &config,

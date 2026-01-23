@@ -315,6 +315,8 @@ mod tests {
             cfg.agent.reasoning_effort,
             Some(crate::contracts::ReasoningEffort::Medium)
         );
+        assert_eq!(cfg.agent.iterations, Some(1));
+        assert_eq!(cfg.agent.followup_reasoning_effort, None);
         assert_eq!(cfg.agent.gemini_bin, Some("gemini".to_string()));
         Ok(())
     }

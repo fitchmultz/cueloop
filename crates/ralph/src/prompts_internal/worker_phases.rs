@@ -85,9 +85,11 @@ pub fn load_worker_single_phase_prompt(repo_root: &std::path::Path) -> Result<St
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_worker_phase1_prompt(
     template: &str,
     base_worker_prompt: &str,
+    iteration_context: &str,
     task_id: &str,
     total_phases: u8,
     plan_path: &str,
@@ -101,14 +103,24 @@ pub fn render_worker_phase1_prompt(
 
     let expanded = super::expand_variables(template, config)?;
     let repoprompt_block = repoprompt_block(repoprompt_required, true);
+    let safe_iteration_context = escape_placeholder_like_text(iteration_context.trim());
     let rendered = expanded
+        .replace("{{ITERATION_CONTEXT}}", iteration_context.trim())
         .replace("{{TASK_ID}}", id)
         .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
         .replace("{{PLAN_PATH}}", plan_path)
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
         .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
 
-    ensure_no_unresolved_placeholders(&rendered, "worker phase1")?;
+    let rendered_for_validation = expanded
+        .replace("{{ITERATION_CONTEXT}}", safe_iteration_context.trim())
+        .replace("{{TASK_ID}}", id)
+        .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
+        .replace("{{PLAN_PATH}}", plan_path)
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+
+    ensure_no_unresolved_placeholders(&rendered_for_validation, "worker phase1")?;
     Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
 }
 
@@ -118,6 +130,8 @@ pub fn render_worker_phase2_prompt(
     base_worker_prompt: &str,
     plan_text: &str,
     checklist: &str,
+    iteration_context: &str,
+    iteration_completion_block: &str,
     task_id: &str,
     total_phases: u8,
     repoprompt_required: bool,
@@ -126,9 +140,17 @@ pub fn render_worker_phase2_prompt(
     let expanded = super::expand_variables(template, config)?;
     let repoprompt_block = repoprompt_block(repoprompt_required, false);
     let safe_plan_text = escape_placeholder_like_text(plan_text.trim());
+    let safe_iteration_context = escape_placeholder_like_text(iteration_context.trim());
+    let safe_iteration_completion_block =
+        escape_placeholder_like_text(iteration_completion_block.trim());
     let rendered = expanded
         .replace("{{PLAN_TEXT}}", plan_text.trim())
         .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{ITERATION_CONTEXT}}", iteration_context.trim())
+        .replace(
+            "{{ITERATION_COMPLETION_BLOCK}}",
+            iteration_completion_block.trim(),
+        )
         .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
         .replace("{{TASK_ID}}", task_id.trim())
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
@@ -137,6 +159,11 @@ pub fn render_worker_phase2_prompt(
     let rendered_for_validation = expanded
         .replace("{{PLAN_TEXT}}", safe_plan_text.trim())
         .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{ITERATION_CONTEXT}}", safe_iteration_context.trim())
+        .replace(
+            "{{ITERATION_COMPLETION_BLOCK}}",
+            safe_iteration_completion_block.trim(),
+        )
         .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
         .replace("{{TASK_ID}}", task_id.trim())
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
@@ -151,6 +178,8 @@ pub fn render_worker_phase2_handoff_prompt(
     base_worker_prompt: &str,
     plan_text: &str,
     checklist: &str,
+    iteration_context: &str,
+    iteration_completion_block: &str,
     task_id: &str,
     total_phases: u8,
     repoprompt_required: bool,
@@ -159,9 +188,17 @@ pub fn render_worker_phase2_handoff_prompt(
     let expanded = super::expand_variables(template, config)?;
     let repoprompt_block = repoprompt_block(repoprompt_required, false);
     let safe_plan_text = escape_placeholder_like_text(plan_text.trim());
+    let safe_iteration_context = escape_placeholder_like_text(iteration_context.trim());
+    let safe_iteration_completion_block =
+        escape_placeholder_like_text(iteration_completion_block.trim());
     let rendered = expanded
         .replace("{{PLAN_TEXT}}", plan_text.trim())
         .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{ITERATION_CONTEXT}}", iteration_context.trim())
+        .replace(
+            "{{ITERATION_COMPLETION_BLOCK}}",
+            iteration_completion_block.trim(),
+        )
         .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
         .replace("{{TASK_ID}}", task_id.trim())
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
@@ -170,6 +207,11 @@ pub fn render_worker_phase2_handoff_prompt(
     let rendered_for_validation = expanded
         .replace("{{PLAN_TEXT}}", safe_plan_text.trim())
         .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{ITERATION_CONTEXT}}", safe_iteration_context.trim())
+        .replace(
+            "{{ITERATION_COMPLETION_BLOCK}}",
+            safe_iteration_completion_block.trim(),
+        )
         .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
         .replace("{{TASK_ID}}", task_id.trim())
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
@@ -186,6 +228,9 @@ pub fn render_worker_phase3_prompt(
     phase2_final_response: &str,
     task_id: &str,
     completion_checklist: &str,
+    iteration_context: &str,
+    iteration_completion_block: &str,
+    phase3_completion_guidance: &str,
     total_phases: u8,
     repoprompt_required: bool,
     config: &Config,
@@ -197,9 +242,23 @@ pub fn render_worker_phase3_prompt(
     }
     let repoprompt_block = repoprompt_block(repoprompt_required, false);
     let safe_phase2_final_response = escape_placeholder_like_text(phase2_final_response.trim());
+    let safe_iteration_context = escape_placeholder_like_text(iteration_context.trim());
+    let safe_iteration_completion_block =
+        escape_placeholder_like_text(iteration_completion_block.trim());
+    let safe_phase3_completion_guidance =
+        escape_placeholder_like_text(phase3_completion_guidance.trim());
     let rendered = expanded
         .replace("{{CODE_REVIEW_BODY}}", review_body.trim())
         .replace("{{COMPLETION_CHECKLIST}}", completion_checklist.trim())
+        .replace("{{ITERATION_CONTEXT}}", iteration_context.trim())
+        .replace(
+            "{{ITERATION_COMPLETION_BLOCK}}",
+            iteration_completion_block.trim(),
+        )
+        .replace(
+            "{{PHASE3_COMPLETION_GUIDANCE}}",
+            phase3_completion_guidance.trim(),
+        )
         .replace("{{PHASE2_FINAL_RESPONSE}}", phase2_final_response.trim())
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
         .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
@@ -213,6 +272,15 @@ pub fn render_worker_phase3_prompt(
             "{{PHASE2_FINAL_RESPONSE}}",
             safe_phase2_final_response.trim(),
         )
+        .replace("{{ITERATION_CONTEXT}}", safe_iteration_context.trim())
+        .replace(
+            "{{ITERATION_COMPLETION_BLOCK}}",
+            safe_iteration_completion_block.trim(),
+        )
+        .replace(
+            "{{PHASE3_COMPLETION_GUIDANCE}}",
+            safe_phase3_completion_guidance.trim(),
+        )
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
         .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
         .replace("{{TASK_ID}}", task_id.trim())
@@ -222,10 +290,13 @@ pub fn render_worker_phase3_prompt(
     Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_worker_single_phase_prompt(
     template: &str,
     base_worker_prompt: &str,
     checklist: &str,
+    iteration_context: &str,
+    iteration_completion_block: &str,
     task_id: &str,
     repoprompt_required: bool,
     config: &Config,
@@ -237,13 +308,32 @@ pub fn render_worker_single_phase_prompt(
 
     let expanded = super::expand_variables(template, config)?;
     let repoprompt_block = repoprompt_block(repoprompt_required, false);
+    let safe_iteration_context = escape_placeholder_like_text(iteration_context.trim());
+    let safe_iteration_completion_block =
+        escape_placeholder_like_text(iteration_completion_block.trim());
     let rendered = expanded
         .replace("{{TASK_ID}}", id)
         .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{ITERATION_CONTEXT}}", iteration_context.trim())
+        .replace(
+            "{{ITERATION_COMPLETION_BLOCK}}",
+            iteration_completion_block.trim(),
+        )
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
         .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
 
-    ensure_no_unresolved_placeholders(&rendered, "worker single phase")?;
+    let rendered_for_validation = expanded
+        .replace("{{TASK_ID}}", id)
+        .replace("{{CHECKLIST}}", checklist.trim())
+        .replace("{{ITERATION_CONTEXT}}", safe_iteration_context.trim())
+        .replace(
+            "{{ITERATION_COMPLETION_BLOCK}}",
+            safe_iteration_completion_block.trim(),
+        )
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+
+    ensure_no_unresolved_placeholders(&rendered_for_validation, "worker single phase")?;
     Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
 }
 

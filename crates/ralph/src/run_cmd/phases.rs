@@ -30,6 +30,11 @@ pub struct PhaseInvocation<'a> {
     pub git_revert_mode: crate::contracts::GitRevertMode,
     pub git_commit_push_enabled: bool,
     pub revert_prompt: Option<runutil::RevertPromptHandler>,
+    pub iteration_context: &'a str,
+    pub iteration_completion_block: &'a str,
+    pub phase3_completion_guidance: &'a str,
+    pub is_final_iteration: bool,
+    pub allow_dirty_repo: bool,
 }
 
 const PHASE2_FINAL_RESPONSE_FALLBACK: &str = "(Phase 2 final response unavailable.)";
@@ -40,14 +45,65 @@ fn cache_phase2_final_response(repo_root: &Path, task_id: &str, stdout: &str) ->
     promptflow::write_phase2_final_response_cache(repo_root, task_id, &phase2_final_response)
 }
 
+fn run_ci_gate_with_continue<F>(
+    ctx: &PhaseInvocation<'_>,
+    mut continue_session: super::supervision::ContinueSession,
+    mut on_resume: F,
+) -> Result<()>
+where
+    F: FnMut(&runner::RunnerOutput) -> Result<()>,
+{
+    loop {
+        match super::supervision::run_ci_gate(ctx.resolved) {
+            Ok(()) => break,
+            Err(err) => {
+                let outcome = runutil::apply_git_revert_mode(
+                    &ctx.resolved.repo_root,
+                    ctx.git_revert_mode,
+                    "CI failure",
+                    ctx.revert_prompt.as_ref(),
+                )?;
+                match outcome {
+                    runutil::RevertOutcome::Continue { message } => {
+                        let output = super::supervision::resume_continue_session(
+                            ctx.resolved,
+                            &mut continue_session,
+                            &message,
+                        )?;
+                        on_resume(&output)?;
+                        continue;
+                    }
+                    _ => {
+                        bail!(
+                            "{} Error: {:#}",
+                            runutil::format_revert_failure_message(
+                                "CI gate failed after changes. Fix issues reported by CI and rerun.",
+                                outcome,
+                            ),
+                            err
+                        );
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> Result<String> {
     let label = logging::phase_label(1, total_phases, "Planning", ctx.task_id);
 
     logging::with_scope(&label, || {
+        let baseline_paths = if ctx.allow_dirty_repo {
+            gitutil::status_paths(&ctx.resolved.repo_root)?
+        } else {
+            Vec::new()
+        };
         let p1_template = prompts::load_worker_phase1_prompt(&ctx.resolved.repo_root)?;
         let p1_prompt = promptflow::build_phase1_prompt(
             &p1_template,
             ctx.base_prompt,
+            ctx.iteration_context,
             ctx.task_id,
             total_phases,
             ctx.policy,
@@ -83,10 +139,17 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             plan_cache_rel.as_str(),
         ];
         loop {
+            let mut allowed: Vec<String> = allowed_paths
+                .iter()
+                .map(|value| value.to_string())
+                .collect();
+            allowed.extend(baseline_paths.iter().cloned());
+            let allowed_refs: Vec<&str> = allowed.iter().map(String::as_str).collect();
+
             match gitutil::require_clean_repo_ignoring_paths(
                 &ctx.resolved.repo_root,
                 false,
-                &allowed_paths,
+                &allowed_refs,
             ) {
                 Ok(()) => break,
                 Err(err) => {
@@ -150,6 +213,8 @@ pub fn execute_phase2_implementation(
                 ctx.base_prompt,
                 plan_text,
                 &handoff_checklist,
+                ctx.iteration_context,
+                ctx.iteration_completion_block,
                 ctx.task_id,
                 total_phases,
                 ctx.policy,
@@ -170,7 +235,7 @@ pub fn execute_phase2_implementation(
 
             cache_phase2_final_response(&ctx.resolved.repo_root, ctx.task_id, &output.stdout)?;
 
-            let mut continue_session = super::supervision::ContinueSession {
+            let continue_session = super::supervision::ContinueSession {
                 runner: ctx.settings.runner,
                 model: ctx.settings.model.clone(),
                 reasoning_effort: ctx.settings.reasoning_effort,
@@ -178,67 +243,43 @@ pub fn execute_phase2_implementation(
                 output_handler: ctx.output_handler.clone(),
             };
 
-            loop {
-                match super::supervision::run_ci_gate(ctx.resolved) {
-                    Ok(()) => break,
-                    Err(err) => {
-                        let outcome = runutil::apply_git_revert_mode(
-                            &ctx.resolved.repo_root,
-                            ctx.git_revert_mode,
-                            "Phase 2 CI failure",
-                            ctx.revert_prompt.as_ref(),
-                        )?;
-                        match outcome {
-                            runutil::RevertOutcome::Continue { message } => {
-                                let output = super::supervision::resume_continue_session(
-                                    ctx.resolved,
-                                    &mut continue_session,
-                                    &message,
-                                )?;
-                                cache_phase2_final_response(
-                                    &ctx.resolved.repo_root,
-                                    ctx.task_id,
-                                    &output.stdout,
-                                )?;
-                                continue;
-                            }
-                            _ => {
-                                bail!(
-                                    "{} Error: {:#}",
-                                    runutil::format_revert_failure_message(
-                                        "CI gate failed after Phase 2. Fix issues reported by CI and rerun.",
-                                        outcome,
-                                    ),
-                                    err
-                                );
-                            }
-                        }
-                    }
-                }
-            }
+            run_ci_gate_with_continue(ctx, continue_session, |output| {
+                cache_phase2_final_response(&ctx.resolved.repo_root, ctx.task_id, &output.stdout)
+            })?;
 
             return Ok(());
         }
 
-        let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
-        let completion_checklist = prompts::render_completion_checklist(
-            &checklist_template,
-            ctx.task_id,
-            &ctx.resolved.config,
-        )?;
+        let checklist = if ctx.is_final_iteration {
+            let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
+            prompts::render_completion_checklist(
+                &checklist_template,
+                ctx.task_id,
+                &ctx.resolved.config,
+            )?
+        } else {
+            let checklist_template = prompts::load_iteration_checklist(&ctx.resolved.repo_root)?;
+            prompts::render_iteration_checklist(
+                &checklist_template,
+                ctx.task_id,
+                &ctx.resolved.config,
+            )?
+        };
         let p2_template = prompts::load_worker_phase2_prompt(&ctx.resolved.repo_root)?;
         let p2_prompt = promptflow::build_phase2_prompt(
             &p2_template,
             ctx.base_prompt,
             plan_text,
-            &completion_checklist,
+            &checklist,
+            ctx.iteration_context,
+            ctx.iteration_completion_block,
             ctx.task_id,
             total_phases,
             ctx.policy,
             &ctx.resolved.config,
         )?;
 
-        execute_runner_pass(
+        let output = execute_runner_pass(
             ctx.resolved,
             ctx.settings,
             ctx.bins,
@@ -250,13 +291,24 @@ pub fn execute_phase2_implementation(
             "Implementation",
         )?;
 
-        super::post_run_supervise(
-            ctx.resolved,
-            ctx.task_id,
-            ctx.git_revert_mode,
-            ctx.git_commit_push_enabled,
-            ctx.revert_prompt.clone(),
-        )?;
+        if ctx.is_final_iteration {
+            super::post_run_supervise(
+                ctx.resolved,
+                ctx.task_id,
+                ctx.git_revert_mode,
+                ctx.git_commit_push_enabled,
+                ctx.revert_prompt.clone(),
+            )?;
+        } else {
+            let continue_session = super::supervision::ContinueSession {
+                runner: ctx.settings.runner,
+                model: ctx.settings.model.clone(),
+                reasoning_effort: ctx.settings.reasoning_effort,
+                session_id: output.session_id.clone(),
+                output_handler: ctx.output_handler.clone(),
+            };
+            run_ci_gate_with_continue(ctx, continue_session, |_output| Ok(()))?;
+        }
         Ok(())
     })
 }
@@ -273,12 +325,21 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             &ctx.resolved.config,
         )?;
 
-        let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
-        let completion_checklist = prompts::render_completion_checklist(
-            &checklist_template,
-            ctx.task_id,
-            &ctx.resolved.config,
-        )?;
+        let completion_checklist = if ctx.is_final_iteration {
+            let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
+            prompts::render_completion_checklist(
+                &checklist_template,
+                ctx.task_id,
+                &ctx.resolved.config,
+            )?
+        } else {
+            let checklist_template = prompts::load_iteration_checklist(&ctx.resolved.repo_root)?;
+            prompts::render_iteration_checklist(
+                &checklist_template,
+                ctx.task_id,
+                &ctx.resolved.config,
+            )?
+        };
         let p3_template = prompts::load_worker_phase3_prompt(&ctx.resolved.repo_root)?;
         let phase2_final_response = match promptflow::read_phase2_final_response_cache(
             &ctx.resolved.repo_root,
@@ -301,6 +362,9 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             &phase2_final_response,
             ctx.task_id,
             &completion_checklist,
+            ctx.iteration_context,
+            ctx.iteration_completion_block,
+            ctx.phase3_completion_guidance,
             3,
             ctx.policy,
             &ctx.resolved.config,
@@ -339,6 +403,17 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 },
             },
         )?;
+
+        if !ctx.is_final_iteration {
+            if completions::take_completion_signal(&ctx.resolved.repo_root, ctx.task_id)?.is_some()
+            {
+                log::warn!(
+                    "Ignoring completion signal for {} because this run is not final.",
+                    ctx.task_id
+                );
+            }
+            return Ok(());
+        }
 
         let mut continue_session = super::supervision::ContinueSession {
             runner: ctx.settings.runner,
@@ -401,23 +476,34 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
     let label = logging::single_phase_label("SinglePhase (Execution)", ctx.task_id);
 
     logging::with_scope(&label, || {
-        let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
-        let completion_checklist = prompts::render_completion_checklist(
-            &checklist_template,
-            ctx.task_id,
-            &ctx.resolved.config,
-        )?;
+        let completion_checklist = if ctx.is_final_iteration {
+            let checklist_template = prompts::load_completion_checklist(&ctx.resolved.repo_root)?;
+            prompts::render_completion_checklist(
+                &checklist_template,
+                ctx.task_id,
+                &ctx.resolved.config,
+            )?
+        } else {
+            let checklist_template = prompts::load_iteration_checklist(&ctx.resolved.repo_root)?;
+            prompts::render_iteration_checklist(
+                &checklist_template,
+                ctx.task_id,
+                &ctx.resolved.config,
+            )?
+        };
         let single_template = prompts::load_worker_single_phase_prompt(&ctx.resolved.repo_root)?;
         let prompt = promptflow::build_single_phase_prompt(
             &single_template,
             ctx.base_prompt,
             &completion_checklist,
+            ctx.iteration_context,
+            ctx.iteration_completion_block,
             ctx.task_id,
             ctx.policy,
             &ctx.resolved.config,
         )?;
 
-        execute_runner_pass(
+        let output = execute_runner_pass(
             ctx.resolved,
             ctx.settings,
             ctx.bins,
@@ -429,13 +515,24 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
             "Execution",
         )?;
 
-        super::post_run_supervise(
-            ctx.resolved,
-            ctx.task_id,
-            ctx.git_revert_mode,
-            ctx.git_commit_push_enabled,
-            ctx.revert_prompt.clone(),
-        )?;
+        if ctx.is_final_iteration {
+            super::post_run_supervise(
+                ctx.resolved,
+                ctx.task_id,
+                ctx.git_revert_mode,
+                ctx.git_commit_push_enabled,
+                ctx.revert_prompt.clone(),
+            )?;
+        } else {
+            let continue_session = super::supervision::ContinueSession {
+                runner: ctx.settings.runner,
+                model: ctx.settings.model.clone(),
+                reasoning_effort: ctx.settings.reasoning_effort,
+                session_id: output.session_id.clone(),
+                output_handler: ctx.output_handler.clone(),
+            };
+            run_ci_gate_with_continue(ctx, continue_session, |_output| Ok(()))?;
+        }
         Ok(())
     })
 }
@@ -558,6 +655,7 @@ pub fn ensure_phase3_completion(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::completions;
     use crate::contracts::{
         ClaudePermissionMode, Config, GitRevertMode, Model, QueueConfig, QueueFile,
         ReasoningEffort, Runner, Task, TaskPriority, TaskStatus,
@@ -779,6 +877,11 @@ echo '{{"sessionID":"sess-123"}}'
             git_revert_mode: GitRevertMode::Ask,
             git_commit_push_enabled: true,
             revert_prompt: Some(prompt_handler),
+            iteration_context: "",
+            iteration_completion_block: "",
+            phase3_completion_guidance: "",
+            is_final_iteration: true,
+            allow_dirty_repo: false,
         };
 
         let plan_text = execute_phase1_planning(&invocation, 2)?;
@@ -817,6 +920,63 @@ echo '{{"sessionID":"sess-123"}}'
 
         let resolved = resolved_for_completion(temp.path().to_path_buf());
         ensure_phase3_completion(&resolved, "RQ-0001", false)?;
+        Ok(())
+    }
+
+    #[test]
+    fn phase3_review_non_final_skips_completion_enforcement() -> Result<()> {
+        let temp = TempDir::new()?;
+        let script = r#"#!/bin/sh
+echo '{"sessionID":"sess-123"}'
+"#;
+        let runner_path = create_fake_runner(temp.path(), "opencode", script)?;
+
+        let resolved = resolved_for_repo(temp.path().to_path_buf(), &runner_path);
+        let settings = runner::AgentSettings {
+            runner: Runner::Opencode,
+            model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
+            reasoning_effort: None,
+        };
+        let bins = runner::RunnerBinaries {
+            codex: "codex",
+            opencode: runner_path.to_str().expect("runner path"),
+            gemini: "gemini",
+            claude: "claude",
+        };
+        let policy = promptflow::PromptPolicy {
+            require_repoprompt: false,
+        };
+
+        let signal = completions::CompletionSignal {
+            task_id: "RQ-0001".to_string(),
+            status: TaskStatus::Done,
+            notes: vec!["note".to_string()],
+        };
+        completions::write_completion_signal(temp.path(), &signal)?;
+
+        let invocation = PhaseInvocation {
+            resolved: &resolved,
+            settings: &settings,
+            bins,
+            task_id: "RQ-0001",
+            base_prompt: "base prompt",
+            policy: &policy,
+            output_handler: None,
+            project_type: ProjectType::Code,
+            git_revert_mode: GitRevertMode::Ask,
+            git_commit_push_enabled: true,
+            revert_prompt: None,
+            iteration_context: "iteration",
+            iteration_completion_block: "block",
+            phase3_completion_guidance: "guidance",
+            is_final_iteration: false,
+            allow_dirty_repo: true,
+        };
+
+        execute_phase3_review(&invocation)?;
+
+        let signal_after = completions::read_completion_signal(temp.path(), "RQ-0001")?;
+        assert!(signal_after.is_none());
         Ok(())
     }
 }

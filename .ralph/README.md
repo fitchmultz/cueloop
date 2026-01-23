@@ -65,7 +65,8 @@ Worker prompts are composed from a base prompt plus phase-specific wrappers:
   `.ralph/prompts/worker_phase2_handoff.md`, `.ralph/prompts/worker_phase3.md`,
   `.ralph/prompts/worker_single_phase.md`
 - Shared supporting prompts: `.ralph/prompts/completion_checklist.md`,
-  `.ralph/prompts/phase2_handoff_checklist.md`, `.ralph/prompts/code_review.md`
+  `.ralph/prompts/phase2_handoff_checklist.md`, `.ralph/prompts/iteration_checklist.md`,
+  `.ralph/prompts/code_review.md`
 
 If a repo-local override is missing, Ralph falls back to the embedded defaults in
 `crates/ralph/assets/prompts/`.
@@ -94,6 +95,7 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
     "runner": "claude",
     "model": "sonnet",
     "phases": 3,
+    "iterations": 1,
     "require_repoprompt": false,
     "git_revert_mode": "ask",
     "git_commit_push_enabled": true,

@@ -50,7 +50,7 @@
       ],
       "properties": {
         "agent": {
-          "description": "Optional per-task agent override (runner/model/effort).",
+          "description": "Optional per-task agent override (runner/model/effort/iterations).",
           "anyOf": [
             {
               "$ref": "#/definitions/TaskAgent"
@@ -165,6 +165,26 @@
     "TaskAgent": {
       "type": "object",
       "properties": {
+        "followup_reasoning_effort": {
+          "description": "Reasoning effort override for follow-up iterations (iterations > 1).",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ReasoningEffort"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "iterations": {
+          "description": "Number of iterations to run for this task (overrides config).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "minimum": 1.0
+        },
         "model": {
           "anyOf": [
             {

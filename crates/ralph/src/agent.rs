@@ -262,6 +262,8 @@ mod tests {
                 runner: None,
                 model: None,
                 reasoning_effort: None,
+                iterations: None,
+                followup_reasoning_effort: None,
                 codex_bin: Some("codex".to_string()),
                 opencode_bin: Some("opencode".to_string()),
                 gemini_bin: Some("gemini".to_string()),

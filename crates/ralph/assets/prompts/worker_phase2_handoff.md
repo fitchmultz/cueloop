@@ -5,6 +5,8 @@ CURRENT TASK: {{TASK_ID}}. Do NOT switch tasks.
 
 Task status is already set to `doing` by Ralph. Do NOT change it.
 
+{{ITERATION_CONTEXT}}
+
 {{BASE_WORKER_PROMPT}}
 
 {{REPOPROMPT_BLOCK}}
@@ -20,5 +22,7 @@ Note: Your final response will be passed into Phase 3 as context only. End with 
 Proceed with the implementation of the plan above. Stop after Phase 2 handoff.
 
 ---
+
+{{ITERATION_COMPLETION_BLOCK}}
 
 {{CHECKLIST}}

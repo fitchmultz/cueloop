@@ -30,6 +30,7 @@ pub fn validate_queue(queue: &QueueFile, id_prefix: &str, id_width: usize) -> Re
     let mut seen = HashSet::new();
     for (idx, task) in queue.tasks.iter().enumerate() {
         validate_task_required_fields(idx, task)?;
+        validate_task_agent_fields(idx, task)?;
         validate_task_id(idx, &task.id, &expected_prefix, id_width)?;
 
         if task.status == TaskStatus::Rejected {
@@ -42,6 +43,21 @@ pub fn validate_queue(queue: &QueueFile, id_prefix: &str, id_width: usize) -> Re
         }
     }
 
+    Ok(())
+}
+
+fn validate_task_agent_fields(index: usize, task: &Task) -> Result<()> {
+    if let Some(agent) = task.agent.as_ref() {
+        if let Some(iterations) = agent.iterations {
+            if iterations == 0 {
+                bail!(
+                    "Invalid agent.iterations: task {} (index {}) must specify iterations >= 1.",
+                    task.id,
+                    index
+                );
+            }
+        }
+    }
     Ok(())
 }
 
@@ -347,7 +363,7 @@ fn has_cycle(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contracts::{Task, TaskStatus};
+    use crate::contracts::{Task, TaskAgent, TaskStatus};
     use std::collections::HashMap;
 
     fn task(id: &str) -> Task {
@@ -448,6 +464,24 @@ mod tests {
         };
         let err = validate_queue(&queue, "RQ", 4).unwrap_err();
         assert!(format!("{err}").contains("must be a valid RFC3339 UTC timestamp"));
+    }
+
+    #[test]
+    fn validate_rejects_zero_agent_iterations() {
+        let mut task = task("RQ-0001");
+        task.agent = Some(TaskAgent {
+            runner: None,
+            model: None,
+            reasoning_effort: None,
+            iterations: Some(0),
+            followup_reasoning_effort: None,
+        });
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![task],
+        };
+        let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+        assert!(format!("{err}").contains("agent.iterations"));
     }
 
     #[test]

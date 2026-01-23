@@ -433,6 +433,8 @@ mod tests {
                 runner: Some(Runner::Codex),
                 model: Some(crate::contracts::Model::Gpt52Codex),
                 reasoning_effort: Some(crate::contracts::ReasoningEffort::Medium),
+                iterations: Some(1),
+                followup_reasoning_effort: None,
                 codex_bin: Some("codex".to_string()),
                 opencode_bin: Some("opencode".to_string()),
                 gemini_bin: Some("gemini".to_string()),

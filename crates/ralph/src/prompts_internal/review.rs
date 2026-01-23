@@ -1,4 +1,5 @@
-//! Review prompt loading and rendering (code review, completion checklist, phase2 handoff).
+//! Review prompt loading and rendering (code review, completion checklist, iteration checklist,
+//! phase2 handoff).
 
 use super::util::{
     ensure_no_unresolved_placeholders, load_prompt_with_fallback, project_type_guidance,
@@ -9,6 +10,7 @@ use anyhow::{bail, Result};
 const COMPLETION_CHECKLIST_REL_PATH: &str = ".ralph/prompts/completion_checklist.md";
 const CODE_REVIEW_PROMPT_REL_PATH: &str = ".ralph/prompts/code_review.md";
 const PHASE2_HANDOFF_CHECKLIST_REL_PATH: &str = ".ralph/prompts/phase2_handoff_checklist.md";
+const ITERATION_CHECKLIST_REL_PATH: &str = ".ralph/prompts/iteration_checklist.md";
 
 const DEFAULT_COMPLETION_CHECKLIST: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -23,6 +25,11 @@ const DEFAULT_CODE_REVIEW_PROMPT: &str = include_str!(concat!(
 const DEFAULT_PHASE2_HANDOFF_CHECKLIST: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/prompts/phase2_handoff_checklist.md"
+));
+
+const DEFAULT_ITERATION_CHECKLIST: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/prompts/iteration_checklist.md"
 ));
 
 pub fn load_completion_checklist(repo_root: &std::path::Path) -> Result<String> {
@@ -52,6 +59,15 @@ pub fn load_phase2_handoff_checklist(repo_root: &std::path::Path) -> Result<Stri
     )
 }
 
+pub fn load_iteration_checklist(repo_root: &std::path::Path) -> Result<String> {
+    load_prompt_with_fallback(
+        repo_root,
+        ITERATION_CHECKLIST_REL_PATH,
+        DEFAULT_ITERATION_CHECKLIST,
+        "iteration checklist",
+    )
+}
+
 pub fn render_completion_checklist(
     template: &str,
     task_id: &str,
@@ -72,6 +88,22 @@ pub fn render_phase2_handoff_checklist(template: &str, config: &Config) -> Resul
     let expanded = super::expand_variables(template, config)?;
     ensure_no_unresolved_placeholders(&expanded, "phase2 handoff checklist")?;
     Ok(expanded)
+}
+
+pub fn render_iteration_checklist(
+    template: &str,
+    task_id: &str,
+    config: &Config,
+) -> Result<String> {
+    let id = task_id.trim();
+    if id.is_empty() {
+        bail!("Missing task id: iteration checklist requires a non-empty task id.");
+    }
+
+    let expanded = super::expand_variables(template, config)?;
+    let rendered = expanded.replace("{{TASK_ID}}", id);
+    ensure_no_unresolved_placeholders(&rendered, "iteration checklist")?;
+    Ok(rendered)
 }
 
 pub fn render_code_review_prompt(

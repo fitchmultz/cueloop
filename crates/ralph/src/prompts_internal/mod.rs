@@ -4,6 +4,7 @@
 //! single re-export surface. It is intended to be re-exported by
 //! `crate::prompts` for backward compatibility.
 
+pub mod iteration;
 pub mod review;
 pub mod scan;
 pub mod task_builder;
@@ -14,6 +15,7 @@ pub mod worker_phases;
 #[cfg(test)]
 mod tests;
 
+pub use iteration::*;
 pub use review::*;
 pub use scan::*;
 pub use task_builder::*;
@@ -37,6 +39,7 @@ pub fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
     let completion_checklist = load_completion_checklist(repo_root)?;
     let code_review = load_code_review_prompt(repo_root)?;
     let phase2_handoff = load_phase2_handoff_checklist(repo_root)?;
+    let iteration_checklist = load_iteration_checklist(repo_root)?;
 
     Ok(worker.contains(".ralph/README.md")
         || worker_phase1.contains(".ralph/README.md")
@@ -48,5 +51,6 @@ pub fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
         || scan.contains(".ralph/README.md")
         || completion_checklist.contains(".ralph/README.md")
         || code_review.contains(".ralph/README.md")
-        || phase2_handoff.contains(".ralph/README.md"))
+        || phase2_handoff.contains(".ralph/README.md")
+        || iteration_checklist.contains(".ralph/README.md"))
 }

@@ -40,6 +40,10 @@ Per-task agent overrides:
 - `agent.runner`: `codex`, `opencode`, `gemini`, or `claude`.
 - `agent.model`: model id string.
 - `agent.reasoning_effort`: `minimal`, `low`, `medium`, `high`.
+- `agent.iterations`: number of iterations for this task (default: 1).
+- `agent.followup_reasoning_effort`: reasoning effort for iterations after the first (Codex only).
+
+Note: `agent.followup_reasoning_effort` is ignored for non-Codex runners.
 
 ## Example Task
 ```json
@@ -59,7 +63,9 @@ Per-task agent overrides:
   "agent": {
     "runner": "codex",
     "model": "gpt-5.2-codex",
-    "reasoning_effort": "medium"
+    "reasoning_effort": "high",
+    "iterations": 2,
+    "followup_reasoning_effort": "low"
   }
 }
 ```

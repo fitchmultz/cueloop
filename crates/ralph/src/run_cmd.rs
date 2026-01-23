@@ -4,7 +4,7 @@
 //! Phase-specific prompt/runner execution lives in `run_cmd::phases`.
 
 use crate::config;
-use crate::contracts::{GitRevertMode, ProjectType, TaskStatus};
+use crate::contracts::{AgentConfig, GitRevertMode, ProjectType, ReasoningEffort, TaskStatus};
 use crate::promptflow;
 use crate::{gitutil, prompts, queue, runner, runutil, timeutil};
 use anyhow::{bail, Context, Result};
@@ -27,6 +27,12 @@ pub use crate::agent::AgentOverrides;
 enum QueueLockMode {
     Acquire,
     Held,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct IterationSettings {
+    count: u8,
+    followup_reasoning_effort: Option<ReasoningEffort>,
 }
 
 pub enum RunOutcome {
@@ -238,9 +244,13 @@ fn run_one_impl(
     let task = queue_file.tasks[task_idx].clone();
     let task_id = task.id.trim().to_string();
 
-    log::info!("RunOne: selected {task_id} (phases={phases})");
+    let iteration_settings = resolve_iteration_settings(&task, &resolved.config.agent)?;
+    log::info!(
+        "RunOne: selected {task_id} (phases={phases}, iterations={})",
+        iteration_settings.count
+    );
 
-    // Require clean repo
+    // Require clean repo before the first iteration starts.
     gitutil::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
         force,
@@ -251,13 +261,13 @@ fn run_one_impl(
     mark_task_doing(resolved, &task_id)?;
 
     // Resolve runner settings
-    let settings = resolve_run_agent_settings(resolved, &task, agent_overrides)?;
+    let base_settings = resolve_run_agent_settings(resolved, &task, agent_overrides)?;
     let bins = runner::resolve_binaries(&resolved.config.agent);
 
     log::info!(
         "Task {task_id}: start (runner={runner:?}, model={model})",
-        runner = settings.runner,
-        model = settings.model.as_str()
+        runner = base_settings.runner,
+        model = base_settings.model.as_str()
     );
 
     let exec_result: Result<()> = (|| {
@@ -273,34 +283,71 @@ fn run_one_impl(
         let task_context = task_context_for_prompt(&task)?;
         base_prompt = format!("{task_context}\n\n---\n\n{base_prompt}");
 
-        let invocation = phases::PhaseInvocation {
-            resolved,
-            settings: &settings,
-            bins,
-            task_id: &task_id,
-            base_prompt: &base_prompt,
-            policy: &policy,
-            output_handler: output_handler.clone(),
-            project_type,
-            git_revert_mode,
-            git_commit_push_enabled,
-            revert_prompt: revert_prompt.clone(),
-        };
+        for iteration_index in 1..=iteration_settings.count {
+            let is_followup = iteration_index > 1;
+            let is_final_iteration = iteration_index == iteration_settings.count;
 
-        match phases {
-            2 => {
-                let plan_text = phases::execute_phase1_planning(&invocation, 2)?;
-                phases::execute_phase2_implementation(&invocation, 2, &plan_text)?;
+            log::info!(
+                "Task {task_id}: iteration {iteration_index}/{}",
+                iteration_settings.count
+            );
+
+            let settings = apply_followup_reasoning_effort(
+                &base_settings,
+                iteration_settings.followup_reasoning_effort,
+                is_followup,
+            );
+
+            let iteration_context = if is_followup {
+                prompts::ITERATION_CONTEXT_REFINEMENT
+            } else {
+                ""
+            };
+            let iteration_completion_block = if is_final_iteration {
+                ""
+            } else {
+                prompts::ITERATION_COMPLETION_BLOCK
+            };
+            let phase3_completion_guidance = if is_final_iteration {
+                prompts::PHASE3_COMPLETION_GUIDANCE_FINAL
+            } else {
+                prompts::PHASE3_COMPLETION_GUIDANCE_NONFINAL
+            };
+
+            let invocation = phases::PhaseInvocation {
+                resolved,
+                settings: &settings,
+                bins,
+                task_id: &task_id,
+                base_prompt: &base_prompt,
+                policy: &policy,
+                output_handler: output_handler.clone(),
+                project_type,
+                git_revert_mode,
+                git_commit_push_enabled,
+                revert_prompt: revert_prompt.clone(),
+                iteration_context,
+                iteration_completion_block,
+                phase3_completion_guidance,
+                is_final_iteration,
+                allow_dirty_repo: is_followup,
+            };
+
+            match phases {
+                2 => {
+                    let plan_text = phases::execute_phase1_planning(&invocation, 2)?;
+                    phases::execute_phase2_implementation(&invocation, 2, &plan_text)?;
+                }
+                3 => {
+                    let plan_text = phases::execute_phase1_planning(&invocation, 3)?;
+                    phases::execute_phase2_implementation(&invocation, 3, &plan_text)?;
+                    phases::execute_phase3_review(&invocation)?;
+                }
+                1 => {
+                    phases::execute_single_phase(&invocation)?;
+                }
+                _ => unreachable!("phases must be validated to 1..=3"),
             }
-            3 => {
-                let plan_text = phases::execute_phase1_planning(&invocation, 3)?;
-                phases::execute_phase2_implementation(&invocation, 3, &plan_text)?;
-                phases::execute_phase3_review(&invocation)?;
-            }
-            1 => {
-                phases::execute_single_phase(&invocation)?;
-            }
-            _ => unreachable!("phases must be validated to 1..=3"),
         }
 
         Ok(())
@@ -331,6 +378,54 @@ fn resolve_run_agent_settings(
         task.agent.as_ref(),
         &resolved.config.agent,
     )
+}
+
+fn resolve_iteration_settings(
+    task: &crate::contracts::Task,
+    config_agent: &AgentConfig,
+) -> Result<IterationSettings> {
+    let count = task
+        .agent
+        .as_ref()
+        .and_then(|agent| agent.iterations)
+        .or(config_agent.iterations)
+        .unwrap_or(1);
+
+    if count == 0 {
+        bail!(
+            "Invalid iterations for task {}: iterations must be >= 1.",
+            task.id.trim()
+        );
+    }
+
+    let followup_reasoning_effort = task
+        .agent
+        .as_ref()
+        .and_then(|agent| agent.followup_reasoning_effort)
+        .or(config_agent.followup_reasoning_effort);
+
+    Ok(IterationSettings {
+        count,
+        followup_reasoning_effort,
+    })
+}
+
+fn apply_followup_reasoning_effort(
+    base_settings: &runner::AgentSettings,
+    followup_reasoning_effort: Option<ReasoningEffort>,
+    is_followup: bool,
+) -> runner::AgentSettings {
+    if !is_followup {
+        return base_settings.clone();
+    }
+
+    let mut settings = base_settings.clone();
+    if let Some(effort) = followup_reasoning_effort {
+        if settings.runner == crate::contracts::Runner::Codex {
+            settings.reasoning_effort = Some(effort);
+        }
+    }
+    settings
 }
 
 fn task_context_for_prompt(task: &crate::contracts::Task) -> Result<String> {

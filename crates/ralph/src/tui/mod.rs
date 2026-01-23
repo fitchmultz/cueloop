@@ -133,6 +133,8 @@ pub enum ConfigKey {
     AgentRunner,
     AgentModel,
     AgentReasoningEffort,
+    AgentIterations,
+    AgentFollowupReasoningEffort,
     AgentCodexBin,
     AgentOpencodeBin,
     AgentGeminiBin,
@@ -834,6 +836,20 @@ impl App {
                 kind: ConfigFieldKind::Cycle,
             },
             ConfigEntry {
+                key: ConfigKey::AgentIterations,
+                label: "agent.iterations",
+                value: display_u8(self.project_config.agent.iterations),
+                kind: ConfigFieldKind::Text,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentFollowupReasoningEffort,
+                label: "agent.followup_reasoning_effort",
+                value: display_reasoning_effort(
+                    self.project_config.agent.followup_reasoning_effort,
+                ),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
                 key: ConfigKey::AgentCodexBin,
                 label: "agent.codex_bin",
                 value: display_string(self.project_config.agent.codex_bin.as_ref()),
@@ -928,6 +944,12 @@ impl App {
                 .as_ref()
                 .map(|v: &Model| v.as_str().to_string())
                 .unwrap_or_default(),
+            ConfigKey::AgentIterations => self
+                .project_config
+                .agent
+                .iterations
+                .map(|value: u8| value.to_string())
+                .unwrap_or_default(),
             ConfigKey::AgentCodexBin => self
                 .project_config
                 .agent
@@ -1004,6 +1026,19 @@ impl App {
                     Some(trimmed.parse::<Model>().map_err(|msg| anyhow!(msg))?)
                 };
             }
+            ConfigKey::AgentIterations => {
+                self.project_config.agent.iterations = if trimmed.is_empty() {
+                    None
+                } else {
+                    let value: u8 = trimmed.parse().map_err(|_| {
+                        anyhow!("agent.iterations must be a valid number (e.g., 1)")
+                    })?;
+                    if value == 0 {
+                        bail!("agent.iterations must be greater than 0");
+                    }
+                    Some(value)
+                };
+            }
             ConfigKey::AgentCodexBin => {
                 self.project_config.agent.codex_bin = if trimmed.is_empty() {
                     None
@@ -1051,6 +1086,10 @@ impl App {
                 self.project_config.agent.reasoning_effort =
                     cycle_reasoning_effort(self.project_config.agent.reasoning_effort);
             }
+            ConfigKey::AgentFollowupReasoningEffort => {
+                self.project_config.agent.followup_reasoning_effort =
+                    cycle_reasoning_effort(self.project_config.agent.followup_reasoning_effort);
+            }
             ConfigKey::AgentClaudePermissionMode => {
                 self.project_config.agent.claude_permission_mode =
                     cycle_claude_permission_mode(self.project_config.agent.claude_permission_mode);
@@ -1085,6 +1124,10 @@ impl App {
             ConfigKey::AgentRunner => self.project_config.agent.runner = None,
             ConfigKey::AgentModel => self.project_config.agent.model = None,
             ConfigKey::AgentReasoningEffort => self.project_config.agent.reasoning_effort = None,
+            ConfigKey::AgentIterations => self.project_config.agent.iterations = None,
+            ConfigKey::AgentFollowupReasoningEffort => {
+                self.project_config.agent.followup_reasoning_effort = None;
+            }
             ConfigKey::AgentCodexBin => self.project_config.agent.codex_bin = None,
             ConfigKey::AgentOpencodeBin => self.project_config.agent.opencode_bin = None,
             ConfigKey::AgentGeminiBin => self.project_config.agent.gemini_bin = None,
