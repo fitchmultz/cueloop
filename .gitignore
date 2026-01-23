@@ -7,3 +7,5 @@
 ralph_tui/ralph
 .ralph/cache/
 .ralph/logs/
+target/
+.ralph/lock

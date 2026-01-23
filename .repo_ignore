@@ -1,5 +1,6 @@
-ralph_tui/ralph
-.ralph/cache/
-ralph_legacy/
-.ralph/logs/ralph.log
-.ralph/pin/implementation_done.md
+target/flycheck0/stdout
+target/flycheck0/stderr
+Cargo.lock
+target/release/
+.claude/
+CLAUDE.md

@@ -1,53 +1,73 @@
 # Contributor Guide
 
-## Project Structure & Module Organization
-- `ralph_tui/`: Active Go-based CLI/TUI (`go run ./cmd/ralph`). All new development targets this path; source lives in `internal/` with tests alongside as `*_test.go`.
-- `.ralph/`: Runtime/config defaults, including pin files at `.ralph/pin/` and cache/config files.
-- `README.md`: High-level orientation and links to component-specific docs.
+Purpose: Capture repo-wide operating expectations for contributors and agents.
 
-## Build, Test, and Development Commands
-- `make install`: Download Go modules.
-- `make build`: Build the Go CLI binary.
-- `make test`: Run Go tests.
-- `make format`: Format Go (gofmt).
-- `make lint`: Lint Go (go vet).
-- `make type-check`: Run a no-op Go test pass for type safety.
-- `make pin-validate`: Validate pin files via `ralph pin validate`.
-- `make ci`: Local gate; runs generate/format/type-check/lint/pin-validate/build/test.
+## Project Structure & Source of Truth
+- `crates/ralph/`: **Active** Rust CLI.
+  - Run locally via `cargo run -p ralph -- <command>`
+- `.ralph/`: Repo-local runtime state.
+  - `.ralph/queue.json` is the **source of truth** for active work.
+  - `.ralph/done.json` archives completed tasks (same schema as queue).
+  - Prompt templates are embedded in the Rust CLI and organized under `crates/ralph/assets/prompts/`; repo-local overrides can be placed in `.ralph/prompts/*.md`.
 
-## Coding Style & Naming Conventions
-- Go: standard formatting (`gofmt`), lower_snake_case filenames, lower-case package names.
-- Prompts/specs are Markdown; keep them generalized (no project-specific assumptions).
+## Build, Test, and Development Commands (Rust)
 
-## Testing Guidelines
-- Go tests use the standard `testing` package and live alongside code as `*_test.go`.
-- Prefer table-driven tests for multiple scenarios in Go.
+**REQUIRED CI GATE**: `make ci` — **Agents MUST run this before claiming task completion, committing, or merging PRs.** This is the validation gate that must pass for any work to be considered complete.
 
-## Co & Pull Request Guidelines
-- Commit messages in history are sentence-case summaries; some include multiple sentences.
-- No formal PR template; include:
-  - A concise summary of changes.
-  - Commands run (especially `make ci` or `go test ./...`).
-  - Notes on prompt/spec changes or TUI behavior changes.
-  - Screenshots or recordings if TUI UI behavior changes.
+**CLI Commands**: See `docs/cli.md` for complete command reference. Agents should keep this documentation up to date when adding or modifying CLI commands.
+
+**Development/iteration commands** (for rapid testing, not a substitute for `make ci`):
+- `cargo test -p ralph`
+- `cargo run -p ralph -- <command>` (see `docs/cli.md` for available commands)
+
+## Queue & Prompt Contract (Rust)
+- Source of truth is `.ralph/queue.json` (JSON). Task order follows file order (top runs first).
+- Completed tasks must be moved to `.ralph/done.json` and removed from `.ralph/queue.json`.
+- New tasks must include: `id`, `title`, `created_at`, `updated_at`, `tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `custom_fields` (arrays/objects can be empty; only `id` and `title` must be non-empty).
+- Optional task fields: `status` (defaults to `todo`), `priority` (defaults to `medium`), `request`, `completed_at`, `agent`.
+- See `docs/queue-and-tasks.md` for complete task schema documentation.
+- Prompt templates are embedded in the Rust CLI and organized under `crates/ralph/assets/prompts/`; overrides can be placed in `.ralph/prompts/` and reference these files.
+- Worker prompts are composed from a base prompt (`worker.md`) plus phase-specific wrappers (`worker_phase1.md`, `worker_phase2.md`, `worker_phase2_handoff.md`, `worker_phase3.md`, `worker_single_phase.md`).
+- **Two-phase planning**: Agents in Phase 1 MUST write their plan to `.ralph/cache/plans/<TASK_ID>.md` and avoid printing the plan inline.
+- **Supervision-aware completion**: `ralph task done` detects supervision and writes a completion signal to `.ralph/cache/completions/<TASK_ID>.json`. The supervisor consumes the signal, runs `queue::complete_task`, and then `post_run_supervise` (for done tasks) to finish CI/commit/push. This prevents lock contention while still recording the agent's completion intent.
+
+## Git + CI Expectations (Current Rust State)
+- The execution agent owns the lifecycle: update queue status, run `make ci`, commit, and push.
+- The supervisor (`ralph run`) verifies the repo is clean and will commit/push only if needed.
+- Prefer commit messages like `RQ-####: <short summary>`.
+
+## CLI Help Documentation
+- **When adding new CLI arguments**: Always update help text (clap `after_long_help`, doc comments) to include examples.
+- **Help examples must cover**: new flags, their purpose, and typical usage patterns.
+- **Verification**: Run `cargo run -p ralph -- <command> --help` to review output before committing.
+- **Common gaps to watch for**: missing `--phases` examples, `--interactive` (`-i`), `--rp-on`/`--rp-off`, runner/model overrides.
+
+## Configuration
+- See `docs/configuration.md` for complete configuration documentation. Agents should keep this documentation up to date when adding or modifying configuration options.
+- Two-layer JSON config:
+  - Global: `~/.config/ralph/config.json`
+  - Project: `.ralph/config.json` (overrides global)
+- CLI flags can override at runtime; they should not be relied on as persisted config.
+- **RepoPrompt**: When `agent.require_repoprompt: true` (or `--rp-on`), agents MUST use RepoPrompt tools (`read_file`, `context_builder`, etc.).
+
+## Documentation Maintenance
+- When config defaults, schemas, CLI flags, or task fields change, update `docs/` and keep examples in sync with the source of truth.
+- All documentation in `docs/` should be kept up to date. When adding or modifying features, update the relevant documentation files accordingly.
+
+## Operational Lessons
+- When changing streamed runner output, validate with real runner CLIs and a non-trivial prompt so tool usage + reasoning events are exercised.
+- Keep streaming logs user-readable by including tool arguments (paths/commands) in summaries, not raw JSON.
+- Use temp repos for runner/output tests and avoid mutating `.ralph/queue.json` in this repo.
+- Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
 
 ## Configuration & Security
-- Prefer a single project-root `.env` if configuration is needed; keep `.env.example` in sync.
 - Do not commit real secrets if the repo is public.
+- Treat runner output as potentially sensitive; avoid copying raw output into `.ralph/queue.json` notes without redaction.
 
 ## First-Principles Simplicity
-- Start from the fundamentals, strip to essentials, then rebuild the simplest working path (think SpaceX’s Raptor approach).
+- Start from the fundamentals, strip to essentials, then rebuild the simplest working path.
 - Delete before adding: remove dead code, redundant layers, and stale comments; net-negative diffs are wins when behavior stays correct.
 - Complexity budget: add components only when they reduce total risk/maintenance or increase measurable value.
 - Evidence over opinion: tests, data constraints, and benchmarks settle debates; formatters/linters settle style.
 - Centralize early: if similar logic exists, consolidate into shared helpers/modules.
-
-## Agent Notes
-- Default pin/spec templates live in `.ralph/pin/`.
-- Update path references in docs/prompts when moving or renaming directories.
-- For TUI resize behavior, avoid min-size clamps that exceed available space; views should shrink to fit to prevent selection/highlight mismatches.
-- Loop runner inactivity is controlled by `loop.runner_inactivity_seconds`; when triggered, the loop resets to the last known good commit and restarts the item (no WIP quarantine).
-- TUI keybinding policy (RQ-0469):
-  - Global actions must use `ctrl+` combos only; avoid bare letters for global scope.
-  - While typing in a content view, global shortcuts do not fire (except quit); route keys to the active view.
-  - Screen-specific letter bindings are only safe when not typing and must be reflected in help/hints and conflict tests.
+- Dead-code linting: prefer an explicit, minimal usage pattern (e.g., a type annotation) over suppressing with allow attributes when preserving a public API.

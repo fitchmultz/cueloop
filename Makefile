@@ -1,40 +1,55 @@
-GO_PROJECT := ralph_tui
-GO_CMD := $(GO_PROJECT)/cmd/ralph
-GO_FILES := $(shell find $(GO_PROJECT) -name '*.go')
-GO_TEST := go test -count=1
+RUST_WORKSPACE := .
+PREFIX ?= $(HOME)/.local
+BIN_DIR ?= $(PREFIX)/bin
+BIN_NAME ?= ralph
 
-.PHONY: install update lint type-check format clean test generate pin-validate build ci
+.PHONY: install update lint type-check format clean test generate build build-release ci
 
-install:
-	cd $(GO_PROJECT) && go mod download
+install: build-release
+	@bin_dir="$(BIN_DIR)"; \
+	if [ ! -w "$$bin_dir" ]; then \
+		bin_dir="$(HOME)/.local/bin"; \
+		echo "install: $(BIN_DIR) not writable; using $$bin_dir"; \
+	fi; \
+	mkdir -p "$$bin_dir"; \
+	install -m 0755 target/release/$(BIN_NAME) "$$bin_dir/$(BIN_NAME)"; \
+	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
 
 update:
-	cd $(GO_PROJECT) && go get -u ./... && go mod tidy
+	@cargo update
 
 lint:
-	cd $(GO_PROJECT) && go vet ./...
+	cargo clippy --workspace --all-targets -- -D warnings
 
 type-check:
-	cd $(GO_PROJECT) && $(GO_TEST) ./... -run=^$$
+	cargo check --workspace --all-targets
 
 format:
-	gofmt -w $(GO_FILES)
+	cargo fmt --all
 
 clean:
+	cargo clean
 	find . -name '*.log' -type f -delete
-	rm -f $(GO_PROJECT)/ralph
-	cd $(GO_PROJECT) && go clean -cache -testcache
 
 test:
-	cd $(GO_PROJECT) && $(GO_TEST) ./...
+	cargo test --workspace --all-targets -- --include-ignored
+	cargo test --workspace --doc -- --include-ignored
+	cargo build --workspace --release
+
+stress:
+	@echo "Running burn-in stress tests..."
+	RALPH_STRESS_BURN_IN=1 cargo test -p ralph --test stress_queue_contract_test --release -- --ignored --nocapture
 
 generate:
-	@echo "No API type generation configured."
-
-pin-validate:
-	cd $(GO_PROJECT) && go run ./cmd/ralph pin validate
+	@mkdir -p schemas
+	@cargo run -q --bin ralph -- config schema > schemas/config.schema.json
+	@cargo run -q --bin ralph -- queue schema > schemas/queue.schema.json
+	@echo "Schemas generated in schemas/"
 
 build:
-	cd $(GO_PROJECT) && go build ./cmd/ralph
+	cargo build --workspace
 
-ci: generate format type-check lint pin-validate build test
+build-release:
+	cargo build --workspace --release
+
+ci: generate format type-check lint build test install

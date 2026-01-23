@@ -1,0 +1,3198 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0108",
+      "status": "done",
+      "title": "Add two-pass plan mode support for OpenCode runner",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "runner",
+        "feature"
+      ],
+      "scope": [
+        "crates/ralph/src/runner.rs"
+      ],
+      "evidence": [
+        "Claude runner supports two_pass_plan but OpenCode does not; documentation says \"will expand to OpenCode in the future\"",
+        "The two_pass_plan_enabled_for: false in task_cmd.rs and scan_cmd.rs comments indicate this is tracked technical debt"
+      ],
+      "plan": [
+        "Implement run_opencode_two_pass function similar to run_claude_two_pass",
+        "Add plan generation phase using RepoPrompt or equivalent tooling",
+        "Add implementation phase with auto-approval",
+        "Update task_cmd.rs and scan_cmd.rs to enable two_pass_plan for OpenCode",
+        "Add tests for OpenCode two-pass behavior"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0111",
+      "status": "done",
+      "title": "Add task priority field and sorting capabilities",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "queue",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/main.rs"
+      ],
+      "evidence": [
+        "Queue is ordered by priority but there is no explicit priority field",
+        "Tasks must be manually reordered by editing YAML",
+        "No way to sort by \"importance\" without manual reordering"
+      ],
+      "plan": [
+        "Add priority field to Task (enum: critical, high, medium, low)",
+        "Add queue sort --by=priority command",
+        "Add queue list --sort-by=priority flag",
+        "Update task build and scan prompts to request priority from agent",
+        "Add tests for priority sorting and validation"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0113",
+      "status": "rejected",
+      "title": "Add git conflict detection and recovery in post_run_supervise",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "safety",
+        "git"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/gitutil.rs"
+      ],
+      "evidence": [
+        "post_run_supervise commits changes but doesn't detect merge conflicts",
+        "If git push fails due to diverged history, the state is unclear",
+        "No check for merge markers before committing"
+      ],
+      "plan": [
+        "Add gitutil::has_merge_conflicts() to detect conflict markers",
+        "In post_run_supervise, check for conflicts after dirty check",
+        "If conflicts found, bail with instructions to resolve",
+        "Add gitutil::is_diverged() to check if local is behind remote",
+        "Add tests for conflict detection scenarios"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0114",
+      "status": "rejected",
+      "title": "Implement per-task output directory isolation",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "safety",
+        "runner"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/contracts.rs"
+      ],
+      "evidence": [
+        "Runners share the same working directory; simultaneous or overlapping runs could interfere",
+        "No isolation between task executions for temp files or artifacts",
+        "If run loop runs multiple tasks in parallel (future), they would conflict"
+      ],
+      "plan": [
+        "Add .ralph/work/<task-id> working directory per task execution",
+        "Set runner working directory to task-specific work dir",
+        "Copy/link necessary files into work dir before execution",
+        "Clean up work dir after task completes (on success or failure)",
+        "Add fsutil::create_task_workdir and cleanup helpers",
+        "Add tests for work directory lifecycle"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0115",
+      "status": "rejected",
+      "title": "Add concurrent task execution support with worker pools",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "performance",
+        "feature"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/contracts.rs"
+      ],
+      "evidence": [
+        "run loop executes tasks sequentially; no parallel execution option",
+        "For independent tasks (no dependencies), parallel execution would be much faster",
+        "Modern runtimes have many cores; sequential execution is underutilization"
+      ],
+      "plan": [
+        "Add --workers/-j flag to run loop (default 1 for sequential)",
+        "Use rayon or tokio to execute N tasks concurrently",
+        "Ensure queue lock is held but tasks run in isolation (see RQ-0114)",
+        "Limit concurrency based on available CPU cores",
+        "Add tests for concurrent execution correctness"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0116",
+      "status": "rejected",
+      "title": "Add task retry mechanism with exponential backoff",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "reliability",
+        "runner"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "Transient runner failures (network, API timeouts) cause task to fail completely",
+        "No built-in retry for flaky runners or temporary infrastructure issues",
+        "Users must manually re-run tasks that failed transiently"
+      ],
+      "plan": [
+        "Add retry field to Task (count, backoff_seconds)",
+        "In run_one, catch runner errors and check if retries remain",
+        "On retry, log the retry attempt and wait with backoff",
+        "Update task status to track retry_count in notes",
+        "Add tests for retry logic with mock runner failures"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0117",
+      "status": "rejected",
+      "title": "Implement task template library for recurring patterns",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "ux",
+        "templates"
+      ],
+      "scope": [
+        "crates/ralph/src/task_cmd.rs",
+        ".ralph/templates/"
+      ],
+      "evidence": [
+        "Common task patterns (e.g., \"add tests for X\", \"refactor Y\") are re-entered manually each time",
+        "scan and task build prompts don't have access to prior task definitions",
+        "No way to quickly create tasks from predefined templates"
+      ],
+      "plan": [
+        "Create .ralph/templates/ directory for task template YAML files",
+        "Add ralph task list-templates command",
+        "Add ralph task create-from-template <name> command",
+        "Templates include default tags, scope patterns, and plan structure",
+        "Add tests for template loading and instantiation"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0123",
+      "status": "rejected",
+      "title": "Implement task archiving policies (auto-archive after N days)",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "queue",
+        "policy"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/main.rs"
+      ],
+      "evidence": [
+        "done.yaml grows indefinitely; no automatic cleanup",
+        "Old completed tasks accumulate forever",
+        "No way to auto-archive tasks older than X days"
+      ],
+      "plan": [
+        "Add archive_policy field to QueueConfig (retention_days, auto_archive)",
+        "Add queue archive --apply-policy command",
+        "Run auto-archive during queue validate or init",
+        "Add prompt before deletion (dry-run with --dry-run flag)",
+        "Add tests for archival policy calculation and execution"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0124",
+      "status": "rejected",
+      "title": "Add subtask support and hierarchical task breakdown",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "queue",
+        "feature"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "Large tasks must be broken down into multiple top-level tasks manually",
+        "No parent-child relationship between tasks",
+        "Cannot expand a task to see its subtasks or collapse them"
+      ],
+      "plan": [
+        "Add parent_id field to Task for subtasks",
+        "Add queue show --recursive to display task hierarchy",
+        "Add queue expand <task-id> to break down a task into subtasks",
+        "Add queue flatten to move subtasks to top-level",
+        "Update validation to prevent cycles in parent-child relationships",
+        "Add tests for hierarchy operations"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0125",
+      "status": "rejected",
+      "title": "Implement task scheduling (defer to future date/time)",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "queue",
+        "scheduling"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "No way to schedule a task for \"next week\" or \"tomorrow at 9am\"",
+        "All tasks are immediately actionable (unless manually blocked)",
+        "Cannot set start_date or due_date on tasks"
+      ],
+      "plan": [
+        "Add scheduled_for and due_by fields to Task (RFC3339 timestamps)",
+        "Update run_one to skip tasks where scheduled_for > now",
+        "Add queue list --overdue to show past-due tasks",
+        "Add queue schedule <task-id> <timestamp> command",
+        "Log warnings when approaching due date",
+        "Add tests for scheduling behavior"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0127",
+      "status": "rejected",
+      "title": "Implement task links and references",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "queue",
+        "references"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "Tasks cannot reference related tasks, PRs, or issues",
+        "No way to say \"this blocks RQ-0100\" or \"implements RQ-0099\"",
+        "Cross-references would improve task discoverability"
+      ],
+      "plan": [
+        "Add related_tasks and blocks/is_blocked_by fields to Task",
+        "Add queue link <from-id> <to-id> command to establish relationships",
+        "Update validation to prevent self-references and enforce consistency",
+        "Add queue show --links to display relationship graph",
+        "Add tests for relationship tracking"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0128",
+      "status": "rejected",
+      "title": "Add batch task operations for bulk edits",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "ux",
+        "batch"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "No way to update multiple tasks at once",
+        "Cannot set all \"database\" tags to \"backend\" in one command",
+        "Bulk operations require manual YAML editing or multiple CLI calls"
+      ],
+      "plan": [
+        "Add queue batch set-status --filter=tag:database --to=doing command",
+        "Add queue batch set-tag --filter=tag:rust --add=performance command",
+        "Add queue batch delete --filter=status:todo --force command",
+        "Implement dry-run with --dry-run flag to preview changes",
+        "Add tests for batch operations correctness"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0129",
+      "status": "rejected",
+      "title": "Implement task diff and change tracking",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "ux",
+        "audit"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/main.rs"
+      ],
+      "evidence": [
+        "No way to see what changed between task edits",
+        "Cannot audit who modified a task and when",
+        "No history of task state transitions"
+      ],
+      "plan": [
+        "Add .ralph/task_history.yaml or embed history in task notes",
+        "Track each state change with timestamp and \"actor\" (user or runner)",
+        "Add queue history <task-id> command to show transition log",
+        "Add queue diff <task-id> to show against done archive version",
+        "Add tests for history tracking and diff calculation"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0130",
+      "status": "rejected",
+      "title": "Add webhook or notification integration for task events",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "notifications",
+        "integrations"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "No external notifications when tasks complete or fail",
+        "Teams must manually check queue status",
+        "Integrations with Slack, Discord, email would improve visibility"
+      ],
+      "plan": [
+        "Add webhooks field to Config (URL list)",
+        "Send HTTP POST on task state changes with event payload",
+        "Add ralph queue test-webhook <url> command",
+        "Support signing webhooks with HMAC secret",
+        "Add retry logic for failed webhook deliveries",
+        "Add tests for webhook delivery and signing"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0131",
+      "status": "rejected",
+      "title": "Implement task import/export for cross-repo sharing",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "portability",
+        "sharing"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "No way to export tasks to share with another team or repo",
+        "Cannot import tasks from external sources",
+        "Task templates or best practices cannot be easily distributed"
+      ],
+      "plan": [
+        "Add ralph queue export --output=tasks.yaml command",
+        "Add ralph queue import --input=tasks.yaml command",
+        "Support --filter flag to export only matching tasks",
+        "Validate imported tasks against schema and existing IDs",
+        "Add --merge flag to combine imported tasks with existing queue",
+        "Add tests for import/export correctness"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0133",
+      "status": "rejected",
+      "title": "Implement multi-repo workspace support",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "workspaces",
+        "architecture"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "Ralph assumes a single repo rooted at repo_root",
+        "Monorepos with multiple projects need separate queues per subproject",
+        "No way to run tasks against different repos from one Ralph instance"
+      ],
+      "plan": [
+        "Add workspaces config with repo list and path mappings",
+        "Update run_cmd to execute tasks in specific repo contexts",
+        "Add --repo flag to run/scan/task commands to target repo",
+        "Support relative paths and workspace root discovery",
+        "Add tests for multi-repo task execution"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0134",
+      "status": "rejected",
+      "title": "Add signal handling for graceful shutdown during run loop",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "reliability",
+        "signals"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/Cargo.toml"
+      ],
+      "evidence": [
+        "Ctrl+C during run loop may leave repo in inconsistent state",
+        "No SIGTERM/SIGINT handler for graceful shutdown",
+        "Long-running tasks cannot be cleanly interrupted mid-execution"
+      ],
+      "plan": [
+        "Add signal handler for SIGTERM and SIGINT in run_cmd",
+        "On interrupt, wait for current runner subprocess to complete",
+        "Set a timeout for graceful shutdown, then force kill if needed",
+        "Save partial progress before exiting",
+        "Add \"Interrupted\" status to Task to show incomplete runs",
+        "Add tests for graceful shutdown behavior"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0135",
+      "status": "rejected",
+      "title": "Implement task ownership and assignment",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "queue",
+        "collaboration"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "No way to assign tasks to specific users or teams",
+        "Cannot filter tasks by \"who is working on what\"",
+        "Team collaboration requires manual coordination"
+      ],
+      "plan": [
+        "Add assigned_to field to Task (string or list)",
+        "Add queue assign <task-id> <user> command",
+        "Add queue list --assigned-to=<user> filter",
+        "Update scan and task prompts to request assignment from agent",
+        "Add validation to ensure assigned users are in allowlist (if configured)",
+        "Add tests for assignment filtering"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0136",
+      "status": "rejected",
+      "title": "Add task estimation and time tracking fields",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "queue",
+        "planning"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "No way to record time estimates vs actual time",
+        "Cannot track \"this task was estimated at 2h but took 4h\"",
+        "Planning for future sprints requires historical time data"
+      ],
+      "plan": [
+        "Add estimate_minutes and actual_minutes fields to Task",
+        "Add queue set-time <task-id> <estimate|actual>=<minutes> command",
+        "Calculate actual from created_at to completed_at as fallback",
+        "Add queue report --estimates to show estimate vs actual accuracy",
+        "Add tests for time tracking calculations"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0137",
+      "status": "rejected",
+      "title": "Implement task aliases and shortcuts",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "ux",
+        "shortcuts"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/main.rs"
+      ],
+      "evidence": [
+        "Task IDs are numeric; users must remember \"RQ-0100\" format",
+        "No way to create named shortcuts like \"fix-auth-bug\"",
+        "Cannot reference tasks by memorable names in commands"
+      ],
+      "plan": [
+        "Add aliases field to Task (list of strings)",
+        "Add queue alias <task-id> <name> command",
+        "Add queue unalias <name> command",
+        "Support <alias> in any command that takes <task-id>",
+        "Validate aliases are unique and don't shadow IDs",
+        "Add tests for alias resolution and conflicts"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0140",
+      "status": "rejected",
+      "title": "Add task branching and alternative scenarios",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "queue",
+        "scenarios"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "No support for \"if X fails, try Y instead\" scenarios",
+        "Cannot create alternative approaches within a single task",
+        "Teams must create multiple top-level tasks for Plan A/B/C"
+      ],
+      "plan": [
+        "Add alternatives field to Task (list of alternative plans)",
+        "Add queue list-alternatives <task-id> to show Plan B/C options",
+        "Add queue mark-as-primary <task-id> to promote alternative to main plan",
+        "Update prompts to suggest alternatives when primary plan fails",
+        "Add tests for alternative plan management"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0141",
+      "status": "rejected",
+      "title": "Implement task rollbacks and undo functionality",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "git",
+        "safety"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "No way to undo a completed task and restore previous state",
+        "If a task makes things worse, you must manually revert its changes",
+        "Cannot \"rewind\" to before a task ran"
+      ],
+      "plan": [
+        "Add ralph run undo <n> command to revert last N task commits",
+        "Use git revert with commit message matching to identify task commits",
+        "Move task from done back to queue with status=todo",
+        "Add --dry-run flag to preview what would be reverted",
+        "Add tests for undo correctness and edge cases"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0143",
+      "status": "rejected",
+      "title": "Implement task sandboxing with container support",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "containers",
+        "isolation"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "Tasks run directly on host system with full access",
+        "No isolation for potentially dangerous operations",
+        "Cannot run tasks in Docker/podman for reproducibility"
+      ],
+      "plan": [
+        "Add container field to Task (image: String, volumes: Vec<String>)",
+        "Update runutil to wrap runner in container execution",
+        "Support both Docker and Podman backends",
+        "Add fallback to host execution if container unavailable",
+        "Add tests for container invocation (requires container runtime)"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0144",
+      "status": "rejected",
+      "title": "Add task dependencies on external resources",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "validation",
+        "external"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "Tasks cannot specify prerequisites like \"service X must be running\"",
+        "No validation that required external APIs/services are available",
+        "Cannot defer task execution until external conditions are met"
+      ],
+      "plan": [
+        "Add requires field to Task (list of external dependencies)",
+        "Define dependency types: service, url, env_var, file_exists",
+        "Add queue check-dependencies <task-id> command",
+        "Check dependencies in run_one before executing task",
+        "Add tests for dependency checking and validation"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T12:00:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0152",
+      "status": "done",
+      "title": "Remove all YAML code and establish JSON schema as source of truth",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "migration",
+        "schema"
+      ],
+      "scope": [
+        "crates/ralph/Cargo.toml",
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/init_cmd.rs",
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/prompts.rs",
+        "crates/ralph/tests/stress_queue_contract_test.rs",
+        "crates/ralph/assets/prompts/worker.md",
+        "crates/ralph/assets/prompts/task_builder.md",
+        "crates/ralph/assets/prompts/scan.md"
+      ],
+      "evidence": [
+        "User request: Now that we have switched to JSON for the queue format we need to remove all YAML code from the codebase. Users will be required to migrate or rebuild existing queue docs to the JSON format manually or via external means. This decision is final. Make sure we have a defined JSON schema doc that is our queue JSON schema source of truth and the code utilizes it.",
+        "Current YAML fallback code in config.rs:88 (load_layer tries YAML if JSON fails)",
+        "Current YAML fallback code in queue.rs:35 (load_queue tries YAML if JSON fails)",
+        "serde_yaml dependency in Cargo.toml:18",
+        "YAML format option in main.rs:137 (queue show --format yaml)",
+        "YAML format option in main.rs:383 (config show)",
+        "YAML references in run_cmd.rs:107, :115, :302, :390, :401, :406",
+        "YAML references in prompts.rs:28, :32, :43, :1273, :1274",
+        "YAML references in init_cmd.rs:120 (config validation)",
+        "YAML test code in stress_queue_contract_test.rs:295",
+        "All prompt templates (worker.md, task_builder.md, scan.md) reference queue.yaml, done.yaml, and YAML contract"
+      ],
+      "plan": [
+        "Create JSON schema source of truth document at docs/queue-schema.json or .ralph/schema.json",
+        "Generate JSON schema from Rust contracts using schemars to ensure consistency",
+        "Add schema export command: ralph queue schema to output the current schema",
+        "Remove serde_yaml dependency from Cargo.toml",
+        "Remove YAML fallback logic from config.rs load_layer (line 82-92)",
+        "Remove YAML fallback logic from queue.rs load_queue (line 30-39)",
+        "Remove --format yaml option from queue show command in main.rs",
+        "Remove --format yaml option from config show command in main.rs",
+        "Remove YAML path fallbacks from config.rs (global_config_path, project_config_path)",
+        "Remove YAML path checks from find_repo_root",
+        "Update run_cmd.rs to reference .json files instead of .yaml in error messages and test mocks",
+        "Update prompts.rs constants to reference .json files instead of .yaml",
+        "Update init_cmd.rs to remove YAML validation fallback",
+        "Remove YAML test code from stress_queue_contract_test.rs",
+        "Update all prompt templates (worker.md, task_builder.md, scan.md) to reference JSON instead of YAML",
+        "Update AGENTS.md and .ralph/README.md to reference JSON files instead of YAML",
+        "Run make ci to ensure all changes pass"
+      ],
+      "notes": [],
+      "request": "Now that we have switched to JSON for the queue format we need to remove all YAML code from the codebase. Users will be required to migrate or rebuild existing queue docs to the JSON format manually or via external means. This decision is final. Make sure we have a defined JSON schema doc that is our queue JSON schema source of truth and the code utilizes it. That way modifying the schema going forward is much easier.",
+      "created_at": "2025-01-19T13:22:00+00:00",
+      "updated_at": "2026-01-20T01:19:39+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0121",
+      "status": "rejected",
+      "title": "Implement task checkpoint and resume for long-running operations",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "reliability",
+        "state"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/contracts.rs"
+      ],
+      "evidence": [
+        "If Ralph crashes during a run loop, progress is lost",
+        "No checkpoint file to track which tasks are in-flight",
+        "Resume after crash requires manual inspection of queue state"
+      ],
+      "plan": [
+        "Add .ralph/state.json with current_task_id and phase",
+        "Update state at key points: task started, CI passed, committing",
+        "On Ralph startup, detect incomplete state and prompt to resume",
+        "Add ralph run resume command to continue interrupted run",
+        "Add tests for state checkpointing and recovery"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-19T12:00:00+00:00",
+      "updated_at": "2025-01-19T14:45:00+00:00",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0177",
+      "status": "done",
+      "title": "Refactor queue.rs: Extract validation module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/validation.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Validation functions (validate_queue, validate_queue_set, validate_task_required_fields, validate_rfc3339, validate_dependencies, are_dependencies_met) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/validation.rs module",
+        "Extract all validation functions: validate_queue, validate_queue_set, validate_task_required_fields, validate_rfc3339, ensure_list_non_empty, ensure_field_present, validate_task_id, validate_dependencies, are_dependencies_met, has_cycle",
+        "Move validation-related helper types (if any)",
+        "Update queue.rs to re-export validation module public functions",
+        "Run make ci to ensure no functionality changes",
+        "Update all imports in queue.rs and other files that use validation functions"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T03:40:34.774200000Z",
+      "completed_at": "2026-01-21T03:40:34.774200000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0178",
+      "status": "done",
+      "title": "Refactor queue.rs: Extract pruning module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "pruning"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/prune.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Pruning functions (prune_done_tasks, prune_done_queue, parse_completed_at, compare_completed_desc) and types (PruneReport, PruneOptions) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/prune.rs module",
+        "Extract PruneReport, PruneOptions types and prune_done_tasks, prune_done_queue, parse_completed_at, compare_completed_desc functions",
+        "Update queue.rs to re-export pruning module public functions and types",
+        "Run make ci to ensure no functionality changes",
+        "Update imports in queue.rs and other files that use pruning functions"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T04:08:30.434041000Z",
+      "completed_at": "2026-01-21T04:08:30.434041000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0179",
+      "status": "done",
+      "title": "Refactor queue.rs: Extract search and filter module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "search"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/search.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Search and filter functions (search_tasks, filter_tasks, SearchMatcher, normalize_scope, normalize_tag) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/search.rs module",
+        "Extract search_tasks, filter_tasks, SearchMatcher, normalize_scope, normalize_tag functions",
+        "Update queue.rs to re-export search module public functions",
+        "Run make ci to ensure no functionality changes",
+        "Update imports in queue.rs and other files that use search functions"
+      ],
+      "notes": [
+        "Extracted search and filter logic to crates/ralph/src/queue/search.rs",
+        "Maintained public API via re-exports in queue.rs",
+        "Moved related tests to the new module",
+        "Verified all tests pass with make ci"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T04:17:45.908037000Z",
+      "completed_at": "2026-01-21T04:17:45.908037000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0180",
+      "status": "done",
+      "title": "Refactor queue.rs: Extract task operations module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "task-operations"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/operations.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Task operation functions (complete_task, set_status, set_field, find_task, find_task_across, next_todo_task, delete_task, archive_done_tasks, sort_tasks_by_priority) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/operations.rs module",
+        "Extract task operation functions: complete_task, set_status, set_field, find_task, find_task_across, next_todo_task, delete_task, archive_done_tasks, sort_tasks_by_priority, added_tasks, backfill_missing_fields",
+        "Extract ArchiveReport type",
+        "Update queue.rs to re-export operations module public functions and types",
+        "Run make ci to ensure no functionality changes",
+        "Update imports in queue.rs and other files that use these functions"
+      ],
+      "notes": [
+        "Extracted task operation functions to crates/ralph/src/queue/operations.rs",
+        "Reduced queue.rs from ~2500 lines to ~330 lines",
+        "Improved code organization by grouping task-level operations",
+        "Verified all functionality with make ci"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T04:37:48.107868000Z",
+      "completed_at": "2026-01-21T04:37:48.107868000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0181",
+      "status": "done",
+      "title": "Refactor queue.rs: Extract repair module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "queue",
+        "repair"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/repair.rs"
+      ],
+      "evidence": [
+        "queue.rs is 2496 lines - too large for effective maintenance",
+        "Repair functions (repair_queue, get_dependents) and RepairReport type can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/queue/repair.rs module",
+        "Extract repair_queue, get_dependents functions and RepairReport type",
+        "Update queue.rs to re-export repair module public functions and types",
+        "Run make ci to ensure no functionality changes",
+        "Update imports in queue.rs and other files that use repair functions"
+      ],
+      "notes": [
+        "Extracted repair_queue and get_dependents to crates/ralph/src/queue/repair.rs",
+        "Reduced queue.rs from ~2500 lines to ~200 lines",
+        "Verified functionality with make ci"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T04:52:02.940980000Z",
+      "completed_at": "2026-01-21T04:52:02.940980000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0182",
+      "status": "done",
+      "title": "Refactor main.rs: Extract CLI handlers to dedicated modules",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "cli",
+        "command-handlers"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/cli/config.rs",
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/cli/scan.rs",
+        "crates/ralph/src/cli/init.rs",
+        "crates/ralph/src/cli/prompt.rs",
+        "crates/ralph/src/cli/doctor.rs"
+      ],
+      "evidence": [
+        "main.rs is 1724 lines - too large for effective maintenance",
+        "Contains handlers: handle_queue, handle_config, handle_run, handle_task, handle_scan, handle_init, handle_prompt, handle_doctor",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/cli/ directory with mod.rs",
+        "Extract handle_queue and Queue-related types to cli/queue.rs",
+        "Extract handle_config and Config-related types to cli/config.rs",
+        "Extract handle_run and Run-related types to cli/run.rs",
+        "Extract handle_task and Task-related types to cli/task.rs",
+        "Extract handle_scan and Scan-related types to cli/scan.rs",
+        "Extract handle_init and Init-related types to cli/init.rs",
+        "Extract handle_prompt and Prompt-related types to cli/prompt.rs",
+        "Extract handle_doctor to cli/doctor.rs",
+        "Update main.rs to use cli module handlers",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [
+        "Extracted all CLI command handlers from main.rs into dedicated submodules in crates/ralph/src/cli/",
+        "Reduced main.rs from ~1700 lines to <50 lines",
+        "Exposed cli module in lib.rs for better testability",
+        "Verified all 166 tests pass with make ci"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T05:47:55.574543000Z",
+      "completed_at": "2026-01-21T05:47:55.574543000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0183",
+      "status": "done",
+      "title": "Refactor main.rs: Extract CLI types to dedicated module",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "cli",
+        "types"
+      ],
+      "scope": [
+        "crates/ralph/src/main.rs",
+        "crates/ralph/src/cli/types.rs"
+      ],
+      "evidence": [
+        "main.rs is 1724 lines - too large for effective maintenance",
+        "Contains many struct/enum definitions: Cli, Command, QueueArgs, ConfigArgs, RunArgs, TaskArgs, InitArgs, TaskCommand, TaskBuildArgs, ScanArgs, PromptArgs, PromptCommand, PromptWorkerArgs, PromptScanArgs, PromptTaskBuilderArgs, QueueCommand, ConfigCommand, RunCommand, RunOneArgs, RunLoopArgs, StatusArg, QueueShowFormat, QueueListFormat, QueueNextArgs, QueueShowArgs, QueueCompleteArgs, QueueListArgs, QueueSortArgs, QueueSearchArgs, QueueStatsArgs, QueueHistoryArgs, QueueBurndownArgs, RepairArgs, QueuePruneArgs",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/cli/types.rs module",
+        "Extract all CLI struct and enum definitions to cli/types.rs",
+        "Update main.rs to import CLI types from cli::types",
+        "Update cli handler modules to import types from cli::types",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T05:49:57.454375000Z",
+      "completed_at": "2026-01-21T05:49:57.454375000Z",
+      "depends_on": [
+        "RQ-0182"
+      ],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0184",
+      "status": "done",
+      "title": "Refactor tui.rs: Extract rendering module",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "tui",
+        "rendering"
+      ],
+      "scope": [
+        "crates/ralph/src/tui.rs",
+        "crates/ralph/src/tui/render.rs"
+      ],
+      "evidence": [
+        "tui.rs is 1221 lines - too large for effective maintenance",
+        "Rendering functions (draw_ui, draw_execution_view, draw_task_list, draw_task_details, draw_confirm_dialog, status_color, priority_color, wrap_text) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/tui/render.rs module",
+        "Extract rendering functions: draw_ui, draw_execution_view, draw_task_list, draw_task_details, draw_confirm_dialog, status_color, priority_color, wrap_text",
+        "Update tui.rs to use render module for drawing operations",
+        "Run make ci to ensure no functionality changes",
+        "Verify TUI tests still pass"
+      ],
+      "notes": [
+        "Extracted 8 rendering functions from tui.rs to new render.rs module",
+        "tui.rs reduced from 1221 to 668 lines (net -553 lines)",
+        "All 408 CI tests pass including 44 TUI rendering tests",
+        "Public API preserved via pub use render::draw_ui",
+        "Backwards compatible - no API changes"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T06:24:44.112786000Z",
+      "completed_at": "2026-01-21T06:24:44.112786000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0185",
+      "status": "done",
+      "title": "Refactor tui.rs: Extract event handling module",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "tui",
+        "event-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/tui.rs",
+        "crates/ralph/src/tui/events.rs"
+      ],
+      "evidence": [
+        "tui.rs is 1221 lines - too large for effective maintenance",
+        "Event handling functions (handle_key_event, handle_normal_mode_key, handle_editing_mode_key, handle_confirm_delete_key, handle_executing_mode_key) and types (TuiAction, AppMode) can be extracted",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Create crates/ralph/src/tui/events.rs module",
+        "Extract event handling functions and types: handle_key_event, handle_normal_mode_key, handle_editing_mode_key, handle_confirm_delete_key, handle_executing_mode_key, TuiAction, AppMode",
+        "Update tui.rs to use events module for key handling",
+        "Run make ci to ensure no functionality changes",
+        "Verify TUI tests still pass"
+      ],
+      "notes": [
+        "Extracted event handling types and functions from tui.rs to tui/events.rs",
+        "TuiAction, AppMode, and all handle_*_mode_key functions moved",
+        "Created tui/mod.rs for main TUI orchestration (525 lines)",
+        "Public API preserved via re-exports in mod.rs",
+        "All 169 tests pass; make ci clean"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T06:46:44.704270000Z",
+      "completed_at": "2026-01-21T06:46:44.704270000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0186",
+      "status": "done",
+      "title": "Refactor runner.rs: Extract runner execution module",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "runner",
+        "execution"
+      ],
+      "scope": [
+        "crates/ralph/src/runner.rs",
+        "crates/ralph/src/runner/execution.rs"
+      ],
+      "evidence": [
+        "runner.rs is 1126 lines - too large for effective maintenance",
+        "Contains runner execution logic for Codex, OpenCode, Gemini, Claude",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Analyze runner.rs to identify logical groupings for extraction",
+        "Create crates/ralph/src/runner/execution.rs module",
+        "Extract core runner execution functions and types",
+        "Extract runner-specific logic (codex.rs, gemini.rs, claude.rs) if appropriate",
+        "Update runner.rs to use execution module",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [
+        "Extracted runner execution logic into dedicated module",
+        "Reduced runner.rs from 1126 to 452 lines",
+        "Created execution.rs (712 lines) for low-level operations",
+        "All tests pass, make ci successful"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T08:15:06.281310000Z",
+      "completed_at": "2026-01-21T08:15:06.281310000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0187",
+      "status": "done",
+      "title": "Refactor run_cmd.rs: Extract phase execution logic",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactoring",
+        "run",
+        "phase-execution"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/run_cmd/phases.rs"
+      ],
+      "evidence": [
+        "run_cmd.rs is 1114 lines - too large for effective maintenance",
+        "Contains phase execution logic (phase 1, 2, 3) mixed with run loop and task execution",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Analyze run_cmd.rs to identify phase-specific functions",
+        "Create crates/ralph/src/run_cmd/phases.rs module",
+        "Extract phase execution logic to dedicated functions/modules",
+        "Update run_cmd.rs to use phases module",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [
+        "Extracted phase execution logic from run_cmd.rs into new phases.rs module",
+        "Created PhaseInvocation struct to group shared parameters",
+        "Reduced run_cmd.rs from 1114 to 858 lines",
+        "All 171 tests pass, make ci passes"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T08:42:36.744597000Z",
+      "completed_at": "2026-01-21T08:42:36.744597000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0191",
+      "status": "done",
+      "title": "Change queue behavior to always pull from top of file",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "queue",
+        "behavior",
+        "priority"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "AGENTS.md"
+      ],
+      "evidence": [
+        "User request: 'Modify queue behavior to ALWAYS pull from the top of the queue.json file, regardless of priority'",
+        "AGENTS.md line 30 states 'Task order is priority (top runs first)' which needs to be updated",
+        "Current next_todo_task function already pulls first todo task from file, but documentation suggests priority ordering"
+      ],
+      "plan": [
+        "Review all code paths that affect task selection order (next_todo_task, queue list, etc.)",
+        "Update AGENTS.md line 30 to clarify that file order is the source of truth",
+        "Ensure no automatic priority-based sorting happens during task execution",
+        "Preserve existing 'queue sort --by=priority' command for manual sorting when desired",
+        "Run make ci to ensure build passes"
+      ],
+      "notes": [],
+      "request": "Modify queue behavior to ALWAYS pull from the top of the queue.json file, regardless of priority.",
+      "created_at": "2026-01-21T15:43:13Z",
+      "updated_at": "2026-01-21T15:43:13Z",
+      "completed_at": "2026-01-21T15:59:30Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0188",
+      "status": "done",
+      "title": "Refactor prompts.rs: Extract prompt templates by category",
+      "priority": "low",
+      "tags": [
+        "rust",
+        "refactoring",
+        "prompts",
+        "templates"
+      ],
+      "scope": [
+        "crates/ralph/src/prompts.rs",
+        "crates/ralph/src/prompts/task_builder.rs",
+        "crates/ralph/src/prompts/worker.rs",
+        "crates/ralph/src/prompts/scan.rs"
+      ],
+      "evidence": [
+        "prompts.rs is 756 lines - moderately large",
+        "Contains prompt templates for task builder, worker, and scan operations",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Analyze prompts.rs to categorize templates by purpose",
+        "Create prompts/ directory with mod.rs",
+        "Extract task builder prompts to prompts/task_builder.rs",
+        "Extract worker prompts to prompts/worker.rs",
+        "Extract scan prompts to prompts/scan.rs",
+        "Update prompts.rs to re-export from submodules",
+        "Run make ci to ensure no functionality changes"
+      ],
+      "notes": [
+        "No code changes needed; prompt templates already modularized in crates/ralph/src/prompts_internal.",
+        "Verified prompts.rs is a thin re-export shim and prompts are split by category.",
+        "Ran make ci"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T16:14:54.449126000Z",
+      "completed_at": "2026-01-21T16:14:54.449126000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0192",
+      "status": "done",
+      "title": "Add config option to control automatic git revert behavior",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "config",
+        "git",
+        "supervisor"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/runutil.rs",
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/cli/run.rs",
+        ".ralph/README.md"
+      ],
+      "evidence": [
+        "Current git revert behavior is automatic with no user control",
+        "gitutil::revert_uncommitted is called from runutil.rs on runner errors and from run_cmd.rs on CI failure",
+        "runutil.rs has revert_on_error bool flag but no config option",
+        "User request: 'Add a config option to control automatic the existing git revert changes behavior. I want to support Ask (default), enabled, disabled.'"
+      ],
+      "plan": [
+        "Add GitRevertMode enum to contracts.rs with variants: Ask (default), Enabled, Disabled",
+        "Add git_revert_mode field to AgentConfig in contracts.rs",
+        "Add merge_from support for git_revert_mode in AgentConfig",
+        "Update config.rs validate_config to handle the new option",
+        "Modify runutil.rs to respect git_revert_mode: when Ask, prompt user; when Enabled, revert; when Disabled, skip revert and exit with message",
+        "Update run_cmd.rs CI failure handling to respect git_revert_mode",
+        "Add CLI flag --git-revert-mode to override config at runtime",
+        "Update .ralph/README.md to document the new git_revert_mode config option",
+        "Add tests for all three modes",
+        "Run make ci to ensure build passes"
+      ],
+      "notes": [
+        "Add git revert mode config/CLI to control rollback behavior",
+        "Respect revert mode across run/scan/task flows with interactive ask handling",
+        "Add integration tests for enabled/disabled/ask non-tty CI failure behavior",
+        "Document git_revert_mode in .ralph/README.md"
+      ],
+      "request": "Add a config option to control automatic the existing git revert changes behavior. I want to support Ask (default), enabled, disabled. With Ask enabled by default anytime the current git revert functionality happens instead the user is prompted and asked what they'd like to do. User can then decide to revert and continue, do not revert and exit, any other options worth adding. Enabled mode maintains functionality as it currently works today. Disabled means the supervisor does NOT auto revert and instead just exits the loops leaving the repo intact with a message as to why it was exited.",
+      "created_at": "2026-01-21T16:30:00Z",
+      "updated_at": "2026-01-21T16:37:43.365394000Z",
+      "completed_at": "2026-01-21T16:37:43.365394000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0172",
+      "status": "done",
+      "title": "Expose explicit ID targeting in 'ralph run one'",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "cli",
+        "run",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/run.rs",
+        "crates/ralph/src/cli.rs"
+      ],
+      "evidence": [
+        "Cannot run a specific task by ID",
+        "User request: 'New Tasks (Top 10): 10. RQ-0148: Expose explicit ID targeting in ralph run one (Medium)'"
+      ],
+      "plan": [
+        "Add --id flag to 'run one' command",
+        "When --id is specified, run that exact task instead of queue next",
+        "Validate task exists and is in runnable state",
+        "Add tests for ID targeting"
+      ],
+      "notes": [
+        "Added --id targeting for run one with dependency validation.",
+        "Centralized selection logic and tests for ID targeting and CLI conflicts.",
+        "Help output contract updated; make ci passing."
+      ],
+      "request": "New Tasks (Top 10): 10. RQ-0148: Expose explicit ID targeting in 'ralph run one' (Medium)",
+      "created_at": "2026-01-20T18:00:00Z",
+      "updated_at": "2026-01-21T17:01:58.989886000Z",
+      "completed_at": "2026-01-21T17:01:58.989886000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0190",
+      "status": "done",
+      "title": "Create organization documentation in Markdown",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "markdown",
+        "documentation",
+        "github"
+      ],
+      "scope": [
+        "docs/",
+        "README.md",
+        "AGENTS.md"
+      ],
+      "evidence": [
+        "User requires organization documentation in Markdown viewable within the GitHub repo",
+        "Documentation should be repository-native (no custom web UI)",
+        "Ensure documentation covers configurable/customizable items with examples",
+        "AGENTS.md must be updated with reminder to keep documentation up to date when defaults or schemas change"
+      ],
+      "plan": [
+        "Create a Markdown documentation structure under docs/ suitable for GitHub viewing",
+        "Include comprehensive sections for all configuration options (global config, project config, CLI flags) with examples",
+        "Document high-level architecture and workflow without diving deep into non-configurable internals",
+        "Update README.md to link to the documentation index",
+        "Update AGENTS.md to add documentation maintenance reminders for defaults, schemas, and configuration changes",
+        "Run make ci to ensure build passes"
+      ],
+      "notes": [
+        "Expanded docs/cli.md to cover all commands and flags with examples.",
+        "Corrected README.md to describe JSON queue format.",
+        "make ci (install step blocked by sandbox, tests/builds ok)."
+      ],
+      "request": "Change RQ-0190 to create organization documentation in Markdown that is viewable within the GitHub repo. Focus on repository-native docs (no custom web UI), include all configurable/customizable items with examples, and update AGENTS.md to remind maintainers to keep docs current when defaults or schemas change.",
+      "created_at": "2026-01-21T14:26:59Z",
+      "updated_at": "2026-01-21T17:29:52.264378000Z",
+      "completed_at": "2026-01-21T17:29:52.264378000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0193",
+      "status": "done",
+      "title": "Simplify 'ralph task build' to 'ralph task' alias",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "cli",
+        "ux",
+        "refactoring"
+      ],
+      "scope": [
+        "crates/ralph/src/cli.rs",
+        "crates/ralph/src/task.rs"
+      ],
+      "evidence": [
+        "User request: 'I want to simplify the 'ralph task build' command to be invoked via 'ralph task'"
+      ],
+      "plan": [
+        "Make 'build' the default subcommand under 'ralph task' (i.e., 'ralph task <args>' behaves like 'ralph task build <args>')",
+        "Keep 'ralph task build' as an explicit alias for backward compatibility",
+        "Update help text to show 'ralph task' as primary usage",
+        "Update AGENTS.md and .ralph/README.md documentation",
+        "Run make ci to verify changes"
+      ],
+      "notes": [
+        "add ralph task default to build while keeping explicit subcommand",
+        "update task-related help/examples across docs and TUI",
+        "refresh CLI parsing/help tests for new alias"
+      ],
+      "request": "I want to simplify the 'ralph task build' command to be invoked via 'ralph task'",
+      "created_at": "2026-01-21T00:00:00Z",
+      "updated_at": "2026-01-21T17:50:48.276421000Z",
+      "completed_at": "2026-01-21T17:50:48.276421000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0189",
+      "status": "done",
+      "title": "Verify and consolidate refactored codebase",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "refactoring",
+        "verification",
+        "cleanup"
+      ],
+      "scope": [
+        "crates/ralph/src/",
+        "make ci"
+      ],
+      "evidence": [
+        "After refactoring large files, need to verify functionality and consolidate any redundant code",
+        "User request: 'Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality.'"
+      ],
+      "plan": [
+        "Run full test suite with make ci",
+        "Check for duplicate code across newly created modules",
+        "Consolidate any shared utilities that emerged during refactoring",
+        "Update module documentation (docstrings) for new modules",
+        "Verify all imports are clean and minimal",
+        "Check for any remaining files >800 lines that may need further splitting"
+      ],
+      "notes": [
+        "Restored queue operation tests for refactor",
+        "make ci passes"
+      ],
+      "request": "Several files in this project are thousand of lines long. We need to refactor while maintaing the same functionality. Smaller file sizes are easier to maintain and find what is needed. Also easier to make sure we are not violating DRY and YAGNI principals. Create several tasks to completely tackle this effort. use the queue fields at your disposal to ensure this is done logically.",
+      "created_at": "2026-01-20T19:00:00Z",
+      "updated_at": "2026-01-21T18:25:09.017079000Z",
+      "completed_at": "2026-01-21T18:25:09.017079000Z",
+      "depends_on": [
+        "RQ-0177",
+        "RQ-0178",
+        "RQ-0179",
+        "RQ-0180",
+        "RQ-0181",
+        "RQ-0182",
+        "RQ-0183",
+        "RQ-0184",
+        "RQ-0185",
+        "RQ-0186",
+        "RQ-0187",
+        "RQ-0188"
+      ],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0194",
+      "status": "done",
+      "title": "Enhance Codex runner streaming output with JSON events",
+      "priority": "medium",
+      "tags": [
+        "codex",
+        "runner",
+        "streaming",
+        "json"
+      ],
+      "scope": [
+        "crates/ralph/src",
+        "codex exec --help",
+        "codex exec --json \"just say hi\""
+      ],
+      "evidence": [
+        "User request: \"Enahnce the streaming output for the codex runner. Switch to using 'codex exec --json' and capture the reasoning and agent_message. Maintain the streaming output. Run 'codex exec --help' to see the menu of options. User has captured 'codex exec --json \"just say hi\"' in a file located at /tmp/codex-exec.log\""
+      ],
+      "plan": [
+        "Locate Codex runner streaming implementation and identify where stdout/stderr events are parsed",
+        "Run `codex exec --help` and `codex exec --json \"just say hi\"` to capture supported flags and JSONL event shape",
+        "Switch runner to `codex exec --json` and stream JSONL events while preserving existing streaming UX",
+        "Extract and surface `reasoning` and `agent_message` fields in output/logs with clear formatting",
+        "Add/extend tests to cover JSONL parsing, streaming behavior, and failure modes"
+      ],
+      "notes": [
+        "Reviewed JSON streaming changes and tests; no functional gaps found",
+        "make ci passes"
+      ],
+      "request": "Enahnce the streaming output for the codex runner. Switch to using 'codex exec --json' and capture the reasoning and agent_message. Maintain the streaming output. Run 'codex exec --help' to see the menu of options. Run 'codex exec --json \"just say hi\"' to see a sample output.",
+      "created_at": "2026-01-21T18:27:50Z",
+      "updated_at": "2026-01-21T18:48:38.634081000Z",
+      "completed_at": "2026-01-21T18:48:38.634081000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0196",
+      "status": "done",
+      "title": "Clarify prompt guidance for next task ID command",
+      "priority": "medium",
+      "tags": [
+        "prompts",
+        "cli",
+        "docs"
+      ],
+      "scope": [
+        ".ralph/prompts",
+        "crates/ralph/src"
+      ],
+      "evidence": [
+        "User request: \"Update prompts to clarify which command to use when trying to fetch the next-id for task IDs. See this agent output from a recent run ''ralph queue next' returns existing IDs, I'll run 'ralph queue next-id' to get new IDs and note this deviation in the summary to maintain accuracy while respecting instructions.'\""
+      ],
+      "plan": [
+        "Locate the prompt text that instructs agents on fetching task IDs",
+        "Update wording to distinguish between `ralph queue next` (next task) and `ralph queue next-id` (new ID)",
+        "Add or adjust examples to reflect the correct command usage",
+        "Validate prompt changes by inspecting the updated prompt text in the relevant source"
+      ],
+      "notes": [
+        "Update scan/task builder prompts to use ralph queue next-id and clarify next vs next-id.",
+        "Add prompt tests asserting next-id guidance in embedded defaults.",
+        "make ci"
+      ],
+      "request": "Update prompts to clarify which command to use when trying to fetch the next-id for task IDs. See this agent output from a recent run ''ralph queue next' returns existing IDs, I'll run 'ralph queue next-id' to get new IDs and note this deviation in the summary to maintain accuracy while respecting instructions.'",
+      "created_at": "2026-01-21T18:52:38Z",
+      "updated_at": "2026-01-21T18:58:01.616650000Z",
+      "completed_at": "2026-01-21T18:58:01.616650000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0195",
+      "status": "done",
+      "title": "Capture tool/command calls in codex JSON stream",
+      "priority": "medium",
+      "tags": [
+        "codex",
+        "runner",
+        "json",
+        "telemetry"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution.rs",
+        "crates/ralph/src/run_cmd/tests.rs"
+      ],
+      "evidence": [
+        "User request: 'Enhance the codex runner JSON streaming output to capture tool and command calls in addition to messages.'",
+        "User provided codex exec JSON output for review in /tmp/codex-exec.json"
+      ],
+      "plan": [
+        "Locate codex JSON streaming output handling in the runner execution path",
+        "Extend JSON event parsing to capture tool and command call payloads alongside messages",
+        "Add/extend tests that assert tool and command calls are emitted in the JSON stream",
+        "Validate against the captured /tmp/codex-exec.json fixture or a minimal repro",
+        "Add a blank newline after the agent messages for visual improvements."
+      ],
+      "notes": [
+        "Reviewed codex JSON stream handling for tool/command events",
+        "Verified tests cover tool and command display lines",
+        "Ran make ci"
+      ],
+      "request": "Enhance the codex runner JSON streaming output to capture tool and command calls in addition to messages. The user has captured the outputs of 'codex exec --json \"Say hello. Then connect to repo prompt and get the file tree. Then run a bash command to list files in this repo. then send 'I'm done now' and exit\" 2>&1 | tee /tmp/codex-exec.log' in the /tmp/codex-exec.json file for review",
+      "created_at": "2026-01-21T18:50:12Z",
+      "updated_at": "2026-01-21T19:06:43.916555000Z",
+      "completed_at": "2026-01-21T19:06:43.916555000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0171",
+      "status": "done",
+      "title": "Support 'draft' task status",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "cli",
+        "queue",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/task.rs"
+      ],
+      "evidence": [
+        "Need a way to create tasks that aren't ready to run",
+        "User request: 'New Tasks (Top 10): 9. RQ-0147: Support draft task status (Medium)'"
+      ],
+      "plan": [
+        "Add 'draft' to task status enum",
+        "Filter draft tasks out of 'run one' and 'run loop' by default",
+        "Add --include-draft flag to run commands",
+        "Add 'ralph task ready' command to promote draft to todo",
+        "Add tests for draft task behavior"
+      ],
+      "notes": [
+        "Add draft status and include-draft run selection",
+        "Add task ready command plus queue status handling and docs",
+        "Add tests and docstring; make ci clean"
+      ],
+      "request": "New Tasks (Top 10): 9. RQ-0147: Support 'draft' task status (Medium)",
+      "created_at": "2026-01-20T18:00:00Z",
+      "updated_at": "2026-01-21T19:31:31.245842000Z",
+      "completed_at": "2026-01-21T19:31:31.245842000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0197",
+      "status": "done",
+      "title": "Unify ralph task and queue command naming and behavior",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "ux",
+        "consistency"
+      ],
+      "scope": [
+        "crates/ralph/",
+        "cargo run -p ralph -- task",
+        "cargo run -p ralph -- queue"
+      ],
+      "evidence": [
+        "User request: audit 'ralph task' and 'ralph queue' command overlap, remove confusion, and settle on a convention.",
+        "User request: change naming to prefer 'ralph task done <ID>' over 'ralph queue complete', and add 'ralph task ready <ID>' for draft->todo."
+      ],
+      "plan": [
+        "Inventory current 'ralph task' and 'ralph queue' subcommands, help text, and behavior to identify overlap and conflicts.",
+        "Define the new command convention (e.g., task lifecycle commands under 'ralph task') and map old commands to new behavior, documenting any breaking changes.",
+        "Update CLI implementation and help examples to reflect the new convention while preserving 'ralph task \"<request>\"' behavior.",
+        "Add or update tests to cover new command names, legacy behavior (if kept), and task state transitions including done.json moves.",
+        "Run targeted CLI checks and ensure task queue transitions are correct."
+      ],
+      "notes": [],
+      "request": "Review commands for consistency issues for usability. Specifically 'ralph queue complete' which I think makes more sense to be 'ralph task done <ID>' which marks that task ID done and move to done.json. Same for 'ralph task ready <ID>' which marks a task in status draft as 'todo'. I want to still be able to run 'ralph task \"New task description\" and have new tasks be added to the queue, this functionality does not need to change. Essentially, do an audit of the 'ralph task' and 'ralph queue' commands and figure out where there is overlap and get rid of confusion by settling on a convention.",
+      "created_at": "2026-01-21T19:32:16Z",
+      "updated_at": "2026-01-21T19:32:52.004907000Z",
+      "completed_at": "2026-01-21T21:15:15.427233000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0198",
+      "status": "done",
+      "title": "Align queue validation requirements with schema/docs/backfill",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "schema",
+        "docs"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/operations/mutation.rs",
+        "schemas/queue.schema.json",
+        "docs/queue-and-tasks.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/validation.rs enforces non-empty tags/scope/evidence/plan and requires request/created_at/updated_at via ensure_list_non_empty and ensure_field_present.",
+        "schemas/queue.schema.json only requires task id/title and treats other fields as optional/defaulted.",
+        "docs/queue-and-tasks.md lists tags/scope/evidence/plan/request/created_at/updated_at as optional fields."
+      ],
+      "plan": [
+        "Decide the canonical contract for required task fields (schema/docs vs validation) and document the decision.",
+        "Update queue validation and backfill/repair logic to match the chosen contract.",
+        "Regenerate schema/docs/tests to reflect the new required/optional field set.",
+        "Ensure scan prompts, task builder prompts, etc reflect the actual required fields and schema decidied on.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Aligned queue validation logic to allow empty lists (tags, scope, evidence, plan) and optional request/timestamps.",
+        "Updated docs/queue-and-tasks.md to reflect optional fields.",
+        "Updated task_builder.md and scan.md prompts to remove 'non-empty' constraints.",
+        "Verified schema already supports optional fields.",
+        "Passed make ci."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T20:41:39.708755000Z",
+      "completed_at": "2026-01-21T20:41:39.708755000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0199",
+      "status": "done",
+      "title": "Repair queue ID remap must update depends_on references",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "dependencies",
+        "repair"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/repair.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/tests/repair_integration_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/repair.rs remaps task.id for duplicates/invalid IDs and records report.remapped_ids but does not update depends_on in other tasks.",
+        "validate_dependencies in crates/ralph/src/queue/validation.rs assumes depends_on IDs exist and will fail after remap unless references are updated."
+      ],
+      "plan": [
+        "Track a remap map of old->new IDs during repair.",
+        "Update depends_on entries across active and done tasks using the remap map.",
+        "Add/extend tests to assert dependencies are rewritten alongside ID remaps.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Updated repair.rs to perform a second pass updating dependencies using the remapped ID map.",
+        "Added integration test repair_remaps_dependencies_for_invalid_ids in repair_integration_test.rs.",
+        "Verified fix with cargo test and make ci."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T20:47:25.332837000Z",
+      "completed_at": "2026-01-21T20:47:25.332837000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0200",
+      "status": "done",
+      "title": "Require completed_at for Done/Rejected tasks and backfill in repair",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "validation",
+        "reports"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/repair.rs",
+        "crates/ralph/src/queue/prune.rs",
+        "crates/ralph/src/reports.rs",
+        "docs/queue-and-tasks.md",
+        "schemas/queue.schema.json"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/validation.rs only validates completed_at if present and does not require it for Done/Rejected tasks.",
+        "crates/ralph/src/queue/prune.rs and crates/ralph/src/reports.rs rely on completed_at to compute ordering/age/durations."
+      ],
+      "plan": [
+        "Update validation to require completed_at when status is Done or Rejected.",
+        "Ensure repair/backfill fills missing completed_at for terminal tasks.",
+        "Update schema/docs/tests to enforce terminal timestamp requirements.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Enforced completed_at for Done/Rejected tasks in validation and schema.",
+        "Added repair logic to backfill missing completed_at timestamps.",
+        "Updated JSON schema to conditionally require completed_at for terminal statuses."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T20:55:15.194972000Z",
+      "completed_at": "2026-01-21T20:55:15.194972000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0201",
+      "status": "done",
+      "title": "Queue next/worker prompt should skip blocked tasks with unmet dependencies",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "ux",
+        "dependencies"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations/query.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/prompt_cmd.rs",
+        "crates/ralph/src/queue/validation.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/operations/query.rs next_todo_task returns first todo without dependency checks.",
+        "crates/ralph/src/cli/queue.rs QueueCommand::Next and crates/ralph/src/prompt_cmd.rs resolve_worker_task_id use next_todo_task, so they may return blocked tasks."
+      ],
+      "plan": [
+        "Introduce a runnable-task selector that checks are_dependencies_met against queue/done.",
+        "Use the runnable selector in queue next and worker prompt selection.",
+        "Add tests covering blocked dependencies for queue next and prompt worker selection.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Implemented next_runnable_task to filter tasks based on dependency status",
+        "Updated queue next and prompt commands to use the new runnable selector",
+        "Added tests for blocked/unblocked scenarios in queue operations",
+        "Verified with make ci"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T21:06:32.697567000Z",
+      "completed_at": "2026-01-21T21:06:32.697567000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0202",
+      "status": "done",
+      "title": "Archive rejected tasks in ralph queue done",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "workflow",
+        "consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations/archive.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/operations/archive.rs only moves TaskStatus::Done tasks to done.json.",
+        "docs/cli.md describes ralph task done as archiving done/rejected tasks, but ralph queue done leaves rejected tasks in the active queue."
+      ],
+      "plan": [
+        "Decide whether queue done should archive rejected tasks alongside done tasks.",
+        "Update archive_done_tasks logic and CLI/docs accordingly.",
+        "Add tests to cover rejected tasks being archived (or explicitly excluded).",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Manually completing via agent (lock removed)."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T21:15:08.955198000Z",
+      "completed_at": "2026-01-21T21:15:08.955198000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0203",
+      "status": "done",
+      "title": "Init should fail fast on invalid config JSON instead of marking valid",
+      "priority": "medium",
+      "tags": [
+        "init",
+        "config",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/init_cmd.rs",
+        "crates/ralph/tests/init_cmd_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/init_cmd.rs write_config returns FileInitStatus::Valid even when serde_json::from_str::<Config> fails."
+      ],
+      "plan": [
+        "Return an error or reinitialize when config JSON is invalid and --force is not set.",
+        "Add tests to ensure invalid config files are detected.",
+        "Update CLI/help/docs if behavior changes.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Starting work via agent.",
+        "Updated write_config to fail on invalid JSON.",
+        "Added init_validation_test.rs.",
+        "Updated CLI docs."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T21:18:22.387288000Z",
+      "completed_at": "2026-01-21T21:18:22.387288000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0204",
+      "status": "done",
+      "title": "Init should validate existing queue/done contents, not only parse JSON",
+      "priority": "medium",
+      "tags": [
+        "init",
+        "queue",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/init_cmd.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/tests/init_cmd_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/init_cmd.rs write_queue/write_done only load JSON without running queue::validate_queue, so structurally invalid tasks pass init validation."
+      ],
+      "plan": [
+        "Run queue validation on existing queue/done files during init when not forcing.",
+        "Surface clear errors when invariants fail.",
+        "Add tests covering invalid queue/done inputs.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Init now validates existing queue and done files (semantic validation) when they exist and are not being overwritten.",
+        "Added new tests in init_cmd.rs and init_validation_test.rs to cover invalid existing queue/done scenarios.",
+        "Verified that invalid ID prefixes or missing required fields cause init to fail as expected."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T21:27:16.731728000Z",
+      "completed_at": "2026-01-21T21:27:16.731728000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0205",
+      "status": "done",
+      "title": "Handle TUI event loop errors instead of panicking",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "stability",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/events.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/mod.rs uses unwrap() for event::read, now_utc_rfc3339, and handle_key_event in the main loop, which can panic and leave the terminal in raw mode."
+      ],
+      "plan": [
+        "Replace unwrap calls with error propagation and ensure terminal cleanup on failure.",
+        "Add tests or integration coverage to confirm graceful error handling.",
+        "Verify TUI exits cleanly after an injected error.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Replaced unwrap() with error propagation in TUI event loop",
+        "Ensured terminal cleanup happens on error via catch_unwind pattern",
+        "Handled TUI errors gracefully by logging to UI instead of crashing where possible"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T21:35:49.969464000Z",
+      "completed_at": "2026-01-21T21:35:49.969464000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0206",
+      "status": "done",
+      "title": "Update TUI title edits to set updated_at",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "queue",
+        "data-consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/tests/tui_contract_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/events.rs handle_editing_mode_key ignores now_rfc3339 and App::update_title does not set updated_at, so edits don't update timestamps."
+      ],
+      "plan": [
+        "Thread now_rfc3339 into title update and set updated_at when the title changes.",
+        "Add/adjust tests to assert updated_at changes on edit.",
+        "Ensure no regressions in TUI edit flows.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Threaded now_rfc3339 into TUI title update logic",
+        "Updated App::update_title to set updated_at timestamp on change",
+        "Verified with unit tests in tui/mod.rs and contract tests in tui_contract_test.rs"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T21:41:56.860086000Z",
+      "completed_at": "2026-01-21T21:41:56.860086000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0207",
+      "status": "done",
+      "title": "Include request/custom_fields/tags/scope in queue search",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "search",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/search.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/search.rs matches only title/evidence/plan/notes; request, tags, scope, and custom_fields are ignored."
+      ],
+      "plan": [
+        "Decide which additional fields should be searchable (request, tags, scope, custom_fields) and update search logic.",
+        "Update CLI help/docs to reflect the expanded search surface.",
+        "Add tests covering matches in the newly included fields.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Updated search logic to include request, tags, scope, and custom_fields",
+        "Added tests for new search fields",
+        "Updated CLI help and documentation"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T21:49:31.181065000Z",
+      "completed_at": "2026-01-21T21:49:31.181065000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0214",
+      "status": "done",
+      "title": "Audit CLI command overlap and consolidate without losing functionality",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "ux",
+        "docs"
+      ],
+      "scope": [
+        "crates/ralph/src/cli",
+        "docs/cli.md",
+        ".ralph/prompts"
+      ],
+      "evidence": [
+        "User request: \"Audit the cli commands and identify overlap and determine if we have some separation that can cause user confusion. Consolidating commands as long as functionality remains is acceptable. If any changes are made by the agent they must thoroughly check for prompts that may need updated.\""
+      ],
+      "plan": [
+        "Inventory CLI commands and flags to identify overlapping or confusing separations.",
+        "Propose and implement consolidation that preserves functionality, explicitly documenting any behavior changes.",
+        "Update CLI help/docs and any affected prompt templates for the consolidated command set.",
+        "Add or update tests to cover the new command structure and error cases."
+      ],
+      "notes": [
+        "Restore unrelated queue entries removed during Phase 2",
+        "Confirmed queue set-status only allows draft/todo/doing",
+        "CLI doc note clarified set-status terminal completion",
+        "make ci passed"
+      ],
+      "request": "Audit the cli commands and identify overlap and determine if we have some separation that can cause user confusion. COnsolidating commands as long as fucntionalit remains is acceptable. If any changes are made by the agent they must thoroughly check for prompts that may need updated.",
+      "created_at": "2026-01-21T21:52:21Z",
+      "updated_at": "2026-01-21T22:02:07.154451000Z",
+      "completed_at": "2026-01-21T22:02:07.154451000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0208",
+      "status": "done",
+      "title": "Regex search should honor --match-case",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "search",
+        "consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/search.rs",
+        "crates/ralph/tests/queue_search_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/search.rs builds Regex::new(query) without considering the match_case flag, so regex searches are always case-sensitive."
+      ],
+      "plan": [
+        "Switch to RegexBuilder and set case_insensitive when match_case is false.",
+        "Add tests verifying case-insensitive regex behavior.",
+        "Update CLI help text if needed.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Honor --match-case for regex search via RegexBuilder",
+        "Added regression coverage for regex case sensitivity",
+        "make ci passed"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:07:26.509576000Z",
+      "completed_at": "2026-01-21T22:07:26.509576000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0209",
+      "status": "done",
+      "title": "Validate sort-by values and use enum for list/sort",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs list sort_by ignores unknown values (falls back to unsorted) and sort_by is a free-form String in both list and sort commands."
+      ],
+      "plan": [
+        "Introduce a ValueEnum for sort_by (e.g., priority) and use it in list and sort commands.",
+        "Ensure invalid values are rejected by clap with clear errors.",
+        "Update docs/tests for the new enum-based sort flags.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Validated sort-by now uses ValueEnum for list/sort",
+        "Added CLI integration tests for invalid sort-by and priority ordering",
+        "Docs updated with sort-by example"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:18:26.585009000Z",
+      "completed_at": "2026-01-21T22:18:26.585009000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0210",
+      "status": "done",
+      "title": "Default queue sort should put highest priority first",
+      "priority": "low",
+      "tags": [
+        "queue",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs QueueSortArgs defaults descending=false, so ralph queue sort orders lowest priority first unless --descending is provided."
+      ],
+      "plan": [
+        "Decide the default ordering (likely highest-first) and adjust defaults/flags accordingly.",
+        "Update CLI help/examples and tests to match the new default.",
+        "Verify sorting behavior in queue sort and list.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "add ascending order coverage for queue list/sort",
+        "keep default descending order for priority sorting",
+        "update tests to reflect new --order flag"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:26:07.437965000Z",
+      "completed_at": "2026-01-21T22:26:07.437965000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0211",
+      "status": "done",
+      "title": "Align config schema phases constraints with runtime validation",
+      "priority": "medium",
+      "tags": [
+        "config",
+        "schema",
+        "validation"
+      ],
+      "scope": [
+        "schemas/config.schema.json",
+        "crates/ralph/src/config.rs",
+        "docs/configuration.md"
+      ],
+      "evidence": [
+        "schemas/config.schema.json allows agent.phases minimum 0 while crates/ralph/src/config.rs rejects any value outside 1..=3."
+      ],
+      "plan": [
+        "Update config schema to restrict phases to 1, 2, or 3 (enum or min/max).",
+        "Regenerate schema and update docs/examples.",
+        "Add tests to ensure schema and validation stay aligned.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Aligned config schema phases to 1..=3 and added schema alignment test.",
+        "Ran make ci (all checks green)."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:33:25.786342000Z",
+      "completed_at": "2026-01-21T22:33:25.786342000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0212",
+      "status": "done",
+      "title": "Add missing module docstrings to core files",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "hygiene"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/lib.rs",
+        "crates/ralph/src/init_cmd.rs",
+        "crates/ralph/src/scan_cmd.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/config.rs, crates/ralph/src/lib.rs, crates/ralph/src/init_cmd.rs, and crates/ralph/src/scan_cmd.rs lack top-of-file //! module docstrings.",
+        "AGENTS.md requires every code file to have a docstring describing its purpose."
+      ],
+      "plan": [
+        "Add concise module-level docstrings to the missing files.",
+        "Keep descriptions consistent with existing module docs.",
+        "Verify linting/tests still pass.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Add module docstrings for config/init/scan commands.",
+        "make ci passed."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:37:07.178888000Z",
+      "completed_at": "2026-01-21T22:37:07.178888000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0213",
+      "status": "done",
+      "title": "Treat rejected tasks as terminal in queue stats",
+      "priority": "low",
+      "tags": [
+        "reports",
+        "ux",
+        "metrics"
+      ],
+      "scope": [
+        "crates/ralph/src/reports.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/reports.rs computes completion rate using status==Done only, so rejected tasks are counted as active."
+      ],
+      "plan": [
+        "Decide whether rejected should count as completed (terminal) and update stats logic.",
+        "Adjust output text to reflect the new definition.",
+        "Add tests for completion rate and active counts with rejected tasks.",
+        "Ensure prompts reflect the desired and required functionality for this task."
+      ],
+      "notes": [
+        "Treats rejected tasks as terminal in queue stats output.",
+        "Adds stats summary helper and tests covering rejected terminal counts.",
+        "Updates stats help text to define terminal as done+rejected."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-21T19:59:34Z",
+      "updated_at": "2026-01-21T22:44:28.766969000Z",
+      "completed_at": "2026-01-21T22:44:28.766969000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0215",
+      "status": "done",
+      "title": "Add dedicated `ralph tui` entrypoint for browsing/management",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/mod.rs",
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "`crates/ralph/src/cli/mod.rs` Command enum has no TUI subcommand; only Run/Queue/Task/etc.",
+        "`crates/ralph/src/cli/run.rs` is the only place that calls `tui::run_tui`, gated behind `--interactive` on `run one/loop`."
+      ],
+      "plan": [
+        "Add a `tui` subcommand (or equivalent) that launches `tui::run_tui` without requiring `run one/loop`.",
+        "Define a no-op runner factory or a browse-only mode so users can open the TUI without executing tasks.",
+        "Update CLI docs/help to include the new entrypoint and expected behavior.",
+        "Add CLI parse tests for the new subcommand and TUI entrypoint wiring."
+      ],
+      "notes": [
+        "Add browse-only TUI runner helper and test",
+        "Wire ralph tui command for browse-only TUI entrypoint",
+        "Document tui command usage"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T03:23:00.045898000Z",
+      "completed_at": "2026-01-22T03:23:00.045898000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0216",
+      "status": "done",
+      "title": "Acquire queue lock for TUI sessions to prevent concurrent writes",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "queue",
+        "safety"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/mod.rs` `run_tui` loads/saves the queue but never calls `queue::acquire_queue_lock`.",
+        "Other mutating commands (e.g., `crates/ralph/src/run_cmd.rs`) take the queue lock before edits."
+      ],
+      "plan": [
+        "Thread `force`/lock intent into `run_tui` so TUI can acquire a queue lock for the session.",
+        "Acquire the lock before loading the queue and keep it alive for the TUI lifetime.",
+        "Add tests to ensure the TUI path requests a lock (unit test with a temporary repo)."
+      ],
+      "notes": [
+        "Lock TUI sessions by acquiring the queue lock upfront.",
+        "Avoid nested lock acquisition when running tasks from the TUI.",
+        "Added tests for lock behavior in TUI and run paths."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T03:39:30.996287000Z",
+      "completed_at": "2026-01-22T03:39:30.996287000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0217",
+      "status": "done",
+      "title": "Validate queue before launching TUI and surface errors",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "queue",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/cli/mod.rs",
+        "crates/ralph/src/queue/validation.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/mod.rs` uses `queue::load_queue` directly and does not call `validate_queue` or `validate_queue_set`.",
+        "`crates/ralph/src/cli/mod.rs` has `load_and_validate_queues`, but it is not used by the TUI path."
+      ],
+      "plan": [
+        "Validate the queue (and done archive if needed) before entering raw mode.",
+        "If validation fails, show a clear error and exit without leaving the terminal in raw mode.",
+        "Add tests covering invalid queue inputs for the TUI entrypoint."
+      ],
+      "notes": [
+        "Centralize queue+done validation in queue::load_and_validate_queues and reuse in TUI/CLI",
+        "Validate TUI startup against queue/done before raw mode",
+        "Add queue validation tests for missing done file + duplicate IDs"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T03:55:09.249675000Z",
+      "completed_at": "2026-01-22T03:55:09.249675000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0218",
+      "status": "done",
+      "title": "Prevent silent data loss when TUI auto-save fails",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "queue",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs"
+      ],
+      "evidence": [
+        "In `crates/ralph/src/tui/mod.rs`, the auto-save branch logs an error but still clears `app_ref.dirty`, losing pending changes if save fails."
+      ],
+      "plan": [
+        "Keep `dirty` true on save failures and surface an on-screen error/state.",
+        "Add a retry path (manual or automatic) instead of clearing the dirty flag.",
+        "Add tests to verify dirty is preserved on save errors."
+      ],
+      "notes": [
+        "Kept TUI dirty state on auto-save failures and surfaces save-error indicator.",
+        "Added auto-save helper tests for success, failure, and recovery paths.",
+        "Updated help footer rendering to flag save errors."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T04:06:24.269547000Z",
+      "completed_at": "2026-01-22T04:06:24.269547000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0219",
+      "status": "done",
+      "title": "Block or confirm quit while a task is executing in TUI",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "safety"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/events.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/mod.rs` spawns a runner thread on `RunTask` but does not track or join it when quitting.",
+        "`crates/ralph/src/tui/events.rs` only blocks quit in Executing mode; after Esc returns to Normal, `q` exits without warning even if a task is still running."
+      ],
+      "plan": [
+        "Track whether a runner thread is active and expose that in app state.",
+        "Require confirmation or block quitting while a task is executing.",
+        "Add tests for quit behavior when a task is active."
+      ],
+      "notes": [
+        "Add ConfirmQuit rendering coverage",
+        "Verify quit confirmation behavior with new UI tests",
+        "make ci"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T04:17:54.829608000Z",
+      "completed_at": "2026-01-22T04:17:54.829608000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0220",
+      "status": "done",
+      "title": "Add log scrolling controls and autoscroll toggle in Executing view",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "logs"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/render.rs"
+      ],
+      "evidence": [
+        "`App` includes `log_scroll` and `autoscroll`, but `handle_executing_mode_key` only handles `Esc` and never updates those fields."
+      ],
+      "plan": [
+        "Add keybindings for scrolling (PgUp/PgDn, Up/Down) and toggling autoscroll.",
+        "Update render footer to display new keybindings.",
+        "Add tests for log scroll and autoscroll state transitions."
+      ],
+      "notes": [
+        "Add executing view scroll controls with cached visible line tracking.",
+        "Add tests for visible line caching and App defaults."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T04:32:29.567859000Z",
+      "completed_at": "2026-01-22T04:32:29.567859000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0221",
+      "status": "done",
+      "title": "Use actual viewport height for log autoscroll calculations",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "logs"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/render.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/mod.rs` hardcodes `visible_lines = 20` when adjusting log autoscroll, ignoring real terminal size."
+      ],
+      "plan": [
+        "Track the execution view height in app state during rendering.",
+        "Use that height for log autoscroll and scroll bounds calculations.",
+        "Add tests to ensure log scrolling respects viewport size."
+      ],
+      "notes": [
+        "Use render viewport height to update log visible lines and autoscroll bounds.",
+        "Add App tests covering log visible line updates and scroll clamping."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T04:41:05.402699000Z",
+      "completed_at": "2026-01-22T04:41:05.402699000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0222",
+      "status": "done",
+      "title": "Add manual refresh key to reload queue from disk",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "queue",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/mod.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/mod.rs` only reloads the queue on `RunnerEvent::Finished`; there is no user-triggered refresh.",
+        "`crates/ralph/src/tui/events.rs` has no keybinding for reload/refresh."
+      ],
+      "plan": [
+        "Add a refresh keybinding (e.g., `r`) in Normal mode.",
+        "Reload queue from disk, clamp selection, and show errors in logs.",
+        "Add tests for refresh behavior and selection clamping."
+      ],
+      "notes": [
+        "Add TUI refresh action to reload queue from disk.",
+        "Centralize reload logic with selection clamping and error logging.",
+        "Update help footer/keybinding docs for refresh.",
+        "Add tests for refresh key and reload success/failure."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T04:49:46.026367000Z",
+      "completed_at": "2026-01-22T04:49:46.026367000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0223",
+      "status": "done",
+      "title": "Add priority editing in TUI (cycle or picker)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/contracts.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events.rs` does not expose any keybinding to change `TaskPriority` even though the UI renders it.",
+        "`App` methods only update status/title/delete; no priority mutation exists in `crates/ralph/src/tui/mod.rs`."
+      ],
+      "plan": [
+        "Add an `App` method to cycle or set `TaskPriority` with timestamp updates.",
+        "Wire a Normal-mode keybinding (e.g., `p`) and update footer help.",
+        "Add tests to verify priority updates and timestamp behavior."
+      ],
+      "notes": [
+        "Added priority cycling via 'p' key in TUI",
+        "App now updates priority + timestamp and marks dirty",
+        "Help footer documents priority shortcut",
+        "Tests cover priority cycling and missing-selection error"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T04:56:59.877332000Z",
+      "completed_at": "2026-01-22T04:56:59.877332000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0224",
+      "status": "done",
+      "title": "Add TUI flow to create new tasks without leaving the UI",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/contracts.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events.rs` has no keybinding to create tasks; only delete/edit/status/run are supported.",
+        "`crates/ralph/src/tui/mod.rs` lacks any creation flow beyond loading an existing queue."
+      ],
+      "plan": [
+        "Design a minimal creation mode (title + status/priority defaults) and integrate with queue persistence.",
+        "Add keybinding (e.g., `n`) to enter creation mode and confirm/cancel behavior.",
+        "Add tests for creating tasks and validating required fields."
+      ],
+      "notes": [
+        "Add TUI create-task mode and defaults",
+        "Wire n keybinding and render/create UI",
+        "Add unit and rendering tests for create flow"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T05:08:36.749851000Z",
+      "completed_at": "2026-01-22T05:08:36.749851000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0225",
+      "status": "done",
+      "title": "Add search/filter in TUI for status/tag/text",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "search"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/queue/search.rs"
+      ],
+      "evidence": [
+        "TUI always renders the full queue list in `crates/ralph/src/tui/render.rs` with no filtering state.",
+        "`crates/ralph/src/tui/events.rs` has no search/filter keybindings despite existing queue search utilities in `crates/ralph/src/queue/search.rs`."
+      ],
+      "plan": [
+        "Introduce filter state in `App` (query + status/tags).",
+        "Add a search input mode and keybindings (e.g., `/` to search, `f` to filter status).",
+        "Use queue search/filter utilities to produce the displayed list.",
+        "Add tests for filter/search behavior and selection clamping."
+      ],
+      "notes": [
+        "Phase 3 review complete: All tests pass, code follows standards, implementation is complete and robust. Filter/search functionality works correctly with proper selection preservation and edge case handling."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-22T14:32:08.910150000Z",
+      "completed_at": "2026-01-22T14:32:08.910150000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0233",
+      "status": "done",
+      "title": "Enable editing ralph config from the TUI",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "config",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui",
+        "crates/ralph/src/config",
+        "crates/ralph/src/commands"
+      ],
+      "evidence": [
+        "User request: \"Enable modifying the ralph config via the TUI\""
+      ],
+      "plan": [
+        "Review current TUI actions and config load/save paths to confirm how config is surfaced today.",
+        "Design a TUI flow for viewing and editing config fields with validation and clear save/cancel behavior.",
+        "Wire the edit flow to persist changes to the project config file and surface errors in the TUI.",
+        "Add tests covering success and failure paths for config edits via the TUI."
+      ],
+      "notes": [],
+      "request": "Enable modifying the ralph config via the TUI",
+      "created_at": "2026-01-22T16:24:34Z",
+      "updated_at": "2026-01-22T17:26:37.709163000Z",
+      "completed_at": "2026-01-22T17:26:37.709163000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0234",
+      "status": "done",
+      "title": "Refactor Phase 1 planning to use direct cache writes instead of inline markers",
+      "priority": "high",
+      "tags": [
+        "planning",
+        "supervisor",
+        "refactor",
+        "phase1"
+      ],
+      "scope": [
+        "crates/ralph/src/promptflow.rs",
+        "crates/ralph/src/prompts_internal/util.rs",
+        "crates/ralph/src/run_cmd/phases.rs",
+        "AGENTS.md"
+      ],
+      "evidence": [
+        "User request to modify Phase 1 planner behavior to directly write plans to .ralph/cache/plans/<task_id>.md instead of using inline markers.",
+        "Current `promptflow::extract_plan_text` relies on markers which are fragile."
+      ],
+      "plan": [
+        "Modify `crates/ralph/src/promptflow.rs` to update `build_phase1_prompt` with direct cache write instructions and remove inline marker requirements.",
+        "Update `crates/ralph/src/prompts_internal/util.rs` to change `REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION` to instruct direct cache writes.",
+        "Update `crates/ralph/src/run_cmd/phases.rs` in `execute_phase1_planning` to allow edits to `.ralph/cache/plans/` and read the plan from the cache file.",
+        "Update `AGENTS.md` and `crates/ralph/tests/promptflow_test.rs` to reflect the new workflow.",
+        "Run `make ci` to verify changes."
+      ],
+      "notes": [
+        "Clarified Phase 1 prompt prohibitions to allow plan cache file writes and tool usage.",
+        "Reaffirmed RepoPrompt planning instruction to write plan cache directly without printing plan.",
+        "make ci passed (install step logged sandbox permission warning)."
+      ],
+      "request": "Modify how the Phase 1 planner provides the plan to the following phases. We already have ralph capture plans from the Phase 1 agent and write them to .ralph/cache/taskid.md. Requiring the Phase 1 model agent to write the plan out in the required '<<RALPH_PLAN_BEGIN>>' and '<<RALPH_PLANEND>>' wrappers is fragile. INSTEAD, we should have the Phase 1 agent directly write the plan (for both modes, self-generated plan and plans generated by repo prompt context_builder) to .ralph/cache.taskid.md and NOT output the entire plan inline. We will need to modify prompts, modify supervisor logic, etc.",
+      "created_at": "2026-01-22T16:30:00Z",
+      "updated_at": "2026-01-22T17:50:42.488242000Z",
+      "completed_at": "2026-01-22T17:50:42.488242000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0232",
+      "status": "done",
+      "title": "Enable full task field editing in the TUI",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "tasks",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui",
+        "crates/ralph/src/commands"
+      ],
+      "evidence": [
+        "User request: \"Enhance the task edit functionality to allow editing all fields of the task. Currently only the title can be edited after hitting the 'e' key\""
+      ],
+      "plan": [
+        "Review the current TUI edit flow and task model to identify which fields are editable and where changes are persisted.",
+        "Extend the edit UI and validation to support editing all task fields (status, priority, tags, scope, evidence, plan, request, notes, and custom fields as applicable), ensuring consistent input handling.",
+        "Update the task update command/path to persist the expanded edits and handle failure cases cleanly.",
+        "Add tests covering the new edit behavior, including validation errors and successful updates across fields."
+      ],
+      "notes": [
+        "Respect manual updated_at edits in TUI task editor",
+        "Added regression coverage for updated_at preservation"
+      ],
+      "request": "Enhance the task edit functionality to allow editing all fields of the task. Currently only the title can be edited after hitting the 'e' key",
+      "created_at": "2026-01-22T16:23:30Z",
+      "updated_at": "2026-01-22T18:29:03.240235000Z",
+      "completed_at": "2026-01-22T18:29:03.240235000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0236",
+      "status": "done",
+      "title": "Fix TUI task-run viewer rendering and unblock phase-violation selection",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "bug",
+        "ux",
+        "tests"
+      ],
+      "scope": [
+        "crates/ralph/src/tui",
+        "crates/ralph/src/cli",
+        "crates/ralph/src/commands",
+        "crates/ralph/tests",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "User request: \"The TUI viewer is busted when running a task. See the screenshots here and fix. ''/Users/mitchfultz/Screenshots/Screenshot 2026-01-22 at 11.13.15 AM.png'' and ''/Users/mitchfultz/Screenshots/Screenshot 2026-01-22 at 11.13.48 AM.png''. Secondly, when issues arise, and I am prompted \"Phase X violations: revert uncommited changes\" I am unable to select an option so it hangs forever. I MUST be able to select an option. Figure it out. View the screenshots, fix the UI, figure out a way to test the actual visuals so this doesn't happen again or regress.\""
+      ],
+      "plan": [
+        "Reproduce the TUI task-run viewer rendering issue using the provided screenshots and identify the layout/viewport failure.",
+        "Fix the TUI rendering/layout bug so the task-run viewer is readable and stable across terminal sizes.",
+        "Fix input handling for the \"Phase X violations: revert uncommited changes\" prompt so selection always works and cannot hang.",
+        "Add automated visual or snapshot tests covering the task-run viewer and the phase-violation prompt to prevent regressions."
+      ],
+      "notes": [],
+      "request": "The TUI viewer is busted when running a task. See the screenshots here and fix. ''/Users/mitchfultz/Screenshots/Screenshot 2026-01-22 at 11.13.15 AM.png'' and ''/Users/mitchfultz/Screenshots/Screenshot 2026-01-22 at 11.13.48 AM.png''. Secondly, when issues arise, and I am prompted \"Phase X violations: revert uncommited changes\" I am unable to select an option so it hangs forever. I MUST be able to select an option. Figure it out. View the screenshots, fix the UI, figure out a way to test the actual visuals so this doesn't happen again or regress.",
+      "created_at": "2026-01-22T18:38:27Z",
+      "updated_at": "2026-01-22T20:23:22.850672000Z",
+      "completed_at": "2026-01-22T20:23:22.850672000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0235",
+      "status": "done",
+      "title": "Add configurable CI gate command with opt-out",
+      "priority": "medium",
+      "tags": [
+        "ci",
+        "config",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src",
+        ".ralph/config.json",
+        "docs"
+      ],
+      "evidence": [
+        "User request: \"Currently all validation logic revolves around the 'make ci' gate. However, come projects do not have 'make ci'. We need to be able to allow customization of the CI gate command. Users can set the command to be valid based on the project, but it defaults to the current 'make ci'. If a user really wants to completely ignore any CI gate at all we should have a way to allow it.\""
+      ],
+      "plan": [
+        "Inspect current CI gate execution and config flow to identify where the command is hard-coded.",
+        "Add a configurable CI gate command with default of `make ci`, and allow explicit opt-out/disable behavior.",
+        "Update CLI/help/docs to describe configuration and opt-out, and add tests covering default, custom, and disabled gate behavior."
+      ],
+      "notes": [],
+      "request": "Currently all validation logic revolves around the 'make ci' gate. However, come projects do not have 'make ci'. We need to be able to allow customization of the CI gate command. Users can set the command to be valid based on the project, but it defaults to the current 'make ci'. If a user really wants to completely ignore any CI gate at all we should have a way to allow it.",
+      "created_at": "2026-01-22T18:37:08Z",
+      "updated_at": "2026-01-22T21:58:02.520257000Z",
+      "completed_at": "2026-01-22T21:58:02.520257000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0231",
+      "status": "done",
+      "title": "Add ralph scan support in the TUI",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "scan",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/tui",
+        "crates/ralph/src/cli",
+        "crates/ralph/src/commands"
+      ],
+      "evidence": [
+        "User request: \"Add 'ralph scan' support to the ralph tui\""
+      ],
+      "plan": [
+        "Review current TUI entrypoints and command wiring to identify where scan actions should live.",
+        "Implement TUI flow to configure and trigger `ralph scan` from within the interface.",
+        "Add tests covering the new TUI scan action, including failure modes and validation."
+      ],
+      "notes": [
+        "Add scan workflow and mode to the TUI (keybinding, palette entry, UI state)",
+        "Wire scan execution into TUI runner loop with output/revert prompt handling",
+        "Extend scan command options for TUI lock handling and streaming output",
+        "Update CLI/TUI wiring plus read-only behavior for scan",
+        "Add tests for scan UI states, help footer, and scan options"
+      ],
+      "request": "Add 'ralph scan' support to the ralph tui",
+      "created_at": "2026-01-22T16:20:33Z",
+      "updated_at": "2026-01-22T22:35:05.138228000Z",
+      "completed_at": "2026-01-22T22:35:05.138228000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0226",
+      "status": "done",
+      "title": "Add in-TUI help overlay for keybindings",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "docs"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/render.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/render.rs` only shows a compact footer; there is no full help overlay or key to open it.",
+        "`crates/ralph/src/tui/events.rs` has no `?`/`h` handler to show help."
+      ],
+      "plan": [
+        "Add a Help mode with a full-screen overlay listing keybindings and actions.",
+        "Wire `?`/`h` to toggle Help mode and update footer hints.",
+        "Add tests to ensure help mode transitions and rendering paths."
+      ],
+      "notes": [
+        "Add Help mode toggle via ?/h and close behavior",
+        "Render full-screen help overlay with keybinding catalog",
+        "Cover help mode transitions and overlay rendering in tests"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-23T00:53:59.467182000Z",
+      "completed_at": "2026-01-23T00:53:59.467182000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0227",
+      "status": "done",
+      "title": "Add empty-queue action prompts (create task / open task command)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/render.rs",
+        "crates/ralph/src/tui/events.rs"
+      ],
+      "evidence": [
+        "When no tasks exist, `crates/ralph/src/tui/render.rs` renders a static message and provides no action to create tasks in TUI."
+      ],
+      "plan": [
+        "Add CTA hints in the empty state (e.g., `n` to create).",
+        "Ensure the keybinding launches the creation flow or defers to CLI guidance.",
+        "Add tests for empty-state rendering and key behavior."
+      ],
+      "notes": [
+        "Added empty-queue action prompts for create and command palette.",
+        "Covered empty-queue key handling for n and : with tests.",
+        "Verified empty-queue rendering includes the new CTA lines."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-23T01:05:01.638818000Z",
+      "completed_at": "2026-01-23T01:05:01.638818000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0228",
+      "status": "done",
+      "title": "Document TUI usage and keybindings in CLI docs",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "tui"
+      ],
+      "scope": [
+        "docs/cli.md",
+        "crates/ralph/src/tui/mod.rs"
+      ],
+      "evidence": [
+        "`docs/cli.md` documents `-i` but does not list TUI keybindings or behaviors; keybindings are only in the TUI module doc comment (`crates/ralph/src/tui/mod.rs`)."
+      ],
+      "plan": [
+        "Add a TUI section to `docs/cli.md` describing entrypoints and keybindings.",
+        "Keep docs aligned with actual keybindings and modes.",
+        "Add a documentation check in tests if applicable (or update existing doc tests)."
+      ],
+      "notes": [
+        "Documented TUI keybindings and behaviors in docs/cli.md.",
+        "Added CLI doc test to keep TUI usage/keybindings present.",
+        "Expanded doc test coverage for keybinding sections and read-only mention."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-23T01:14:27.159363000Z",
+      "completed_at": "2026-01-23T01:14:27.159363000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0229",
+      "status": "done",
+      "title": "Update `ralph run --help` to surface TUI entrypoints and examples",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "cli",
+        "tui"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/run.rs"
+      ],
+      "evidence": [
+        "`crates/ralph/src/cli/run.rs` `RunArgs` after_long_help examples do not include `-i` or TUI launch guidance, so `ralph run --help` omits interactive discovery."
+      ],
+      "plan": [
+        "Add TUI examples and a short note to the `RunArgs` after_long_help string.",
+        "Verify `ralph run --help` output includes the interactive entrypoint.",
+        "Add a small CLI help snapshot test if one exists."
+      ],
+      "notes": [
+        "Add TUI entrypoint note to ralph run help text.",
+        "Assert run help mentions TUI commands in help contract test."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-23T01:20:36.783527000Z",
+      "completed_at": "2026-01-23T01:20:36.783527000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
+}
