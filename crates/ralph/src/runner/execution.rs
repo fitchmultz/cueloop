@@ -286,11 +286,13 @@ pub(super) fn run_with_streaming_json(
     let stdout_buf = Arc::new(Mutex::new(String::new()));
     let stderr_buf = Arc::new(Mutex::new(String::new()));
 
+    let session_id_buf = Arc::new(Mutex::new(None));
     let stdout_handle = spawn_json_reader(
         stdout,
         StreamSink::Stdout,
         Arc::clone(&stdout_buf),
         output_handler.clone(),
+        Arc::clone(&session_id_buf),
     );
     let stderr_handle = spawn_reader(
         stderr,
@@ -336,10 +338,17 @@ pub(super) fn run_with_streaming_json(
         return Err(RunnerError::Interrupted);
     }
 
+    let session_id = session_id_buf
+        .lock()
+        .ok()
+        .and_then(|guard| guard.clone())
+        .or_else(|| extract_session_id_from_text(&stdout));
+
     Ok(RunnerOutput {
         status,
         stdout,
         stderr,
+        session_id,
     })
 }
 
@@ -349,6 +358,7 @@ fn spawn_json_reader<R: Read + Send + 'static>(
     sink: StreamSink,
     buffer: Arc<Mutex<String>>,
     output_handler: Option<OutputHandler>,
+    session_id_buf: Arc<Mutex<Option<String>>>,
 ) -> thread::JoinHandle<anyhow::Result<()>> {
     thread::spawn(move || {
         let mut buf = [0u8; 8192];
@@ -364,7 +374,20 @@ fn spawn_json_reader<R: Read + Send + 'static>(
             for ch in text.chars() {
                 if ch == '\n' {
                     if let Some(json) = parse_json_line(&line_buf) {
-                        display_filtered_json(&json, &sink)?;
+                        if let Some(id) = extract_session_id_from_json(&json) {
+                            if let Ok(mut guard) = session_id_buf.lock() {
+                                *guard = Some(id);
+                            }
+                        }
+                        display_filtered_json(&json, &sink, output_handler.as_ref())?;
+                    } else if !line_buf.trim().is_empty() {
+                        let mut line = line_buf.clone();
+                        sink.write_all(line.as_bytes())?;
+                        sink.write_all(b"\n")?;
+                        if let Some(handler) = &output_handler {
+                            line.push('\n');
+                            handler(&line);
+                        }
                     }
                     line_buf.clear();
                 } else {
@@ -377,9 +400,15 @@ fn spawn_json_reader<R: Read + Send + 'static>(
                 .lock()
                 .map_err(|_| anyhow::anyhow!("lock output buffer"))?;
             guard.push_str(&text);
-            // Call output handler if provided
+        }
+
+        if !line_buf.trim().is_empty() {
+            let mut line = line_buf.clone();
+            sink.write_all(line.as_bytes())?;
+            sink.write_all(b"\n")?;
             if let Some(handler) = &output_handler {
-                handler(&text);
+                line.push('\n');
+                handler(&line);
             }
         }
         Ok(())
@@ -388,6 +417,34 @@ fn spawn_json_reader<R: Read + Send + 'static>(
 
 fn parse_json_line(line: &str) -> Option<JsonValue> {
     serde_json::from_str::<JsonValue>(line).ok()
+}
+
+fn extract_session_id_from_json(json: &JsonValue) -> Option<String> {
+    if let Some(id) = json.get("thread_id").and_then(|v| v.as_str()) {
+        return Some(id.to_string());
+    }
+    if let Some(id) = json.get("session_id").and_then(|v| v.as_str()) {
+        return Some(id.to_string());
+    }
+    if let Some(id) = json.get("sessionID").and_then(|v| v.as_str()) {
+        return Some(id.to_string());
+    }
+    None
+}
+
+fn extract_session_id_from_text(stdout: &str) -> Option<String> {
+    for line in stdout.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Ok(json) = serde_json::from_str::<JsonValue>(line) {
+            if let Some(id) = extract_session_id_from_json(&json) {
+                return Some(id);
+            }
+        }
+    }
+    None
 }
 
 const CODEX_REASONING_PREFIX: &str = "[Reasoning] ";
@@ -460,6 +517,59 @@ fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                 }
             }
         }
+
+        if event_type == "text" {
+            if let Some(text) = json
+                .get("part")
+                .and_then(|p| p.get("text"))
+                .and_then(|t| t.as_str())
+            {
+                lines.push(text.to_string());
+            }
+        }
+
+        if event_type == "tool_use" {
+            if let Some(tool) = json
+                .get("part")
+                .and_then(|p| p.get("tool"))
+                .and_then(|t| t.as_str())
+            {
+                let status = json
+                    .get("part")
+                    .and_then(|p| p.get("state"))
+                    .and_then(|s| s.get("status"))
+                    .and_then(|s| s.as_str());
+                let suffix = status
+                    .map(|value| format!(" ({value})"))
+                    .unwrap_or_default();
+                lines.push(format!("[Tool] {tool}{suffix}"));
+            }
+        }
+
+        if event_type == "message" {
+            let role = json.get("role").and_then(|r| r.as_str());
+            if role == Some("assistant") {
+                if let Some(content) = json.get("content") {
+                    match content {
+                        JsonValue::String(text) => {
+                            if !text.is_empty() {
+                                lines.push(text.clone());
+                            }
+                        }
+                        JsonValue::Array(items) => {
+                            for item in items {
+                                if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                    if !text.is_empty() {
+                                        lines.push(text.to_string());
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
     }
 
     if let Some(denials) = json.get("permission_denials").and_then(|d| d.as_array()) {
@@ -503,10 +613,18 @@ fn status_suffix(item: &JsonValue) -> String {
 }
 
 /// Display meaningful content from JSON, filtering noise
-fn display_filtered_json(json: &JsonValue, sink: &StreamSink) -> anyhow::Result<()> {
-    for line in extract_display_lines(json) {
+fn display_filtered_json(
+    json: &JsonValue,
+    sink: &StreamSink,
+    output_handler: Option<&OutputHandler>,
+) -> anyhow::Result<()> {
+    for mut line in extract_display_lines(json) {
         sink.write_all(line.as_bytes())?;
         sink.write_all(b"\n")?;
+        if let Some(handler) = output_handler {
+            line.push('\n');
+            handler(&line);
+        }
     }
 
     Ok(())
@@ -540,6 +658,38 @@ pub fn run_codex(
     run_with_streaming_json(cmd, Some(prompt.as_bytes()), bin, timeout, output_handler)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn run_codex_resume(
+    work_dir: &Path,
+    bin: &str,
+    model: Model,
+    reasoning_effort: Option<ReasoningEffort>,
+    thread_id: &str,
+    message: &str,
+    timeout: Option<Duration>,
+    output_handler: Option<OutputHandler>,
+) -> Result<RunnerOutput, RunnerError> {
+    let mut cmd = Command::new(bin);
+    cmd.current_dir(work_dir);
+    ensure_self_on_path(&mut cmd);
+    cmd.arg("exec")
+        .arg("resume")
+        .arg(thread_id)
+        .arg("--json")
+        .arg("--model")
+        .arg(model.as_str());
+
+    if let Some(effort) = reasoning_effort {
+        cmd.arg("-c").arg(format!(
+            "model_reasoning_effort=\"{}\"",
+            effort_as_str(effort)
+        ));
+    }
+
+    cmd.arg(message);
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
+}
+
 pub fn run_opencode(
     work_dir: &Path,
     bin: &str,
@@ -571,6 +721,8 @@ pub fn run_opencode(
     cmd.arg("run")
         .arg("--model")
         .arg(model.as_str())
+        .arg("--format")
+        .arg("json")
         .arg("--file")
         .arg(tmp.path())
         .arg("--")
@@ -578,7 +730,31 @@ pub fn run_opencode(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    stream_command(cmd, None, bin, timeout, output_handler)
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
+}
+
+pub fn run_opencode_resume(
+    work_dir: &Path,
+    bin: &str,
+    model: &Model,
+    session_id: &str,
+    message: &str,
+    timeout: Option<Duration>,
+    output_handler: Option<OutputHandler>,
+) -> Result<RunnerOutput, RunnerError> {
+    let mut cmd = Command::new(bin);
+    cmd.current_dir(work_dir);
+    ensure_self_on_path(&mut cmd);
+    cmd.arg("run")
+        .arg("-s")
+        .arg(session_id)
+        .arg("--model")
+        .arg(model.as_str())
+        .arg("--format")
+        .arg("json")
+        .arg("--")
+        .arg(message);
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
 }
 
 pub fn run_gemini(
@@ -594,9 +770,35 @@ pub fn run_gemini(
     ensure_self_on_path(&mut cmd);
     cmd.arg("--model")
         .arg(model.as_str())
+        .arg("--output-format")
+        .arg("stream-json")
         .arg("--approval-mode")
         .arg("yolo");
-    stream_command(cmd, Some(prompt.as_bytes()), bin, timeout, output_handler)
+    run_with_streaming_json(cmd, Some(prompt.as_bytes()), bin, timeout, output_handler)
+}
+
+pub fn run_gemini_resume(
+    work_dir: &Path,
+    bin: &str,
+    model: Model,
+    session_id: &str,
+    message: &str,
+    timeout: Option<Duration>,
+    output_handler: Option<OutputHandler>,
+) -> Result<RunnerOutput, RunnerError> {
+    let mut cmd = Command::new(bin);
+    cmd.current_dir(work_dir);
+    ensure_self_on_path(&mut cmd);
+    cmd.arg("--resume")
+        .arg(session_id)
+        .arg("--model")
+        .arg(model.as_str())
+        .arg("--output-format")
+        .arg("stream-json")
+        .arg("--approval-mode")
+        .arg("yolo")
+        .arg(message);
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
 }
 
 pub fn run_claude(
@@ -623,6 +825,35 @@ pub fn run_claude(
     run_with_streaming_json(cmd, Some(prompt.as_bytes()), bin, timeout, output_handler)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn run_claude_resume(
+    work_dir: &Path,
+    bin: &str,
+    model: Model,
+    session_id: &str,
+    message: &str,
+    timeout: Option<Duration>,
+    permission_mode: Option<ClaudePermissionMode>,
+    output_handler: Option<OutputHandler>,
+) -> Result<RunnerOutput, RunnerError> {
+    let mode = permission_mode.unwrap_or(ClaudePermissionMode::BypassPermissions);
+    let mut cmd = Command::new(bin);
+    cmd.current_dir(work_dir);
+    ensure_self_on_path(&mut cmd);
+    cmd.arg("--resume")
+        .arg(session_id)
+        .arg("--model")
+        .arg(model.as_str())
+        .arg("--permission-mode")
+        .arg(permission_mode_to_arg(mode))
+        .arg("--output-format")
+        .arg("stream-json")
+        .arg("--verbose")
+        .arg("-p")
+        .arg(message);
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
+}
+
 fn effort_as_str(effort: ReasoningEffort) -> &'static str {
     match effort {
         ReasoningEffort::Minimal => "minimal",
@@ -634,130 +865,6 @@ fn effort_as_str(effort: ReasoningEffort) -> &'static str {
 
 /// Run a command with streaming output support.
 /// If `output_handler` is provided, output chunks are sent to callback as they arrive.
-pub fn stream_command(
-    mut cmd: Command,
-    stdin_payload: Option<&[u8]>,
-    bin: &str,
-    timeout: Option<Duration>,
-    output_handler: Option<OutputHandler>,
-) -> Result<RunnerOutput, RunnerError> {
-    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-    if stdin_payload.is_some() {
-        cmd.stdin(Stdio::piped());
-    }
-
-    #[cfg(unix)]
-    unsafe {
-        cmd.pre_exec(|| {
-            let _ = libc::setpgid(0, 0);
-            Ok(())
-        });
-    }
-
-    let ctrlc = ctrlc_state();
-    ctrlc.interrupted.store(false, Ordering::SeqCst);
-
-    let mut child = cmd.spawn().map_err(|e| {
-        if e.kind() == std::io::ErrorKind::NotFound {
-            RunnerError::BinaryMissing {
-                bin: bin.to_string(),
-                source: e,
-            }
-        } else {
-            RunnerError::SpawnFailed {
-                bin: bin.to_string(),
-                source: e,
-            }
-        }
-    })?;
-
-    if let Some(payload) = stdin_payload {
-        let mut stdin = child.stdin.take().ok_or_else(|| {
-            RunnerError::Other(anyhow!("failed to open stdin for child: {}", bin))
-        })?;
-        stdin.write_all(payload).map_err(RunnerError::Io)?;
-        drop(stdin);
-    }
-
-    #[cfg(unix)]
-    {
-        let mut guard = ctrlc
-            .active_pgid
-            .lock()
-            .map_err(|_| RunnerError::Other(anyhow!("lock ctrl-c state")))?;
-        let pid = child.id() as i32;
-        *guard = Some(pid);
-    }
-
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| RunnerError::Other(anyhow!("capture child stdout")))?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| RunnerError::Other(anyhow!("capture child stderr")))?;
-
-    let stdout_buf = Arc::new(Mutex::new(String::new()));
-    let stderr_buf = Arc::new(Mutex::new(String::new()));
-
-    let stdout_handle = spawn_reader(
-        stdout,
-        StreamSink::Stdout,
-        Arc::clone(&stdout_buf),
-        output_handler.clone(),
-    );
-    let stderr_handle = spawn_reader(
-        stderr,
-        StreamSink::Stderr,
-        Arc::clone(&stderr_buf),
-        output_handler,
-    );
-
-    let status = wait_for_child(&mut child, ctrlc, timeout)?;
-
-    #[cfg(unix)]
-    {
-        let mut guard = ctrlc
-            .active_pgid
-            .lock()
-            .map_err(|_| RunnerError::Other(anyhow!("lock ctrl-c state")))?;
-        *guard = None;
-    }
-
-    stdout_handle
-        .join()
-        .map_err(|_| RunnerError::Other(anyhow!("stdout reader panicked")))?
-        .map_err(RunnerError::Other)?;
-    stderr_handle
-        .join()
-        .map_err(|_| RunnerError::Other(anyhow!("stderr reader panicked")))?
-        .map_err(RunnerError::Other)?;
-
-    let stdout = {
-        let mut guard = stdout_buf
-            .lock()
-            .map_err(|_| RunnerError::Other(anyhow!("lock stdout buffer")))?;
-        std::mem::take(&mut *guard)
-    };
-    let stderr = {
-        let mut guard = stderr_buf
-            .lock()
-            .map_err(|_| RunnerError::Other(anyhow!("lock stderr buffer")))?;
-        std::mem::take(&mut *guard)
-    };
-
-    if ctrlc.interrupted.load(Ordering::SeqCst) {
-        return Err(RunnerError::Interrupted);
-    }
-
-    Ok(RunnerOutput {
-        status,
-        stdout,
-        stderr,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -786,6 +893,59 @@ mod tests {
     #[test]
     fn parse_json_line_handles_invalid_json() {
         assert!(parse_json_line("{").is_none());
+    }
+
+    #[test]
+    fn extract_session_id_from_json_codex_thread_id() {
+        let payload = json!({
+            "thread_id": "thread-123"
+        });
+        assert_eq!(
+            extract_session_id_from_json(&payload),
+            Some("thread-123".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_session_id_from_json_claude_session_id() {
+        let payload = json!({
+            "session_id": "session-abc"
+        });
+        assert_eq!(
+            extract_session_id_from_json(&payload),
+            Some("session-abc".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_session_id_from_json_gemini_session_id() {
+        let payload = json!({
+            "session_id": "gemini-xyz"
+        });
+        assert_eq!(
+            extract_session_id_from_json(&payload),
+            Some("gemini-xyz".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_session_id_from_json_opencode_session_id() {
+        let payload = json!({
+            "sessionID": "open-789"
+        });
+        assert_eq!(
+            extract_session_id_from_json(&payload),
+            Some("open-789".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_session_id_from_text_reads_json_lines() {
+        let stdout = "{\"session_id\":\"sess-001\"}\n{\"result\":\"ok\"}\n";
+        assert_eq!(
+            extract_session_id_from_text(stdout),
+            Some("sess-001".to_string())
+        );
     }
 
     #[test]
@@ -872,6 +1032,64 @@ mod tests {
             extract_display_lines(&payload),
             vec!["[Permission denied: write]"]
         );
+    }
+
+    #[test]
+    fn display_filtered_json_calls_output_handler() {
+        let payload = json!({
+            "type": "text",
+            "part": { "text": "hello" }
+        });
+        let captured: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let handler: OutputHandler = Arc::new(Box::new({
+            let captured = Arc::clone(&captured);
+            move |text: &str| {
+                captured
+                    .lock()
+                    .expect("capture lock")
+                    .push(text.to_string());
+            }
+        }));
+
+        display_filtered_json(&payload, &StreamSink::Stdout, Some(&handler))
+            .expect("display filtered json");
+
+        let guard = captured.lock().expect("capture lock");
+        assert_eq!(guard.as_slice(), &["hello\n".to_string()]);
+    }
+
+    #[test]
+    fn extract_display_lines_opencode_text() {
+        let payload = json!({
+            "type": "text",
+            "part": { "text": "hello" }
+        });
+        assert_eq!(extract_display_lines(&payload), vec!["hello"]);
+    }
+
+    #[test]
+    fn extract_display_lines_opencode_tool_use() {
+        let payload = json!({
+            "type": "tool_use",
+            "part": {
+                "tool": "read",
+                "state": { "status": "completed" }
+            }
+        });
+        assert_eq!(
+            extract_display_lines(&payload),
+            vec!["[Tool] read (completed)"]
+        );
+    }
+
+    #[test]
+    fn extract_display_lines_gemini_message_assistant() {
+        let payload = json!({
+            "type": "message",
+            "role": "assistant",
+            "content": "hi"
+        });
+        assert_eq!(extract_display_lines(&payload), vec!["hi"]);
     }
 
     #[test]

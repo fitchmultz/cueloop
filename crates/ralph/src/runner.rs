@@ -38,12 +38,14 @@ pub enum RunnerError {
         code: i32,
         stdout: RedactedString,
         stderr: RedactedString,
+        session_id: Option<String>,
     },
 
     #[error("runner terminated by signal\nstdout: {stdout}\nstderr: {stderr}")]
     TerminatedBySignal {
         stdout: RedactedString,
         stderr: RedactedString,
+        session_id: Option<String>,
     },
 
     #[error("runner interrupted")]
@@ -68,6 +70,7 @@ pub struct RunnerOutput {
     pub status: ExitStatus,
     pub stdout: String,
     pub stderr: String,
+    pub session_id: Option<String>,
 }
 
 impl fmt::Display for RunnerOutput {
@@ -88,6 +91,7 @@ impl fmt::Debug for RunnerOutput {
             .field("status", &self.status)
             .field("stdout", &redact_text(&self.stdout))
             .field("stderr", &redact_text(&self.stderr))
+            .field("session_id", &self.session_id.as_deref())
             .finish()
     }
 }
@@ -279,11 +283,102 @@ pub fn run_prompt(
                 code,
                 stdout: output.stdout.into(),
                 stderr: output.stderr.into(),
+                session_id: output.session_id.clone(),
             });
         } else {
             return Err(RunnerError::TerminatedBySignal {
                 stdout: output.stdout.into(),
                 stderr: output.stderr.into(),
+                session_id: output.session_id.clone(),
+            });
+        }
+    }
+
+    Ok(output)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn resume_session(
+    runner: Runner,
+    work_dir: &Path,
+    bins: RunnerBinaries<'_>,
+    model: Model,
+    reasoning_effort: Option<ReasoningEffort>,
+    session_id: &str,
+    message: &str,
+    permission_mode: Option<ClaudePermissionMode>,
+    timeout: Option<Duration>,
+    output_handler: Option<OutputHandler>,
+) -> Result<RunnerOutput, RunnerError> {
+    let reasoning_effort = if runner == Runner::Codex {
+        reasoning_effort
+    } else {
+        None
+    };
+    validate_model_for_runner(runner, &model).map_err(RunnerError::Other)?;
+    let session_id = session_id.trim();
+    if session_id.is_empty() {
+        return Err(RunnerError::Other(anyhow!("missing session_id for resume")));
+    }
+    let message = message.trim();
+    if message.is_empty() {
+        return Err(RunnerError::Other(anyhow!("missing message for resume")));
+    }
+
+    let output = match runner {
+        Runner::Codex => execution::run_codex_resume(
+            work_dir,
+            bins.codex,
+            model,
+            reasoning_effort,
+            session_id,
+            message,
+            timeout,
+            output_handler,
+        ),
+        Runner::Opencode => execution::run_opencode_resume(
+            work_dir,
+            bins.opencode,
+            &model,
+            session_id,
+            message,
+            timeout,
+            output_handler,
+        ),
+        Runner::Gemini => execution::run_gemini_resume(
+            work_dir,
+            bins.gemini,
+            model,
+            session_id,
+            message,
+            timeout,
+            output_handler,
+        ),
+        Runner::Claude => execution::run_claude_resume(
+            work_dir,
+            bins.claude,
+            model,
+            session_id,
+            message,
+            timeout,
+            permission_mode,
+            output_handler,
+        ),
+    }?;
+
+    if !output.status.success() {
+        if let Some(code) = output.status.code() {
+            return Err(RunnerError::NonZeroExit {
+                code,
+                stdout: output.stdout.into(),
+                stderr: output.stderr.into(),
+                session_id: output.session_id.clone(),
+            });
+        } else {
+            return Err(RunnerError::TerminatedBySignal {
+                stdout: output.stdout.into(),
+                stderr: output.stderr.into(),
+                session_id: output.session_id.clone(),
             });
         }
     }
@@ -388,6 +483,7 @@ mod tests {
             code: 1,
             stdout: "out: API_KEY=secret123".into(),
             stderr: "err: bearer abc123def456".into(),
+            session_id: None,
         };
         let msg = format!("{}", err);
         assert!(msg.contains("API_KEY=[REDACTED]"));
@@ -402,6 +498,7 @@ mod tests {
             status: ExitStatus::default(), // success usually
             stdout: "out: API_KEY=secret123".to_string(),
             stderr: "err: bearer abc123def456".to_string(),
+            session_id: None,
         };
         let msg = format!("{}", output);
         assert!(msg.contains("API_KEY=[REDACTED]"));

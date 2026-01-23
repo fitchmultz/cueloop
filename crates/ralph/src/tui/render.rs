@@ -81,13 +81,14 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
         draw_confirm_dialog(f, size, "Archive done/rejected tasks?", "(y/n)");
     } else if app.mode == AppMode::ConfirmQuit {
         draw_confirm_dialog(f, size, "Task still running. Quit?", "(y/n)");
-    } else if let AppMode::ConfirmRevert { label, .. } = &app.mode {
-        draw_confirm_dialog(
-            f,
-            size,
-            &format!("{label}: revert uncommitted changes?"),
-            "(1=revert (default), 2=keep)",
-        );
+    } else if let AppMode::ConfirmRevert {
+        label,
+        selected,
+        input,
+        ..
+    } = &app.mode
+    {
+        draw_revert_dialog(f, size, label, *selected, input);
     }
 
     // Command palette overlay.
@@ -1040,6 +1041,71 @@ fn draw_confirm_dialog(f: &mut Frame<'_>, area: Rect, message: &str, hint: &str)
     f.render_widget(popup, popup_area);
 }
 
+fn draw_revert_dialog(f: &mut Frame<'_>, area: Rect, label: &str, selected: usize, input: &str) {
+    let popup_width = 64.min(area.width.saturating_sub(4));
+    let popup_height = 12;
+
+    let popup_area = Rect {
+        x: (area.width.saturating_sub(popup_width)) / 2,
+        y: (area.height.saturating_sub(popup_height)) / 2,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    f.render_widget(Clear, popup_area);
+
+    let highlight = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
+    let normal = Style::default();
+
+    let options = ["1) Keep (default)", "2) Revert", "3) Other (type message)"];
+
+    let mut lines = Vec::new();
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        format!("{label}: action?"),
+        Style::default().add_modifier(Modifier::BOLD),
+    )));
+    lines.push(Line::from(""));
+
+    for (idx, text) in options.iter().enumerate() {
+        let style = if idx == selected { highlight } else { normal };
+        lines.push(Line::from(Span::styled((*text).to_string(), style)));
+    }
+
+    lines.push(Line::from(""));
+    let message_line = if selected == 2 {
+        format!("Message: {}", input)
+    } else {
+        "Message: (select Other to type)".to_string()
+    };
+    lines.push(Line::from(Span::styled(
+        message_line,
+        Style::default().fg(Color::White),
+    )));
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![
+        Span::styled("Up/Down", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":select "),
+        Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":confirm "),
+        Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":keep"),
+    ]));
+
+    let popup = Paragraph::new(Text::from(lines))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::DarkGray)),
+        )
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: false });
+
+    f.render_widget(popup, popup_area);
+}
+
 /// Get the color for a task status.
 fn status_color(status: TaskStatus) -> Color {
     match status {
@@ -1414,12 +1480,10 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::raw(":cancel"),
         ],
         AppMode::ConfirmRevert { .. } => vec![
-            Span::styled("1", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":revert "),
-            Span::styled("2", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":keep "),
+            Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":select "),
             Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(":revert "),
+            Span::raw(":confirm "),
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":keep"),
         ],

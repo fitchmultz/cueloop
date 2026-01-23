@@ -68,7 +68,7 @@ pub fn is_supervising_process(lock_dir: &Path) -> Result<bool> {
         None => return Ok(false),
     };
 
-    Ok(owner.label == "run one" || owner.label == "run loop")
+    Ok(owner.label == "run one" || owner.label == "run loop" || owner.label == "tui")
 }
 
 pub fn cleanup_stale_temp_entries(

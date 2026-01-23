@@ -10,6 +10,42 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
 use std::process::Stdio;
 
+#[derive(Clone)]
+pub(crate) struct ContinueSession {
+    pub runner: crate::contracts::Runner,
+    pub model: crate::contracts::Model,
+    pub reasoning_effort: Option<crate::contracts::ReasoningEffort>,
+    pub session_id: Option<String>,
+    pub output_handler: Option<crate::runner::OutputHandler>,
+}
+
+pub(crate) fn resume_continue_session(
+    resolved: &crate::config::Resolved,
+    session: &mut ContinueSession,
+    message: &str,
+) -> Result<()> {
+    let Some(session_id) = session.session_id.as_deref() else {
+        bail!("Catastrophic: no session id captured; cannot Continue.");
+    };
+    let bins = crate::runner::resolve_binaries(&resolved.config.agent);
+    let output = crate::runner::resume_session(
+        session.runner,
+        &resolved.repo_root,
+        bins,
+        session.model.clone(),
+        session.reasoning_effort,
+        session_id,
+        message,
+        resolved.config.agent.claude_permission_mode,
+        None,
+        session.output_handler.clone(),
+    )?;
+    if let Some(new_id) = output.session_id {
+        session.session_id = Some(new_id);
+    }
+    Ok(())
+}
+
 pub(crate) fn post_run_supervise(
     resolved: &crate::config::Resolved,
     task_id: &str,
@@ -300,4 +336,39 @@ fn ci_gate_command_label(resolved: &crate::config::Resolved) -> String {
         .unwrap_or("make ci")
         .trim()
         .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contracts::{Config, Runner};
+    use tempfile::TempDir;
+
+    #[test]
+    fn resume_continue_session_requires_session_id() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let resolved = crate::config::Resolved {
+            config: Config::default(),
+            repo_root: temp_dir.path().to_path_buf(),
+            queue_path: temp_dir.path().join("queue.json"),
+            done_path: temp_dir.path().join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let mut session = ContinueSession {
+            runner: Runner::Codex,
+            model: crate::contracts::Model::Gpt52Codex,
+            reasoning_effort: None,
+            session_id: None,
+            output_handler: None,
+        };
+
+        let err = resume_continue_session(&resolved, &mut session, "hello")
+            .expect_err("expected missing session id error");
+        assert!(err.to_string().contains("no session id"));
+        Ok(())
+    }
 }

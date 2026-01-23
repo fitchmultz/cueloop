@@ -702,12 +702,13 @@ fn test_handle_key_event_in_confirm_revert_reverts() {
     let (tx, rx) = mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
+        selected: 1,
+        input: String::new(),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };
 
-    let action =
-        tui::handle_key_event(&mut app, KeyCode::Char('1'), "2026-01-19T00:00:00Z").unwrap();
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-19T00:00:00Z").unwrap();
 
     assert_eq!(action, TuiAction::Continue);
     assert_eq!(app.mode, AppMode::Normal);
@@ -720,60 +721,8 @@ fn test_handle_key_event_in_confirm_revert_keeps() {
     let (tx, rx) = mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
-        reply_sender: tx,
-        previous_mode: Box::new(AppMode::Normal),
-    };
-
-    let action =
-        tui::handle_key_event(&mut app, KeyCode::Char('2'), "2026-01-19T00:00:00Z").unwrap();
-
-    assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::Normal);
-    assert_eq!(rx.try_recv().unwrap(), RevertDecision::Keep);
-}
-
-#[test]
-fn test_handle_key_event_in_confirm_revert_yes_reverts() {
-    let mut app = App::new(make_test_queue());
-    let (tx, rx) = mpsc::channel();
-    app.mode = AppMode::ConfirmRevert {
-        label: "Phase 2 CI failure".to_string(),
-        reply_sender: tx,
-        previous_mode: Box::new(AppMode::Normal),
-    };
-
-    let action =
-        tui::handle_key_event(&mut app, KeyCode::Char('y'), "2026-01-19T00:00:00Z").unwrap();
-
-    assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::Normal);
-    assert_eq!(rx.try_recv().unwrap(), RevertDecision::Revert);
-}
-
-#[test]
-fn test_handle_key_event_in_confirm_revert_no_keeps() {
-    let mut app = App::new(make_test_queue());
-    let (tx, rx) = mpsc::channel();
-    app.mode = AppMode::ConfirmRevert {
-        label: "Phase 2 CI failure".to_string(),
-        reply_sender: tx,
-        previous_mode: Box::new(AppMode::Normal),
-    };
-
-    let action =
-        tui::handle_key_event(&mut app, KeyCode::Char('n'), "2026-01-19T00:00:00Z").unwrap();
-
-    assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::Normal);
-    assert_eq!(rx.try_recv().unwrap(), RevertDecision::Keep);
-}
-
-#[test]
-fn test_handle_key_event_in_confirm_revert_enter_defaults_revert() {
-    let mut app = App::new(make_test_queue());
-    let (tx, rx) = mpsc::channel();
-    app.mode = AppMode::ConfirmRevert {
-        label: "Phase 2 CI failure".to_string(),
+        selected: 0,
+        input: String::new(),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };
@@ -782,7 +731,69 @@ fn test_handle_key_event_in_confirm_revert_enter_defaults_revert() {
 
     assert_eq!(action, TuiAction::Continue);
     assert_eq!(app.mode, AppMode::Normal);
-    assert_eq!(rx.try_recv().unwrap(), RevertDecision::Revert);
+    assert_eq!(rx.try_recv().unwrap(), RevertDecision::Keep);
+}
+
+#[test]
+fn test_handle_key_event_in_confirm_revert_continues_with_message() {
+    let mut app = App::new(make_test_queue());
+    let (tx, rx) = mpsc::channel();
+    app.mode = AppMode::ConfirmRevert {
+        label: "Phase 2 CI failure".to_string(),
+        selected: 2,
+        input: "Please continue".to_string(),
+        reply_sender: tx,
+        previous_mode: Box::new(AppMode::Normal),
+    };
+
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-19T00:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.mode, AppMode::Normal);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        RevertDecision::Continue {
+            message: "Please continue".to_string()
+        }
+    );
+}
+
+#[test]
+fn test_handle_key_event_in_confirm_revert_requires_message() {
+    let mut app = App::new(make_test_queue());
+    let (tx, rx) = mpsc::channel();
+    app.mode = AppMode::ConfirmRevert {
+        label: "Phase 2 CI failure".to_string(),
+        selected: 2,
+        input: String::new(),
+        reply_sender: tx,
+        previous_mode: Box::new(AppMode::Normal),
+    };
+
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-19T00:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert!(matches!(app.mode, AppMode::ConfirmRevert { .. }));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn test_handle_key_event_in_confirm_revert_enter_defaults_keep() {
+    let mut app = App::new(make_test_queue());
+    let (tx, rx) = mpsc::channel();
+    app.mode = AppMode::ConfirmRevert {
+        label: "Phase 2 CI failure".to_string(),
+        selected: 0,
+        input: String::new(),
+        reply_sender: tx,
+        previous_mode: Box::new(AppMode::Normal),
+    };
+
+    let action = tui::handle_key_event(&mut app, KeyCode::Enter, "2026-01-19T00:00:00Z").unwrap();
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.mode, AppMode::Normal);
+    assert_eq!(rx.try_recv().unwrap(), RevertDecision::Keep);
 }
 
 #[test]

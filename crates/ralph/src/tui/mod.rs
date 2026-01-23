@@ -1894,6 +1894,8 @@ where
                         let previous_mode = app_ref.mode.clone();
                         app_ref.mode = AppMode::ConfirmRevert {
                             label,
+                            selected: 0,
+                            input: String::new(),
                             reply_sender: reply,
                             previous_mode: Box::new(previous_mode),
                         };

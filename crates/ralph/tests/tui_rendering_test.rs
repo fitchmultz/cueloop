@@ -329,6 +329,8 @@ fn test_render_confirm_revert_dialog() {
     let (tx, _rx) = std::sync::mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
+        selected: 0,
+        input: String::new(),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };
@@ -336,8 +338,9 @@ fn test_render_confirm_revert_dialog() {
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Phase 2 CI failure"));
-    assert!(output.contains("revert"));
-    assert!(output.contains("uncommitted"));
+    assert!(output.contains("Keep (default)"));
+    assert!(output.contains("Revert"));
+    assert!(output.contains("Other (type message)"));
 }
 
 #[test]

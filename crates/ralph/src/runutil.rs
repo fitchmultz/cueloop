@@ -46,12 +46,14 @@ where
 pub enum RevertOutcome {
     Reverted,
     Skipped { reason: String },
+    Continue { message: String },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RevertDecision {
     Revert,
     Keep,
+    Continue { message: String },
 }
 
 pub type RevertPromptHandler = Arc<dyn Fn(&str) -> RevertDecision + Send + Sync>;
@@ -87,102 +89,158 @@ where
         other_msg,
     } = messages;
 
-    match runner::run_prompt(
+    let mut result = runner::run_prompt(
         runner_kind,
         repo_root,
         bins,
-        model,
+        model.clone(),
         reasoning_effort,
         prompt,
         timeout,
         permission_mode,
-        output_handler,
-    ) {
-        Ok(output) => Ok(output),
-        Err(runner::RunnerError::Interrupted) => {
-            let message = if revert_on_error {
-                let outcome = apply_git_revert_mode(
-                    repo_root,
-                    git_revert_mode,
-                    log_label,
-                    revert_prompt.as_ref(),
-                )?;
-                format_revert_failure_message(interrupted_msg, outcome)
-            } else {
-                interrupted_msg.to_string()
-            };
-            bail!("{message}");
-        }
-        Err(runner::RunnerError::Timeout) => {
-            bail!("{}", timeout_msg);
-        }
-        Err(runner::RunnerError::NonZeroExit {
-            code,
-            stdout,
-            stderr,
-        }) => {
-            log_stderr_tail(log_label, &stderr.to_string());
-            let mut safeguard_msg = String::new();
-            if revert_on_error {
-                if !stdout.0.is_empty() {
-                    match fsutil::safeguard_text_dump("runner_error", &stdout.to_string()) {
-                        Ok(path) => {
-                            safeguard_msg = format!("\n(raw stdout saved to {})", path.display());
+        output_handler.clone(),
+    );
+
+    loop {
+        match result {
+            Ok(output) => return Ok(output),
+            Err(runner::RunnerError::Interrupted) => {
+                let message = if revert_on_error {
+                    let outcome = apply_git_revert_mode(
+                        repo_root,
+                        git_revert_mode,
+                        log_label,
+                        revert_prompt.as_ref(),
+                    )?;
+                    format_revert_failure_message(interrupted_msg, outcome)
+                } else {
+                    interrupted_msg.to_string()
+                };
+                bail!("{message}");
+            }
+            Err(runner::RunnerError::Timeout) => {
+                bail!("{}", timeout_msg);
+            }
+            Err(runner::RunnerError::NonZeroExit {
+                code,
+                stdout,
+                stderr,
+                session_id,
+            }) => {
+                log_stderr_tail(log_label, &stderr.to_string());
+                let mut safeguard_msg = String::new();
+                if revert_on_error {
+                    if !stdout.0.is_empty() {
+                        match fsutil::safeguard_text_dump("runner_error", &stdout.to_string()) {
+                            Ok(path) => {
+                                safeguard_msg =
+                                    format!("\n(raw stdout saved to {})", path.display());
+                            }
+                            Err(err) => {
+                                log::warn!("failed to save safeguard dump: {}", err);
+                            }
                         }
-                        Err(err) => {
-                            log::warn!("failed to save safeguard dump: {}", err);
+                    }
+                    let outcome = apply_git_revert_mode(
+                        repo_root,
+                        git_revert_mode,
+                        log_label,
+                        revert_prompt.as_ref(),
+                    )?;
+                    match outcome {
+                        RevertOutcome::Continue { message } => {
+                            let Some(session_id) = session_id.as_deref() else {
+                                bail!("Catastrophic: no session id captured; cannot Continue.");
+                            };
+                            result = runner::resume_session(
+                                runner_kind,
+                                repo_root,
+                                bins,
+                                model.clone(),
+                                reasoning_effort,
+                                session_id,
+                                &message,
+                                permission_mode,
+                                timeout,
+                                output_handler.clone(),
+                            );
+                            continue;
+                        }
+                        _ => {
+                            let message =
+                                format_revert_failure_message(&non_zero_msg(code), outcome);
+                            bail!("{}{}", message, safeguard_msg);
                         }
                     }
                 }
-                let outcome = apply_git_revert_mode(
-                    repo_root,
-                    git_revert_mode,
-                    log_label,
-                    revert_prompt.as_ref(),
-                )?;
-                let message = format_revert_failure_message(&non_zero_msg(code), outcome);
-                bail!("{}{}", message, safeguard_msg);
+                bail!("{}{}", non_zero_msg(code), safeguard_msg);
             }
-            bail!("{}{}", non_zero_msg(code), safeguard_msg);
-        }
-        Err(runner::RunnerError::TerminatedBySignal { stdout, stderr }) => {
-            log_stderr_tail(log_label, &stderr.to_string());
-            let mut safeguard_msg = String::new();
-            if revert_on_error {
-                if !stdout.0.is_empty() {
-                    match fsutil::safeguard_text_dump("runner_error", &stdout.to_string()) {
-                        Ok(path) => {
-                            safeguard_msg = format!("\n(raw stdout saved to {})", path.display());
+            Err(runner::RunnerError::TerminatedBySignal {
+                stdout,
+                stderr,
+                session_id,
+            }) => {
+                log_stderr_tail(log_label, &stderr.to_string());
+                let mut safeguard_msg = String::new();
+                if revert_on_error {
+                    if !stdout.0.is_empty() {
+                        match fsutil::safeguard_text_dump("runner_error", &stdout.to_string()) {
+                            Ok(path) => {
+                                safeguard_msg =
+                                    format!("\n(raw stdout saved to {})", path.display());
+                            }
+                            Err(err) => {
+                                log::warn!("failed to save safeguard dump: {}", err);
+                            }
                         }
-                        Err(err) => {
-                            log::warn!("failed to save safeguard dump: {}", err);
+                    }
+                    let outcome = apply_git_revert_mode(
+                        repo_root,
+                        git_revert_mode,
+                        log_label,
+                        revert_prompt.as_ref(),
+                    )?;
+                    match outcome {
+                        RevertOutcome::Continue { message } => {
+                            let Some(session_id) = session_id.as_deref() else {
+                                bail!("Catastrophic: no session id captured; cannot Continue.");
+                            };
+                            result = runner::resume_session(
+                                runner_kind,
+                                repo_root,
+                                bins,
+                                model.clone(),
+                                reasoning_effort,
+                                session_id,
+                                &message,
+                                permission_mode,
+                                timeout,
+                                output_handler.clone(),
+                            );
+                            continue;
+                        }
+                        _ => {
+                            let message = format_revert_failure_message(terminated_msg, outcome);
+                            bail!("{}{}", message, safeguard_msg);
                         }
                     }
                 }
-                let outcome = apply_git_revert_mode(
-                    repo_root,
-                    git_revert_mode,
-                    log_label,
-                    revert_prompt.as_ref(),
-                )?;
-                let message = format_revert_failure_message(terminated_msg, outcome);
-                bail!("{}{}", message, safeguard_msg);
+                bail!("{}{}", terminated_msg, safeguard_msg);
             }
-            bail!("{}{}", terminated_msg, safeguard_msg);
-        }
-        Err(err) => {
-            let message = if revert_on_error {
-                let outcome = apply_git_revert_mode(
-                    repo_root,
-                    git_revert_mode,
-                    log_label,
-                    revert_prompt.as_ref(),
-                )?;
-                format_revert_failure_message(&other_msg(err), outcome)
-            } else {
-                other_msg(err)
-            };
-            bail!("{message}");
+            Err(err) => {
+                let message = if revert_on_error {
+                    let outcome = apply_git_revert_mode(
+                        repo_root,
+                        git_revert_mode,
+                        log_label,
+                        revert_prompt.as_ref(),
+                    )?;
+                    format_revert_failure_message(&other_msg(err), outcome)
+                } else {
+                    other_msg(err)
+                };
+                bail!("{message}");
+            }
         }
     }
 }
@@ -226,6 +284,9 @@ fn apply_revert_decision(repo_root: &Path, decision: RevertDecision) -> Result<R
         RevertDecision::Keep => Ok(RevertOutcome::Skipped {
             reason: "user chose to keep changes".to_string(),
         }),
+        RevertDecision::Continue { message } => Ok(RevertOutcome::Continue {
+            message: message.trim_end_matches(['\n', '\r']).to_string(),
+        }),
     }
 }
 
@@ -233,6 +294,9 @@ pub fn format_revert_failure_message(base: &str, outcome: RevertOutcome) -> Stri
     match outcome {
         RevertOutcome::Reverted => format!("{base} Uncommitted changes were reverted."),
         RevertOutcome::Skipped { reason } => format!("{base} Revert skipped ({reason})."),
+        RevertOutcome::Continue { .. } => {
+            format!("{base} Continue requested. No changes were reverted.")
+        }
     }
 }
 
@@ -251,29 +315,50 @@ pub fn shell_command(command: &str) -> Command {
 
 fn prompt_revert_choice(label: &str) -> Result<RevertDecision> {
     let mut stderr = std::io::stderr();
-    eprint!("{label}: revert uncommitted changes? [1=revert (default), 2=keep]: ");
+    eprint!("{label}: action? [1=keep (default), 2=revert, 3=other]: ");
     stderr.flush().ok();
 
-    let mut input = String::new();
     let stdin = std::io::stdin();
     let mut reader = BufReader::new(stdin.lock());
+
+    let mut input = String::new();
     reader.read_line(&mut input)?;
-    Ok(parse_revert_response(&input).unwrap_or_else(|| {
-        log::warn!(
-            "{label}: unrecognized response '{}'; defaulting to revert",
-            input.trim()
-        );
-        RevertDecision::Revert
-    }))
+
+    let mut decision = parse_revert_response(&input);
+
+    if matches!(decision, RevertDecision::Continue { ref message } if message.is_empty()) {
+        eprint!("{label}: enter message to send (empty => keep): ");
+        stderr.flush().ok();
+
+        let mut msg = String::new();
+        reader.read_line(&mut msg)?;
+        let msg = msg.trim_end_matches(['\n', '\r']);
+        if msg.trim().is_empty() {
+            decision = RevertDecision::Keep;
+        } else {
+            decision = RevertDecision::Continue {
+                message: msg.to_string(),
+            };
+        }
+    }
+
+    Ok(decision)
 }
 
-fn parse_revert_response(input: &str) -> Option<RevertDecision> {
-    let trimmed = input.trim().to_lowercase();
-    match trimmed.as_str() {
-        "" => Some(RevertDecision::Revert),
-        "1" | "y" | "yes" => Some(RevertDecision::Revert),
-        "2" | "n" | "no" => Some(RevertDecision::Keep),
-        _ => None,
+fn parse_revert_response(input: &str) -> RevertDecision {
+    let raw = input.trim_end_matches(['\n', '\r']);
+    let normalized = raw.trim().to_lowercase();
+
+    match normalized.as_str() {
+        "" => RevertDecision::Keep,
+        "1" | "k" | "keep" => RevertDecision::Keep,
+        "2" | "r" | "revert" => RevertDecision::Revert,
+        "3" => RevertDecision::Continue {
+            message: String::new(),
+        },
+        _ => RevertDecision::Continue {
+            message: raw.to_string(),
+        },
     }
 }
 
@@ -341,7 +426,7 @@ mod tests {
         if !stdin_is_terminal {
             return RevertDecision::Keep;
         }
-        parse_revert_response(input.unwrap_or("")).unwrap_or(RevertDecision::Revert)
+        parse_revert_response(input.unwrap_or(""))
     }
 
     #[test]
@@ -351,14 +436,24 @@ mod tests {
 
     #[test]
     fn parse_revert_response_accepts_expected_inputs() {
-        assert_eq!(parse_revert_response(""), Some(RevertDecision::Revert));
-        assert_eq!(parse_revert_response("1"), Some(RevertDecision::Revert));
-        assert_eq!(parse_revert_response("y"), Some(RevertDecision::Revert));
-        assert_eq!(parse_revert_response("yes"), Some(RevertDecision::Revert));
-        assert_eq!(parse_revert_response("2"), Some(RevertDecision::Keep));
-        assert_eq!(parse_revert_response("n"), Some(RevertDecision::Keep));
-        assert_eq!(parse_revert_response("no"), Some(RevertDecision::Keep));
-        assert_eq!(parse_revert_response("wat"), None);
+        assert_eq!(parse_revert_response(""), RevertDecision::Keep);
+        assert_eq!(parse_revert_response("1"), RevertDecision::Keep);
+        assert_eq!(parse_revert_response("keep"), RevertDecision::Keep);
+        assert_eq!(parse_revert_response("2"), RevertDecision::Revert);
+        assert_eq!(parse_revert_response("r"), RevertDecision::Revert);
+        assert_eq!(parse_revert_response("revert"), RevertDecision::Revert);
+        assert_eq!(
+            parse_revert_response("3"),
+            RevertDecision::Continue {
+                message: String::new()
+            }
+        );
+        assert_eq!(
+            parse_revert_response("answer that"),
+            RevertDecision::Continue {
+                message: "answer that".to_string()
+            }
+        );
     }
 
     #[test]
@@ -410,5 +505,35 @@ mod tests {
         assert_eq!(outcome, RevertOutcome::Reverted);
         let contents = fs::read_to_string(&file_path).expect("read file");
         assert_eq!(contents, "original");
+    }
+
+    #[test]
+    fn apply_git_revert_mode_uses_prompt_handler_continue() {
+        let dir = TempDir::new().expect("temp dir");
+        init_git_repo(&dir);
+        commit_file(&dir, "file.txt", "original", "initial");
+
+        let file_path = dir.path().join("file.txt");
+        fs::write(&file_path, "modified").expect("modify file");
+
+        let handler: RevertPromptHandler = Arc::new(|_| RevertDecision::Continue {
+            message: "keep going".to_string(),
+        });
+        let outcome = apply_git_revert_mode(
+            dir.path(),
+            GitRevertMode::Ask,
+            "test prompt",
+            Some(&handler),
+        )
+        .expect("apply revert mode");
+
+        assert_eq!(
+            outcome,
+            RevertOutcome::Continue {
+                message: "keep going".to_string()
+            }
+        );
+        let contents = fs::read_to_string(&file_path).expect("read file");
+        assert_eq!(contents, "modified");
     }
 }

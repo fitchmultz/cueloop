@@ -70,6 +70,8 @@ pub enum AppMode {
     /// Confirming revert of uncommitted changes.
     ConfirmRevert {
         label: String,
+        selected: usize,
+        input: String,
         reply_sender: mpsc::Sender<RevertDecision>,
         previous_mode: Box<AppMode>,
     },
@@ -123,15 +125,24 @@ impl PartialEq for AppMode {
             (
                 ConfirmRevert {
                     label: left_label,
+                    selected: left_selected,
+                    input: left_input,
                     previous_mode: left_previous,
                     ..
                 },
                 ConfirmRevert {
                     label: right_label,
+                    selected: right_selected,
+                    input: right_input,
                     previous_mode: right_previous,
                     ..
                 },
-            ) => left_label == right_label && left_previous == right_previous,
+            ) => {
+                left_label == right_label
+                    && left_selected == right_selected
+                    && left_input == right_input
+                    && left_previous == right_previous
+            }
             (Executing { task_id: left_id }, Executing { task_id: right_id }) => {
                 left_id == right_id
             }
@@ -199,9 +210,19 @@ pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Resul
         AppMode::ConfirmQuit => handle_confirm_quit_key(app, key),
         AppMode::ConfirmRevert {
             label,
+            selected,
+            input,
             reply_sender,
             previous_mode,
-        } => handle_confirm_revert_key(app, key, &label, reply_sender, *previous_mode),
+        } => handle_confirm_revert_key(
+            app,
+            key,
+            &label,
+            selected,
+            input,
+            reply_sender,
+            *previous_mode,
+        ),
         AppMode::Executing { .. } => handle_executing_mode_key(app, key),
     }
 }
@@ -820,28 +841,114 @@ fn handle_confirm_revert_key(
     app: &mut App,
     key: KeyCode,
     label: &str,
+    selected: usize,
+    input: String,
     reply_sender: mpsc::Sender<RevertDecision>,
     previous_mode: AppMode,
 ) -> Result<TuiAction> {
-    let decision = match key {
-        KeyCode::Enter | KeyCode::Char('1') | KeyCode::Char('y') | KeyCode::Char('Y') => {
-            RevertDecision::Revert
-        }
-        KeyCode::Char('2') | KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
-            RevertDecision::Keep
-        }
-        _ => return Ok(TuiAction::Continue),
-    };
+    let mut selected = selected;
+    let mut input = input;
 
-    if reply_sender.send(decision).is_err() {
-        app.set_status_message(format!("{label}: revert prompt expired"));
-    } else if decision == RevertDecision::Revert {
-        app.set_status_message(format!("{label}: reverting uncommitted changes"));
-    } else {
-        app.set_status_message(format!("{label}: keeping uncommitted changes"));
+    match key {
+        KeyCode::Up => {
+            selected = selected.saturating_sub(1);
+        }
+        KeyCode::Down => {
+            selected = (selected + 1).min(2);
+        }
+        KeyCode::Char('1') => {
+            if selected == 2 {
+                input.push('1');
+            } else {
+                selected = 0;
+            }
+        }
+        KeyCode::Char('2') => {
+            if selected == 2 {
+                input.push('2');
+            } else {
+                selected = 1;
+            }
+        }
+        KeyCode::Char('3') => {
+            if selected == 2 {
+                input.push('3');
+            } else {
+                selected = 2;
+            }
+        }
+        KeyCode::Char(ch) => {
+            if selected == 2 {
+                input.push(ch);
+            }
+        }
+        KeyCode::Backspace => {
+            if selected == 2 {
+                input.pop();
+            }
+        }
+        KeyCode::Enter => {
+            let decision = match selected {
+                0 => RevertDecision::Keep,
+                1 => RevertDecision::Revert,
+                2 => {
+                    if input.trim().is_empty() {
+                        app.set_status_message(format!(
+                            "{label}: enter a message to continue or choose Keep/Revert"
+                        ));
+                        app.mode = AppMode::ConfirmRevert {
+                            label: label.to_string(),
+                            selected,
+                            input,
+                            reply_sender,
+                            previous_mode: Box::new(previous_mode),
+                        };
+                        return Ok(TuiAction::Continue);
+                    }
+                    RevertDecision::Continue { message: input }
+                }
+                _ => RevertDecision::Keep,
+            };
+
+            if reply_sender.send(decision.clone()).is_err() {
+                app.set_status_message(format!("{label}: revert prompt expired"));
+            } else {
+                match decision {
+                    RevertDecision::Revert => {
+                        app.set_status_message(format!("{label}: reverting uncommitted changes"));
+                    }
+                    RevertDecision::Keep => {
+                        app.set_status_message(format!("{label}: keeping uncommitted changes"));
+                    }
+                    RevertDecision::Continue { .. } => {
+                        app.set_status_message(format!("{label}: continuing session"));
+                    }
+                }
+            }
+
+            app.mode = previous_mode;
+            return Ok(TuiAction::Continue);
+        }
+        KeyCode::Esc => {
+            let decision = RevertDecision::Keep;
+            if reply_sender.send(decision).is_err() {
+                app.set_status_message(format!("{label}: revert prompt expired"));
+            } else {
+                app.set_status_message(format!("{label}: keeping uncommitted changes"));
+            }
+            app.mode = previous_mode;
+            return Ok(TuiAction::Continue);
+        }
+        _ => {}
     }
 
-    app.mode = previous_mode;
+    app.mode = AppMode::ConfirmRevert {
+        label: label.to_string(),
+        selected,
+        input,
+        reply_sender,
+        previous_mode: Box::new(previous_mode),
+    };
     Ok(TuiAction::Continue)
 }
 
