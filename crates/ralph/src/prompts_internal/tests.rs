@@ -226,6 +226,26 @@ fn render_worker_phase1_prompt_replaces_placeholders() -> Result<()> {
 }
 
 #[test]
+fn render_worker_phase1_prompt_allows_placeholder_like_base_prompt() -> Result<()> {
+    let template =
+        "ID={{TASK_ID}}\nPHASE={{TOTAL_PHASES}}\nPLAN={{PLAN_PATH}}\n{{BASE_WORKER_PROMPT}}\n";
+    let config = default_config();
+    let base_prompt = "BASE {{ITERATION_COMPLETION_BLOCK}}";
+    let rendered = render_worker_phase1_prompt(
+        template,
+        base_prompt,
+        "",
+        "RQ-0001",
+        2,
+        ".ralph/cache/plans/RQ-0001.md",
+        false,
+        &config,
+    )?;
+    assert!(rendered.contains(base_prompt));
+    Ok(())
+}
+
+#[test]
 fn render_worker_phase2_prompt_skips_repoprompt_when_not_required() -> Result<()> {
     let template =
         "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{ITERATION_CONTEXT}}\n{{PLAN_TEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
@@ -249,6 +269,50 @@ fn render_worker_phase2_prompt_skips_repoprompt_when_not_required() -> Result<()
     assert!(rendered.contains("BASE"));
     assert!(!rendered.contains("TOOLING REQUIREMENT: RepoPrompt"));
     assert!(!rendered.contains("{{"));
+    Ok(())
+}
+
+#[test]
+fn render_worker_phase2_prompt_allows_placeholder_like_base_prompt() -> Result<()> {
+    let template =
+        "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PLAN_TEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n";
+    let config = default_config();
+    let base_prompt = "BASE {{ITERATION_COMPLETION_BLOCK}}";
+    let rendered = render_worker_phase2_prompt(
+        template,
+        base_prompt,
+        "PLAN",
+        "CHECKLIST",
+        "",
+        "COMPLETE",
+        "RQ-0001",
+        2,
+        false,
+        &config,
+    )?;
+    assert!(rendered.contains(base_prompt));
+    Ok(())
+}
+
+#[test]
+fn render_worker_phase2_handoff_prompt_allows_placeholder_like_base_prompt() -> Result<()> {
+    let template =
+        "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PLAN_TEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n";
+    let config = default_config();
+    let base_prompt = "BASE {{ITERATION_COMPLETION_BLOCK}}";
+    let rendered = render_worker_phase2_handoff_prompt(
+        template,
+        base_prompt,
+        "PLAN",
+        "CHECKLIST",
+        "",
+        "COMPLETE",
+        "RQ-0001",
+        2,
+        false,
+        &config,
+    )?;
+    assert!(rendered.contains(base_prompt));
     Ok(())
 }
 
@@ -329,6 +393,29 @@ fn render_worker_phase3_prompt_allows_placeholder_like_phase2_response() -> Resu
 }
 
 #[test]
+fn render_worker_phase3_prompt_allows_placeholder_like_base_prompt() -> Result<()> {
+    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{PHASE3_COMPLETION_GUIDANCE}}\n{{ITERATION_CONTEXT}}\n{{CODE_REVIEW_BODY}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{COMPLETION_CHECKLIST}}\n{{PHASE2_FINAL_RESPONSE}}\n{{BASE_WORKER_PROMPT}}\n";
+    let config = default_config();
+    let base_prompt = "BASE {{ITERATION_COMPLETION_BLOCK}}";
+    let rendered = render_worker_phase3_prompt(
+        template,
+        base_prompt,
+        "REVIEW",
+        "PHASE2 RESPONSE",
+        "RQ-0001",
+        "CHECKLIST",
+        "",
+        "COMPLETE",
+        "GUIDANCE",
+        3,
+        false,
+        &config,
+    )?;
+    assert!(rendered.contains(base_prompt));
+    Ok(())
+}
+
+#[test]
 fn render_worker_single_phase_prompt_requires_task_id() -> Result<()> {
     let template =
         "{{TASK_ID}}\n{{ITERATION_CONTEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n";
@@ -344,6 +431,26 @@ fn render_worker_single_phase_prompt_requires_task_id() -> Result<()> {
         &config,
     );
     assert!(result.is_err());
+    Ok(())
+}
+
+#[test]
+fn render_worker_single_phase_prompt_allows_placeholder_like_base_prompt() -> Result<()> {
+    let template =
+        "{{TASK_ID}}\n{{ITERATION_CONTEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n";
+    let config = default_config();
+    let base_prompt = "BASE {{ITERATION_COMPLETION_BLOCK}}";
+    let rendered = render_worker_single_phase_prompt(
+        template,
+        base_prompt,
+        "CHECKLIST",
+        "",
+        "COMPLETE",
+        "RQ-0001",
+        false,
+        &config,
+    )?;
+    assert!(rendered.contains(base_prompt));
     Ok(())
 }
 
