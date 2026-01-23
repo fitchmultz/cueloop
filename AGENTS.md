@@ -59,6 +59,11 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
 ## Documentation Maintenance
 - When config defaults, schemas, CLI flags, or task fields change, update `docs/` and keep examples in sync with the source of truth.
 
+## Operational Lessons
+- When changing streamed runner output, validate with real runner CLIs and a non-trivial prompt so tool usage + reasoning events are exercised.
+- Keep streaming logs user-readable by including tool arguments (paths/commands) in summaries, not raw JSON.
+- Use temp repos for runner/output tests and avoid mutating `.ralph/queue.json` in this repo.
+
 ## Configuration & Security
 - Do not commit real secrets if the repo is public.
 - Treat runner output as potentially sensitive; avoid copying raw output into `.ralph/queue.json` notes without redaction.
