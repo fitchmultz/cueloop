@@ -410,6 +410,16 @@ fn expand_variables_expands_config_ci_gate_enabled() -> Result<()> {
 }
 
 #[test]
+fn expand_variables_expands_git_commit_push_enabled() -> Result<()> {
+    let template = "Git commit/push: {{config.agent.git_commit_push_enabled}}";
+    let mut config = default_config();
+    config.agent.git_commit_push_enabled = Some(false);
+    let result = expand_variables(template, &config)?;
+    assert!(result.contains("Git commit/push: false"));
+    Ok(())
+}
+
+#[test]
 fn expand_variables_leaves_non_config_placeholders() -> Result<()> {
     let template = "Request: {{USER_REQUEST}}";
     let config = default_config();

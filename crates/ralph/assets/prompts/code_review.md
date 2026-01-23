@@ -8,6 +8,7 @@ Task ID: {{TASK_ID}}
 
 ## CODING STANDARDS (HARD REQUIREMENTS)
 - Required CI Gate: if enabled ({{config.agent.ci_gate_enabled}}), `{{config.agent.ci_gate_command}}` must pass before completion.
+- Auto git commit/push: if enabled ({{config.agent.git_commit_push_enabled}}), Ralph will handle commit/push; if disabled, leave repo changes for manual handling.
 - First Principles: start from fundamentals; simplify before adding.
 - Delete Before Adding: net-negative diffs are wins when behavior stays correct.
 - Evidence Over Opinion: tests, data constraints, and benchmarks settle debates; formatters/linters settle style.

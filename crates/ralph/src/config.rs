@@ -299,6 +299,17 @@ mod tests {
     }
 
     #[test]
+    fn apply_layer_overrides_git_commit_push_enabled() -> Result<()> {
+        let base = Config::default();
+        let mut layer = ConfigLayer::default();
+        layer.agent.git_commit_push_enabled = Some(false);
+
+        let merged = apply_layer(base, layer)?;
+        assert_eq!(merged.agent.git_commit_push_enabled, Some(false));
+        Ok(())
+    }
+
+    #[test]
     fn save_layer_writes_version_and_round_trips() -> Result<()> {
         let temp = tempfile::TempDir::new()?;
         let path = temp.path().join("config.json");

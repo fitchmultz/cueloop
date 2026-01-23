@@ -133,6 +133,11 @@ fn get_config_value(config: &Config, path: &str) -> Result<String> {
             .ci_gate_enabled
             .map(|v| v.to_string())
             .ok_or_else(|| anyhow::anyhow!("agent.ci_gate_enabled not set")),
+        ["agent", "git_commit_push_enabled"] => config
+            .agent
+            .git_commit_push_enabled
+            .map(|v| v.to_string())
+            .ok_or_else(|| anyhow::anyhow!("agent.git_commit_push_enabled not set")),
         ["queue", "id_prefix"] => config
             .queue
             .id_prefix

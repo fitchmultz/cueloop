@@ -25,6 +25,7 @@ fn make_resolved(temp: &TempDir) -> ralph::config::Resolved {
             require_repoprompt: Some(false),
             ci_gate_command: Some("make ci".to_string()),
             ci_gate_enabled: Some(true),
+            git_commit_push_enabled: Some(true),
             ..Default::default()
         },
     };

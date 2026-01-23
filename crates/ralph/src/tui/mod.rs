@@ -140,6 +140,7 @@ pub enum ConfigKey {
     AgentClaudePermissionMode,
     AgentRequireRepoPrompt,
     AgentGitRevertMode,
+    AgentGitCommitPushEnabled,
     AgentPhases,
 }
 
@@ -900,6 +901,12 @@ impl App {
                 kind: ConfigFieldKind::Cycle,
             },
             ConfigEntry {
+                key: ConfigKey::AgentGitCommitPushEnabled,
+                label: "agent.git_commit_push_enabled",
+                value: display_bool(self.project_config.agent.git_commit_push_enabled),
+                kind: ConfigFieldKind::Toggle,
+            },
+            ConfigEntry {
                 key: ConfigKey::AgentPhases,
                 label: "agent.phases",
                 value: display_u8(self.project_config.agent.phases),
@@ -1079,6 +1086,10 @@ impl App {
                 self.project_config.agent.git_revert_mode =
                     cycle_git_revert_mode(self.project_config.agent.git_revert_mode);
             }
+            ConfigKey::AgentGitCommitPushEnabled => {
+                self.project_config.agent.git_commit_push_enabled =
+                    cycle_bool(self.project_config.agent.git_commit_push_enabled);
+            }
             ConfigKey::AgentPhases => {
                 self.project_config.agent.phases = cycle_phases(self.project_config.agent.phases);
             }
@@ -1108,6 +1119,9 @@ impl App {
                 self.project_config.agent.require_repoprompt = None
             }
             ConfigKey::AgentGitRevertMode => self.project_config.agent.git_revert_mode = None,
+            ConfigKey::AgentGitCommitPushEnabled => {
+                self.project_config.agent.git_commit_push_enabled = None
+            }
             ConfigKey::AgentPhases => self.project_config.agent.phases = None,
         }
         self.dirty_config = true;

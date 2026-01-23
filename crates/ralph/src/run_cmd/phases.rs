@@ -27,6 +27,7 @@ pub struct PhaseInvocation<'a> {
     pub output_handler: Option<runner::OutputHandler>,
     pub project_type: ProjectType,
     pub git_revert_mode: crate::contracts::GitRevertMode,
+    pub git_commit_push_enabled: bool,
     pub revert_prompt: Option<runutil::RevertPromptHandler>,
 }
 
@@ -237,6 +238,7 @@ pub fn execute_phase2_implementation(
             ctx.resolved,
             ctx.task_id,
             ctx.git_revert_mode,
+            ctx.git_commit_push_enabled,
             ctx.revert_prompt.clone(),
         )?;
         Ok(())
@@ -322,12 +324,13 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                         ctx.resolved,
                         ctx.task_id,
                         ctx.git_revert_mode,
+                        ctx.git_commit_push_enabled,
                         ctx.revert_prompt.clone(),
                     )?;
                 }
             }
 
-            match ensure_phase3_completion(ctx.resolved, ctx.task_id) {
+            match ensure_phase3_completion(ctx.resolved, ctx.task_id, ctx.git_commit_push_enabled) {
                 Ok(()) => break,
                 Err(err) => {
                     let outcome = runutil::apply_git_revert_mode(
@@ -399,6 +402,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
             ctx.resolved,
             ctx.task_id,
             ctx.git_revert_mode,
+            ctx.git_commit_push_enabled,
             ctx.revert_prompt.clone(),
         )?;
         Ok(())
@@ -482,7 +486,11 @@ pub fn apply_phase3_completion_signal(
     Ok(Some(status))
 }
 
-pub fn ensure_phase3_completion(resolved: &config::Resolved, task_id: &str) -> Result<()> {
+pub fn ensure_phase3_completion(
+    resolved: &config::Resolved,
+    task_id: &str,
+    git_commit_push_enabled: bool,
+) -> Result<()> {
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
@@ -506,7 +514,13 @@ pub fn ensure_phase3_completion(resolved: &config::Resolved, task_id: &str) -> R
         );
     }
 
-    gitutil::require_clean_repo_ignoring_paths(&resolved.repo_root, false, &[])?;
+    if git_commit_push_enabled {
+        gitutil::require_clean_repo_ignoring_paths(&resolved.repo_root, false, &[])?;
+    } else {
+        log::info!(
+            "Auto git commit/push disabled; skipping clean-repo enforcement for Phase 3 completion."
+        );
+    }
     Ok(())
 }
 
@@ -514,8 +528,10 @@ pub fn ensure_phase3_completion(resolved: &config::Resolved, task_id: &str) -> R
 mod tests {
     use super::*;
     use crate::contracts::{
-        ClaudePermissionMode, Config, GitRevertMode, Model, QueueConfig, ReasoningEffort, Runner,
+        ClaudePermissionMode, Config, GitRevertMode, Model, QueueConfig, QueueFile,
+        ReasoningEffort, Runner, Task, TaskPriority, TaskStatus,
     };
+    use crate::queue;
     use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -568,6 +584,7 @@ mod tests {
         cfg.agent.phases = Some(2);
         cfg.agent.claude_permission_mode = Some(ClaudePermissionMode::BypassPermissions);
         cfg.agent.git_revert_mode = Some(GitRevertMode::Ask);
+        cfg.agent.git_commit_push_enabled = Some(true);
         cfg.agent.require_repoprompt = Some(false);
         cfg.agent.opencode_bin = Some(opencode_bin.display().to_string());
         cfg.queue = QueueConfig {
@@ -587,6 +604,57 @@ mod tests {
             global_config_path: None,
             project_config_path: Some(repo_root.join(".ralph/config.json")),
         }
+    }
+
+    fn resolved_for_completion(repo_root: PathBuf) -> crate::config::Resolved {
+        crate::config::Resolved {
+            config: Config::default(),
+            repo_root: repo_root.clone(),
+            queue_path: repo_root.join(".ralph/queue.json"),
+            done_path: repo_root.join(".ralph/done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: Some(repo_root.join(".ralph/config.json")),
+        }
+    }
+
+    fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
+        std::fs::create_dir_all(repo_root.join(".ralph"))?;
+        let task = Task {
+            id: "RQ-0001".to_string(),
+            status,
+            title: "Test task".to_string(),
+            priority: TaskPriority::Medium,
+            tags: vec!["tests".to_string()],
+            scope: vec!["crates/ralph".to_string()],
+            evidence: vec!["observed".to_string()],
+            plan: vec!["do thing".to_string()],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: Some("2026-01-18T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-18T00:00:00Z".to_string()),
+            completed_at: Some("2026-01-18T00:00:00Z".to_string()),
+            depends_on: vec![],
+            custom_fields: std::collections::HashMap::new(),
+        };
+
+        queue::save_queue(
+            &repo_root.join(".ralph/queue.json"),
+            &QueueFile {
+                version: 1,
+                tasks: vec![],
+            },
+        )?;
+        queue::save_queue(
+            &repo_root.join(".ralph/done.json"),
+            &QueueFile {
+                version: 1,
+                tasks: vec![task],
+            },
+        )?;
+        Ok(())
     }
 
     #[test]
@@ -653,6 +721,7 @@ echo '{{"sessionID":"sess-123"}}'
             output_handler: None,
             project_type: ProjectType::Code,
             git_revert_mode: GitRevertMode::Ask,
+            git_commit_push_enabled: true,
             revert_prompt: Some(prompt_handler),
         };
 
@@ -670,6 +739,28 @@ echo '{{"sessionID":"sess-123"}}'
             stdout
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_phase3_completion_requires_clean_repo_when_enabled() -> Result<()> {
+        let temp = TempDir::new()?;
+        git_init(temp.path())?;
+        write_queue_and_done(temp.path(), TaskStatus::Done)?;
+
+        let resolved = resolved_for_completion(temp.path().to_path_buf());
+        assert!(ensure_phase3_completion(&resolved, "RQ-0001", true).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_phase3_completion_allows_dirty_repo_when_disabled() -> Result<()> {
+        let temp = TempDir::new()?;
+        git_init(temp.path())?;
+        write_queue_and_done(temp.path(), TaskStatus::Done)?;
+
+        let resolved = resolved_for_completion(temp.path().to_path_buf());
+        ensure_phase3_completion(&resolved, "RQ-0001", false)?;
         Ok(())
     }
 }

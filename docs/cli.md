@@ -95,6 +95,7 @@ ralph run one
 ralph run one -i
 ralph run loop --max-tasks 0
 ralph run loop -i --max-tasks 3
+ralph run one --git-commit-push-off
 ```
 
 ## Runner and Model Overrides
@@ -111,6 +112,20 @@ Examples:
 ```bash
 ralph tui --runner claude --model opus
 ralph run one --runner codex --model gpt-5.2-codex --effort high
+```
+
+## Run-Specific Flags
+
+The `run one` and `run loop` commands also support:
+
+* `--git-revert-mode <ask|enabled|disabled>`
+* `--git-commit-push-on` / `--git-commit-push-off`
+
+Examples:
+
+```bash
+ralph run one --git-revert-mode disabled
+ralph run one --git-commit-push-off
 ```
 
 ## Help Output

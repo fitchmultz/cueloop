@@ -50,6 +50,7 @@ pub(crate) fn post_run_supervise(
     resolved: &crate::config::Resolved,
     task_id: &str,
     git_revert_mode: GitRevertMode,
+    git_commit_push_enabled: bool,
     revert_prompt: Option<runutil::RevertPromptHandler>,
 ) -> Result<()> {
     let label = format!("PostRunSupervise for {}", task_id.trim());
@@ -147,19 +148,29 @@ pub(crate) fn post_run_supervise(
                 resolved.id_width,
             )?;
 
-            let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
-            gitutil::commit_all(&resolved.repo_root, &commit_message)?;
-            push_if_ahead(&resolved.repo_root)?;
-            gitutil::require_clean_repo_ignoring_paths(
-                &resolved.repo_root,
-                false,
-                &[".ralph/queue.json", ".ralph/done.json"],
-            )?;
+            if git_commit_push_enabled {
+                let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
+                gitutil::commit_all(&resolved.repo_root, &commit_message)?;
+                push_if_ahead(&resolved.repo_root)?;
+                gitutil::require_clean_repo_ignoring_paths(
+                    &resolved.repo_root,
+                    false,
+                    &[".ralph/queue.json", ".ralph/done.json"],
+                )?;
+            } else {
+                log::info!(
+                    "Auto git commit/push disabled; leaving repo dirty after queue updates."
+                );
+            }
             return Ok(());
         }
 
         if task_status == TaskStatus::Done && in_done {
-            push_if_ahead(&resolved.repo_root)?;
+            if git_commit_push_enabled {
+                push_if_ahead(&resolved.repo_root)?;
+            } else {
+                log::info!("Auto git commit/push disabled; skipping push.");
+            }
             return Ok(());
         }
 
@@ -188,14 +199,18 @@ pub(crate) fn post_run_supervise(
             return Ok(());
         }
 
-        let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
-        gitutil::commit_all(&resolved.repo_root, &commit_message)?;
-        push_if_ahead(&resolved.repo_root)?;
-        gitutil::require_clean_repo_ignoring_paths(
-            &resolved.repo_root,
-            false,
-            &[".ralph/queue.json", ".ralph/done.json"],
-        )?;
+        if git_commit_push_enabled {
+            let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
+            gitutil::commit_all(&resolved.repo_root, &commit_message)?;
+            push_if_ahead(&resolved.repo_root)?;
+            gitutil::require_clean_repo_ignoring_paths(
+                &resolved.repo_root,
+                false,
+                &[".ralph/queue.json", ".ralph/done.json"],
+            )?;
+        } else {
+            log::info!("Auto git commit/push disabled; leaving repo dirty after queue updates.");
+        }
         Ok(())
     })
 }
@@ -341,8 +356,117 @@ fn ci_gate_command_label(resolved: &crate::config::Resolved) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contracts::{Config, Runner};
+    use crate::contracts::{
+        AgentConfig, Config, QueueConfig, QueueFile, Runner, Task, TaskPriority, TaskStatus,
+    };
+    use crate::queue;
+    use std::path::Path;
+    use std::path::PathBuf;
+    use std::process::Command;
     use tempfile::TempDir;
+
+    fn git_run(repo_root: &Path, args: &[&str]) -> Result<()> {
+        let status = Command::new("git")
+            .current_dir(repo_root)
+            .args(args)
+            .status()?;
+        anyhow::ensure!(status.success(), "git {:?} failed", args);
+        Ok(())
+    }
+
+    fn git_output(repo_root: &Path, args: &[&str]) -> Result<String> {
+        let output = Command::new("git")
+            .current_dir(repo_root)
+            .args(args)
+            .output()?;
+        anyhow::ensure!(output.status.success(), "git {:?} failed", args);
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+
+    fn init_repo(dir: &Path) -> Result<()> {
+        git_run(dir, &["init"])?;
+        git_run(dir, &["config", "user.email", "test@example.com"])?;
+        git_run(dir, &["config", "user.name", "Test User"])?;
+        std::fs::create_dir_all(dir.join(".ralph"))?;
+        Ok(())
+    }
+
+    fn write_queue(repo_root: &Path, status: TaskStatus) -> Result<()> {
+        let task = Task {
+            id: "RQ-0001".to_string(),
+            status,
+            title: "Test task".to_string(),
+            priority: TaskPriority::Medium,
+            tags: vec!["tests".to_string()],
+            scope: vec!["crates/ralph".to_string()],
+            evidence: vec!["observed".to_string()],
+            plan: vec!["do thing".to_string()],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: Some("2026-01-18T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-18T00:00:00Z".to_string()),
+            completed_at: None,
+            depends_on: vec![],
+            custom_fields: std::collections::HashMap::new(),
+        };
+
+        queue::save_queue(
+            &repo_root.join(".ralph/queue.json"),
+            &QueueFile {
+                version: 1,
+                tasks: vec![task],
+            },
+        )?;
+        Ok(())
+    }
+
+    fn commit_all(repo_root: &Path, message: &str) -> Result<()> {
+        git_run(repo_root, &["add", "-A"])?;
+        git_run(repo_root, &["commit", "-m", message])?;
+        Ok(())
+    }
+
+    fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
+        let cfg = Config {
+            agent: AgentConfig {
+                runner: Some(Runner::Codex),
+                model: Some(crate::contracts::Model::Gpt52Codex),
+                reasoning_effort: Some(crate::contracts::ReasoningEffort::Medium),
+                codex_bin: Some("codex".to_string()),
+                opencode_bin: Some("opencode".to_string()),
+                gemini_bin: Some("gemini".to_string()),
+                claude_bin: Some("claude".to_string()),
+                claude_permission_mode: Some(
+                    crate::contracts::ClaudePermissionMode::BypassPermissions,
+                ),
+                require_repoprompt: Some(false),
+                ci_gate_command: Some("make ci".to_string()),
+                ci_gate_enabled: Some(false),
+                git_revert_mode: Some(GitRevertMode::Disabled),
+                git_commit_push_enabled: Some(true),
+                phases: Some(2),
+            },
+            queue: QueueConfig {
+                file: Some(PathBuf::from(".ralph/queue.json")),
+                done_file: Some(PathBuf::from(".ralph/done.json")),
+                id_prefix: Some("RQ".to_string()),
+                id_width: Some(4),
+            },
+            ..Config::default()
+        };
+
+        crate::config::Resolved {
+            config: cfg,
+            repo_root: repo_root.to_path_buf(),
+            queue_path: repo_root.join(".ralph/queue.json"),
+            done_path: repo_root.join(".ralph/done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: Some(repo_root.join(".ralph/config.json")),
+        }
+    }
 
     #[test]
     fn resume_continue_session_requires_session_id() -> Result<()> {
@@ -369,6 +493,113 @@ mod tests {
         let err = resume_continue_session(&resolved, &mut session, "hello")
             .expect_err("expected missing session id error");
         assert!(err.to_string().contains("no session id"));
+        Ok(())
+    }
+
+    #[test]
+    fn post_run_supervise_commits_and_cleans_when_enabled() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        write_queue(temp.path(), TaskStatus::Todo)?;
+        commit_all(temp.path(), "init")?;
+        std::fs::write(temp.path().join("work.txt"), "change")?;
+
+        let resolved = resolved_for_repo(temp.path());
+        post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, true, None)?;
+
+        let status = git_output(temp.path(), &["status", "--porcelain"])?;
+        anyhow::ensure!(status.trim().is_empty(), "expected clean repo");
+
+        let done_file = queue::load_queue_or_default(&resolved.done_path)?;
+        anyhow::ensure!(
+            done_file.tasks.iter().any(|t| t.id == "RQ-0001"),
+            "expected task in done archive"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn post_run_supervise_skips_commit_when_disabled() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        write_queue(temp.path(), TaskStatus::Todo)?;
+        commit_all(temp.path(), "init")?;
+        std::fs::write(temp.path().join("work.txt"), "change")?;
+
+        let resolved = resolved_for_repo(temp.path());
+        post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, false, None)?;
+
+        let status = git_output(temp.path(), &["status", "--porcelain"])?;
+        anyhow::ensure!(!status.trim().is_empty(), "expected dirty repo");
+        Ok(())
+    }
+
+    #[test]
+    fn post_run_supervise_errors_on_push_failure_when_enabled() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        write_queue(temp.path(), TaskStatus::Todo)?;
+        commit_all(temp.path(), "init")?;
+
+        let remote = TempDir::new()?;
+        git_run(remote.path(), &["init", "--bare"])?;
+        let branch = git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        git_run(
+            temp.path(),
+            &["remote", "add", "origin", remote.path().to_str().unwrap()],
+        )?;
+        git_run(temp.path(), &["push", "-u", "origin", &branch])?;
+        let missing_remote = temp.path().join("missing-remote");
+        git_run(
+            temp.path(),
+            &[
+                "remote",
+                "set-url",
+                "origin",
+                missing_remote.to_str().unwrap(),
+            ],
+        )?;
+
+        std::fs::write(temp.path().join("work.txt"), "change")?;
+
+        let resolved = resolved_for_repo(temp.path());
+        let err = post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, true, None)
+            .expect_err("expected push failure");
+        assert!(err.to_string().contains("Git push failed"));
+        Ok(())
+    }
+
+    #[test]
+    fn post_run_supervise_skips_push_when_disabled() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        write_queue(temp.path(), TaskStatus::Todo)?;
+        commit_all(temp.path(), "init")?;
+
+        let remote = TempDir::new()?;
+        git_run(remote.path(), &["init", "--bare"])?;
+        let branch = git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        git_run(
+            temp.path(),
+            &["remote", "add", "origin", remote.path().to_str().unwrap()],
+        )?;
+        git_run(temp.path(), &["push", "-u", "origin", &branch])?;
+        let missing_remote = temp.path().join("missing-remote");
+        git_run(
+            temp.path(),
+            &[
+                "remote",
+                "set-url",
+                "origin",
+                missing_remote.to_str().unwrap(),
+            ],
+        )?;
+
+        std::fs::write(temp.path().join("work.txt"), "change")?;
+
+        let resolved = resolved_for_repo(temp.path());
+        post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, false, None)?;
         Ok(())
     }
 }

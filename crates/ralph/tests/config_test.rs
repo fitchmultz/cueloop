@@ -414,6 +414,20 @@ fn test_load_layer_valid_json() {
 }
 
 #[test]
+fn test_load_layer_parses_git_commit_push_enabled() {
+    let dir = TempDir::new().expect("create temp dir");
+    let config_path = dir.path().join("config.json");
+    fs::write(
+        &config_path,
+        r#"{"version":1,"agent":{"git_commit_push_enabled":false}}"#,
+    )
+    .expect("write config");
+
+    let layer = config::load_layer(&config_path).unwrap();
+    assert_eq!(layer.agent.git_commit_push_enabled, Some(false));
+}
+
+#[test]
 fn test_load_layer_invalid_json_fails() {
     let dir = TempDir::new().expect("create temp dir");
     let config_path = dir.path().join("config.json");
@@ -535,6 +549,7 @@ fn test_agent_config_merge_from_partial() {
         ci_gate_command: Some("make ci".to_string()),
         ci_gate_enabled: Some(true),
         git_revert_mode: Some(GitRevertMode::Ask),
+        git_commit_push_enabled: Some(true),
     };
 
     let override_config = AgentConfig {
@@ -551,6 +566,7 @@ fn test_agent_config_merge_from_partial() {
         ci_gate_command: Some("custom ci".to_string()),
         ci_gate_enabled: Some(false),
         git_revert_mode: Some(GitRevertMode::Disabled),
+        git_commit_push_enabled: Some(false),
     };
 
     base.merge_from(override_config);

@@ -129,6 +129,22 @@ mod tests {
     }
 
     #[test]
+    fn cli_parses_run_git_commit_push_off() {
+        let cli =
+            Cli::try_parse_from(["ralph", "run", "one", "--git-commit-push-off"]).expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::One(args) => {
+                    assert!(args.agent.git_commit_push_off);
+                    assert!(!args.agent.git_commit_push_on);
+                }
+                _ => panic!("expected run one command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
+
+    #[test]
     fn cli_parses_run_include_draft() {
         let cli = Cli::try_parse_from(["ralph", "run", "one", "--include-draft"]).expect("parse");
         match cli.command {

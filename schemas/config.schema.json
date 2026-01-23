@@ -12,6 +12,7 @@
         "claude_permission_mode": "bypass_permissions",
         "codex_bin": "codex",
         "gemini_bin": "gemini",
+        "git_commit_push_enabled": true,
         "git_revert_mode": "ask",
         "model": "sonnet",
         "opencode_bin": "opencode",
@@ -114,6 +115,14 @@
           "default": null,
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "git_commit_push_enabled": {
+          "description": "Enable automatic git commit and push after successful runs (default: true).",
+          "default": null,
+          "type": [
+            "boolean",
             "null"
           ]
         },

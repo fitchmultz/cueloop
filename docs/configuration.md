@@ -25,6 +25,7 @@ Supported fields:
 - `reasoning_effort`: `minimal`, `low`, `medium`, `high` (Codex only).
 - `require_repoprompt`: `true` or `false`.
 - `git_revert_mode`: `ask`, `enabled`, or `disabled`.
+- `git_commit_push_enabled`: enable or disable automatic git commit/push after successful runs (default: `true`).
 - `ci_gate_command`: command to run for the CI gate (default: `make ci`).
 - `ci_gate_enabled`: enable or disable the CI gate (default: `true`).
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`: override runner executable path/name.
@@ -39,6 +40,7 @@ Example:
     "model": "sonnet",
     "phases": 3,
     "require_repoprompt": false,
+    "git_commit_push_enabled": true,
     "git_revert_mode": "ask",
     "claude_permission_mode": "bypass_permissions",
     "ci_gate_command": "make ci",

@@ -79,6 +79,14 @@ pub struct RunAgentArgs {
     #[arg(long, value_parser = ["ask", "enabled", "disabled"])]
     pub git_revert_mode: Option<String>,
 
+    /// Enable automatic git commit and push after successful runs.
+    #[arg(long, conflicts_with = "git_commit_push_off")]
+    pub git_commit_push_on: bool,
+
+    /// Disable automatic git commit and push after successful runs.
+    #[arg(long, conflicts_with = "git_commit_push_on")]
+    pub git_commit_push_off: bool,
+
     /// Include draft tasks when selecting what to run.
     #[arg(long)]
     pub include_draft: bool,
@@ -99,6 +107,7 @@ pub struct AgentOverrides {
     pub phases: Option<u8>,
     pub repoprompt_required: Option<bool>,
     pub git_revert_mode: Option<GitRevertMode>,
+    pub git_commit_push_enabled: Option<bool>,
     pub include_draft: Option<bool>,
 }
 
@@ -160,6 +169,14 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         None => None,
     };
 
+    let git_commit_push_enabled = if args.git_commit_push_on {
+        Some(true)
+    } else if args.git_commit_push_off {
+        Some(false)
+    } else {
+        None
+    };
+
     let include_draft = if args.include_draft { Some(true) } else { None };
 
     Ok(AgentOverrides {
@@ -169,6 +186,7 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         phases: args.phases,
         repoprompt_required,
         git_revert_mode,
+        git_commit_push_enabled,
         include_draft,
     })
 }
@@ -213,6 +231,7 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
         phases: None,
         repoprompt_required,
         git_revert_mode: None,
+        git_commit_push_enabled: None,
         include_draft: None,
     })
 }
@@ -253,6 +272,7 @@ mod tests {
                 ci_gate_command: Some("make ci".to_string()),
                 ci_gate_enabled: Some(true),
                 git_revert_mode: Some(GitRevertMode::Ask),
+                git_commit_push_enabled: Some(true),
             },
             queue: QueueConfig::default(),
             ..Config::default()
@@ -323,6 +343,7 @@ mod tests {
         assert_eq!(overrides.reasoning_effort, None);
         assert_eq!(overrides.repoprompt_required, None);
         assert_eq!(overrides.git_revert_mode, None);
+        assert_eq!(overrides.git_commit_push_enabled, None);
         assert_eq!(overrides.include_draft, None);
     }
 
@@ -339,6 +360,7 @@ mod tests {
         let overrides = resolve_agent_overrides(&args).unwrap();
         assert_eq!(overrides.repoprompt_required, Some(true));
         assert_eq!(overrides.git_revert_mode, None);
+        assert_eq!(overrides.git_commit_push_enabled, None);
         assert_eq!(overrides.include_draft, None);
     }
 
@@ -352,6 +374,8 @@ mod tests {
             rp_on: false,
             rp_off: false,
             git_revert_mode: Some("enabled".to_string()),
+            git_commit_push_on: false,
+            git_commit_push_off: true,
             include_draft: true,
         };
 
@@ -361,6 +385,7 @@ mod tests {
         assert_eq!(overrides.reasoning_effort, Some(ReasoningEffort::High));
         assert_eq!(overrides.phases, Some(2));
         assert_eq!(overrides.git_revert_mode, Some(GitRevertMode::Enabled));
+        assert_eq!(overrides.git_commit_push_enabled, Some(false));
         assert_eq!(overrides.include_draft, Some(true));
     }
 }

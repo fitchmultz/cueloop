@@ -107,6 +107,9 @@ pub struct AgentConfig {
     /// Controls automatic git revert behavior when runner or supervision errors occur.
     pub git_revert_mode: Option<GitRevertMode>,
 
+    /// Enable automatic git commit and push after successful runs (default: true).
+    pub git_commit_push_enabled: Option<bool>,
+
     /// Number of execution phases (1, 2, or 3).
     /// 1 = single-pass, 2 = plan+implement, 3 = plan+implement+review.
     #[schemars(range(min = 1, max = 3))]
@@ -153,6 +156,9 @@ impl AgentConfig {
         }
         if other.git_revert_mode.is_some() {
             self.git_revert_mode = other.git_revert_mode;
+        }
+        if other.git_commit_push_enabled.is_some() {
+            self.git_commit_push_enabled = other.git_commit_push_enabled;
         }
     }
 }
@@ -492,6 +498,7 @@ impl Default for Config {
                 ci_gate_command: Some("make ci".to_string()),
                 ci_gate_enabled: Some(true),
                 git_revert_mode: Some(GitRevertMode::Ask),
+                git_commit_push_enabled: Some(true),
             },
         }
     }

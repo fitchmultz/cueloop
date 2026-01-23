@@ -100,6 +100,7 @@ Notes:\n\
  - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude accept arbitrary model ids)\n\
  - `--effort` is codex-only and is ignored for other runners.\n\
  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
+ - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
  - TUI entrypoints: `ralph tui`, `ralph run one -i`, `ralph run loop -i`.\n\
 \n\
 To change defaults for this repo, edit .ralph/config.json:\n\
@@ -118,10 +119,12 @@ Examples:\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode disabled\n\
+ ralph run one --git-commit-push-off\n\
  ralph run loop --max-tasks 0\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode ask --max-tasks 1\n\
+ ralph run loop --git-commit-push-on --max-tasks 1\n\
  ralph tui\n\
  ralph tui --read-only\n\
  ralph run one -i\n\
@@ -153,6 +156,7 @@ Examples:\n\
  ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode enabled\n\
+ ralph run one --git-commit-push-off\n\
  ralph run one --rp-on\n\
  ralph run one --rp-off\n\
  ralph tui"
@@ -169,6 +173,7 @@ Examples:\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode disabled --max-tasks 1\n\
+ ralph run loop --git-commit-push-off --max-tasks 1\n\
  ralph run loop -i\n\
  ralph tui"
     )]

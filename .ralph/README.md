@@ -96,6 +96,7 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
     "phases": 3,
     "require_repoprompt": false,
     "git_revert_mode": "ask",
+    "git_commit_push_enabled": true,
     "ci_gate_command": "make ci",
     "ci_gate_enabled": true
   }
@@ -117,7 +118,7 @@ Ralph can explicitly require the usage of RepoPrompt tools. When enabled via con
 Ralph supports a 3-phase workflow by default (configured via `agent.phases: 3`):
 1. **Phase 1 (Planning)**: The agent generates a detailed plan and caches it in `.ralph/cache/plans/<TASK_ID>.md`.
 2. **Phase 2 (Implementation + CI)**: The agent implements the plan and must pass the configured CI gate command (default `make ci`) when enabled, then stops without completing the task.
-3. **Phase 3 (Code Review + Completion)**: The agent reviews the pending diff against hardcoded standards, refines as needed, re-runs the configured CI gate command (default `make ci`) when enabled, completes the task, commits, and pushes.
+3. **Phase 3 (Code Review + Completion)**: The agent reviews the pending diff against hardcoded standards, refines as needed, re-runs the configured CI gate command (default `make ci`) when enabled, completes the task, and (when auto git commit/push is enabled) commits and pushes.
 
 Use `ralph run one --phases 3` for full 3-phase execution. You can also set `agent.phases` in config to control the default.
 
@@ -126,6 +127,10 @@ Ralph can control whether uncommitted changes are reverted when runner/supervisi
 - `ask` (default): prompt on stdin (non-interactive defaults to keep changes).
 - `enabled`: always revert uncommitted changes.
 - `disabled`: never revert automatically.
+
+Ralph can also toggle automatic git commit/push after successful runs:
+- `agent.git_commit_push_enabled: true` (default): commit and push after completion.
+- `agent.git_commit_push_enabled: false`: skip automatic commit/push (repo may remain dirty).
 
 Example:
 - `ralph run one --git-revert-mode disabled`

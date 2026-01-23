@@ -19,6 +19,7 @@
     "require_repoprompt": false,
     "ci_gate_command": "make ci",
     "ci_gate_enabled": true,
+    "git_commit_push_enabled": true,
     "git_revert_mode": "ask",
     "phases": 3
   }

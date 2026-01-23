@@ -33,6 +33,7 @@ fn resolved_with_agent_defaults(
             ci_gate_command: Some("make ci".to_string()),
             ci_gate_enabled: Some(true),
             git_revert_mode: Some(GitRevertMode::Ask),
+            git_commit_push_enabled: Some(true),
         },
         queue: QueueConfig {
             file: Some(PathBuf::from(".ralph/queue.json")),
@@ -92,6 +93,7 @@ fn resolved_with_repo_root(repo_root: PathBuf) -> crate::config::Resolved {
             ci_gate_command: Some("make ci".to_string()),
             ci_gate_enabled: Some(true),
             git_revert_mode: Some(GitRevertMode::Ask),
+            git_commit_push_enabled: Some(true),
         },
         queue: QueueConfig {
             file: Some(PathBuf::from(".ralph/queue.json")),
@@ -230,6 +232,7 @@ fn resolve_run_agent_settings_cli_overrides_task_agent_and_config() -> anyhow::R
         phases: None,
         repoprompt_required: None,
         git_revert_mode: None,
+        git_commit_push_enabled: None,
         include_draft: None,
     };
 
@@ -257,6 +260,7 @@ fn resolve_run_agent_settings_defaults_to_glm47_for_opencode_runner() -> anyhow:
         phases: None,
         repoprompt_required: None,
         git_revert_mode: None,
+        git_commit_push_enabled: None,
         include_draft: None,
     };
 
@@ -284,6 +288,7 @@ fn resolve_run_agent_settings_defaults_to_gemini_flash_for_gemini_runner() -> an
         phases: None,
         repoprompt_required: None,
         git_revert_mode: None,
+        git_commit_push_enabled: None,
         include_draft: None,
     };
 
@@ -325,6 +330,7 @@ fn resolve_run_agent_settings_effort_is_ignored_for_opencode() -> anyhow::Result
         phases: None,
         repoprompt_required: None,
         git_revert_mode: None,
+        git_commit_push_enabled: None,
         include_draft: None,
     };
 

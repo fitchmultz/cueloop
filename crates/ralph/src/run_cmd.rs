@@ -205,6 +205,11 @@ fn run_one_impl(
         .or(resolved.config.agent.git_revert_mode)
         .unwrap_or(GitRevertMode::Ask);
 
+    let git_commit_push_enabled = agent_overrides
+        .git_commit_push_enabled
+        .or(resolved.config.agent.git_commit_push_enabled)
+        .unwrap_or(true);
+
     let policy = promptflow::PromptPolicy {
         require_repoprompt: rp_required,
     };
@@ -278,6 +283,7 @@ fn run_one_impl(
             output_handler: output_handler.clone(),
             project_type,
             git_revert_mode,
+            git_commit_push_enabled,
             revert_prompt: revert_prompt.clone(),
         };
 

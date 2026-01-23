@@ -12,7 +12,7 @@ When implementation is complete, you MUST:
 5. If the CI gate is enabled ({{config.agent.ci_gate_enabled}}), run `{{config.agent.ci_gate_command}}` and fix all failures before ending your turn.
 6. Git hygiene:
    - Do NOT commit or push until `ralph task done` succeeds.
-   - Commit ALL changes (including `.ralph/queue.json`) with `RQ-####: <short summary>`.
-   - Push your commit(s) so the branch is not ahead of upstream.
-   - Confirm the repo is clean: `git status --porcelain` is empty.
-   - If you cannot push (no upstream/permissions), stop and report the blocker.
+   - If auto commit/push is enabled ({{config.agent.git_commit_push_enabled}}), do NOT run `git commit` or `git push` manually; Ralph will commit/push after completion.
+   - If auto commit/push is disabled ({{config.agent.git_commit_push_enabled}}), leave the repo dirty and report that manual commit/push is required.
+   - Confirm repo state: when enabled, `git status --porcelain` is empty after completion; when disabled, note remaining changes.
+   - If a push is required but cannot be performed (no upstream/permissions), stop and report the blocker.
