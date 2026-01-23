@@ -164,6 +164,9 @@ fn build_phase2_handoff_prompt_contains_required_elements() {
     assert!(prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 3"));
     assert!(prompt.contains("CURRENT TASK: RQ-1234"));
     assert!(prompt.contains(checklist));
+    assert!(prompt.contains(
+        "If you identify unresolved risks, bugs, or suspicious leads, list them explicitly"
+    ));
     assert!(prompt.contains("APPROVED PLAN"));
     assert!(prompt.contains(plan));
     assert!(prompt.contains("BASE_PROMPT"));
@@ -205,4 +208,40 @@ fn build_phase3_prompt_contains_required_elements() {
     assert!(prompt.contains(phase2_final));
     assert!(prompt.contains("CHECKLIST"));
     assert!(prompt.contains(base));
+    assert!(
+        prompt.contains("Investigate and resolve any risks, bugs, or suspicious leads you flag")
+    );
+    assert!(prompt.contains("Do NOT complete the task if any lead remains unresolved."));
+}
+
+#[test]
+fn iteration_checklist_requires_closing_flagged_issues() {
+    let config = Config::default();
+    let repo_root = TempDir::new().unwrap();
+    let template = prompts::load_iteration_checklist(repo_root.path()).unwrap();
+    let rendered = prompts::render_iteration_checklist(&template, "RQ-0002", &config).unwrap();
+
+    assert!(rendered
+        .contains("Investigate and resolve any risks, bugs, or suspicious leads you identify"));
+}
+
+#[test]
+fn completion_checklist_requires_closing_flagged_issues() {
+    let config = Config::default();
+    let repo_root = TempDir::new().unwrap();
+    let template = prompts::load_completion_checklist(repo_root.path()).unwrap();
+    let rendered = prompts::render_completion_checklist(&template, "RQ-0003", &config).unwrap();
+
+    assert!(rendered
+        .contains("Investigate and resolve any risks, bugs, or suspicious leads you flagged"));
+}
+
+#[test]
+fn phase2_handoff_checklist_highlights_remaining_leads() {
+    let config = Config::default();
+    let repo_root = TempDir::new().unwrap();
+    let template = prompts::load_phase2_handoff_checklist(repo_root.path()).unwrap();
+    let rendered = prompts::render_phase2_handoff_checklist(&template, &config).unwrap();
+
+    assert!(rendered.contains("remaining risks, suspicious leads"));
 }
