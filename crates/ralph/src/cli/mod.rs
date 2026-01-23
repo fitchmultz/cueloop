@@ -168,6 +168,18 @@ mod tests {
     }
 
     #[test]
+    fn cli_rejects_run_one_id_with_interactive_long() {
+        let err = Cli::try_parse_from(["ralph", "run", "one", "--id", "RQ-0001", "--interactive"])
+            .err()
+            .expect("parse failure");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("cannot be used with") || msg.contains("conflicts"),
+            "unexpected error: {msg}"
+        );
+    }
+
+    #[test]
     fn cli_parses_task_default_subcommand() {
         let cli = Cli::try_parse_from(["ralph", "task", "Add", "tests"]).expect("parse");
         match cli.command {
@@ -245,8 +257,32 @@ mod tests {
     }
 
     #[test]
+    fn cli_parses_run_one_interactive_long() {
+        let cli = Cli::try_parse_from(["ralph", "run", "one", "--interactive"]).expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::One(args) => assert!(args.interactive),
+                _ => panic!("expected run one command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
+
+    #[test]
     fn cli_parses_run_loop_interactive() {
         let cli = Cli::try_parse_from(["ralph", "run", "loop", "-i"]).expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::Loop(args) => assert!(args.interactive),
+                _ => panic!("expected run loop command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_run_loop_interactive_long() {
+        let cli = Cli::try_parse_from(["ralph", "run", "loop", "--interactive"]).expect("parse");
         match cli.command {
             Command::Run(run::RunArgs { command }) => match command {
                 run::RunCommand::Loop(args) => assert!(args.interactive),
@@ -261,6 +297,17 @@ mod tests {
         let cli = Cli::try_parse_from(["ralph", "tui"]).expect("parse");
         match cli.command {
             Command::Tui(tui::TuiArgs { .. }) => {}
+            _ => panic!("expected tui command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_tui_read_only() {
+        let cli = Cli::try_parse_from(["ralph", "tui", "--read-only"]).expect("parse");
+        match cli.command {
+            Command::Tui(tui::TuiArgs { read_only, .. }) => {
+                assert!(read_only);
+            }
             _ => panic!("expected tui command"),
         }
     }

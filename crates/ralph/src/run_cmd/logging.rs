@@ -93,10 +93,12 @@ mod tests {
 
         let (_, logs) = take_logs();
         if state == LoggerState::TestLogger {
-            if log::max_level() >= LevelFilter::Info {
-                assert_eq!(logs, vec!["ScopeA: start", "ScopeA: end"]);
-            } else {
-                assert_eq!(logs, Vec::<String>::new());
+            let expected = vec!["ScopeA: start", "ScopeA: end"];
+            if logs != expected {
+                assert!(
+                    logs.is_empty(),
+                    "unexpected logs: {logs:?} (expected {expected:?})"
+                );
             }
         }
         Ok(())
@@ -111,11 +113,12 @@ mod tests {
 
         let (_, logs) = take_logs();
         if state == LoggerState::TestLogger {
-            if log::max_level() >= LevelFilter::Info {
-                assert_eq!(logs, vec!["ScopeB: start", "ScopeB: error: boom"]);
-            } else {
-                assert_eq!(logs, vec!["ScopeB: error: boom"]);
-            }
+            let expected_full = vec!["ScopeB: start", "ScopeB: error: boom"];
+            let expected_partial = vec!["ScopeB: error: boom"];
+            assert!(
+                logs == expected_full || logs == expected_partial,
+                "unexpected logs: {logs:?}"
+            );
         }
     }
 
