@@ -14,24 +14,18 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
 
 **REQUIRED CI GATE**: `make ci` — **Agents MUST run this before claiming task completion, committing, or merging PRs.** This is the validation gate that must pass for any work to be considered complete.
 
+**CLI Commands**: See `docs/cli.md` for complete command reference. Agents should keep this documentation up to date when adding or modifying CLI commands.
+
 **Development/iteration commands** (for rapid testing, not a substitute for `make ci`):
 - `cargo test -p ralph`
-- `cargo run -p ralph -- queue validate`
-- `cargo run -p ralph -- init`
-- `cargo run -p ralph -- queue next`
-- `cargo run -p ralph -- queue next-id`
-- `cargo run -p ralph -- queue archive`
-- `cargo run -p ralph -- task "<request>"`
-- `cargo run -p ralph -- scan --focus "<focus>"`
-- `cargo run -p ralph -- run one`
-- `cargo run -p ralph -- run one --phases 1` (single-pass execution)
-- `cargo run -p ralph -- run one --phases 2` (two-pass: plan then implement)
-- `cargo run -p ralph -- run loop --max-tasks 0`
+- `cargo run -p ralph -- <command>` (see `docs/cli.md` for available commands)
 
 ## Queue & Prompt Contract (Rust)
 - Source of truth is `.ralph/queue.json` (JSON). Task order follows file order (top runs first).
 - Completed tasks must be moved to `.ralph/done.json` and removed from `.ralph/queue.json`.
-- New tasks must include: `id`, `status`, `title`, `tags`, `scope`, `evidence`, `plan` (and typically `request`, `created_at`, `updated_at`).
+- New tasks must include: `id`, `title`, `created_at`, `updated_at`, `tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `custom_fields` (arrays/objects can be empty; only `id` and `title` must be non-empty).
+- Optional task fields: `status` (defaults to `todo`), `priority` (defaults to `medium`), `request`, `completed_at`, `agent`.
+- See `docs/queue-and-tasks.md` for complete task schema documentation.
 - Prompt templates are embedded in the Rust CLI and organized under `crates/ralph/assets/prompts/`; overrides can be placed in `.ralph/prompts/` and reference these files.
 - Worker prompts are composed from a base prompt (`worker.md`) plus phase-specific wrappers (`worker_phase1.md`, `worker_phase2.md`, `worker_phase2_handoff.md`, `worker_phase3.md`, `worker_single_phase.md`).
 - **Two-phase planning**: Agents in Phase 1 MUST write their plan to `.ralph/cache/plans/<TASK_ID>.md` and avoid printing the plan inline.
@@ -49,20 +43,22 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
 - **Common gaps to watch for**: missing `--phases` examples, `--interactive` (`-i`), `--rp-on`/`--rp-off`, runner/model overrides.
 
 ## Configuration
+- See `docs/configuration.md` for complete configuration documentation. Agents should keep this documentation up to date when adding or modifying configuration options.
 - Two-layer JSON config:
   - Global: `~/.config/ralph/config.json`
   - Project: `.ralph/config.json` (overrides global)
 - CLI flags can override at runtime; they should not be relied on as persisted config.
-- Runner usage: set `agent.runner: claude` or `agent.runner: gemini` (and `agent.opencode_bin`/`agent.gemini_bin` if needed); allowed models include `gpt-5.2-codex`, `gpt-5.2`, `zai-coding-plan/glm-4.7`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `sonnet`, `opus` (Codex supports only `gpt-5.2-codex` + `gpt-5.2`; OpenCode/Gemini/Claude accept arbitrary model IDs).
 - **RepoPrompt**: When `agent.require_repoprompt: true` (or `--rp-on`), agents MUST use RepoPrompt tools (`read_file`, `context_builder`, etc.).
 
 ## Documentation Maintenance
 - When config defaults, schemas, CLI flags, or task fields change, update `docs/` and keep examples in sync with the source of truth.
+- All documentation in `docs/` should be kept up to date. When adding or modifying features, update the relevant documentation files accordingly.
 
 ## Operational Lessons
 - When changing streamed runner output, validate with real runner CLIs and a non-trivial prompt so tool usage + reasoning events are exercised.
 - Keep streaming logs user-readable by including tool arguments (paths/commands) in summaries, not raw JSON.
 - Use temp repos for runner/output tests and avoid mutating `.ralph/queue.json` in this repo.
+- Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
 
 ## Configuration & Security
 - Do not commit real secrets if the repo is public.
