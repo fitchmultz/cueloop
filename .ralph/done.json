@@ -3095,6 +3095,39 @@
       "completed_at": "2026-01-23T00:53:59.467182000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0227",
+      "status": "done",
+      "title": "Add empty-queue action prompts (create task / open task command)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/render.rs",
+        "crates/ralph/src/tui/events.rs"
+      ],
+      "evidence": [
+        "When no tasks exist, `crates/ralph/src/tui/render.rs` renders a static message and provides no action to create tasks in TUI."
+      ],
+      "plan": [
+        "Add CTA hints in the empty state (e.g., `n` to create).",
+        "Ensure the keybinding launches the creation flow or defers to CLI guidance.",
+        "Add tests for empty-state rendering and key behavior."
+      ],
+      "notes": [
+        "Added empty-queue action prompts for create and command palette.",
+        "Covered empty-queue key handling for n and : with tests.",
+        "Verified empty-queue rendering includes the new CTA lines."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-23T01:05:01.638818000Z",
+      "completed_at": "2026-01-23T01:05:01.638818000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

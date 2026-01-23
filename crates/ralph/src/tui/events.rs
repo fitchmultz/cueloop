@@ -1029,6 +1029,31 @@ mod tests {
     }
 
     #[test]
+    fn colon_enters_command_palette_with_empty_queue() {
+        let mut app = App::new(QueueFile::default());
+
+        let action = handle_key_event(&mut app, KeyCode::Char(':'), "2026-01-20T00:00:00Z")
+            .expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        match app.mode {
+            AppMode::CommandPalette { .. } => {}
+            other => panic!("expected command palette, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn n_enters_create_mode_with_empty_queue() {
+        let mut app = App::new(QueueFile::default());
+
+        let action = handle_key_event(&mut app, KeyCode::Char('n'), "2026-01-20T00:00:00Z")
+            .expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::CreatingTask(String::new()));
+    }
+
+    #[test]
     fn help_key_enters_help_mode() {
         let queue = QueueFile {
             version: 1,

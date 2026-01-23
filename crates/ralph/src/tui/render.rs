@@ -896,6 +896,10 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 "Press n to create one in the TUI.",
                 Style::default().fg(Color::DarkGray),
             )),
+            Line::from(Span::styled(
+                "Press : to open the command palette.",
+                Style::default().fg(Color::DarkGray),
+            )),
         ]);
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         f.render_widget(paragraph, inner);
@@ -1461,6 +1465,7 @@ mod tests {
     use super::*;
     use crate::contracts::QueueFile;
     use ratatui::backend::TestBackend;
+    use ratatui::buffer::Buffer;
     use ratatui::Terminal;
 
     #[test]
@@ -1533,5 +1538,33 @@ mod tests {
 
         let expected = 10usize.saturating_sub(2).saturating_sub(1).max(1);
         assert_eq!(app.log_visible_lines, expected);
+    }
+
+    fn buffer_as_string(buffer: &Buffer) -> String {
+        let mut output = String::new();
+        for y in 0..buffer.area.height {
+            for x in 0..buffer.area.width {
+                let cell = &buffer[(x, y)];
+                output.push_str(cell.symbol());
+            }
+            output.push('\n');
+        }
+        output
+    }
+
+    #[test]
+    fn empty_queue_renders_action_prompts() {
+        let backend = TestBackend::new(80, 20);
+        let mut terminal = Terminal::new(backend).expect("create terminal");
+        let mut app = App::new(QueueFile::default());
+
+        terminal.draw(|f| draw_ui(f, &mut app)).expect("draw ui");
+
+        let buffer = terminal.backend().buffer();
+        let rendered = buffer_as_string(buffer);
+
+        assert!(rendered.contains("No tasks in queue."));
+        assert!(rendered.contains("Press n to create one in the TUI."));
+        assert!(rendered.contains("Press : to open the command palette."));
     }
 }
