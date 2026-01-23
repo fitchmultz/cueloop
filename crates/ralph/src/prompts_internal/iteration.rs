@@ -18,6 +18,6 @@ This run must NOT complete the task.
 - Leave the working tree dirty for continued iteration.
 "#;
 
-pub const PHASE3_COMPLETION_GUIDANCE_FINAL: &str = "Task status is already set to `doing` by Ralph. Do NOT change it (use `ralph task done` when finished). Investigate and resolve any risks, bugs, or suspicious leads you flag before completion; Do NOT complete the task if any lead remains unresolved. If a lead is a false positive or out of scope, document why in your final response.";
+pub const PHASE3_COMPLETION_GUIDANCE_FINAL: &str = "Task status is already set to `doing` by Ralph. Do NOT change it (use `ralph task done` when finished). Investigate and resolve any risks, bugs, or suspicious leads you flag before completion; Do NOT complete the task if any lead remains unresolved. If a lead is a false positive, document why in your final response.";
 
-pub const PHASE3_COMPLETION_GUIDANCE_NONFINAL: &str = "Task status is already set to `doing` by Ralph. Do NOT change it. Do NOT run `ralph task done` or `ralph task reject` in this run. Investigate and resolve any risks, bugs, or suspicious leads you flag before ending the run; Do NOT end the run if any lead remains unresolved. If a lead is a false positive or out of scope, document why in your summary.";
+pub const PHASE3_COMPLETION_GUIDANCE_NONFINAL: &str = "Task status is already set to `doing` by Ralph. Do NOT change it. Do NOT run `ralph task done` or `ralph task reject` in this run. Investigate and resolve any risks, bugs, or suspicious leads you flag before ending the run; Do NOT end the run if any lead remains unresolved. If a lead is a false positive, document why in your summary.";

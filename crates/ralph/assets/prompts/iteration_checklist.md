@@ -2,7 +2,7 @@
 ## ITERATION CHECKLIST (REFINEMENT MODE)
 When refining an already-implemented task, you MUST:
 1. Verify behavior against the task requirements and look for regressions or unintended side effects.
-2. Investigate and resolve any risks, bugs, or suspicious leads you identify in this iteration before ending your run. If a lead is a false positive or out of scope, document why in your summary; do not defer without explanation.
+2. Investigate and resolve any risks, bugs, or suspicious leads you identify in this iteration before ending your run. If a lead is a false positive, document why in your summary; do not defer without explanation.
 3. Simplify or deduplicate code where possible while keeping behavior correct.
 4. Tighten tests to cover expected behavior and failure modes uncovered by the review.
 5. If the CI gate is enabled ({{config.agent.ci_gate_enabled}}), run `{{config.agent.ci_gate_command}}` and fix failures until it is green.
