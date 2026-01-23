@@ -3128,6 +3128,39 @@
       "completed_at": "2026-01-23T01:05:01.638818000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0228",
+      "status": "done",
+      "title": "Document TUI usage and keybindings in CLI docs",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "tui"
+      ],
+      "scope": [
+        "docs/cli.md",
+        "crates/ralph/src/tui/mod.rs"
+      ],
+      "evidence": [
+        "`docs/cli.md` documents `-i` but does not list TUI keybindings or behaviors; keybindings are only in the TUI module doc comment (`crates/ralph/src/tui/mod.rs`)."
+      ],
+      "plan": [
+        "Add a TUI section to `docs/cli.md` describing entrypoints and keybindings.",
+        "Keep docs aligned with actual keybindings and modes.",
+        "Add a documentation check in tests if applicable (or update existing doc tests)."
+      ],
+      "notes": [
+        "Documented TUI keybindings and behaviors in docs/cli.md.",
+        "Added CLI doc test to keep TUI usage/keybindings present.",
+        "Expanded doc test coverage for keybinding sections and read-only mention."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-22T02:50:11Z",
+      "updated_at": "2026-01-23T01:14:27.159363000Z",
+      "completed_at": "2026-01-23T01:14:27.159363000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

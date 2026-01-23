@@ -35,6 +35,39 @@ Behavior:
 * Use `:` to open the command palette for discoverability.
 * The footer shows status messages and errors as actions run.
 
+Keybindings (task list unless noted otherwise):
+
+* Help overlay: `?` or `h` opens help, `Esc` (or `?`/`h`) closes.
+* Navigation
+  * `Up`/`Down` or `j`/`k`: move selection
+  * `Enter`: run selected task
+* Actions
+  * `l`: toggle loop mode
+  * `a`: archive done/rejected tasks (confirmation)
+  * `d`: delete selected task (confirmation)
+  * `e`: edit task fields
+  * `n`: create a new task
+  * `c`: edit project config
+  * `g`: scan repository
+  * `r`: reload queue from disk
+  * `q` (or `Esc` from the task list): quit (prompts if a task is running)
+* Filters & Search
+  * `/`: search tasks
+  * `t`: filter by tags
+  * `f`: cycle status filter
+  * `x`: clear filters
+* Quick Changes
+  * `s`: cycle task status
+  * `p`: cycle priority
+* Command Palette
+  * `:`: open palette (type to filter, `Enter` to run, `Esc` to cancel)
+* Execution View
+  * `Esc`: return to task list
+  * `Up`/`Down` or `j`/`k`: scroll logs
+  * `PgUp`/`PgDn`: page logs
+  * `a`: toggle auto-scroll
+  * `l`: stop loop mode
+
 Examples:
 
 ```bash

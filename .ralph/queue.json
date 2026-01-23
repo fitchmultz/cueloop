@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0228",
-      "status": "todo",
-      "title": "Document TUI usage and keybindings in CLI docs",
-      "priority": "low",
-      "tags": [
-        "docs",
-        "tui"
-      ],
-      "scope": [
-        "docs/cli.md",
-        "crates/ralph/src/tui/mod.rs"
-      ],
-      "evidence": [
-        "`docs/cli.md` documents `-i` but does not list TUI keybindings or behaviors; keybindings are only in the TUI module doc comment (`crates/ralph/src/tui/mod.rs`)."
-      ],
-      "plan": [
-        "Add a TUI section to `docs/cli.md` describing entrypoints and keybindings.",
-        "Keep docs aligned with actual keybindings and modes.",
-        "Add a documentation check in tests if applicable (or update existing doc tests)."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-22T02:50:11Z",
-      "updated_at": "2026-01-22T16:19:20.030712000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0229",
       "status": "todo",
       "title": "Update `ralph run --help` to surface TUI entrypoints and examples",
