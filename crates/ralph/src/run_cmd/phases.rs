@@ -8,6 +8,7 @@ use crate::config;
 use crate::contracts::{ProjectType, TaskStatus};
 use crate::{gitutil, promptflow, prompts, queue, runner, runutil, timeutil};
 use anyhow::{anyhow, bail, Result};
+use std::path::Path;
 
 use super::logging;
 
@@ -29,6 +30,14 @@ pub struct PhaseInvocation<'a> {
     pub git_revert_mode: crate::contracts::GitRevertMode,
     pub git_commit_push_enabled: bool,
     pub revert_prompt: Option<runutil::RevertPromptHandler>,
+}
+
+const PHASE2_FINAL_RESPONSE_FALLBACK: &str = "(Phase 2 final response unavailable.)";
+
+fn cache_phase2_final_response(repo_root: &Path, task_id: &str, stdout: &str) -> Result<()> {
+    let phase2_final_response = runner::extract_final_assistant_response(stdout)
+        .unwrap_or_else(|| PHASE2_FINAL_RESPONSE_FALLBACK.to_string());
+    promptflow::write_phase2_final_response_cache(repo_root, task_id, &phase2_final_response)
 }
 
 pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> Result<String> {
@@ -89,7 +98,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
                     )?;
                     match outcome {
                         runutil::RevertOutcome::Continue { message } => {
-                            super::supervision::resume_continue_session(
+                            let _output = super::supervision::resume_continue_session(
                                 ctx.resolved,
                                 &mut continue_session,
                                 &message,
@@ -159,6 +168,8 @@ pub fn execute_phase2_implementation(
                 "Implementation",
             )?;
 
+            cache_phase2_final_response(&ctx.resolved.repo_root, ctx.task_id, &output.stdout)?;
+
             let mut continue_session = super::supervision::ContinueSession {
                 runner: ctx.settings.runner,
                 model: ctx.settings.model.clone(),
@@ -179,10 +190,15 @@ pub fn execute_phase2_implementation(
                         )?;
                         match outcome {
                             runutil::RevertOutcome::Continue { message } => {
-                                super::supervision::resume_continue_session(
+                                let output = super::supervision::resume_continue_session(
                                     ctx.resolved,
                                     &mut continue_session,
                                     &message,
+                                )?;
+                                cache_phase2_final_response(
+                                    &ctx.resolved.repo_root,
+                                    ctx.task_id,
+                                    &output.stdout,
                                 )?;
                                 continue;
                             }
@@ -264,10 +280,25 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             &ctx.resolved.config,
         )?;
         let p3_template = prompts::load_worker_phase3_prompt(&ctx.resolved.repo_root)?;
+        let phase2_final_response = match promptflow::read_phase2_final_response_cache(
+            &ctx.resolved.repo_root,
+            ctx.task_id,
+        ) {
+            Ok(text) => text,
+            Err(err) => {
+                log::warn!(
+                    "Phase 2 final response cache unavailable for {}: {}",
+                    ctx.task_id,
+                    err
+                );
+                "(Phase 2 final response unavailable; cache missing.)".to_string()
+            }
+        };
         let p3_prompt = promptflow::build_phase3_prompt(
             &p3_template,
             ctx.base_prompt,
             &review_body,
+            &phase2_final_response,
             ctx.task_id,
             &completion_checklist,
             3,
@@ -341,7 +372,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                     )?;
                     match outcome {
                         runutil::RevertOutcome::Continue { message } => {
-                            super::supervision::resume_continue_session(
+                            let _output = super::supervision::resume_continue_session(
                                 ctx.resolved,
                                 &mut continue_session,
                                 &message,
@@ -574,6 +605,31 @@ mod tests {
         }
 
         Ok(runner_path)
+    }
+
+    #[test]
+    fn cache_phase2_final_response_writes_detected_message() -> Result<()> {
+        let temp = TempDir::new()?;
+        let stdout = concat!(
+            r#"{"type":"item.completed","item":{"type":"agent_message","text":"Draft"}}"#,
+            "\n",
+            r#"{"type":"item.completed","item":{"type":"agent_message","text":"Final answer"}}"#,
+            "\n"
+        );
+        cache_phase2_final_response(temp.path(), "RQ-0001", stdout)?;
+        let cached = promptflow::read_phase2_final_response_cache(temp.path(), "RQ-0001")?;
+        assert_eq!(cached, "Final answer");
+        Ok(())
+    }
+
+    #[test]
+    fn cache_phase2_final_response_writes_fallback_when_missing() -> Result<()> {
+        let temp = TempDir::new()?;
+        let stdout = r#"{"type":"tool_use","tool_name":"read"}"#;
+        cache_phase2_final_response(temp.path(), "RQ-0001", stdout)?;
+        let cached = promptflow::read_phase2_final_response_cache(temp.path(), "RQ-0001")?;
+        assert_eq!(cached, PHASE2_FINAL_RESPONSE_FALLBACK);
+        Ok(())
     }
 
     fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::Resolved {

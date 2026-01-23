@@ -3271,6 +3271,43 @@
       "completed_at": "2026-01-23T17:53:45.450062000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0243",
+      "status": "done",
+      "title": "Inject Phase 2 final response into Phase 3 prompt for context",
+      "priority": "medium",
+      "tags": [
+        "prompts",
+        "phases",
+        "handoff"
+      ],
+      "scope": [
+        "crates/ralph/assets/prompts/worker_phase3.md",
+        "crates/ralph/assets/prompts/worker_phase2_handoff.md",
+        "crates/ralph/src/prompts/"
+      ],
+      "evidence": [
+        "User request: Pipe the FINAL response from the Phase 2 agent into the Phase 3 agent prompt, clearly labeled as context and not overriding Phase 3 guidelines."
+      ],
+      "plan": [
+        "Locate where Phase 2 final responses are captured and where the Phase 3 prompt is assembled.",
+        "Append the captured Phase 2 response to the end of the Phase 3 prompt with explicit labeling that it is contextual and does not override Phase 3 instructions.",
+        "Update or add prompt tests to confirm the Phase 2 injection appears at the end and preserves Phase 3-specific guidance.",
+        "Verify prompt assembly output for Phase 3 includes the injection and passes existing validation checks."
+      ],
+      "notes": [
+        "Inject Phase 2 final response into Phase 3 prompt as context-only section.",
+        "Cache Phase 2 final responses and refresh cache after continued sessions.",
+        "Add tests for cache extraction/fallback and phase3 prompt injection; document promptflow tests.",
+        "Ran make ci."
+      ],
+      "request": "Pipe the FINAL response from the Phase 2 agent into the Phase 3 agent. Capture the final Phase 2 response and add it to the end of the Phase 3 prompt. Clearly identify in the Phase 3 prompt that the Phase 2 agent injection is provided for context but it does not override the guidelines and instructions specific to the Phase 3 agent.",
+      "created_at": "2026-01-23T16:02:58Z",
+      "updated_at": "2026-01-23T18:37:57.534932000Z",
+      "completed_at": "2026-01-23T18:37:57.534932000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

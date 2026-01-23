@@ -1,3 +1,5 @@
+//! Prompt flow integration tests.
+
 use ralph::contracts::Config;
 use ralph::promptflow::{self, PromptPolicy};
 use ralph::prompts;
@@ -167,6 +169,7 @@ fn build_phase2_handoff_prompt_contains_required_elements() {
 fn build_phase3_prompt_contains_required_elements() {
     let base = "BASE_PROMPT";
     let review = "CODE REVIEW BODY";
+    let phase2_final = "PHASE 2 FINAL";
     let config = Config::default();
     let policy = PromptPolicy {
         require_repoprompt: true,
@@ -178,6 +181,7 @@ fn build_phase3_prompt_contains_required_elements() {
         &template,
         base,
         review,
+        phase2_final,
         "RQ-0001",
         "CHECKLIST",
         3,
@@ -191,6 +195,7 @@ fn build_phase3_prompt_contains_required_elements() {
     assert!(prompt.contains(prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
     assert!(prompt.contains("PRE-FLIGHT OVERRIDE"));
     assert!(prompt.contains(review));
+    assert!(prompt.contains(phase2_final));
     assert!(prompt.contains("CHECKLIST"));
     assert!(prompt.contains(base));
 }

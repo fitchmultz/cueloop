@@ -655,6 +655,137 @@ fn extract_display_lines(json: &JsonValue) -> Vec<String> {
     lines
 }
 
+pub(super) fn extract_final_assistant_response(stdout: &str) -> Option<String> {
+    let mut final_message: Option<String> = None;
+    let mut streaming_buffer = String::new();
+
+    for line in stdout.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let Some(json) = parse_json_line(line) else {
+            continue;
+        };
+
+        let Some(event_type) = json.get("type").and_then(|t| t.as_str()) else {
+            continue;
+        };
+
+        match event_type {
+            "item.completed" => {
+                if let Some(text) = extract_codex_agent_message(&json) {
+                    final_message = Some(text);
+                    streaming_buffer.clear();
+                }
+            }
+            "assistant" => {
+                if let Some(text) = extract_claude_assistant_text(&json) {
+                    final_message = Some(text);
+                    streaming_buffer.clear();
+                }
+            }
+            "message" => {
+                if let Some(text) = extract_gemini_assistant_text(&json) {
+                    final_message = Some(text);
+                    streaming_buffer.clear();
+                }
+            }
+            "text" => {
+                if let Some(text) = extract_opencode_text(&json) {
+                    if !text.is_empty() {
+                        streaming_buffer.push_str(text);
+                        final_message = Some(streaming_buffer.clone());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    final_message
+}
+
+fn extract_codex_agent_message(json: &JsonValue) -> Option<String> {
+    let item = json.get("item")?;
+    if item.get("type").and_then(|t| t.as_str()) != Some("agent_message") {
+        return None;
+    }
+    let text = item.get("text").and_then(|t| t.as_str())?;
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn extract_claude_assistant_text(json: &JsonValue) -> Option<String> {
+    let message = json.get("message")?;
+    let content = message.get("content")?.as_array()?;
+    let mut parts = Vec::new();
+    for item in content {
+        if item.get("type").and_then(|t| t.as_str()) != Some("text") {
+            continue;
+        }
+        if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+            let trimmed = text.trim();
+            if !trimmed.is_empty() {
+                parts.push(trimmed.to_string());
+            }
+        }
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("\n"))
+    }
+}
+
+fn extract_gemini_assistant_text(json: &JsonValue) -> Option<String> {
+    if json.get("role").and_then(|r| r.as_str()) != Some("assistant") {
+        return None;
+    }
+    let content = json.get("content")?;
+    extract_text_content(content)
+}
+
+fn extract_opencode_text(json: &JsonValue) -> Option<&str> {
+    json.get("part")
+        .and_then(|p| p.get("text"))
+        .and_then(|t| t.as_str())
+}
+
+fn extract_text_content(content: &JsonValue) -> Option<String> {
+    match content {
+        JsonValue::String(text) => {
+            let trimmed = text.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+        JsonValue::Array(items) => {
+            let mut parts = Vec::new();
+            for item in items {
+                if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                    let trimmed = text.trim();
+                    if !trimmed.is_empty() {
+                        parts.push(trimmed.to_string());
+                    }
+                }
+            }
+            if parts.is_empty() {
+                None
+            } else {
+                Some(parts.join("\n"))
+            }
+        }
+        _ => None,
+    }
+}
+
 fn format_codex_tool_line(item: &JsonValue) -> Option<String> {
     let server = item.get("server").and_then(|s| s.as_str());
     let tool = item.get("tool").and_then(|t| t.as_str());
@@ -1308,5 +1439,63 @@ mod tests {
     fn extract_display_lines_unknown_event_is_noop() {
         let payload = json!({"type": "unknown"});
         assert!(extract_display_lines(&payload).is_empty());
+    }
+
+    #[test]
+    fn extract_final_assistant_response_codex_agent_message() {
+        let stdout = concat!(
+            r#"{"type":"item.completed","item":{"type":"agent_message","text":"Draft"}}"#,
+            "\n",
+            r#"{"type":"item.completed","item":{"type":"agent_message","text":"Final answer"}}"#,
+            "\n"
+        );
+        assert_eq!(
+            extract_final_assistant_response(stdout),
+            Some("Final answer".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_final_assistant_response_claude_assistant_message() {
+        let stdout = concat!(
+            r#"{"type":"assistant","message":{"content":[{"type":"text","text":"First line"},{"type":"tool_use","name":"Read"}]}}"#,
+            "\n"
+        );
+        assert_eq!(
+            extract_final_assistant_response(stdout),
+            Some("First line".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_final_assistant_response_gemini_message_assistant() {
+        let stdout = concat!(
+            r#"{"type":"message","role":"assistant","content":[{"text":"Hello"},{"text":"World"}]}"#,
+            "\n"
+        );
+        assert_eq!(
+            extract_final_assistant_response(stdout),
+            Some("Hello\nWorld".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_final_assistant_response_opencode_text_stream() {
+        let stdout = concat!(
+            r#"{"type":"text","part":{"text":"Hello "}}"#,
+            "\n",
+            r#"{"type":"text","part":{"text":"world"}}"#,
+            "\n"
+        );
+        assert_eq!(
+            extract_final_assistant_response(stdout),
+            Some("Hello world".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_final_assistant_response_none_when_missing() {
+        let stdout = concat!(r#"{"type":"tool_use","tool_name":"read"}"#, "\n");
+        assert_eq!(extract_final_assistant_response(stdout), None);
     }
 }

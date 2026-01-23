@@ -183,6 +183,7 @@ pub fn render_worker_phase3_prompt(
     template: &str,
     base_worker_prompt: &str,
     code_review_body: &str,
+    phase2_final_response: &str,
     task_id: &str,
     completion_checklist: &str,
     total_phases: u8,
@@ -195,15 +196,29 @@ pub fn render_worker_phase3_prompt(
         review_body = strip_project_type_guidance(&review_body);
     }
     let repoprompt_block = repoprompt_block(repoprompt_required, false);
+    let safe_phase2_final_response = escape_placeholder_like_text(phase2_final_response.trim());
     let rendered = expanded
         .replace("{{CODE_REVIEW_BODY}}", review_body.trim())
         .replace("{{COMPLETION_CHECKLIST}}", completion_checklist.trim())
+        .replace("{{PHASE2_FINAL_RESPONSE}}", phase2_final_response.trim())
         .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
         .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
         .replace("{{TASK_ID}}", task_id.trim())
         .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
 
-    ensure_no_unresolved_placeholders(&rendered, "worker phase3")?;
+    let rendered_for_validation = expanded
+        .replace("{{CODE_REVIEW_BODY}}", review_body.trim())
+        .replace("{{COMPLETION_CHECKLIST}}", completion_checklist.trim())
+        .replace(
+            "{{PHASE2_FINAL_RESPONSE}}",
+            safe_phase2_final_response.trim(),
+        )
+        .replace("{{BASE_WORKER_PROMPT}}", base_worker_prompt)
+        .replace("{{TOTAL_PHASES}}", &total_phases.to_string())
+        .replace("{{TASK_ID}}", task_id.trim())
+        .replace("{{REPOPROMPT_BLOCK}}", repoprompt_block.trim());
+
+    ensure_no_unresolved_placeholders(&rendered_for_validation, "worker phase3")?;
     Ok(clean_repoprompt_spacing(rendered, repoprompt_required))
 }
 

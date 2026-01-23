@@ -190,6 +190,10 @@ pub fn default_model_for_runner(runner: Runner) -> Model {
     }
 }
 
+pub fn extract_final_assistant_response(stdout: &str) -> Option<String> {
+    execution::extract_final_assistant_response(stdout)
+}
+
 pub fn resolve_model_for_runner(
     runner: Runner,
     override_model: Option<Model>,

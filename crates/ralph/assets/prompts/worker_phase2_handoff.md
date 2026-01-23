@@ -15,6 +15,8 @@ Task status is already set to `doing` by Ralph. Do NOT change it.
 
 ---
 
+Note: Your final response will be passed into Phase 3 as context only. End with a clear, concise final response that Phase 3 can use.
+
 Proceed with the implementation of the plan above. Stop after Phase 2 handoff.
 
 ---

@@ -23,7 +23,7 @@ pub(crate) fn resume_continue_session(
     resolved: &crate::config::Resolved,
     session: &mut ContinueSession,
     message: &str,
-) -> Result<()> {
+) -> Result<crate::runner::RunnerOutput> {
     let Some(session_id) = session.session_id.as_deref() else {
         bail!("Catastrophic: no session id captured; cannot Continue.");
     };
@@ -40,10 +40,10 @@ pub(crate) fn resume_continue_session(
         None,
         session.output_handler.clone(),
     )?;
-    if let Some(new_id) = output.session_id {
-        session.session_id = Some(new_id);
+    if let Some(new_id) = output.session_id.as_ref() {
+        session.session_id = Some(new_id.clone());
     }
-    Ok(())
+    Ok(output)
 }
 
 pub(crate) fn post_run_supervise(

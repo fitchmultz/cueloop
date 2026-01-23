@@ -242,12 +242,13 @@ fn render_worker_phase2_prompt_allows_placeholder_like_plan_text() -> Result<()>
 
 #[test]
 fn render_worker_phase3_prompt_includes_review_and_base() -> Result<()> {
-    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{CODE_REVIEW_BODY}}\n{{COMPLETION_CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
+    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{CODE_REVIEW_BODY}}\n{{COMPLETION_CHECKLIST}}\n{{PHASE2_FINAL_RESPONSE}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
     let config = default_config();
     let rendered = render_worker_phase3_prompt(
         template,
         "BASE\n\n## PROJECT TYPE: CODE\n\nBase Guidance\n",
         "REVIEW\n## PROJECT TYPE: CODE\n\nExtra\n\n## NEXT",
+        "PHASE2 RESPONSE",
         "RQ-0001",
         "CHECKLIST",
         3,
@@ -260,9 +261,30 @@ fn render_worker_phase3_prompt_includes_review_and_base() -> Result<()> {
     assert!(rendered.contains("## NEXT"));
     assert_eq!(rendered.matches("## PROJECT TYPE: CODE").count(), 1);
     assert!(rendered.contains("CHECKLIST"));
+    assert!(rendered.contains("PHASE2 RESPONSE"));
     assert!(rendered.contains("BASE"));
     assert!(rendered.contains("TOOLING REQUIREMENT: RepoPrompt"));
     assert!(!rendered.contains("{{"));
+    Ok(())
+}
+
+#[test]
+fn render_worker_phase3_prompt_allows_placeholder_like_phase2_response() -> Result<()> {
+    let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{CODE_REVIEW_BODY}}\n{{COMPLETION_CHECKLIST}}\n{{PHASE2_FINAL_RESPONSE}}\n{{BASE_WORKER_PROMPT}}\n";
+    let config = default_config();
+    let phase2_text = "See {{config.agent.runner}} for the runner.";
+    let rendered = render_worker_phase3_prompt(
+        template,
+        "BASE",
+        "REVIEW",
+        phase2_text,
+        "RQ-0001",
+        "CHECKLIST",
+        3,
+        false,
+        &config,
+    )?;
+    assert!(rendered.contains(phase2_text));
     Ok(())
 }
 

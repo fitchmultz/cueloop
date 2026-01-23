@@ -181,6 +181,20 @@ fn load_plan_text_for_phase2(
     }
 }
 
+fn load_phase2_final_response_for_phase3(repo_root: &Path, task_id: &str) -> String {
+    match promptflow::read_phase2_final_response_cache(repo_root, task_id) {
+        Ok(text) => text,
+        Err(err) => {
+            log::warn!(
+                "Phase 2 final response cache unavailable for {}: {}",
+                task_id,
+                err
+            );
+            "(Phase 2 final response unavailable; cache missing.)".to_string()
+        }
+    }
+}
+
 pub fn build_worker_prompt(
     resolved: &config::Resolved,
     opts: WorkerPromptOptions,
@@ -268,10 +282,13 @@ pub fn build_worker_prompt(
             )?;
             let completion_checklist = load_completion_checklist()?;
             let phase3_template = prompts::load_worker_phase3_prompt(&resolved.repo_root)?;
+            let phase2_final_response =
+                load_phase2_final_response_for_phase3(&resolved.repo_root, &task_id);
             promptflow::build_phase3_prompt(
                 &phase3_template,
                 &base_prompt,
                 &review_body,
+                &phase2_final_response,
                 &task_id,
                 &completion_checklist,
                 total_phases,
