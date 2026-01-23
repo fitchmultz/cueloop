@@ -3193,6 +3193,44 @@
       "completed_at": "2026-01-23T01:20:36.783527000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0238",
+      "status": "done",
+      "title": "Centralize interactive runner/scan factory setup for TUI and run",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "tui",
+        "refactor",
+        "duplication"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/cli/tui.rs",
+        "crates/ralph/src/cli/"
+      ],
+      "evidence": [
+        "Duplication audit: interactive TUI factory setup duplicated across CLI entrypoints and within handle_run; identical scan settings and factory closures in crates/ralph/src/cli/run.rs and crates/ralph/src/cli/tui.rs."
+      ],
+      "plan": [
+        "Identify the shared inputs (resolved config, overrides, force) used to build scan settings and factories in run and tui handlers.",
+        "Extract a shared helper that returns the runner_factory and scan_factory (and any computed scan settings) used by both entrypoints.",
+        "Update run and tui handlers to call the helper and preserve existing options behavior.",
+        "Add tests covering the shared factory construction path and ensure interactive branches still invoke run/scan with the same arguments."
+      ],
+      "notes": [
+        "Centralized interactive runner/scan factory construction in cli/interactive helper",
+        "Updated run/tui handlers to use shared factories",
+        "Added interactive factory tests and stabilized logging test for empty logger state",
+        "make ci"
+      ],
+      "request": "Read .ralph/cache/reports/duplication_and_consistency_audit.md and create tasks in the queue.json. Make sure to add all available fields, use depends_on, etc. Feel free to combine items in the report into single tasks to be executed together if necessary.",
+      "created_at": "2026-01-23T15:28:48Z",
+      "updated_at": "2026-01-23T15:55:56.201069000Z",
+      "completed_at": "2026-01-23T15:55:56.201069000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

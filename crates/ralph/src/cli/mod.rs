@@ -7,6 +7,7 @@
 pub mod config;
 pub mod doctor;
 pub mod init;
+pub mod interactive;
 pub mod prompt;
 pub mod queue;
 pub mod run;
