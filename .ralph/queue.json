@@ -49,34 +49,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0254",
-      "status": "todo",
-      "title": "Make gitutil upstream tests offline-safe (no external git push)",
-      "priority": "high",
-      "tags": [
-        "tests",
-        "git",
-        "ci"
-      ],
-      "scope": [
-        "crates/ralph/tests/gitutil_test.rs"
-      ],
-      "evidence": [
-        "crates/ralph/tests/gitutil_test.rs: test_upstream_ref_with_upstream pushes to https://github.com/test/test.git and notes it may fail."
-      ],
-      "plan": [
-        "Replace external remote with a local bare repo for upstream setup.",
-        "Update the test to set upstream without network access.",
-        "Verify tests pass in offline/CI environments."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0250",
       "status": "todo",
       "title": "Align queue schema required fields with runtime validation",

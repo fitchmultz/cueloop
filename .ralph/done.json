@@ -4002,6 +4002,41 @@
       "completed_at": "2026-01-24T21:43:05.560748000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0254",
+      "status": "done",
+      "title": "Make gitutil upstream tests offline-safe (no external git push)",
+      "priority": "high",
+      "tags": [
+        "tests",
+        "git",
+        "ci"
+      ],
+      "scope": [
+        "crates/ralph/tests/gitutil_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/tests/gitutil_test.rs: test_upstream_ref_with_upstream pushes to https://github.com/test/test.git and notes it may fail."
+      ],
+      "plan": [
+        "Replace external remote with a local bare repo for upstream setup.",
+        "Update the test to set upstream without network access.",
+        "Verify tests pass in offline/CI environments."
+      ],
+      "notes": [
+        "Replaced external GitHub remote with local bare repo",
+        "Added dynamic branch detection for master/main defaults",
+        "Added protocol.file.allow=always for hardened environments",
+        "All git operations now validated with proper assertions",
+        "Tests pass offline without network access"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T21:55:47.590343000Z",
+      "completed_at": "2026-01-24T21:55:47.590343000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

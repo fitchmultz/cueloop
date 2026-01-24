@@ -484,26 +484,77 @@ fn test_upstream_ref_with_upstream() {
 
     commit_file(&dir, "test.txt", "content", "initial");
 
-    // Create a remote and set upstream
-    Command::new("git")
-        .args([
-            "remote",
-            "add",
-            "origin",
-            "https://github.com/test/test.git",
-        ])
+    // Determine the current branch name (git defaults vary: master vs main).
+    let branch_output = Command::new("git")
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .current_dir(dir.path())
+        .output()
+        .expect("git rev-parse --abbrev-ref HEAD failed");
+    assert!(
+        branch_output.status.success(),
+        "git rev-parse failed: {}",
+        String::from_utf8_lossy(&branch_output.stderr)
+    );
+    let branch = String::from_utf8_lossy(&branch_output.stdout)
+        .trim()
+        .to_string();
+    assert!(
+        !branch.is_empty() && branch != "HEAD",
+        "expected a non-empty branch name, got {:?}",
+        branch
+    );
+
+    // Create a local bare repo to act as `origin` (offline-safe; no network).
+    let bare = TempDir::new().expect("create bare repo dir");
+    let init_bare_output = Command::new("git")
+        .args(["init", "--bare"])
+        .current_dir(bare.path())
+        .output()
+        .expect("git init --bare failed");
+    assert!(
+        init_bare_output.status.success(),
+        "git init --bare failed: {}",
+        String::from_utf8_lossy(&init_bare_output.stderr)
+    );
+
+    let bare_path = bare
+        .path()
+        .to_str()
+        .expect("bare repo path should be valid UTF-8");
+
+    let remote_output = Command::new("git")
+        .args(["remote", "add", "origin", bare_path])
         .current_dir(dir.path())
         .output()
         .expect("git remote add failed");
+    assert!(
+        remote_output.status.success(),
+        "git remote add failed: {}",
+        String::from_utf8_lossy(&remote_output.stderr)
+    );
 
-    Command::new("git")
-        .args(["push", "-u", "origin", "master"])
+    // Push to the local bare repo and set upstream tracking.
+    // Include `protocol.file.allow=always` to avoid failures in hardened environments.
+    let push_output = Command::new("git")
+        .args([
+            "-c",
+            "protocol.file.allow=always",
+            "push",
+            "-u",
+            "origin",
+            branch.as_str(),
+        ])
         .current_dir(dir.path())
         .output()
-        .expect("git push failed (this may fail in tests)");
+        .expect("git push failed");
+    assert!(
+        push_output.status.success(),
+        "git push -u failed: {}",
+        String::from_utf8_lossy(&push_output.stderr)
+    );
 
-    // Note: This test might fail if git push doesn't work in the test environment
-    // We're checking the logic, not the actual push
+    let upstream = gitutil::upstream_ref(dir.path()).expect("upstream_ref should succeed");
+    assert_eq!(upstream, format!("origin/{branch}"));
 }
 
 #[test]
