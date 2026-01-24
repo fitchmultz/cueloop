@@ -2,8 +2,76 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0286",
+      "id": "RQ-0267",
       "status": "todo",
+      "title": "Keep queue tasks plan/evidence/notes up to date as other tasks complete",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "prompts",
+        "agents",
+        "data-integrity"
+      ],
+      "scope": [
+        "crates/ralph/assets/prompts/"
+      ],
+      "evidence": [
+        "User request: 'Determine the best way to keep queue tasks plan/evidence/notes up to date as other tasks are completed to avoid outdated information which could misguide agents.'",
+        "User suggests: 'subtle prompt tweaks during the final review phase in which the task is marked done is likely the best, simplest, safest solution since it sees the completed work.'"
+      ],
+      "plan": [
+        "Read the worker phase prompts (worker.md, worker_phase1.md, worker_phase2.md, worker_phase2_handoff.md, worker_phase3.md, worker_single_phase.md) to understand the current review/complete flow.",
+        "Identify the review phase where tasks are marked done (likely worker_phase3.md or worker_single_phase.md).",
+        "Add prompt guidance to the final review phase: when marking a task done, scan other pending tasks in the queue and update their plan/evidence/notes if the completed work affects their assumptions.",
+        "Focus on subtle, safe nudges: ask the agent to check for obviously stale references without requiring full queue analysis.",
+        "Test the updated prompts to ensure agents actually perform this check during completion."
+      ],
+      "notes": [],
+      "request": "Determine the best way to keep queue tasks plan/evidence/notes up to date as other tasks are completed to avoid outdated information which could misguide agents. Implement the solution, e.g. subtle prompt tweaks during the final review phase in which the task is marked done is likely the best, simplest, safest solution since it sees the completed work.",
+      "created_at": "2026-01-24T16:03:15.000000000Z",
+      "updated_at": "2026-01-24T16:03:15.000000000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0284",
+      "status": "todo",
+      "title": "Auto-send strict CI compliance message to agent on CI gate failures (max 2 retries)",
+      "priority": "high",
+      "tags": [
+        "ci",
+        "supervisor",
+        "agent-communication"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd/phases.rs",
+        "crates/ralph/src/run_cmd/supervision.rs",
+        "crates/ralph/src/runutil.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/run_cmd/phases.rs: CI failure handling calls apply_git_revert_mode which returns RevertOutcome.",
+        "crates/ralph/src/runutil.rs: RevertOutcome::Continue variant carries a message sent to agent via resume_continue_session.",
+        "User request: supervisor should auto-send strict message on CI failure up to 2 times, then prompt user if still failing.",
+        "Current error logged: 'CI failed: <command> exited with code <code>. Fix the linting, type-checking, or test failures before proceeding.'"
+      ],
+      "plan": [
+        "Add a counter tracking CI failure retries per task/phase (stored in ContinueSession or passed through loop).",
+        "When run_ci_gate fails and counter < 2, bypass apply_git_revert_mode and auto-send strict message: 'CI gate failed: <command> exited with an error. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of.'",
+        "Resume the continue session with the strict message, increment retry counter, and continue the loop.",
+        "On 3rd CI failure (counter >= 2), fall through to existing apply_git_revert_mode logic which honors config 'git_revert_mode'.",
+        "Add tests covering: 1st failure sends auto-message, 2nd failure sends auto-message, 3rd failure prompts user.",
+        "Update docs/configuration.md or .ralph/README.md if auto-retry behavior needs documentation."
+      ],
+      "notes": [],
+      "request": "When the supervisor catches the following error \"[2026-01-24T16:52:23Z ERROR ralph::run_cmd::logging] CI gate (make ci): error: CI failed: 'make ci' exited with code Some(2). Fix the linting, type-checking, or test failures before proceeding.\" automatically send the following message back to the agent using the same functionality used for the continue pathway as when a user provides a custom continue message: \"CI gate (make ci): error: CI failed: 'make ci' exited with an error code. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of.\". Obviously replace the 'make ci' command with whatever is configured for the specific project. Allow the supervisor to send this message ONLY when the CI gate error logic is triggered and ONLY send it a maximum of 2 times e.g. the agent fails CI gate, supervisor sends. CI gate fails a second time, supervisor send the message again. Hopefully it doesn't fail a third time but if it does then the user is prompted what to do (keep, revert, continue with custom message).",
+      "created_at": "2025-01-24T17:00:00Z",
+      "updated_at": "2025-01-24T17:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0286",
+      "status": "draft",
       "title": "Split require_repoprompt config into plan_required and tool_injection flags with iteration-aware behavior",
       "priority": "medium",
       "tags": [
@@ -81,42 +149,6 @@
       "request": "Be able to add tasks during a run via 'ralph task'. New tasks are added to the top of the queue as normal EXCEPT if the first task in the queue has a status of 'doing' in which the new task is added directly AFTER the first command, so second in line. Make sure the lock allows this for this specific use case.",
       "created_at": "2026-01-24T18:30:00Z",
       "updated_at": "2026-01-24T18:30:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0284",
-      "status": "todo",
-      "title": "Auto-send strict CI compliance message to agent on CI gate failures (max 2 retries)",
-      "priority": "high",
-      "tags": [
-        "ci",
-        "supervisor",
-        "agent-communication"
-      ],
-      "scope": [
-        "crates/ralph/src/run_cmd/phases.rs",
-        "crates/ralph/src/run_cmd/supervision.rs",
-        "crates/ralph/src/runutil.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/run_cmd/phases.rs: CI failure handling calls apply_git_revert_mode which returns RevertOutcome.",
-        "crates/ralph/src/runutil.rs: RevertOutcome::Continue variant carries a message sent to agent via resume_continue_session.",
-        "User request: supervisor should auto-send strict message on CI failure up to 2 times, then prompt user if still failing.",
-        "Current error logged: 'CI failed: <command> exited with code <code>. Fix the linting, type-checking, or test failures before proceeding.'"
-      ],
-      "plan": [
-        "Add a counter tracking CI failure retries per task/phase (stored in ContinueSession or passed through loop).",
-        "When run_ci_gate fails and counter < 2, bypass apply_git_revert_mode and auto-send strict message: 'CI gate failed: <command> exited with an error. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of.'",
-        "Resume the continue session with the strict message, increment retry counter, and continue the loop.",
-        "On 3rd CI failure (counter >= 2), fall through to existing apply_git_revert_mode logic which honors config 'git_revert_mode'.",
-        "Add tests covering: 1st failure sends auto-message, 2nd failure sends auto-message, 3rd failure prompts user.",
-        "Update docs/configuration.md or .ralph/README.md if auto-retry behavior needs documentation."
-      ],
-      "notes": [],
-      "request": "When the supervisor catches the following error \"[2026-01-24T16:52:23Z ERROR ralph::run_cmd::logging] CI gate (make ci): error: CI failed: 'make ci' exited with code Some(2). Fix the linting, type-checking, or test failures before proceeding.\" automatically send the following message back to the agent using the same functionality used for the continue pathway as when a user provides a custom continue message: \"CI gate (make ci): error: CI failed: 'make ci' exited with an error code. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of.\". Obviously replace the 'make ci' command with whatever is configured for the specific project. Allow the supervisor to send this message ONLY when the CI gate error logic is triggered and ONLY send it a maximum of 2 times e.g. the agent fails CI gate, supervisor sends. CI gate fails a second time, supervisor send the message again. Hopefully it doesn't fail a third time but if it does then the user is prompted what to do (keep, revert, continue with custom message).",
-      "created_at": "2025-01-24T17:00:00Z",
-      "updated_at": "2025-01-24T17:00:00Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -521,38 +553,6 @@
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
       "updated_at": "2026-01-24T16:07:23.268929000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0267",
-      "status": "todo",
-      "title": "Keep queue tasks plan/evidence/notes up to date as other tasks complete",
-      "priority": "medium",
-      "tags": [
-        "queue",
-        "prompts",
-        "agents",
-        "data-integrity"
-      ],
-      "scope": [
-        "crates/ralph/assets/prompts/"
-      ],
-      "evidence": [
-        "User request: 'Determine the best way to keep queue tasks plan/evidence/notes up to date as other tasks are completed to avoid outdated information which could misguide agents.'",
-        "User suggests: 'subtle prompt tweaks during the final review phase in which the task is marked done is likely the best, simplest, safest solution since it sees the completed work.'"
-      ],
-      "plan": [
-        "Read the worker phase prompts (worker.md, worker_phase1.md, worker_phase2.md, worker_phase2_handoff.md, worker_phase3.md, worker_single_phase.md) to understand the current review/complete flow.",
-        "Identify the review phase where tasks are marked done (likely worker_phase3.md or worker_single_phase.md).",
-        "Add prompt guidance to the final review phase: when marking a task done, scan other pending tasks in the queue and update their plan/evidence/notes if the completed work affects their assumptions.",
-        "Focus on subtle, safe nudges: ask the agent to check for obviously stale references without requiring full queue analysis.",
-        "Test the updated prompts to ensure agents actually perform this check during completion."
-      ],
-      "notes": [],
-      "request": "Determine the best way to keep queue tasks plan/evidence/notes up to date as other tasks are completed to avoid outdated information which could misguide agents. Implement the solution, e.g. subtle prompt tweaks during the final review phase in which the task is marked done is likely the best, simplest, safest solution since it sees the completed work.",
-      "created_at": "2026-01-24T16:03:15.000000000Z",
-      "updated_at": "2026-01-24T16:03:15.000000000Z",
       "depends_on": [],
       "custom_fields": {}
     },
