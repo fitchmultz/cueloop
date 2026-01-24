@@ -3881,6 +3881,49 @@
       "completed_at": "2026-01-24T18:34:43.091942000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0284",
+      "status": "done",
+      "title": "Auto-send strict CI compliance message to agent on CI gate failures (max 2 retries)",
+      "priority": "high",
+      "tags": [
+        "ci",
+        "supervisor",
+        "agent-communication"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd/phases.rs",
+        "crates/ralph/src/run_cmd/supervision.rs",
+        "crates/ralph/src/runutil.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/run_cmd/phases.rs: CI failure handling calls apply_git_revert_mode which returns RevertOutcome.",
+        "crates/ralph/src/runutil.rs: RevertOutcome::Continue variant carries a message sent to agent via resume_continue_session.",
+        "User request: supervisor should auto-send strict message on CI failure up to 2 times, then prompt user if still failing.",
+        "Current error logged: 'CI failed: <command> exited with code <code>. Fix the linting, type-checking, or test failures before proceeding.'"
+      ],
+      "plan": [
+        "Add a counter tracking CI failure retries per task/phase (stored in ContinueSession or passed through loop).",
+        "When run_ci_gate fails and counter < 2, bypass apply_git_revert_mode and auto-send strict message: 'CI gate failed: <command> exited with an error. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of.'",
+        "Resume the continue session with the strict message, increment retry counter, and continue the loop.",
+        "On 3rd CI failure (counter >= 2), fall through to existing apply_git_revert_mode logic which honors config 'git_revert_mode'.",
+        "Add tests covering: 1st failure sends auto-message, 2nd failure sends auto-message, 3rd failure prompts user.",
+        "Update docs/configuration.md or .ralph/README.md if auto-retry behavior needs documentation."
+      ],
+      "notes": [
+        "Added ci_failure_retry_count field to ContinueSession to track CI failure retries",
+        "Added strict_ci_gate_compliance_message() with exact message format from task requirement",
+        "Modified run_ci_gate_with_continue() to auto-retry 2 times on CI failure before prompting user",
+        "Added test ci_gate_auto_retries_twice_then_falls_back_to_prompt covering 2 auto-retries + fallback to prompt",
+        "Fixed documentation: removed non-existent ci_gate_auto_retry config field, added clarifying note in docs/configuration.md"
+      ],
+      "request": "When the supervisor catches the following error \"[2026-01-24T16:52:23Z ERROR ralph::run_cmd::logging] CI gate (make ci): error: CI failed: 'make ci' exited with code Some(2). Fix the linting, type-checking, or test failures before proceeding.\" automatically send the following message back to the agent using the same functionality used for the continue pathway as when a user provides a custom continue message: \"CI gate (make ci): error: CI failed: 'make ci' exited with an error code. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of.\". Obviously replace the 'make ci' command with whatever is configured for the specific project. Allow the supervisor to send this message ONLY when the CI gate error logic is triggered and ONLY send it a maximum of 2 times e.g. the agent fails CI gate, supervisor sends. CI gate fails a second time, supervisor send the message again. Hopefully it doesn't fail a third time but if it does then the user is prompted what to do (keep, revert, continue with custom message).",
+      "created_at": "2025-01-24T17:00:00Z",
+      "updated_at": "2026-01-24T20:25:42.062307000Z",
+      "completed_at": "2026-01-24T20:25:42.062307000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

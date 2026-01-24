@@ -5,7 +5,7 @@
 
 use crate::completions;
 use crate::config;
-use crate::contracts::{ProjectType, TaskStatus};
+use crate::contracts::{GitRevertMode, ProjectType, TaskStatus};
 use crate::{gitutil, promptflow, prompts, queue, runner, runutil, timeutil};
 use anyhow::{anyhow, bail, Result};
 use std::path::Path;
@@ -27,7 +27,7 @@ pub struct PhaseInvocation<'a> {
     pub policy: &'a promptflow::PromptPolicy,
     pub output_handler: Option<runner::OutputHandler>,
     pub project_type: ProjectType,
-    pub git_revert_mode: crate::contracts::GitRevertMode,
+    pub git_revert_mode: GitRevertMode,
     pub git_commit_push_enabled: bool,
     pub revert_prompt: Option<runutil::RevertPromptHandler>,
     pub iteration_context: &'a str,
@@ -38,6 +38,20 @@ pub struct PhaseInvocation<'a> {
 }
 
 const PHASE2_FINAL_RESPONSE_FALLBACK: &str = "(Phase 2 final response unavailable.)";
+
+const CI_GATE_AUTO_RETRY_LIMIT: u8 = 2;
+
+fn strict_ci_gate_compliance_message(
+    resolved: &config::Resolved,
+    _attempt: u8,
+    _err: &anyhow::Error,
+) -> String {
+    let cmd = super::supervision::ci_gate_command_label(resolved);
+    format!(
+        r#"CI gate ({}): error: CI failed: '{}' exited with an error code. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of."#,
+        cmd, cmd
+    )
+}
 
 fn cache_phase2_final_response(repo_root: &Path, task_id: &str, stdout: &str) -> Result<()> {
     let phase2_final_response = runner::extract_final_assistant_response(stdout)
@@ -57,12 +71,36 @@ where
         match super::supervision::run_ci_gate(ctx.resolved) {
             Ok(()) => break,
             Err(err) => {
+                // First two failures: bypass user prompting and auto-send a strict compliance message.
+                if continue_session.ci_failure_retry_count < CI_GATE_AUTO_RETRY_LIMIT {
+                    continue_session.ci_failure_retry_count =
+                        continue_session.ci_failure_retry_count.saturating_add(1);
+                    let attempt = continue_session.ci_failure_retry_count;
+
+                    log::warn!(
+                        "CI gate failed; auto-sending strict compliance Continue message to agent (attempt {}/{})",
+                        attempt,
+                        CI_GATE_AUTO_RETRY_LIMIT
+                    );
+
+                    let message = strict_ci_gate_compliance_message(ctx.resolved, attempt, &err);
+                    let output = super::supervision::resume_continue_session(
+                        ctx.resolved,
+                        &mut continue_session,
+                        &message,
+                    )?;
+                    on_resume(&output)?;
+                    continue;
+                }
+
+                // 3rd+ failure: fall back to the existing revert mode behavior.
                 let outcome = runutil::apply_git_revert_mode(
                     &ctx.resolved.repo_root,
                     ctx.git_revert_mode,
                     "CI failure",
                     ctx.revert_prompt.as_ref(),
                 )?;
+
                 match outcome {
                     runutil::RevertOutcome::Continue { message } => {
                         let output = super::supervision::resume_continue_session(
@@ -132,6 +170,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             reasoning_effort: ctx.settings.reasoning_effort,
             session_id: output.session_id.clone(),
             output_handler: ctx.output_handler.clone(),
+            ci_failure_retry_count: 0,
         };
 
         // ENFORCEMENT: Phase 1 must not implement.
@@ -257,6 +296,7 @@ pub fn execute_phase2_implementation(
                 reasoning_effort: ctx.settings.reasoning_effort,
                 session_id: output.session_id.clone(),
                 output_handler: ctx.output_handler.clone(),
+                ci_failure_retry_count: 0,
             };
 
             run_ci_gate_with_continue(ctx, continue_session, |output| {
@@ -322,6 +362,7 @@ pub fn execute_phase2_implementation(
                 reasoning_effort: ctx.settings.reasoning_effort,
                 session_id: output.session_id.clone(),
                 output_handler: ctx.output_handler.clone(),
+                ci_failure_retry_count: 0,
             };
             run_ci_gate_with_continue(ctx, continue_session, |_output| Ok(()))?;
         }
@@ -427,6 +468,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 reasoning_effort: ctx.settings.reasoning_effort,
                 session_id: output.session_id.clone(),
                 output_handler: ctx.output_handler.clone(),
+                ci_failure_retry_count: 0,
             };
             run_ci_gate_with_continue(ctx, continue_session, |_output| Ok(()))?;
             if completions::take_completion_signal(&ctx.resolved.repo_root, ctx.task_id)?.is_some()
@@ -445,6 +487,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             reasoning_effort: ctx.settings.reasoning_effort,
             session_id: output.session_id.clone(),
             output_handler: ctx.output_handler.clone(),
+            ci_failure_retry_count: 0,
         };
 
         loop {
@@ -554,6 +597,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 reasoning_effort: ctx.settings.reasoning_effort,
                 session_id: output.session_id.clone(),
                 output_handler: ctx.output_handler.clone(),
+                ci_failure_retry_count: 0,
             };
             run_ci_gate_with_continue(ctx, continue_session, |_output| Ok(()))?;
         }
@@ -685,6 +729,7 @@ mod tests {
         ReasoningEffort, Runner, Task, TaskPriority, TaskStatus,
     };
     use crate::queue;
+    use crate::run_cmd::supervision::ContinueSession;
     use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1122,6 +1167,97 @@ echo '{"sessionID":"sess-123"}'
         execute_phase3_review(&invocation)?;
 
         assert!(ci_marker.exists(), "expected CI gate command to run");
+        Ok(())
+    }
+
+    #[test]
+    fn ci_gate_auto_retries_twice_then_falls_back_to_prompt() -> Result<()> {
+        let temp = TempDir::new()?;
+
+        let script = format!(
+            r#"#!/bin/sh
+set -e
+count="{root}/resume-count.txt"
+n=0
+if [ -f "$count" ]; then
+  read n < "$count"
+fi
+n=$((n+1))
+echo "$n" > "$count"
+echo '{{"type":"text","part":{{"text":"resume"}}}}'
+echo '{{"sessionID":"sess-123"}}'
+"#,
+            root = temp.path().display()
+        );
+        let runner_path = create_fake_runner(temp.path(), "opencode", &script)?;
+
+        let mut resolved = resolved_for_repo(temp.path().to_path_buf(), &runner_path);
+        resolved.config.agent.ci_gate_enabled = Some(true);
+        resolved.config.agent.ci_gate_command = Some("exit 1".to_string());
+
+        let settings = runner::AgentSettings {
+            runner: Runner::Opencode,
+            model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
+            reasoning_effort: None,
+        };
+        let bins = runner::RunnerBinaries {
+            codex: "codex",
+            opencode: runner_path.to_str().expect("runner path"),
+            gemini: "gemini",
+            claude: "claude",
+        };
+        let policy = promptflow::PromptPolicy {
+            require_repoprompt: false,
+        };
+
+        let prompt_calls = Arc::new(AtomicUsize::new(0));
+        let prompt_handler: runutil::RevertPromptHandler = Arc::new({
+            let prompt_calls = Arc::clone(&prompt_calls);
+            move |_label: &str| {
+                prompt_calls.fetch_add(1, Ordering::SeqCst);
+                runutil::RevertDecision::Keep
+            }
+        });
+
+        let invocation = PhaseInvocation {
+            resolved: &resolved,
+            settings: &settings,
+            bins,
+            task_id: "RQ-0001",
+            base_prompt: "base",
+            policy: &policy,
+            output_handler: None,
+            project_type: ProjectType::Code,
+            git_revert_mode: GitRevertMode::Ask,
+            git_commit_push_enabled: true,
+            revert_prompt: Some(prompt_handler),
+            iteration_context: "",
+            iteration_completion_block: "",
+            phase3_completion_guidance: "",
+            is_final_iteration: false,
+            allow_dirty_repo: true,
+        };
+
+        let continue_session = ContinueSession {
+            runner: Runner::Opencode,
+            model: settings.model.clone(),
+            reasoning_effort: None,
+            session_id: Some("sess-123".to_string()),
+            output_handler: None,
+            ci_failure_retry_count: 0,
+        };
+
+        let err = run_ci_gate_with_continue(&invocation, continue_session, |_output| Ok(()))
+            .expect_err("expected CI gate to fail and eventually fall back to Ask-mode handling");
+
+        let count_path = temp.path().join("resume-count.txt");
+        let count = std::fs::read_to_string(&count_path)?;
+        assert_eq!(count.trim(), "2");
+
+        assert_eq!(prompt_calls.load(Ordering::SeqCst), 1);
+
+        assert!(err.to_string().contains("CI gate failed"));
+
         Ok(())
     }
 }

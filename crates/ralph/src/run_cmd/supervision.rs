@@ -17,6 +17,9 @@ pub(crate) struct ContinueSession {
     pub reasoning_effort: Option<crate::contracts::ReasoningEffort>,
     pub session_id: Option<String>,
     pub output_handler: Option<crate::runner::OutputHandler>,
+    /// Number of automatic "fix CI and rerun" retries already sent for the current CI gate loop.
+    /// Used to auto-enforce CI compliance without prompting for the first N failures.
+    pub ci_failure_retry_count: u8,
 }
 
 pub(crate) fn resume_continue_session(
@@ -364,7 +367,7 @@ pub(super) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<()> {
     })
 }
 
-fn ci_gate_command_label(resolved: &crate::config::Resolved) -> String {
+pub(super) fn ci_gate_command_label(resolved: &crate::config::Resolved) -> String {
     resolved
         .config
         .agent
@@ -512,6 +515,7 @@ mod tests {
             reasoning_effort: None,
             session_id: None,
             output_handler: None,
+            ci_failure_retry_count: 0,
         };
 
         let err = resume_continue_session(&resolved, &mut session, "hello")
