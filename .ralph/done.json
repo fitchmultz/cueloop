@@ -3773,6 +3773,41 @@
       "completed_at": "2026-01-24T16:54:05.841962000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0252",
+      "status": "done",
+      "title": "Dirty repo on runner timeout honor git_revert_mode config",
+      "priority": "high",
+      "tags": [
+        "run",
+        "git",
+        "safety"
+      ],
+      "scope": [
+        "crates/ralph/src/runutil.rs",
+        "crates/ralph/tests/runutil_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/runutil.rs: RunnerError::Timeout branch bails without apply_git_revert_mode.",
+        "crates/ralph/src/runutil.rs: RunnerInvocation.revert_on_error implies runner errors should trigger revert."
+      ],
+      "plan": [
+        "Apply apply_git_revert_mode in the timeout error branch when revert_on_error is true.",
+        "Mirror safeguard dump handling for timeouts if stdout is available.",
+        "Add/adjust tests to assert timeout triggers revert behavior."
+      ],
+      "notes": [
+        "Verified timeout handling already correctly applies git_revert_mode and saves safeguard dumps",
+        "Test timeout_applies_git_revert_mode_and_saves_safeguard_dump_when_stdout_is_available covers the behavior",
+        "CI gate passes (418 tests)"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T17:26:46.946187000Z",
+      "completed_at": "2026-01-24T17:26:46.946187000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

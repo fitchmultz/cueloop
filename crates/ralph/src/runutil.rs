@@ -1,12 +1,13 @@
 //! Shared helpers for runner invocations with consistent error handling.
 
 use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffort, Runner};
+use crate::redaction::redact_text;
 use crate::{fsutil, gitutil, outpututil, runner};
 use anyhow::{bail, Result};
 use std::io::{BufRead, BufReader, IsTerminal, Write};
 use std::path::Path;
 use std::process::Command;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub struct RunnerInvocation<'a> {
@@ -58,9 +59,123 @@ pub enum RevertDecision {
 
 pub type RevertPromptHandler = Arc<dyn Fn(&str) -> RevertDecision + Send + Sync>;
 
-pub fn run_prompt_with_handling<FNonZero, FOther>(
+const TIMEOUT_STDOUT_CAPTURE_MAX_BYTES: usize = 128 * 1024;
+
+trait RunnerBackend {
+    #[allow(clippy::too_many_arguments)]
+    fn run_prompt<'a>(
+        &mut self,
+        runner_kind: Runner,
+        work_dir: &Path,
+        bins: runner::RunnerBinaries<'a>,
+        model: Model,
+        reasoning_effort: Option<ReasoningEffort>,
+        prompt: &str,
+        timeout: Option<Duration>,
+        permission_mode: Option<ClaudePermissionMode>,
+        output_handler: Option<runner::OutputHandler>,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError>;
+
+    #[allow(clippy::too_many_arguments)]
+    fn resume_session<'a>(
+        &mut self,
+        runner_kind: Runner,
+        work_dir: &Path,
+        bins: runner::RunnerBinaries<'a>,
+        model: Model,
+        reasoning_effort: Option<ReasoningEffort>,
+        session_id: &str,
+        message: &str,
+        permission_mode: Option<ClaudePermissionMode>,
+        timeout: Option<Duration>,
+        output_handler: Option<runner::OutputHandler>,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError>;
+}
+
+struct RealRunnerBackend;
+
+impl RunnerBackend for RealRunnerBackend {
+    fn run_prompt<'a>(
+        &mut self,
+        runner_kind: Runner,
+        work_dir: &Path,
+        bins: runner::RunnerBinaries<'a>,
+        model: Model,
+        reasoning_effort: Option<ReasoningEffort>,
+        prompt: &str,
+        timeout: Option<Duration>,
+        permission_mode: Option<ClaudePermissionMode>,
+        output_handler: Option<runner::OutputHandler>,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        runner::run_prompt(
+            runner_kind,
+            work_dir,
+            bins,
+            model,
+            reasoning_effort,
+            prompt,
+            timeout,
+            permission_mode,
+            output_handler,
+        )
+    }
+
+    fn resume_session<'a>(
+        &mut self,
+        runner_kind: Runner,
+        work_dir: &Path,
+        bins: runner::RunnerBinaries<'a>,
+        model: Model,
+        reasoning_effort: Option<ReasoningEffort>,
+        session_id: &str,
+        message: &str,
+        permission_mode: Option<ClaudePermissionMode>,
+        timeout: Option<Duration>,
+        output_handler: Option<runner::OutputHandler>,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        runner::resume_session(
+            runner_kind,
+            work_dir,
+            bins,
+            model,
+            reasoning_effort,
+            session_id,
+            message,
+            permission_mode,
+            timeout,
+            output_handler,
+        )
+    }
+}
+
+fn wrap_output_handler_with_capture(
+    existing: Option<runner::OutputHandler>,
+    max_bytes: usize,
+) -> (Arc<Mutex<String>>, Option<runner::OutputHandler>) {
+    let capture = Arc::new(Mutex::new(String::new()));
+    let capture_for_handler = capture.clone();
+    let existing_for_handler = existing.clone();
+
+    let handler: runner::OutputHandler = Arc::new(Box::new(move |chunk: &str| {
+        if let Ok(mut buf) = capture_for_handler.lock() {
+            buf.push_str(chunk);
+            if buf.len() > max_bytes {
+                let excess = buf.len() - max_bytes;
+                buf.drain(..excess);
+            }
+        }
+        if let Some(existing) = existing_for_handler.as_ref() {
+            (existing)(chunk);
+        }
+    }));
+
+    (capture, Some(handler))
+}
+
+fn run_prompt_with_handling_backend<FNonZero, FOther>(
     invocation: RunnerInvocation<'_>,
     messages: RunnerErrorMessages<'_, FNonZero, FOther>,
+    backend: &mut impl RunnerBackend,
 ) -> Result<runner::RunnerOutput>
 where
     FNonZero: FnOnce(i32) -> String,
@@ -89,7 +204,18 @@ where
         other_msg,
     } = messages;
 
-    let mut result = runner::run_prompt(
+    // Timeout errors do not currently contain stdout. To support safeguard dumps on timeout,
+    // capture streamed output (bounded) when a timeout is configured.
+    let should_capture_timeout_stdout = revert_on_error && timeout.is_some();
+    let (timeout_stdout_capture, effective_output_handler) = if should_capture_timeout_stdout {
+        let (capture, handler) =
+            wrap_output_handler_with_capture(output_handler, TIMEOUT_STDOUT_CAPTURE_MAX_BYTES);
+        (Some(capture), handler)
+    } else {
+        (None, output_handler)
+    };
+
+    let mut result = backend.run_prompt(
         runner_kind,
         repo_root,
         bins,
@@ -98,7 +224,7 @@ where
         prompt,
         timeout,
         permission_mode,
-        output_handler.clone(),
+        effective_output_handler.clone(),
     );
 
     loop {
@@ -119,7 +245,38 @@ where
                 bail!("{message}");
             }
             Err(runner::RunnerError::Timeout) => {
-                bail!("{}", timeout_msg);
+                let mut safeguard_msg = String::new();
+                let message = if revert_on_error {
+                    if let Some(capture) = timeout_stdout_capture.as_ref() {
+                        let captured = capture.lock().map(|buf| buf.clone()).unwrap_or_default();
+                        if !captured.trim().is_empty() {
+                            match fsutil::safeguard_text_dump(
+                                "runner_error",
+                                &redact_text(&captured),
+                            ) {
+                                Ok(path) => {
+                                    safeguard_msg =
+                                        format!("\n(raw stdout saved to {})", path.display());
+                                }
+                                Err(err) => {
+                                    log::warn!("failed to save safeguard dump: {}", err);
+                                }
+                            }
+                        }
+                    }
+
+                    let outcome = apply_git_revert_mode(
+                        repo_root,
+                        git_revert_mode,
+                        log_label,
+                        revert_prompt.as_ref(),
+                    )?;
+                    format_revert_failure_message(timeout_msg, outcome)
+                } else {
+                    timeout_msg.to_string()
+                };
+
+                bail!("{}{}", message, safeguard_msg);
             }
             Err(runner::RunnerError::NonZeroExit {
                 code,
@@ -152,7 +309,12 @@ where
                             let Some(session_id) = session_id.as_deref() else {
                                 bail!("Catastrophic: no session id captured; cannot Continue.");
                             };
-                            result = runner::resume_session(
+                            if let Some(capture) = timeout_stdout_capture.as_ref() {
+                                if let Ok(mut buf) = capture.lock() {
+                                    buf.clear();
+                                }
+                            }
+                            result = backend.resume_session(
                                 runner_kind,
                                 repo_root,
                                 bins,
@@ -162,7 +324,7 @@ where
                                 &message,
                                 permission_mode,
                                 timeout,
-                                output_handler.clone(),
+                                effective_output_handler.clone(),
                             );
                             continue;
                         }
@@ -205,7 +367,12 @@ where
                             let Some(session_id) = session_id.as_deref() else {
                                 bail!("Catastrophic: no session id captured; cannot Continue.");
                             };
-                            result = runner::resume_session(
+                            if let Some(capture) = timeout_stdout_capture.as_ref() {
+                                if let Ok(mut buf) = capture.lock() {
+                                    buf.clear();
+                                }
+                            }
+                            result = backend.resume_session(
                                 runner_kind,
                                 repo_root,
                                 bins,
@@ -215,7 +382,7 @@ where
                                 &message,
                                 permission_mode,
                                 timeout,
-                                output_handler.clone(),
+                                effective_output_handler.clone(),
                             );
                             continue;
                         }
@@ -243,6 +410,18 @@ where
             }
         }
     }
+}
+
+pub fn run_prompt_with_handling<FNonZero, FOther>(
+    invocation: RunnerInvocation<'_>,
+    messages: RunnerErrorMessages<'_, FNonZero, FOther>,
+) -> Result<runner::RunnerOutput>
+where
+    FNonZero: FnOnce(i32) -> String,
+    FOther: FnOnce(runner::RunnerError) -> String,
+{
+    let mut backend = RealRunnerBackend;
+    run_prompt_with_handling_backend(invocation, messages, &mut backend)
 }
 
 pub fn apply_git_revert_mode(
@@ -535,5 +714,127 @@ mod tests {
         );
         let contents = fs::read_to_string(&file_path).expect("read file");
         assert_eq!(contents, "modified");
+    }
+
+    struct TimeoutBackend {
+        emitted: String,
+    }
+
+    impl RunnerBackend for TimeoutBackend {
+        fn run_prompt<'a>(
+            &mut self,
+            _runner_kind: Runner,
+            _work_dir: &Path,
+            _bins: runner::RunnerBinaries<'a>,
+            _model: Model,
+            _reasoning_effort: Option<ReasoningEffort>,
+            _prompt: &str,
+            _timeout: Option<Duration>,
+            _permission_mode: Option<ClaudePermissionMode>,
+            output_handler: Option<runner::OutputHandler>,
+        ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+            if let Some(handler) = output_handler {
+                (handler)(&self.emitted);
+            }
+            Err(runner::RunnerError::Timeout)
+        }
+
+        fn resume_session<'a>(
+            &mut self,
+            _runner_kind: Runner,
+            _work_dir: &Path,
+            _bins: runner::RunnerBinaries<'a>,
+            _model: Model,
+            _reasoning_effort: Option<ReasoningEffort>,
+            _session_id: &str,
+            _message: &str,
+            _permission_mode: Option<ClaudePermissionMode>,
+            _timeout: Option<Duration>,
+            _output_handler: Option<runner::OutputHandler>,
+        ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+            unreachable!("resume_session should not be called for a timeout-only test backend");
+        }
+    }
+
+    #[test]
+    fn timeout_applies_git_revert_mode_and_saves_safeguard_dump_when_stdout_is_available() {
+        let dir = TempDir::new().expect("temp dir");
+        init_git_repo(&dir);
+        commit_file(&dir, "file.txt", "original", "initial");
+
+        let file_path = dir.path().join("file.txt");
+        fs::write(&file_path, "modified").expect("modify file");
+
+        let invocation = RunnerInvocation {
+            repo_root: dir.path(),
+            runner_kind: Runner::Codex,
+            bins: runner::RunnerBinaries {
+                codex: "codex",
+                opencode: "opencode",
+                gemini: "gemini",
+                claude: "claude",
+            },
+            model: Model::Gpt52Codex,
+            reasoning_effort: None,
+            prompt: "test prompt",
+            timeout: Some(Duration::from_millis(10)),
+            permission_mode: None,
+            revert_on_error: true,
+            git_revert_mode: GitRevertMode::Enabled,
+            output_handler: None,
+            revert_prompt: None,
+        };
+
+        let messages = RunnerErrorMessages {
+            log_label: "timeout_test",
+            interrupted_msg: "interrupted",
+            timeout_msg: "timed out",
+            terminated_msg: "terminated",
+            non_zero_msg: |_| "non-zero".to_string(),
+            other_msg: |_| "other".to_string(),
+        };
+
+        let mut backend = TimeoutBackend {
+            emitted: "hello from runner before timeout\n".to_string(),
+        };
+
+        let err = run_prompt_with_handling_backend(invocation, messages, &mut backend).unwrap_err();
+        let msg = format!("{err:#}");
+
+        assert!(msg.contains("timed out"));
+        assert!(msg.contains("Uncommitted changes were reverted."));
+        assert!(msg.contains("raw stdout saved to"));
+
+        // Verify repo clean + file reverted.
+        let reverted = fs::read_to_string(&file_path).expect("read file after revert");
+        assert_eq!(reverted, "original");
+
+        let status = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(dir.path())
+            .output()
+            .expect("git status --porcelain");
+        assert!(
+            String::from_utf8_lossy(&status.stdout).trim().is_empty(),
+            "expected clean repo after timeout revert"
+        );
+
+        // Verify safeguard file exists and contains our emitted output.
+        let marker = "raw stdout saved to ";
+        let start = msg
+            .find(marker)
+            .map(|idx| idx + marker.len())
+            .expect("find dump path prefix");
+        let tail = &msg[start..];
+        let end = tail.find(')').unwrap_or(tail.len());
+        let path_str = tail[..end].trim();
+
+        let dump = std::path::Path::new(path_str);
+        assert!(
+            dump.is_file(),
+            "expected safeguard dump to exist: {path_str}"
+        );
+        let dump_contents = fs::read_to_string(dump).expect("read safeguard dump");
+        assert!(dump_contents.contains("hello from runner before timeout"));
     }
 }

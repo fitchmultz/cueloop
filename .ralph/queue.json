@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0252",
-      "status": "todo",
-      "title": "Dirty repo on runner timeout honor git_revert_mode config",
-      "priority": "high",
-      "tags": [
-        "run",
-        "git",
-        "safety"
-      ],
-      "scope": [
-        "crates/ralph/src/runutil.rs",
-        "crates/ralph/tests/runutil_test.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/runutil.rs: RunnerError::Timeout branch bails without apply_git_revert_mode.",
-        "crates/ralph/src/runutil.rs: RunnerInvocation.revert_on_error implies runner errors should trigger revert."
-      ],
-      "plan": [
-        "Apply apply_git_revert_mode in the timeout error branch when revert_on_error is true.",
-        "Mirror safeguard dump handling for timeouts if stdout is available.",
-        "Add/adjust tests to assert timeout triggers revert behavior."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T15:35:23.306798000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0253",
       "status": "todo",
       "title": "Use porcelain -z parsing for git status to handle spaces/renames safely",
