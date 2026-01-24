@@ -75,6 +75,16 @@ fn render_task_builder_prompt_allows_placeholder_like_request() -> Result<()> {
 }
 
 #[test]
+fn repoprompt_planning_instruction_mentions_preflight_and_parity() {
+    let instruction = REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION;
+    assert!(instruction.contains("RepoPrompt produces a plan, but you own its correctness"));
+    assert!(instruction.contains("quick repo reality check"));
+    assert!(instruction.contains("Parity rule"));
+    assert!(instruction.contains("append; do NOT replace the selection"));
+    assert!(instruction.contains("provided chat ID"));
+}
+
+#[test]
 fn load_worker_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
     let dir = TempDir::new()?;
     let prompt = load_worker_prompt(dir.path())?;

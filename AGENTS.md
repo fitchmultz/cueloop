@@ -49,6 +49,10 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
   - Project: `.ralph/config.json` (overrides global)
 - CLI flags can override at runtime; they should not be relied on as persisted config.
 - **RepoPrompt**: When `agent.require_repoprompt: true` (or `--rp-on`), agents MUST use RepoPrompt tools (`read_file`, `context_builder`, etc.).
+- **RepoPrompt responsibility**: RepoPrompt produces the plan, but the agent owns correctness. If the plan conflicts with repo reality, fix it before writing the plan to `.ralph/cache/plans/<TASK_ID>.md`.
+- **RepoPrompt preflight**: Before invoking `context_builder`, perform a quick repo reality check (validate task assumptions + identify relevant files) and include those findings in the `context_builder` instructions.
+- **Selection hygiene**: If `context_builder` misses key files, append them to the selection (do NOT replace selection) and ask a follow-up before finalizing the plan.
+- **Entry-point parity**: If multiple user-facing entrypoints exist (CLI/API/UI/scripts), implement parity rather than downgrading requirements or docs.
 
 ## Documentation Maintenance
 - When config defaults, schemas, CLI flags, or task fields change, update `docs/` and keep examples in sync with the source of truth.

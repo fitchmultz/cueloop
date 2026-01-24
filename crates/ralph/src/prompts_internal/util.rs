@@ -19,9 +19,16 @@ You are running in a RepoPrompt-enabled environment. You MUST use the available 
 pub const REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION: &str = r#"
 ## PLANNING REQUIREMENT: Use context_builder and write the plan to the cache
 To generate the plan, you MUST use the `context_builder` tool.
-1. Provide an extensively detailed `instructions` argument to `context_builder` that describes the CURRENT TASK (use the task context provided in the prompt; do not pick another task).
-2. MANDATORY: set `response_type` to "plan". The `context_builder` MUST be executed with a plan requested as the response type.
-3. VERBATIM FILE WRITE: Once `context_builder` returns, you MUST write its plan content EXACTLY AS-IS (with zero edits, summarization, or reformatting) to the plan cache file specified in the prompt.
+1. BEFORE invoking `context_builder`, do a quick repo reality check using the available tools:
+   - Validate key assumptions in the task/evidence/plan/notes (e.g., referenced commands, entrypoints, files, features).
+   - Identify the most relevant files and any capability gaps or parity needs across user-facing entrypoints (CLI/API/UI/scripts).
+   - Feed these findings and file paths into the `context_builder` instructions along with the task context.
+2. Provide an extensively detailed `instructions` argument to `context_builder` that describes the CURRENT TASK (use the task provided in the prompt; do not pick another task).
+3. MANDATORY: set `response_type` to "plan". The `context_builder` MUST be executed with a plan requested as the response type.
+4. RepoPrompt produces a plan, but you own its correctness. If the plan contradicts repo reality, you must correct it before writing the plan to the mandated file path. Do this by adjusting the plan based on your findings and/or asking follow-ups via the provided chat ID.
+5. If you need a follow-up: first review the current Repo Prompt file selection, append (add) missing files (do NOT replace selection), then ask the follow-up in the same chat context using the chat ID returned via the context_builder tool. Use the Repo Prompt manage selection add/append tool in your harness (for example, a `manage_selection` tool with `op=add`), not a tool that replaces the selection.
+6. Parity rule: if the repo exposes multiple user-facing entrypoints (CLI/API/UI/scripts), prefer parity over downgrading requirements or docs. Adjust the plan to implement the missing capability rather than changing the plan to fit a gap. If only one entrypoint exists, ignore this rule.
+7. FINAL PLAN WRITE: Write the final plan to the mandated file path using verbatim content from the RepoPrompt plan response, except for refinements you deem necessary and/or changes established via follow-up messages with the RepoPrompt chat planner.
 
 ## OUTPUT FORMAT (MANDATORY)
 - Do NOT print the plan in your reply.
