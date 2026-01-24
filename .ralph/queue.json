@@ -1,4 +1,526 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0265",
+      "status": "todo",
+      "title": "Add the 'ralph task' CLI functionality to the TUI (or document if already present)",
+      "priority": "medium",
+      "tags": [],
+      "scope": [],
+      "evidence": [],
+      "plan": [],
+      "notes": [],
+      "created_at": "2026-01-24T15:38:04.993305000Z",
+      "updated_at": "2026-01-24T15:41:48.743297000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0266",
+      "status": "todo",
+      "title": "Make reordering tasks in the queue easier by adding functionality to the TUI",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "tasks",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/mod.rs: TUI does not have a way to reorder tasks in the queue."
+      ],
+      "plan": [
+        "Add a TUI action that allows the user to reorder tasks in the queue.",
+        "Add tests covering successful task reordering and validation/error cases for the new TUI action.",
+        "Task order is determined top-down from the queue.json file. Move tasks around easily via arrow keys."
+      ],
+      "notes": [],
+      "created_at": "2026-01-24T15:39:45.873331000Z",
+      "updated_at": "2026-01-24T15:39:45.873331000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0249",
+      "status": "draft",
+      "title": "Allow rejected dependencies to unblock runnable tasks (or update docs/tests to match)",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "dependencies",
+        "behavior"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations/query.rs",
+        "crates/ralph/src/queue/operations/tests.rs",
+        "crates/ralph/src/cli/queue.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs: StatusArg::Rejected doc comment says dependents can proceed.",
+        "crates/ralph/src/queue/operations/query.rs: are_dependencies_met only treats TaskStatus::Done as satisfied.",
+        "crates/ralph/src/queue/operations/tests.rs: test_next_runnable_task_skips_rejected_dep asserts rejected dependency blocks."
+      ],
+      "plan": [
+        "Decide final dependency policy for rejected tasks (treat rejected as satisfied and undesired by the project owner).",
+        "Update are_dependencies_met and runnable selection logic to match the policy.",
+        "Adjust tests/docs to match the new behavior and run queue tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0250",
+      "status": "todo",
+      "title": "Align queue schema required fields with runtime validation",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "schema",
+        "validation"
+      ],
+      "scope": [
+        "schemas/queue.schema.json",
+        "crates/ralph/src/queue/validation.rs",
+        "docs/queue-and-tasks.md"
+      ],
+      "evidence": [
+        "schemas/queue.schema.json: Task.required lists only id and title.",
+        "crates/ralph/src/queue/validation.rs: validate_task_required_fields errors on missing created_at/updated_at.",
+        "docs/queue-and-tasks.md: required field list includes created_at/updated_at/tags/scope/evidence/plan/notes."
+      ],
+      "plan": [
+        "Update queue.schema.json required list to match validation requirements.",
+        "Adjust schema alignment tests (e.g., schema_alignment_test.rs) if they assert the old schema.",
+        "Confirm docs/queue-and-tasks.md matches the updated schema and validation behavior."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0251",
+      "status": "todo",
+      "title": "Enforce done.json to contain only done/rejected tasks",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "validation",
+        "data-integrity"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/operations/archive.rs",
+        ".ralph/README.md"
+      ],
+      "evidence": [
+        ".ralph/README.md: done.json is described as the archive of completed tasks.",
+        "crates/ralph/src/queue/validation.rs: validate_queue_set uses validate_queue on done without enforcing terminal status.",
+        "crates/ralph/src/queue/operations/archive.rs: archive only moves done/rejected into done.json (implies terminal-only)."
+      ],
+      "plan": [
+        "Add validation for done.json to allow only done/rejected statuses.",
+        "Add tests for invalid done.json statuses and ensure queue validate fails appropriately.",
+        "Update docs/README if wording needs to reflect the enforcement."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0252",
+      "status": "todo",
+      "title": "Dirty repo on runner timeout honor git_revert_mode config",
+      "priority": "high",
+      "tags": [
+        "run",
+        "git",
+        "safety"
+      ],
+      "scope": [
+        "crates/ralph/src/runutil.rs",
+        "crates/ralph/tests/runutil_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/runutil.rs: RunnerError::Timeout branch bails without apply_git_revert_mode.",
+        "crates/ralph/src/runutil.rs: RunnerInvocation.revert_on_error implies runner errors should trigger revert."
+      ],
+      "plan": [
+        "Apply apply_git_revert_mode in the timeout error branch when revert_on_error is true.",
+        "Mirror safeguard dump handling for timeouts if stdout is available.",
+        "Add/adjust tests to assert timeout triggers revert behavior."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T15:35:23.306798000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0253",
+      "status": "todo",
+      "title": "Use porcelain -z parsing for git status to handle spaces/renames safely",
+      "priority": "high",
+      "tags": [
+        "git",
+        "robustness"
+      ],
+      "scope": [
+        "crates/ralph/src/gitutil.rs",
+        "crates/ralph/tests/gitutil_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/gitutil.rs: status_porcelain runs `git status --porcelain` and parse_status_path splits on ' -> '.",
+        "crates/ralph/src/gitutil.rs: parse_status_path relies on whitespace-delimited lines, which is brittle for quoted paths."
+      ],
+      "plan": [
+        "Switch to `git status --porcelain -z` and parse NUL-delimited entries (including renames).",
+        "Update status_paths/parse_status_path logic to handle rename pairs and spaces reliably.",
+        "Add tests for paths with spaces and rename output."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0254",
+      "status": "todo",
+      "title": "Make gitutil upstream tests offline-safe (no external git push)",
+      "priority": "high",
+      "tags": [
+        "tests",
+        "git",
+        "ci"
+      ],
+      "scope": [
+        "crates/ralph/tests/gitutil_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/tests/gitutil_test.rs: test_upstream_ref_with_upstream pushes to https://github.com/test/test.git and notes it may fail."
+      ],
+      "plan": [
+        "Replace external remote with a local bare repo for upstream setup.",
+        "Update the test to set upstream without network access.",
+        "Verify tests pass in offline/CI environments."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0255",
+      "status": "todo",
+      "title": "Fix prune keep-last logic to handle duplicate IDs (rejected tasks)",
+      "priority": "medium",
+      "tags": [
+        "queue",
+        "prune"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/prune.rs",
+        "crates/ralph/src/queue/validation.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/prune.rs: keep_last uses HashSet of task IDs to protect tasks.",
+        "crates/ralph/src/queue/validation.rs: rejected tasks are skipped in duplicate detection, allowing duplicate IDs.",
+        "keep_last currently can keep more than N tasks when IDs repeat."
+      ],
+      "plan": [
+        "Change keep_last protection to track task indices instead of IDs.",
+        "Add tests with duplicate IDs to ensure keep_last respects count.",
+        "Verify prune reports remain accurate after change."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0256",
+      "status": "todo",
+      "title": "Allow require_clean_repo_ignoring_paths to ignore directory prefixes",
+      "priority": "medium",
+      "tags": [
+        "git",
+        "run",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/gitutil.rs",
+        "crates/ralph/src/run_cmd/phases.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/gitutil.rs: path_is_allowed only matches exact file paths.",
+        "crates/ralph/src/run_cmd/phases.rs: allowed paths are assembled for plan-only enforcement, but directory ignores are not supported."
+      ],
+      "plan": [
+        "Update path_is_allowed to treat allowed entries that end with '/' (or are directories) as prefix matches.",
+        "Add tests for nested paths under allowed directories.",
+        "Update callers (if needed) to pass directory prefixes for cache paths."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0257",
+      "status": "todo",
+      "title": "Fix burndown chart for zero-task windows and zero counts",
+      "priority": "medium",
+      "tags": [
+        "reports",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/reports.rs",
+        "crates/ralph/tests/queue_stats_history_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/reports.rs: print_burndown uses bar_len.max(1) so zero counts still show a bar.",
+        "crates/ralph/src/reports.rs: max_count can be 0, leading to divide-by-zero/NaN in bar_len calculation."
+      ],
+      "plan": [
+        "Handle max_count == 0 with a clear message and early return.",
+        "Remove bar_len.max(1) so zero counts render as empty bars.",
+        "Add tests for empty/zero-task burndown output."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0258",
+      "status": "todo",
+      "title": "Add JSON output option for queue stats/history/burndown",
+      "priority": "medium",
+      "tags": [
+        "reports",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/reports.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs: QueueStatsArgs/QueueHistoryArgs/QueueBurndownArgs have no format option.",
+        "crates/ralph/src/reports.rs: report functions print text-only output."
+      ],
+      "plan": [
+        "Add --format (text|json) flags to stats/history/burndown CLI args.",
+        "Implement JSON structs/serialization in reports.rs.",
+        "Update docs and tests to cover JSON output."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0259",
+      "status": "todo",
+      "title": "Remove install side effects from make ci or gate it",
+      "priority": "medium",
+      "tags": [
+        "makefile",
+        "ci",
+        "workflow"
+      ],
+      "scope": [
+        "Makefile",
+        "docs/workflow.md",
+        "README.md"
+      ],
+      "evidence": [
+        "Makefile: ci target includes install.",
+        "Makefile: install writes to ~/.local/bin and runs the binary, causing side effects in CI."
+      ],
+      "plan": [
+        "Move install out of make ci or add a guard/flag to skip it in CI.",
+        "Update docs to reflect the new ci behavior.",
+        "Verify make ci still runs the full quality gate without writing to user bin."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0260",
+      "status": "todo",
+      "title": "Expand make clean to remove repo temp/lock artifacts",
+      "priority": "medium",
+      "tags": [
+        "makefile",
+        "cleanup"
+      ],
+      "scope": [
+        "Makefile",
+        ".ralph/"
+      ],
+      "evidence": [
+        "Makefile: clean only runs cargo clean and deletes *.log files.",
+        "Repo creates .ralph/cache and .ralph/lock directories that are not removed by clean."
+      ],
+      "plan": [
+        "Extend make clean to remove .ralph/cache, .ralph/lock, and other temp artifacts.",
+        "Ensure clean remains safe (do not delete user config or secrets).",
+        "Update any docs if clean behavior changes."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0261",
+      "status": "todo",
+      "title": "Document full `ralph queue` subcommands in docs/cli.md",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "cli"
+      ],
+      "scope": [
+        "docs/cli.md",
+        "crates/ralph/src/cli/queue.rs"
+      ],
+      "evidence": [
+        "docs/cli.md queue section mentions validate/list/search only.",
+        "crates/ralph/src/cli/queue.rs defines prune/repair/unlock/sort/stats/history/burndown commands."
+      ],
+      "plan": [
+        "Add sections for prune/repair/unlock/sort/stats/history/burndown with brief descriptions.",
+        "Include examples aligned with CLI help output.",
+        "Review docs/cli.md for any other missing queue flags."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0262",
+      "status": "todo",
+      "title": "Document --include-draft for run one/loop in docs/cli.md",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "run"
+      ],
+      "scope": [
+        "docs/cli.md",
+        "crates/ralph/src/cli/run.rs"
+      ],
+      "evidence": [
+        "docs/cli.md run section does not mention --include-draft.",
+        "crates/ralph/src/cli/run.rs help/examples include --include-draft."
+      ],
+      "plan": [
+        "Add --include-draft description to run documentation.",
+        "Add example commands for run one/loop with draft inclusion.",
+        "Ensure docs match CLI help wording."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0263",
+      "status": "todo",
+      "title": "Clarify --force behavior for dirty-repo bypass in run/scan",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "safety"
+      ],
+      "scope": [
+        "docs/cli.md",
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/scan_cmd.rs"
+      ],
+      "evidence": [
+        "docs/cli.md describes --force only for stale locks.",
+        "crates/ralph/src/run_cmd.rs and crates/ralph/src/scan_cmd.rs pass force to require_clean_repo_ignoring_paths."
+      ],
+      "plan": [
+        "Update docs/cli.md to note --force bypasses clean-repo checks for run/scan.",
+        "Consider adding a warning note in CLI help text.",
+        "Verify documentation aligns with actual behavior."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0264",
+      "status": "todo",
+      "title": "Normalize tag casing in stats tag breakdown",
+      "priority": "low",
+      "tags": [
+        "reports",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/reports.rs",
+        "crates/ralph/tests/queue_stats_history_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/reports.rs: print_stats lowercases tags for filtering but counts tags using original casing."
+      ],
+      "plan": [
+        "Normalize tags to lower-case when aggregating tag_counts.",
+        "Update any tests that assert tag breakdown output.",
+        "Ensure output remains stable for mixed-case tags."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-24T12:40:25Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
