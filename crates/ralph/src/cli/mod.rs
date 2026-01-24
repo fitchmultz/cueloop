@@ -328,4 +328,143 @@ mod tests {
             _ => panic!("expected tui command"),
         }
     }
+
+    #[test]
+    fn cli_parses_run_loop_interactive_with_max_tasks() {
+        let cli =
+            Cli::try_parse_from(["ralph", "run", "loop", "-i", "--max-tasks", "3"]).expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::Loop(args) => {
+                    assert!(args.interactive);
+                    assert_eq!(args.max_tasks, 3);
+                }
+                _ => panic!("expected run loop command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_run_one_interactive_with_runner_override() {
+        let cli = Cli::try_parse_from([
+            "ralph", "run", "one", "-i", "--runner", "opencode", "--model", "gpt-5.2",
+        ])
+        .expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::One(args) => {
+                    assert!(args.interactive);
+                    assert_eq!(args.agent.runner.as_deref(), Some("opencode"));
+                    assert_eq!(args.agent.model.as_deref(), Some("gpt-5.2"));
+                }
+                _ => panic!("expected run one command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_tui_with_agent_overrides() {
+        let cli = Cli::try_parse_from(["ralph", "tui", "--runner", "claude", "--model", "opus"])
+            .expect("parse");
+        match cli.command {
+            Command::Tui(tui::TuiArgs { read_only, agent }) => {
+                assert!(!read_only);
+                assert_eq!(agent.runner.as_deref(), Some("claude"));
+                assert_eq!(agent.model.as_deref(), Some("opus"));
+            }
+            _ => panic!("expected tui command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_tui_read_only_with_agent_overrides() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "tui",
+            "--read-only",
+            "--runner",
+            "opencode",
+            "--model",
+            "gpt-5.2",
+        ])
+        .expect("parse");
+        match cli.command {
+            Command::Tui(tui::TuiArgs { read_only, agent }) => {
+                assert!(read_only);
+                assert_eq!(agent.runner.as_deref(), Some("opencode"));
+                assert_eq!(agent.model.as_deref(), Some("gpt-5.2"));
+            }
+            _ => panic!("expected tui command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_run_one_interactive_with_include_draft() {
+        let cli =
+            Cli::try_parse_from(["ralph", "run", "one", "-i", "--include-draft"]).expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::One(args) => {
+                    assert!(args.interactive);
+                    assert!(args.agent.include_draft);
+                }
+                _ => panic!("expected run one command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
+
+    #[test]
+    fn cli_rejects_run_loop_with_id_flag() {
+        let err = Cli::try_parse_from(["ralph", "run", "loop", "--id", "RQ-0001"])
+            .err()
+            .expect("parse failure");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected") || msg.contains("unrecognized") || msg.contains("unknown"),
+            "unexpected error: {msg}"
+        );
+    }
+
+    #[test]
+    fn cli_parses_tui_with_rp_on() {
+        let cli = Cli::try_parse_from(["ralph", "tui", "--rp-on"]).expect("parse");
+        match cli.command {
+            Command::Tui(tui::TuiArgs { agent, .. }) => {
+                assert!(agent.rp_on);
+                assert!(!agent.rp_off);
+            }
+            _ => panic!("expected tui command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_tui_with_rp_off() {
+        let cli = Cli::try_parse_from(["ralph", "tui", "--rp-off"]).expect("parse");
+        match cli.command {
+            Command::Tui(tui::TuiArgs { agent, .. }) => {
+                assert!(!agent.rp_on);
+                assert!(agent.rp_off);
+            }
+            _ => panic!("expected tui command"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_run_one_interactive_with_phases() {
+        let cli =
+            Cli::try_parse_from(["ralph", "run", "one", "-i", "--phases", "2"]).expect("parse");
+        match cli.command {
+            Command::Run(run::RunArgs { command }) => match command {
+                run::RunCommand::One(args) => {
+                    assert!(args.interactive);
+                    assert_eq!(args.agent.phases, Some(2));
+                }
+                _ => panic!("expected run one command"),
+            },
+            _ => panic!("expected run command"),
+        }
+    }
 }

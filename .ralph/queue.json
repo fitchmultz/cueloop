@@ -1,34 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0230",
-      "status": "todo",
-      "title": "Add CLI parse tests for TUI entrypoint and interactive flags",
-      "priority": "low",
-      "tags": [
-        "tests",
-        "cli",
-        "tui"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/mod.rs",
-        "crates/ralph/src/cli/run.rs"
-      ],
-      "evidence": [
-        "Only a single interactive-related test exists (`cli_rejects_run_one_id_with_interactive`) in `crates/ralph/src/cli/mod.rs`; there are no tests ensuring valid `-i` paths parse correctly."
-      ],
-      "plan": [
-        "Add CLI parsing tests for `ralph run one -i` and `ralph run loop -i`.",
-        "If a new TUI subcommand is added, add parse tests for it.",
-        "Ensure tests cover negative and positive interactive cases."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-22T02:50:11Z",
-      "updated_at": "2026-01-23T01:20:51.862723000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }
