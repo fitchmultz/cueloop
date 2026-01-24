@@ -2498,7 +2498,7 @@ mod tests {
         assert_eq!(app.queue.tasks[0].status, TaskStatus::Rejected);
         assert_eq!(
             app.queue.tasks[0].completed_at.as_deref(),
-            Some("2026-01-20T12:00:00Z")
+            Some("2026-01-19T00:00:00Z")
         );
         assert_eq!(
             app.queue.tasks[0].updated_at.as_deref(),

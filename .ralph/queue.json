@@ -2,44 +2,9 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0287",
-      "status": "todo",
-      "title": "Auto-update missing completed_at timestamp when tasks are marked done",
-      "priority": "critical",
-      "tags": [
-        "queue",
-        "supervisor",
-        "validation",
-        "bug"
-      ],
-      "scope": [
-        "crates/ralph/src/run_cmd/supervision.rs",
-        "crates/ralph/src/queue/validation.rs",
-        "crates/ralph/src/queue/operations/mutation.rs"
-      ],
-      "evidence": [
-        "Error: 'Missing completed_at: task RQ-0061 (index 0) is in status 'Done' but missing 'completed_at'. Add a valid RFC3339 timestamp.'",
-        "User request: 'The supervisor should automatically update the missing timestamp to avoid breaking the entire loop.'",
-        "The validation in queue/validation.rs enforces completed_at for done tasks, but the completion pathway may not set it automatically."
-      ],
-      "plan": [
-        "Identify where task status is set to 'Done' (likely in supervision.rs or task completion flow).",
-        "Add automatic completed_at timestamp injection when status transitions to 'Done' and the field is missing.",
-        "Ensure the timestamp uses RFC3339 format (e.g., use chrono::Utc::now().to_rfc3339()).",
-        "Add tests covering: done without completed_at gets auto-filled, done with existing completed_at is preserved.",
-        "Verify the run loop continues successfully after auto-correction."
-      ],
-      "notes": [],
-      "request": "Fix this. The supervisor should automatically update the missing timestamp to avoid breaking the entire loop.",
-      "created_at": "2026-01-24T17:40:00Z",
-      "updated_at": "2026-01-24T17:40:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0286",
       "status": "todo",
-      "title": "Split require_repoprompt config into separate plan_required and tool_injection flags",
+      "title": "Split require_repoprompt config into plan_required and tool_injection flags with iteration-aware behavior",
       "priority": "medium",
       "tags": [
         "config",
@@ -49,6 +14,7 @@
       "scope": [
         "crates/ralph/src/contracts.rs",
         "crates/ralph/src/run_cmd/phases.rs",
+        "crates/ralph/src/run_cmd.rs",
         "crates/ralph/src/promptflow.rs",
         "schemas/config.schema.json",
         "docs/configuration.md"
@@ -56,22 +22,29 @@
       "evidence": [
         "crates/ralph/src/contracts.rs:108: require_repoprompt is a single Option<bool> field in AgentConfig.",
         "docs/configuration.md:28: require_repoprompt is documented as a single boolean flag.",
-        "User request: Separate into 'repoprompt_plan_required' (injects context_builder planning instructions) and 'repoprompt_tool_injection' (only injects tooling reminders)."
+        "crates/ralph/src/run_cmd.rs:286-334: Multiple iterations are handled in a loop, with is_followup = iteration_index > 1.",
+        "crates/ralph/src/promptflow.rs:92-112: build_phase1_prompt receives policy.require_repoprompt and passes it to render_worker_phase1_prompt.",
+        "User request: Separate into 'repoprompt_plan_required' (injects context_builder planning instructions) and 'repoprompt_tool_injection' (only injects tooling reminders).",
+        "User request: When multiple iterations are enabled, do NOT honor 'repoprompt_plan_required' config for phase 1 of subsequent iterations (only include it in the first iteration). DO honor 'repoprompt_tool_injection' config for all iterations."
       ],
       "plan": [
         "Add two new fields to AgentConfig in contracts.rs: repoprompt_plan_required (Option<bool>) and repoprompt_tool_injection (Option<bool>).",
         "Update AgentConfig::merge_from to merge the new fields.",
         "Update Config::default() in contracts.rs to set appropriate defaults for both new fields.",
         "Update the schema (schemas/config.schema.json) to include the two new fields.",
-        "Find all usages of require_repoprompt in promptflow.rs and run_cmd/phases.rs and update logic to use the new flags appropriately.",
-        "Add tests covering: both flags true, only plan_required true, only tool_injection true, both false.",
-        "Update docs/configuration.md to document the new separate flags.",
+        "Update PromptPolicy in promptflow.rs to have separate fields: repoprompt_plan_required and repoprompt_tool_injection.",
+        "Update run_cmd.rs to create PromptPolicy with both flags, checking iteration context (is_followup) when building phase 1 prompts.",
+        "Modify build_phase1_prompt in promptflow.rs to accept iteration context (is_followup) and conditionally exclude repoprompt_plan_required for followup iterations while always including repoprompt_tool_injection.",
+        "Update execute_phase1_planning in phases.rs to pass is_followup context to build_phase1_prompt.",
+        "Find all other usages of require_repoprompt in promptflow.rs and run_cmd/phases.rs and update logic to use the new flags appropriately (repoprompt_tool_injection for all phases, repoprompt_plan_required only for first iteration phase 1).",
+        "Add tests covering: both flags true, only plan_required true, only tool_injection true, both false, and iteration-specific behavior (plan_required excluded in followup iterations).",
+        "Update docs/configuration.md to document the new separate flags and iteration-specific behavior.",
         "Deprecate but keep require_repoprompt for backward compatibility, mapping it to repoprompt_plan_required for migration."
       ],
       "notes": [],
-      "request": "Separate the repoprompt config settings into 2 configuration settings instead of 1. One config setting for 'repoprompt_plan_required' and one for 'repoprompt_tool_injection'. The first config injects the context_builder planning instructions while the latter only injects the repo prompt tooling reminders.",
+      "request": "Separate the repoprompt config settings into 2 configuration settings instead of 1. One config setting for 'repoprompt_plan_required' and one for 'repoprompt_tool_injection'. The first config injects the context_builder planning instructions while the latter only injects the repo prompt tooling reminders. When multiple iterations are enabled, do NOT honor the 'repoprompt_plan_required' config for phase 1 of the subsequent iterations. Only include it in the first iteration. DO honor the 'repoprompt_tool_injection' config for all iterations. Phase 1 of the subsequent iterations will still plan, just don't include the mandatory instructions to use the repo prompt context_builder.",
       "created_at": "2026-01-24T17:35:33Z",
-      "updated_at": "2026-01-24T17:35:33Z",
+      "updated_at": "2026-01-24T18:00:00Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -136,7 +109,7 @@
         "Add a counter tracking CI failure retries per task/phase (stored in ContinueSession or passed through loop).",
         "When run_ci_gate fails and counter < 2, bypass apply_git_revert_mode and auto-send strict message: 'CI gate failed: <command> exited with an error. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of.'",
         "Resume the continue session with the strict message, increment retry counter, and continue the loop.",
-        "On 3rd CI failure (counter >= 2), fall through to existing apply_git_revert_mode logic which prompts user.",
+        "On 3rd CI failure (counter >= 2), fall through to existing apply_git_revert_mode logic which honors config 'git_revert_mode'.",
         "Add tests covering: 1st failure sends auto-message, 2nd failure sends auto-message, 3rd failure prompts user.",
         "Update docs/configuration.md or .ralph/README.md if auto-retry behavior needs documentation."
       ],

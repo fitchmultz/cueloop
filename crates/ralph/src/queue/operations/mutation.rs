@@ -1,6 +1,6 @@
 //! Collection/mutation helpers for queue tasks.
 
-use crate::contracts::QueueFile;
+use crate::contracts::{QueueFile, TaskStatus};
 use std::collections::HashSet;
 
 pub fn added_tasks(before: &HashSet<String>, after: &QueueFile) -> Vec<(String, String)> {
@@ -46,6 +46,34 @@ pub fn backfill_missing_fields(
             task.updated_at = Some(now.to_string());
         }
     }
+}
+
+/// Ensure terminal tasks have a completed_at timestamp.
+///
+/// Returns the number of tasks updated.
+pub fn backfill_terminal_completed_at(queue: &mut QueueFile, now_utc: &str) -> usize {
+    let now = now_utc.trim();
+    if now.is_empty() {
+        return 0;
+    }
+
+    let mut updated = 0;
+    for task in queue.tasks.iter_mut() {
+        if !matches!(task.status, TaskStatus::Done | TaskStatus::Rejected) {
+            continue;
+        }
+
+        if task
+            .completed_at
+            .as_ref()
+            .is_none_or(|t| t.trim().is_empty())
+        {
+            task.completed_at = Some(now.to_string());
+            updated += 1;
+        }
+    }
+
+    updated
 }
 
 pub fn sort_tasks_by_priority(queue: &mut QueueFile, descending: bool) {

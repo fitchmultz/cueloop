@@ -1,5 +1,6 @@
 //! Archive operations for queue tasks.
 
+use super::backfill_terminal_completed_at;
 use crate::contracts::{QueueFile, TaskStatus};
 use crate::queue::{load_queue, load_queue_or_default, save_queue, validation};
 use crate::timeutil;
@@ -23,7 +24,11 @@ pub fn archive_terminal_tasks_in_memory(
 
     for mut task in active.tasks.drain(..) {
         if matches!(task.status, TaskStatus::Done | TaskStatus::Rejected) {
-            if task.completed_at.is_none() {
+            if task
+                .completed_at
+                .as_ref()
+                .is_none_or(|t| t.trim().is_empty())
+            {
                 task.completed_at = Some(now.clone());
             }
             task.updated_at = Some(now.clone());
@@ -48,12 +53,19 @@ pub fn archive_done_tasks(
     let mut active = load_queue(queue_path)?;
     let mut done = load_queue_or_default(done_path)?;
 
-    validation::validate_queue_set(&active, Some(&done), id_prefix, id_width)?;
-
     let now = timeutil::now_utc_rfc3339()?;
     let report = archive_terminal_tasks_in_memory(&mut active, &mut done, &now)?;
+    let backfilled_done = backfill_terminal_completed_at(&mut done, &now) > 0;
+
+    // Validate after stamping/moving so missing completed_at on terminal tasks can be repaired.
+    validation::validate_queue_set(&active, Some(&done), id_prefix, id_width)?;
+
+    if report.moved_ids.is_empty() && !backfilled_done {
+        return Ok(report);
+    }
 
     if report.moved_ids.is_empty() {
+        save_queue(done_path, &done)?;
         return Ok(report);
     }
 

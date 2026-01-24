@@ -80,6 +80,98 @@ fn set_status_updates_timestamps_and_fields() -> anyhow::Result<()> {
 }
 
 #[test]
+fn set_status_preserves_existing_completed_at_on_terminal_transition() -> anyhow::Result<()> {
+    let mut t = task_with("RQ-0001", TaskStatus::Doing, vec!["code".to_string()]);
+    t.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    let mut queue = QueueFile {
+        version: 1,
+        tasks: vec![t],
+    };
+
+    let now = "2026-01-17T00:02:00Z";
+    set_status(&mut queue, "RQ-0001", TaskStatus::Done, now, None)?;
+
+    let t = &queue.tasks[0];
+    assert_eq!(t.status, TaskStatus::Done);
+    assert_eq!(t.updated_at.as_deref(), Some(now));
+    assert_eq!(t.completed_at.as_deref(), Some("2026-01-01T00:00:00Z"));
+
+    Ok(())
+}
+
+#[test]
+fn set_status_backfills_empty_completed_at_on_terminal_transition() -> anyhow::Result<()> {
+    let mut t = task_with("RQ-0001", TaskStatus::Doing, vec!["code".to_string()]);
+    t.completed_at = Some("   ".to_string());
+
+    let mut queue = QueueFile {
+        version: 1,
+        tasks: vec![t],
+    };
+
+    let now = "2026-01-17T00:02:00Z";
+    set_status(&mut queue, "RQ-0001", TaskStatus::Done, now, None)?;
+
+    let t = &queue.tasks[0];
+    assert_eq!(t.status, TaskStatus::Done);
+    assert_eq!(t.completed_at.as_deref(), Some(now));
+
+    Ok(())
+}
+
+#[test]
+fn set_status_clears_completed_at_on_non_terminal_transition() -> anyhow::Result<()> {
+    let mut t = task_with("RQ-0001", TaskStatus::Done, vec!["code".to_string()]);
+    t.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    let mut queue = QueueFile {
+        version: 1,
+        tasks: vec![t],
+    };
+
+    let now = "2026-01-17T00:02:00Z";
+    set_status(&mut queue, "RQ-0001", TaskStatus::Todo, now, None)?;
+
+    let t = &queue.tasks[0];
+    assert_eq!(t.status, TaskStatus::Todo);
+    assert_eq!(t.updated_at.as_deref(), Some(now));
+    assert_eq!(t.completed_at, None);
+
+    Ok(())
+}
+
+#[test]
+fn backfill_terminal_completed_at_updates_only_missing() -> anyhow::Result<()> {
+    let mut done = task_with("RQ-0001", TaskStatus::Done, vec!["code".to_string()]);
+    done.completed_at = None;
+
+    let mut rejected = task_with("RQ-0002", TaskStatus::Rejected, vec!["code".to_string()]);
+    rejected.completed_at = Some("   ".to_string());
+
+    let mut todo = task_with("RQ-0003", TaskStatus::Todo, vec!["code".to_string()]);
+    todo.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    let mut queue = QueueFile {
+        version: 1,
+        tasks: vec![done, rejected, todo],
+    };
+
+    let now = "2026-01-17T00:00:00Z";
+    let updated = backfill_terminal_completed_at(&mut queue, now);
+    assert_eq!(updated, 2);
+
+    assert_eq!(queue.tasks[0].completed_at.as_deref(), Some(now));
+    assert_eq!(queue.tasks[1].completed_at.as_deref(), Some(now));
+    assert_eq!(
+        queue.tasks[2].completed_at.as_deref(),
+        Some("2026-01-01T00:00:00Z")
+    );
+
+    Ok(())
+}
+
+#[test]
 fn set_status_redacts_note() -> anyhow::Result<()> {
     let mut queue = QueueFile {
         version: 1,
@@ -1013,6 +1105,132 @@ fn archive_done_tasks_moves_done_and_rejected() -> anyhow::Result<()> {
     let ids: Vec<String> = done.tasks.iter().map(|t| t.id.clone()).collect();
     assert!(ids.contains(&"RQ-0001".to_string()));
     assert!(ids.contains(&"RQ-0002".to_string()));
+
+    Ok(())
+}
+
+#[test]
+fn archive_done_tasks_stamps_missing_completed_at() -> anyhow::Result<()> {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new()?;
+    let queue_path = temp_dir.path().join("queue.json");
+    let done_path = temp_dir.path().join("done.json");
+
+    // Terminal task missing completed_at (this is the bug scenario).
+    let queue_json = r#"{
+            "version": 1,
+            "tasks": [
+                {
+                    "id": "RQ-0001",
+                    "status": "done",
+                    "title": "Done task",
+                    "priority": "medium",
+                    "tags": [],
+                    "scope": [],
+                    "evidence": [],
+                    "plan": [],
+                    "notes": [],
+                    "request": null,
+                    "created_at": "2026-01-20T00:00:00Z",
+                    "updated_at": "2026-01-20T00:00:00Z",
+                    "completed_at": null,
+                    "depends_on": [],
+                    "custom_fields": {}
+                }
+            ]
+        }"#;
+    std::fs::write(&queue_path, queue_json)?;
+
+    let report = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
+    assert_eq!(report.moved_ids, vec!["RQ-0001".to_string()]);
+
+    let done_content = std::fs::read_to_string(&done_path)?;
+    let done: QueueFile = serde_json::from_str(&done_content)?;
+    assert_eq!(done.tasks.len(), 1);
+
+    let completed_at = done.tasks[0]
+        .completed_at
+        .as_deref()
+        .expect("completed_at should be stamped");
+
+    // Ensure it is RFC3339 parseable.
+    use time::format_description::well_known::Rfc3339;
+    use time::OffsetDateTime;
+    OffsetDateTime::parse(completed_at, &Rfc3339).expect("completed_at must be RFC3339");
+
+    Ok(())
+}
+
+#[test]
+fn archive_done_tasks_backfills_existing_done_without_moves() -> anyhow::Result<()> {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new()?;
+    let queue_path = temp_dir.path().join("queue.json");
+    let done_path = temp_dir.path().join("done.json");
+
+    let queue_json = r#"{
+            "version": 1,
+            "tasks": [
+                {
+                    "id": "RQ-0003",
+                    "status": "todo",
+                    "title": "Todo task",
+                    "priority": "medium",
+                    "tags": [],
+                    "scope": [],
+                    "evidence": [],
+                    "plan": [],
+                    "notes": [],
+                    "request": null,
+                    "created_at": "2026-01-20T00:00:00Z",
+                    "updated_at": "2026-01-20T00:00:00Z",
+                    "completed_at": null,
+                    "depends_on": [],
+                    "custom_fields": {}
+                }
+            ]
+        }"#;
+    std::fs::write(&queue_path, queue_json)?;
+
+    let done_json = r#"{
+            "version": 1,
+            "tasks": [
+                {
+                    "id": "RQ-0001",
+                    "status": "done",
+                    "title": "Done task",
+                    "priority": "medium",
+                    "tags": [],
+                    "scope": [],
+                    "evidence": [],
+                    "plan": [],
+                    "notes": [],
+                    "request": null,
+                    "created_at": "2026-01-20T00:00:00Z",
+                    "updated_at": "2026-01-20T00:00:00Z",
+                    "completed_at": null,
+                    "depends_on": [],
+                    "custom_fields": {}
+                }
+            ]
+        }"#;
+    std::fs::write(&done_path, done_json)?;
+
+    let report = archive_done_tasks(&queue_path, &done_path, "RQ", 4)?;
+    assert!(report.moved_ids.is_empty());
+
+    let done_content = std::fs::read_to_string(&done_path)?;
+    let done: QueueFile = serde_json::from_str(&done_content)?;
+    let completed_at = done.tasks[0]
+        .completed_at
+        .as_deref()
+        .expect("completed_at should be backfilled");
+
+    use time::format_description::well_known::Rfc3339;
+    use time::OffsetDateTime;
+    OffsetDateTime::parse(completed_at, &Rfc3339).expect("completed_at must be RFC3339");
 
     Ok(())
 }

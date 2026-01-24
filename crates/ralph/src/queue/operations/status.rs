@@ -34,9 +34,18 @@ fn apply_status_fields(task: &mut Task, status: TaskStatus, now_rfc3339: &str) -
 
     match status {
         TaskStatus::Done | TaskStatus::Rejected => {
-            task.completed_at = Some(now);
+            // Preserve an existing completed_at (e.g., manual backfill) but ensure
+            // terminal tasks never lack a completion timestamp.
+            if task
+                .completed_at
+                .as_ref()
+                .is_none_or(|t| t.trim().is_empty())
+            {
+                task.completed_at = Some(now.clone());
+            }
         }
         TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing => {
+            // Non-terminal tasks must not carry a completed timestamp.
             task.completed_at = None;
         }
     }

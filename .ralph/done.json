@@ -3808,6 +3808,46 @@
       "completed_at": "2026-01-24T17:26:46.946187000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0287",
+      "status": "done",
+      "title": "Auto-update missing completed_at timestamp when tasks are marked done",
+      "priority": "critical",
+      "tags": [
+        "queue",
+        "supervisor",
+        "validation",
+        "bug"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd/supervision.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/operations/mutation.rs"
+      ],
+      "evidence": [
+        "Error: 'Missing completed_at: task RQ-0061 (index 0) is in status 'Done' but missing 'completed_at'. Add a valid RFC3339 timestamp.'",
+        "User request: 'The supervisor should automatically update the missing timestamp to avoid breaking the entire loop.'",
+        "The validation in queue/validation.rs enforces completed_at for done tasks, but the completion pathway may not set it automatically."
+      ],
+      "plan": [
+        "Identify where task status is set to 'Done' (likely in supervision.rs or task completion flow).",
+        "Add automatic completed_at timestamp injection when status transitions to 'Done' and the field is missing.",
+        "Ensure the timestamp uses RFC3339 format (e.g., use chrono::Utc::now().to_rfc3339()).",
+        "Add tests covering: done without completed_at gets auto-filled, done with existing completed_at is preserved.",
+        "Verify the run loop continues successfully after auto-correction."
+      ],
+      "notes": [
+        "Backfill missing completed_at for terminal tasks in queue/done during supervision and archiving",
+        "Added backfill helper + archive handling for pre-existing done entries",
+        "Expanded tests for backfill and supervisor behavior"
+      ],
+      "request": "Fix this. The supervisor should automatically update the missing timestamp to avoid breaking the entire loop.",
+      "created_at": "2026-01-24T17:40:00Z",
+      "updated_at": "2026-01-24T18:20:10.916188000Z",
+      "completed_at": "2026-01-24T18:20:10.916188000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

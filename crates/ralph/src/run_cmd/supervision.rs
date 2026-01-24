@@ -60,6 +60,21 @@ pub(crate) fn post_run_supervise(
 
         let mut queue_file = queue::load_queue(&resolved.queue_path)?;
         let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
+        let repair_now = timeutil::now_utc_rfc3339()?;
+        let mut repaired = false;
+        if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
+            repaired = true;
+        }
+        if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
+            repaired = true;
+        }
+        if repaired {
+            queue::save_queue(&resolved.queue_path, &queue_file)?;
+            if !done_file.tasks.is_empty() || resolved.done_path.exists() {
+                queue::save_queue(&resolved.done_path, &done_file)?;
+            }
+        }
+
         let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
             None
         } else {
@@ -100,6 +115,13 @@ pub(crate) fn post_run_supervise(
 
             queue_file = queue::load_queue(&resolved.queue_path)?;
             done_file = queue::load_queue_or_default(&resolved.done_path)?;
+            let repair_now = timeutil::now_utc_rfc3339()?;
+            if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
+                queue::save_queue(&resolved.queue_path, &queue_file)?;
+            }
+            if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
+                queue::save_queue(&resolved.done_path, &done_file)?;
+            }
             let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
                 None
             } else {
@@ -534,6 +556,34 @@ mod tests {
 
         let status = git_output(temp.path(), &["status", "--porcelain"])?;
         anyhow::ensure!(!status.trim().is_empty(), "expected dirty repo");
+        Ok(())
+    }
+
+    #[test]
+    fn post_run_supervise_backfills_missing_completed_at() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        write_queue(temp.path(), TaskStatus::Done)?;
+        commit_all(temp.path(), "init")?;
+
+        let resolved = resolved_for_repo(temp.path());
+        post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, false, None)?;
+
+        let done_file = queue::load_queue_or_default(&resolved.done_path)?;
+        let task = done_file
+            .tasks
+            .iter()
+            .find(|t| t.id == "RQ-0001")
+            .expect("expected task in done archive");
+        let completed_at = task
+            .completed_at
+            .as_deref()
+            .expect("completed_at should be stamped");
+
+        use time::format_description::well_known::Rfc3339;
+        use time::OffsetDateTime;
+        OffsetDateTime::parse(completed_at, &Rfc3339)?;
+
         Ok(())
     }
 

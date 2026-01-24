@@ -204,7 +204,7 @@ fn test_cycle_status_cycles_correctly() {
     assert_eq!(app.queue.tasks[0].status, TaskStatus::Rejected);
     assert_eq!(
         app.queue.tasks[0].completed_at,
-        Some("2026-01-19T02:00:00Z".to_string())
+        Some("2026-01-19T01:00:00Z".to_string())
     );
 
     app.cycle_status("2026-01-19T03:00:00Z").unwrap();
@@ -968,7 +968,7 @@ fn test_timestamps_updated_on_status_change() {
     app.cycle_status("2026-01-21T00:00:00Z").unwrap(); // Now Rejected
     assert_eq!(
         app.queue.tasks[0].completed_at,
-        Some("2026-01-21T00:00:00Z".to_string())
+        Some("2026-01-20T23:45:00Z".to_string())
     );
 
     app.cycle_status("2026-01-21T01:00:00Z").unwrap(); // Back to Todo
