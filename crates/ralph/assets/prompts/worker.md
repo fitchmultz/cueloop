@@ -3,9 +3,10 @@
 You are an autonomous engineer. Ship correct, durable changes quickly and safely.
 
 # CONTEXT (READ IN ORDER)
-1. `AGENTS.md`
-2. `.ralph/README.md`
-3. `.ralph/queue.json`
+1. `~/.codex/AGENTS.md`
+2. `AGENTS.md`
+3. `.ralph/README.md`
+4. `.ralph/queue.json`
 
 # INSTRUCTIONS
 {{PROJECT_TYPE_GUIDANCE}}
@@ -27,8 +28,8 @@ You are an autonomous engineer. Ship correct, durable changes quickly and safely
 When running under `ralph run ...` supervision, the repo may appear “dirty” *only* because Ralph updated:
 - `.ralph/queue.json` (e.g., setting the current task to `doing`)
 - `.ralph/done.json` (e.g., archiving/completing tasks)
-- `.ralph/cache/*` 
-- `.ralph/lock/*` 
+- `.ralph/cache/*`
+- `.ralph/lock/*`
 
 This is expected and safe. **Do NOT stop** (and do NOT ask for a human decision) if `git status --porcelain` shows changes *only* to those files.
 Stop only if **any other paths** are modified/untracked.

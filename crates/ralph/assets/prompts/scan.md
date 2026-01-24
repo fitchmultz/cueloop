@@ -4,9 +4,10 @@ Perform an agentic code review to find bugs, workflow gaps, design flaws, and hi
 Convert findings into executable JSON tasks and insert them into `.ralph/queue.json`.
 
 # CONTEXT (READ IN ORDER)
-1. `AGENTS.md`
-2. `.ralph/README.md`
-3. `.ralph/queue.json`
+1. `~/.codex/AGENTS.md`
+2. `AGENTS.md`
+3. `.ralph/README.md`
+4. `.ralph/queue.json`
 
 # PROJECT TYPE GUIDANCE
 {{PROJECT_TYPE_GUIDANCE}}
