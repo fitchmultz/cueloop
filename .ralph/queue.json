@@ -3,7 +3,7 @@
   "tasks": [
     {
       "id": "RQ-0283",
-      "status": "todo",
+      "status": "doing",
       "title": "Fix temp dir cleanup during make ci runs to prevent disk space exhaustion",
       "priority": "high",
       "tags": [
@@ -36,7 +36,7 @@
       "notes": [],
       "request": "During long runs of 'ralph run loop' the '/private/var/folders' path becomes riddles with temporary git repos created during 'make ci' and do not get cleaned up until the user restarts the system. This eventually leads to tests failing due to lack of disk space. Proper cleanup is required when writing to temporary directories.",
       "created_at": "2025-01-24T20:45:00.000000000Z",
-      "updated_at": "2025-01-24T20:45:00.000000000Z",
+      "updated_at": "2026-01-24T16:11:09.819139000Z",
       "depends_on": [],
       "custom_fields": {}
     },
