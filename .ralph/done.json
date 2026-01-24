@@ -3711,6 +3711,28 @@
       "completed_at": "2026-01-24T06:17:26.586091000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0265",
+      "status": "done",
+      "title": "Add the 'ralph task' CLI functionality to the TUI (or document if already present)",
+      "priority": "medium",
+      "tags": [],
+      "scope": [],
+      "evidence": [],
+      "plan": [],
+      "notes": [
+        "Added comprehensive CLI-to-TUI mapping documentation",
+        "docs/tui-task-management.md covers all ralph task subcommands",
+        "Verified TUI key bindings (N, s, e, a) against code",
+        "Documented behavioral differences (archive flow, note handling)",
+        "CI gate passed: 417 tests"
+      ],
+      "created_at": "2026-01-24T15:38:04.993305000Z",
+      "updated_at": "2026-01-24T15:57:25.101933000Z",
+      "completed_at": "2026-01-24T15:57:25.101933000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

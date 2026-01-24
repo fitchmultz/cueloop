@@ -2,21 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0265",
-      "status": "todo",
-      "title": "Add the 'ralph task' CLI functionality to the TUI (or document if already present)",
-      "priority": "medium",
-      "tags": [],
-      "scope": [],
-      "evidence": [],
-      "plan": [],
-      "notes": [],
-      "created_at": "2026-01-24T15:38:04.993305000Z",
-      "updated_at": "2026-01-24T15:41:48.743297000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0266",
       "status": "todo",
       "title": "Make reordering tasks in the queue easier by adding functionality to the TUI",
