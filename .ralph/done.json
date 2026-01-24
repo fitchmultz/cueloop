@@ -3641,6 +3641,42 @@
       "completed_at": "2026-01-24T05:32:53.721840000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0237",
+      "status": "done",
+      "title": "Add TUI flow to create a task from a description",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "tasks",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/",
+        "cargo run -p ralph -- task \"<request>\""
+      ],
+      "evidence": [
+        "User request: Add the functional equivalent of running 'ralph task \\\"Task description here\\\"' to the TUI."
+      ],
+      "plan": [
+        "Locate the TUI command/action flow and identify the proper entry point for task creation.",
+        "Implement a TUI action that accepts a task description and invokes the same task creation path as `ralph task`.",
+        "Add tests covering successful task creation and validation/error cases for the new TUI action."
+      ],
+      "notes": [
+        "Added TUI flow (N key and command palette) to create tasks from description",
+        "Lock contention fixed with build_task_without_lock() entrypoint",
+        "Runner guards prevent starting task builder while runner active",
+        "Helper methods extracted for testability (on_scan_finished, on_task_builder_finished, etc.)",
+        "All tests pass (408), make ci green"
+      ],
+      "request": "Add the functional equivalent of running 'ralph task \\\"Task description here\\\"' to the TUI",
+      "created_at": "2026-01-23T14:51:09Z",
+      "updated_at": "2026-01-24T06:06:01.148725000Z",
+      "completed_at": "2026-01-24T06:06:01.148725000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

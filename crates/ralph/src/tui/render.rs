@@ -178,7 +178,8 @@ fn draw_help_overlay(f: &mut Frame<'_>, area: Rect) {
         Line::from("a: archive done/rejected tasks"),
         Line::from("d: delete selected task"),
         Line::from("e: edit task fields"),
-        Line::from("n: create a new task"),
+        Line::from("n: create a new task (title only)"),
+        Line::from("N: build task with agent (full structure)"),
         Line::from("c: edit project config"),
         Line::from("g: scan repository"),
         Line::from("r: reload queue from disk"),
@@ -511,6 +512,19 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ]),
+        AppMode::CreatingTaskDescription(description) => Line::from(vec![
+            Span::styled(
+                "Task Builder: ",
+                Style::default().add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                description,
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
+        ]),
         AppMode::Searching(query) => Line::from(vec![
             Span::styled("Search: ", Style::default().add_modifier(Modifier::BOLD)),
             Span::styled(
@@ -619,6 +633,46 @@ fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             lines.push(Line::from(Span::styled(line, style)));
         }
 
+        let text = Text::from(lines);
+        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+        f.render_widget(paragraph, inner);
+        return;
+    }
+
+    if let AppMode::CreatingTaskDescription(current) = &app.mode {
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled(
+                    "Task Description",
+                    Style::default().add_modifier(Modifier::UNDERLINED),
+                ),
+                Span::styled(":", Style::default()),
+            ]),
+            Line::from(""),
+        ];
+        let display = if current.is_empty() {
+            "(describe the task you want to create, agent will add structure)"
+        } else {
+            current
+        };
+        for line in wrap_text(display, app.detail_width as usize) {
+            let style = if current.is_empty() {
+                Style::default().fg(Color::DarkGray)
+            } else {
+                Style::default().add_modifier(Modifier::BOLD)
+            };
+            lines.push(Line::from(Span::styled(line, style)));
+        }
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "The task builder agent will create a structured task with proper scoping, evidence, and planning.",
+            Style::default().fg(Color::DarkGray),
+        )));
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "Press Enter to build task or Esc to cancel.",
+            Style::default().fg(Color::DarkGray),
+        )));
         let text = Text::from(lines);
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         f.render_widget(paragraph, inner);
@@ -1416,6 +1470,12 @@ fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
         AppMode::CreatingTask(_) => vec![
             Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":create "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
+        AppMode::CreatingTaskDescription(_) => vec![
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":build "),
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
         ],

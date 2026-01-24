@@ -53,7 +53,27 @@ pub fn read_request_from_args_or_stdin(args: &[String]) -> Result<String> {
 }
 
 pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result<()> {
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task", opts.force)?;
+    build_task_impl(resolved, opts, true)
+}
+
+pub fn build_task_without_lock(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result<()> {
+    build_task_impl(resolved, opts, false)
+}
+
+fn build_task_impl(
+    resolved: &config::Resolved,
+    opts: TaskBuildOptions,
+    acquire_lock: bool,
+) -> Result<()> {
+    let _queue_lock = if acquire_lock {
+        Some(queue::acquire_queue_lock(
+            &resolved.repo_root,
+            "task",
+            opts.force,
+        )?)
+    } else {
+        None
+    };
 
     if opts.request.trim().is_empty() {
         bail!("Missing request: task requires a request description. Provide a non-empty request.");

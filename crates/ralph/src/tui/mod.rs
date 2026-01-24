@@ -161,6 +161,7 @@ pub struct ConfigEntry {
 pub enum RunningKind {
     Task,
     Scan { focus: String },
+    TaskBuilder,
 }
 
 /// Application state for the TUI.
@@ -1261,6 +1262,10 @@ impl App {
                 title: "Create new task".to_string(),
             },
             PaletteEntry {
+                cmd: PaletteCommand::BuildTaskAgent,
+                title: "Build task with agent".to_string(),
+            },
+            PaletteEntry {
                 cmd: PaletteCommand::EditTask,
                 title: "Edit selected task".to_string(),
             },
@@ -1404,6 +1409,14 @@ impl App {
                 self.mode = AppMode::CreatingTask(String::new());
                 Ok(TuiAction::Continue)
             }
+            PaletteCommand::BuildTaskAgent => {
+                if self.runner_active {
+                    self.set_status_message("Runner already active");
+                } else {
+                    self.mode = AppMode::CreatingTaskDescription(String::new());
+                }
+                Ok(TuiAction::Continue)
+            }
             PaletteCommand::EditTask => {
                 if self.selected_task().is_some() {
                     self.mode = AppMode::EditingTask {
@@ -1534,6 +1547,23 @@ impl App {
         }
     }
 
+    /// Start execution of the task builder agent.
+    fn start_task_builder_execution(&mut self, request: String) {
+        self.logs.clear();
+        self.logs
+            .push(format!("=== Building task from: {} ===", request));
+        self.log_scroll = 0;
+        self.autoscroll = true;
+        self.set_status_message("Starting task builder...");
+
+        self.runner_active = true;
+        self.running_task_id = Some("Task Builder".to_string());
+        self.running_kind = Some(RunningKind::TaskBuilder);
+        self.mode = AppMode::Executing {
+            task_id: "Task Builder".to_string(),
+        };
+    }
+
     /// Select the next runnable task for loop mode.
     ///
     /// This prefers resuming `doing` tasks, then the first runnable `todo`, then `draft` (when
@@ -1660,6 +1690,40 @@ impl App {
         self.dirty = false;
         self.dirty_done = false;
         self.save_error = None;
+    }
+
+    /// Handle scan completion: reload queue, set status, and return to normal mode.
+    fn on_scan_finished(&mut self, queue_path: &Path, done_path: &Path) {
+        self.reload_queues_from_disk(queue_path, done_path);
+        self.set_status_message("Scan completed");
+        if matches!(self.mode, AppMode::Executing { .. } | AppMode::ConfirmQuit) {
+            self.mode = AppMode::Normal;
+        }
+    }
+
+    /// Handle task builder completion: reload queue, set status, and return to normal mode.
+    fn on_task_builder_finished(&mut self, queue_path: &Path, done_path: &Path) {
+        self.reload_queues_from_disk(queue_path, done_path);
+        self.set_status_message("Task builder completed");
+        if matches!(self.mode, AppMode::Executing { .. } | AppMode::ConfirmQuit) {
+            self.mode = AppMode::Normal;
+        }
+    }
+
+    /// Handle scan error: set error message and return to normal mode.
+    fn on_scan_error(&mut self, msg: &str) {
+        self.set_status_message(format!("Scan error: {}", msg));
+        if matches!(self.mode, AppMode::Executing { .. } | AppMode::ConfirmQuit) {
+            self.mode = AppMode::Normal;
+        }
+    }
+
+    /// Handle task builder error: set error message and return to normal mode.
+    fn on_task_builder_error(&mut self, msg: &str) {
+        self.set_status_message(format!("Task builder error: {}", msg));
+        if matches!(self.mode, AppMode::Executing { .. } | AppMode::ConfirmQuit) {
+            self.mode = AppMode::Normal;
+        }
     }
 }
 
@@ -1836,6 +1900,53 @@ where
         });
     };
 
+    // Helper to spawn task builder work.
+    let spawn_task_builder = |request: String, tx: mpsc::Sender<RunnerEvent>| {
+        let tx_clone = tx.clone();
+        thread::spawn(move || {
+            // Use the task_cmd::build_task function to create tasks
+            // We need to capture the necessary state
+            let result = || -> Result<()> {
+                // We need to get the config and paths - these are captured from the environment
+                let resolved = config::resolve_from_cwd()?;
+                let runner = resolved.config.agent.runner.unwrap_or_default();
+                let model = resolved
+                    .config
+                    .agent
+                    .model
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_default();
+                let reasoning_effort = resolved.config.agent.reasoning_effort;
+                let repoprompt_required = resolved.config.agent.require_repoprompt.unwrap_or(false);
+                let opts = crate::task_cmd::TaskBuildOptions {
+                    request,
+                    hint_tags: String::new(),
+                    hint_scope: String::new(),
+                    runner,
+                    model,
+                    reasoning_effort,
+                    force: false, // Don't acquire lock since TUI already has it
+                    repoprompt_required,
+                };
+                crate::task_cmd::build_task_without_lock(&resolved, opts)?;
+                Ok(())
+            }();
+
+            match result {
+                Ok(()) => {
+                    let _ = tx_clone.send(RunnerEvent::Output(
+                        "Task builder completed successfully".to_string(),
+                    ));
+                    let _ = tx_clone.send(RunnerEvent::Finished);
+                }
+                Err(e) => {
+                    let _ = tx_clone.send(RunnerEvent::Error(e.to_string()));
+                }
+            }
+        });
+    };
+
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         use std::cell::RefCell;
         let app = RefCell::new(app);
@@ -1897,14 +2008,10 @@ where
 
                         match running_kind {
                             Some(RunningKind::Scan { .. }) => {
-                                app_ref.reload_queues_from_disk(queue_path, done_path);
-                                app_ref.set_status_message("Scan completed");
-                                if matches!(
-                                    app_ref.mode,
-                                    AppMode::Executing { .. } | AppMode::ConfirmQuit
-                                ) {
-                                    app_ref.mode = AppMode::Normal;
-                                }
+                                app_ref.on_scan_finished(queue_path, done_path);
+                            }
+                            Some(RunningKind::TaskBuilder) => {
+                                app_ref.on_task_builder_finished(queue_path, done_path);
                             }
                             Some(RunningKind::Task) | None => {
                                 // Reload both queues to capture changes made by the runner.
@@ -1972,17 +2079,20 @@ where
 
                         match running_kind {
                             Some(RunningKind::Scan { .. }) => {
-                                app_ref.set_status_message(format!("Scan error: {}", msg));
+                                app_ref.on_scan_error(&msg);
+                            }
+                            Some(RunningKind::TaskBuilder) => {
+                                app_ref.on_task_builder_error(&msg);
                             }
                             Some(RunningKind::Task) | None => {
                                 app_ref.set_status_message(format!("Runner error: {}", msg));
+                                if matches!(
+                                    app_ref.mode,
+                                    AppMode::Executing { .. } | AppMode::ConfirmQuit
+                                ) {
+                                    app_ref.mode = AppMode::Normal;
+                                }
                             }
-                        }
-                        if matches!(
-                            app_ref.mode,
-                            AppMode::Executing { .. } | AppMode::ConfirmQuit
-                        ) {
-                            app_ref.mode = AppMode::Normal;
                         }
                     }
                     RunnerEvent::RevertPrompt { label, reply } => {
@@ -2032,6 +2142,15 @@ where
                             app_ref.start_scan_execution(focus.clone(), true, false);
                             let tx_clone = tx.clone();
                             spawn_scan(focus, tx_clone);
+                        }
+                        TuiAction::BuildTask(request) => {
+                            if app_ref.runner_active {
+                                app_ref.set_status_message("Runner already active");
+                            } else {
+                                app_ref.start_task_builder_execution(request.clone());
+                                let tx_clone = tx.clone();
+                                spawn_task_builder(request, tx_clone);
+                            }
                         }
                     }
                 }
@@ -2755,5 +2874,70 @@ mod tests {
 
         app.filters.search_options.scopes.clear();
         assert!(!app.has_active_filters(), "scope filter disabled");
+    }
+
+    #[test]
+    fn task_builder_finish_reloads_queue_and_returns_to_normal() {
+        let tmp = TempDir::new().expect("create temp dir");
+        let queue_path = tmp.path().join("queue.json");
+        let done_path = tmp.path().join("done.json");
+
+        // Write initial queue
+        let initial_queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001", "Task 1", TaskStatus::Todo)],
+        };
+        queue::save_queue(&queue_path, &initial_queue).expect("save initial queue");
+
+        // Create app and set it to executing mode (like task builder would)
+        let mut app = App::new(QueueFile::default());
+        app.mode = AppMode::Executing {
+            task_id: "Task Builder".to_string(),
+        };
+
+        // Write updated queue with new task
+        let updated_queue = QueueFile {
+            version: 1,
+            tasks: vec![
+                make_test_task("RQ-0001", "Task 1", TaskStatus::Todo),
+                make_test_task("RQ-0002", "New Task", TaskStatus::Todo),
+            ],
+        };
+        queue::save_queue(&queue_path, &updated_queue).expect("save updated queue");
+
+        // Simulate task builder finished
+        app.on_task_builder_finished(&queue_path, &done_path);
+
+        // Verify queue was reloaded
+        assert_eq!(app.queue.tasks.len(), 2);
+        assert_eq!(app.queue.tasks[1].id, "RQ-0002");
+
+        // Verify mode returned to Normal
+        assert_eq!(app.mode, AppMode::Normal);
+
+        // Verify status message
+        assert_eq!(
+            app.status_message.as_deref(),
+            Some("Task builder completed")
+        );
+    }
+
+    #[test]
+    fn task_builder_error_sets_status_and_returns_to_normal() {
+        let mut app = App::new(QueueFile::default());
+        app.mode = AppMode::Executing {
+            task_id: "Task Builder".to_string(),
+        };
+
+        app.on_task_builder_error("test error");
+
+        // Verify error status message
+        assert_eq!(
+            app.status_message.as_deref(),
+            Some("Task builder error: test error")
+        );
+
+        // Verify mode returned to Normal
+        assert_eq!(app.mode, AppMode::Normal);
     }
 }

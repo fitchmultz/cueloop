@@ -32,6 +32,8 @@ pub enum TuiAction {
     RunScan(String),
     /// Run a specific task (transitions to Executing mode)
     RunTask(String),
+    /// Trigger task builder agent with the given description
+    BuildTask(String),
 }
 
 /// Interaction modes for the TUI.
@@ -48,6 +50,8 @@ pub enum AppMode {
     },
     /// Creating a new task (title input)
     CreatingTask(String),
+    /// Creating a new task via task builder agent (description input)
+    CreatingTaskDescription(String),
     /// Searching tasks (query input)
     Searching(String),
     /// Filtering tasks by tag list (comma-separated input)
@@ -98,6 +102,7 @@ impl PartialEq for AppMode {
                 },
             ) => left_selected == right_selected && left_value == right_value,
             (CreatingTask(left), CreatingTask(right)) => left == right,
+            (CreatingTaskDescription(left), CreatingTaskDescription(right)) => left == right,
             (Searching(left), Searching(right)) => left == right,
             (FilteringTags(left), FilteringTags(right)) => left == right,
             (FilteringScopes(left), FilteringScopes(right)) => left == right,
@@ -164,6 +169,7 @@ pub enum PaletteCommand {
     ToggleLoop,
     ArchiveTerminal,
     NewTask,
+    BuildTaskAgent,
     EditTask,
     EditConfig,
     ScanRepo,
@@ -200,6 +206,9 @@ pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Resul
         } => handle_editing_task_key(app, key, selected, editing_value, now_rfc3339),
         AppMode::CreatingTask(ref current) => {
             handle_creating_mode_key(app, key, current, now_rfc3339)
+        }
+        AppMode::CreatingTaskDescription(ref current) => {
+            handle_creating_description_mode_key(app, key, current)
         }
         AppMode::Searching(ref current) => handle_searching_mode_key(app, key, current),
         AppMode::FilteringTags(ref current) => handle_filtering_tags_key(app, key, current),
@@ -302,6 +311,14 @@ fn handle_normal_mode_key(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Res
         }
         KeyCode::Char('n') => {
             app.mode = AppMode::CreatingTask(String::new());
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('N') => {
+            if app.runner_active {
+                app.set_status_message("Runner already active");
+            } else {
+                app.mode = AppMode::CreatingTaskDescription(String::new());
+            }
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('/') => {
@@ -518,6 +535,43 @@ fn handle_creating_mode_key(
             let mut new_title = current.to_string();
             new_title.pop();
             app.mode = AppMode::CreatingTask(new_title);
+            Ok(TuiAction::Continue)
+        }
+        _ => Ok(TuiAction::Continue),
+    }
+}
+
+/// Handle key events in CreatingTaskDescription mode.
+fn handle_creating_description_mode_key(
+    app: &mut App,
+    key: KeyCode,
+    current: &str,
+) -> Result<TuiAction> {
+    match key {
+        KeyCode::Enter => {
+            let description = current.trim().to_string();
+            if description.is_empty() {
+                app.mode = AppMode::Normal;
+                app.set_status_message("Description cannot be empty");
+                return Ok(TuiAction::Continue);
+            }
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::BuildTask(description))
+        }
+        KeyCode::Esc => {
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char(c) => {
+            let mut new_description = current.to_string();
+            new_description.push(c);
+            app.mode = AppMode::CreatingTaskDescription(new_description);
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Backspace => {
+            let mut new_description = current.to_string();
+            new_description.pop();
+            app.mode = AppMode::CreatingTaskDescription(new_description);
             Ok(TuiAction::Continue)
         }
         _ => Ok(TuiAction::Continue),
@@ -1640,5 +1694,134 @@ mod tests {
             vec!["crates/ralph"],
             "scope filter should be applied"
         );
+    }
+
+    #[test]
+    fn uppercase_n_enters_task_builder_mode() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+
+        let action = handle_key_event(&mut app, KeyCode::Char('N'), "2026-01-20T00:00:00Z")
+            .expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert!(matches!(app.mode, AppMode::CreatingTaskDescription(_)));
+    }
+
+    #[test]
+    fn task_builder_mode_handles_character_input() {
+        let mut app = App::new(QueueFile::default());
+        app.mode = AppMode::CreatingTaskDescription(String::new());
+
+        let action = handle_key_event(&mut app, KeyCode::Char('a'), "2026-01-20T00:00:00Z")
+            .expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::CreatingTaskDescription("a".to_string()));
+    }
+
+    #[test]
+    fn task_builder_mode_handles_backspace() {
+        let mut app = App::new(QueueFile::default());
+        app.mode = AppMode::CreatingTaskDescription("ab".to_string());
+
+        let action = handle_key_event(&mut app, KeyCode::Backspace, "2026-01-20T00:00:00Z")
+            .expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::CreatingTaskDescription("a".to_string()));
+    }
+
+    #[test]
+    fn task_builder_mode_escape_cancels() {
+        let mut app = App::new(QueueFile::default());
+        app.mode = AppMode::CreatingTaskDescription("test description".to_string());
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Esc, "2026-01-20T00:00:00Z").expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::Normal);
+    }
+
+    #[test]
+    fn task_builder_mode_empty_description_returns_to_normal() {
+        let mut app = App::new(QueueFile::default());
+        app.mode = AppMode::CreatingTaskDescription(String::new());
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::Normal);
+        assert_eq!(
+            app.status_message.as_deref(),
+            Some("Description cannot be empty")
+        );
+    }
+
+    #[test]
+    fn task_builder_mode_whitespace_only_returns_to_normal() {
+        let mut app = App::new(QueueFile::default());
+        app.mode = AppMode::CreatingTaskDescription("   ".to_string());
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.mode, AppMode::Normal);
+        assert_eq!(
+            app.status_message.as_deref(),
+            Some("Description cannot be empty")
+        );
+    }
+
+    #[test]
+    fn task_builder_mode_valid_description_builds_task() {
+        let mut app = App::new(QueueFile::default());
+        app.mode = AppMode::CreatingTaskDescription("Add a new feature".to_string());
+
+        let action =
+            handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("handle key");
+
+        assert_eq!(
+            action,
+            TuiAction::BuildTask("Add a new feature".to_string())
+        );
+        assert_eq!(app.mode, AppMode::Normal);
+    }
+
+    #[test]
+    fn palette_build_task_agent_command() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+
+        app.execute_palette_command(PaletteCommand::BuildTaskAgent, "2026-01-20T00:00:00Z")
+            .expect("execute command");
+
+        assert!(matches!(app.mode, AppMode::CreatingTaskDescription(_)));
+    }
+
+    #[test]
+    fn uppercase_n_rejected_when_runner_active() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001")],
+        };
+        let mut app = App::new(queue);
+        app.runner_active = true;
+
+        let action = handle_key_event(&mut app, KeyCode::Char('N'), "2026-01-20T00:00:00Z")
+            .expect("handle key");
+
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.status_message.as_deref(), Some("Runner already active"));
+        assert_eq!(app.mode, AppMode::Normal);
     }
 }
