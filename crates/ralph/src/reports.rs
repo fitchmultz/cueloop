@@ -336,7 +336,15 @@ pub fn print_burndown(queue: &QueueFile, done: Option<&QueueFile>, days: u32) ->
         return Ok(());
     }
 
-    let max_count = *daily_counts.values().max().unwrap_or(&1);
+    let max_count = *daily_counts.values().max().unwrap_or(&0);
+    if max_count == 0 {
+        println!(
+            "No remaining tasks in the last {} day{}.",
+            days_to_show,
+            if days_to_show == 1 { "" } else { "s" }
+        );
+        return Ok(());
+    }
 
     // Print header
     println!("Remaining Tasks");
@@ -345,7 +353,7 @@ pub fn print_burndown(queue: &QueueFile, done: Option<&QueueFile>, days: u32) ->
     // Print each day with a simple bar chart
     for (day_key, count) in &daily_counts {
         let bar_len = (*count as f64 / max_count as f64 * 20.0).round() as usize;
-        let bar = "█".repeat(bar_len.max(1));
+        let bar = "█".repeat(bar_len);
 
         println!("  {} | {} {}", day_key, bar, count);
     }

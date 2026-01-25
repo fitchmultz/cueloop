@@ -1,7 +1,8 @@
 use anyhow::Result;
 use std::path::PathBuf;
 use std::process::Command;
-use tempfile::TempDir;
+
+mod test_support;
 
 fn ralph_bin() -> PathBuf {
     if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
@@ -34,7 +35,7 @@ fn ralph_bin() -> PathBuf {
 
 #[test]
 fn doctor_passes_in_clean_env() -> Result<()> {
-    let dir = TempDir::new()?;
+    let dir = test_support::temp_dir_outside_repo();
     // Setup valid repo
     Command::new("git")
         .current_dir(dir.path())
@@ -74,7 +75,7 @@ fn doctor_passes_in_clean_env() -> Result<()> {
 
 #[test]
 fn doctor_fails_when_queue_missing() -> Result<()> {
-    let dir = TempDir::new()?;
+    let dir = test_support::temp_dir_outside_repo();
     Command::new("git")
         .current_dir(dir.path())
         .arg("init")
@@ -97,7 +98,7 @@ fn doctor_fails_when_queue_missing() -> Result<()> {
 
 #[test]
 fn doctor_warns_on_missing_upstream() -> Result<()> {
-    let dir = TempDir::new()?;
+    let dir = test_support::temp_dir_outside_repo();
     // Setup valid repo without upstream
     Command::new("git")
         .current_dir(dir.path())
@@ -135,7 +136,7 @@ fn doctor_warns_on_missing_upstream() -> Result<()> {
 
 #[test]
 fn doctor_fails_with_nonexistent_runner_binary() -> Result<()> {
-    let dir = TempDir::new()?;
+    let dir = test_support::temp_dir_outside_repo();
     // Setup valid repo
     Command::new("git")
         .current_dir(dir.path())
@@ -175,7 +176,7 @@ fn doctor_fails_with_nonexistent_runner_binary() -> Result<()> {
 
 #[test]
 fn doctor_fails_with_nonexistent_gemini_binary() -> Result<()> {
-    let dir = TempDir::new()?;
+    let dir = test_support::temp_dir_outside_repo();
     Command::new("git")
         .current_dir(dir.path())
         .arg("init")
@@ -210,7 +211,7 @@ fn doctor_fails_with_nonexistent_gemini_binary() -> Result<()> {
 
 #[test]
 fn doctor_fails_with_nonexistent_claude_binary() -> Result<()> {
-    let dir = TempDir::new()?;
+    let dir = test_support::temp_dir_outside_repo();
     Command::new("git")
         .current_dir(dir.path())
         .arg("init")
@@ -245,7 +246,7 @@ fn doctor_fails_with_nonexistent_claude_binary() -> Result<()> {
 
 #[test]
 fn doctor_fails_with_invalid_done_archive() -> Result<()> {
-    let dir = TempDir::new()?;
+    let dir = test_support::temp_dir_outside_repo();
     Command::new("git")
         .current_dir(dir.path())
         .arg("init")

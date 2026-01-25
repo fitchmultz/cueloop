@@ -510,6 +510,13 @@ fn path_is_allowed(repo_root: &Path, path: &str, allowed_paths: &[&str]) -> bool
         return false;
     };
 
+    let normalized_dir = if normalized.ends_with('/') {
+        normalized.to_string()
+    } else {
+        format!("{}/", normalized)
+    };
+    let normalized_is_dir = repo_root.join(normalized).is_dir();
+
     allowed_paths.iter().any(|allowed| {
         let Some(allowed_norm) = normalize_path_value(allowed) else {
             return false;
@@ -534,7 +541,12 @@ fn path_is_allowed(repo_root: &Path, path: &str, allowed_paths: &[&str]) -> bool
         }
 
         let prefix = format!("{}/", allowed_dir);
-        normalized.starts_with(&prefix)
+        if normalized.starts_with(&prefix) || normalized_dir.starts_with(&prefix) {
+            return true;
+        }
+
+        let allowed_dir_slash = prefix;
+        normalized_is_dir && allowed_dir_slash.starts_with(&normalized_dir)
     })
 }
 

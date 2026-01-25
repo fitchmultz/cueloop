@@ -9,6 +9,8 @@ use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
+mod test_support;
+
 // Helper to create a minimal .ralph directory
 fn setup_ralph_dir(dir: &TempDir) -> PathBuf {
     let ralph_dir = dir.path().join(".ralph");
@@ -74,7 +76,7 @@ fn test_find_repo_root_nested() {
 
 #[test]
 fn test_find_repo_root_fallback_to_start() {
-    let dir = TempDir::new().expect("create temp dir");
+    let dir = test_support::temp_dir_outside_repo();
     // No .ralph or .git directory
 
     let repo_root = config::find_repo_root(dir.path());

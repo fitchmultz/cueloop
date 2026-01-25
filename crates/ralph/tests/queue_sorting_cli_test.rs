@@ -4,7 +4,8 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use tempfile::TempDir;
+
+mod test_support;
 
 fn ralph_bin() -> PathBuf {
     if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
@@ -109,7 +110,7 @@ fn write_queue(dir: &Path) -> Result<()> {
 
 #[test]
 fn queue_list_rejects_invalid_sort_by() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     init_repo(dir.path())?;
 
     let (status, _stdout, stderr) = run_in_dir(dir.path(), &["queue", "list", "--sort-by", "nope"]);
@@ -127,7 +128,7 @@ fn queue_list_rejects_invalid_sort_by() -> Result<()> {
 
 #[test]
 fn queue_sort_rejects_invalid_sort_by() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     init_repo(dir.path())?;
 
     let (status, _stdout, stderr) = run_in_dir(dir.path(), &["queue", "sort", "--sort-by", "nope"]);
@@ -145,7 +146,7 @@ fn queue_sort_rejects_invalid_sort_by() -> Result<()> {
 
 #[test]
 fn queue_list_sorts_by_priority_descending() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     init_repo(dir.path())?;
     write_queue(dir.path())?;
 
@@ -180,7 +181,7 @@ fn queue_list_sorts_by_priority_descending() -> Result<()> {
 
 #[test]
 fn queue_list_defaults_to_descending_priority() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     init_repo(dir.path())?;
     write_queue(dir.path())?;
 
@@ -206,7 +207,7 @@ fn queue_list_defaults_to_descending_priority() -> Result<()> {
 
 #[test]
 fn queue_list_sorts_by_priority_ascending() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     init_repo(dir.path())?;
     write_queue(dir.path())?;
 
@@ -241,7 +242,7 @@ fn queue_list_sorts_by_priority_ascending() -> Result<()> {
 
 #[test]
 fn queue_sort_reorders_queue_by_priority_descending() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     init_repo(dir.path())?;
     write_queue(dir.path())?;
 
@@ -283,7 +284,7 @@ fn queue_sort_reorders_queue_by_priority_descending() -> Result<()> {
 
 #[test]
 fn queue_sort_reorders_queue_by_priority_ascending() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     init_repo(dir.path())?;
     write_queue(dir.path())?;
 
@@ -325,7 +326,7 @@ fn queue_sort_reorders_queue_by_priority_ascending() -> Result<()> {
 
 #[test]
 fn queue_sort_defaults_to_descending_priority() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     init_repo(dir.path())?;
     write_queue(dir.path())?;
 

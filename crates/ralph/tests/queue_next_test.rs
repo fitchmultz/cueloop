@@ -3,7 +3,8 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use tempfile::TempDir;
+
+mod test_support;
 
 fn ralph_bin() -> PathBuf {
     if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
@@ -49,7 +50,7 @@ fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
 
 #[test]
 fn queue_next_reports_empty_queue_with_done_tasks() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
     anyhow::ensure!(

@@ -1,9 +1,10 @@
 //! Integration tests for `ralph queue repair`.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use tempfile::TempDir;
+
+mod test_support;
 
 fn ralph_bin() -> PathBuf {
     if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
@@ -49,7 +50,7 @@ fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
 
 #[test]
 fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
     anyhow::ensure!(
@@ -217,7 +218,7 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
 
 #[test]
 fn repair_remaps_dependencies_for_invalid_ids() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
     anyhow::ensure!(

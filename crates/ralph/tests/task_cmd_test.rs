@@ -296,7 +296,7 @@ fn test_compare_task_fields_no_changes() {
     let result = task_cmd::compare_task_fields(before, after);
     assert!(result.is_ok());
     let changed = result.unwrap();
-    assert_eq!(changed.len(), 3);
+    assert_eq!(changed.len(), 0);
 }
 
 #[test]

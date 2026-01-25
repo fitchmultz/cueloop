@@ -1,7 +1,8 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use tempfile::TempDir;
+
+mod test_support;
 
 fn ralph_bin() -> PathBuf {
     if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
@@ -64,7 +65,7 @@ fn assert_failure(status: ExitStatus, stdout: &str, stderr: &str) {
 
 #[test]
 fn run_one_accepts_runner_and_model_overrides_without_todo_tasks() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
@@ -156,7 +157,7 @@ fn run_one_accepts_runner_and_model_overrides_without_todo_tasks() -> Result<()>
 
 #[test]
 fn run_one_rejects_invalid_runner_flag() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(
@@ -175,7 +176,7 @@ fn run_one_rejects_invalid_runner_flag() -> Result<()> {
 
 #[test]
 fn run_one_rejects_invalid_model_flag() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
@@ -207,7 +208,7 @@ fn run_one_rejects_invalid_model_flag() -> Result<()> {
 
 #[test]
 fn run_one_accepts_custom_model_for_opencode() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
@@ -241,7 +242,7 @@ fn run_one_accepts_custom_model_for_opencode() -> Result<()> {
 
 #[test]
 fn run_one_rejects_invalid_effort_flag() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(

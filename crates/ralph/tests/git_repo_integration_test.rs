@@ -3,7 +3,8 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use tempfile::TempDir;
+
+mod test_support;
 
 fn ralph_bin() -> PathBuf {
     if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
@@ -199,7 +200,7 @@ fn create_executable_script(dir: &Path, name: &str, script: &str) -> Result<Path
 
 #[test]
 fn init_and_validate_work_in_fresh_git_repo() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
@@ -220,7 +221,7 @@ fn init_and_validate_work_in_fresh_git_repo() -> Result<()> {
 
 #[test]
 fn run_one_refuses_to_run_when_repo_is_dirty_and_a_todo_exists() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     // Ensure ralph runtime files exist.
@@ -252,7 +253,7 @@ fn run_one_refuses_to_run_when_repo_is_dirty_and_a_todo_exists() -> Result<()> {
 
 #[test]
 fn run_one_succeeds_when_repo_is_dirty_and_force_is_used() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     // Ensure ralph runtime files exist.
@@ -296,7 +297,7 @@ fn run_one_succeeds_when_repo_is_dirty_and_force_is_used() -> Result<()> {
 
 #[test]
 fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     // This mimics the production environment where .ralph/lock is ignored,
@@ -370,7 +371,7 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
 
 #[test]
 fn scan_refuses_to_run_when_repo_is_dirty() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     // Ensure ralph runtime files exist.
@@ -398,7 +399,7 @@ fn scan_refuses_to_run_when_repo_is_dirty() -> Result<()> {
 
 #[test]
 fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     // Ensure ralph runtime files exist.
@@ -488,7 +489,7 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
 
 #[test]
 fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_disabled() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
@@ -557,7 +558,7 @@ fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_disabled() -> Result<
 
 #[test]
 fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_ask_non_tty() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
@@ -626,7 +627,7 @@ fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_ask_non_tty() -> Resu
 
 #[test]
 fn run_one_fails_when_custom_ci_gate_command_fails() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
@@ -693,7 +694,7 @@ fn run_one_fails_when_custom_ci_gate_command_fails() -> Result<()> {
 
 #[test]
 fn run_one_succeeds_when_ci_gate_disabled() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);

@@ -351,12 +351,27 @@ mod tests {
         let dir = TempDir::new()?;
         let resolved = resolved_for(&dir);
 
-        // Override worker prompt to NOT reference readme
+        // Override all prompts to ensure none reference the README.
         let overrides = resolved.repo_root.join(".ralph/prompts");
         fs::create_dir_all(&overrides)?;
-        fs::write(overrides.join("worker.md"), "no reference")?;
-        fs::write(overrides.join("task_builder.md"), "no reference")?;
-        fs::write(overrides.join("scan.md"), "no reference")?;
+        let prompt_files = [
+            "worker.md",
+            "worker_phase1.md",
+            "worker_phase2.md",
+            "worker_phase2_handoff.md",
+            "worker_phase3.md",
+            "worker_single_phase.md",
+            "task_builder.md",
+            "task_updater.md",
+            "scan.md",
+            "completion_checklist.md",
+            "code_review.md",
+            "phase2_handoff_checklist.md",
+            "iteration_checklist.md",
+        ];
+        for file in prompt_files {
+            fs::write(overrides.join(file), "no reference")?;
+        }
 
         let report = run_init(
             &resolved,

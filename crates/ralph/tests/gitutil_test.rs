@@ -5,6 +5,8 @@ use std::fs;
 use std::process::Command;
 use tempfile::TempDir;
 
+mod test_support;
+
 // Helper to initialize a git repository
 fn init_git_repo(dir: &TempDir) {
     Command::new("git")
@@ -212,7 +214,7 @@ fn test_has_lfs_detects_gitattributes_filter() {
 }
 #[test]
 fn test_status_porcelain_non_git_directory() {
-    let dir = TempDir::new().expect("create temp dir");
+    let dir = test_support::temp_dir_outside_repo();
     // Not a git repository
 
     let result = gitutil::status_porcelain(dir.path());

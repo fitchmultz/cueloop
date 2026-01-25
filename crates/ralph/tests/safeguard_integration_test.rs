@@ -3,7 +3,8 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use tempfile::TempDir;
+
+mod test_support;
 
 fn ralph_bin() -> PathBuf {
     if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
@@ -175,7 +176,7 @@ fn create_fake_runner(dir: &Path, runner: &str, script: &str) -> Result<PathBuf>
 
 #[test]
 fn runner_fails_and_safeguards_stdout() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     // 1. Setup Ralph
@@ -238,7 +239,7 @@ fn runner_fails_and_safeguards_stdout() -> Result<()> {
 
 #[test]
 fn scan_fails_validation_and_safeguards_stdout() -> Result<()> {
-    let dir = TempDir::new().context("create temp dir")?;
+    let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
     // 1. Setup Ralph
