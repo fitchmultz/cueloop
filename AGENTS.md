@@ -1,80 +1,258 @@
 # Contributor Guide
 
-Purpose: Capture repo-wide operating expectations for contributors and agents.
+Purpose: Capture repo-wide operating expectations for contributors and agents working on Ralph, a Rust-based AI agent task queue CLI.
 
-## Project Structure & Source of Truth
-- `crates/ralph/`: **Active** Rust CLI.
-  - Run locally via `cargo run -p ralph -- <command>`
-- `.ralph/`: Repo-local runtime state.
-  - `.ralph/queue.json` is the **source of truth** for active work.
-  - When creating tasks via `ralph task`, new tasks are inserted at the top **unless** the first task is `doing`, in which case new tasks are inserted just below it (position 1).
-  - `.ralph/done.json` archives completed tasks (same schema as queue).
-  - Prompt templates are embedded in the Rust CLI and organized under `crates/ralph/assets/prompts/`; repo-local overrides can be placed in `.ralph/prompts/*.md`.
+## Project Structure & Architecture
 
-## Build, Test, and Development Commands (Rust)
+**Active Components:**
+- `crates/ralph/`: Rust CLI application (primary codebase)
+  - `src/`: Core implementation (CLI commands, runner integration, TUI, queue management)
+  - `assets/prompts/`: Embedded prompt templates (worker phases, task builder, scan)
+- `docs/`: User-facing documentation (CLI reference, configuration, workflow)
+- `schemas/`: JSON schemas for config and queue validation
+- `.ralph/`: Repo-local runtime state (not committed)
+  - `queue.json`: Source of truth for active work
+  - `done.json`: Archive of completed tasks
+  - `config.json`: Project-specific configuration (overrides global)
+  - `prompts/*.md`: Optional prompt overrides
 
-**REQUIRED CI GATE**: `make ci` — **Agents MUST run this before claiming task completion, committing, or merging PRs.** This is the validation gate that must pass for any work to be considered complete. MAKE CI INTENTIONALLY INSTALLS THE BINARY AND IS A HARD REQUIREMENT. UNDER **NO** CIRCUMSTANCE CAN THE CI GATE BE CHANGED TO EXCLUDE THE INSTALL STEP.
+**Key Architectural Patterns:**
+- **Queue-first**: Task queue is the primary source of truth; agents read/write tasks via `.ralph/queue.json`
+- **Runner-agnostic**: Supports multiple AI runners (Codex, OpenCode, Gemini, Claude) through a unified interface
+- **Three-phase workflow**: Planning → Implementation + CI → Review + Completion (configurable)
+- **Prompt composition**: Worker prompts combine base `worker.md` with phase-specific wrappers
 
-**CLI Commands**: See `docs/cli.md` for complete command reference. Agents should keep this documentation up to date when adding or modifying CLI commands.
+## Build, Test, and Development Commands
 
-**Development/iteration commands** (for rapid testing, not a substitute for `make ci`):
-- `cargo test -p ralph`
-- `cargo run -p ralph -- <command>` (see `docs/cli.md` for available commands)
+**REQUIRED CI GATE**: `make ci` — Agents MUST run this before claiming task completion, committing, or merging PRs. This intentionally installs the binary and is a hard requirement. Under no circumstances can the CI gate be changed to exclude the install step.
 
-## Queue & Prompt Contract (Rust)
-- Source of truth is `.ralph/queue.json` (JSON). Task order follows file order (top runs first).
-- Completed tasks must be moved to `.ralph/done.json` and removed from `.ralph/queue.json`.
-- New tasks must include: `id`, `title`, `created_at`, `updated_at` (only `id` and `title` must be non-empty). Prefer including `tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `custom_fields` as empty arrays/objects at creation time for consistency.
-- Optional task fields: `status` (defaults to `todo`), `priority` (defaults to `medium`), `request`, `completed_at`, `agent`.
-- See `docs/queue-and-tasks.md` for complete task schema documentation.
-- Prompt templates are embedded in the Rust CLI and organized under `crates/ralph/assets/prompts/`; overrides can be placed in `.ralph/prompts/` and reference these files.
-- Worker prompts are composed from a base prompt (`worker.md`) plus phase-specific wrappers (`worker_phase1.md`, `worker_phase2.md`, `worker_phase2_handoff.md`, `worker_phase3.md`, `worker_single_phase.md`).
-- **Two-phase planning**: Agents in Phase 1 MUST write their plan to `.ralph/cache/plans/<TASK_ID>.md` and avoid printing the plan inline.
-- **Supervision-aware completion**: `ralph task done` detects supervision and writes a completion signal to `.ralph/cache/completions/<TASK_ID>.json`. The supervisor consumes the signal, runs `queue::complete_task`, and then `post_run_supervise` (for done tasks) to finish CI/commit/push. This prevents lock contention while still recording the agent's completion intent.
+**Core Make Targets:**
+- `make build`: Build all crates (debug)
+- `make build-release`: Build release binary (for installation)
+- `make install`: Build and install binary to `~/.local/bin/ralph` (or fallback path)
+- `make test`: Run all tests (unit + doc) in temp directories
+- `make lint`: Run Clippy with `-D warnings`
+- `make type-check`: Run `cargo check` for type validation
+- `make format`: Format code with `cargo fmt`
+- `make generate`: Generate JSON schemas from Rust code
+- `make clean`: Remove build artifacts, logs, and `.ralph/` cache
+- `make ci`: Complete validation pipeline (generate → format → type-check → lint → build → test → install)
 
-## Git + CI Expectations (Current Rust State)
-- The execution agent owns the lifecycle: update queue status, run `make ci`, commit, and push.
-- The supervisor (`ralph run`) verifies the repo is clean and will commit/push only if needed.
-- Prefer commit messages like `RQ-####: <short summary>`.
+**Development Iteration (not a substitute for `make ci`):**
+- `cargo test -p ralph`: Run tests for the ralph crate only
+- `cargo run -p ralph -- <command>`: Run CLI locally (see `docs/cli.md` for commands)
+- `cargo clippy -p ralph`: Quick linting for single crate
+
+**Validation Commands:**
+- `cargo run -p ralph -- queue validate`: Verify queue format
+- `cargo run -p ralph -- config schema`: View config schema
+- `cargo run -p ralph -- queue schema`: View queue schema
+
+## Coding Style & Rust Conventions
+
+**Formatting & Linting:**
+- Use `cargo fmt` for formatting (enforced by CI)
+- Use `cargo clippy` with `-D warnings` for linting (enforced by CI)
+- All warnings are treated as errors in CI
+
+**Rust Patterns:**
+- Prefer explicit types over `let` inference for public APIs
+- Use `Result<T, E>` for fallible operations with descriptive error types
+- Prefer `thiserror` for error type definitions
+- Keep modules focused and cohesive; split large files when appropriate
+- Use `#[cfg(test)]` for unit tests alongside implementation
+
+**Naming Conventions:**
+- Functions: `snake_case`
+- Types: `PascalCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Modules: `snake_case`
+- CLI commands: `kebab-case` (e.g., `run one`, `queue list`)
+
+**Dead Code Management:**
+- Prefer explicit, minimal usage patterns (e.g., type annotations) over `#[allow(dead_code)]` when preserving public APIs
+- Remove truly dead code rather than suppressing warnings
+
+## Testing Guidelines
+
+**Testing Framework:**
+- Rust's built-in `cargo test` framework
+- Unit tests alongside implementation (`#[cfg(test)]`)
+- Integration tests in `tests/` (if added)
+
+**Test Execution:**
+- `make test` runs unit, doc, and release build tests
+- Tests run in isolated temp directories (under `target/tmp/ralph-ci-tmp/`)
+- Set `RALPH_CI_KEEP_TMP=1` to preserve test temp directories for debugging
+
+**Coverage Expectations:**
+- All user-facing CLI commands should have tests
+- Queue operations (read/write/move) must be covered
+- Prompt template rendering should be tested
+- Critical paths (CI gate, git operations, runner integration) require tests
+
+**Stress Testing:**
+- `make stress`: Runs burn-in stress tests for queue contract validation
+- Use `RALPH_STRESS_BURN_IN=1` to enable stress test mode
+
+## Queue & Prompt Contract
+
+**Queue Source of Truth:**
+- `.ralph/queue.json`: Active work (JSON array of tasks)
+- `.ralph/done.json`: Archived completed/rejected tasks (same schema)
+- Task order follows file order (top runs first)
+
+**Task Fields:**
+- **Required**: `id`, `title`, `created_at`, `updated_at` (RFC3339)
+- **Optional**: `tags`, `scope`, `evidence`, `plan`, `notes`, `status`, `priority`, `request`, `completed_at`, `agent`, `depends_on`, `custom_fields`
+- **Defaults**: `status: todo`, `priority: medium`
+- See `docs/queue-and-tasks.md` for complete schema
+
+**Task Creation:**
+- New tasks inserted at top (position 0) unless first task is `doing` (then position 1)
+- Draft tasks (`status: draft`) are skipped unless `--include-draft` is set
+
+**Prompt Templates:**
+- Embedded defaults in `crates/ralph/assets/prompts/`
+- Override in `.ralph/prompts/*.md` (files referenced by name)
+- Worker prompts: base `worker.md` + phase wrappers (`worker_phase1.md`, `worker_phase2.md`, `worker_phase2_handoff.md`, `worker_phase3.md`, `worker_single_phase.md`)
+
+**Two-Phase Planning:**
+- Phase 1 agents MUST write plans to `.ralph/cache/plans/<TASK_ID>.md` (do not print inline)
+- RepoPrompt produces the plan, but the agent owns correctness—fix discrepancies before committing
+
+**Supervision-Aware Completion:**
+- `ralph task done` writes completion signal to `.ralph/cache/completions/<TASK_ID>.json`
+- Supervisor consumes signal, runs `queue::complete_task`, then `post_run_supervise` for CI/commit/push
+- Prevents lock contention while recording agent completion intent
+
+## Git & CI Expectations
+
+**Lifecycle:**
+- Execution agent owns: update queue status → run `make ci` → commit → push
+- Supervisor (`ralph run`) verifies repo cleanliness, commits/pushes only if needed
+- Draft mode can bypass commit/push for testing
+
+**Commit Conventions:**
+- Prefer format: `RQ-####: <short summary>` (where `####` is task ID)
+- Examples: `RQ-0042: Add CI schema validation`, `RQ-0007: Fix queue archive race condition`
+
+**Pre-Commit Validation:**
+- `make ci` must pass before any commit
+- CI gate intentionally includes binary install step—never remove this
 
 ## CLI Help Documentation
-- **When adding new CLI arguments**: Always update help text (clap `after_long_help`, doc comments) to include examples.
-- **Help examples must cover**: new flags, their purpose, and typical usage patterns.
-- **Verification**: Run `cargo run -p ralph -- <command> --help` to review output before committing.
-- **Common gaps to watch for**: missing `--phases` examples, `--interactive` (`-i`), `--rp-on`/`--rp-off`, runner/model overrides.
+
+**Adding New CLI Arguments:**
+- Always update `after_long_help` or doc comments with examples
+- Examples must cover: new flags, purpose, typical usage patterns
+- Verification: Run `cargo run -p ralph -- <command> --help` to review before committing
+
+**Common Gaps to Watch For:**
+- Missing `--phases` examples
+- `--interactive` (`-i`) flag documentation
+- `--rp-on`/`--rp-off` RepoPrompt flags
+- Runner/model override examples
+- Git behavior flags (`--git-commit-push-on`, `--git-revert-mode`)
+
+**Documentation Sync:**
+- Keep `docs/cli.md` updated when adding/modifying commands
+- See `docs/cli.md` for complete command reference and examples
 
 ## Configuration
-- See `docs/configuration.md` for complete configuration documentation. Agents should keep this documentation up to date when adding or modifying configuration options.
-- Two-layer JSON config:
-  - Global: `~/.config/ralph/config.json`
-  - Project: `.ralph/config.json` (overrides global)
-- CLI flags can override at runtime; they should not be relied on as persisted config.
-- **RepoPrompt**: When `agent.require_repoprompt: true` (or `--rp-on`), agents MUST use RepoPrompt tools (`read_file`, `context_builder`, etc.).
-- **RepoPrompt responsibility**: RepoPrompt produces the plan, but the agent owns correctness. If the plan conflicts with repo reality, fix it before writing the plan to `.ralph/cache/plans/<TASK_ID>.md`.
-- **RepoPrompt preflight**: Before invoking `context_builder`, perform a quick repo reality check (validate task assumptions + identify relevant files) and include those findings in the `context_builder` instructions.
-- **Selection hygiene**: If `context_builder` misses key files, append them to the selection (do NOT replace selection) and ask a follow-up before finalizing the plan.
-- **Entry-point parity**: If multiple user-facing entrypoints exist (CLI/API/UI/scripts), implement parity rather than downgrading requirements or docs.
+
+**Config Layers (precedence, highest to lowest):**
+1. CLI flags (single run)
+2. Project config (`.ralph/config.json`)
+3. Global config (`~/.config/ralph/config.json`)
+4. Schema defaults (`schemas/config.schema.json`)
+
+**Key Configuration:**
+- `agent.runner`: Codex, OpenCode, Gemini, or Claude
+- `agent.model`: Model ID string
+- `agent.phases`: Number of phases (1, 2, or 3)
+- `agent.reasoning_effort`: Low, medium, high, xhigh (Codex only)
+- `agent.require_repoprompt`: Require RepoPrompt tools (true/false)
+- `agent.ci_gate_command`: CI validation command (default: `make ci`)
+- `agent.ci_gate_enabled`: Enable/disable CI gate (default: true)
+- `queue.file`: Queue file path (default: `.ralph/queue.json`)
+- `queue.done_file`: Done archive path (default: `.ralph/done.json`)
+
+**RepoPrompt Integration:**
+- When `require_repoprompt: true` (or `--rp-on`), agents MUST use RepoPrompt tools
+- RepoPrompt produces plans, but agent owns correctness—fix conflicts before writing
+- Preflight: Validate task assumptions and identify relevant files before invoking `context_builder`
+- Selection hygiene: If `context_builder` misses files, append them (don't replace selection)
+
+**Entry Point Parity:**
+- If multiple entrypoints exist (CLI/API/UI/scripts), implement parity across all
+- Don't downgrade requirements or docs for less-capable entrypoints
+
+See `docs/configuration.md` for complete configuration documentation.
 
 ## Documentation Maintenance
-- When config defaults, schemas, CLI flags, or task fields change, update `docs/` and keep examples in sync with the source of truth.
-- All documentation in `docs/` should be kept up to date. When adding or modifying features, update the relevant documentation files accordingly.
+
+**Update Triggers:**
+- Config defaults/schemas change → update `docs/configuration.md`
+- CLI flags change → update `docs/cli.md` and help text
+- Task fields change → update `docs/queue-and-tasks.md`
+- New features added → update relevant documentation files
+
+**Quality Standards:**
+- Keep examples in sync with source of truth
+- All `docs/*.md` files should be current
+- Update `AGENTS.md` when learning repo lessons or patterns
+
+## Security & Best Practices
+
+**Secrets:**
+- Never commit real secrets (API keys, tokens, private URLs) to public repos
+- Treat runner output as potentially sensitive; avoid copying raw output into `.ralph/queue.json` notes without redaction
+
+**Testing Safety:**
+- Use temp repos for runner/output tests
+- Avoid mutating `.ralph/queue.json` in the main repo during tests
+
+**First-Principles Simplicity:**
+- Start from fundamentals, strip to essentials, rebuild simplest working path
+- Delete before adding: remove dead code, redundant layers, stale comments
+- Complexity budget: add components only when they reduce risk/maintenance or increase value
+- Evidence over opinion: tests, data constraints, benchmarks settle debates
+- Centralize early: consolidate similar logic into shared helpers/modules
 
 ## Operational Lessons
-- When changing streamed runner output, validate with real runner CLIs and a non-trivial prompt so tool usage + reasoning events are exercised.
-- Keep streaming logs user-readable by including tool arguments (paths/commands) in summaries, not raw JSON.
-- Use temp repos for runner/output tests and avoid mutating `.ralph/queue.json` in this repo.
-- Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
 
-## Configuration & Security
-- Do not commit real secrets if the repo is public.
-- Treat runner output as potentially sensitive; avoid copying raw output into `.ralph/queue.json` notes without redaction.
+**Streaming Output:**
+- Validate with real runner CLIs and non-trivial prompts to exercise tool usage + reasoning
+- Keep streaming logs user-readable: include tool arguments (paths/commands) in summaries, not raw JSON
 
-## First-Principles Simplicity
-- Start from the fundamentals, strip to essentials, then rebuild the simplest working path.
-- Delete before adding: remove dead code, redundant layers, and stale comments; net-negative diffs are wins when behavior stays correct.
-- Complexity budget: add components only when they reduce total risk/maintenance or increase measurable value.
-- Evidence over opinion: tests, data constraints, and benchmarks settle debates; formatters/linters settle style.
-- Centralize early: if similar logic exists, consolidate into shared helpers/modules.
-- Dead-code linting: prefer an explicit, minimal usage pattern (e.g., a type annotation) over suppressing with allow attributes when preserving a public API.
+**Temp Directory Management:**
+- CI tests use `target/tmp/ralph-ci-tmp/` (disposable, easy to clean)
+- Legacy temp dirs under `/private/var/folders/` are cleaned up automatically
+- Set `RALPH_CI_KEEP_TMP=1` to preserve temp directories for debugging
 
-MAKE CI INTENTIONALLY INSTALLS THE BINARY AND IS A HARD REQUIREMENT. UNDER **NO** CIRCUMSTANCE CAN THE CI GATE BE CHANGED TO EXCLUDE THE INSTALL STEP.
+**Task Status Behavior:**
+- Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set
+- Only `done` and `rejected` tasks should exist in `.ralph/done.json`
+
+## Troubleshooting Common Issues
+
+**CI Gate Failures:**
+- Run `make ci` manually to see full error output
+- Check for format issues: `cargo fmt --check`
+- Check for linting: `cargo clippy -- -D warnings`
+- Verify tests pass: `cargo test --workspace`
+
+**Queue Lock Issues:**
+- Use `--force` to bypass stale queue locks
+- Check for orphaned processes holding `.ralph/lock`
+
+**Runner Integration Issues:**
+- Verify runner binaries are on `PATH`
+- Test runner directly (e.g., `codex --help`)
+- Check `agent.runner`, `agent.model`, and binary path overrides in config
+
+**RepoPrompt Issues:**
+- Ensure RepoPrompt is installed and configured
+- Check `require_repoprompt: true` in config or `--rp-on` flag
+- Verify selection includes relevant files before invoking `context_builder`
