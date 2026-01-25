@@ -10,19 +10,19 @@
   "agent": {
     "runner": "codex",
     "model": "gpt-5.2-codex",
-    "reasoning_effort": "medium",
+    "phases": 3,
     "iterations": 1,
-    "followup_reasoning_effort": null,
+    "reasoning_effort": "low",
+    "followup_reasoning_effort": "medium",
     "codex_bin": "codex",
     "opencode_bin": "opencode",
     "gemini_bin": "gemini",
     "claude_bin": "claude",
     "claude_permission_mode": "bypass_permissions",
-    "require_repoprompt": false,
+    "require_repoprompt": true,
     "ci_gate_command": "make ci",
     "ci_gate_enabled": true,
-    "git_revert_mode": "ask",
     "git_commit_push_enabled": true,
-    "phases": 3
+    "git_revert_mode": "ask"
   }
 }
