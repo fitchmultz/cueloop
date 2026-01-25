@@ -711,7 +711,15 @@ pub fn ensure_phase3_completion(
     }
 
     if git_commit_push_enabled {
-        gitutil::require_clean_repo_ignoring_paths(&resolved.repo_root, false, &[])?;
+        if status == TaskStatus::Rejected {
+            gitutil::require_clean_repo_ignoring_paths(
+                &resolved.repo_root,
+                false,
+                &[".ralph/queue.json", ".ralph/done.json"],
+            )?;
+        } else {
+            gitutil::require_clean_repo_ignoring_paths(&resolved.repo_root, false, &[])?;
+        }
     } else {
         log::info!(
             "Auto git commit/push disabled; skipping clean-repo enforcement for Phase 3 completion."
@@ -878,6 +886,11 @@ mod tests {
                 tasks: vec![task],
             },
         )?;
+        let status = Command::new("git")
+            .current_dir(repo_root)
+            .args(["add", ".ralph/queue.json", ".ralph/done.json"])
+            .status()?;
+        anyhow::ensure!(status.success(), "git add failed");
         Ok(())
     }
 
@@ -1040,6 +1053,31 @@ echo '{{"sessionID":"sess-123"}}'
         let temp = TempDir::new()?;
         git_init(temp.path())?;
         write_queue_and_done(temp.path(), TaskStatus::Done)?;
+
+        let resolved = resolved_for_completion(temp.path().to_path_buf());
+        assert!(ensure_phase3_completion(&resolved, "RQ-0001", true).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_phase3_completion_allows_queue_files_for_rejected_status_when_enabled() -> Result<()>
+    {
+        let temp = TempDir::new()?;
+        git_init(temp.path())?;
+        write_queue_and_done(temp.path(), TaskStatus::Rejected)?;
+
+        let resolved = resolved_for_completion(temp.path().to_path_buf());
+        ensure_phase3_completion(&resolved, "RQ-0001", true)?;
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_phase3_completion_rejected_still_requires_clean_repo_for_other_changes() -> Result<()>
+    {
+        let temp = TempDir::new()?;
+        git_init(temp.path())?;
+        write_queue_and_done(temp.path(), TaskStatus::Rejected)?;
+        std::fs::write(temp.path().join("notes.txt"), "extra")?;
 
         let resolved = resolved_for_completion(temp.path().to_path_buf());
         assert!(ensure_phase3_completion(&resolved, "RQ-0001", true).is_err());

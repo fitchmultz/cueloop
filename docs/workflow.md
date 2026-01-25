@@ -29,6 +29,7 @@ Default execution uses three phases:
 1. Phase 1 (Planning): plan is cached at `.ralph/cache/plans/<TASK_ID>.md`.
 2. Phase 2 (Implementation + CI): apply changes, run the configured CI gate command (default `make ci`) when enabled, then stop.
 3. Phase 3 (Review + Completion): review diff, resolve any flagged risks or suspicious leads before completion, re-run the configured CI gate command (default `make ci`) when enabled, complete task, and (when auto git commit/push is enabled) commit and push.
+   - With auto git commit/push enabled, Phase 3 requires a clean repo to finish; for rejected tasks, the only allowed dirty files are `.ralph/queue.json` and `.ralph/done.json` (queue bookkeeping).
 
 Phases can be set via `--phases` or `agent.phases` in config.
 
