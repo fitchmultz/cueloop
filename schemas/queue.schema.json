@@ -45,8 +45,10 @@
     "Task": {
       "type": "object",
       "required": [
+        "created_at",
         "id",
-        "title"
+        "title",
+        "updated_at"
       ],
       "properties": {
         "agent": {
@@ -68,10 +70,7 @@
         },
         "created_at": {
           "description": "RFC3339 UTC timestamps as strings to keep the contract tool-agnostic.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "custom_fields": {
           "description": "Custom user-defined fields (key-value pairs for extensibility).",
@@ -154,10 +153,7 @@
           "type": "string"
         },
         "updated_at": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         }
       },
       "additionalProperties": false

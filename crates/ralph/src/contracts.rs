@@ -384,9 +384,11 @@ pub struct Task {
     pub agent: Option<TaskAgent>,
 
     /// RFC3339 UTC timestamps as strings to keep the contract tool-agnostic.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(required)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(required)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<String>,

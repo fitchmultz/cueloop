@@ -24,7 +24,7 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
 ## Queue & Prompt Contract (Rust)
 - Source of truth is `.ralph/queue.json` (JSON). Task order follows file order (top runs first).
 - Completed tasks must be moved to `.ralph/done.json` and removed from `.ralph/queue.json`.
-- New tasks must include: `id`, `title`, `created_at`, `updated_at`, `tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `custom_fields` (arrays/objects can be empty; only `id` and `title` must be non-empty).
+- New tasks must include: `id`, `title`, `created_at`, `updated_at` (only `id` and `title` must be non-empty). Prefer including `tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `custom_fields` as empty arrays/objects at creation time for consistency.
 - Optional task fields: `status` (defaults to `todo`), `priority` (defaults to `medium`), `request`, `completed_at`, `agent`.
 - See `docs/queue-and-tasks.md` for complete task schema documentation.
 - Prompt templates are embedded in the Rust CLI and organized under `crates/ralph/assets/prompts/`; overrides can be placed in `.ralph/prompts/` and reference these files.

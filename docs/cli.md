@@ -117,7 +117,8 @@ Common subcommands:
 Field formats (for `ralph task edit`):
 - Lists (`tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`): comma/newline-separated.
 - `custom_fields`: `key=value` pairs, comma/newline-separated.
-- Optional text (`request`, `created_at`, `updated_at`, `completed_at`): pass `""` to clear.
+- Optional text (`request`, `completed_at`): pass `""` to clear.
+- Required timestamps (`created_at`, `updated_at`) must be RFC3339 strings and should not be cleared.
 
 Examples:
 

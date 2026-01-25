@@ -49,38 +49,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0250",
-      "status": "todo",
-      "title": "Align queue schema required fields with runtime validation",
-      "priority": "high",
-      "tags": [
-        "queue",
-        "schema",
-        "validation"
-      ],
-      "scope": [
-        "schemas/queue.schema.json",
-        "crates/ralph/src/queue/validation.rs",
-        "docs/queue-and-tasks.md"
-      ],
-      "evidence": [
-        "schemas/queue.schema.json: Task.required lists only id and title.",
-        "crates/ralph/src/queue/validation.rs: validate_task_required_fields errors on missing created_at/updated_at.",
-        "docs/queue-and-tasks.md: required field list includes created_at/updated_at/tags/scope/evidence/plan/notes."
-      ],
-      "plan": [
-        "Update queue.schema.json required list to match validation requirements.",
-        "Adjust schema alignment tests (e.g., schema_alignment_test.rs) if they assert the old schema.",
-        "Confirm docs/queue-and-tasks.md matches the updated schema and validation behavior."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0251",
       "status": "todo",
       "title": "Enforce done.json to contain only done/rejected tasks",

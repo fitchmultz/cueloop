@@ -147,7 +147,8 @@ Or:
 - Updates any task field (default + custom fields) in-place.
 - List fields accept comma/newline-separated values.
 - `custom_fields` expects `key=value` entries (comma/newline-separated).
-- Optional fields (`request`, `created_at`, `updated_at`, `completed_at`) can be cleared with `""`.
+- Optional fields (`request`, `completed_at`) can be cleared with `""`.
+- Required timestamps (`created_at`, `updated_at`) must remain valid RFC3339 strings.
 
 Examples:
 ```

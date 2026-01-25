@@ -1,6 +1,7 @@
 //! Validates generated JSON schemas against runtime config constraints.
 
 use serde_json::Value;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 
@@ -16,8 +17,20 @@ fn load_config_schema() -> Value {
     serde_json::from_str(&raw).expect("config.schema.json must be valid JSON")
 }
 
+fn load_queue_schema() -> Value {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("workspace root should exist")
+        .to_path_buf();
+    let schema_path = root.join("schemas").join("queue.schema.json");
+    let raw =
+        fs::read_to_string(&schema_path).expect("schemas/queue.schema.json should be readable");
+    serde_json::from_str(&raw).expect("queue.schema.json must be valid JSON")
+}
+
 #[test]
-fn config_schema_agent_phases_matches_runtime_validation() {
+fn schema_alignment_config_agent_phases_matches_runtime_validation() {
     let schema = load_config_schema();
     let phases = &schema["definitions"]["AgentConfig"]["properties"]["phases"];
 
@@ -32,4 +45,35 @@ fn config_schema_agent_phases_matches_runtime_validation() {
         max, 3.0,
         "schema maximum must align with runtime validation"
     );
+}
+
+#[test]
+fn schema_alignment_queue_task_required_fields_match_runtime_validation() {
+    let schema = load_queue_schema();
+    let required = schema["definitions"]["Task"]["required"]
+        .as_array()
+        .expect("Task.required should be an array");
+
+    let required_set: BTreeSet<&str> = required
+        .iter()
+        .map(|value| value.as_str().expect("required field must be string"))
+        .collect();
+    let expected: BTreeSet<&str> = ["id", "title", "created_at", "updated_at"]
+        .into_iter()
+        .collect();
+
+    assert_eq!(
+        required_set, expected,
+        "queue schema required fields must align with runtime validation"
+    );
+}
+
+#[test]
+fn schema_alignment_queue_task_timestamps_require_strings() {
+    let schema = load_queue_schema();
+    let created_at = &schema["definitions"]["Task"]["properties"]["created_at"]["type"];
+    let updated_at = &schema["definitions"]["Task"]["properties"]["updated_at"]["type"];
+
+    assert_eq!(created_at, "string", "created_at must be a string");
+    assert_eq!(updated_at, "string", "updated_at must be a string");
 }

@@ -21,20 +21,20 @@ Required:
 - `title` (string)
 - `created_at` (string, RFC3339 UTC)
 - `updated_at` (string, RFC3339 UTC)
-- `tags` (list of strings, can be empty)
-- `scope` (list of strings, can be empty)
-- `evidence` (list of strings, can be empty)
-- `plan` (list of strings, can be empty)
-- `notes` (list of strings, can be empty)
-- `depends_on` (list of task IDs, can be empty)
-- `custom_fields` (map of strings, can be empty)
 
 Common optional fields:
+- `tags` (list of strings, defaults to empty).
+- `scope` (list of strings, defaults to empty).
+- `evidence` (list of strings, defaults to empty).
+- `plan` (list of strings, defaults to empty).
+- `notes` (list of strings, defaults to empty).
 - `status`: `draft`, `todo`, `doing`, `done`, `rejected` (default: `todo`).
 - `priority`: `critical`, `high`, `medium`, `low` (default: `medium`).
 - `request`: original human request (string or null).
 - `completed_at`: RFC3339 UTC timestamp (required if status is `done` or `rejected`, otherwise optional).
 - `agent`: per-task runner override (see below).
+- `depends_on` (list of task IDs, defaults to empty).
+- `custom_fields` (map of strings, defaults to empty).
 
 Per-task agent overrides:
 - `agent.runner`: `codex`, `opencode`, `gemini`, or `claude`.
@@ -55,6 +55,8 @@ Notes:
   "title": "Add CI validation for queue format",
   "status": "doing",
   "priority": "high",
+  "created_at": "2026-01-25T03:45:00Z",
+  "updated_at": "2026-01-25T03:45:00Z",
   "tags": ["cli", "queue"],
   "scope": ["schemas/queue.schema.json", "crates/ralph/src/cli/queue.rs"],
   "plan": ["Add schema validation to queue validate."],
