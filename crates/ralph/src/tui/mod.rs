@@ -254,6 +254,49 @@ impl App {
         self.status_message = Some(message.into());
     }
 
+    fn append_log_lines<I>(&mut self, lines: I)
+    where
+        I: IntoIterator<Item = String>,
+    {
+        for line in lines {
+            self.logs.push(line);
+        }
+        if self.logs.len() > 10000 {
+            let excess = self.logs.len() - 10000;
+            self.logs.drain(0..excess);
+            self.log_scroll = self.log_scroll.saturating_sub(excess);
+        }
+        if self.autoscroll {
+            let visible_lines = self.log_visible_lines();
+            self.log_scroll = self.max_log_scroll(visible_lines);
+        }
+    }
+
+    fn set_runner_error(&mut self, msg: &str) {
+        let summary_line = msg
+            .lines()
+            .map(|line| line.trim())
+            .find(|line| !line.is_empty())
+            .unwrap_or("Runner error");
+        let status = if summary_line == "Runner error" {
+            "Runner error (see logs)".to_string()
+        } else {
+            format!("Runner error: {} (see logs)", summary_line)
+        };
+        self.set_status_message(status);
+
+        let mut lines = Vec::new();
+        lines.push("Runner error details:".to_string());
+        if msg.trim().is_empty() {
+            lines.push("(no details provided)".to_string());
+        } else {
+            for line in msg.lines() {
+                lines.push(line.to_string());
+            }
+        }
+        self.append_log_lines(lines);
+    }
+
     /// Return the number of tasks in the filtered view.
     pub fn filtered_len(&self) -> usize {
         self.filtered_indices.len()
@@ -1840,18 +1883,7 @@ where
                 let mut app_ref = app.borrow_mut();
                 match event {
                     RunnerEvent::Output(text) => {
-                        for line in text.lines() {
-                            app_ref.logs.push(line.to_string());
-                        }
-                        if app_ref.logs.len() > 10000 {
-                            let excess = app_ref.logs.len() - 10000;
-                            app_ref.logs.drain(0..excess);
-                            app_ref.log_scroll = app_ref.log_scroll.saturating_sub(excess);
-                        }
-                        if app_ref.autoscroll {
-                            let visible_lines = app_ref.log_visible_lines();
-                            app_ref.log_scroll = app_ref.max_log_scroll(visible_lines);
-                        }
+                        app_ref.append_log_lines(text.lines().map(|line| line.to_string()));
                     }
                     RunnerEvent::Finished => {
                         app_ref.runner_active = false;
@@ -1937,7 +1969,7 @@ where
                                 app_ref.on_task_builder_error(&msg);
                             }
                             Some(RunningKind::Task) | None => {
-                                app_ref.set_status_message(format!("Runner error: {}", msg));
+                                app_ref.set_runner_error(&msg);
                                 if matches!(
                                     app_ref.mode,
                                     AppMode::Executing { .. } | AppMode::ConfirmQuit
@@ -2416,6 +2448,53 @@ mod tests {
             Some("bar")
         );
         Ok(())
+    }
+
+    #[test]
+    fn runner_error_summarizes_and_logs_details() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001", "Task 1", TaskStatus::Todo)],
+        };
+        let mut app = App::new(queue);
+
+        app.set_runner_error("repo is dirty\n\nUse --force");
+
+        assert_eq!(
+            app.status_message.as_deref(),
+            Some("Runner error: repo is dirty (see logs)")
+        );
+        assert_eq!(
+            app.logs.first().map(String::as_str),
+            Some("Runner error details:")
+        );
+        assert_eq!(app.logs.get(1).map(String::as_str), Some("repo is dirty"));
+        assert_eq!(app.logs.get(2).map(String::as_str), Some(""));
+        assert_eq!(app.logs.get(3).map(String::as_str), Some("Use --force"));
+    }
+
+    #[test]
+    fn runner_error_handles_empty_message() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![make_test_task("RQ-0001", "Task 1", TaskStatus::Todo)],
+        };
+        let mut app = App::new(queue);
+
+        app.set_runner_error("   ");
+
+        assert_eq!(
+            app.status_message.as_deref(),
+            Some("Runner error (see logs)")
+        );
+        assert_eq!(
+            app.logs.first().map(String::as_str),
+            Some("Runner error details:")
+        );
+        assert_eq!(
+            app.logs.get(1).map(String::as_str),
+            Some("(no details provided)")
+        );
     }
 
     #[test]

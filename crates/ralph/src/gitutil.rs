@@ -10,6 +10,12 @@ use std::path::Path;
 use std::process::Command;
 use thiserror::Error;
 
+pub const RALPH_RUN_CLEAN_ALLOWED_PATHS: &[&str] = &[
+    ".ralph/queue.json",
+    ".ralph/done.json",
+    ".ralph/config.json",
+];
+
 fn git_base_command(repo_root: &Path) -> Command {
     // Some environments (notably when fsmonitor is enabled but unhealthy) emit:
     //   error: fsmonitor_ipc__send_query: ... '.git/fsmonitor--daemon.ipc'
@@ -327,6 +333,22 @@ pub fn require_clean_repo_ignoring_paths(
 
     details.push_str("\n\nUse --force to bypass this check if you are sure.");
     Err(GitError::DirtyRepo { details })
+}
+
+/// Returns true when the repo has dirty paths and every dirty path is allowed.
+pub fn repo_dirty_only_allowed_paths(
+    repo_root: &Path,
+    allowed_paths: &[&str],
+) -> Result<bool, GitError> {
+    let status_paths = status_paths(repo_root)?;
+    if status_paths.is_empty() {
+        return Ok(false);
+    }
+
+    let has_disallowed = status_paths
+        .iter()
+        .any(|path| !path_is_allowed(path, allowed_paths));
+    Ok(!has_disallowed)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -705,6 +727,61 @@ mod porcelain_parser_tests {
                 path: "new name.txt".to_string(),
             }]
         );
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod clean_repo_tests {
+    use super::*;
+    use std::path::Path;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    fn git_run(repo_root: &Path, args: &[&str]) -> Result<()> {
+        let status = Command::new("git")
+            .current_dir(repo_root)
+            .args(args)
+            .status()?;
+        anyhow::ensure!(status.success(), "git {:?} failed", args);
+        Ok(())
+    }
+
+    fn init_repo(repo_root: &Path) -> Result<()> {
+        git_run(repo_root, &["init"])?;
+        git_run(repo_root, &["config", "user.email", "test@example.com"])?;
+        git_run(repo_root, &["config", "user.name", "Test User"])?;
+        Ok(())
+    }
+
+    #[test]
+    fn repo_dirty_only_allowed_paths_detects_config_only_changes() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        std::fs::create_dir_all(temp.path().join(".ralph"))?;
+        let config_path = temp.path().join(".ralph/config.json");
+        std::fs::write(&config_path, "{ \"version\": 1 }")?;
+        git_run(temp.path(), &["add", ".ralph/config.json"])?;
+        git_run(temp.path(), &["commit", "-m", "init config"])?;
+
+        std::fs::write(&config_path, "{ \"version\": 2 }")?;
+
+        let dirty_allowed =
+            repo_dirty_only_allowed_paths(temp.path(), RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+        assert!(dirty_allowed, "expected config-only changes to be allowed");
+        require_clean_repo_ignoring_paths(temp.path(), false, RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+        Ok(())
+    }
+
+    #[test]
+    fn repo_dirty_only_allowed_paths_rejects_other_changes() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        std::fs::write(temp.path().join("notes.txt"), "hello")?;
+
+        let dirty_allowed =
+            repo_dirty_only_allowed_paths(temp.path(), RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+        assert!(!dirty_allowed, "expected untracked change to be disallowed");
         Ok(())
     }
 }

@@ -101,6 +101,7 @@ Notes:\n\
  - `--effort` is codex-only and is ignored for other runners.\n\
  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
  - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
+ - Clean-repo checks allow changes to `.ralph/config.json` (plus `.ralph/queue.json` and `.ralph/done.json`); use `--force` to bypass entirely.\n\
  - TUI entrypoints: `ralph tui`, `ralph run one -i`, `ralph run loop -i`.\n\
 \n\
 To change defaults for this repo, edit .ralph/config.json:\n\

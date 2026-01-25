@@ -251,10 +251,14 @@ fn run_one_impl(
     );
 
     // Require clean repo before the first iteration starts.
+    let preexisting_dirty_allowed = gitutil::repo_dirty_only_allowed_paths(
+        &resolved.repo_root,
+        gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+    )?;
     gitutil::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
         force,
-        &[".ralph/queue.json", ".ralph/done.json"],
+        gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
     )?;
 
     // Mark the task as doing before running the agent.
@@ -337,7 +341,7 @@ fn run_one_impl(
                 iteration_completion_block,
                 phase3_completion_guidance,
                 is_final_iteration,
-                allow_dirty_repo: is_followup,
+                allow_dirty_repo: is_followup || preexisting_dirty_allowed,
             };
 
             match phases {

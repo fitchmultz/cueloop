@@ -735,10 +735,14 @@ pub fn ensure_phase3_completion(
             gitutil::require_clean_repo_ignoring_paths(
                 &resolved.repo_root,
                 false,
-                &[".ralph/queue.json", ".ralph/done.json"],
+                gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
             )?;
         } else {
-            gitutil::require_clean_repo_ignoring_paths(&resolved.repo_root, false, &[])?;
+            gitutil::require_clean_repo_ignoring_paths(
+                &resolved.repo_root,
+                false,
+                &[".ralph/config.json"],
+            )?;
         }
     } else {
         log::info!(
@@ -1161,6 +1165,36 @@ echo '{{"sessionID":"sess-123"}}'
         let temp = TempDir::new()?;
         git_init(temp.path())?;
         write_queue_and_done(temp.path(), TaskStatus::Rejected)?;
+
+        let resolved = resolved_for_completion(temp.path().to_path_buf());
+        ensure_phase3_completion(&resolved, "RQ-0001", true)?;
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
+        let temp = TempDir::new()?;
+        git_init(temp.path())?;
+        write_queue_and_done(temp.path(), TaskStatus::Done)?;
+        let status = Command::new("git")
+            .current_dir(temp.path())
+            .args(["commit", "-m", "queue and done"])
+            .status()?;
+        anyhow::ensure!(status.success(), "git commit failed");
+
+        std::fs::write(temp.path().join(".ralph/config.json"), "{ \"version\": 1 }")?;
+        let status = Command::new("git")
+            .current_dir(temp.path())
+            .args(["add", ".ralph/config.json"])
+            .status()?;
+        anyhow::ensure!(status.success(), "git add failed");
+        let status = Command::new("git")
+            .current_dir(temp.path())
+            .args(["commit", "-m", "add config"])
+            .status()?;
+        anyhow::ensure!(status.success(), "git commit failed");
+
+        std::fs::write(temp.path().join(".ralph/config.json"), "{ \"version\": 2 }")?;
 
         let resolved = resolved_for_completion(temp.path().to_path_buf());
         ensure_phase3_completion(&resolved, "RQ-0001", true)?;

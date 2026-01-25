@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0290",
-      "status": "todo",
-      "title": "Allow run execution when only .ralph/config.json is dirty and show actionable runner errors in TUI",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "run",
-        "config",
-        "ux",
-        "git"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/mod.rs",
-        "crates/ralph/src/run_cmd.rs",
-        "crates/ralph/src/run_cmd/phases.rs",
-        "crates/ralph/src/gitutil.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User request: TUI only showed \"Runner error\" after config change; needs better error message.",
-        "User request: `ralph run loop --max-tasks 1` failed with \"repo is dirty\" due to `M .ralph/config.json` and should not block execution.",
-        "User request includes error output showing clean-repo check blocks when `.ralph/config.json` is modified."
-      ],
-      "plan": [
-        "Identify where run loop enforces clean-repo checks and how it surfaces errors to the TUI.",
-        "Allow dirty-repo checks to ignore `.ralph/config.json` when the change is only the config file, while keeping safety for other paths.",
-        "Improve TUI runner error display to surface the underlying error message and suggested remediation.",
-        "Add tests covering dirty-repo bypass for `.ralph/config.json` and TUI error messaging behavior.",
-        "Update CLI/help/docs to clarify the clean-repo behavior and any new guidance."
-      ],
-      "notes": [],
-      "request": "I changed the config via the ralph TUI and then tried to run the agent on a task. It only said 'Runner error' in the TUI. I exited and ran the following output to determine the error. This need adjusted to 1 show a better error message and not prevent the execution due to a changed .ralph/config.json file.\nralph run loop --max-tasks 1\n[2026-01-25T16:37:41Z INFO  ralph::run_cmd::logging] RunLoop (todo=25, max_tasks=1): start\n[2026-01-25T16:37:41Z INFO  ralph::run_cmd] RunOne: selected RQ-0289 (phases=3, iterations=1)\n[2026-01-25T16:37:41Z ERROR ralph::run_cmd::logging] RunLoop (todo=25, max_tasks=1): error: repo is dirty; commit/stash your changes before running Ralph.\n\n    Tracked changes (suggest 'git stash' or 'git commit'):\n       M .ralph/config.json\n\n    Use --force to bypass this check if you are sure.\nError: repo is dirty; commit/stash your changes before running Ralph.\n\nTracked changes (suggest 'git stash' or 'git commit'):\n   M .ralph/config.json\n\nUse --force to bypass this check if you are sure.",
-      "created_at": "2026-01-25T16:40:30Z",
-      "updated_at": "2026-01-25T16:40:30Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0289",
       "status": "todo",
       "title": "Add debug mode logging to .ralph/logs/debug.log",

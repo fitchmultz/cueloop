@@ -182,7 +182,7 @@ pub(crate) fn post_run_supervise(
                 gitutil::require_clean_repo_ignoring_paths(
                     &resolved.repo_root,
                     false,
-                    &[".ralph/queue.json", ".ralph/done.json"],
+                    gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
                 )?;
             } else {
                 log::info!(
@@ -233,7 +233,7 @@ pub(crate) fn post_run_supervise(
             gitutil::require_clean_repo_ignoring_paths(
                 &resolved.repo_root,
                 false,
-                &[".ralph/queue.json", ".ralph/done.json"],
+                gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
             )?;
         } else {
             log::info!("Auto git commit/push disabled; leaving repo dirty after queue updates.");

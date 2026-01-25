@@ -104,6 +104,10 @@ ralph run loop -i --max-tasks 3
 ralph run one --git-commit-push-off
 ```
 
+Clean-repo checks for `run one` and `run loop` allow changes to `.ralph/config.json`
+(alongside `.ralph/queue.json` and `.ralph/done.json`). Use `--force` to bypass the
+clean-repo check entirely if needed.
+
 ## `ralph task`
 
 Create tasks and edit task fields from CLI.
