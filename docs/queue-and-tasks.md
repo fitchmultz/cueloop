@@ -3,7 +3,7 @@
 Purpose: Define the queue file format, task fields, and status lifecycle based on `schemas/queue.schema.json`.
 
 ## Queue File
-The queue file (`.ralph/queue.json`) is the source of truth for active work. Completed tasks are moved to `.ralph/done.json`.
+The queue file (`.ralph/queue.json`) is the source of truth for active work. Completed tasks are moved to `.ralph/done.json`, which must contain only `done` or `rejected` tasks.
 
 Minimum queue structure:
 ```json

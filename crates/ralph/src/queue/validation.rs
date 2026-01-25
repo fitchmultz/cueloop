@@ -70,6 +70,7 @@ pub fn validate_queue_set(
     validate_queue(active, id_prefix, id_width)?;
     if let Some(done) = done {
         validate_queue(done, id_prefix, id_width)?;
+        validate_done_terminal_status(done)?;
 
         let active_ids: HashSet<&str> = active
             .tasks
@@ -90,6 +91,20 @@ pub fn validate_queue_set(
 
     // Validate dependencies
     validate_dependencies(active, done)?;
+
+    Ok(())
+}
+
+fn validate_done_terminal_status(done: &QueueFile) -> Result<()> {
+    for task in &done.tasks {
+        if !matches!(task.status, TaskStatus::Done | TaskStatus::Rejected) {
+            bail!(
+                "Invalid done.json status: task {} has status '{:?}'. .ralph/done.json must contain only done/rejected tasks. Move the task back to .ralph/queue.json or update its status before archiving.",
+                task.id,
+                task.status
+            );
+        }
+    }
 
     Ok(())
 }
@@ -490,9 +505,11 @@ mod tests {
             version: 1,
             tasks: vec![task("RQ-0001")],
         };
+        let mut done_task = task_with("RQ-0001", TaskStatus::Done, vec!["tag".to_string()]);
+        done_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());
         let done = QueueFile {
             version: 1,
-            tasks: vec![task("RQ-0001")],
+            tasks: vec![done_task],
         };
         let err = validate_queue_set(&active, Some(&done), "RQ", 4).unwrap_err();
         assert!(format!("{err}").contains("Duplicate task ID detected across queue and done"));
@@ -556,5 +573,88 @@ mod tests {
             tasks: vec![t_done],
         };
         assert!(validate_queue_set(&active2, Some(&done2), "RQ", 4).is_ok());
+    }
+
+    #[test]
+    fn validate_queue_set_rejects_todo_in_done() {
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0002")],
+        };
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![task_with(
+                "RQ-0001",
+                TaskStatus::Todo,
+                vec!["tag".to_string()],
+            )],
+        };
+        let err = validate_queue_set(&active, Some(&done), "RQ", 4).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains("done.json") && msg.contains("RQ-0001") && msg.contains("Todo"),
+            "unexpected error: {msg}"
+        );
+    }
+
+    #[test]
+    fn validate_queue_set_rejects_doing_in_done() {
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0002")],
+        };
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![task_with(
+                "RQ-0001",
+                TaskStatus::Doing,
+                vec!["tag".to_string()],
+            )],
+        };
+        let err = validate_queue_set(&active, Some(&done), "RQ", 4).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains("done.json") && msg.contains("RQ-0001") && msg.contains("Doing"),
+            "unexpected error: {msg}"
+        );
+    }
+
+    #[test]
+    fn validate_queue_set_rejects_draft_in_done() {
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0002")],
+        };
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![task_with(
+                "RQ-0001",
+                TaskStatus::Draft,
+                vec!["tag".to_string()],
+            )],
+        };
+        let err = validate_queue_set(&active, Some(&done), "RQ", 4).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains("done.json") && msg.contains("RQ-0001") && msg.contains("Draft"),
+            "unexpected error: {msg}"
+        );
+    }
+
+    #[test]
+    fn validate_queue_set_allows_terminal_statuses_in_done() {
+        let active = QueueFile {
+            version: 1,
+            tasks: vec![task("RQ-0002")],
+        };
+        let mut done_task = task_with("RQ-0001", TaskStatus::Done, vec!["tag".to_string()]);
+        done_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());
+        let mut rejected_task = task_with("RQ-0003", TaskStatus::Rejected, vec!["tag".to_string()]);
+        rejected_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![done_task, rejected_task],
+        };
+        assert!(validate_queue_set(&active, Some(&done), "RQ", 4).is_ok());
     }
 }

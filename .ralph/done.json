@@ -4074,6 +4074,44 @@
       "completed_at": "2026-01-25T03:47:53.373772000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0251",
+      "status": "done",
+      "title": "Enforce done.json to contain only done/rejected tasks",
+      "priority": "high",
+      "tags": [
+        "queue",
+        "validation",
+        "data-integrity"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/operations/archive.rs",
+        ".ralph/README.md"
+      ],
+      "evidence": [
+        ".ralph/README.md: done.json is described as the archive of completed tasks.",
+        "crates/ralph/src/queue/validation.rs: validate_queue_set uses validate_queue on done without enforcing terminal status.",
+        "crates/ralph/src/queue/operations/archive.rs: archive only moves done/rejected into done.json (implies terminal-only)."
+      ],
+      "plan": [
+        "Add validation for done.json to allow only done/rejected statuses.",
+        "Add tests for invalid done.json statuses and ensure queue validate fails appropriately.",
+        "Update docs/README if wording needs to reflect the enforcement."
+      ],
+      "notes": [
+        "Enforce done.json terminal-only status validation in queue validation.",
+        "Add validation tests for done.json status enforcement and terminal status allowance.",
+        "Update docs to state done.json only contains done/rejected tasks.",
+        "Ran make ci."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T04:00:53.464509000Z",
+      "completed_at": "2026-01-25T04:00:53.464509000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

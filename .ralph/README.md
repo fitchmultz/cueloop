@@ -5,7 +5,7 @@ This repo is using Ralph. The `.ralph/` directory holds repo-local state.
 ## Files
 
 - `.ralph/queue.json` — JSON task queue (source of truth for active work).
-- `.ralph/done.json` — JSON archive of completed tasks (same schema as queue).
+- `.ralph/done.json` — JSON archive of completed tasks (same schema as queue); only `done`/`rejected` statuses are valid.
 - `.ralph/prompts/` — optional prompt overrides (defaults are embedded in the Rust CLI under `crates/ralph/assets/prompts/`).
 
 ## Minimal Rust Commands

@@ -49,38 +49,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0251",
-      "status": "todo",
-      "title": "Enforce done.json to contain only done/rejected tasks",
-      "priority": "high",
-      "tags": [
-        "queue",
-        "validation",
-        "data-integrity"
-      ],
-      "scope": [
-        "crates/ralph/src/queue/validation.rs",
-        "crates/ralph/src/queue/operations/archive.rs",
-        ".ralph/README.md"
-      ],
-      "evidence": [
-        ".ralph/README.md: done.json is described as the archive of completed tasks.",
-        "crates/ralph/src/queue/validation.rs: validate_queue_set uses validate_queue on done without enforcing terminal status.",
-        "crates/ralph/src/queue/operations/archive.rs: archive only moves done/rejected into done.json (implies terminal-only)."
-      ],
-      "plan": [
-        "Add validation for done.json to allow only done/rejected statuses.",
-        "Add tests for invalid done.json statuses and ensure queue validate fails appropriately.",
-        "Update docs/README if wording needs to reflect the enforcement."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0259",
       "status": "todo",
       "title": "Remove install side effects from make ci or gate it",

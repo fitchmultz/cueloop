@@ -164,9 +164,11 @@ mod tests {
             version: 1,
             tasks: vec![task("RQ-0002")],
         };
+        let mut done_task = task_with("RQ-0009", TaskStatus::Done, vec!["tag".to_string()]);
+        done_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());
         let done = QueueFile {
             version: 1,
-            tasks: vec![task("RQ-0009")],
+            tasks: vec![done_task],
         };
         let next = next_id_across(&active, Some(&done), "RQ", 4)?;
         assert_eq!(next, "RQ-0010");
