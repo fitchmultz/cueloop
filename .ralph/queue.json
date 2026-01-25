@@ -9,26 +9,33 @@
       "tags": [
         "reports",
         "cli",
-        "ux"
+        "ux",
+        "docs",
+        "tests"
       ],
       "scope": [
         "crates/ralph/src/cli/queue.rs",
         "crates/ralph/src/reports.rs",
+        "crates/ralph/tests/queue_stats_history_test.rs",
         "docs/cli.md"
       ],
       "evidence": [
-        "crates/ralph/src/cli/queue.rs: QueueStatsArgs/QueueHistoryArgs/QueueBurndownArgs have no format option.",
-        "crates/ralph/src/reports.rs: report functions print text-only output."
+        "crates/ralph/src/cli/queue.rs: QueueStatsArgs only defines --tag; QueueHistoryArgs/QueueBurndownArgs only define --days (no format flag).",
+        "crates/ralph/src/reports.rs: print_stats/print_history/print_burndown emit text output via println! without JSON serialization.",
+        "crates/ralph/tests/queue_stats_history_test.rs: integration tests assert text-only output like \"Task Statistics\" and \"Task Burndown\".",
+        "docs/cli.md: queue documentation does not describe stats/history/burndown outputs or any JSON format option."
       ],
       "plan": [
-        "Add --format (text|json) flags to stats/history/burndown CLI args.",
-        "Implement JSON structs/serialization in reports.rs.",
-        "Update docs and tests to cover JSON output."
+        "Add a shared --format (text|json) flag to queue stats/history/burndown CLI args and wire it through command dispatch.",
+        "Implement JSON output structs/serialization in reports.rs while preserving text as the default.",
+        "Update CLI docs/help and adjust queue_stats_history_test.rs to cover both text and JSON output paths."
       ],
-      "notes": [],
+      "notes": [
+        "Current integration tests in queue_stats_history_test.rs are tightly coupled to text output, so they must be updated when JSON support is added."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T21:42:15Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -46,17 +53,20 @@
         "crates/ralph/tests/queue_stats_history_test.rs"
       ],
       "evidence": [
-        "crates/ralph/src/reports.rs: print_stats lowercases tags for filtering but counts tags using original casing."
+        "crates/ralph/src/reports.rs: print_stats lowercases tags for filtering but the tag breakdown counts tags using their original casing.",
+        "crates/ralph/tests/queue_stats_history_test.rs: current integration tests do not assert tag breakdown output or tag casing."
       ],
       "plan": [
-        "Normalize tags to lower-case when aggregating tag_counts.",
-        "Update any tests that assert tag breakdown output.",
-        "Ensure output remains stable for mixed-case tags."
+        "Normalize tag keys to lower-case when aggregating tag_counts in print_stats.",
+        "Add a queue_stats_history_test.rs scenario with mixed-case tags and assert the tag breakdown output uses normalized casing and aggregated counts.",
+        "Run `cargo test -p ralph queue_stats_history_test` to confirm the report output remains stable."
       ],
-      "notes": [],
+      "notes": [
+        "Tag breakdown casing is currently untested; new assertions should pin the normalized output."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T21:43:24Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -76,7 +86,6 @@
         "crates/ralph/tests/run_cli_overrides_contract_test.rs",
         "crates/ralph/tests/timeutil_test.rs",
         "crates/ralph/tests/runutil_test.rs",
-        "crates/ralph/tests/task_cmd_test.rs",
         "crates/ralph/tests/git_repo_integration_test.rs",
         "crates/ralph/tests/prompt_cmd_test.rs",
         "crates/ralph/tests/fsutil_test.rs",
@@ -89,21 +98,24 @@
         "crates/ralph/tests/stress_queue_contract_test.rs",
         "crates/ralph/tests/contracts_test.rs",
         "crates/ralph/tests/scan_cmd_test.rs",
-        "crates/ralph/tests/gitutil_test.rs"
+        "crates/ralph/tests/gitutil_test.rs",
+        "crates/ralph/tests/makefile_ci_contract_test.rs"
       ],
       "evidence": [
-        "crates/ralph/tests/*.rs: 19 integration test files start without a module doc comment (e.g., crates/ralph/tests/doctor_contract_test.rs begins with `use ...`), violating the repo docstring requirement.",
-        "~/.codex/AGENTS.md: all code files must include a docstring explaining purpose."
+        "rg scan of crates/ralph/tests/*.rs shows 19 files where the first non-empty line does not start with //! (doctor_contract_test.rs, lock_contention_integration_test.rs, run_cli_overrides_contract_test.rs, timeutil_test.rs, runutil_test.rs, git_repo_integration_test.rs, prompt_cmd_test.rs, fsutil_test.rs, safeguard_integration_test.rs, init_validation_test.rs, stale_lock_cleanup_test.rs, git_safety_test.rs, redaction_expansion_test.rs, config_test.rs, stress_queue_contract_test.rs, contracts_test.rs, scan_cmd_test.rs, gitutil_test.rs, makefile_ci_contract_test.rs).",
+        "crates/ralph/tests/task_cmd_test.rs already starts with a //! module docstring, so it no longer needs header work."
       ],
       "plan": [
-        "Add a concise `//!` module-level docstring to each listed test file describing the test suite purpose.",
-        "Keep docstrings consistent in tone and scope across all test files.",
-        "Run existing test suite to ensure that doc comment additions are non-breaking."
+        "Add a concise //! module-level docstring to each file listed in scope (convert existing // file headers to //! where present).",
+        "Keep docstrings consistent in tone and describe the test suite purpose in one sentence.",
+        "Run the existing test suite to confirm doc comment additions are non-breaking."
       ],
-      "notes": [],
+      "notes": [
+        "makefile_ci_contract_test.rs is newly identified as missing a module docstring; task_cmd_test.rs is already documented and removed from scope."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T21:44:48Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -118,22 +130,27 @@
         "maintainability"
       ],
       "scope": [
+        "crates/ralph/src/runner.rs",
         "crates/ralph/src/runner/execution.rs",
         "crates/ralph/src/runner/"
       ],
       "evidence": [
-        "crates/ralph/src/runner/execution.rs: 1501 lines (wc -l), combining process execution, streaming parsing, and response extraction.",
-        "crates/ralph/src/runner/execution.rs: contains in-file tests (`#[cfg(test)]` at line ~1177)."
+        "crates/ralph/src/runner/execution.rs: 1604 lines (wc -l), still a single large module.",
+        "crates/ralph/src/runner/execution.rs: two in-file test blocks (`#[cfg(test)]`) at lines 498 and 1275.",
+        "crates/ralph/src/runner/: directory currently contains only execution.rs (no submodules yet).",
+        "crates/ralph/src/runner.rs: execution module is referenced directly via execution::run_* and execution::extract_final_assistant_response."
       ],
       "plan": [
-        "Identify cohesive concerns (process spawn, stdout/stderr parsing, assistant response extraction).",
-        "Split into submodules (e.g., execution/process.rs, execution/stream.rs, execution/parse.rs) and re-export public APIs.",
-        "Move tests into a dedicated test module or integration test file and update imports."
+        "Inventory execution.rs responsibilities and define the target module split (process spawn, stream parsing, response extraction, resume handling).",
+        "Create runner submodules and move code, then update runner.rs/module wiring to keep the public execution API stable or update call sites explicitly.",
+        "Relocate execution.rs tests into dedicated runner test modules and run `cargo test -p ralph` to confirm coverage stays intact."
       ],
-      "notes": [],
+      "notes": [
+        "runner.rs is the entry point that calls execution::run_* functions, so the refactor must preserve or update those call sites."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T21:46:21Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -145,25 +162,31 @@
       "tags": [
         "run",
         "refactor",
-        "maintainability"
+        "maintainability",
+        "tests"
       ],
       "scope": [
         "crates/ralph/src/run_cmd/phases.rs",
+        "crates/ralph/src/run_cmd.rs",
         "crates/ralph/src/run_cmd/"
       ],
       "evidence": [
-        "crates/ralph/src/run_cmd/phases.rs: 1127 lines (wc -l) covering Phase 1/2/3 orchestration and helper logic.",
-        "crates/ralph/src/run_cmd/phases.rs: in-file test module (`#[cfg(test)] mod tests`) with many #[test] cases around line ~700."
+        "crates/ralph/src/run_cmd/phases.rs: 1434 lines (wc -l) covering Phase 1/2/3 orchestration and helper logic.",
+        "crates/ralph/src/run_cmd/phases.rs: in-file test module (`#[cfg(test)] mod tests`) begins at lines 757-758.",
+        "crates/ralph/src/run_cmd/: directory currently contains logging.rs, phases.rs, selection.rs, supervision.rs, and tests.rs (no per-phase modules yet).",
+        "crates/ralph/src/run_cmd.rs: dispatches to phases::execute_phase1_planning/execute_phase2_implementation/execute_phase3_review and imports `mod phases;`."
       ],
       "plan": [
-        "Extract phase-specific logic into modules (phase1.rs, phase2.rs, phase3.rs) under run_cmd/.",
-        "Move shared helpers into a dedicated module to avoid duplication.",
-        "Relocate tests into run_cmd/phases_tests.rs or crates/ralph/tests/run_cmd_phases_test.rs and update imports."
+        "Map phases.rs responsibilities and define boundaries for phase1/phase2/phase3 modules plus a shared helper module.",
+        "Create per-phase modules under run_cmd/ and update run_cmd.rs and run_cmd/phases.rs wiring so public entry points remain consistent.",
+        "Move phases.rs tests into run_cmd/phases_tests.rs (or integrate with run_cmd/tests.rs) and update module declarations/imports, then run `cargo test -p ralph`."
       ],
-      "notes": [],
+      "notes": [
+        "run_cmd/tests.rs already exists for shared run command tests, so phase-specific tests should either move into a dedicated phases_tests module or integrate with that existing test module."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T21:47:35Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -175,7 +198,9 @@
       "tags": [
         "queue",
         "dependencies",
-        "behavior"
+        "behavior",
+        "docs",
+        "tests"
       ],
       "scope": [
         "crates/ralph/src/queue/operations/query.rs",
@@ -183,19 +208,21 @@
         "crates/ralph/src/cli/queue.rs"
       ],
       "evidence": [
-        "crates/ralph/src/cli/queue.rs: StatusArg::Rejected doc comment says dependents can proceed.",
-        "crates/ralph/src/queue/operations/query.rs: are_dependencies_met only treats TaskStatus::Done as satisfied.",
-        "crates/ralph/src/queue/operations/tests.rs: test_next_runnable_task_skips_rejected_dep asserts rejected dependency blocks."
+        "crates/ralph/src/cli/queue.rs: StatusArg::Rejected help text says dependents can proceed, implying rejected should unblock dependents.",
+        "crates/ralph/src/queue/operations/query.rs: are_dependencies_met requires each dependency to have status == TaskStatus::Done (Rejected is treated as unmet).",
+        "crates/ralph/src/queue/operations/tests.rs: test_next_runnable_task_skips_rejected_dep asserts a rejected dependency blocks runnable selection."
       ],
       "plan": [
-        "Decide final dependency policy for rejected tasks (treat rejected as satisfied and undesired by the project owner).",
-        "Update are_dependencies_met and runnable selection logic to match policy.",
-        "Adjust tests/docs to match the new behavior and run queue tests."
+        "Confirm the intended dependency policy for rejected tasks (unblock dependents vs. keep blocked) by reviewing CLI help expectations and any project guidance.",
+        "Align queue dependency logic and comments with the chosen policy (update are_dependencies_met and related error messaging if rejected should satisfy dependencies, or update StatusArg::Rejected help text if it should not).",
+        "Adjust/add queue operation tests to cover the chosen behavior and ensure rejected dependency cases remain explicitly verified."
       ],
-      "notes": [],
+      "notes": [
+        "Current code treats rejected dependencies as unmet, which conflicts with the CLI status help text that claims dependents can proceed."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T21:49:23Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -211,21 +238,25 @@
       ],
       "scope": [
         "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/run_cmd/tests.rs",
         "crates/ralph/src/run_cmd/"
       ],
       "evidence": [
-        "crates/ralph/src/run_cmd.rs: 470 lines (wc -l) with command router plus in-file tests.",
-        "crates/ralph/src/run_cmd.rs: `#[cfg(test)]` block at line ~469."
+        "crates/ralph/src/run_cmd.rs: now declares `#[cfg(test)] mod tests;` instead of inline test blocks.",
+        "crates/ralph/src/run_cmd/tests.rs: dedicated test module exists and holds the run_cmd tests (594 lines per wc -l).",
+        "crates/ralph/src/run_cmd.rs: 481 lines (wc -l) focused on command routing plus the test module declaration."
       ],
       "plan": [
-        "Move run_cmd tests into a separate test module/file.",
-        "Keep run_cmd.rs focused on command parsing and dispatch.",
-        "Update any imports and ensure cargo test still covers command router."
+        "Confirm run_cmd.rs no longer contains inline tests beyond the test module declaration and that run_cmd/tests.rs includes all run command cases.",
+        "If any inline tests remain or coverage is missing, move them into run_cmd/tests.rs and update module wiring.",
+        "Run `cargo test -p ralph run_cmd` to verify the command router tests still pass."
       ],
-      "notes": [],
+      "notes": [
+        "Run command tests appear to already live in crates/ralph/src/run_cmd/tests.rs; remaining work is verification and cleanup if anything was missed."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T21:50:43Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -241,21 +272,26 @@
       ],
       "scope": [
         "crates/ralph/src/runutil.rs",
-        "crates/ralph/src/"
+        "crates/ralph/src/lib.rs",
+        "cargo test -p ralph runutil"
       ],
       "evidence": [
-        "crates/ralph/src/runutil.rs: 539 lines (wc -l) with runtime helpers plus in-file tests.",
-        "crates/ralph/src/runutil.rs: `#[cfg(test)]` block at line ~381."
+        "crates/ralph/src/runutil.rs: 1042 lines (wc -l) with runtime helpers plus in-file tests.",
+        "crates/ralph/src/runutil.rs: `#[cfg(test)] mod tests` starts at line 637.",
+        "rg --files crates/ralph/src | rg runutil returns only crates/ralph/src/runutil.rs (no separate runutil test module).",
+        "crates/ralph/src/lib.rs: declares `pub mod runutil;` (runutil is still a flat module)."
       ],
       "plan": [
-        "Extract runutil tests into a dedicated test module/file.",
-        "Retain only production helpers in runutil.rs.",
-        "Adjust module visibility as needed to keep tests compiling."
+        "Add a dedicated test module file (for example, crates/ralph/src/runutil_tests.rs) and register it in crates/ralph/src/lib.rs under #[cfg(test)].",
+        "Move the existing runutil.rs tests into the new test module, adjusting visibility with pub(crate) helpers where needed.",
+        "Leave runutil.rs production-only and run `cargo test -p ralph runutil` to confirm coverage still passes."
       ],
-      "notes": [],
+      "notes": [
+        "runutil is still a single file module, so the least intrusive move is a crate-level runutil_tests.rs registered under #[cfg(test)]."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T21:52:08Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -271,20 +307,25 @@
       ],
       "scope": [
         "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/cli/mod.rs",
         "crates/ralph/src/cli/"
       ],
       "evidence": [
-        "crates/ralph/src/cli/queue.rs: 699 lines (wc -l) defining multiple queue subcommands and their help text in a single module."
+        "crates/ralph/src/cli/queue.rs: 699 lines (wc -l), still a single module containing queue subcommands and help text.",
+        "crates/ralph/src/cli/mod.rs: declares `pub mod queue;`, so queue CLI wiring still points to the monolithic queue.rs module.",
+        "crates/ralph/src/cli/: no queue/ subdirectory exists yet for per-subcommand modules."
       ],
       "plan": [
-        "Split queue CLI subcommands into separate modules (e.g., queue/search.rs, queue/stats.rs, queue/repair.rs).",
-        "Re-export a small facade in queue/mod.rs to keep CLI wiring clear.",
-        "Move or adjust tests to match the new module structure."
+        "Create a new crates/ralph/src/cli/queue/ module directory with a mod.rs facade and per-subcommand files (e.g., list.rs, search.rs, stats.rs, history.rs, burndown.rs, repair.rs).",
+        "Move each subcommand’s args, help text, and handler wiring from queue.rs into the new files, keeping a small queue.rs (or queue/mod.rs) facade that re-exports the CLI surface.",
+        "Update crates/ralph/src/cli/mod.rs and any references so the CLI dispatch uses the new module layout, then run the existing queue-related tests or `cargo test -p ralph queue` to confirm behavior."
       ],
-      "notes": [],
+      "notes": [
+        "Queue CLI is still wired through a single queue.rs module; no subcommand directory exists yet."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T21:53:47Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -300,21 +341,26 @@
       ],
       "scope": [
         "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue.rs",
         "crates/ralph/src/queue/"
       ],
       "evidence": [
-        "crates/ralph/src/queue/validation.rs: 560 lines (wc -l) with both validation logic and in-file tests.",
-        "crates/ralph/src/queue/validation.rs: `#[cfg(test)]` block at line ~363."
+        "crates/ralph/src/queue/validation.rs: 660 lines (wc -l) and still combines validation logic with in-file tests.",
+        "crates/ralph/src/queue/validation.rs: `#[cfg(test)]` appears at line 378.",
+        "rg --files crates/ralph/src/queue | rg -i \"validation\" returns only crates/ralph/src/queue/validation.rs (no separate validation test module).",
+        "crates/ralph/src/queue.rs: queue module declares `pub mod validation;`, so any new test module wiring needs to live in the queue module tree."
       ],
       "plan": [
-        "Extract validation tests into a dedicated test module or file.",
-        "Keep validation helpers in validation.rs and avoid test-only dependencies in production builds.",
-        "Update module wiring so tests are still compiled under #[cfg(test)]."
+        "Pick the target test layout (either queue/validation/tests.rs with `#[cfg(test)] mod tests;` in validation.rs, or queue/validation_tests.rs wired from queue.rs).",
+        "Move the existing validation.rs tests into the new module file and adjust helper visibility with pub(crate) as needed.",
+        "Verify validation.rs is production-only and run `cargo test -p ralph validation` to confirm the moved tests still pass."
       ],
-      "notes": [],
+      "notes": [
+        "validation.rs grew to 660 lines, so splitting tests will reduce production-module size without changing behavior."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T21:55:32Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -329,21 +375,27 @@
         "refactor"
       ],
       "scope": [
+        "crates/ralph/src/queue/operations.rs",
         "crates/ralph/src/queue/operations/tests.rs",
         "crates/ralph/src/queue/operations/"
       ],
       "evidence": [
-        "crates/ralph/src/queue/operations/tests.rs: 1078 lines (wc -l) covering many queue operations in one file."
+        "crates/ralph/src/queue/operations/tests.rs: 1544 lines (wc -l) covering multiple queue operations in a single test module.",
+        "crates/ralph/src/queue/operations.rs: uses `#[cfg(test)] mod tests;`, so all operation tests are still funneled through the single tests.rs module.",
+        "crates/ralph/src/queue/operations/: no per-operation test modules exist yet (only tests.rs alongside archive/edit/fields/mutation/query/status/validate sources)."
       ],
       "plan": [
-        "Group tests by operation (archive, status, mutation, query) into separate test modules.",
-        "Extract shared fixtures/helpers into a common test util module.",
-        "Update mod.rs to include the new test modules under #[cfg(test)]."
+        "Decide the test module layout (for example, tests/mod.rs with archive.rs, status.rs, mutation.rs, query.rs, edit.rs, fields.rs, validate.rs) and map existing tests to their target modules.",
+        "Create the new test module files plus a shared test util module for fixtures, then move tests out of tests.rs.",
+        "Update `crates/ralph/src/queue/operations.rs` to keep `mod tests;` wired to the new module tree and run `cargo test -p ralph queue::operations`."
       ],
-      "notes": [],
+      "notes": [
+        "tests.rs has grown since the original scan (now 1544 lines), reinforcing the need to split by operation.",
+        "operations.rs already declares `mod tests;`, so moving to a tests/ directory should retain that entry point via tests/mod.rs."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T21:57:12Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -354,25 +406,28 @@
       "priority": "medium",
       "tags": [
         "docs",
-        "cli"
+        "cli",
+        "queue"
       ],
       "scope": [
         "docs/cli.md",
         "crates/ralph/src/cli/queue.rs"
       ],
       "evidence": [
-        "docs/cli.md queue section mentions validate/list/search only.",
-        "crates/ralph/src/cli/queue.rs defines prune/repair/unlock/sort/stats/history/burndown commands."
+        "docs/cli.md: core command summary for `ralph queue` only mentions validate/list/search and has no detailed sections for prune/repair/unlock/sort/stats/history/burndown/schema.",
+        "crates/ralph/src/cli/queue.rs: QueueCommand includes validate, prune, next, next-id, show, list, search, archive, repair, unlock, sort, stats, history, burndown, schema subcommands."
       ],
       "plan": [
-        "Add sections for prune/repair/unlock/sort/stats/history/burndown with brief descriptions.",
-        "Include examples aligned with CLI help output.",
-        "Review docs/cli.md for any other missing queue flags."
+        "Expand docs/cli.md `ralph queue` section to list all subcommands (validate, prune, next, next-id, show, list, search, archive, repair, unlock, sort, stats, history, burndown, schema) with short descriptions.",
+        "Add example invocations for each subcommand, mirroring queue.rs help text (after_long_help) where applicable.",
+        "Scan docs/cli.md for missing queue flags (format, include_done, only_done, limit/all, sort/order, tag/status filters) and update or add a queue flags subsection to match CLI help."
       ],
-      "notes": [],
+      "notes": [
+        "Queue docs currently omit next/next-id/show/archive/schema alongside the maintenance/reporting subcommands; coverage should include both navigation and maintenance commands."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T21:58:51Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -387,21 +442,25 @@
       ],
       "scope": [
         "docs/cli.md",
-        "crates/ralph/src/cli/run.rs"
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/agent.rs"
       ],
       "evidence": [
-        "docs/cli.md run section does not mention --include-draft.",
-        "crates/ralph/src/cli/run.rs help/examples include --include-draft."
+        "docs/cli.md: `ralph run` section lists examples but does not mention --include-draft.",
+        "crates/ralph/src/cli/run.rs: run command help examples include `--include-draft` for both `run one` and `run loop`.",
+        "crates/ralph/src/agent.rs: RunAgentArgs defines the `--include-draft` flag used by run commands."
       ],
       "plan": [
-        "Add --include-draft description to run documentation.",
-        "Add example commands for run one/loop with draft inclusion.",
-        "Ensure docs match CLI help wording."
+        "Add a short description of --include-draft in the `ralph run` docs, explaining that draft tasks can be selected when enabled.",
+        "Add or update examples for `ralph run one` and `ralph run loop` that include --include-draft (matching CLI help ordering).",
+        "Verify docs wording matches the CLI help text in crates/ralph/src/cli/run.rs and the flag definition in crates/ralph/src/agent.rs."
       ],
-      "notes": [],
+      "notes": [
+        "The --include-draft flag is defined on RunAgentArgs in crates/ralph/src/agent.rs and surfaced via run.rs help examples."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T22:00:23Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -412,26 +471,35 @@
       "priority": "medium",
       "tags": [
         "docs",
-        "safety"
+        "safety",
+        "cli"
       ],
       "scope": [
         "docs/cli.md",
         "crates/ralph/src/run_cmd.rs",
-        "crates/ralph/src/scan_cmd.rs"
+        "crates/ralph/src/scan_cmd.rs",
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/cli/scan.rs"
       ],
       "evidence": [
-        "docs/cli.md describes --force only for stale locks.",
-        "crates/ralph/src/run_cmd.rs and crates/ralph/src/scan_cmd.rs pass force to require_clean_repo_ignoring_paths."
+        "docs/cli.md: Global `--force` flag description only calls out bypassing stale queue locks (no mention of clean-repo bypass for run/scan).",
+        "docs/cli.md: `ralph run` section notes clean-repo checks and `--force` bypass, but there is no dedicated `ralph scan` section describing clean-repo behavior.",
+        "crates/ralph/src/run_cmd.rs: run_one_impl calls gitutil::require_clean_repo_ignoring_paths(..., force, gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS).",
+        "crates/ralph/src/scan_cmd.rs: run_scan calls gitutil::require_clean_repo_ignoring_paths(..., opts.force, [\".ralph/queue.json\", \".ralph/done.json\"]).",
+        "crates/ralph/src/cli/run.rs: after_long_help already documents the clean-repo check and `--force` bypass.",
+        "crates/ralph/src/cli/scan.rs: after_long_help has no clean-repo or `--force` note."
       ],
       "plan": [
-        "Update docs/cli.md to note --force bypasses clean-repo checks for run/scan.",
-        "Consider adding a warning note in CLI help text.",
-        "Verify documentation aligns with actual behavior."
+        "Update docs/cli.md global flag description to mention clean-repo bypass for run/scan, and add a short `ralph scan` section that explains the clean-repo check plus `--force` behavior with examples.",
+        "Add a clean-repo/`--force` note to `ralph scan` CLI help text in crates/ralph/src/cli/scan.rs; confirm run help remains accurate.",
+        "Verify help/doc alignment by checking `ralph run --help` and `ralph scan --help` output (or equivalent in docs) before closing."
       ],
-      "notes": [],
+      "notes": [
+        "Run docs/help already mention the clean-repo bypass; the gap is global flag wording and scan documentation/help text."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T22:02:30Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -447,22 +515,27 @@
       ],
       "scope": [
         "crates/ralph/src/tui/mod.rs",
-        "crates/ralph/src/tui/"
+        "crates/ralph/src/tui/",
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/render.rs"
       ],
       "evidence": [
-        "crates/ralph/src/tui/mod.rs: 2943 lines (wc -l) combining state models, command palette, IO, queue edits, and runtime execution.",
-        "crates/ralph/src/tui/mod.rs: in-file tests (`#[cfg(test)]` at line ~2382).",
-        "crates/ralph/src/tui/mod.rs doc header lists many features (queue browsing, editing, execution, loop, archive, palette), indicating multiple responsibilities in one file."
+        "crates/ralph/src/tui/mod.rs: 2879 lines (wc -l), still a single file holding state models, queue IO, palette/actions, and runtime execution wiring.",
+        "crates/ralph/src/tui/mod.rs: in-file tests (`#[cfg(test)]` at line 2271).",
+        "crates/ralph/src/tui/mod.rs header enumerates multiple features (queue browsing, editing, execution, loop, archive, palette), indicating multiple responsibilities in one module.",
+        "crates/ralph/src/tui/mod.rs re-exports events/render symbols (`pub use events::...`, `pub use render::draw_ui`), so mod.rs is the central TUI entry point."
       ],
       "plan": [
-        "Identify cohesive sections (state models, queue IO, command palette/actions, execution view).",
-        "Split into submodules (e.g., state.rs, actions.rs, persistence.rs, palette.rs) and re-export public API from mod.rs.",
-        "Move tests to a dedicated test module or integration tests and update paths."
+        "Map cohesive sections inside tui/mod.rs (state/models, filters, queue IO, palette/actions, execution/loop) and define the target module boundaries.",
+        "Extract sections into new submodules under crates/ralph/src/tui/ (for example: state.rs, filters.rs, actions.rs, persistence.rs, palette.rs, execution.rs) and keep mod.rs as a thin re-export/bootstrapping facade.",
+        "Move the in-file tests into a dedicated module (for example, crates/ralph/src/tui/tests.rs or crates/ralph/src/tui/tests/mod.rs), update module declarations, and run `cargo test -p ralph tui`."
       ],
-      "notes": [],
+      "notes": [
+        "The tui directory currently only contains mod.rs, events.rs, and render.rs, so new core submodules will be added alongside those existing files."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T22:03:53Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -474,25 +547,31 @@
       "tags": [
         "tui",
         "refactor",
-        "maintainability"
+        "maintainability",
+        "tests"
       ],
       "scope": [
         "crates/ralph/src/tui/events.rs",
-        "crates/ralph/src/tui/"
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/",
+        "cargo test -p ralph tui"
       ],
       "evidence": [
-        "crates/ralph/src/tui/events.rs: 1827 lines (wc -l) handling keyboard events across multiple modes.",
-        "crates/ralph/src/tui/events.rs: in-file tests (`#[cfg(test)]` at line ~1097)."
+        "crates/ralph/src/tui/events.rs: 1853 lines (wc -l) with all key-event dispatch and per-mode handlers in one module.",
+        "crates/ralph/src/tui/events.rs: #[cfg(test)] test module starts at line 1123.",
+        "crates/ralph/src/tui/: directory currently contains events.rs, mod.rs, and render.rs (no per-mode event submodules yet)."
       ],
       "plan": [
-        "Partition handlers by app mode (normal list, command palette, edit/config, scan/run modes).",
-        "Move each mode handler into its own module and route through a small dispatcher.",
-        "Move tests to a dedicated test module and update imports."
+        "Enumerate AppMode variants and the current handler functions in events.rs, then define a per-mode module layout plus a minimal dispatcher surface.",
+        "Create a crates/ralph/src/tui/events/ module tree (for example, normal.rs, help.rs, editing.rs, create.rs, run.rs) and move mode handlers into those files, wiring them through a small dispatcher in events.rs or events/mod.rs and updating mod.rs exports.",
+        "Move the events.rs tests into a dedicated test module under crates/ralph/src/tui/events/ (tests.rs or mod.rs) and run `cargo test -p ralph tui`."
       ],
-      "notes": [],
+      "notes": [
+        "events.rs already documents per-mode dispatch, so the refactor should preserve that flow while reducing file size."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T22:05:17Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -504,25 +583,31 @@
       "tags": [
         "tui",
         "refactor",
-        "maintainability"
+        "maintainability",
+        "tests"
       ],
       "scope": [
         "crates/ralph/src/tui/render.rs",
-        "crates/ralph/src/tui/"
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/",
+        "cargo test -p ralph tui"
       ],
       "evidence": [
-        "crates/ralph/src/tui/render.rs: 1706 lines (wc -l) containing all render logic.",
-        "crates/ralph/src/tui/render.rs: in-file tests (`#[cfg(test)]` at line ~1599)."
+        "crates/ralph/src/tui/render.rs: 1721 lines (wc -l) containing all render logic in a single file.",
+        "crates/ralph/src/tui/render.rs: in-file tests remain (`#[cfg(test)]` at line 1614).",
+        "crates/ralph/src/tui/: directory still only has mod.rs, events.rs, and render.rs (no render submodules)."
       ],
       "plan": [
-        "Extract rendering for major panels (task list, details, logs, overlays) into separate modules.",
-        "Keep a thin draw_ui wrapper that assembles components.",
-        "Move rendering tests into a dedicated test module and update imports."
+        "Map the render.rs sections (task list, details, logs, overlays, status/help chrome) into component boundaries and pick a module layout under crates/ralph/src/tui/render/.",
+        "Create the render/ module tree and move component render helpers into those files while keeping a thin draw_ui facade (render.rs or render/mod.rs) that assembles the UI.",
+        "Move the in-file tests into a dedicated render test module, update mod.rs exports, and run `cargo test -p ralph tui`."
       ],
-      "notes": [],
+      "notes": [
+        "tui/ currently has only mod.rs, events.rs, and render.rs, so the refactor will add a new render/ module directory and adjust exports."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T22:06:22Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -538,20 +623,24 @@
       ],
       "scope": [
         "crates/ralph/tests/tui_contract_test.rs",
+        "crates/ralph/tests/test_support.rs",
         "crates/ralph/tests/"
       ],
       "evidence": [
-        "crates/ralph/tests/tui_contract_test.rs: 976 lines (wc -l) containing multiple TUI behaviors in one integration test file."
+        "crates/ralph/tests/tui_contract_test.rs: 981 lines (wc -l), still a single integration test file covering multiple TUI behaviors.",
+        "crates/ralph/tests/test_support.rs: shared test helpers already exist and can host common TUI setup when splitting scenarios."
       ],
       "plan": [
-        "Break contract tests into multiple files by feature area (search, edit, archive, loop, etc.).",
-        "Move shared setup helpers into a common test util module.",
-        "Ensure cargo test still discovers all split test files."
+        "Identify TUI contract scenarios in tui_contract_test.rs and group them into feature-focused test files (for example, search, edit, archive, loop, queue navigation).",
+        "Move shared fixtures/setup into crates/ralph/tests/test_support.rs (or a new tui-specific helper module) and update the split tests to reuse that helper.",
+        "Ensure the new test files are picked up by cargo test and run the TUI contract tests to confirm behavior remains unchanged."
       ],
-      "notes": [],
+      "notes": [
+        "Test support helpers already live in crates/ralph/tests/test_support.rs, so reuse that module unless TUI-specific helpers need a separate file."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T22:07:23Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -567,20 +656,25 @@
       ],
       "scope": [
         "crates/ralph/tests/tui_rendering_test.rs",
-        "crates/ralph/tests/"
+        "crates/ralph/tests/",
+        "cargo test -p ralph tui_rendering"
       ],
       "evidence": [
-        "crates/ralph/tests/tui_rendering_test.rs: 886 lines (wc -l) with multiple rendering scenarios."
+        "crates/ralph/tests/tui_rendering_test.rs: 887 lines (wc -l) containing 53 rendering tests in a single file.",
+        "crates/ralph/tests/tui_rendering_test.rs: shared helpers (make_test_task, make_test_queue, setup_test_terminal, get_rendered_output, output_contains) are defined inline alongside the tests.",
+        "rg \"TestBackend\" crates/ralph/tests shows only tui_rendering_test.rs uses the TestBackend harness, so there is no shared TUI rendering helper module yet."
       ],
       "plan": [
-        "Split rendering tests by component/overlay into separate test files.",
-        "Extract shared render harness into a helper module.",
-        "Run rendering tests to confirm behavior remains unchanged."
+        "Group the existing rendering tests by area (task list/details, modes/dialogs, execution/logs, help/overlay/footer, layout/scrolling) and decide the target test file names under crates/ralph/tests/.",
+        "Extract the shared rendering harness into a helper module (either a new tui_rendering_support.rs or an extension of test_support.rs) and update all split tests to import it.",
+        "Move the grouped tests into the new files, remove the old monolithic file, and run `cargo test -p ralph tui_rendering` to confirm coverage stays intact."
       ],
-      "notes": [],
+      "notes": [
+        "tui_rendering_test.rs now mixes 50+ scenarios with the harness helpers in the same file, so a dedicated rendering support module will reduce duplication when splitting."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T22:09:01Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -596,20 +690,27 @@
       ],
       "scope": [
         "crates/ralph/tests/git_repo_integration_test.rs",
-        "crates/ralph/tests/"
+        "crates/ralph/tests/test_support.rs",
+        "crates/ralph/tests/",
+        "cargo test -p ralph git_repo"
       ],
       "evidence": [
-        "crates/ralph/tests/git_repo_integration_test.rs: 766 lines (wc -l) combining multiple git repo scenarios and helpers."
+        "crates/ralph/tests/git_repo_integration_test.rs: 767 lines (wc -l), still a single integration test file.",
+        "crates/ralph/tests/git_repo_integration_test.rs: 10 #[test] cases (rg --count \"#[test]\") bundled together.",
+        "crates/ralph/tests/git_repo_integration_test.rs: helper functions (ralph_bin, run_in_dir, git_init, write_valid_single_todo_queue, configure_runner, configure_ci_gate, create_fake_runner, create_executable_script) are defined inline alongside tests.",
+        "crates/ralph/tests/git_repo_integration_test.rs: imports mod test_support, indicating shared helpers already exist for tests."
       ],
       "plan": [
-        "Split git repo integration tests by scenario into multiple files.",
-        "Move shared repo setup helpers into a common test util module.",
-        "Ensure test coverage remains the same after file split."
+        "Catalog the git repo integration scenarios and map them to new test files under crates/ralph/tests/ (e.g., init_validate, runner_config, ci_gate, dirty_repo).",
+        "Extract shared repo setup/helpers into a common module (extend crates/ralph/tests/test_support.rs or add a git_repo-specific support module) and update tests to use it.",
+        "Move the scenario tests into the new files, delete the monolithic git_repo_integration_test.rs, and run `cargo test -p ralph git_repo`."
       ],
-      "notes": [],
+      "notes": [
+        "The current file already defines multiple helper functions inline and uses mod test_support, so helper extraction can build on that existing shared module."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-25T22:10:51Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -621,22 +722,32 @@
       "tags": [
         "tui",
         "tasks",
-        "queue"
+        "queue",
+        "ux",
+        "tests"
       ],
       "scope": [
-        "crates/ralph/src/tui/mod.rs"
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/render.rs",
+        "cargo test -p ralph tui"
       ],
       "evidence": [
-        "crates/ralph/src/tui/mod.rs: TUI does not have a way to reorder tasks in queue."
+        "crates/ralph/src/tui/events.rs: Normal-mode key handling only moves selection (Up/Down or j/k) and provides no action to reorder tasks in queue order.",
+        "crates/ralph/src/tui/mod.rs: move_up/move_down only adjust selection/scroll and never mutate queue.tasks, so TUI navigation does not change task order.",
+        "crates/ralph/src/tui/mod.rs: palette_entries lists run/archive/edit/filter/status/priority actions, but no reorder command is exposed.",
+        "crates/ralph/src/tui/render.rs: help overlay lists navigation/actions/quick changes but does not mention any task reordering shortcut."
       ],
       "plan": [
-        "Add a TUI action that allows user to reorder tasks in queue.",
-        "Add tests covering successful task reordering and validation/error cases for the new TUI action.",
-        "Task order is determined top-down from the queue.json file. Move tasks around easily via arrow keys."
+        "Add App methods to move the selected task up/down in queue order (swap in queue.tasks), update filtered indices/selection, set dirty flags, and surface a status message when at boundaries.",
+        "Wire new reorder actions into TUI input (events.rs normal mode + palette command wiring in mod.rs) and document the keybindings in the help overlay (render.rs).",
+        "Add tests covering reorder success and boundary/no-op behavior in the TUI event tests, update help overlay assertions, and run `cargo test -p ralph tui`."
       ],
-      "notes": [],
+      "notes": [
+        "Selection movement already exists via move_up/move_down; reordering will need to operate on queue.tasks while respecting filtered_indices so the visible selection stays coherent."
+      ],
       "created_at": "2026-01-24T15:39:45.873331000Z",
-      "updated_at": "2026-01-24T15:39:45.873331000Z",
+      "updated_at": "2026-01-25T22:13:01Z",
       "depends_on": [],
       "custom_fields": {}
     }
