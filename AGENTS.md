@@ -13,7 +13,7 @@ Purpose: Capture repo-wide operating expectations for contributors and agents.
 
 ## Build, Test, and Development Commands (Rust)
 
-**REQUIRED CI GATE**: `make ci` — **Agents MUST run this before claiming task completion, committing, or merging PRs.** This is the validation gate that must pass for any work to be considered complete.
+**REQUIRED CI GATE**: `make ci` — **Agents MUST run this before claiming task completion, committing, or merging PRs.** This is the validation gate that must pass for any work to be considered complete. MAKE CI INTENTIONALLY INSTALLS THE BINARY AND IS A HARD REQUIREMENT. UNDER **NO** CIRCUMSTANCE CAN THE CI GATE BE CHANGED TO EXCLUDE THE INSTALL STEP.
 
 **CLI Commands**: See `docs/cli.md` for complete command reference. Agents should keep this documentation up to date when adding or modifying CLI commands.
 
