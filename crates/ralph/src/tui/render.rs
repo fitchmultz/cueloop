@@ -84,12 +84,13 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
         draw_confirm_dialog(f, size, "Task still running. Quit?", "(y/n)");
     } else if let AppMode::ConfirmRevert {
         label,
+        allow_proceed,
         selected,
         input,
         ..
     } = &app.mode
     {
-        draw_revert_dialog(f, size, label, *selected, input);
+        draw_revert_dialog(f, size, label, *allow_proceed, *selected, input);
     }
 
     // Command palette overlay.
@@ -1116,7 +1117,14 @@ fn draw_confirm_dialog(f: &mut Frame<'_>, area: Rect, message: &str, hint: &str)
     f.render_widget(popup, popup_area);
 }
 
-fn draw_revert_dialog(f: &mut Frame<'_>, area: Rect, label: &str, selected: usize, input: &str) {
+fn draw_revert_dialog(
+    f: &mut Frame<'_>,
+    area: Rect,
+    label: &str,
+    allow_proceed: bool,
+    selected: usize,
+    input: &str,
+) {
     let popup_width = 64.min(area.width.saturating_sub(4));
     let popup_height = 12;
 
@@ -1134,7 +1142,14 @@ fn draw_revert_dialog(f: &mut Frame<'_>, area: Rect, label: &str, selected: usiz
         .add_modifier(Modifier::BOLD);
     let normal = Style::default();
 
-    let options = ["1) Keep (default)", "2) Revert", "3) Other (type message)"];
+    let mut options = vec![
+        "1) Keep (default)".to_string(),
+        "2) Revert".to_string(),
+        "3) Other (type message)".to_string(),
+    ];
+    if allow_proceed {
+        options.push("4) Keep + continue".to_string());
+    }
 
     let mut lines = Vec::new();
     lines.push(Line::from(""));

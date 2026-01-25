@@ -1646,6 +1646,7 @@ enum RunnerEvent {
     /// Revert prompt requested by the runner.
     RevertPrompt {
         label: String,
+        allow_proceed: bool,
         reply: mpsc::Sender<runutil::RevertDecision>,
     },
 }
@@ -1700,19 +1701,21 @@ where
             let _ = tx_clone_for_handler.send(RunnerEvent::Output(text.to_string()));
         }));
 
-        let revert_prompt: runutil::RevertPromptHandler = Arc::new(move |label: &str| {
-            let (reply_tx, reply_rx) = mpsc::channel();
-            if tx_clone_for_prompt
-                .send(RunnerEvent::RevertPrompt {
-                    label: label.to_string(),
-                    reply: reply_tx,
-                })
-                .is_err()
-            {
-                return runutil::RevertDecision::Keep;
-            }
-            reply_rx.recv().unwrap_or(runutil::RevertDecision::Keep)
-        });
+        let revert_prompt: runutil::RevertPromptHandler =
+            Arc::new(move |context: &runutil::RevertPromptContext| {
+                let (reply_tx, reply_rx) = mpsc::channel();
+                if tx_clone_for_prompt
+                    .send(RunnerEvent::RevertPrompt {
+                        label: context.label.clone(),
+                        allow_proceed: context.allow_proceed,
+                        reply: reply_tx,
+                    })
+                    .is_err()
+                {
+                    return runutil::RevertDecision::Keep;
+                }
+                reply_rx.recv().unwrap_or(runutil::RevertDecision::Keep)
+            });
 
         (handler, revert_prompt)
     };
@@ -1944,10 +1947,15 @@ where
                             }
                         }
                     }
-                    RunnerEvent::RevertPrompt { label, reply } => {
+                    RunnerEvent::RevertPrompt {
+                        label,
+                        allow_proceed,
+                        reply,
+                    } => {
                         let previous_mode = app_ref.mode.clone();
                         app_ref.mode = AppMode::ConfirmRevert {
                             label,
+                            allow_proceed,
                             selected: 0,
                             input: String::new(),
                             reply_sender: reply,

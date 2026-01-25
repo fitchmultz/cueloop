@@ -48,6 +48,7 @@ pub enum RevertOutcome {
     Reverted,
     Skipped { reason: String },
     Continue { message: String },
+    Proceed { reason: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,9 +56,25 @@ pub enum RevertDecision {
     Revert,
     Keep,
     Continue { message: String },
+    Proceed,
 }
 
-pub type RevertPromptHandler = Arc<dyn Fn(&str) -> RevertDecision + Send + Sync>;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RevertPromptContext {
+    pub label: String,
+    pub allow_proceed: bool,
+}
+
+impl RevertPromptContext {
+    pub fn new(label: &str, allow_proceed: bool) -> Self {
+        Self {
+            label: label.to_string(),
+            allow_proceed,
+        }
+    }
+}
+
+pub type RevertPromptHandler = Arc<dyn Fn(&RevertPromptContext) -> RevertDecision + Send + Sync>;
 
 const TIMEOUT_STDOUT_CAPTURE_MAX_BYTES: usize = 128 * 1024;
 
@@ -430,6 +447,20 @@ pub fn apply_git_revert_mode(
     prompt_label: &str,
     revert_prompt: Option<&RevertPromptHandler>,
 ) -> Result<RevertOutcome> {
+    apply_git_revert_mode_with_context(
+        repo_root,
+        mode,
+        RevertPromptContext::new(prompt_label, false),
+        revert_prompt,
+    )
+}
+
+pub fn apply_git_revert_mode_with_context(
+    repo_root: &Path,
+    mode: GitRevertMode,
+    prompt_context: RevertPromptContext,
+    revert_prompt: Option<&RevertPromptHandler>,
+) -> Result<RevertOutcome> {
     match mode {
         GitRevertMode::Enabled => {
             gitutil::revert_uncommitted(repo_root)?;
@@ -440,7 +471,11 @@ pub fn apply_git_revert_mode(
         }),
         GitRevertMode::Ask => {
             if let Some(prompt) = revert_prompt {
-                return apply_revert_decision(repo_root, prompt(prompt_label));
+                return apply_revert_decision(
+                    repo_root,
+                    prompt(&prompt_context),
+                    prompt_context.allow_proceed,
+                );
             }
             let stdin = std::io::stdin();
             if !stdin.is_terminal() {
@@ -448,13 +483,17 @@ pub fn apply_git_revert_mode(
                     reason: "stdin is not a TTY; keeping changes".to_string(),
                 });
             }
-            let choice = prompt_revert_choice(prompt_label)?;
-            apply_revert_decision(repo_root, choice)
+            let choice = prompt_revert_choice(&prompt_context)?;
+            apply_revert_decision(repo_root, choice, prompt_context.allow_proceed)
         }
     }
 }
 
-fn apply_revert_decision(repo_root: &Path, decision: RevertDecision) -> Result<RevertOutcome> {
+fn apply_revert_decision(
+    repo_root: &Path,
+    decision: RevertDecision,
+    allow_proceed: bool,
+) -> Result<RevertOutcome> {
     match decision {
         RevertDecision::Revert => {
             gitutil::revert_uncommitted(repo_root)?;
@@ -466,6 +505,17 @@ fn apply_revert_decision(repo_root: &Path, decision: RevertDecision) -> Result<R
         RevertDecision::Continue { message } => Ok(RevertOutcome::Continue {
             message: message.trim_end_matches(['\n', '\r']).to_string(),
         }),
+        RevertDecision::Proceed => {
+            if allow_proceed {
+                Ok(RevertOutcome::Proceed {
+                    reason: "user chose to proceed".to_string(),
+                })
+            } else {
+                Ok(RevertOutcome::Skipped {
+                    reason: "proceed not allowed; keeping changes".to_string(),
+                })
+            }
+        }
     }
 }
 
@@ -475,6 +525,9 @@ pub fn format_revert_failure_message(base: &str, outcome: RevertOutcome) -> Stri
         RevertOutcome::Skipped { reason } => format!("{base} Revert skipped ({reason})."),
         RevertOutcome::Continue { .. } => {
             format!("{base} Continue requested. No changes were reverted.")
+        }
+        RevertOutcome::Proceed { .. } => {
+            format!("{base} Proceed requested. No changes were reverted.")
         }
     }
 }
@@ -492,9 +545,17 @@ pub fn shell_command(command: &str) -> Command {
     }
 }
 
-fn prompt_revert_choice(label: &str) -> Result<RevertDecision> {
+fn prompt_revert_choice(prompt_context: &RevertPromptContext) -> Result<RevertDecision> {
     let mut stderr = std::io::stderr();
-    eprint!("{label}: action? [1=keep (default), 2=revert, 3=other]: ");
+    let mut prompt = format!(
+        "{}: action? [1=keep (default), 2=revert, 3=other",
+        prompt_context.label
+    );
+    if prompt_context.allow_proceed {
+        prompt.push_str(", 4=keep+continue");
+    }
+    prompt.push_str("]: ");
+    eprint!("{prompt}");
     stderr.flush().ok();
 
     let stdin = std::io::stdin();
@@ -503,10 +564,13 @@ fn prompt_revert_choice(label: &str) -> Result<RevertDecision> {
     let mut input = String::new();
     reader.read_line(&mut input)?;
 
-    let mut decision = parse_revert_response(&input);
+    let mut decision = parse_revert_response(&input, prompt_context.allow_proceed);
 
     if matches!(decision, RevertDecision::Continue { ref message } if message.is_empty()) {
-        eprint!("{label}: enter message to send (empty => keep): ");
+        eprint!(
+            "{}: enter message to send (empty => keep): ",
+            prompt_context.label
+        );
         stderr.flush().ok();
 
         let mut msg = String::new();
@@ -524,7 +588,7 @@ fn prompt_revert_choice(label: &str) -> Result<RevertDecision> {
     Ok(decision)
 }
 
-fn parse_revert_response(input: &str) -> RevertDecision {
+fn parse_revert_response(input: &str, allow_proceed: bool) -> RevertDecision {
     let raw = input.trim_end_matches(['\n', '\r']);
     let normalized = raw.trim().to_lowercase();
 
@@ -535,6 +599,7 @@ fn parse_revert_response(input: &str) -> RevertDecision {
         "3" => RevertDecision::Continue {
             message: String::new(),
         },
+        "4" if allow_proceed => RevertDecision::Proceed,
         _ => RevertDecision::Continue {
             message: raw.to_string(),
         },
@@ -605,7 +670,7 @@ mod tests {
         if !stdin_is_terminal {
             return RevertDecision::Keep;
         }
-        parse_revert_response(input.unwrap_or(""))
+        parse_revert_response(input.unwrap_or(""), false)
     }
 
     #[test]
@@ -615,22 +680,36 @@ mod tests {
 
     #[test]
     fn parse_revert_response_accepts_expected_inputs() {
-        assert_eq!(parse_revert_response(""), RevertDecision::Keep);
-        assert_eq!(parse_revert_response("1"), RevertDecision::Keep);
-        assert_eq!(parse_revert_response("keep"), RevertDecision::Keep);
-        assert_eq!(parse_revert_response("2"), RevertDecision::Revert);
-        assert_eq!(parse_revert_response("r"), RevertDecision::Revert);
-        assert_eq!(parse_revert_response("revert"), RevertDecision::Revert);
+        assert_eq!(parse_revert_response("", false), RevertDecision::Keep);
+        assert_eq!(parse_revert_response("1", false), RevertDecision::Keep);
+        assert_eq!(parse_revert_response("keep", false), RevertDecision::Keep);
+        assert_eq!(parse_revert_response("2", false), RevertDecision::Revert);
+        assert_eq!(parse_revert_response("r", false), RevertDecision::Revert);
         assert_eq!(
-            parse_revert_response("3"),
+            parse_revert_response("revert", false),
+            RevertDecision::Revert
+        );
+        assert_eq!(
+            parse_revert_response("3", false),
             RevertDecision::Continue {
                 message: String::new()
             }
         );
         assert_eq!(
-            parse_revert_response("answer that"),
+            parse_revert_response("answer that", false),
             RevertDecision::Continue {
                 message: "answer that".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn parse_revert_response_allows_proceed_when_enabled() {
+        assert_eq!(parse_revert_response("4", true), RevertDecision::Proceed);
+        assert_eq!(
+            parse_revert_response("4", false),
+            RevertDecision::Continue {
+                message: "4".to_string()
             }
         );
     }
@@ -644,7 +723,7 @@ mod tests {
         let file_path = dir.path().join("file.txt");
         fs::write(&file_path, "modified").expect("modify file");
 
-        let handler: RevertPromptHandler = Arc::new(|_| RevertDecision::Keep);
+        let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Keep);
         let outcome = apply_git_revert_mode(
             dir.path(),
             GitRevertMode::Ask,
@@ -672,7 +751,7 @@ mod tests {
         let file_path = dir.path().join("file.txt");
         fs::write(&file_path, "modified").expect("modify file");
 
-        let handler: RevertPromptHandler = Arc::new(|_| RevertDecision::Revert);
+        let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Revert);
         let outcome = apply_git_revert_mode(
             dir.path(),
             GitRevertMode::Ask,
@@ -695,7 +774,7 @@ mod tests {
         let file_path = dir.path().join("file.txt");
         fs::write(&file_path, "modified").expect("modify file");
 
-        let handler: RevertPromptHandler = Arc::new(|_| RevertDecision::Continue {
+        let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Continue {
             message: "keep going".to_string(),
         });
         let outcome = apply_git_revert_mode(
@@ -710,6 +789,34 @@ mod tests {
             outcome,
             RevertOutcome::Continue {
                 message: "keep going".to_string()
+            }
+        );
+        let contents = fs::read_to_string(&file_path).expect("read file");
+        assert_eq!(contents, "modified");
+    }
+
+    #[test]
+    fn apply_git_revert_mode_allows_proceed_when_enabled() {
+        let dir = TempDir::new().expect("temp dir");
+        init_git_repo(&dir);
+        commit_file(&dir, "file.txt", "original", "initial");
+
+        let file_path = dir.path().join("file.txt");
+        fs::write(&file_path, "modified").expect("modify file");
+
+        let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Proceed);
+        let outcome = apply_git_revert_mode_with_context(
+            dir.path(),
+            GitRevertMode::Ask,
+            RevertPromptContext::new("test prompt", true),
+            Some(&handler),
+        )
+        .expect("apply revert mode");
+
+        assert_eq!(
+            outcome,
+            RevertOutcome::Proceed {
+                reason: "user chose to proceed".to_string()
             }
         );
         let contents = fs::read_to_string(&file_path).expect("read file");

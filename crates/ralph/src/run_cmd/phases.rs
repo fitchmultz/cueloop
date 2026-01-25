@@ -208,10 +208,10 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             match snapshot_check {
                 Ok(()) => break,
                 Err(err) => {
-                    let outcome = runutil::apply_git_revert_mode(
+                    let outcome = runutil::apply_git_revert_mode_with_context(
                         &ctx.resolved.repo_root,
                         ctx.git_revert_mode,
-                        "Phase 1 plan-only violation",
+                        runutil::RevertPromptContext::new("Phase 1 plan-only violation", true),
                         ctx.revert_prompt.as_ref(),
                     )?;
                     match outcome {
@@ -222,6 +222,12 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
                                 &message,
                             )?;
                             continue;
+                        }
+                        runutil::RevertOutcome::Proceed { reason } => {
+                            log::warn!(
+                                "Phase 1 plan-only violation override: proceeding without reverting ({reason})."
+                            );
+                            break;
                         }
                         _ => {
                             bail!(
@@ -938,7 +944,7 @@ echo '{{"sessionID":"sess-123"}}'
         let calls = Arc::new(AtomicUsize::new(0));
         let prompt_handler: runutil::RevertPromptHandler = Arc::new({
             let calls = Arc::clone(&calls);
-            move |_label: &str| {
+            move |_context: &runutil::RevertPromptContext| {
                 if calls.fetch_add(1, Ordering::SeqCst) == 0 {
                     runutil::RevertDecision::Continue {
                         message: "continue".to_string(),
@@ -977,6 +983,79 @@ echo '{{"sessionID":"sess-123"}}'
         anyhow::ensure!(
             paths.len() == 1 && paths[0] == "baseline.txt",
             "expected baseline dirty path only, got: {:?}",
+            paths
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn phase1_proceed_allows_plan_only_violation() -> Result<()> {
+        let temp = TempDir::new()?;
+        git_init(temp.path())?;
+        std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+
+        let script = format!(
+            r#"#!/bin/sh
+set -e
+plan="{root}/.ralph/cache/plans/RQ-0001.md"
+dirty="{root}/dirty-file.txt"
+echo "dirty" > "$dirty"
+echo "plan content" > "$plan"
+echo '{{"type":"text","part":{{"text":"ok"}}}}'
+echo '{{"sessionID":"sess-123"}}'
+"#,
+            root = temp.path().display()
+        );
+        let runner_path = create_fake_runner(temp.path(), "opencode", &script)?;
+
+        let resolved = resolved_for_repo(temp.path().to_path_buf(), &runner_path);
+        let settings = runner::AgentSettings {
+            runner: Runner::Opencode,
+            model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
+            reasoning_effort: None,
+        };
+        let bins = runner::RunnerBinaries {
+            codex: "codex",
+            opencode: runner_path.to_str().expect("runner path"),
+            gemini: "gemini",
+            claude: "claude",
+        };
+        let policy = promptflow::PromptPolicy {
+            require_repoprompt: false,
+        };
+
+        let prompt_handler: runutil::RevertPromptHandler =
+            Arc::new(|_context: &runutil::RevertPromptContext| runutil::RevertDecision::Proceed);
+
+        let invocation = PhaseInvocation {
+            resolved: &resolved,
+            settings: &settings,
+            bins,
+            task_id: "RQ-0001",
+            base_prompt: "base prompt",
+            policy: &policy,
+            output_handler: None,
+            project_type: ProjectType::Code,
+            git_revert_mode: GitRevertMode::Ask,
+            git_commit_push_enabled: true,
+            revert_prompt: Some(prompt_handler),
+            iteration_context: "",
+            iteration_completion_block: "",
+            phase3_completion_guidance: "",
+            is_final_iteration: true,
+            allow_dirty_repo: true,
+        };
+
+        let plan_text = execute_phase1_planning(&invocation, 2)?;
+        assert_eq!(plan_text.trim(), "plan content");
+
+        let mut paths = gitutil::status_paths(temp.path())?;
+        paths.sort();
+
+        anyhow::ensure!(
+            paths.contains(&"dirty-file.txt".to_string()),
+            "expected dirty-file.txt to remain, got: {:?}",
             paths
         );
 
@@ -1248,7 +1327,7 @@ echo '{{"sessionID":"sess-123"}}'
         let prompt_calls = Arc::new(AtomicUsize::new(0));
         let prompt_handler: runutil::RevertPromptHandler = Arc::new({
             let prompt_calls = Arc::clone(&prompt_calls);
-            move |_label: &str| {
+            move |_context: &runutil::RevertPromptContext| {
                 prompt_calls.fetch_add(1, Ordering::SeqCst);
                 runutil::RevertDecision::Keep
             }

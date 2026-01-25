@@ -211,7 +211,7 @@ mod tests {
     }
 
     fn revert_prompt() -> runutil::RevertPromptHandler {
-        Arc::new(|_label: &str| runutil::RevertDecision::Keep)
+        Arc::new(|_context: &runutil::RevertPromptContext| runutil::RevertDecision::Keep)
     }
 
     #[test]

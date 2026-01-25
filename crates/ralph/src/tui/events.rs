@@ -76,6 +76,7 @@ pub enum AppMode {
     /// Confirming revert of uncommitted changes.
     ConfirmRevert {
         label: String,
+        allow_proceed: bool,
         selected: usize,
         input: String,
         reply_sender: mpsc::Sender<RevertDecision>,
@@ -133,6 +134,7 @@ impl PartialEq for AppMode {
             (
                 ConfirmRevert {
                     label: left_label,
+                    allow_proceed: left_allow_proceed,
                     selected: left_selected,
                     input: left_input,
                     previous_mode: left_previous,
@@ -140,6 +142,7 @@ impl PartialEq for AppMode {
                 },
                 ConfirmRevert {
                     label: right_label,
+                    allow_proceed: right_allow_proceed,
                     selected: right_selected,
                     input: right_input,
                     previous_mode: right_previous,
@@ -147,6 +150,7 @@ impl PartialEq for AppMode {
                 },
             ) => {
                 left_label == right_label
+                    && left_allow_proceed == right_allow_proceed
                     && left_selected == right_selected
                     && left_input == right_input
                     && left_previous == right_previous
@@ -226,6 +230,7 @@ pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Resul
         AppMode::ConfirmQuit => handle_confirm_quit_key(app, key),
         AppMode::ConfirmRevert {
             label,
+            allow_proceed,
             selected,
             input,
             reply_sender,
@@ -234,6 +239,7 @@ pub fn handle_key_event(app: &mut App, key: KeyCode, now_rfc3339: &str) -> Resul
             app,
             key,
             &label,
+            allow_proceed,
             selected,
             input,
             reply_sender,
@@ -934,10 +940,12 @@ fn handle_confirm_quit_key(app: &mut App, key: KeyCode) -> Result<TuiAction> {
 }
 
 /// Handle key events in ConfirmRevert mode.
+#[allow(clippy::too_many_arguments)]
 fn handle_confirm_revert_key(
     app: &mut App,
     key: KeyCode,
     label: &str,
+    allow_proceed: bool,
     selected: usize,
     input: String,
     reply_sender: mpsc::Sender<RevertDecision>,
@@ -946,12 +954,14 @@ fn handle_confirm_revert_key(
     let mut selected = selected;
     let mut input = input;
 
+    let max_index = if allow_proceed { 3 } else { 2 };
+
     match key {
         KeyCode::Up => {
             selected = selected.saturating_sub(1);
         }
         KeyCode::Down => {
-            selected = (selected + 1).min(2);
+            selected = (selected + 1).min(max_index);
         }
         KeyCode::Char('1') => {
             if selected == 2 {
@@ -974,6 +984,13 @@ fn handle_confirm_revert_key(
                 selected = 2;
             }
         }
+        KeyCode::Char('4') => {
+            if selected == 2 {
+                input.push('4');
+            } else if allow_proceed {
+                selected = 3;
+            }
+        }
         KeyCode::Char(ch) => {
             if selected == 2 {
                 input.push(ch);
@@ -990,11 +1007,15 @@ fn handle_confirm_revert_key(
                 1 => RevertDecision::Revert,
                 2 => {
                     if input.trim().is_empty() {
-                        app.set_status_message(format!(
-                            "{label}: enter a message to continue or choose Keep/Revert"
-                        ));
+                        let hint = if allow_proceed {
+                            "enter a message to continue or choose Keep/Revert/Proceed"
+                        } else {
+                            "enter a message to continue or choose Keep/Revert"
+                        };
+                        app.set_status_message(format!("{label}: {hint}"));
                         app.mode = AppMode::ConfirmRevert {
                             label: label.to_string(),
+                            allow_proceed,
                             selected,
                             input,
                             reply_sender,
@@ -1004,6 +1025,7 @@ fn handle_confirm_revert_key(
                     }
                     RevertDecision::Continue { message: input }
                 }
+                3 if allow_proceed => RevertDecision::Proceed,
                 _ => RevertDecision::Keep,
             };
 
@@ -1019,6 +1041,9 @@ fn handle_confirm_revert_key(
                     }
                     RevertDecision::Continue { .. } => {
                         app.set_status_message(format!("{label}: continuing session"));
+                    }
+                    RevertDecision::Proceed => {
+                        app.set_status_message(format!("{label}: keeping changes and proceeding"));
                     }
                 }
             }
@@ -1041,6 +1066,7 @@ fn handle_confirm_revert_key(
 
     app.mode = AppMode::ConfirmRevert {
         label: label.to_string(),
+        allow_proceed,
         selected,
         input,
         reply_sender,
