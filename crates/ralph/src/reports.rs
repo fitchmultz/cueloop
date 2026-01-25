@@ -196,7 +196,8 @@ fn build_stats_report(queue: &QueueFile, done: Option<&QueueFile>, tags: &[Strin
     let mut tag_counts: HashMap<String, usize> = HashMap::new();
     for task in &filtered_tasks {
         for tag in &task.tags {
-            *tag_counts.entry(tag.clone()).or_insert(0) += 1;
+            let normalized = tag.to_lowercase();
+            *tag_counts.entry(normalized).or_insert(0) += 1;
         }
     }
     let mut sorted_tags: Vec<(String, usize)> = tag_counts.into_iter().collect();

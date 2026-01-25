@@ -100,7 +100,7 @@ fn stats_json_includes_summary_and_durations() -> Result<()> {
       "status": "done",
       "title": "Done task",
       "priority": "medium",
-      "tags": ["reports", "cli"],
+      "tags": ["Reports", "CLI"],
       "scope": ["crates/ralph"],
       "evidence": ["test"],
       "plan": ["verify"],

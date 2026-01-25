@@ -4592,6 +4592,44 @@
       "completed_at": "2026-01-25T23:31:10.320545000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0264",
+      "status": "done",
+      "title": "Normalize tag casing in stats tag breakdown",
+      "priority": "low",
+      "tags": [
+        "reports",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/reports.rs",
+        "crates/ralph/tests/queue_stats_history_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/reports.rs: print_stats lowercases tags for filtering but the tag breakdown counts tags using their original casing.",
+        "crates/ralph/tests/queue_stats_history_test.rs: current integration tests do not assert tag breakdown output or tag casing."
+      ],
+      "plan": [
+        "Normalize tag keys to lower-case when aggregating tag_counts in print_stats.",
+        "Add a queue_stats_history_test.rs scenario with mixed-case tags and assert the tag breakdown output uses normalized casing and aggregated counts.",
+        "Run `cargo test -p ralph queue_stats_history_test` to confirm the report output remains stable."
+      ],
+      "notes": [
+        "Tag breakdown casing is currently untested; new assertions should pin the normalized output.",
+        "Normalize stats tag breakdown aggregation to lowercase.",
+        "Queue stats JSON test now asserts normalized mixed-case tag counts.",
+        "make ci"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "low"
+      },
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T23:36:04.553834000Z",
+      "completed_at": "2026-01-25T23:36:04.553834000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
