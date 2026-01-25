@@ -17,6 +17,22 @@ use std::time::Duration;
 /// Called with each chunk of output as it's received from the runner process.
 pub type OutputHandler = Arc<Box<dyn Fn(&str) + Send + Sync>>;
 
+/// Controls whether runner output is streamed directly to the terminal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputStream {
+    /// Stream runner output to stdout/stderr as well as any output handler.
+    Terminal,
+    /// Suppress direct terminal output and only deliver output to the handler.
+    HandlerOnly,
+}
+
+impl OutputStream {
+    /// Returns true when output should be streamed to stdout/stderr.
+    pub fn streams_to_terminal(self) -> bool {
+        matches!(self, OutputStream::Terminal)
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum RunnerError {
     #[error("runner binary not found: {bin}")]
@@ -242,6 +258,7 @@ pub fn run_prompt(
     timeout: Option<Duration>,
     permission_mode: Option<ClaudePermissionMode>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     validate_model_for_runner(runner, &model).map_err(RunnerError::Other)?;
     let output = match runner {
@@ -253,6 +270,7 @@ pub fn run_prompt(
             prompt,
             timeout,
             output_handler.clone(),
+            output_stream,
         )?,
         Runner::Opencode => execution::run_opencode(
             work_dir,
@@ -261,6 +279,7 @@ pub fn run_prompt(
             prompt,
             timeout,
             output_handler.clone(),
+            output_stream,
         )?,
         Runner::Gemini => execution::run_gemini(
             work_dir,
@@ -269,6 +288,7 @@ pub fn run_prompt(
             prompt,
             timeout,
             output_handler.clone(),
+            output_stream,
         )?,
         Runner::Claude => execution::run_claude(
             work_dir,
@@ -278,6 +298,7 @@ pub fn run_prompt(
             timeout,
             permission_mode,
             output_handler,
+            output_stream,
         )?,
     };
 
@@ -313,6 +334,7 @@ pub fn resume_session(
     permission_mode: Option<ClaudePermissionMode>,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let reasoning_effort = if runner == Runner::Codex {
         reasoning_effort
@@ -339,6 +361,7 @@ pub fn resume_session(
             message,
             timeout,
             output_handler,
+            output_stream,
         ),
         Runner::Opencode => execution::run_opencode_resume(
             work_dir,
@@ -348,6 +371,7 @@ pub fn resume_session(
             message,
             timeout,
             output_handler,
+            output_stream,
         ),
         Runner::Gemini => execution::run_gemini_resume(
             work_dir,
@@ -357,6 +381,7 @@ pub fn resume_session(
             message,
             timeout,
             output_handler,
+            output_stream,
         ),
         Runner::Claude => execution::run_claude_resume(
             work_dir,
@@ -367,6 +392,7 @@ pub fn resume_session(
             timeout,
             permission_mode,
             output_handler,
+            output_stream,
         ),
     }?;
 
@@ -562,5 +588,15 @@ mod tests {
             false, // runner was not overridden
         );
         assert_eq!(model, Model::Gpt52Codex);
+    }
+
+    #[test]
+    fn output_stream_terminal_allows_terminal_output() {
+        assert!(OutputStream::Terminal.streams_to_terminal());
+    }
+
+    #[test]
+    fn output_stream_handler_only_suppresses_terminal_output() {
+        assert!(!OutputStream::HandlerOnly.streams_to_terminal());
     }
 }

@@ -96,6 +96,11 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             revert_on_error: true,
             git_revert_mode: opts.git_revert_mode,
             output_handler: opts.output_handler.clone(),
+            output_stream: if opts.output_handler.is_some() {
+                runner::OutputStream::HandlerOnly
+            } else {
+                runner::OutputStream::Terminal
+            },
             revert_prompt: opts.revert_prompt.clone(),
         },
         runutil::RunnerErrorMessages {

@@ -19,6 +19,9 @@ fn run() -> Result<()> {
     let cli = cli::Cli::parse();
 
     let mut builder = env_logger::Builder::from_default_env();
+    if suppress_terminal_logs(&cli.command) {
+        builder.target(env_logger::Target::Pipe(Box::new(std::io::sink())));
+    }
     if cli.verbose {
         builder.filter_level(log::LevelFilter::Debug);
     } else if std::env::var("RUST_LOG").is_err() {
@@ -46,5 +49,66 @@ fn run() -> Result<()> {
         cli::Command::Prompt(args) => cli::prompt::handle_prompt(args),
         cli::Command::Doctor => cli::doctor::handle_doctor(),
         cli::Command::Tui(args) => cli::tui::handle_tui(args, cli.force),
+    }
+}
+
+fn suppress_terminal_logs(command: &cli::Command) -> bool {
+    match command {
+        cli::Command::Tui(_) => true,
+        cli::Command::Run(args) => match &args.command {
+            cli::run::RunCommand::One(run_args) => run_args.interactive,
+            cli::run::RunCommand::Loop(run_args) => run_args.interactive,
+        },
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn suppress_terminal_logs_for_tui() {
+        let cmd = cli::Command::Tui(cli::tui::TuiArgs {
+            read_only: false,
+            agent: ralph::agent::RunAgentArgs::default(),
+        });
+        assert!(suppress_terminal_logs(&cmd));
+    }
+
+    #[test]
+    fn suppress_terminal_logs_for_interactive_run_one() {
+        let cmd = cli::Command::Run(cli::run::RunArgs {
+            command: cli::run::RunCommand::One(cli::run::RunOneArgs {
+                interactive: true,
+                id: None,
+                agent: ralph::agent::RunAgentArgs::default(),
+            }),
+        });
+        assert!(suppress_terminal_logs(&cmd));
+    }
+
+    #[test]
+    fn suppress_terminal_logs_for_interactive_run_loop() {
+        let cmd = cli::Command::Run(cli::run::RunArgs {
+            command: cli::run::RunCommand::Loop(cli::run::RunLoopArgs {
+                max_tasks: 0,
+                interactive: true,
+                agent: ralph::agent::RunAgentArgs::default(),
+            }),
+        });
+        assert!(suppress_terminal_logs(&cmd));
+    }
+
+    #[test]
+    fn no_log_suppression_for_non_interactive_commands() {
+        let cmd = cli::Command::Run(cli::run::RunArgs {
+            command: cli::run::RunCommand::One(cli::run::RunOneArgs {
+                interactive: false,
+                id: Some("RQ-0001".to_string()),
+                agent: ralph::agent::RunAgentArgs::default(),
+            }),
+        });
+        assert!(!suppress_terminal_logs(&cmd));
     }
 }

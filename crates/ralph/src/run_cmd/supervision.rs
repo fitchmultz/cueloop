@@ -17,6 +17,7 @@ pub(crate) struct ContinueSession {
     pub reasoning_effort: Option<crate::contracts::ReasoningEffort>,
     pub session_id: Option<String>,
     pub output_handler: Option<crate::runner::OutputHandler>,
+    pub output_stream: crate::runner::OutputStream,
     /// Number of automatic "fix CI and rerun" retries already sent for the current CI gate loop.
     /// Used to auto-enforce CI compliance without prompting for the first N failures.
     pub ci_failure_retry_count: u8,
@@ -42,6 +43,7 @@ pub(crate) fn resume_continue_session(
         resolved.config.agent.claude_permission_mode,
         None,
         session.output_handler.clone(),
+        session.output_stream,
     )?;
     if let Some(new_id) = output.session_id.as_ref() {
         session.session_id = Some(new_id.clone());
@@ -515,6 +517,7 @@ mod tests {
             reasoning_effort: None,
             session_id: None,
             output_handler: None,
+            output_stream: crate::runner::OutputStream::Terminal,
             ci_failure_retry_count: 0,
         };
 

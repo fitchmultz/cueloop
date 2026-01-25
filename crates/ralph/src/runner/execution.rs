@@ -16,8 +16,8 @@ use std::os::unix::process::CommandExt;
 
 // Re-export types/constants from parent module for convenience
 use super::{
-    ClaudePermissionMode, Model, OutputHandler, ReasoningEffort, RunnerError, RunnerOutput,
-    OPENCODE_PROMPT_FILE_MESSAGE, TEMP_RETENTION,
+    ClaudePermissionMode, Model, OutputHandler, OutputStream, ReasoningEffort, RunnerError,
+    RunnerOutput, OPENCODE_PROMPT_FILE_MESSAGE, TEMP_RETENTION,
 };
 
 use crate::fsutil;
@@ -81,7 +81,14 @@ pub(super) enum StreamSink {
 }
 
 impl StreamSink {
-    pub(super) fn write_all(&self, bytes: &[u8]) -> std::io::Result<()> {
+    pub(super) fn write_all(
+        &self,
+        bytes: &[u8],
+        output_stream: OutputStream,
+    ) -> std::io::Result<()> {
+        if !output_stream.streams_to_terminal() {
+            return Ok(());
+        }
         match self {
             StreamSink::Stdout => {
                 let mut out = std::io::stdout().lock();
@@ -102,6 +109,7 @@ pub(super) fn spawn_reader<R: Read + Send + 'static>(
     sink: StreamSink,
     buffer: Arc<Mutex<String>>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> thread::JoinHandle<anyhow::Result<()>> {
     thread::spawn(move || {
         let mut buf = [0u8; 8192];
@@ -110,7 +118,7 @@ pub(super) fn spawn_reader<R: Read + Send + 'static>(
             if read == 0 {
                 break;
             }
-            sink.write_all(&buf[..read])
+            sink.write_all(&buf[..read], output_stream)
                 .context("stream child output")?;
             let text = String::from_utf8_lossy(&buf[..read]);
             let mut guard = buffer
@@ -226,6 +234,7 @@ pub(super) fn run_with_streaming_json(
     bin: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     if stdin_payload.is_some() {
@@ -293,6 +302,7 @@ pub(super) fn run_with_streaming_json(
         StreamSink::Stdout,
         Arc::clone(&stdout_buf),
         output_handler.clone(),
+        output_stream,
         Arc::clone(&session_id_buf),
     );
     let stderr_handle = spawn_reader(
@@ -300,6 +310,7 @@ pub(super) fn run_with_streaming_json(
         StreamSink::Stderr,
         Arc::clone(&stderr_buf),
         output_handler,
+        output_stream,
     );
 
     let status = wait_for_child(&mut child, ctrlc, timeout)?;
@@ -359,6 +370,7 @@ fn spawn_json_reader<R: Read + Send + 'static>(
     sink: StreamSink,
     buffer: Arc<Mutex<String>>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
     session_id_buf: Arc<Mutex<Option<String>>>,
 ) -> thread::JoinHandle<anyhow::Result<()>> {
     thread::spawn(move || {
@@ -404,11 +416,16 @@ fn spawn_json_reader<R: Read + Send + 'static>(
                                 *guard = Some(id);
                             }
                         }
-                        display_filtered_json(&json, &sink, output_handler.as_ref())?;
+                        display_filtered_json(
+                            &json,
+                            &sink,
+                            output_handler.as_ref(),
+                            output_stream,
+                        )?;
                     } else if !line_buf.trim().is_empty() {
                         let mut line = line_buf.clone();
-                        sink.write_all(line.as_bytes())?;
-                        sink.write_all(b"\n")?;
+                        sink.write_all(line.as_bytes(), output_stream)?;
+                        sink.write_all(b"\n", output_stream)?;
                         if let Some(handler) = &output_handler {
                             line.push('\n');
                             handler(&line);
@@ -429,8 +446,8 @@ fn spawn_json_reader<R: Read + Send + 'static>(
 
         if !line_buf.trim().is_empty() {
             let mut line = line_buf.clone();
-            sink.write_all(line.as_bytes())?;
-            sink.write_all(b"\n")?;
+            sink.write_all(line.as_bytes(), output_stream)?;
+            sink.write_all(b"\n", output_stream)?;
             if let Some(handler) = &output_handler {
                 line.push('\n');
                 handler(&line);
@@ -926,10 +943,11 @@ fn display_filtered_json(
     json: &JsonValue,
     sink: &StreamSink,
     output_handler: Option<&OutputHandler>,
+    output_stream: OutputStream,
 ) -> anyhow::Result<()> {
     for mut line in extract_display_lines(json) {
-        sink.write_all(line.as_bytes())?;
-        sink.write_all(b"\n")?;
+        sink.write_all(line.as_bytes(), output_stream)?;
+        sink.write_all(b"\n", output_stream)?;
         if let Some(handler) = output_handler {
             line.push('\n');
             handler(&line);
@@ -939,6 +957,7 @@ fn display_filtered_json(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_codex(
     work_dir: &Path,
     bin: &str,
@@ -947,6 +966,7 @@ pub fn run_codex(
     prompt: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let mut cmd = Command::new(bin);
     cmd.current_dir(work_dir);
@@ -964,7 +984,14 @@ pub fn run_codex(
     }
 
     cmd.arg("-");
-    run_with_streaming_json(cmd, Some(prompt.as_bytes()), bin, timeout, output_handler)
+    run_with_streaming_json(
+        cmd,
+        Some(prompt.as_bytes()),
+        bin,
+        timeout,
+        output_handler,
+        output_stream,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -977,6 +1004,7 @@ pub fn run_codex_resume(
     message: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let mut cmd = Command::new(bin);
     cmd.current_dir(work_dir);
@@ -996,7 +1024,7 @@ pub fn run_codex_resume(
     }
 
     cmd.arg(message);
-    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler, output_stream)
 }
 
 pub fn run_opencode(
@@ -1006,6 +1034,7 @@ pub fn run_opencode(
     prompt: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     if let Err(err) = fsutil::cleanup_default_temp_dirs(TEMP_RETENTION) {
         log::warn!("temp cleanup failed: {:#}", err);
@@ -1039,9 +1068,10 @@ pub fn run_opencode(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler, output_stream)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_opencode_resume(
     work_dir: &Path,
     bin: &str,
@@ -1050,6 +1080,7 @@ pub fn run_opencode_resume(
     message: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let mut cmd = Command::new(bin);
     cmd.current_dir(work_dir);
@@ -1063,7 +1094,7 @@ pub fn run_opencode_resume(
         .arg("json")
         .arg("--")
         .arg(message);
-    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler, output_stream)
 }
 
 pub fn run_gemini(
@@ -1073,6 +1104,7 @@ pub fn run_gemini(
     prompt: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let mut cmd = Command::new(bin);
     cmd.current_dir(work_dir);
@@ -1083,9 +1115,17 @@ pub fn run_gemini(
         .arg("stream-json")
         .arg("--approval-mode")
         .arg("yolo");
-    run_with_streaming_json(cmd, Some(prompt.as_bytes()), bin, timeout, output_handler)
+    run_with_streaming_json(
+        cmd,
+        Some(prompt.as_bytes()),
+        bin,
+        timeout,
+        output_handler,
+        output_stream,
+    )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_gemini_resume(
     work_dir: &Path,
     bin: &str,
@@ -1094,6 +1134,7 @@ pub fn run_gemini_resume(
     message: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let mut cmd = Command::new(bin);
     cmd.current_dir(work_dir);
@@ -1107,9 +1148,10 @@ pub fn run_gemini_resume(
         .arg("--approval-mode")
         .arg("yolo")
         .arg(message);
-    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler, output_stream)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_claude(
     work_dir: &Path,
     bin: &str,
@@ -1118,6 +1160,7 @@ pub fn run_claude(
     timeout: Option<Duration>,
     permission_mode: Option<ClaudePermissionMode>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let mode = permission_mode.unwrap_or(ClaudePermissionMode::BypassPermissions);
     let mut cmd = Command::new(bin);
@@ -1131,7 +1174,14 @@ pub fn run_claude(
         .arg("--output-format")
         .arg("stream-json")
         .arg("--verbose");
-    run_with_streaming_json(cmd, Some(prompt.as_bytes()), bin, timeout, output_handler)
+    run_with_streaming_json(
+        cmd,
+        Some(prompt.as_bytes()),
+        bin,
+        timeout,
+        output_handler,
+        output_stream,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1144,6 +1194,7 @@ pub fn run_claude_resume(
     timeout: Option<Duration>,
     permission_mode: Option<ClaudePermissionMode>,
     output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let mode = permission_mode.unwrap_or(ClaudePermissionMode::BypassPermissions);
     let mut cmd = Command::new(bin);
@@ -1160,7 +1211,7 @@ pub fn run_claude_resume(
         .arg("--verbose")
         .arg("-p")
         .arg(message);
-    run_with_streaming_json(cmd, None, bin, timeout, output_handler)
+    run_with_streaming_json(cmd, None, bin, timeout, output_handler, output_stream)
 }
 
 fn effort_as_str(effort: ReasoningEffort) -> &'static str {
@@ -1368,8 +1419,13 @@ mod tests {
             }
         }));
 
-        display_filtered_json(&payload, &StreamSink::Stdout, Some(&handler))
-            .expect("display filtered json");
+        display_filtered_json(
+            &payload,
+            &StreamSink::Stdout,
+            Some(&handler),
+            OutputStream::HandlerOnly,
+        )
+        .expect("display filtered json");
 
         let guard = captured.lock().expect("capture lock");
         assert_eq!(guard.as_slice(), &["hello\n".to_string()]);

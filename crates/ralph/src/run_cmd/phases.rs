@@ -26,6 +26,7 @@ pub struct PhaseInvocation<'a> {
     pub base_prompt: &'a str,
     pub policy: &'a promptflow::PromptPolicy,
     pub output_handler: Option<runner::OutputHandler>,
+    pub output_stream: runner::OutputStream,
     pub project_type: ProjectType,
     pub git_revert_mode: GitRevertMode,
     pub git_commit_push_enabled: bool,
@@ -158,6 +159,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             ctx.bins,
             &p1_prompt,
             ctx.output_handler.clone(),
+            ctx.output_stream,
             true,
             ctx.git_revert_mode,
             ctx.revert_prompt.clone(),
@@ -170,6 +172,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             reasoning_effort: ctx.settings.reasoning_effort,
             session_id: output.session_id.clone(),
             output_handler: ctx.output_handler.clone(),
+            output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,
         };
 
@@ -288,6 +291,7 @@ pub fn execute_phase2_implementation(
                 ctx.bins,
                 &p2_prompt,
                 ctx.output_handler.clone(),
+                ctx.output_stream,
                 true,
                 ctx.git_revert_mode,
                 ctx.revert_prompt.clone(),
@@ -302,6 +306,7 @@ pub fn execute_phase2_implementation(
                 reasoning_effort: ctx.settings.reasoning_effort,
                 session_id: output.session_id.clone(),
                 output_handler: ctx.output_handler.clone(),
+                output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
             };
 
@@ -347,6 +352,7 @@ pub fn execute_phase2_implementation(
             ctx.bins,
             &p2_prompt,
             ctx.output_handler.clone(),
+            ctx.output_stream,
             true,
             ctx.git_revert_mode,
             ctx.revert_prompt.clone(),
@@ -368,6 +374,7 @@ pub fn execute_phase2_implementation(
                 reasoning_effort: ctx.settings.reasoning_effort,
                 session_id: output.session_id.clone(),
                 output_handler: ctx.output_handler.clone(),
+                output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
             };
             run_ci_gate_with_continue(ctx, continue_session, |_output| Ok(()))?;
@@ -446,6 +453,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 revert_on_error: false,
                 git_revert_mode: ctx.git_revert_mode,
                 output_handler: ctx.output_handler.clone(),
+                output_stream: ctx.output_stream,
                 revert_prompt: ctx.revert_prompt.clone(),
             },
             runutil::RunnerErrorMessages {
@@ -474,6 +482,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 reasoning_effort: ctx.settings.reasoning_effort,
                 session_id: output.session_id.clone(),
                 output_handler: ctx.output_handler.clone(),
+                output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
             };
             run_ci_gate_with_continue(ctx, continue_session, |_output| Ok(()))?;
@@ -493,6 +502,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             reasoning_effort: ctx.settings.reasoning_effort,
             session_id: output.session_id.clone(),
             output_handler: ctx.output_handler.clone(),
+            output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,
         };
 
@@ -582,6 +592,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
             ctx.bins,
             &prompt,
             ctx.output_handler.clone(),
+            ctx.output_stream,
             true,
             ctx.git_revert_mode,
             ctx.revert_prompt.clone(),
@@ -603,6 +614,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 reasoning_effort: ctx.settings.reasoning_effort,
                 session_id: output.session_id.clone(),
                 output_handler: ctx.output_handler.clone(),
+                output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
             };
             run_ci_gate_with_continue(ctx, continue_session, |_output| Ok(()))?;
@@ -618,6 +630,7 @@ pub fn execute_runner_pass(
     bins: runner::RunnerBinaries,
     prompt: &str,
     output_handler: Option<runner::OutputHandler>,
+    output_stream: runner::OutputStream,
     revert_on_error: bool,
     git_revert_mode: crate::contracts::GitRevertMode,
     revert_prompt: Option<runutil::RevertPromptHandler>,
@@ -638,6 +651,7 @@ pub fn execute_runner_pass(
             revert_on_error,
             git_revert_mode,
             output_handler,
+            output_stream,
             revert_prompt,
         },
         runutil::RunnerErrorMessages {
@@ -963,6 +977,7 @@ echo '{{"sessionID":"sess-123"}}'
             base_prompt: "base prompt",
             policy: &policy,
             output_handler: None,
+            output_stream: runner::OutputStream::Terminal,
             project_type: ProjectType::Code,
             git_revert_mode: GitRevertMode::Ask,
             git_commit_push_enabled: true,
@@ -1036,6 +1051,7 @@ echo '{{"sessionID":"sess-123"}}'
             base_prompt: "base prompt",
             policy: &policy,
             output_handler: None,
+            output_stream: runner::OutputStream::Terminal,
             project_type: ProjectType::Code,
             git_revert_mode: GitRevertMode::Ask,
             git_commit_push_enabled: true,
@@ -1107,6 +1123,7 @@ echo '{{"sessionID":"sess-123"}}'
             base_prompt: "base prompt",
             policy: &policy,
             output_handler: None,
+            output_stream: runner::OutputStream::Terminal,
             project_type: ProjectType::Code,
             git_revert_mode: GitRevertMode::Disabled,
             git_commit_push_enabled: true,
@@ -1213,6 +1230,7 @@ echo '{"sessionID":"sess-123"}'
             base_prompt: "base prompt",
             policy: &policy,
             output_handler: None,
+            output_stream: runner::OutputStream::Terminal,
             project_type: ProjectType::Code,
             git_revert_mode: GitRevertMode::Ask,
             git_commit_push_enabled: true,
@@ -1267,6 +1285,7 @@ echo '{"sessionID":"sess-123"}'
             base_prompt: "base prompt",
             policy: &policy,
             output_handler: None,
+            output_stream: runner::OutputStream::Terminal,
             project_type: ProjectType::Code,
             git_revert_mode: GitRevertMode::Ask,
             git_commit_push_enabled: true,
@@ -1341,6 +1360,7 @@ echo '{{"sessionID":"sess-123"}}'
             base_prompt: "base",
             policy: &policy,
             output_handler: None,
+            output_stream: runner::OutputStream::Terminal,
             project_type: ProjectType::Code,
             git_revert_mode: GitRevertMode::Ask,
             git_commit_push_enabled: true,
@@ -1358,6 +1378,7 @@ echo '{{"sessionID":"sess-123"}}'
             reasoning_effort: None,
             session_id: Some("sess-123".to_string()),
             output_handler: None,
+            output_stream: runner::OutputStream::Terminal,
             ci_failure_retry_count: 0,
         };
 

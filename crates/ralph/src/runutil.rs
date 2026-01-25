@@ -26,6 +26,8 @@ pub struct RunnerInvocation<'a> {
     pub git_revert_mode: GitRevertMode,
     /// Optional callback for streaming runner output.
     pub output_handler: Option<runner::OutputHandler>,
+    /// Controls whether runner output is streamed to stdout/stderr.
+    pub output_stream: runner::OutputStream,
     /// Optional handler for revert prompts (interactive UIs).
     pub revert_prompt: Option<RevertPromptHandler>,
 }
@@ -91,6 +93,7 @@ trait RunnerBackend {
         timeout: Option<Duration>,
         permission_mode: Option<ClaudePermissionMode>,
         output_handler: Option<runner::OutputHandler>,
+        output_stream: runner::OutputStream,
     ) -> Result<runner::RunnerOutput, runner::RunnerError>;
 
     #[allow(clippy::too_many_arguments)]
@@ -106,6 +109,7 @@ trait RunnerBackend {
         permission_mode: Option<ClaudePermissionMode>,
         timeout: Option<Duration>,
         output_handler: Option<runner::OutputHandler>,
+        output_stream: runner::OutputStream,
     ) -> Result<runner::RunnerOutput, runner::RunnerError>;
 }
 
@@ -123,6 +127,7 @@ impl RunnerBackend for RealRunnerBackend {
         timeout: Option<Duration>,
         permission_mode: Option<ClaudePermissionMode>,
         output_handler: Option<runner::OutputHandler>,
+        output_stream: runner::OutputStream,
     ) -> Result<runner::RunnerOutput, runner::RunnerError> {
         runner::run_prompt(
             runner_kind,
@@ -134,6 +139,7 @@ impl RunnerBackend for RealRunnerBackend {
             timeout,
             permission_mode,
             output_handler,
+            output_stream,
         )
     }
 
@@ -149,6 +155,7 @@ impl RunnerBackend for RealRunnerBackend {
         permission_mode: Option<ClaudePermissionMode>,
         timeout: Option<Duration>,
         output_handler: Option<runner::OutputHandler>,
+        output_stream: runner::OutputStream,
     ) -> Result<runner::RunnerOutput, runner::RunnerError> {
         runner::resume_session(
             runner_kind,
@@ -161,6 +168,7 @@ impl RunnerBackend for RealRunnerBackend {
             permission_mode,
             timeout,
             output_handler,
+            output_stream,
         )
     }
 }
@@ -210,6 +218,7 @@ where
         revert_on_error,
         git_revert_mode,
         output_handler,
+        output_stream,
         revert_prompt,
     } = invocation;
     let RunnerErrorMessages {
@@ -242,6 +251,7 @@ where
         timeout,
         permission_mode,
         effective_output_handler.clone(),
+        output_stream,
     );
 
     loop {
@@ -342,6 +352,7 @@ where
                                 permission_mode,
                                 timeout,
                                 effective_output_handler.clone(),
+                                output_stream,
                             );
                             continue;
                         }
@@ -400,6 +411,7 @@ where
                                 permission_mode,
                                 timeout,
                                 effective_output_handler.clone(),
+                                output_stream,
                             );
                             continue;
                         }
@@ -839,6 +851,7 @@ mod tests {
             _timeout: Option<Duration>,
             _permission_mode: Option<ClaudePermissionMode>,
             output_handler: Option<runner::OutputHandler>,
+            _output_stream: runner::OutputStream,
         ) -> Result<runner::RunnerOutput, runner::RunnerError> {
             if let Some(handler) = output_handler {
                 (handler)(&self.emitted);
@@ -858,6 +871,7 @@ mod tests {
             _permission_mode: Option<ClaudePermissionMode>,
             _timeout: Option<Duration>,
             _output_handler: Option<runner::OutputHandler>,
+            _output_stream: runner::OutputStream,
         ) -> Result<runner::RunnerOutput, runner::RunnerError> {
             unreachable!("resume_session should not be called for a timeout-only test backend");
         }
@@ -889,6 +903,7 @@ mod tests {
             revert_on_error: true,
             git_revert_mode: GitRevertMode::Enabled,
             output_handler: None,
+            output_stream: runner::OutputStream::Terminal,
             revert_prompt: None,
         };
 
@@ -939,5 +954,89 @@ mod tests {
         );
         let dump_contents = fs::read_to_string(dump).expect("read safeguard dump");
         assert!(dump_contents.contains("hello from runner before timeout"));
+    }
+
+    struct CaptureBackend {
+        seen_output_stream: Option<runner::OutputStream>,
+    }
+
+    impl RunnerBackend for CaptureBackend {
+        fn run_prompt<'a>(
+            &mut self,
+            _runner_kind: Runner,
+            _work_dir: &Path,
+            _bins: runner::RunnerBinaries<'a>,
+            _model: Model,
+            _reasoning_effort: Option<ReasoningEffort>,
+            _prompt: &str,
+            _timeout: Option<Duration>,
+            _permission_mode: Option<ClaudePermissionMode>,
+            _output_handler: Option<runner::OutputHandler>,
+            output_stream: runner::OutputStream,
+        ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+            self.seen_output_stream = Some(output_stream);
+            Err(runner::RunnerError::Interrupted)
+        }
+
+        fn resume_session<'a>(
+            &mut self,
+            _runner_kind: Runner,
+            _work_dir: &Path,
+            _bins: runner::RunnerBinaries<'a>,
+            _model: Model,
+            _reasoning_effort: Option<ReasoningEffort>,
+            _session_id: &str,
+            _message: &str,
+            _permission_mode: Option<ClaudePermissionMode>,
+            _timeout: Option<Duration>,
+            _output_handler: Option<runner::OutputHandler>,
+            _output_stream: runner::OutputStream,
+        ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+            unreachable!("resume_session should not be called for output-stream capture test");
+        }
+    }
+
+    #[test]
+    fn run_prompt_passes_output_stream_to_backend() {
+        let dir = TempDir::new().expect("temp dir");
+        let invocation = RunnerInvocation {
+            repo_root: dir.path(),
+            runner_kind: Runner::Codex,
+            bins: runner::RunnerBinaries {
+                codex: "codex",
+                opencode: "opencode",
+                gemini: "gemini",
+                claude: "claude",
+            },
+            model: Model::Gpt52Codex,
+            reasoning_effort: None,
+            prompt: "test prompt",
+            timeout: None,
+            permission_mode: None,
+            revert_on_error: false,
+            git_revert_mode: GitRevertMode::Disabled,
+            output_handler: None,
+            output_stream: runner::OutputStream::HandlerOnly,
+            revert_prompt: None,
+        };
+
+        let messages = RunnerErrorMessages {
+            log_label: "capture",
+            interrupted_msg: "interrupted",
+            timeout_msg: "timed out",
+            terminated_msg: "terminated",
+            non_zero_msg: |_| "non-zero".to_string(),
+            other_msg: |_| "other".to_string(),
+        };
+
+        let mut backend = CaptureBackend {
+            seen_output_stream: None,
+        };
+
+        let _ = run_prompt_with_handling_backend(invocation, messages, &mut backend);
+        assert_eq!(
+            backend.seen_output_stream,
+            Some(runner::OutputStream::HandlerOnly)
+        );
     }
 }

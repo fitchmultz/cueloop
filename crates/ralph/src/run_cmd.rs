@@ -283,6 +283,12 @@ fn run_one_impl(
         let task_context = task_context_for_prompt(&task)?;
         base_prompt = format!("{task_context}\n\n---\n\n{base_prompt}");
 
+        let output_stream = if output_handler.is_some() {
+            runner::OutputStream::HandlerOnly
+        } else {
+            runner::OutputStream::Terminal
+        };
+
         for iteration_index in 1..=iteration_settings.count {
             let is_followup = iteration_index > 1;
             let is_final_iteration = iteration_index == iteration_settings.count;
@@ -322,6 +328,7 @@ fn run_one_impl(
                 base_prompt: &base_prompt,
                 policy: &policy,
                 output_handler: output_handler.clone(),
+                output_stream,
                 project_type,
                 git_revert_mode,
                 git_commit_push_enabled,
