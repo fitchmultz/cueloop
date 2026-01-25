@@ -180,10 +180,12 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
         // It may only edit `.ralph/queue.json` / `.ralph/done.json` (status bookkeeping)
         // plus the plan cache file for the current task.
         let plan_cache_rel = format!(".ralph/cache/plans/{}.md", ctx.task_id);
+        let plan_cache_dir = ".ralph/cache/plans/";
         let allowed_paths = [
             ".ralph/queue.json",
             ".ralph/done.json",
             plan_cache_rel.as_str(),
+            plan_cache_dir,
         ];
         loop {
             let mut allowed: Vec<String> = allowed_paths

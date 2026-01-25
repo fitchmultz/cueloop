@@ -293,7 +293,7 @@ pub fn require_clean_repo_ignoring_paths(
     let entries = parse_porcelain_z_entries(&status)?;
     for entry in entries {
         let path = entry.path.as_str();
-        if !path_is_allowed(path, allowed_paths) {
+        if !path_is_allowed(repo_root, path, allowed_paths) {
             let display = format_porcelain_entry(&entry);
             if entry.xy == "??" {
                 untracked.push(display);
@@ -347,7 +347,7 @@ pub fn repo_dirty_only_allowed_paths(
 
     let has_disallowed = status_paths
         .iter()
-        .any(|path| !path_is_allowed(path, allowed_paths));
+        .any(|path| !path_is_allowed(repo_root, path, allowed_paths));
     Ok(!has_disallowed)
 }
 
@@ -497,15 +497,44 @@ fn format_porcelain_entry(entry: &PorcelainZEntry) -> String {
     }
 }
 
-fn path_is_allowed(path: &str, allowed_paths: &[&str]) -> bool {
-    let trimmed = path.trim();
+fn normalize_path_value(value: &str) -> Option<&str> {
+    let trimmed = value.trim();
     if trimmed.is_empty() {
-        return false;
+        return None;
     }
-    let normalized = trimmed.strip_prefix("./").unwrap_or(trimmed);
+    Some(trimmed.strip_prefix("./").unwrap_or(trimmed))
+}
+
+fn path_is_allowed(repo_root: &Path, path: &str, allowed_paths: &[&str]) -> bool {
+    let Some(normalized) = normalize_path_value(path) else {
+        return false;
+    };
+
     allowed_paths.iter().any(|allowed| {
-        let allowed_norm = allowed.strip_prefix("./").unwrap_or(allowed);
-        normalized == allowed_norm
+        let Some(allowed_norm) = normalize_path_value(allowed) else {
+            return false;
+        };
+
+        if normalized == allowed_norm {
+            return true;
+        }
+
+        let is_dir_prefix = allowed_norm.ends_with('/') || repo_root.join(allowed_norm).is_dir();
+        if !is_dir_prefix {
+            return false;
+        }
+
+        let allowed_dir = allowed_norm.trim_end_matches('/');
+        if allowed_dir.is_empty() {
+            return false;
+        }
+
+        if normalized == allowed_dir {
+            return true;
+        }
+
+        let prefix = format!("{}/", allowed_dir);
+        normalized.starts_with(&prefix)
     })
 }
 
@@ -782,6 +811,50 @@ mod clean_repo_tests {
         let dirty_allowed =
             repo_dirty_only_allowed_paths(temp.path(), RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
         assert!(!dirty_allowed, "expected untracked change to be disallowed");
+        Ok(())
+    }
+
+    #[test]
+    fn repo_dirty_only_allowed_paths_accepts_directory_prefix_with_trailing_slash() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        std::fs::create_dir_all(temp.path().join("cache/plans"))?;
+        std::fs::write(temp.path().join("cache/plans/plan.md"), "plan")?;
+
+        let dirty_allowed = repo_dirty_only_allowed_paths(temp.path(), &["cache/plans/"])?;
+        assert!(dirty_allowed, "expected directory prefix to be allowed");
+        require_clean_repo_ignoring_paths(temp.path(), false, &["cache/plans/"])?;
+        Ok(())
+    }
+
+    #[test]
+    fn repo_dirty_only_allowed_paths_accepts_existing_directory_prefix_without_slash() -> Result<()>
+    {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        std::fs::create_dir_all(temp.path().join("cache"))?;
+        std::fs::write(temp.path().join("cache/notes.txt"), "notes")?;
+
+        let dirty_allowed = repo_dirty_only_allowed_paths(temp.path(), &["cache"])?;
+        assert!(dirty_allowed, "expected existing directory to be allowed");
+        require_clean_repo_ignoring_paths(temp.path(), false, &["cache"])?;
+        Ok(())
+    }
+
+    #[test]
+    fn repo_dirty_only_allowed_paths_rejects_paths_outside_allowed_directory() -> Result<()> {
+        let temp = TempDir::new()?;
+        init_repo(temp.path())?;
+        std::fs::create_dir_all(temp.path().join("cache"))?;
+        std::fs::write(temp.path().join("cache/notes.txt"), "notes")?;
+        std::fs::write(temp.path().join("other.txt"), "nope")?;
+
+        let dirty_allowed = repo_dirty_only_allowed_paths(temp.path(), &["cache/"])?;
+        assert!(!dirty_allowed, "expected other paths to be disallowed");
+        assert!(
+            require_clean_repo_ignoring_paths(temp.path(), false, &["cache/"]).is_err(),
+            "expected clean-repo enforcement to fail"
+        );
         Ok(())
     }
 }

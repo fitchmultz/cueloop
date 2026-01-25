@@ -4353,6 +4353,41 @@
       "completed_at": "2026-01-25T17:35:42.459588000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0256",
+      "status": "done",
+      "title": "Allow require_clean_repo_ignoring_paths to ignore directory prefixes",
+      "priority": "medium",
+      "tags": [
+        "git",
+        "run",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/gitutil.rs",
+        "crates/ralph/src/run_cmd/phases.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/gitutil.rs: path_is_allowed only matches exact file paths.",
+        "crates/ralph/src/run_cmd/phases.rs: allowed paths are assembled for plan-only enforcement, but directory ignores are not supported."
+      ],
+      "plan": [
+        "Update path_is_allowed to treat allowed entries that end with '/' (or are directories) as prefix matches.",
+        "Add tests for nested paths under allowed directories.",
+        "Update callers (if needed) to pass directory prefixes for cache paths."
+      ],
+      "notes": [
+        "Reviewed directory-prefix allowlist logic in git clean enforcement; no issues found.",
+        "Phase 1 plan-only clean repo allowlist now includes plan cache directory prefix.",
+        "Tests added for allowed directory prefixes + out-of-scope paths; make ci and make test run."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:40:25Z",
+      "updated_at": "2026-01-25T17:43:15.779753000Z",
+      "completed_at": "2026-01-25T17:43:15.779753000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
