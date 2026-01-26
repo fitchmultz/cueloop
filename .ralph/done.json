@@ -4728,6 +4728,49 @@
       "completed_at": "2026-01-26T00:02:16.597984000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0271",
+      "status": "done",
+      "title": "Split run_cmd/phases.rs into per-phase modules",
+      "priority": "medium",
+      "tags": [
+        "run",
+        "refactor",
+        "maintainability",
+        "tests"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd/phases.rs",
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/run_cmd/"
+      ],
+      "evidence": [
+        "crates/ralph/src/run_cmd/phases.rs: 1434 lines (wc -l) covering Phase 1/2/3 orchestration and helper logic.",
+        "crates/ralph/src/run_cmd/phases.rs: in-file test module (`#[cfg(test)] mod tests`) begins at lines 757-758.",
+        "crates/ralph/src/run_cmd/: directory currently contains logging.rs, phases.rs, selection.rs, supervision.rs, and tests.rs (no per-phase modules yet).",
+        "crates/ralph/src/run_cmd.rs: dispatches to phases::execute_phase1_planning/execute_phase2_implementation/execute_phase3_review and imports `mod phases;`."
+      ],
+      "plan": [
+        "Map phases.rs responsibilities and define boundaries for phase1/phase2/phase3 modules plus a shared helper module.",
+        "Create per-phase modules under run_cmd/ and update run_cmd.rs and run_cmd/phases.rs wiring so public entry points remain consistent.",
+        "Move phases.rs tests into run_cmd/phases_tests.rs (or integrate with run_cmd/tests.rs) and update module declarations/imports, then run `cargo test -p ralph`."
+      ],
+      "notes": [
+        "run_cmd/tests.rs already exists for shared run command tests, so phase-specific tests should either move into a dedicated phases_tests module or integrate with that existing test module.",
+        "Split run_cmd phases into per-phase modules with shared helpers + facade.",
+        "Moved phase orchestration tests into run_cmd/phases/tests.rs.",
+        "CI: make ci"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "high"
+      },
+      "created_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-26T00:25:03.567653000Z",
+      "completed_at": "2026-01-26T00:25:03.567653000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
