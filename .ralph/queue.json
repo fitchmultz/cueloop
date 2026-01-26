@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0297",
-      "status": "todo",
-      "title": "Refactor runner command assembly (DRY)",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "runner",
-        "dry",
-        "housekeeping"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/execution/runners.rs",
-        "crates/ralph/src/runner/execution/process.rs",
-        "crates/ralph/src/runner.rs"
-      ],
-      "evidence": [
-        "All 8 runner implementation functions in `runners.rs` (including resume variants) repeat identical `Command` initialization boilerplate: `let mut cmd = Command::new(bin); cmd.current_dir(work_dir); ensure_self_on_path(&mut cmd);`.",
-        "Model flag handling (`--model`) and output format selection (`--json`, `--output-format stream-json`) are handled case-by-case instead of using a unified builder.",
-        "`run_opencode` manually handles temp file prompt creation and cleanup which could be generalized or standardized."
-      ],
-      "plan": [
-        "Extract common `Command` initialization logic into a shared helper (e.g., `process::new_runner_command`).",
-        "Implement a `RunnerCommandBuilder` to encapsulate standard runner arguments like model, output format, and input source (stdin vs temporary file).",
-        "Refactor all `run_*` and `run_*_resume` functions in `runners.rs` to use the unified builder.",
-        "Ensure `OpenCode`'s unique temp-file prompt handling is either standardized or cleanly integrated into the shared builder.",
-        "Verify all runners still correctly parse session IDs and stream output by running `make test`."
-      ],
-      "notes": [
-        "Standardizing the command assembly will make it easier to add new runners (e.g., OpenAI, Ollama) in the future.",
-        "Check if `ensure_self_on_path` should be moved to a more central utility if it's used elsewhere."
-      ],
-      "request": "scan finding",
-      "created_at": "2026-01-26T15:35:00Z",
-      "updated_at": "2026-01-26T19:30:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0299",
       "status": "todo",
       "title": "Add regression tests for runner JSON parsing",

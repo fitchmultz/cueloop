@@ -1,5 +1,6 @@
 //! Runner execution facade and submodules.
 
+mod command;
 mod json;
 mod process;
 mod response;

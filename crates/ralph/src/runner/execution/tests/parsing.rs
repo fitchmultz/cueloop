@@ -1,9 +1,9 @@
 //! Parsing tests for runner execution helpers.
 
+use super::super::command::{effort_as_str, permission_mode_to_arg};
 use super::super::json::{
     extract_session_id_from_json, extract_session_id_from_text, parse_json_line,
 };
-use super::super::runners::{effort_as_str, permission_mode_to_arg};
 use crate::contracts::{ClaudePermissionMode, ReasoningEffort};
 use serde_json::json;
 
