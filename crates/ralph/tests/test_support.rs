@@ -11,10 +11,12 @@
 //! warnings for helpers they don't happen to call.
 #![allow(dead_code)]
 
+use anyhow::{Context, Result};
 use ralph::config;
 use ralph::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 use std::env;
 use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus};
 use tempfile::TempDir;
 
 pub fn path_has_repo_markers(path: &Path) -> bool {
@@ -117,4 +119,232 @@ pub fn make_render_test_queue() -> QueueFile {
             make_render_test_task("RQ-0003", "Third Task", TaskStatus::Done),
         ],
     }
+}
+
+pub fn ralph_bin() -> PathBuf {
+    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
+        return PathBuf::from(path);
+    }
+
+    let exe = std::env::current_exe().expect("resolve current test executable path");
+    let exe_dir = exe
+        .parent()
+        .expect("test executable should have a parent directory");
+    let profile_dir = if exe_dir.file_name() == Some(std::ffi::OsStr::new("deps")) {
+        exe_dir
+            .parent()
+            .expect("deps directory should have a parent directory")
+    } else {
+        exe_dir
+    };
+
+    let bin_name = if cfg!(windows) { "ralph.exe" } else { "ralph" };
+    let candidate = profile_dir.join(bin_name);
+    if candidate.exists() {
+        return candidate;
+    }
+
+    panic!(
+        "CARGO_BIN_EXE_ralph was not set and fallback binary path does not exist: {}",
+        candidate.display()
+    );
+}
+
+pub fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
+    let output = Command::new(ralph_bin())
+        .current_dir(dir)
+        .args(args)
+        .output()
+        .expect("failed to execute ralph binary");
+    (
+        output.status,
+        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
+    )
+}
+
+pub fn git_init(dir: &Path) -> Result<()> {
+    let status = Command::new("git")
+        .current_dir(dir)
+        .args(["init"])
+        .status()
+        .context("run git init")?;
+    anyhow::ensure!(status.success(), "git init failed");
+
+    let gitignore_path = dir.join(".gitignore");
+    std::fs::write(&gitignore_path, ".ralph/lock\n")?;
+    Command::new("git")
+        .current_dir(dir)
+        .args(["add", ".gitignore"])
+        .status()?;
+    Command::new("git")
+        .current_dir(dir)
+        .args(["commit", "-m", "add gitignore"])
+        .status()?;
+
+    Ok(())
+}
+
+pub fn write_valid_single_todo_queue(dir: &Path) -> Result<()> {
+    let ralph_dir = dir.join(".ralph");
+    std::fs::create_dir_all(&ralph_dir).context("create .ralph dir")?;
+    let queue_path = ralph_dir.join("queue.json");
+    let done_path = ralph_dir.join("done.json");
+
+    let queue = r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "title": "Test task",
+      "tags": ["rust"],
+      "scope": ["crates/ralph"],
+      "evidence": ["integration test fixture"],
+      "plan": ["run preflight"],
+      "request": "integration test",
+      "created_at": "2026-01-18T00:00:00Z",
+      "updated_at": "2026-01-18T00:00:00Z"
+    }
+  ]
+}"#;
+
+    let done = r#"{
+  "version": 1,
+  "tasks": []
+}"#;
+
+    std::fs::write(&queue_path, queue).context("write queue.json")?;
+    std::fs::write(&done_path, done).context("write done.json")?;
+    Ok(())
+}
+
+pub fn configure_runner(
+    dir: &Path,
+    runner: &str,
+    model: &str,
+    bin_path: Option<&Path>,
+) -> Result<()> {
+    let config_path = dir.join(".ralph/config.json");
+    let mut config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
+            .context("parse config")?;
+    if config.get("agent").is_none() {
+        config["agent"] = serde_json::json!({});
+    }
+    let agent = config
+        .get_mut("agent")
+        .and_then(|value| value.as_object_mut())
+        .ok_or_else(|| anyhow::anyhow!("config missing agent section"))?;
+    agent.insert("runner".to_string(), serde_json::json!(runner));
+    agent.insert("model".to_string(), serde_json::json!(model));
+    agent.insert("phases".to_string(), serde_json::json!(1));
+    if let Some(path) = bin_path {
+        let key = match runner {
+            "codex" => "codex_bin",
+            "opencode" => "opencode_bin",
+            "gemini" => "gemini_bin",
+            "claude" => "claude_bin",
+            _ => return Err(anyhow::anyhow!("unsupported runner: {}", runner)),
+        };
+        agent.insert(
+            key.to_string(),
+            serde_json::json!(path.to_string_lossy().to_string()),
+        );
+    }
+    std::fs::write(
+        &config_path,
+        serde_json::to_string_pretty(&config).context("serialize config")?,
+    )
+    .context("write config")?;
+    Ok(())
+}
+
+pub fn configure_ci_gate(dir: &Path, command: Option<&str>, enabled: Option<bool>) -> Result<()> {
+    let config_path = dir.join(".ralph/config.json");
+    let mut config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
+            .context("parse config")?;
+    if config.get("agent").is_none() {
+        config["agent"] = serde_json::json!({});
+    }
+    let agent = config
+        .get_mut("agent")
+        .and_then(|value| value.as_object_mut())
+        .ok_or_else(|| anyhow::anyhow!("config missing agent section"))?;
+    if let Some(command) = command {
+        agent.insert("ci_gate_command".to_string(), serde_json::json!(command));
+    }
+    if let Some(enabled) = enabled {
+        agent.insert("ci_gate_enabled".to_string(), serde_json::json!(enabled));
+    }
+    std::fs::write(
+        &config_path,
+        serde_json::to_string_pretty(&config).context("serialize config")?,
+    )
+    .context("write config")?;
+    Ok(())
+}
+
+pub fn create_fake_runner(dir: &Path, runner: &str, script: &str) -> Result<PathBuf> {
+    let bin_dir = dir.join("bin");
+    std::fs::create_dir_all(&bin_dir)?;
+    let runner_path = bin_dir.join(runner);
+    std::fs::write(&runner_path, script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&runner_path)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&runner_path, perms)?;
+    }
+
+    Ok(runner_path)
+}
+
+pub fn create_executable_script(dir: &Path, name: &str, script: &str) -> Result<PathBuf> {
+    let path = dir.join(name);
+    std::fs::write(&path, script)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&path)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&path, perms)?;
+    }
+
+    Ok(path)
+}
+
+pub fn run_in_dir_raw(dir: &Path, bin: &str, args: &[&str]) -> (ExitStatus, String, String) {
+    let output = Command::new(bin)
+        .current_dir(dir)
+        .args(args)
+        .output()
+        .unwrap_or_else(|_| panic!("failed to execute binary: {}", bin));
+    (
+        output.status,
+        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
+    )
+}
+
+pub fn git_add_all_commit(dir: &Path, message: &str) -> Result<()> {
+    let status = Command::new("git")
+        .current_dir(dir)
+        .args(["add", "."])
+        .status()
+        .context("git add all")?;
+    anyhow::ensure!(status.success(), "git add all failed");
+
+    let status = Command::new("git")
+        .current_dir(dir)
+        .args(["commit", "-m", message])
+        .status()
+        .context("git commit")?;
+    anyhow::ensure!(status.success(), "git commit failed");
+
+    Ok(())
 }

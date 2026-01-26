@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0278",
-      "status": "todo",
-      "title": "Refactor git_repo_integration_test.rs into smaller scenario tests",
-      "priority": "medium",
-      "tags": [
-        "git",
-        "tests",
-        "refactor"
-      ],
-      "scope": [
-        "crates/ralph/tests/git_repo_integration_test.rs",
-        "crates/ralph/tests/test_support.rs",
-        "crates/ralph/tests/",
-        "cargo test -p ralph git_repo"
-      ],
-      "evidence": [
-        "crates/ralph/tests/git_repo_integration_test.rs: 767 lines (wc -l), still a single integration test file.",
-        "crates/ralph/tests/git_repo_integration_test.rs: 10 #[test] cases (rg --count \"#[test]\") bundled together.",
-        "crates/ralph/tests/git_repo_integration_test.rs: helper functions (ralph_bin, run_in_dir, git_init, write_valid_single_todo_queue, configure_runner, configure_ci_gate, create_fake_runner, create_executable_script) are defined inline alongside tests.",
-        "crates/ralph/tests/git_repo_integration_test.rs: imports mod test_support, indicating shared helpers already exist for tests."
-      ],
-      "plan": [
-        "Catalog the git repo integration scenarios and map them to new test files under crates/ralph/tests/ (e.g., init_validate, runner_config, ci_gate, dirty_repo).",
-        "Extract shared repo setup/helpers into a common module (extend crates/ralph/tests/test_support.rs or add a git_repo-specific support module) and update tests to use it.",
-        "Move the scenario tests into the new files, delete the monolithic git_repo_integration_test.rs, and run `cargo test -p ralph git_repo`."
-      ],
-      "notes": [
-        "The current file already defines multiple helper functions inline and uses mod test_support, so helper extraction can build on that existing shared module."
-      ],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-25T22:10:51Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0266",
       "status": "todo",
       "title": "Make reordering tasks in queue easier by adding functionality to TUI",
