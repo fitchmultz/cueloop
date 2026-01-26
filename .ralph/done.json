@@ -5658,6 +5658,54 @@
       "completed_at": "2026-01-26T17:50:23.768463000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0309",
+      "status": "done",
+      "title": "Add 'update-task' option for pre-run priming",
+      "priority": "medium",
+      "tags": [
+        "feature",
+        "cli",
+        "config",
+        "run"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/agent.rs",
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/run/selection.rs",
+        "crates/ralph/src/commands/task.rs",
+        "docs/configuration.md",
+        "docs/cli.md",
+        "schemas/config.schema.json"
+      ],
+      "evidence": [
+        "User request: Add a config option and flag for the 'run one' and 'run loop' commands to invoke 'ralph task update <TASK-ID>' before the supervisor run/loop begins the phases for the run.",
+        "Verified `ralph task update` is implemented in `crates/ralph/src/commands/task.rs` as `update_task_impl`.",
+        "Verified `RunAgentArgs` in `crates/ralph/src/agent.rs` is flattened into both `RunOneArgs` and `RunLoopArgs` in `crates/ralph/src/cli/run.rs`."
+      ],
+      "plan": [
+        "Add `update_task_before_run: Option<bool>` to `AgentConfig` in `crates/ralph/src/contracts.rs`.",
+        "Update `merge_from` and `Default` implementations in `contracts.rs` to handle the new field.",
+        "Add `--update-task` flag to `RunAgentArgs` in `crates/ralph/src/agent.rs`.",
+        "In `crates/ralph/src/commands/run/mod.rs`, modify `run_one_impl` to execute `update_task_impl` (from `crate::commands::task`) before `mark_task_doing` if enabled.",
+        "Ensure the update step only runs once per Task-ID (handled by `run_one_impl` logic if called before the iteration loop).",
+        "Run `make generate` to update `schemas/config.schema.json`.",
+        "Update `docs/configuration.md` and `docs/cli.md` to document the new field and flag.",
+        "Verify implementation with `make ci` and manual testing."
+      ],
+      "notes": [
+        "The update should happen before `mark_task_doing` to ensure the agent receives the refreshed task state in its first phase prompt.",
+        "We should use the same runner/model settings for the update as specified for the run itself."
+      ],
+      "request": "Add a config option and flag for the 'run one' and 'run loop' commands to invoke 'ralph task update <TASK-ID>' before the supervisor run/loop begins the phases for the run. By updating the task before the phase 1 agent, or single phase agent, begins, we will be priming the agents with better task information. This new toggle and step ONLY executes if enabled and only runs ONCE per Task-ID, before the Phase or Phases begin. Meaning, during runs with iterations=2 or more this executes BEFORE the first iteration and does NOT run before the subsequent iterations. This is NOT an added \"Phase\" it is an optional step (disabled by default) that can be enabled per run via flag or in the config.json file. Make sure docs reflect the usage and configuration. Example that I do currently. Say task-ID RQ-0001 was next in the queue. I run 'ralph task update RQ-0001' and let it finish, then I run 'ralph run loop --max-tasks 1' and it executes the task. After this change if I enable the config I can just run 'ralph run loop --max-tasks 1' and it will update the task before running the task.",
+      "created_at": "2026-01-26T17:51:04Z",
+      "updated_at": "2026-01-26T18:33:49.971039000Z",
+      "completed_at": "2026-01-26T18:33:49.971039000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

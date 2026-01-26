@@ -555,6 +555,7 @@ fn test_agent_config_merge_from_partial() {
         ci_gate_enabled: Some(true),
         git_revert_mode: Some(GitRevertMode::Ask),
         git_commit_push_enabled: Some(true),
+        update_task_before_run: None,
     };
 
     let override_config = AgentConfig {
@@ -575,6 +576,7 @@ fn test_agent_config_merge_from_partial() {
         ci_gate_enabled: Some(false),
         git_revert_mode: Some(GitRevertMode::Disabled),
         git_commit_push_enabled: Some(false),
+        update_task_before_run: None,
     };
 
     base.merge_from(override_config);

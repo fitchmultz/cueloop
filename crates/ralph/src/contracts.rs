@@ -125,6 +125,12 @@ pub struct AgentConfig {
     /// 1 = single-pass, 2 = plan+implement, 3 = plan+implement+review.
     #[schemars(range(min = 1, max = 3))]
     pub phases: Option<u8>,
+
+    /// If true, automatically run `ralph task update <TASK_ID>` once per task
+    /// immediately before the supervisor marks the task as `doing` and starts execution.
+    ///
+    /// Default: false (opt-in).
+    pub update_task_before_run: Option<bool>,
 }
 
 impl AgentConfig {
@@ -179,6 +185,9 @@ impl AgentConfig {
         }
         if other.git_commit_push_enabled.is_some() {
             self.git_commit_push_enabled = other.git_commit_push_enabled;
+        }
+        if other.update_task_before_run.is_some() {
+            self.update_task_before_run = other.update_task_before_run;
         }
     }
 }
@@ -574,6 +583,7 @@ impl Default for Config {
                 ci_gate_enabled: Some(true),
                 git_revert_mode: Some(GitRevertMode::Ask),
                 git_commit_push_enabled: Some(true),
+                update_task_before_run: Some(false),
             },
         }
     }
@@ -605,5 +615,25 @@ mod tests {
         assert_eq!(TaskPriority::Medium.cycle(), TaskPriority::High);
         assert_eq!(TaskPriority::High.cycle(), TaskPriority::Critical);
         assert_eq!(TaskPriority::Critical.cycle(), TaskPriority::Low);
+    }
+
+    #[test]
+    fn agent_config_merge_from_merges_update_task_before_run_leafwise() {
+        let mut base = super::AgentConfig {
+            update_task_before_run: Some(false),
+            ..Default::default()
+        };
+
+        let other = super::AgentConfig {
+            update_task_before_run: Some(true),
+            ..Default::default()
+        };
+
+        base.merge_from(other);
+        assert_eq!(base.update_task_before_run, Some(true));
+
+        // None should not override an already-set value.
+        base.merge_from(super::AgentConfig::default());
+        assert_eq!(base.update_task_before_run, Some(true));
     }
 }

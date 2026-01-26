@@ -22,7 +22,8 @@
         "reasoning_effort": "medium",
         "repoprompt_plan_required": false,
         "repoprompt_tool_injection": false,
-        "runner": "claude"
+        "runner": "claude",
+        "update_task_before_run": false
       },
       "allOf": [
         {
@@ -232,6 +233,14 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "update_task_before_run": {
+          "description": "If true, automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution.\n\nDefault: false (opt-in).",
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
           ]
         }
       },

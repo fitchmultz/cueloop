@@ -3,6 +3,7 @@
 //! This module owns task selection, queue bookkeeping, and post-run supervision.
 //! Phase-specific prompt/runner execution lives in `crate::commands::run::phases`.
 
+use crate::commands::task as task_cmd;
 use crate::config;
 use crate::contracts::{AgentConfig, GitRevertMode, ProjectType, ReasoningEffort, TaskStatus};
 use crate::promptflow;
@@ -240,7 +241,7 @@ fn run_one_impl(
             }
         };
 
-    let task = queue_file.tasks[task_idx].clone();
+    let mut task = queue_file.tasks[task_idx].clone();
     let task_id = task.id.trim().to_string();
 
     let iteration_settings = resolve_iteration_settings(&task, &resolved.config.agent)?;
@@ -248,6 +249,9 @@ fn run_one_impl(
         "RunOne: selected {task_id} (phases={phases}, iterations={})",
         iteration_settings.count
     );
+
+    // Resolve runner settings early so the pre-run task update uses the same settings as execution.
+    let base_settings = resolve_run_agent_settings(resolved, &task, agent_overrides)?;
 
     // Require clean repo before the first iteration starts.
     let preexisting_dirty_allowed = gitutil::repo_dirty_only_allowed_paths(
@@ -260,11 +264,38 @@ fn run_one_impl(
         gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
     )?;
 
+    // Optional pre-run task update: run once per task ID, immediately before we mark the task as doing.
+    let update_task_before_run = agent_overrides
+        .update_task_before_run
+        .or(resolved.config.agent.update_task_before_run)
+        .unwrap_or(false);
+
+    if update_task_before_run {
+        log::info!("Task {task_id}: pre-run update enabled; running task updater");
+        let update_settings = task_cmd::TaskUpdateSettings {
+            fields: "scope,evidence,plan,notes,tags,depends_on".to_string(),
+            runner: base_settings.runner,
+            model: base_settings.model.clone(),
+            reasoning_effort: base_settings.reasoning_effort,
+            force,
+            repoprompt_tool_injection: policy.repoprompt_tool_injection,
+        };
+
+        task_cmd::update_task_without_lock(resolved, &task_id, &update_settings)
+            .with_context(|| format!("pre-run task update for {}", task_id))?;
+
+        // Reload the task so the execution prompt includes updated fields.
+        let updated_queue_file = queue::load_queue(&resolved.queue_path)?;
+        task = updated_queue_file
+            .tasks
+            .into_iter()
+            .find(|t| t.id.trim() == task_id)
+            .context("reload selected task after pre-run update")?;
+    }
+
     // Mark the task as doing before running the agent.
     mark_task_doing(resolved, &task_id)?;
 
-    // Resolve runner settings
-    let base_settings = resolve_run_agent_settings(resolved, &task, agent_overrides)?;
     let bins = runner::resolve_binaries(&resolved.config.agent);
 
     log::info!(
@@ -474,6 +505,75 @@ fn mark_task_doing(resolved: &config::Resolved, task_id: &str) -> Result<()> {
     queue::set_status(&mut queue_file, task_id, TaskStatus::Doing, &now, None)?;
     queue::save_queue(&resolved.queue_path, &queue_file)?;
     Ok(())
+}
+
+#[cfg(test)]
+fn update_then_mark_doing_if_configured<U, M>(
+    update_enabled: bool,
+    updater: U,
+    marker: M,
+) -> Result<()>
+where
+    U: FnOnce() -> Result<()>,
+    M: FnOnce() -> Result<()>,
+{
+    if update_enabled {
+        updater()?;
+    }
+    marker()?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod pre_run_update_order_tests {
+    use super::*;
+    use std::cell::Cell;
+
+    #[test]
+    fn update_then_mark_doing_calls_update_first_when_enabled() {
+        let calls = Cell::new(Vec::<&'static str>::new());
+
+        update_then_mark_doing_if_configured(
+            true,
+            || {
+                let mut v = calls.take();
+                v.push("update");
+                calls.set(v);
+                Ok(())
+            },
+            || {
+                let mut v = calls.take();
+                v.push("mark");
+                calls.set(v);
+                Ok(())
+            },
+        )
+        .expect("ok");
+
+        assert_eq!(calls.take(), vec!["update", "mark"]);
+    }
+
+    #[test]
+    fn update_then_mark_doing_skips_update_when_disabled() {
+        let update_calls = Cell::new(0usize);
+        let mark_calls = Cell::new(0usize);
+
+        update_then_mark_doing_if_configured(
+            false,
+            || {
+                update_calls.set(update_calls.get() + 1);
+                Ok(())
+            },
+            || {
+                mark_calls.set(mark_calls.get() + 1);
+                Ok(())
+            },
+        )
+        .expect("ok");
+
+        assert_eq!(update_calls.get(), 0);
+        assert_eq!(mark_calls.get(), 1);
+    }
 }
 
 #[cfg(test)]

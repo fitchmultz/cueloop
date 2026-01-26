@@ -107,6 +107,7 @@ Notes:\n\
  - `--effort` is codex-only and is ignored for other runners.\n\
  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
  - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
+ - `--update-task` runs `ralph task update <TASK_ID>` once per task immediately before the task is marked `doing`.\n\
  - Clean-repo checks allow changes to `.ralph/config.json` (plus `.ralph/queue.json` and `.ralph/done.json`); use `--force` to bypass entirely.\n\
  - TUI entrypoints: `ralph tui`, `ralph run one -i`, `ralph run loop -i`.\n\
 \n\
@@ -127,9 +128,11 @@ Examples:\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode disabled\n\
  ralph run one --git-commit-push-off\n\
+ ralph run one --update-task\n\
  ralph run loop --max-tasks 0\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
  ralph run loop --include-draft --max-tasks 1\n\
+ ralph run loop --update-task --max-tasks 1\n\
  ralph run loop --git-revert-mode ask --max-tasks 1\n\
  ralph run loop --git-commit-push-on --max-tasks 1\n\
  ralph tui\n\
@@ -165,6 +168,7 @@ Examples:\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode enabled\n\
  ralph run one --git-commit-push-off\n\
+ ralph run one --update-task\n\
  ralph run one --rp-on\n\
  ralph run one --rp-off\n\
  ralph tui"
@@ -183,6 +187,7 @@ Examples:\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode disabled --max-tasks 1\n\
  ralph run loop --git-commit-push-off --max-tasks 1\n\
+ ralph run loop --update-task --max-tasks 1\n\
  ralph run loop -i\n\
  ralph tui"
     )]

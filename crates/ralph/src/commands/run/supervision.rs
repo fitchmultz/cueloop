@@ -548,6 +548,7 @@ mod tests {
                 git_revert_mode: Some(GitRevertMode::Disabled),
                 git_commit_push_enabled: Some(true),
                 phases: Some(2),
+                update_task_before_run: Some(false),
             },
             queue: QueueConfig {
                 file: Some(PathBuf::from(".ralph/queue.json")),

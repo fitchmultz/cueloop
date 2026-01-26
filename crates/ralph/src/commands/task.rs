@@ -222,6 +222,14 @@ pub fn update_task(
     update_task_impl(resolved, task_id, settings, true)
 }
 
+pub(crate) fn update_task_without_lock(
+    resolved: &config::Resolved,
+    task_id: &str,
+    settings: &TaskUpdateSettings,
+) -> Result<()> {
+    update_task_impl(resolved, task_id, settings, false)
+}
+
 pub fn update_all_tasks(resolved: &config::Resolved, settings: &TaskUpdateSettings) -> Result<()> {
     let _queue_lock =
         queue::acquire_queue_lock(&resolved.repo_root, "task update", settings.force)?;
