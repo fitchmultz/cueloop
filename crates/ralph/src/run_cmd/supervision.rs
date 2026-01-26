@@ -51,6 +51,14 @@ pub(crate) fn resume_continue_session(
     Ok(output)
 }
 
+#[derive(Debug, Clone, Copy)]
+enum QueueMaintenanceSaveMode {
+    /// Save both queue and done files if any terminal task was repaired (backfilled).
+    SaveBothIfAnyRepaired,
+    /// Save each file independently if it specifically was repaired.
+    SaveEachIfRepaired,
+}
+
 pub(crate) fn post_run_supervise(
     resolved: &crate::config::Resolved,
     task_id: &str,
@@ -63,38 +71,12 @@ pub(crate) fn post_run_supervise(
         let status = gitutil::status_porcelain(&resolved.repo_root)?;
         let is_dirty = !status.trim().is_empty();
 
-        let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-        let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
-        let repair_now = timeutil::now_utc_rfc3339()?;
-        let mut repaired = false;
-        if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
-            repaired = true;
-        }
-        if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
-            repaired = true;
-        }
-        if repaired {
-            queue::save_queue(&resolved.queue_path, &queue_file)?;
-            if !done_file.tasks.is_empty() || resolved.done_path.exists() {
-                queue::save_queue(&resolved.done_path, &done_file)?;
-            }
-        }
-
-        let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
-            None
-        } else {
-            Some(&done_file)
-        };
-        queue::validate_queue_set(
-            &queue_file,
-            done_ref,
-            &resolved.id_prefix,
-            resolved.id_width,
-        )?;
+        let (mut queue_file, mut done_file) =
+            maintain_and_validate_queues(resolved, QueueMaintenanceSaveMode::SaveBothIfAnyRepaired)
+                .context("Initial queue maintenance failed")?;
 
         let (mut task_status, task_title, mut in_done) =
-            find_task_status(&queue_file, &done_file, task_id)
-                .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
+            require_task_status(&queue_file, &done_file, task_id)?;
 
         if is_dirty {
             warn_if_modified_lfs(&resolved.repo_root);
@@ -118,106 +100,68 @@ pub(crate) fn post_run_supervise(
                 );
             }
 
-            queue_file = queue::load_queue(&resolved.queue_path)?;
-            done_file = queue::load_queue_or_default(&resolved.done_path)?;
-            let repair_now = timeutil::now_utc_rfc3339()?;
-            if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
-                queue::save_queue(&resolved.queue_path, &queue_file)?;
-            }
-            if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
-                queue::save_queue(&resolved.done_path, &done_file)?;
-            }
-            let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
-                None
-            } else {
-                Some(&done_file)
-            };
-            queue::validate_queue_set(
-                &queue_file,
-                done_ref,
-                &resolved.id_prefix,
-                resolved.id_width,
-            )?;
+            let (q, d) = maintain_and_validate_queues(
+                resolved,
+                QueueMaintenanceSaveMode::SaveEachIfRepaired,
+            )
+            .context("Post-CI queue maintenance failed")?;
+            queue_file = q;
+            done_file = d;
 
             let (status_after, _title_after, in_done_after) =
-                find_task_status(&queue_file, &done_file, task_id)
-                    .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
+                require_task_status(&queue_file, &done_file, task_id)?;
             task_status = status_after;
             in_done = in_done_after;
 
-            if task_status != TaskStatus::Done {
-                if in_done {
-                    let outcome = runutil::apply_git_revert_mode(
-                        &resolved.repo_root,
-                        git_revert_mode,
-                        "Task inconsistency detected",
-                        revert_prompt.as_ref(),
-                    )?;
-                    bail!(
-                        "{}",
-                        runutil::format_revert_failure_message(
-                            &format!(
-                                "Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json."
-                            ),
-                            outcome,
-                        )
-                    );
-                }
-                let now = timeutil::now_utc_rfc3339()?;
-                queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None)?;
-                queue::save_queue(&resolved.queue_path, &queue_file)?;
-            }
+            ensure_task_done_dirty_or_revert(
+                resolved,
+                &mut queue_file,
+                task_id,
+                task_status,
+                in_done,
+                git_revert_mode,
+                revert_prompt.as_ref(),
+            )
+            .context("Ensuring task is marked Done (dirty repo) failed")?;
 
             queue::archive_done_tasks(
                 &resolved.queue_path,
                 &resolved.done_path,
                 &resolved.id_prefix,
                 resolved.id_width,
-            )?;
+            )
+            .context("Queue archiving failed")?;
 
-            if git_commit_push_enabled {
-                let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
-                gitutil::commit_all(&resolved.repo_root, &commit_message)?;
-                push_if_ahead(&resolved.repo_root)?;
-                gitutil::require_clean_repo_ignoring_paths(
-                    &resolved.repo_root,
-                    false,
-                    gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
-                )?;
-            } else {
-                log::info!(
-                    "Auto git commit/push disabled; leaving repo dirty after queue updates."
-                );
-            }
+            finalize_git_state(resolved, task_id, &task_title, git_commit_push_enabled)
+                .context("Git finalization failed")?;
             return Ok(());
         }
 
         if task_status == TaskStatus::Done && in_done {
             if git_commit_push_enabled {
-                push_if_ahead(&resolved.repo_root)?;
+                push_if_ahead(&resolved.repo_root).context("Git push failed")?;
             } else {
                 log::info!("Auto git commit/push disabled; skipping push.");
             }
             return Ok(());
         }
 
-        let mut changed = false;
-        if task_status != TaskStatus::Done {
-            if in_done {
-                bail!("Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json.");
-            }
-            let now = timeutil::now_utc_rfc3339()?;
-            queue::set_status(&mut queue_file, task_id, TaskStatus::Done, &now, None)?;
-            queue::save_queue(&resolved.queue_path, &queue_file)?;
-            changed = true;
-        }
+        let mut changed = ensure_task_done_clean_or_bail(
+            resolved,
+            &mut queue_file,
+            task_id,
+            task_status,
+            in_done,
+        )
+        .context("Ensuring task is marked Done (clean repo) failed")?;
 
         let report = queue::archive_done_tasks(
             &resolved.queue_path,
             &resolved.done_path,
             &resolved.id_prefix,
             resolved.id_width,
-        )?;
+        )
+        .context("Queue archiving failed")?;
         if !report.moved_ids.is_empty() {
             changed = true;
         }
@@ -226,20 +170,148 @@ pub(crate) fn post_run_supervise(
             return Ok(());
         }
 
-        if git_commit_push_enabled {
-            let commit_message = outpututil::format_task_commit_message(task_id, &task_title);
-            gitutil::commit_all(&resolved.repo_root, &commit_message)?;
-            push_if_ahead(&resolved.repo_root)?;
-            gitutil::require_clean_repo_ignoring_paths(
-                &resolved.repo_root,
-                false,
-                gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
-            )?;
-        } else {
-            log::info!("Auto git commit/push disabled; leaving repo dirty after queue updates.");
-        }
+        finalize_git_state(resolved, task_id, &task_title, git_commit_push_enabled)
+            .context("Git finalization failed")?;
         Ok(())
     })
+}
+
+/// Loads, repairs (backfills completed_at), and validates the queue and done files.
+fn maintain_and_validate_queues(
+    resolved: &crate::config::Resolved,
+    save_mode: QueueMaintenanceSaveMode,
+) -> Result<(QueueFile, QueueFile)> {
+    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+    let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
+    let repair_now = timeutil::now_utc_rfc3339()?;
+
+    match save_mode {
+        QueueMaintenanceSaveMode::SaveBothIfAnyRepaired => {
+            let mut repaired = false;
+            if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
+                repaired = true;
+            }
+            if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
+                repaired = true;
+            }
+            if repaired {
+                queue::save_queue(&resolved.queue_path, &queue_file)?;
+                if !done_file.tasks.is_empty() || resolved.done_path.exists() {
+                    queue::save_queue(&resolved.done_path, &done_file)?;
+                }
+            }
+        }
+        QueueMaintenanceSaveMode::SaveEachIfRepaired => {
+            if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
+                queue::save_queue(&resolved.queue_path, &queue_file)?;
+            }
+            if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
+                queue::save_queue(&resolved.done_path, &done_file)?;
+            }
+        }
+    }
+
+    let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
+        None
+    } else {
+        Some(&done_file)
+    };
+    queue::validate_queue_set(
+        &queue_file,
+        done_ref,
+        &resolved.id_prefix,
+        resolved.id_width,
+    )?;
+
+    Ok((queue_file, done_file))
+}
+
+/// Returns the status and title of a task, or an error if not found.
+fn require_task_status(
+    queue_file: &QueueFile,
+    done_file: &QueueFile,
+    task_id: &str,
+) -> Result<(TaskStatus, String, bool)> {
+    find_task_status(queue_file, done_file, task_id)
+        .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))
+}
+
+/// Ensures a task is marked as Done when the repo is dirty, handling revert-mode on inconsistency.
+fn ensure_task_done_dirty_or_revert(
+    resolved: &crate::config::Resolved,
+    queue_file: &mut QueueFile,
+    task_id: &str,
+    task_status: TaskStatus,
+    in_done: bool,
+    git_revert_mode: GitRevertMode,
+    revert_prompt: Option<&runutil::RevertPromptHandler>,
+) -> Result<()> {
+    if task_status != TaskStatus::Done {
+        if in_done {
+            let outcome = runutil::apply_git_revert_mode(
+                &resolved.repo_root,
+                git_revert_mode,
+                "Task inconsistency detected",
+                revert_prompt,
+            )?;
+            bail!(
+                "{}",
+                runutil::format_revert_failure_message(
+                    &format!(
+                        "Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json."
+                    ),
+                    outcome,
+                )
+            );
+        }
+        let now = timeutil::now_utc_rfc3339()?;
+        queue::set_status(queue_file, task_id, TaskStatus::Done, &now, None)?;
+        queue::save_queue(&resolved.queue_path, queue_file)?;
+    }
+    Ok(())
+}
+
+/// Ensures a task is marked as Done when the repo is clean, bailing on inconsistency.
+fn ensure_task_done_clean_or_bail(
+    resolved: &crate::config::Resolved,
+    queue_file: &mut QueueFile,
+    task_id: &str,
+    task_status: TaskStatus,
+    in_done: bool,
+) -> Result<bool> {
+    if task_status != TaskStatus::Done {
+        if in_done {
+            bail!("Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json.");
+        }
+        let now = timeutil::now_utc_rfc3339()?;
+        queue::set_status(queue_file, task_id, TaskStatus::Done, &now, None)?;
+        queue::save_queue(&resolved.queue_path, queue_file)?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// Handles the final git commit and push if enabled, and verifies the repo is clean.
+fn finalize_git_state(
+    resolved: &crate::config::Resolved,
+    task_id: &str,
+    task_title: &str,
+    git_commit_push_enabled: bool,
+) -> Result<()> {
+    if git_commit_push_enabled {
+        let commit_message = outpututil::format_task_commit_message(task_id, task_title);
+        gitutil::commit_all(&resolved.repo_root, &commit_message)?;
+        push_if_ahead(&resolved.repo_root)?;
+        gitutil::require_clean_repo_ignoring_paths(
+            &resolved.repo_root,
+            false,
+            gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+        )?;
+    } else {
+        log::info!("Auto git commit/push disabled; leaving repo dirty after queue updates.");
+    }
+    Ok(())
 }
 
 fn warn_if_modified_lfs(repo_root: &Path) {
@@ -627,7 +699,7 @@ mod tests {
         let resolved = resolved_for_repo(temp.path());
         let err = post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, true, None)
             .expect_err("expected push failure");
-        assert!(err.to_string().contains("Git push failed"));
+        assert!(format!("{err:#}").contains("Git push failed"));
         Ok(())
     }
 

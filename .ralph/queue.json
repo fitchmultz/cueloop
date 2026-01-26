@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0293",
-      "status": "todo",
-      "title": "Refactor post_run_supervise for better readability",
-      "priority": "high",
-      "tags": [
-        "refactor",
-        "supervision",
-        "housekeeping",
-        "dry"
-      ],
-      "scope": [
-        "crates/ralph/src/run_cmd/supervision.rs"
-      ],
-      "evidence": [
-        "post_run_supervise (lines 53-199) is a 146-line function that mixes concerns: repo dirty check, queue maintenance (backfill/validation), CI validation, and Git operations (commit/push).",
-        "It contains duplicated logic for queue reloading, backfilling completed_at, and validation (before and after the CI gate).",
-        "Git commit/push logic is repeated in multiple branches of the function.",
-        "Error handling paths are entangled with the branching logic for dirty/clean states."
-      ],
-      "plan": [
-        "Extract queue maintenance logic (backfill and validation) into a reusable helper function within supervision.rs or queue module.",
-        "Extract the Git finalization logic (commit, push, and clean repo check) into a dedicated function.",
-        "Refactor post_run_supervise to use these helpers, eliminating duplicated reload and maintenance blocks.",
-        "Streamline the flow for dirty vs. clean repo states to reduce nesting and redundancy.",
-        "Add clear anyhow context to each phase of the supervision process (Maintenance, CI Gate, Git Finalization).",
-        "Verify refactoring by running make ci and ensuring existing tests pass."
-      ],
-      "notes": [
-        "Check if some of the maintenance helpers should live in crates/ralph/src/queue.rs for broader utility.",
-        "The goal is to move towards a pipeline-style flow in post_run_supervise."
-      ],
-      "request": "scan finding",
-      "created_at": "2026-01-26T15:35:00Z",
-      "updated_at": "2026-01-26T17:15:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0294",
       "status": "todo",
       "title": "Consolidate command implementations",
