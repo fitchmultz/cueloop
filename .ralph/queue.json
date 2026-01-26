@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0298",
-      "status": "todo",
-      "title": "Improve fsutil.rs cohesion",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "housekeeping",
-        "cohesion",
-        "architecture"
-      ],
-      "scope": [
-        "crates/ralph/src/fsutil.rs",
-        "crates/ralph/src/lock.rs",
-        "crates/ralph/src/lib.rs",
-        "crates/ralph/tests/fsutil_test.rs"
-      ],
-      "evidence": [
-        "fsutil.rs (447 lines) mixes locking logic (9+ functions, 2 structs) with temp cleanup and atomic write helpers.",
-        "Locking logic requires specific Unix-only dependencies (libc) and complex error formatting that obscures the core utility functions.",
-        "Widespread usage of locking logic across CLI and TUI modules suggests it should be a first-class module."
-      ],
-      "plan": [
-        "Create crates/ralph/src/lock.rs and move locking-related structs (DirLock, LockOwner) and functions (acquire_dir_lock, is_supervising_process) there.",
-        "Move lock-specific private helpers (parse_lock_owner, write_lock_owner, read_lock_owner, pid_is_running, format_lock_error, is_supervising_label, command_line) to lock.rs.",
-        "Expose the new module in crates/ralph/src/lib.rs.",
-        "Update all call sites (queue.rs, cli/task.rs, tui/mod.rs, etc.) to import from the new lock module.",
-        "Split or update locking tests in crates/ralph/tests/fsutil_test.rs and other integration tests.",
-        "Run `make ci` to verify the refactoring."
-      ],
-      "notes": [
-        "Consider if general fs helpers like sync_dir_best_effort should be moved to a more central location if used by both lock and fsutil.",
-        "The goal is to reach a state where fsutil.rs is strictly for stateless filesystem operations."
-      ],
-      "request": "scan finding",
-      "created_at": "2026-01-26T15:35:00Z",
-      "updated_at": "2026-01-26T20:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0300",
       "status": "todo",
       "title": "Standardize error handling context",

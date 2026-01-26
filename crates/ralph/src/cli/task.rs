@@ -1,4 +1,17 @@
 //! `ralph task ...` command group: Clap types and handler.
+//!
+//! Responsibilities:
+//! - Define clap structures for task-related commands.
+//! - Route task subcommands to queue operations and task building.
+//!
+//! Not handled here:
+//! - Queue persistence details (see `crate::queue`).
+//! - Locking semantics (see `crate::lock`).
+//! - Runner execution internals.
+//!
+//! Invariants/assumptions:
+//! - Callers resolve configuration before executing commands.
+//! - Queue mutations are protected by locks when required.
 
 use anyhow::{bail, Result};
 use clap::{Args, Subcommand, ValueEnum};
@@ -6,7 +19,7 @@ use clap::{Args, Subcommand, ValueEnum};
 use crate::contracts::TaskStatus;
 use crate::queue::TaskEditKey;
 use crate::{
-    agent, commands::task as task_cmd, completions, config, fsutil, queue, runner, timeutil,
+    agent, commands::task as task_cmd, completions, config, lock, queue, runner, timeutil,
 };
 
 pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
@@ -259,8 +272,8 @@ fn complete_task_or_signal(
     force: bool,
     lock_label: &str,
 ) -> Result<()> {
-    let lock_dir = fsutil::queue_lock_dir(&resolved.repo_root);
-    if fsutil::is_supervising_process(&lock_dir)? {
+    let lock_dir = lock::queue_lock_dir(&resolved.repo_root);
+    if lock::is_supervising_process(&lock_dir)? {
         let signal = completions::CompletionSignal {
             task_id: task_id.to_string(),
             status,

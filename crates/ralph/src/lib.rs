@@ -2,8 +2,16 @@
 
 //! Ralph library surface.
 //!
-//! The CLI entrypoint is `src/main.rs`. This crate exposes internal modules so
-//! integration/stress tests can exercise real behavior without mocks.
+//! Responsibilities:
+//! - Expose internal modules for tests and CLI integration.
+//! - Provide a stable entrypoint for crate-wide utilities.
+//!
+//! Not handled here:
+//! - CLI argument parsing (see `crate::cli`).
+//! - Runner execution or queue persistence details.
+//!
+//! Invariants/assumptions:
+//! - Modules remain internal-first; public exports are intentional.
 
 // --- Core --------------------------------------------------------------------
 
@@ -26,6 +34,7 @@ pub mod tui;
 
 pub mod fsutil;
 pub mod gitutil;
+pub mod lock;
 pub mod outpututil;
 pub mod promptflow;
 pub mod prompts;

@@ -1,6 +1,22 @@
+//! TUI application state, event handling, and queue display.
+//!
+//! Responsibilities:
+//! - Manage TUI state, rendering, and input handling.
+//! - Load queue data for interactive inspection and updates.
+//! - Coordinate TUI session setup and teardown.
+//!
+//! Not handled here:
+//! - CLI argument parsing or command dispatch.
+//! - Queue persistence details (see `crate::queue`).
+//! - Lock ownership metadata (see `crate::lock`).
+//!
+//! Invariants/assumptions:
+//! - Callers acquire the queue lock before mutating state.
+//! - TUI runs in a terminal with raw mode support.
+
 use crate::config::ConfigLayer;
 use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
-use crate::{config as crate_config, fsutil, queue, runutil, timeutil};
+use crate::{config as crate_config, lock, queue, runutil, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind},
@@ -1524,7 +1540,7 @@ where
 pub fn prepare_tui_session(
     resolved: &crate::config::Resolved,
     force_lock: bool,
-) -> Result<(App, fsutil::DirLock)> {
+) -> Result<(App, lock::DirLock)> {
     let lock = queue::acquire_queue_lock(&resolved.repo_root, "tui", force_lock)?;
     let (queue, done) = queue::load_and_validate_queues(resolved, true)?;
     let mut app = App::new(queue);

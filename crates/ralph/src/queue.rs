@@ -1,14 +1,22 @@
 //! Task queue persistence, validation, and pruning.
 //!
-//! This module handles loading, saving, and validating task queues stored
-//! as JSON files (.ralph/queue.json for active tasks, .ralph/done.json
-//! for completed tasks). It provides operations for moving completed tasks,
-//! updating task status, repairing queue data, and pruning old tasks from
-//! the done archive.
+//! Responsibilities:
+//! - Load, save, and validate queue files in JSON format.
+//! - Provide operations for moving completed tasks and pruning history.
+//! - Own queue-level helpers such as ID generation and validation.
+//!
+//! Not handled here:
+//! - Directory lock acquisition (see `crate::lock`).
+//! - CLI parsing or user interaction.
+//! - Runner integration or external command execution.
+//!
+//! Invariants/assumptions:
+//! - Queue files conform to the schema in `crate::contracts`.
+//! - Callers hold locks when mutating queue state on disk.
 
 use crate::config::Resolved;
 use crate::contracts::{QueueFile, TaskStatus};
-use crate::fsutil;
+use crate::{fsutil, lock};
 use anyhow::{Context, Result};
 use std::path::Path;
 
@@ -26,9 +34,9 @@ pub use validation::{validate_queue, validate_queue_set};
 
 // Pruning types live in `queue::prune` (re-exported from this module).
 
-pub fn acquire_queue_lock(repo_root: &Path, label: &str, force: bool) -> Result<fsutil::DirLock> {
-    let lock_dir = fsutil::queue_lock_dir(repo_root);
-    fsutil::acquire_dir_lock(&lock_dir, label, force)
+pub fn acquire_queue_lock(repo_root: &Path, label: &str, force: bool) -> Result<lock::DirLock> {
+    let lock_dir = lock::queue_lock_dir(repo_root);
+    lock::acquire_dir_lock(&lock_dir, label, force)
 }
 
 pub fn load_queue_or_default(path: &Path) -> Result<QueueFile> {

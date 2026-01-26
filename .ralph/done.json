@@ -5927,6 +5927,58 @@
       "completed_at": "2026-01-26T20:54:30.735940000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0298",
+      "status": "done",
+      "title": "Improve fsutil.rs cohesion",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "housekeeping",
+        "cohesion",
+        "architecture",
+        "locking"
+      ],
+      "scope": [
+        "crates/ralph/src/fsutil.rs",
+        "crates/ralph/src/lib.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/cli/queue/unlock.rs",
+        "crates/ralph/tests/fsutil_test.rs",
+        "crates/ralph/tests/stale_lock_cleanup_test.rs",
+        "crates/ralph/tests/task_lock_coexistence_test.rs",
+        "crates/ralph/tests/lock_contention_integration_test.rs",
+        "crates/ralph/tests/supervising_process_tui_label_test.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/fsutil.rs is 449 lines and contains DirLock/LockOwner plus acquire_dir_lock and is_supervising_process alongside temp cleanup and atomic write helpers.",
+        "Locking logic in fsutil.rs includes Unix-only pid checks via libc::kill and command-line capture, coupling platform behavior with general filesystem utilities.",
+        "Locking APIs are used by crates/ralph/src/queue.rs and CLI commands in crates/ralph/src/cli/task.rs and crates/ralph/src/cli/queue/unlock.rs, with coverage in fsutil_test.rs, stale_lock_cleanup_test.rs, task_lock_coexistence_test.rs, lock_contention_integration_test.rs, and supervising_process_tui_label_test.rs."
+      ],
+      "plan": [
+        "Create crates/ralph/src/lock.rs and move locking-related structs (DirLock, LockOwner) and functions (acquire_dir_lock, is_supervising_process, queue_lock_dir) there.",
+        "Move lock-specific private helpers (parse_lock_owner, write_lock_owner, read_lock_owner, pid_is_running, format_lock_error, is_supervising_label, command_line) to lock.rs.",
+        "Update crates/ralph/src/fsutil.rs to keep only temp cleanup, temp dir helpers, and atomic write functions.",
+        "Expose the new module in crates/ralph/src/lib.rs and update call sites (crates/ralph/src/queue.rs, crates/ralph/src/cli/task.rs, crates/ralph/src/cli/queue/unlock.rs) to import from it.",
+        "Update lock-related tests (crates/ralph/tests/fsutil_test.rs, stale_lock_cleanup_test.rs, task_lock_coexistence_test.rs, lock_contention_integration_test.rs, supervising_process_tui_label_test.rs) to use the new lock module or re-exports.",
+        "Run `make ci` to verify the refactoring."
+      ],
+      "notes": [
+        "Consider if general fs helpers like sync_dir_best_effort should be moved to a more central location if used by both lock and fsutil.",
+        "The goal is to reach a state where fsutil.rs is strictly for stateless filesystem operations.",
+        "Locking behavior is currently validated by multiple integration tests; keep lock-specific tests close to the lock module when splitting.",
+        "Split lock helpers into crate::lock and updated call sites/tests",
+        "Added lock_support helper for stale PID tests and guarded unix-only stale lock checks",
+        "Ran make ci"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-26T15:35:00Z",
+      "updated_at": "2026-01-26T21:38:06.083188000Z",
+      "completed_at": "2026-01-26T21:38:06.083188000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

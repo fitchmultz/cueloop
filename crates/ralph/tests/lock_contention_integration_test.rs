@@ -1,7 +1,19 @@
 //! Integration tests for lock contention handling and cleanup.
+//!
+//! Responsibilities:
+//! - Validate contention errors when another process holds the queue lock.
+//! - Verify error messages include lock path context.
+//!
+//! Not covered here:
+//! - Stale lock cleanup behavior (see `stale_lock_cleanup_test.rs`).
+//! - Temp directory helpers or atomic writes.
+//!
+//! Invariants/assumptions:
+//! - Subprocess-based lock holder signals readiness before contention check.
+//! - Lock directory path is stable under the temp repo.
 
 use anyhow::{Context, Result};
-use ralph::{fsutil, queue};
+use ralph::{lock, queue};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -89,7 +101,7 @@ fn lock_contention_blocks_second_process() -> Result<()> {
 
     let err = queue::acquire_queue_lock(&repo_root, "contender", false).unwrap_err();
     let msg = format!("{err:#}");
-    let lock_dir = fsutil::queue_lock_dir(&repo_root);
+    let lock_dir = lock::queue_lock_dir(&repo_root);
 
     anyhow::ensure!(
         msg.contains(lock_dir.to_string_lossy().as_ref()),
