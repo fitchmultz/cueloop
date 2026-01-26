@@ -1,11 +1,19 @@
-//! Core data contracts for Ralph configuration and queue/task JSON structures.
-
-#![allow(clippy::struct_excessive_bools)]
+//! Configuration contracts for Ralph.
+//!
+//! Responsibilities:
+//! - Define config structs/enums and their merge behavior.
+//! - Provide defaults and schema helpers for configuration serialization.
+//!
+//! Not handled here:
+//! - Reading/writing config files or CLI parsing (see `crate::config`).
+//! - Queue/task contract definitions (see `super::queue` and `super::task`).
+//!
+//! Invariants/assumptions:
+//! - Config merge is leaf-wise: `Some` values override, `None` does not.
+//! - Serde/schemars attributes define the config contract.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 /* ----------------------------- Config (JSON) ----------------------------- */
@@ -357,211 +365,7 @@ impl ModelEffort {
     }
 }
 
-/* --------------------------- QueueFile (JSON) ---------------------------- */
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct QueueFile {
-    pub version: u32,
-
-    #[serde(default)]
-    pub tasks: Vec<Task>,
-}
-
-/* ------------------------------ Task (JSON) ------------------------------ */
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct Task {
-    pub id: String,
-
-    #[serde(default)]
-    pub status: TaskStatus,
-
-    pub title: String,
-
-    #[serde(default)]
-    pub priority: TaskPriority,
-
-    #[serde(default)]
-    pub tags: Vec<String>,
-
-    #[serde(default)]
-    pub scope: Vec<String>,
-
-    #[serde(default)]
-    pub evidence: Vec<String>,
-
-    #[serde(default)]
-    pub plan: Vec<String>,
-
-    #[serde(default)]
-    pub notes: Vec<String>,
-
-    /// Original human request that created the task (Task Builder / Scan).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub request: Option<String>,
-
-    /// Optional per-task agent override (runner/model/model_effort/iterations).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub agent: Option<TaskAgent>,
-
-    /// RFC3339 UTC timestamps as strings to keep the contract tool-agnostic.
-    #[schemars(required)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[schemars(required)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub updated_at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub completed_at: Option<String>,
-
-    /// Task IDs that this task depends on (must be Done or Rejected before this task can run).
-    #[serde(default)]
-    pub depends_on: Vec<String>,
-
-    /// Custom user-defined fields (key-value pairs for extensibility).
-    #[serde(default)]
-    pub custom_fields: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum TaskStatus {
-    Draft,
-    #[default]
-    Todo,
-    Doing,
-    Done,
-    Rejected,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum TaskPriority {
-    Critical,
-    High,
-    #[default]
-    Medium,
-    Low,
-}
-
-// Custom PartialOrd implementation: Critical > High > Medium > Low
-impl PartialOrd for TaskPriority {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// Custom Ord implementation: Critical > High > Medium > Low (semantically)
-// Higher priority = Greater in comparison, so Critical > High > Medium > Low
-impl Ord for TaskPriority {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // Compare by weight: higher weight = higher priority = Greater
-        self.weight().cmp(&other.weight())
-    }
-}
-
-impl TaskPriority {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            TaskPriority::Critical => "critical",
-            TaskPriority::High => "high",
-            TaskPriority::Medium => "medium",
-            TaskPriority::Low => "low",
-        }
-    }
-
-    pub fn weight(self) -> u8 {
-        match self {
-            TaskPriority::Critical => 3,
-            TaskPriority::High => 2,
-            TaskPriority::Medium => 1,
-            TaskPriority::Low => 0,
-        }
-    }
-
-    /// Cycle to the next priority in ascending order, wrapping after Critical.
-    pub fn cycle(self) -> Self {
-        match self {
-            TaskPriority::Low => TaskPriority::Medium,
-            TaskPriority::Medium => TaskPriority::High,
-            TaskPriority::High => TaskPriority::Critical,
-            TaskPriority::Critical => TaskPriority::Low,
-        }
-    }
-}
-
-impl std::fmt::Display for TaskPriority {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl TaskStatus {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            TaskStatus::Draft => "draft",
-            TaskStatus::Todo => "todo",
-            TaskStatus::Doing => "doing",
-            TaskStatus::Done => "done",
-            TaskStatus::Rejected => "rejected",
-        }
-    }
-}
-
-impl std::fmt::Display for TaskStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct TaskAgent {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub runner: Option<Runner>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model: Option<Model>,
-
-    /// Per-task reasoning effort override for Codex models. Default falls back to config.
-    #[serde(default, skip_serializing_if = "model_effort_is_default")]
-    #[schemars(schema_with = "model_effort_schema")]
-    pub model_effort: ModelEffort,
-
-    /// Number of iterations to run for this task (overrides config).
-    #[schemars(range(min = 1))]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub iterations: Option<u8>,
-
-    /// Reasoning effort override for follow-up iterations (iterations > 1).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub followup_reasoning_effort: Option<ReasoningEffort>,
-}
-
-fn model_effort_is_default(value: &ModelEffort) -> bool {
-    matches!(value, ModelEffort::Default)
-}
-
-fn model_effort_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-    let mut schema = <ModelEffort as JsonSchema>::json_schema(gen);
-    if let schemars::schema::Schema::Object(ref mut schema_object) = schema {
-        schema_object.metadata().default = Some(json!("default"));
-    }
-    schema
-}
-
 /* ------------------------------ Defaults -------------------------------- */
-
-impl Default for QueueFile {
-    fn default() -> Self {
-        Self {
-            version: 1,
-            tasks: Vec::new(),
-        }
-    }
-}
 
 impl Default for Config {
     fn default() -> Self {
@@ -601,7 +405,7 @@ impl Default for Config {
 
 #[cfg(test)]
 mod tests {
-    use super::{GitRevertMode, TaskPriority};
+    use super::{AgentConfig, GitRevertMode};
 
     #[test]
     fn git_revert_mode_parses_snake_case() {
@@ -620,21 +424,13 @@ mod tests {
     }
 
     #[test]
-    fn task_priority_cycle_wraps_through_all_values() {
-        assert_eq!(TaskPriority::Low.cycle(), TaskPriority::Medium);
-        assert_eq!(TaskPriority::Medium.cycle(), TaskPriority::High);
-        assert_eq!(TaskPriority::High.cycle(), TaskPriority::Critical);
-        assert_eq!(TaskPriority::Critical.cycle(), TaskPriority::Low);
-    }
-
-    #[test]
     fn agent_config_merge_from_merges_update_task_before_run_leafwise() {
-        let mut base = super::AgentConfig {
+        let mut base = AgentConfig {
             update_task_before_run: Some(false),
             ..Default::default()
         };
 
-        let other = super::AgentConfig {
+        let other = AgentConfig {
             update_task_before_run: Some(true),
             ..Default::default()
         };
@@ -643,7 +439,7 @@ mod tests {
         assert_eq!(base.update_task_before_run, Some(true));
 
         // None should not override an already-set value.
-        base.merge_from(super::AgentConfig::default());
+        base.merge_from(AgentConfig::default());
         assert_eq!(base.update_task_before_run, Some(true));
     }
 }

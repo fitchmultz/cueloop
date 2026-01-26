@@ -6122,6 +6122,54 @@
         "RQ-0296"
       ],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0305",
+      "status": "done",
+      "title": "Audit and split contracts.rs",
+      "priority": "low",
+      "tags": [
+        "refactor",
+        "contracts",
+        "housekeeping",
+        "cohesion",
+        "architecture"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/lib.rs",
+        "rg \"contracts::\" crates/ralph/src",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/contracts.rs is 649 lines long (wc -l on 2026-01-26).",
+        "No crates/ralph/src/contracts/ directory exists yet; the module still lives in a single file.",
+        "contracts.rs defines Config, QueueConfig, AgentConfig alongside QueueFile, Task, and TaskStatus (mixed responsibilities).",
+        "crates/ralph/src/lib.rs still declares `pub mod contracts;`, pointing at the single-file module."
+      ],
+      "plan": [
+        "Review crates/ralph/src/contracts.rs and map structs/enums into config, queue, and task groupings.",
+        "Create crates/ralph/src/contracts/ with mod.rs plus config.rs, queue.rs, and task.rs modules.",
+        "Move each group (and its impls/tests) into the new module files with required module docstrings.",
+        "Update crates/ralph/src/contracts/mod.rs to re-export public types and update crates/ralph/src/lib.rs if the module path changes.",
+        "Remove or replace crates/ralph/src/contracts.rs to avoid duplicate module definitions.",
+        "Use `rg \"contracts::\" crates/ralph/src` to update imports if needed.",
+        "Run `make ci` to confirm formatting, linting, tests, and install behavior."
+      ],
+      "notes": [
+        "contracts/ module folder does not exist yet; scope updated to reflect current paths.",
+        "Removed dependency on RQ-0295 because it is not present in the current queue.",
+        "Split contracts.rs into contracts/ module (config/queue/task + mod re-exports).",
+        "Preserved public API via contracts:: re-exports and clippy allow in mod.rs.",
+        "Moved related unit tests into new modules.",
+        "make ci clean"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-26T15:35:00Z",
+      "updated_at": "2026-01-26T23:52:50.539916000Z",
+      "completed_at": "2026-01-26T23:52:50.539916000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

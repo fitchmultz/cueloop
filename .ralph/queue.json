@@ -46,53 +46,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0305",
-      "status": "todo",
-      "title": "Audit and split contracts.rs",
-      "priority": "low",
-      "tags": [
-        "refactor",
-        "contracts",
-        "housekeeping",
-        "cohesion",
-        "architecture"
-      ],
-      "scope": [
-        "crates/ralph/src/contracts.rs",
-        "crates/ralph/src/contracts/mod.rs",
-        "crates/ralph/src/contracts/config.rs",
-        "crates/ralph/src/contracts/task.rs",
-        "crates/ralph/src/contracts/queue.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/contracts.rs is 618 lines long (as of Jan 26, 2026).",
-        "It mixes configuration structures (AgentConfig, QueueConfig), task definitions (Task, TaskStatus), and queue file structures (QueueFile).",
-        "Violation of 'Cohesion' principle: it handles too many distinct responsibilities in a single file.",
-        "Violation of 'Size heuristic': it exceeds the recommended ~400 LOC."
-      ],
-      "plan": [
-        "Create crates/ralph/src/contracts/ directory.",
-        "Extract configuration-related structs and enums to crates/ralph/src/contracts/config.rs.",
-        "Extract task-related structs and enums to crates/ralph/src/contracts/task.rs.",
-        "Extract queue file structures to crates/ralph/src/contracts/queue.rs.",
-        "Move associated Default implementations and unit tests to their respective new modules.",
-        "Update crates/ralph/src/contracts/mod.rs to host re-exports for all items to maintain backward compatibility.",
-        "Replace crates/ralph/src/contracts.rs with a file that simply re-exports the contracts module or remove it if using contracts/mod.rs.",
-        "Run `make ci` to verify implementation correctness and ensure no regressions."
-      ],
-      "notes": [
-        "This refactor will improve maintainability and make it easier to locate specific data structures.",
-        "By maintaining re-exports in contracts.rs (or contracts/mod.rs), we avoid a massive rename across the entire codebase."
-      ],
-      "request": "scan finding",
-      "created_at": "2026-01-26T15:35:00Z",
-      "updated_at": "2026-01-26T22:50:00Z",
-      "depends_on": [
-        "RQ-0295"
-      ],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0306",
       "status": "todo",
       "title": "Audit and improve CLI help examples",
