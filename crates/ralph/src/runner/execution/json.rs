@@ -25,7 +25,19 @@ pub(super) fn extract_session_id_from_text(stdout: &str) -> Option<String> {
         if line.is_empty() {
             continue;
         }
-        if let Ok(json) = serde_json::from_str::<JsonValue>(line) {
+
+        // Find the start of JSON object
+        let json_start = match line.find('{') {
+            Some(idx) => idx,
+            None => continue,
+        };
+
+        // Attempt to parse the first JSON object found in the line
+        let potential_json = &line[json_start..];
+        let mut stream =
+            serde_json::Deserializer::from_str(potential_json).into_iter::<JsonValue>();
+
+        if let Some(Ok(json)) = stream.next() {
             if let Some(id) = extract_session_id_from_json(&json) {
                 return Some(id);
             }

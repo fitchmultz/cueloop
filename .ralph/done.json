@@ -5750,6 +5750,46 @@
       "completed_at": "2026-01-26T19:13:00.123086000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0299",
+      "status": "done",
+      "title": "Add regression tests for runner JSON parsing",
+      "priority": "medium",
+      "tags": [
+        "test",
+        "runner",
+        "housekeeping"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/json.rs",
+        "crates/ralph/src/runner/execution/tests/parsing.rs"
+      ],
+      "evidence": [
+        "extract_session_id_from_text in json.rs relies on a simple per-line parse which fails if lines contain non-JSON prefixes (e.g., log tags).",
+        "Existing tests in parsing.rs cover only basic session/thread ID keys and well-formatted single lines.",
+        "No regression testing exists for malformed lines, partial JSON, non-string ID values, or multiple interleaved JSON objects."
+      ],
+      "plan": [
+        "Add exhaustive test cases to parsing.rs for extract_session_id_from_json covering non-string values and nested fields.",
+        "Expand extract_session_id_from_text tests to cover interleaved non-JSON lines and lines with log prefixes.",
+        "Improve extract_session_id_from_text implementation to be more robust to partial lines or prefixes if tests fail.",
+        "Ensure session ID extraction remains deterministic (first-win) and performs well on large outputs.",
+        "Run `make test -p ralph` to verify changes."
+      ],
+      "notes": [
+        "While explicit TODO markers in json.rs have been cleaned up, the parsing logic remains brittle for complex runner outputs.",
+        "Verified on 2026-01-26: `extract_session_id_from_text` is still using naive `serde_json::from_str` on trimmed lines.",
+        "Refactored extract_session_id_from_text to robustly handle JSON lines with log prefixes, suffixes, and interleaved text.",
+        "Added comprehensive regression tests in crates/[REDACTED].rs covering malformed lines, non-string values, and nested fields.",
+        "Verified changes with cargo test and make ci (all checks passed)."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-26T15:35:00Z",
+      "updated_at": "2026-01-26T19:25:59.942531000Z",
+      "completed_at": "2026-01-26T19:25:59.942531000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

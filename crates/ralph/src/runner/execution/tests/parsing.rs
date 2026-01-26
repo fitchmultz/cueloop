@@ -84,3 +84,46 @@ fn extract_session_id_from_text_reads_json_lines() {
         Some("sess-001".to_string())
     );
 }
+
+#[test]
+fn extract_session_id_with_prefix() {
+    let stdout = "[INFO] {\"session_id\":\"sess-with-prefix\"}\n";
+    assert_eq!(
+        extract_session_id_from_text(stdout),
+        Some("sess-with-prefix".to_string())
+    );
+}
+
+#[test]
+fn extract_session_id_with_suffix() {
+    let stdout = "{\"session_id\":\"sess-with-suffix\"} [OK]\n";
+    assert_eq!(
+        extract_session_id_from_text(stdout),
+        Some("sess-with-suffix".to_string())
+    );
+}
+
+#[test]
+fn extract_session_id_interleaved_garbage() {
+    let stdout = "Starting runner...\n[DEBUG] init\n{\"session_id\":\"sess-interleaved\"}\nDone.\n";
+    assert_eq!(
+        extract_session_id_from_text(stdout),
+        Some("sess-interleaved".to_string())
+    );
+}
+
+#[test]
+fn extract_session_id_non_string_values() {
+    // Should skip numeric ID if strict string is expected, or just fail gracefully (return None)
+    // The current implementation checks .as_str(), so it should return None for this line,
+    // and if there's no other valid line, return None overall.
+    let stdout = "{\"session_id\":12345}\n";
+    assert_eq!(extract_session_id_from_text(stdout), None);
+}
+
+#[test]
+fn extract_session_id_nested_fields_ignored() {
+    // Ensure we don't pick up nested session_ids if we only look at top level (current impl uses from_str -> Value, checks top level)
+    let stdout = "{\"data\": {\"session_id\":\"nested-id\"}}\n";
+    assert_eq!(extract_session_id_from_text(stdout), None);
+}
