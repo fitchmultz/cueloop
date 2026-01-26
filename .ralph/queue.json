@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0279",
-      "status": "todo",
-      "title": "Refactor queue CLI module into subcommand files",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "refactor",
-        "maintainability"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/queue.rs",
-        "crates/ralph/src/cli/mod.rs",
-        "crates/ralph/src/cli/"
-      ],
-      "evidence": [
-        "crates/ralph/src/cli/queue.rs: 699 lines (wc -l), still a single module containing queue subcommands and help text.",
-        "crates/ralph/src/cli/mod.rs: declares `pub mod queue;`, so queue CLI wiring still points to the monolithic queue.rs module.",
-        "crates/ralph/src/cli/: no queue/ subdirectory exists yet for per-subcommand modules."
-      ],
-      "plan": [
-        "Create a new crates/ralph/src/cli/queue/ module directory with a mod.rs facade and per-subcommand files (e.g., list.rs, search.rs, stats.rs, history.rs, burndown.rs, repair.rs).",
-        "Move each subcommand's args, help text, and handler wiring from queue.rs into the new files, keeping a small queue.rs (or queue/mod.rs) facade that re-exports the CLI surface.",
-        "Update crates/ralph/src/cli/mod.rs and any references so the CLI dispatch uses the new module layout, then run the existing queue-related tests or `cargo test -p ralph queue` to confirm behavior."
-      ],
-      "notes": [
-        "Queue CLI is still wired through a single queue.rs module; no subcommand directory exists yet."
-      ],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-25T21:53:47Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0280",
       "status": "todo",
       "title": "Move queue validation tests out of validation.rs",
@@ -145,9 +108,11 @@
         "model_effort": "medium"
       },
       "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-25T21:58:51Z",
+      "updated_at": "2026-01-26T01:04:16.057749000Z",
       "depends_on": [],
-      "custom_fields": {}
+      "custom_fields": {
+        "stale_path": "queue CLI moved to crates/ralph/src/cli/queue/ (mod.rs)"
+      }
     },
     {
       "id": "RQ-0262",
@@ -531,9 +496,11 @@
         "model_effort": "medium"
       },
       "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-25T21:49:23Z",
+      "updated_at": "2026-01-26T01:04:19.287168000Z",
       "depends_on": [],
-      "custom_fields": {}
+      "custom_fields": {
+        "stale_path": "queue CLI moved to crates/ralph/src/cli/queue/ (mod.rs); update scope/evidence references"
+      }
     }
   ]
 }

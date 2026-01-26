@@ -600,3 +600,32 @@ fn apply_phase3_completion_signal_missing_returns_none() -> anyhow::Result<()> {
     assert!(status.is_none());
     Ok(())
 }
+
+#[test]
+fn apply_phase3_completion_signal_keeps_signal_on_failure() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let resolved = resolved_with_repo_root(temp.path().to_path_buf());
+
+    let queue_file = QueueFile {
+        version: 1,
+        tasks: vec![],
+    };
+    queue::save_queue(&resolved.queue_path, &queue_file)?;
+
+    let signal = completions::CompletionSignal {
+        task_id: "RQ-0001".to_string(),
+        status: TaskStatus::Done,
+        notes: vec!["Reviewed".to_string()],
+    };
+    completions::write_completion_signal(&resolved.repo_root, &signal)?;
+
+    let err = super::apply_phase3_completion_signal(&resolved, "RQ-0001").unwrap_err();
+    assert!(
+        err.to_string().contains("task not found"),
+        "expected missing task error, got: {err}"
+    );
+
+    let signal_after = completions::read_completion_signal(&resolved.repo_root, "RQ-0001")?;
+    assert!(signal_after.is_some());
+    Ok(())
+}

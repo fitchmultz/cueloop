@@ -185,7 +185,7 @@ pub fn apply_phase3_completion_signal(
     resolved: &config::Resolved,
     task_id: &str,
 ) -> Result<Option<TaskStatus>> {
-    let Some(signal) = completions::take_completion_signal(&resolved.repo_root, task_id)? else {
+    let Some(signal) = completions::read_completion_signal(&resolved.repo_root, task_id)? else {
         return Ok(None);
     };
 
@@ -201,6 +201,12 @@ pub fn apply_phase3_completion_signal(
         &resolved.id_prefix,
         resolved.id_width,
     )?;
+    let signal_path = completions::completion_signal_path(&resolved.repo_root, task_id)?;
+    if let Err(err) = std::fs::remove_file(&signal_path) {
+        if err.kind() != std::io::ErrorKind::NotFound {
+            return Err(err.into());
+        }
+    }
     log::info!(
         "Supervisor finalized task {} with status {:?} from Phase 3 completion signal.",
         task_id,

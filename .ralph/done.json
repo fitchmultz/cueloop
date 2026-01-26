@@ -4814,6 +4814,49 @@
       "completed_at": "2026-01-26T00:40:33.344051000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0279",
+      "status": "done",
+      "title": "Refactor queue CLI module into subcommand files",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "refactor",
+        "maintainability"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/cli/mod.rs",
+        "crates/ralph/src/cli/"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue.rs: 699 lines (wc -l), still a single module containing queue subcommands and help text.",
+        "crates/ralph/src/cli/mod.rs: declares `pub mod queue;`, so queue CLI wiring still points to the monolithic queue.rs module.",
+        "crates/ralph/src/cli/: no queue/ subdirectory exists yet for per-subcommand modules."
+      ],
+      "plan": [
+        "Create a new crates/ralph/src/cli/queue/ module directory with a mod.rs facade and per-subcommand files (e.g., list.rs, search.rs, stats.rs, history.rs, burndown.rs, repair.rs).",
+        "Move each subcommand's args, help text, and handler wiring from queue.rs into the new files, keeping a small queue.rs (or queue/mod.rs) facade that re-exports the CLI surface.",
+        "Update crates/ralph/src/cli/mod.rs and any references so the CLI dispatch uses the new module layout, then run the existing queue-related tests or `cargo test -p ralph queue` to confirm behavior."
+      ],
+      "notes": [
+        "Queue CLI is still wired through a single queue.rs module; no subcommand directory exists yet.",
+        "Split queue CLI into per-subcommand modules under crates/ralph/src/cli/queue/",
+        "Added shared queue CLI enums + handler facade",
+        "Added queue CLI handler tests for conflicting done flags and list smoke",
+        "Updated stale task references to new queue CLI module path",
+        "CI: make ci"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-26T01:04:25.901053000Z",
+      "completed_at": "2026-01-26T01:04:25.901053000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
