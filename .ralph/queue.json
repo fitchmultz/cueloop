@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0272",
-      "status": "todo",
-      "title": "Refactor TUI core module to reduce responsibilities",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "refactor",
-        "maintainability"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/mod.rs",
-        "crates/ralph/src/tui/",
-        "crates/ralph/src/tui/events.rs",
-        "crates/ralph/src/tui/render.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/tui/mod.rs: 2879 lines (wc -l), still a single file holding state models, queue IO, palette/actions, and runtime execution wiring.",
-        "crates/ralph/src/tui/mod.rs: in-file tests (`#[cfg(test)]` at line 2271).",
-        "crates/ralph/src/tui/mod.rs header enumerates multiple features (queue browsing, editing, execution, loop, archive, palette), indicating multiple responsibilities in one module.",
-        "crates/ralph/src/tui/mod.rs re-exports events/render symbols (`pub use events::...`, `pub use render::draw_ui`), so mod.rs is the central TUI entry point."
-      ],
-      "plan": [
-        "Map cohesive sections inside tui/mod.rs (state/models, filters, queue IO, palette/actions, execution/loop) and define the target module boundaries.",
-        "Extract sections into new submodules under crates/ralph/src/tui/ (for example: state.rs, filters.rs, actions.rs, persistence.rs, palette.rs, execution.rs) and keep mod.rs as a thin re-export/bootstrapping facade.",
-        "Move the in-file tests into a dedicated module (for example, crates/ralph/src/tui/tests.rs or crates/ralph/src/tui/tests/mod.rs), update module declarations, and run `cargo test -p ralph tui`."
-      ],
-      "notes": [
-        "The tui directory currently only contains mod.rs, events.rs, and render.rs, so new core submodules will be added alongside those existing files."
-      ],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-25T22:03:53Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0273",
       "status": "todo",
       "title": "Split TUI event handling into focused modules",
