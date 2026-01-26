@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0273",
-      "status": "todo",
-      "title": "Split TUI event handling into focused modules",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "refactor",
-        "maintainability",
-        "tests"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/events.rs",
-        "crates/ralph/src/tui/mod.rs",
-        "crates/ralph/src/tui/",
-        "cargo test -p ralph tui"
-      ],
-      "evidence": [
-        "crates/ralph/src/tui/events.rs: 1853 lines (wc -l) with all key-event dispatch and per-mode handlers in one module.",
-        "crates/ralph/src/tui/events.rs: #[cfg(test)] test module starts at line 1123.",
-        "crates/ralph/src/tui/: directory currently contains events.rs, mod.rs, and render.rs (no per-mode event submodules yet)."
-      ],
-      "plan": [
-        "Enumerate AppMode variants and the current handler functions in events.rs, then define a per-mode module layout plus a minimal dispatcher surface.",
-        "Create a crates/ralph/src/tui/events/ module tree (for example, normal.rs, help.rs, editing.rs, create.rs, run.rs) and move mode handlers into those files, wiring them through a small dispatcher in events.rs or events/mod.rs and updating mod.rs exports.",
-        "Move the events.rs tests into a dedicated test module under crates/ralph/src/tui/events/ (tests.rs or mod.rs) and run `cargo test -p ralph tui`."
-      ],
-      "notes": [
-        "events.rs already documents per-mode dispatch, so the refactor should preserve that flow while reducing file size."
-      ],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "high"
-      },
-      "created_at": "2026-01-24T16:07:23.268929000Z",
-      "updated_at": "2026-01-25T22:05:17Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0274",
       "status": "todo",
       "title": "Split TUI rendering into component modules",
