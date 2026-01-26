@@ -733,3 +733,127 @@ fn uppercase_n_rejected_when_runner_active() {
     assert_eq!(app.status_message.as_deref(), Some("Runner already active"));
     assert_eq!(app.mode, AppMode::Normal);
 }
+
+#[test]
+fn uppercase_k_moves_selected_task_up_in_queue() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001"), make_test_task("RQ-0002")],
+    };
+    let mut app = App::new(queue);
+    app.selected = 1; // Select RQ-0002
+
+    let action =
+        handle_key_event(&mut app, KeyCode::Char('K'), "2026-01-20T00:00:00Z").expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.queue.tasks[0].id, "RQ-0002");
+    assert_eq!(app.queue.tasks[1].id, "RQ-0001");
+    assert!(app.dirty);
+}
+
+#[test]
+fn uppercase_j_moves_selected_task_down_in_queue() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001"), make_test_task("RQ-0002")],
+    };
+    let mut app = App::new(queue);
+    app.selected = 0; // Select RQ-0001
+
+    let action =
+        handle_key_event(&mut app, KeyCode::Char('J'), "2026-01-20T00:00:00Z").expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.queue.tasks[0].id, "RQ-0002");
+    assert_eq!(app.queue.tasks[1].id, "RQ-0001");
+    assert!(app.dirty);
+}
+
+#[test]
+fn move_task_up_at_top_does_not_mutate_queue() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001"), make_test_task("RQ-0002")],
+    };
+    let mut app = App::new(queue);
+    app.selected = 0; // Select RQ-0001
+
+    let action =
+        handle_key_event(&mut app, KeyCode::Char('K'), "2026-01-20T00:00:00Z").expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.queue.tasks[0].id, "RQ-0001");
+    assert_eq!(app.queue.tasks[1].id, "RQ-0002");
+    assert!(!app.dirty);
+}
+
+#[test]
+fn move_task_down_at_bottom_does_not_mutate_queue() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001"), make_test_task("RQ-0002")],
+    };
+    let mut app = App::new(queue);
+    app.selected = 1; // Select RQ-0002
+
+    let action =
+        handle_key_event(&mut app, KeyCode::Char('J'), "2026-01-20T00:00:00Z").expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.queue.tasks[0].id, "RQ-0001");
+    assert_eq!(app.queue.tasks[1].id, "RQ-0002");
+    assert!(!app.dirty);
+}
+
+#[test]
+fn move_task_with_filters_swaps_underlying_queue_indices() {
+    let mut t1 = make_test_task("RQ-0001");
+    t1.tags = vec!["a".to_string()];
+    let t2 = make_test_task("RQ-0002"); // No tag 'a'
+    let mut t3 = make_test_task("RQ-0003");
+    t3.tags = vec!["a".to_string()];
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![t1, t2, t3],
+    };
+    let mut app = App::new(queue);
+    app.filters.tags = vec!["a".to_string()];
+    app.rebuild_filtered_view();
+
+    // Filtered list should be [RQ-0001, RQ-0003] (indices 0 and 2)
+    assert_eq!(app.filtered_indices, vec![0, 2]);
+    app.selected = 1; // Select RQ-0003
+
+    let action =
+        handle_key_event(&mut app, KeyCode::Char('K'), "2026-01-20T00:00:00Z").expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    // Should swap RQ-0001 and RQ-0003 (indices 0 and 2)
+    assert_eq!(app.queue.tasks[0].id, "RQ-0003");
+    assert_eq!(app.queue.tasks[1].id, "RQ-0002"); // Unchanged
+    assert_eq!(app.queue.tasks[2].id, "RQ-0001");
+    assert!(app.dirty);
+}
+
+#[test]
+fn command_palette_move_task_up_executes() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001"), make_test_task("RQ-0002")],
+    };
+    let mut app = App::new(queue);
+    app.mode = AppMode::CommandPalette {
+        query: "move selected task up".to_string(),
+        selected: 0,
+    };
+    app.selected = 1; // Select RQ-0002
+
+    let action =
+        handle_key_event(&mut app, KeyCode::Enter, "2026-01-20T00:00:00Z").expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.queue.tasks[0].id, "RQ-0002");
+    assert!(app.dirty);
+}

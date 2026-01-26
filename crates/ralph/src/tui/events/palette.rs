@@ -22,6 +22,8 @@ pub enum PaletteCommand {
     ToggleCaseSensitive,
     ToggleRegex,
     ReloadQueue,
+    MoveTaskUp,
+    MoveTaskDown,
     Quit,
 }
 

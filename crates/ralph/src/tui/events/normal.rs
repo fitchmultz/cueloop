@@ -30,10 +30,14 @@ pub(super) fn handle_normal_mode_key(
             app.move_up();
             Ok(TuiAction::Continue)
         }
+        KeyCode::Char('K') => app.execute_palette_command(PaletteCommand::MoveTaskUp, now_rfc3339),
         KeyCode::Down | KeyCode::Char('j') => {
             let list_height = app.list_height;
             app.move_down(list_height);
             Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('J') => {
+            app.execute_palette_command(PaletteCommand::MoveTaskDown, now_rfc3339)
         }
         KeyCode::Enter => app.execute_palette_command(PaletteCommand::RunSelected, now_rfc3339),
         KeyCode::Char('l') => app.execute_palette_command(PaletteCommand::ToggleLoop, now_rfc3339),

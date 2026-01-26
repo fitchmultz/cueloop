@@ -5370,6 +5370,52 @@
       "completed_at": "2026-01-26T15:02:50.594638000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0266",
+      "status": "done",
+      "title": "Make reordering tasks in queue easier by adding functionality to TUI",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "tasks",
+        "queue",
+        "ux",
+        "tests"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/mod.rs",
+        "crates/ralph/src/tui/events.rs",
+        "crates/ralph/src/tui/render.rs",
+        "cargo test -p ralph tui"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/events.rs: Normal-mode key handling only moves selection (Up/Down or j/k) and provides no action to reorder tasks in queue order.",
+        "crates/ralph/src/tui/mod.rs: move_up/move_down only adjust selection/scroll and never mutate queue.tasks, so TUI navigation does not change task order.",
+        "crates/ralph/src/tui/mod.rs: palette_entries lists run/archive/edit/filter/status/priority actions, but no reorder command is exposed.",
+        "crates/ralph/src/tui/render.rs: help overlay lists navigation/actions/quick changes but does not mention any task reordering shortcut."
+      ],
+      "plan": [
+        "Add App methods to move task up/down in queue order (swap in queue.tasks), update filtered indices/selection, set dirty flags, and surface a status message when at boundaries.",
+        "Wire new reorder actions into TUI input (events.rs normal mode + palette command wiring in mod.rs) and document keybindings in the help overlay (render.rs).",
+        "Add tests covering reorder success and boundary/no-op behavior in the TUI event tests, update help overlay assertions, and run `cargo test -p ralph tui`."
+      ],
+      "notes": [
+        "Selection movement already exists via move_up/move_down; reordering will need to operate on queue.tasks while respecting filtered_indices so the visible selection stays coherent.",
+        "Implemented move_task_up and move_task_down logic in App",
+        "Bound K/J keys in TUI Normal mode to reorder tasks",
+        "Added MoveTaskUp/MoveTaskDown commands to the palette",
+        "Updated help overlay and added status messages for reordering",
+        "Added comprehensive tests for reordering and boundary conditions"
+      ],
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-24T15:39:45.873331000Z",
+      "updated_at": "2026-01-26T15:17:19.923814000Z",
+      "completed_at": "2026-01-26T15:17:19.923814000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

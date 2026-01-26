@@ -402,6 +402,50 @@ impl App {
         }
     }
 
+    /// Move the selected task up in the queue.
+    pub fn move_task_up(&mut self, now_rfc3339: &str) -> Result<()> {
+        if self.selected == 0 || self.filtered_indices.is_empty() {
+            return Ok(());
+        }
+
+        let current_idx = self.filtered_indices[self.selected];
+        let prev_idx = self.filtered_indices[self.selected - 1];
+
+        self.queue.tasks[current_idx].updated_at = Some(now_rfc3339.to_string());
+        self.queue.tasks[prev_idx].updated_at = Some(now_rfc3339.to_string());
+
+        self.queue.tasks.swap(current_idx, prev_idx);
+        self.dirty = true;
+
+        let task_id = self.queue.tasks[prev_idx].id.clone();
+        self.rebuild_filtered_view_with_preferred(Some(&task_id));
+        self.set_status_message(format!("Moved {} up", task_id));
+
+        Ok(())
+    }
+
+    /// Move the selected task down in the queue.
+    pub fn move_task_down(&mut self, now_rfc3339: &str) -> Result<()> {
+        if self.selected + 1 >= self.filtered_indices.len() || self.filtered_indices.is_empty() {
+            return Ok(());
+        }
+
+        let current_idx = self.filtered_indices[self.selected];
+        let next_idx = self.filtered_indices[self.selected + 1];
+
+        self.queue.tasks[current_idx].updated_at = Some(now_rfc3339.to_string());
+        self.queue.tasks[next_idx].updated_at = Some(now_rfc3339.to_string());
+
+        self.queue.tasks.swap(current_idx, next_idx);
+        self.dirty = true;
+
+        let task_id = self.queue.tasks[next_idx].id.clone();
+        self.rebuild_filtered_view_with_preferred(Some(&task_id));
+        self.set_status_message(format!("Moved {} down", task_id));
+
+        Ok(())
+    }
+
     /// Cycle the status of the selected task.
     pub fn cycle_status(&mut self, now_rfc3339: &str) -> Result<()> {
         self.apply_task_edit(TaskEditKey::Status, "", now_rfc3339)
@@ -1220,6 +1264,14 @@ impl App {
                 title: "Reload queue from disk".to_string(),
             },
             PaletteEntry {
+                cmd: PaletteCommand::MoveTaskUp,
+                title: "Move selected task up".to_string(),
+            },
+            PaletteEntry {
+                cmd: PaletteCommand::MoveTaskDown,
+                title: "Move selected task down".to_string(),
+            },
+            PaletteEntry {
                 cmd: PaletteCommand::Quit,
                 title: "Quit".to_string(),
             },
@@ -1391,6 +1443,18 @@ impl App {
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::ReloadQueue => Ok(TuiAction::ReloadQueue),
+            PaletteCommand::MoveTaskUp => {
+                if let Err(e) = self.move_task_up(now_rfc3339) {
+                    self.set_status_message(format!("Error: {}", e));
+                }
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::MoveTaskDown => {
+                if let Err(e) = self.move_task_down(now_rfc3339) {
+                    self.set_status_message(format!("Error: {}", e));
+                }
+                Ok(TuiAction::Continue)
+            }
             PaletteCommand::Quit => {
                 if self.runner_active {
                     self.mode = AppMode::ConfirmQuit;

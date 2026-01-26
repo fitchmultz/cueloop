@@ -41,6 +41,7 @@ pub(super) fn draw_help_overlay(f: &mut Frame<'_>, area: Rect) {
             Style::default().add_modifier(Modifier::BOLD),
         )),
         Line::from("Up/Down or j/k: move selection"),
+        Line::from("K/J: move selected task up/down"),
         Line::from("Enter: run selected task"),
         Line::from(""),
         Line::from(Span::styled(
