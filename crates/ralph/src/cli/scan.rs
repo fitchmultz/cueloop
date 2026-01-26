@@ -49,8 +49,8 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
 
 #[derive(Args)]
 #[command(
-    about = "Scan the repository for new tasks and focus areas",
-    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nExamples:\n  ralph scan --focus \"production readiness gaps\"\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI and safety gaps\"\n  ralph scan --runner gemini --model gemini-3-flash-preview --focus \"risk audit\"\n  ralph scan --runner codex --model gpt-5.2-codex --effort high --focus \"queue correctness\"\n  ralph scan --rp-on \"Deep codebase analysis\"\n  ralph scan --rp-off \"Quick surface scan\""
+    about = "Scan repository for new tasks and focus areas",
+    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nSafety:\n  - Clean-repo checks allow changes to `.ralph/queue.json` and `.ralph/done.json` only (not `.ralph/config.json`).\n  - Use `--force` to bypass the clean-repo check (and stale queue locks) entirely if needed.\n\nExamples:\n  ralph scan --focus \"production readiness gaps\"\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI and safety gaps\"\n  ralph scan --runner gemini --model gemini-3-flash-preview --focus \"risk audit\"\n  ralph scan --runner codex --model gpt-5.2-codex --effort high --focus \"queue correctness\"\n  ralph scan --rp-on \"Deep codebase analysis\"\n  ralph scan --rp-off \"Quick surface scan\""
 )]
 pub struct ScanArgs {
     /// Optional focus prompt to guide the scan.

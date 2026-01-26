@@ -3,7 +3,7 @@
 Purpose: Summarize Ralph commands, flags, and customization points with examples for common workflows.
 
 ## Global Flags
-- `--force`: force operations (e.g., bypass stale queue locks).
+- `--force`: force operations (bypass stale queue locks; bypass clean-repo safety checks for commands that enforce them, e.g. `run one`, `run loop`, and `scan`).
 - `-v`, `--verbose`: increase output verbosity.
 
 Examples:
@@ -116,6 +116,29 @@ ralph run one --git-commit-push-off
 Clean-repo checks for `run one` and `run loop` allow changes to `.ralph/config.json`
 (alongside `.ralph/queue.json` and `.ralph/done.json`). Use `--force` to bypass the
 clean-repo check entirely if needed.
+
+## `ralph scan`
+
+Generate new tasks by scanning the repository.
+
+Key flags:
+
+* `--focus <TEXT>`: Optional focus prompt to guide the scan.
+* `--runner <codex|opencode|gemini|claude>`, `--model <model-id>`, `--effort <low|medium|high|xhigh>`: Override runner/model/effort for this invocation.
+* `--rp-on` / `--rp-off`: Force RepoPrompt tooling reminders on/off for this invocation.
+
+Clean-repo checks for `scan` allow changes to `.ralph/queue.json` and `.ralph/done.json`
+only (unlike `run`, changes to `.ralph/config.json` are *not* allowed). Use `--force` to
+bypass the clean-repo check (and stale queue locks) entirely if needed.
+
+Examples:
+
+```bash
+ralph scan
+ralph scan --focus "production readiness gaps"
+ralph scan --runner opencode --model gpt-5.2 --focus "CI and safety gaps"
+ralph scan --force --focus "scan even with uncommitted changes"
+```
 
 ## `ralph queue`
 

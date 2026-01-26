@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0263",
-      "status": "todo",
-      "title": "Clarify --force behavior for dirty-repo bypass in run/scan",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "safety",
-        "cli"
-      ],
-      "scope": [
-        "docs/cli.md",
-        "crates/ralph/src/run_cmd.rs",
-        "crates/ralph/src/scan_cmd.rs",
-        "crates/ralph/src/cli/run.rs",
-        "crates/ralph/src/cli/scan.rs"
-      ],
-      "evidence": [
-        "docs/cli.md: Global `--force` flag description only calls out bypassing stale queue locks (no mention of clean-repo bypass for run/scan).",
-        "docs/cli.md: `ralph run` section notes clean-repo checks and `--force` bypass, but there is no dedicated `ralph scan` section describing clean-repo behavior.",
-        "crates/ralph/src/run_cmd.rs: run_one_impl calls gitutil::require_clean_repo_ignoring_paths(..., force, gitutil::RALPH_RUN_CLEAN_ALLOWED_PATHS).",
-        "crates/ralph/src/scan_cmd.rs: run_scan calls gitutil::require_clean_repo_ignoring_paths(..., opts.force, [\".ralph/queue.json\", \".ralph/done.json\"]).",
-        "crates/ralph/src/cli/run.rs: after_long_help already documents the clean-repo check and `--force` bypass.",
-        "crates/ralph/src/cli/scan.rs: after_long_help has no clean-repo or `--force` note."
-      ],
-      "plan": [
-        "Update docs/cli.md global flag description to mention clean-repo bypass for run/scan, and add a short `ralph scan` section that explains the clean-repo check plus `--force` behavior with examples.",
-        "Add a clean-repo/`--force` note to `ralph scan` CLI help text in crates/ralph/src/cli/scan.rs; confirm run help remains accurate.",
-        "Verify help/doc alignment by checking `ralph run --help` and `ralph scan --help` output (or equivalent in docs) before closing."
-      ],
-      "notes": [
-        "Run docs/help already mention the clean-repo bypass; the gap is global flag wording and scan documentation/help text."
-      ],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-25T22:02:30Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0272",
       "status": "todo",
       "title": "Refactor TUI core module to reduce responsibilities",
