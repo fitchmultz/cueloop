@@ -40,44 +40,38 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0296",
+      "id": "RQ-0299",
       "status": "todo",
-      "title": "Modularize lib.rs and tighten visibility",
+      "title": "Add regression tests for runner JSON parsing",
       "priority": "medium",
       "tags": [
-        "refactor",
-        "housekeeping",
-        "visibility",
-        "architecture"
+        "test",
+        "runner",
+        "housekeeping"
       ],
       "scope": [
-        "crates/ralph/src/lib.rs",
-        "crates/ralph/src/main.rs",
-        "crates/ralph/tests/"
+        "crates/ralph/src/runner/execution/json.rs",
+        "crates/ralph/src/runner/execution/tests/parsing.rs"
       ],
       "evidence": [
-        "lib.rs is a flat list of 25+ pub mod exports, creating an unnecessarily large public API surface.",
-        "Many exported modules are command-specific and will be consolidated by RQ-0294.",
-        "Integration tests in crates/ralph/tests/ rely on these exports, making tightening visibility a delicate task.",
-        "The file lacks logical grouping for its 30+ modules."
+        "extract_session_id_from_text in json.rs relies on a simple per-line parse which fails if lines contain non-JSON prefixes (e.g., log tags).",
+        "Existing tests in parsing.rs cover only basic session/thread ID keys and well-formatted single lines.",
+        "No regression testing exists for malformed lines, partial JSON, non-string ID values, or multiple interleaved JSON objects."
       ],
       "plan": [
-        "Audit lib.rs exports against main.rs and tests/ usage.",
-        "Categorize modules into logical groups (Core, Commands, UI, Utils) within lib.rs using comments or sub-modules.",
-        "Tighten visibility to pub(crate) for modules not required by the public API or integration tests.",
-        "Coordinate with RQ-0294 to consolidate command modules into a single pub mod commands entry.",
-        "Verify changes with make ci and all integration tests."
+        "Add exhaustive test cases to parsing.rs for extract_session_id_from_json covering non-string values and nested fields.",
+        "Expand extract_session_id_from_text tests to cover interleaved non-JSON lines and lines with log prefixes.",
+        "Improve extract_session_id_from_text implementation to be more robust to partial lines or prefixes if tests fail.",
+        "Ensure session ID extraction remains deterministic (first-win) and performs well on large outputs.",
+        "Run `make test -p ralph` to verify changes."
       ],
       "notes": [
-        "This task should follow RQ-0294 to avoid redundant path changes.",
-        "Consider using pub(crate) for modules that must be visible to the test suite if they can be moved into the same crate structure, though integration tests require pub."
+        "While explicit TODO markers in json.rs have been cleaned up, the parsing logic remains brittle for complex runner outputs."
       ],
       "request": "scan finding",
       "created_at": "2026-01-26T15:35:00Z",
-      "updated_at": "2026-01-26T18:30:00Z",
-      "depends_on": [
-        "RQ-0294"
-      ],
+      "updated_at": "2026-01-26T19:45:00Z",
+      "depends_on": [],
       "custom_fields": {}
     },
     {
@@ -130,6 +124,47 @@
       "custom_fields": {}
     },
     {
+      "id": "RQ-0296",
+      "status": "todo",
+      "title": "Modularize lib.rs and tighten visibility",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "housekeeping",
+        "visibility",
+        "architecture"
+      ],
+      "scope": [
+        "crates/ralph/src/lib.rs",
+        "crates/ralph/src/main.rs",
+        "crates/ralph/tests/"
+      ],
+      "evidence": [
+        "lib.rs is a flat list of 25+ pub mod exports, creating an unnecessarily large public API surface.",
+        "Many exported modules are command-specific and will be consolidated by RQ-0294.",
+        "Integration tests in crates/ralph/tests/ rely on these exports, making tightening visibility a delicate task.",
+        "The file lacks logical grouping for its 30+ modules."
+      ],
+      "plan": [
+        "Audit lib.rs exports against main.rs and tests/ usage.",
+        "Categorize modules into logical groups (Core, Commands, UI, Utils) within lib.rs using comments or sub-modules.",
+        "Tighten visibility to pub(crate) for modules not required by the public API or integration tests.",
+        "Coordinate with RQ-0294 to consolidate command modules into a single pub mod commands entry.",
+        "Verify changes with make ci and all integration tests."
+      ],
+      "notes": [
+        "This task should follow RQ-0294 to avoid redundant path changes.",
+        "Consider using pub(crate) for modules that must be visible to the test suite if they can be moved into the same crate structure, though integration tests require pub."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-26T15:35:00Z",
+      "updated_at": "2026-01-26T18:30:00Z",
+      "depends_on": [
+        "RQ-0294"
+      ],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0298",
       "status": "todo",
       "title": "Improve fsutil.rs cohesion",
@@ -166,41 +201,6 @@
       "request": "scan finding",
       "created_at": "2026-01-26T15:35:00Z",
       "updated_at": "2026-01-26T20:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0299",
-      "status": "todo",
-      "title": "Add regression tests for runner JSON parsing",
-      "priority": "medium",
-      "tags": [
-        "test",
-        "runner",
-        "housekeeping"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/execution/json.rs",
-        "crates/ralph/src/runner/execution/tests/parsing.rs"
-      ],
-      "evidence": [
-        "extract_session_id_from_text in json.rs relies on a simple per-line parse which fails if lines contain non-JSON prefixes (e.g., log tags).",
-        "Existing tests in parsing.rs cover only basic session/thread ID keys and well-formatted single lines.",
-        "No regression testing exists for malformed lines, partial JSON, non-string ID values, or multiple interleaved JSON objects."
-      ],
-      "plan": [
-        "Add exhaustive test cases to parsing.rs for extract_session_id_from_json covering non-string values and nested fields.",
-        "Expand extract_session_id_from_text tests to cover interleaved non-JSON lines and lines with log prefixes.",
-        "Improve extract_session_id_from_text implementation to be more robust to partial lines or prefixes if tests fail.",
-        "Ensure session ID extraction remains deterministic (first-win) and performs well on large outputs.",
-        "Run `make test -p ralph` to verify changes."
-      ],
-      "notes": [
-        "While explicit TODO markers in json.rs have been cleaned up, the parsing logic remains brittle for complex runner outputs."
-      ],
-      "request": "scan finding",
-      "created_at": "2026-01-26T15:35:00Z",
-      "updated_at": "2026-01-26T19:45:00Z",
       "depends_on": [],
       "custom_fields": {}
     },
