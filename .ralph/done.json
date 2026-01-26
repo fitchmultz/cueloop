@@ -4771,6 +4771,49 @@
       "completed_at": "2026-01-26T00:25:03.567653000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0282",
+      "status": "done",
+      "title": "Move runutil.rs tests into a dedicated test module",
+      "priority": "medium",
+      "tags": [
+        "run",
+        "tests",
+        "refactor"
+      ],
+      "scope": [
+        "crates/ralph/src/runutil.rs",
+        "crates/ralph/src/lib.rs",
+        "cargo test -p ralph runutil"
+      ],
+      "evidence": [
+        "crates/ralph/src/runutil.rs: 1042 lines (wc -l) with runtime helpers plus in-file tests.",
+        "crates/ralph/src/runutil.rs: `#[cfg(test)] mod tests` starts at line 637.",
+        "rg --files crates/ralph/src | rg runutil returns only crates/ralph/src/runutil.rs (no separate runutil test module).",
+        "crates/ralph/src/lib.rs: declares `pub mod runutil;` (runutil is still a flat module)."
+      ],
+      "plan": [
+        "Add a dedicated test module file (for example, crates/ralph/src/runutil_tests.rs) and register it in crates/ralph/src/lib.rs under #[cfg(test)].",
+        "Move the existing runutil.rs tests into the new test module, adjusting visibility with pub(crate) helpers where needed.",
+        "Leave runutil.rs production-only and run `cargo test -p ralph runutil` to confirm coverage still passes."
+      ],
+      "notes": [
+        "runutil is still a single file module, so the least intrusive move is a crate-level runutil_tests.rs registered under #[cfg(test)].",
+        "Moved runutil tests into dedicated runutil_tests module",
+        "Registered runutil_tests under cfg(test) in lib.rs",
+        "Exposed minimal pub(crate) helpers for test access",
+        "make ci"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "low"
+      },
+      "created_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-26T00:40:33.344051000Z",
+      "completed_at": "2026-01-26T00:40:33.344051000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

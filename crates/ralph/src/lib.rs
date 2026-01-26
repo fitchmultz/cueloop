@@ -26,6 +26,8 @@ pub mod reports;
 pub mod run_cmd;
 pub mod runner;
 pub mod runutil;
+#[cfg(test)]
+mod runutil_tests;
 pub mod scan_cmd;
 pub mod task_cmd;
 pub mod timeutil;

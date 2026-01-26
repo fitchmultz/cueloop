@@ -1,0 +1,414 @@
+//! Tests for runutil helpers and runner error handling.
+
+use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffort, Runner};
+use crate::runutil::{
+    apply_git_revert_mode, apply_git_revert_mode_with_context, parse_revert_response,
+    run_prompt_with_handling_backend, RevertDecision, RevertOutcome, RevertPromptContext,
+    RevertPromptHandler, RunnerBackend, RunnerErrorMessages, RunnerInvocation,
+};
+use crate::{gitutil, runner};
+use std::fs;
+use std::path::Path;
+use std::process::Command;
+use std::sync::Arc;
+use std::time::Duration;
+use tempfile::TempDir;
+
+fn init_git_repo(dir: &TempDir) {
+    Command::new("git")
+        .arg("init")
+        .current_dir(dir.path())
+        .output()
+        .expect("git init failed");
+
+    Command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(dir.path())
+        .output()
+        .expect("git config user.email failed");
+
+    Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(dir.path())
+        .output()
+        .expect("git config user.name failed");
+}
+
+fn commit_file(dir: &TempDir, filename: &str, content: &str, message: &str) {
+    let file_path = dir.path().join(filename);
+    fs::write(&file_path, content).expect("write file");
+
+    Command::new("git")
+        .args(["add", filename])
+        .current_dir(dir.path())
+        .output()
+        .expect("git add failed");
+
+    Command::new("git")
+        .args(["commit", "-m", message])
+        .current_dir(dir.path())
+        .output()
+        .expect("git commit failed");
+}
+
+fn decide_ask(stdin_is_terminal: bool, input: Option<&str>) -> RevertDecision {
+    if !stdin_is_terminal {
+        return RevertDecision::Keep;
+    }
+    parse_revert_response(input.unwrap_or(""), false)
+}
+
+#[test]
+fn ask_mode_defaults_to_keep_when_non_interactive() {
+    assert_eq!(decide_ask(false, Some("1")), RevertDecision::Keep);
+}
+
+#[test]
+fn parse_revert_response_accepts_expected_inputs() {
+    assert_eq!(parse_revert_response("", false), RevertDecision::Keep);
+    assert_eq!(parse_revert_response("1", false), RevertDecision::Keep);
+    assert_eq!(parse_revert_response("keep", false), RevertDecision::Keep);
+    assert_eq!(parse_revert_response("2", false), RevertDecision::Revert);
+    assert_eq!(parse_revert_response("r", false), RevertDecision::Revert);
+    assert_eq!(
+        parse_revert_response("revert", false),
+        RevertDecision::Revert
+    );
+    assert_eq!(
+        parse_revert_response("3", false),
+        RevertDecision::Continue {
+            message: String::new()
+        }
+    );
+    assert_eq!(
+        parse_revert_response("answer that", false),
+        RevertDecision::Continue {
+            message: "answer that".to_string()
+        }
+    );
+}
+
+#[test]
+fn parse_revert_response_allows_proceed_when_enabled() {
+    assert_eq!(parse_revert_response("4", true), RevertDecision::Proceed);
+    assert_eq!(
+        parse_revert_response("4", false),
+        RevertDecision::Continue {
+            message: "4".to_string()
+        }
+    );
+}
+
+#[test]
+fn apply_git_revert_mode_uses_prompt_handler_keep() {
+    let dir = TempDir::new().expect("temp dir");
+    init_git_repo(&dir);
+    commit_file(&dir, "file.txt", "original", "initial");
+
+    let file_path = dir.path().join("file.txt");
+    fs::write(&file_path, "modified").expect("modify file");
+
+    let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Keep);
+    let outcome = apply_git_revert_mode(
+        dir.path(),
+        GitRevertMode::Ask,
+        "test prompt",
+        Some(&handler),
+    )
+    .expect("apply revert mode");
+
+    assert_eq!(
+        outcome,
+        RevertOutcome::Skipped {
+            reason: "user chose to keep changes".to_string()
+        }
+    );
+    let contents = fs::read_to_string(&file_path).expect("read file");
+    assert_eq!(contents, "modified");
+}
+
+#[test]
+fn apply_git_revert_mode_uses_prompt_handler_revert() {
+    let dir = TempDir::new().expect("temp dir");
+    init_git_repo(&dir);
+    commit_file(&dir, "file.txt", "original", "initial");
+
+    let file_path = dir.path().join("file.txt");
+    fs::write(&file_path, "modified").expect("modify file");
+
+    let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Revert);
+    let outcome = apply_git_revert_mode(
+        dir.path(),
+        GitRevertMode::Ask,
+        "test prompt",
+        Some(&handler),
+    )
+    .expect("apply revert mode");
+
+    assert_eq!(outcome, RevertOutcome::Reverted);
+    let contents = fs::read_to_string(&file_path).expect("read file");
+    assert_eq!(contents, "original");
+}
+
+#[test]
+fn apply_git_revert_mode_uses_prompt_handler_continue() {
+    let dir = TempDir::new().expect("temp dir");
+    init_git_repo(&dir);
+    commit_file(&dir, "file.txt", "original", "initial");
+
+    let file_path = dir.path().join("file.txt");
+    fs::write(&file_path, "modified").expect("modify file");
+
+    let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Continue {
+        message: "keep going".to_string(),
+    });
+    let outcome = apply_git_revert_mode(
+        dir.path(),
+        GitRevertMode::Ask,
+        "test prompt",
+        Some(&handler),
+    )
+    .expect("apply revert mode");
+
+    assert_eq!(
+        outcome,
+        RevertOutcome::Continue {
+            message: "keep going".to_string()
+        }
+    );
+    let contents = fs::read_to_string(&file_path).expect("read file");
+    assert_eq!(contents, "modified");
+}
+
+#[test]
+fn apply_git_revert_mode_allows_proceed_when_enabled() {
+    let dir = TempDir::new().expect("temp dir");
+    init_git_repo(&dir);
+    commit_file(&dir, "file.txt", "original", "initial");
+
+    let file_path = dir.path().join("file.txt");
+    fs::write(&file_path, "modified").expect("modify file");
+
+    let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Proceed);
+    let outcome = apply_git_revert_mode_with_context(
+        dir.path(),
+        GitRevertMode::Ask,
+        RevertPromptContext::new("test prompt", true),
+        Some(&handler),
+    )
+    .expect("apply revert mode");
+
+    assert_eq!(
+        outcome,
+        RevertOutcome::Proceed {
+            reason: "user chose to proceed".to_string()
+        }
+    );
+    let contents = fs::read_to_string(&file_path).expect("read file");
+    assert_eq!(contents, "modified");
+}
+
+struct TimeoutBackend {
+    emitted: String,
+}
+
+impl RunnerBackend for TimeoutBackend {
+    fn run_prompt<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _prompt: &str,
+        _timeout: Option<Duration>,
+        _permission_mode: Option<ClaudePermissionMode>,
+        output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        if let Some(handler) = output_handler {
+            (handler)(&self.emitted);
+        }
+        Err(runner::RunnerError::Timeout)
+    }
+
+    fn resume_session<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _session_id: &str,
+        _message: &str,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _timeout: Option<Duration>,
+        _output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        unreachable!("resume_session should not be called for a timeout-only test backend");
+    }
+}
+
+#[test]
+fn timeout_applies_git_revert_mode_and_saves_safeguard_dump_when_stdout_is_available() {
+    let dir = TempDir::new().expect("temp dir");
+    init_git_repo(&dir);
+    commit_file(&dir, "file.txt", "original", "initial");
+
+    let file_path = dir.path().join("file.txt");
+    fs::write(&file_path, "modified").expect("modify file");
+
+    let invocation = RunnerInvocation {
+        repo_root: dir.path(),
+        runner_kind: Runner::Codex,
+        bins: runner::RunnerBinaries {
+            codex: "codex",
+            opencode: "opencode",
+            gemini: "gemini",
+            claude: "claude",
+        },
+        model: Model::Gpt52Codex,
+        reasoning_effort: None,
+        prompt: "test prompt",
+        timeout: Some(Duration::from_millis(10)),
+        permission_mode: None,
+        revert_on_error: true,
+        git_revert_mode: GitRevertMode::Enabled,
+        output_handler: None,
+        output_stream: runner::OutputStream::Terminal,
+        revert_prompt: None,
+    };
+
+    let messages = RunnerErrorMessages {
+        log_label: "timeout_test",
+        interrupted_msg: "interrupted",
+        timeout_msg: "timed out",
+        terminated_msg: "terminated",
+        non_zero_msg: |_| "non-zero".to_string(),
+        other_msg: |_| "other".to_string(),
+    };
+
+    let mut backend = TimeoutBackend {
+        emitted: "hello from runner before timeout\n".to_string(),
+    };
+
+    let err = run_prompt_with_handling_backend(invocation, messages, &mut backend).unwrap_err();
+    let msg = format!("{err:#}");
+
+    assert!(msg.contains("timed out"));
+    assert!(msg.contains("Uncommitted changes were reverted."));
+    assert!(msg.contains("raw stdout saved to"));
+
+    // Verify repo clean + file reverted.
+    let reverted = fs::read_to_string(&file_path).expect("read file after revert");
+    assert_eq!(reverted, "original");
+
+    let status = gitutil::status_porcelain(dir.path()).expect("git status --porcelain -z");
+    assert!(
+        status.trim().is_empty(),
+        "expected clean repo after timeout revert"
+    );
+
+    // Verify safeguard file exists and contains our emitted output.
+    let marker = "raw stdout saved to ";
+    let start = msg
+        .find(marker)
+        .map(|idx| idx + marker.len())
+        .expect("find dump path prefix");
+    let tail = &msg[start..];
+    let end = tail.find(')').unwrap_or(tail.len());
+    let path_str = tail[..end].trim();
+
+    let dump = std::path::Path::new(path_str);
+    assert!(
+        dump.is_file(),
+        "expected safeguard dump to exist: {path_str}"
+    );
+    let dump_contents = fs::read_to_string(dump).expect("read safeguard dump");
+    assert!(dump_contents.contains("hello from runner before timeout"));
+}
+
+struct CaptureBackend {
+    seen_output_stream: Option<runner::OutputStream>,
+}
+
+impl RunnerBackend for CaptureBackend {
+    fn run_prompt<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _prompt: &str,
+        _timeout: Option<Duration>,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _output_handler: Option<runner::OutputHandler>,
+        output_stream: runner::OutputStream,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        self.seen_output_stream = Some(output_stream);
+        Err(runner::RunnerError::Interrupted)
+    }
+
+    fn resume_session<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _session_id: &str,
+        _message: &str,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _timeout: Option<Duration>,
+        _output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        unreachable!("resume_session should not be called for output-stream capture test");
+    }
+}
+
+#[test]
+fn run_prompt_passes_output_stream_to_backend() {
+    let dir = TempDir::new().expect("temp dir");
+    let invocation = RunnerInvocation {
+        repo_root: dir.path(),
+        runner_kind: Runner::Codex,
+        bins: runner::RunnerBinaries {
+            codex: "codex",
+            opencode: "opencode",
+            gemini: "gemini",
+            claude: "claude",
+        },
+        model: Model::Gpt52Codex,
+        reasoning_effort: None,
+        prompt: "test prompt",
+        timeout: None,
+        permission_mode: None,
+        revert_on_error: false,
+        git_revert_mode: GitRevertMode::Disabled,
+        output_handler: None,
+        output_stream: runner::OutputStream::HandlerOnly,
+        revert_prompt: None,
+    };
+
+    let messages = RunnerErrorMessages {
+        log_label: "capture",
+        interrupted_msg: "interrupted",
+        timeout_msg: "timed out",
+        terminated_msg: "terminated",
+        non_zero_msg: |_| "non-zero".to_string(),
+        other_msg: |_| "other".to_string(),
+    };
+
+    let mut backend = CaptureBackend {
+        seen_output_stream: None,
+    };
+
+    let _ = run_prompt_with_handling_backend(invocation, messages, &mut backend);
+    assert_eq!(
+        backend.seen_output_stream,
+        Some(runner::OutputStream::HandlerOnly)
+    );
+}
