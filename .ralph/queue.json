@@ -2,38 +2,29 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0262",
+      "id": "RQ-0291",
       "status": "todo",
-      "title": "Document --include-draft for run one/loop in docs/cli.md",
+      "title": "Show details for task RQ-0262",
       "priority": "medium",
       "tags": [
-        "docs",
-        "run"
+        "queue",
+        "support"
       ],
       "scope": [
-        "docs/cli.md",
-        "crates/ralph/src/cli/run.rs",
-        "crates/ralph/src/agent.rs"
+        ".ralph/queue.json"
       ],
       "evidence": [
-        "docs/cli.md: `ralph run` section lists examples but does not mention --include-draft.",
-        "crates/ralph/src/cli/run.rs: run command help examples include `--include-draft` for both `run one` and `run loop`.",
-        "crates/ralph/src/agent.rs: RunAgentArgs defines the `--include-draft` flag used by run commands."
+        "User request: \"show RQ-0262\""
       ],
       "plan": [
-        "Add a short description of --include-draft in the `ralph run` docs, explaining that draft tasks can be selected when enabled.",
-        "Add or update examples for `ralph run one` and `ralph run loop` that include --include-draft (matching CLI help ordering).",
-        "Verify docs wording matches the CLI help text in crates/ralph/src/cli/run.rs and the flag definition in crates/ralph/src/agent.rs."
+        "Open .ralph/queue.json and locate task RQ-0262.",
+        "Summarize the task fields (status, title, scope, evidence, plan, timestamps) for the requester.",
+        "Confirm the queue remains unchanged after reporting the details."
       ],
-      "notes": [
-        "The --include-draft flag is defined on RunAgentArgs in crates/ralph/src/agent.rs and surfaced via run.rs help examples."
-      ],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "low"
-      },
-      "created_at": "2026-01-24T12:40:25Z",
-      "updated_at": "2026-01-25T22:00:23Z",
+      "notes": [],
+      "request": "show RQ-0262",
+      "created_at": "2026-01-26T04:16:35Z",
+      "updated_at": "2026-01-26T04:16:35Z",
       "depends_on": [],
       "custom_fields": {}
     },

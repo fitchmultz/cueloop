@@ -94,12 +94,20 @@ Run iterations are controlled by config and task settings:
 * `ralph run one -i` launches the same TUI as `ralph tui`.
 * `ralph run loop -i` launches the same TUI and auto-starts loop mode.
 
+### Draft tasks
+
+By default, draft tasks (`status: draft`) are skipped during task selection (so they won't be auto-selected for execution).
+
+* `--include-draft`: Include draft tasks (`status: draft`) when selecting what to run.
+
 Examples:
 
 ```bash
 ralph run one
+ralph run one --include-draft
 ralph run one -i
 ralph run loop --max-tasks 0
+ralph run loop --include-draft --max-tasks 1
 ralph run loop -i --max-tasks 3
 ralph run loop --max-tasks 1 --debug
 ralph run one --git-commit-push-off
@@ -478,6 +486,7 @@ ralph run one --runner codex --model gpt-5.2-codex --effort high
 
 The `run one` and `run loop` commands also support:
 
+* `--include-draft`: Include draft tasks (`status: draft`) when selecting what to run.
 * `--git-revert-mode <ask|enabled|disabled>`
 * `--git-commit-push-on` / `--git-commit-push-off`
 * `--debug` (capture raw supervisor + runner output to `.ralph/logs/debug.log`)
@@ -485,8 +494,10 @@ The `run one` and `run loop` commands also support:
 Examples:
 
 ```bash
+ralph run one --include-draft
 ralph run one --git-revert-mode disabled
 ralph run one --git-commit-push-off
+ralph run loop --include-draft --max-tasks 1
 ralph run loop --max-tasks 1 --debug
 ```
 
