@@ -1,0 +1,502 @@
+//! Streaming reader and display helpers for runner output.
+
+use anyhow::Context;
+use serde_json::Value as JsonValue;
+use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+use crate::debuglog::{self, DebugStream};
+
+use super::super::{OutputHandler, OutputStream};
+use super::json::{extract_session_id_from_json, parse_json_line};
+
+const CODEX_REASONING_PREFIX: &str = "[Reasoning] ";
+const TOOL_VALUE_MAX_LEN: usize = 160;
+
+pub(super) enum StreamSink {
+    Stdout,
+    Stderr,
+}
+
+impl StreamSink {
+    pub(super) fn write_all(
+        &self,
+        bytes: &[u8],
+        output_stream: OutputStream,
+    ) -> std::io::Result<()> {
+        if !output_stream.streams_to_terminal() {
+            return Ok(());
+        }
+        match self {
+            StreamSink::Stdout => {
+                let mut out = std::io::stdout().lock();
+                out.write_all(bytes)?;
+                out.flush()
+            }
+            StreamSink::Stderr => {
+                let mut err = std::io::stderr().lock();
+                err.write_all(bytes)?;
+                err.flush()
+            }
+        }
+    }
+}
+
+pub(super) fn spawn_reader<R: Read + Send + 'static>(
+    mut reader: R,
+    sink: StreamSink,
+    buffer: Arc<Mutex<String>>,
+    output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
+) -> thread::JoinHandle<anyhow::Result<()>> {
+    thread::spawn(move || {
+        let mut buf = [0u8; 8192];
+        loop {
+            let read = reader.read(&mut buf).context("read child output")?;
+            if read == 0 {
+                break;
+            }
+            let text = String::from_utf8_lossy(&buf[..read]);
+            debuglog::write_runner_chunk(DebugStream::Stderr, text.as_ref());
+            sink.write_all(&buf[..read], output_stream)
+                .context("stream child output")?;
+            let mut guard = buffer
+                .lock()
+                .map_err(|_| anyhow::anyhow!("lock output buffer"))?;
+            guard.push_str(&text);
+            if let Some(handler) = &output_handler {
+                handler(&text);
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Spawn a reader that parses JSON lines and displays meaningful content.
+pub(super) fn spawn_json_reader<R: Read + Send + 'static>(
+    mut reader: R,
+    sink: StreamSink,
+    buffer: Arc<Mutex<String>>,
+    output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
+    session_id_buf: Arc<Mutex<Option<String>>>,
+) -> thread::JoinHandle<anyhow::Result<()>> {
+    thread::spawn(move || {
+        let mut buf = [0u8; 8192];
+        let mut line_buf = String::new();
+        let mut tool_name_by_id: HashMap<String, String> = HashMap::new();
+
+        loop {
+            let read = reader.read(&mut buf).context("read child output")?;
+            if read == 0 {
+                break;
+            }
+
+            let text = String::from_utf8_lossy(&buf[..read]);
+            debuglog::write_runner_chunk(DebugStream::Stdout, text.as_ref());
+            for ch in text.chars() {
+                if ch == '\n' {
+                    if let Some(mut json) = parse_json_line(&line_buf) {
+                        if let Some(event_type) = json.get("type").and_then(|t| t.as_str()) {
+                            if event_type == "tool_use" {
+                                if let (Some(tool_id), Some(tool_name)) = (
+                                    json.get("tool_id").and_then(|v| v.as_str()),
+                                    json.get("tool_name").and_then(|v| v.as_str()),
+                                ) {
+                                    tool_name_by_id
+                                        .insert(tool_id.to_string(), tool_name.to_string());
+                                }
+                            } else if event_type == "tool_result" {
+                                let tool_id = json.get("tool_id").and_then(|v| v.as_str());
+                                if let Some(tool_id) = tool_id {
+                                    if let Some(tool_name) = tool_name_by_id.remove(tool_id) {
+                                        if let Some(obj) = json.as_object_mut() {
+                                            obj.insert(
+                                                "tool_name".to_string(),
+                                                JsonValue::String(tool_name),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if let Some(id) = extract_session_id_from_json(&json) {
+                            if let Ok(mut guard) = session_id_buf.lock() {
+                                *guard = Some(id);
+                            }
+                        }
+                        display_filtered_json(
+                            &json,
+                            &sink,
+                            output_handler.as_ref(),
+                            output_stream,
+                        )?;
+                    } else if !line_buf.trim().is_empty() {
+                        let mut line = line_buf.clone();
+                        sink.write_all(line.as_bytes(), output_stream)?;
+                        sink.write_all(b"\n", output_stream)?;
+                        if let Some(handler) = &output_handler {
+                            line.push('\n');
+                            handler(&line);
+                        }
+                    }
+                    line_buf.clear();
+                } else {
+                    line_buf.push(ch);
+                }
+            }
+
+            let mut guard = buffer
+                .lock()
+                .map_err(|_| anyhow::anyhow!("lock output buffer"))?;
+            guard.push_str(&text);
+        }
+
+        if !line_buf.trim().is_empty() {
+            let mut line = line_buf.clone();
+            sink.write_all(line.as_bytes(), output_stream)?;
+            sink.write_all(b"\n", output_stream)?;
+            if let Some(handler) = &output_handler {
+                line.push('\n');
+                handler(&line);
+            }
+        }
+        Ok(())
+    })
+}
+
+pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
+    let mut lines = Vec::new();
+
+    if let Some(result) = json.get("result").and_then(|r| r.as_str()) {
+        if !result.is_empty() {
+            lines.push(result.to_string());
+        }
+    }
+
+    if let Some(event_type) = json.get("type").and_then(|t| t.as_str()) {
+        if event_type == "assistant" {
+            if let Some(message) = json.get("message") {
+                if let Some(content) = message.get("content").and_then(|c| c.as_array()) {
+                    for item in content {
+                        if let Some(item_type) = item.get("type").and_then(|t| t.as_str()) {
+                            match item_type {
+                                "text" => {
+                                    if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                        lines.push(text.to_string());
+                                    }
+                                }
+                                "thinking" | "analysis" | "reasoning" => {
+                                    if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                        if !text.is_empty() {
+                                            lines.push(format!(
+                                                "{}{}",
+                                                CODEX_REASONING_PREFIX, text
+                                            ));
+                                        }
+                                    }
+                                }
+                                "tool_use" => {
+                                    if let Some(name) = item.get("name").and_then(|n| n.as_str()) {
+                                        let suffix = item
+                                            .get("input")
+                                            .and_then(format_tool_details)
+                                            .map(|details| format!(" {}", details))
+                                            .unwrap_or_default();
+                                        lines.push(format!("[Tool] {}{}", name, suffix));
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if event_type == "item.completed" || event_type == "item.started" {
+            if let Some(item) = json.get("item") {
+                if let Some(item_type) = item.get("type").and_then(|t| t.as_str()) {
+                    match item_type {
+                        "agent_message" => {
+                            if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                if !text.is_empty() {
+                                    lines.push(text.to_string());
+                                    lines.push(String::new());
+                                }
+                            }
+                        }
+                        "reasoning" => {
+                            if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                if !text.is_empty() {
+                                    lines.push(format!("{}{}", CODEX_REASONING_PREFIX, text));
+                                }
+                            }
+                        }
+                        "mcp_tool_call" => {
+                            if let Some(line) = format_codex_tool_line(item) {
+                                lines.push(line);
+                            }
+                        }
+                        "command_execution" => {
+                            if let Some(line) = format_codex_command_line(item) {
+                                lines.push(line);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        if event_type == "text" {
+            if let Some(text) = json
+                .get("part")
+                .and_then(|p| p.get("text"))
+                .and_then(|t| t.as_str())
+            {
+                lines.push(text.to_string());
+            }
+        }
+
+        if event_type == "tool_use" {
+            if let Some(tool) = json
+                .get("part")
+                .and_then(|p| p.get("tool"))
+                .and_then(|t| t.as_str())
+            {
+                let status = json
+                    .get("part")
+                    .and_then(|p| p.get("state"))
+                    .and_then(|s| s.get("status"))
+                    .and_then(|s| s.as_str());
+                let suffix = status
+                    .map(|value| format!(" ({value})"))
+                    .unwrap_or_default();
+                let details = json
+                    .get("part")
+                    .and_then(|p| {
+                        p.get("state")
+                            .and_then(|s| s.get("input"))
+                            .or_else(|| p.get("input"))
+                    })
+                    .and_then(format_tool_details)
+                    .map(|details| format!(" {}", details))
+                    .unwrap_or_default();
+                lines.push(format!("[Tool] {tool}{suffix}{details}"));
+            }
+        }
+
+        if event_type == "message" {
+            let role = json.get("role").and_then(|r| r.as_str());
+            if role == Some("assistant") {
+                if let Some(content) = json.get("content") {
+                    match content {
+                        JsonValue::String(text) => {
+                            if !text.is_empty() {
+                                lines.push(text.clone());
+                            }
+                        }
+                        JsonValue::Array(items) => {
+                            for item in items {
+                                if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                    if !text.is_empty() {
+                                        lines.push(text.to_string());
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        if event_type == "tool_use" {
+            if let Some(tool) = json.get("tool_name").and_then(|t| t.as_str()) {
+                let details = json
+                    .get("parameters")
+                    .and_then(format_tool_details)
+                    .map(|details| format!(" {}", details))
+                    .unwrap_or_default();
+                lines.push(format!("[Tool] {tool}{details}"));
+            }
+        }
+
+        if event_type == "tool_result" {
+            if let Some(tool) = json.get("tool_name").and_then(|t| t.as_str()) {
+                let status = json
+                    .get("status")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("completed");
+                lines.push(format!("[Tool] {tool} ({status})"));
+            }
+        }
+    }
+
+    if let Some(denials) = json.get("permission_denials").and_then(|d| d.as_array()) {
+        for denial in denials {
+            if let Some(tool_name) = denial.get("tool_name").and_then(|t| t.as_str()) {
+                lines.push(format!("[Permission denied: {}]", tool_name));
+            }
+        }
+    }
+
+    lines
+}
+
+fn format_codex_tool_line(item: &JsonValue) -> Option<String> {
+    let server = item.get("server").and_then(|s| s.as_str());
+    let tool = item.get("tool").and_then(|t| t.as_str());
+    let name = match (server, tool) {
+        (Some(server), Some(tool)) => format!("{}.{}", server, tool),
+        (Some(server), None) => server.to_string(),
+        (None, Some(tool)) => tool.to_string(),
+        (None, None) => return None,
+    };
+
+    let details = item
+        .get("arguments")
+        .or_else(|| item.get("args"))
+        .or_else(|| item.get("input"))
+        .and_then(format_tool_details)
+        .map(|details| format!(" {}", details))
+        .unwrap_or_default();
+    Some(format!("[Tool] {}{}{}", name, status_suffix(item), details))
+}
+
+fn format_codex_command_line(item: &JsonValue) -> Option<String> {
+    let command = item.get("command").and_then(|c| c.as_str())?;
+    let mut suffix = status_suffix(item);
+    if let Some(exit_code) = item.get("exit_code").and_then(|code| code.as_i64()) {
+        suffix = format!("{} (exit {})", suffix.trim_end(), exit_code);
+    }
+    Some(format!("[Command] {}{}", command, suffix))
+}
+
+fn status_suffix(item: &JsonValue) -> String {
+    item.get("status")
+        .and_then(|s| s.as_str())
+        .map(|status| format!(" ({})", status))
+        .unwrap_or_default()
+}
+
+fn format_tool_details(input: &JsonValue) -> Option<String> {
+    let object = input.as_object()?;
+    let mut parts = Vec::new();
+
+    if let Some(action) = lookup_string(object, &["action", "op", "fn"]) {
+        parts.push(format!("action={}", action));
+    }
+
+    if let Some(path) = lookup_string(object, &["path", "file_path", "filePath"]) {
+        parts.push(format!("path={}", path));
+    }
+
+    if let Some(paths) = lookup_array_len(object, &["paths", "file_paths", "files"]) {
+        parts.push(format!("paths={}", paths));
+    }
+
+    if let Some(command) = lookup_string(object, &["command", "cmd"]) {
+        let value = normalize_tool_value(&command);
+        parts.push(format!("cmd={}", truncate_tool_value(&value)));
+    }
+
+    if let Some(pattern) = lookup_string(object, &["pattern", "glob", "query"]) {
+        let value = normalize_tool_value(&pattern);
+        parts.push(format!("pattern={}", truncate_tool_value(&value)));
+    }
+
+    if let Some(content) = lookup_string(object, &["content", "text", "message"]) {
+        let value = normalize_tool_value(&content);
+        parts.push(format!("content_len={}", content.len()));
+        if !value.is_empty() {
+            parts.push(format!("content={}", truncate_tool_value(&value)));
+        }
+    }
+
+    if let Some(edits) = lookup_array_len(object, &["edits", "slices"]) {
+        parts.push(format!("edits={}", edits));
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(" "))
+    }
+}
+
+fn lookup_string(object: &serde_json::Map<String, JsonValue>, keys: &[&str]) -> Option<String> {
+    for key in keys {
+        if let Some(value) = object.get(*key) {
+            if let Some(text) = value.as_str() {
+                return Some(text.to_string());
+            }
+            if value.is_number() || value.is_boolean() {
+                return Some(value.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn lookup_array_len(object: &serde_json::Map<String, JsonValue>, keys: &[&str]) -> Option<usize> {
+    for key in keys {
+        if let Some(value) = object.get(*key) {
+            if let Some(array) = value.as_array() {
+                return Some(array.len());
+            }
+        }
+    }
+    None
+}
+
+fn normalize_tool_value(value: &str) -> String {
+    let mut out = String::new();
+    let mut last_space = false;
+    for ch in value.trim().chars() {
+        if ch.is_whitespace() {
+            if !last_space {
+                out.push(' ');
+                last_space = true;
+            }
+        } else {
+            last_space = false;
+            out.push(ch);
+        }
+    }
+    out
+}
+
+fn truncate_tool_value(value: &str) -> String {
+    if value.len() <= TOOL_VALUE_MAX_LEN {
+        return value.to_string();
+    }
+    let mut out = String::new();
+    for ch in value.chars().take(TOOL_VALUE_MAX_LEN - 1) {
+        out.push(ch);
+    }
+    out.push('…');
+    out
+}
+
+/// Display meaningful content from JSON, filtering noise.
+pub(super) fn display_filtered_json(
+    json: &JsonValue,
+    sink: &StreamSink,
+    output_handler: Option<&OutputHandler>,
+    output_stream: OutputStream,
+) -> anyhow::Result<()> {
+    for mut line in extract_display_lines(json) {
+        sink.write_all(line.as_bytes(), output_stream)?;
+        sink.write_all(b"\n", output_stream)?;
+        if let Some(handler) = output_handler {
+            line.push('\n');
+            handler(&line);
+        }
+    }
+
+    Ok(())
+}

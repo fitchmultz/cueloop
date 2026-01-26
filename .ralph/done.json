@@ -4686,6 +4686,48 @@
       "completed_at": "2026-01-25T23:39:46.046698000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0270",
+      "status": "done",
+      "title": "Decompose runner execution module into focused submodules",
+      "priority": "medium",
+      "tags": [
+        "runner",
+        "refactor",
+        "maintainability"
+      ],
+      "scope": [
+        "crates/ralph/src/runner.rs",
+        "crates/ralph/src/runner/execution.rs",
+        "crates/ralph/src/runner/"
+      ],
+      "evidence": [
+        "crates/ralph/src/runner/execution.rs: 1604 lines (wc -l), still a single large module.",
+        "crates/ralph/src/runner/execution.rs: two in-file test blocks (`#[cfg(test)]`) at lines 498 and 1275.",
+        "crates/ralph/src/runner/: directory currently contains only execution.rs (no submodules yet).",
+        "crates/ralph/src/runner.rs: execution module is referenced directly via execution::run_* and execution::extract_final_assistant_response."
+      ],
+      "plan": [
+        "Inventory execution.rs responsibilities and define the target module split (process spawn, stream parsing, response extraction, resume handling).",
+        "Create runner submodules and move code, then update runner.rs/module wiring to keep the public execution API stable or update call sites explicitly.",
+        "Relocate execution.rs tests into dedicated runner test modules and run `cargo test -p ralph` to confirm coverage stays intact."
+      ],
+      "notes": [
+        "runner.rs is the entry point that calls execution::run_* functions, so the refactor must preserve or update those call sites.",
+        "Split runner execution into focused submodules under crates/ralph/src/runner/execution/ while keeping the execution API intact.",
+        "Moved runner execution tests into execution/tests with module doc headers.",
+        "CI: make ci."
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "high"
+      },
+      "created_at": "2026-01-24T16:07:23.268929000Z",
+      "updated_at": "2026-01-26T00:02:16.597984000Z",
+      "completed_at": "2026-01-26T00:02:16.597984000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
