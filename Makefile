@@ -57,7 +57,13 @@ build:
 build-release:
 	cargo build --workspace --release
 
-ci: generate format type-check lint build test install
+check-env-safety:
+	@if git ls-files .env | grep -q .env; then \
+		echo "ERROR: .env is tracked in git. Remove it with 'git rm --cached .env' and ensure .env is in .gitignore."; \
+		exit 1; \
+	fi
+
+ci: check-env-safety generate format type-check lint build test install
 
 runners-help:
 	@scripts/runner_cli_inventory.sh --out target/tmp/runner_cli_inventory

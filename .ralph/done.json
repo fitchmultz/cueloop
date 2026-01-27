@@ -7338,6 +7338,51 @@
       "completed_at": "2026-01-27T20:10:20.105348000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0342",
+      "status": "done",
+      "title": "Public repo safety: stop committing `.env` (keep `.env.example`, ignore `.env`)",
+      "priority": "high",
+      "tags": [
+        "security",
+        "docs",
+        "ux"
+      ],
+      "scope": [
+        ".env",
+        ".env.example",
+        ".gitignore",
+        "docs/environment.md",
+        "Makefile",
+        "make ci"
+      ],
+      "evidence": [
+        "Repo root includes a committed `.env` with environment configuration (`RALPH_STRESS_BURN_IN=0`).",
+        "`.env.example` exists and mirrors the `.env` content; `.gitignore` ignores `**/*.env.*` but does not ignore `.env`.",
+        "`docs/environment.md` documents both `.env` and `.env.example` but does not warn against committing `.env` to public repos."
+      ],
+      "plan": [
+        "Remove `.env` from the repo (`git rm --cached .env`) and add `.env` to `.gitignore`.",
+        "Keep `.env.example` as the canonical template and update `docs/environment.md` to reference it and warn about public repo safety.",
+        "Add a CI check (in Makefile) that fails if `.env` is tracked in git to prevent reintroduction.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "This is a private repo so `.env` can be committed, but preparing for public release requires this safety measure.",
+        "Phase 3 review complete: .env removed from git index, .gitignore updated, docs/environment.md adds security warning, Makefile includes check-env-safety CI guard",
+        "All 635+ tests pass, make ci succeeds, check-env-safety target works correctly",
+        "No risks or issues identified; implementation is complete and correct"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T20:35:00.292513000Z",
+      "completed_at": "2026-01-27T20:35:00.292513000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

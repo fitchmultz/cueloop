@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0342",
-      "status": "todo",
-      "title": "Public repo safety: stop committing `.env` (keep `.env.example`, ignore `.env`)",
-      "priority": "high",
-      "tags": [
-        "security",
-        "docs",
-        "ux"
-      ],
-      "scope": [
-        ".env",
-        ".env.example",
-        ".gitignore",
-        "docs/environment.md",
-        "make ci"
-      ],
-      "evidence": [
-        "Repo root includes a committed `.env` with environment configuration (`RALPH_STRESS_BURN_IN=0`).",
-        "`.env.example` exists and mirrors the `.env` content; `.gitignore` ignores `**/*.env.*` but does not ignore `.env`."
-      ],
-      "plan": [
-        "Remove `.env` from the repo and add `.env` to `.gitignore`.",
-        "Keep `.env.example` as the canonical template and update `docs/environment.md` to reference it.",
-        "Add a small test or doc check to ensure `.env` is not reintroduced into the tracked tree.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-27T18:17:26Z",
-      "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0338",
       "status": "todo",
       "title": "Doctor: improve runner binary detection (version/help fallback + actionable guidance)",
