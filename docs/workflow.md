@@ -34,5 +34,24 @@ Default execution uses three phases:
 
 Phases can be set via `--phases` or `agent.phases` in config.
 
+## Security and Redaction
+
+### Safeguard Dumps
+When operations fail (runner errors, scan validation failures), Ralph writes safeguard dumps to temp directories for troubleshooting. These dumps are **redacted by default** to prevent secrets from being written to disk.
+
+**Redaction applies to:**
+- API keys and bearer tokens
+- AWS access keys (AKIA...)
+- SSH private keys
+- Hex tokens (32+ characters)
+- Sensitive environment variable values
+
+**Raw dumps** are only written when explicitly opted in via:
+- `RALPH_RAW_DUMP=1` environment variable
+- `--debug` flag (implies verbose output desired)
+
+### Debug Logging
+When `--debug` is enabled, raw runner output is written to `.ralph/logs/debug.log`. This is intentional for troubleshooting but may contain unredacted secrets. Debug logs should be treated as sensitive and never committed.
+
 ## Runner Model Control
 Runner and model selection are driven by a combination of CLI flags, task overrides, and config. The CLI has the highest priority for a single run.

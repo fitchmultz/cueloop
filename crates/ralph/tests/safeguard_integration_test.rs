@@ -207,14 +207,14 @@ fn runner_fails_and_safeguards_stdout() -> Result<()> {
 
     // 6. Check for safeguard message in stderr
     anyhow::ensure!(
-        stderr.contains("raw stdout saved to"),
+        stderr.contains("redacted stdout saved to"),
         "expected safeguard message in stderr, got:\n{}",
         stderr
     );
 
     // 7. Extract path and verify content
-    // Find "raw stdout saved to /path/to/output.txt"
-    let pattern = "raw stdout saved to ";
+    // Find "redacted stdout saved to /path/to/output.txt"
+    let pattern = "redacted stdout saved to ";
     let start_idx = stderr.find(pattern).context("find safeguard pattern")? + pattern.len();
     let end_idx = stderr[start_idx..]
         .find(')')
@@ -269,13 +269,13 @@ fn scan_fails_validation_and_safeguards_stdout() -> Result<()> {
 
     // 5. Check for safeguard message in stderr
     anyhow::ensure!(
-        stderr.contains("raw stdout saved to"),
+        stderr.contains("redacted stdout saved to"),
         "expected safeguard message in stderr for scan, got:\n{}",
         stderr
     );
 
     // 6. Extract path and verify content
-    let pattern = "raw stdout saved to ";
+    let pattern = "redacted stdout saved to ";
     let start_idx = stderr.find(pattern).context("find safeguard pattern")? + pattern.len();
     let end_idx = stderr[start_idx..]
         .find(')')

@@ -605,6 +605,39 @@ ralph run loop --update-task --max-tasks 1
 ralph run loop --max-tasks 1 --debug
 ```
 
+## Security: Safeguard Dumps and Redaction
+
+When runner operations fail (timeouts, non-zero exits, scan validation errors), Ralph writes safeguard dumps to temp directories for troubleshooting. By default, these dumps are **redacted** to prevent secrets from being written to disk.
+
+### Redaction Behavior
+
+- **Default (redacted)**: Secrets like API keys, bearer tokens, AWS keys, SSH keys, and hex tokens are masked with `[REDACTED]` before writing.
+- **Raw dumps**: Only available with explicit opt-in (see below).
+
+### Opt-In for Raw Dumps
+
+Raw (non-redacted) safeguard dumps require explicit opt-in via one of:
+
+1. **Environment variable**: `RALPH_RAW_DUMP=1`
+2. **Debug mode**: `--debug` flag (implies you want verbose/raw output)
+
+```bash
+# Redacted dumps (default) - secrets are masked
+ralph run one
+
+# Raw dumps with env var - secrets written to disk
+RALPH_RAW_DUMP=1 ralph run one
+
+# Raw dumps via debug mode - secrets in debug.log and dumps
+ralph run one --debug
+```
+
+### Security Considerations
+
+- **Never commit safeguard dumps** to version control. They may contain sensitive data even when redacted.
+- **Debug mode (`--debug`)** writes raw runner output to `.ralph/logs/debug.log`. This is intentional for troubleshooting but may contain secrets.
+- Temp directories for safeguard dumps are created under `/tmp/ralph/` (or platform equivalent) with `ralph_` prefixes.
+
 ## Help Output
 
 For the full, authoritative list of flags and examples, run:

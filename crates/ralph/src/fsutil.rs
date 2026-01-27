@@ -4,15 +4,19 @@
 //! - Create and clean Ralph temp directories.
 //! - Write files atomically and sync parent directories best-effort.
 //! - Persist safeguard dumps for troubleshooting output.
+//! - Redact sensitive data in safeguard dumps by default (secrets, API keys, tokens).
 //!
 //! Not handled here:
 //! - Directory locks or lock ownership metadata (see `crate::lock`).
 //! - Cross-device file moves or distributed filesystem semantics.
 //! - Retry/backoff behavior beyond the current best-effort operations.
+//! - Redaction logic itself (see `crate::redaction`).
 //!
 //! Invariants/assumptions:
 //! - Callers provide valid paths; `write_atomic` requires a parent directory.
 //! - Temp cleanup is best-effort and may skip entries on IO errors.
+//! - `safeguard_text_dump` requires explicit opt-in (env var or debug mode) to write raw content.
+//! - `safeguard_text_dump_redacted` is the default and safe choice for error dumps.
 
 use anyhow::{Context, Result};
 use std::fs;
@@ -126,7 +130,55 @@ pub fn create_ralph_temp_dir(label: &str) -> Result<tempfile::TempDir> {
     Ok(dir)
 }
 
-pub fn safeguard_text_dump(label: &str, content: &str) -> Result<PathBuf> {
+/// Environment variable to opt-in to raw (non-redacted) safeguard dumps.
+const ENV_RAW_DUMP: &str = "RALPH_RAW_DUMP";
+
+/// Writes a safeguard dump with redaction applied to sensitive content.
+///
+/// This is the recommended default for error dumps. Secrets like API keys,
+/// bearer tokens, AWS keys, and SSH keys are masked before writing.
+///
+/// Returns the path to the written file.
+pub fn safeguard_text_dump_redacted(label: &str, content: &str) -> Result<PathBuf> {
+    use crate::redaction::redact_text;
+    let redacted_content = redact_text(content);
+    safeguard_text_dump_internal(label, &redacted_content, true)
+}
+
+/// Writes a safeguard dump with raw (non-redacted) content.
+///
+/// SECURITY WARNING: This function writes raw content that may contain secrets.
+/// It requires explicit opt-in via either:
+/// - Setting the `RALPH_RAW_DUMP=1` environment variable
+/// - Passing `is_debug_mode=true` (e.g., when `--debug` flag is used)
+///
+/// If opt-in is not provided, this function returns an error.
+/// For safe dumping, use `safeguard_text_dump_redacted` instead.
+pub fn safeguard_text_dump(label: &str, content: &str, is_debug_mode: bool) -> Result<PathBuf> {
+    let raw_dump_enabled = std::env::var(ENV_RAW_DUMP)
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    if !raw_dump_enabled && !is_debug_mode {
+        anyhow::bail!(
+            "Raw safeguard dumps require explicit opt-in. \
+             Set {}=1 or use --debug mode. \
+             Consider using safeguard_text_dump_redacted() for safe dumping.",
+            ENV_RAW_DUMP
+        );
+    }
+
+    if raw_dump_enabled {
+        log::warn!(
+            "SECURITY: Writing raw safeguard dump ({}=1). Secrets may be written to disk.",
+            ENV_RAW_DUMP
+        );
+    }
+
+    safeguard_text_dump_internal(label, content, false)
+}
+
+fn safeguard_text_dump_internal(label: &str, content: &str, _is_redacted: bool) -> Result<PathBuf> {
     let temp_dir = create_ralph_temp_dir(label)?;
     let output_path = temp_dir.path().join("output.txt");
     fs::write(&output_path, content)
@@ -170,5 +222,166 @@ pub(crate) fn sync_dir_best_effort(dir: &Path) {
     #[cfg(not(unix))]
     {
         let _ = dir;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn safeguard_text_dump_redacted_masks_secrets() {
+        let content = "API_KEY=sk-abc123xyz789\nAuthorization: Bearer secret_token_12345";
+        let path = safeguard_text_dump_redacted("test_redacted", content).unwrap();
+
+        let written = fs::read_to_string(&path).unwrap();
+
+        assert!(
+            !written.contains("sk-abc123xyz789"),
+            "API key should be redacted"
+        );
+        assert!(
+            !written.contains("secret_token_12345"),
+            "Bearer token should be redacted"
+        );
+        assert!(
+            written.contains("[REDACTED]"),
+            "Should contain redaction marker"
+        );
+
+        // Cleanup
+        let _ = fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn safeguard_text_dump_requires_opt_in_without_debug() {
+        let _guard = env_lock().lock().expect("env lock");
+
+        // Ensure env var is not set
+        std::env::remove_var(ENV_RAW_DUMP);
+
+        let content = "sensitive data";
+        let result = safeguard_text_dump("test_raw", content, false);
+
+        assert!(result.is_err(), "Raw dump should fail without opt-in");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("RALPH_RAW_DUMP"),
+            "Error should mention env var"
+        );
+    }
+
+    #[test]
+    fn safeguard_text_dump_allows_raw_with_env_var() {
+        let _guard = env_lock().lock().expect("env lock");
+
+        std::env::set_var(ENV_RAW_DUMP, "1");
+
+        let content = "raw secret data";
+        let path = safeguard_text_dump("test_raw_env", content, false).unwrap();
+
+        let written = fs::read_to_string(&path).unwrap();
+        assert_eq!(written, content, "Raw content should be written unchanged");
+
+        // Cleanup
+        std::env::remove_var(ENV_RAW_DUMP);
+        let _ = fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn safeguard_text_dump_allows_raw_with_debug_mode() {
+        let _guard = env_lock().lock().expect("env lock");
+
+        // Ensure env var is not set
+        std::env::remove_var(ENV_RAW_DUMP);
+
+        let content = "debug mode secret";
+        let path = safeguard_text_dump("test_raw_debug", content, true).unwrap();
+
+        let written = fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            written, content,
+            "Raw content should be written in debug mode"
+        );
+
+        // Cleanup
+        let _ = fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn safeguard_text_dump_preserves_non_sensitive_content() {
+        let content = "This is normal log output without secrets";
+        let path = safeguard_text_dump_redacted("test_normal", content).unwrap();
+
+        let written = fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            written, content,
+            "Non-sensitive content should be preserved"
+        );
+
+        // Cleanup
+        let _ = fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn safeguard_text_dump_redacts_aws_keys() {
+        let content = "AWS Access Key: AKIAIOSFODNN7EXAMPLE";
+        let path = safeguard_text_dump_redacted("test_aws", content).unwrap();
+
+        let written = fs::read_to_string(&path).unwrap();
+        assert!(
+            !written.contains("AKIAIOSFODNN7EXAMPLE"),
+            "AWS key should be redacted"
+        );
+        assert!(
+            written.contains("[REDACTED]"),
+            "Should contain redaction marker"
+        );
+
+        // Cleanup
+        let _ = fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = fs::remove_dir(parent);
+        }
+    }
+
+    #[test]
+    fn safeguard_text_dump_redacts_ssh_keys() {
+        let content = "SSH Key:\n-----BEGIN OPENSSH PRIVATE KEY-----\nabc123\n-----END OPENSSH PRIVATE KEY-----";
+        let path = safeguard_text_dump_redacted("test_ssh", content).unwrap();
+
+        let written = fs::read_to_string(&path).unwrap();
+        assert!(
+            !written.contains("abc123"),
+            "SSH key content should be redacted"
+        );
+        assert!(
+            written.contains("[REDACTED]"),
+            "Should contain redaction marker"
+        );
+
+        // Cleanup
+        let _ = fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = fs::remove_dir(parent);
+        }
     }
 }

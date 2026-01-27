@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0337",
-      "status": "todo",
-      "title": "Security: redact or gate safeguard output dumps (avoid writing secrets to disk)",
-      "priority": "critical",
-      "tags": [
-        "security",
-        "redaction",
-        "runner",
-        "debug"
-      ],
-      "scope": [
-        "crates/ralph/src/fsutil.rs",
-        "crates/ralph/src/commands/scan.rs",
-        "crates/ralph/src/debuglog.rs",
-        "docs/workflow.md",
-        "docs/cli.md",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/fsutil.rs`: `safeguard_text_dump` writes the provided `content` to `output.txt` without applying `redaction::redact_text`.",
-        "`crates/ralph/src/commands/scan.rs`: on failures, scan saves raw runner stdout via `fsutil::safeguard_text_dump(\"scan_error\", &output.stdout)`.",
-        "`crates/ralph/src/debuglog.rs`: module is explicitly for raw, unredacted supervisor/runner output (enabled via `--debug`)."
-      ],
-      "plan": [
-        "Change safeguard dumps to write redacted content by default (use existing `crate::redaction`).",
-        "Add an explicit opt-in for writing raw output (env var or `--debug`), with loud warnings in logs/help.",
-        "Update scan/run error paths to use the redacted dump function and to avoid mentioning raw content unless explicitly enabled.",
-        "Add tests that prove secrets-like strings are redacted in dumps unless opt-in is enabled.",
-        "Update docs (`docs/cli.md`, `docs/workflow.md`) to document the new behavior.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-27T18:17:26Z",
-      "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0342",
       "status": "todo",
       "title": "Public repo safety: stop committing `.env` (keep `.env.example`, ignore `.env`)",

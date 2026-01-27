@@ -7282,6 +7282,62 @@
       "completed_at": "2026-01-27T19:52:57.705092000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0337",
+      "status": "done",
+      "title": "Security: redact or gate safeguard output dumps (avoid writing secrets to disk)",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "redaction",
+        "runner",
+        "debug"
+      ],
+      "scope": [
+        "crates/ralph/src/fsutil.rs",
+        "crates/ralph/src/commands/scan.rs",
+        "crates/ralph/src/debuglog.rs",
+        "crates/ralph/src/redaction.rs",
+        "docs/workflow.md",
+        "docs/cli.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/fsutil.rs:129-138`: `safeguard_text_dump` writes raw `content` to `output.txt` without redaction; no opt-in mechanism exists.",
+        "`crates/ralph/src/commands/scan.rs:182,222`: calls `fsutil::safeguard_text_dump` with raw `output.stdout` on queue read/validation failures.",
+        "`crates/ralph/src/debuglog.rs`: module logs raw runner output when `--debug` is enabled; this is intentional but should be documented as a security consideration.",
+        "`crates/ralph/src/redaction.rs:128-139`: `redact_text()` function exists and masks API keys, bearer tokens, AWS keys, SSH keys, hex tokens, and sensitive env values."
+      ],
+      "plan": [
+        "Add `safeguard_text_dump_redacted` function in `fsutil.rs` that applies `redaction::redact_text` before writing.",
+        "Modify existing `safeguard_text_dump` to require explicit opt-in (env var `RALPH_RAW_DUMP=1` or `--debug` flag) with loud warnings.",
+        "Update `scan.rs` error paths to use redacted dumps by default; only use raw dumps when opt-in is enabled.",
+        "Add unit tests in `fsutil.rs` proving secrets are redacted in dumps unless opt-in is enabled.",
+        "Update `docs/cli.md` to document safeguard dump behavior and the `--debug` security implications.",
+        "Update `docs/workflow.md` to mention redaction behavior for debug logs and safeguard dumps.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Redaction module already exists and handles: API keys, bearer tokens, AWS keys, SSH keys, hex tokens (32+ chars), sensitive env vars.",
+        "Debug logging intentionally keeps raw output; this is acceptable with explicit opt-in (--debug) but needs clear documentation.",
+        "Consider adding a config option `agent.redact_dumps: true` (default) for fine-grained control.",
+        "Implemented safeguard dump redaction to prevent secrets from being written to disk",
+        "Added safeguard_text_dump_redacted() function for redacted dumps by default",
+        "Modified safeguard_text_dump() to require explicit opt-in (RALPH_RAW_DUMP=1 or --debug)",
+        "Updated scan.rs and runutil.rs to use redacted dumps by default",
+        "Added comprehensive unit tests for redaction behavior",
+        "Updated docs/cli.md and docs/workflow.md with security documentation"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T20:10:20.105348000Z",
+      "completed_at": "2026-01-27T20:10:20.105348000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

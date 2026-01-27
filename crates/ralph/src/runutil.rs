@@ -5,7 +5,6 @@
 //! Invariants/assumptions: caller supplies validated runner settings and respects revert policies.
 
 use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffort, Runner};
-use crate::redaction::redact_text;
 use crate::{fsutil, gitutil, outpututil, runner};
 use anyhow::{bail, Result};
 use std::io::{BufRead, BufReader, IsTerminal, Write};
@@ -301,13 +300,10 @@ where
                     if let Some(capture) = timeout_stdout_capture.as_ref() {
                         let captured = capture.lock().map(|buf| buf.clone()).unwrap_or_default();
                         if !captured.trim().is_empty() {
-                            match fsutil::safeguard_text_dump(
-                                "runner_error",
-                                &redact_text(&captured),
-                            ) {
+                            match fsutil::safeguard_text_dump_redacted("runner_error", &captured) {
                                 Ok(path) => {
                                     safeguard_msg =
-                                        format!("\n(raw stdout saved to {})", path.display());
+                                        format!("\n(redacted stdout saved to {})", path.display());
                                 }
                                 Err(err) => {
                                     log::warn!("failed to save safeguard dump: {}", err);
@@ -339,10 +335,13 @@ where
                 let mut safeguard_msg = String::new();
                 if revert_on_error {
                     if !stdout.0.is_empty() {
-                        match fsutil::safeguard_text_dump("runner_error", &stdout.to_string()) {
+                        match fsutil::safeguard_text_dump_redacted(
+                            "runner_error",
+                            &stdout.to_string(),
+                        ) {
                             Ok(path) => {
                                 safeguard_msg =
-                                    format!("\n(raw stdout saved to {})", path.display());
+                                    format!("\n(redacted stdout saved to {})", path.display());
                             }
                             Err(err) => {
                                 log::warn!("failed to save safeguard dump: {}", err);
@@ -399,10 +398,13 @@ where
                 let mut safeguard_msg = String::new();
                 if revert_on_error {
                     if !stdout.0.is_empty() {
-                        match fsutil::safeguard_text_dump("runner_error", &stdout.to_string()) {
+                        match fsutil::safeguard_text_dump_redacted(
+                            "runner_error",
+                            &stdout.to_string(),
+                        ) {
                             Ok(path) => {
                                 safeguard_msg =
-                                    format!("\n(raw stdout saved to {})", path.display());
+                                    format!("\n(redacted stdout saved to {})", path.display());
                             }
                             Err(err) => {
                                 log::warn!("failed to save safeguard dump: {}", err);

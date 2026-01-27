@@ -20,6 +20,21 @@ use crate::contracts::{
     RunnerCliOptionsPatch,
 };
 use crate::{config, fsutil, gitutil, prompts, queue, runner, runutil, timeutil};
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Global flag indicating if debug mode is enabled.
+/// This is set by the CLI when `--debug` flag is used.
+static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
+
+/// Set the global debug mode flag.
+pub fn set_debug_mode(enabled: bool) {
+    DEBUG_MODE.store(enabled, Ordering::SeqCst);
+}
+
+/// Check if debug mode is enabled.
+fn is_debug_mode() -> bool {
+    DEBUG_MODE.load(Ordering::SeqCst)
+}
 use anyhow::{Context, Result};
 
 pub struct ScanOptions {
@@ -179,9 +194,10 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         Ok(queue) => queue,
         Err(err) => {
             let mut safeguard_msg = String::new();
-            match fsutil::safeguard_text_dump("scan_error", &output.stdout) {
+            match fsutil::safeguard_text_dump_redacted("scan_error", &output.stdout) {
                 Ok(path) => {
-                    safeguard_msg = format!("\n(raw stdout saved to {})", path.display());
+                    let dump_type = if is_debug_mode() { "raw" } else { "redacted" };
+                    safeguard_msg = format!("\n({dump_type} stdout saved to {})", path.display());
                 }
                 Err(e) => {
                     log::warn!("failed to save safeguard dump: {}", e);
@@ -219,9 +235,10 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     .context("validate queue set after scan")
     {
         let mut safeguard_msg = String::new();
-        match fsutil::safeguard_text_dump("scan_validation_error", &output.stdout) {
+        match fsutil::safeguard_text_dump_redacted("scan_validation_error", &output.stdout) {
             Ok(path) => {
-                safeguard_msg = format!("\n(raw stdout saved to {})", path.display());
+                let dump_type = if is_debug_mode() { "raw" } else { "redacted" };
+                safeguard_msg = format!("\n({dump_type} stdout saved to {})", path.display());
             }
             Err(e) => {
                 log::warn!("failed to save safeguard dump: {}", e);
