@@ -17,6 +17,7 @@ use super::super::{AppMode, TextInput};
 use super::types::{ConfirmDiscardAction, TuiAction};
 use super::{is_plain_char, text_char, App};
 use crate::runutil::RevertDecision;
+use crate::tui::config_edit::ConfigKey;
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 use std::sync::mpsc;
@@ -208,6 +209,48 @@ fn status_message_for_revert_decision(label: &str, decision: &RevertDecision) ->
         RevertDecision::Keep => format!("{label}: keeping uncommitted changes"),
         RevertDecision::Continue { .. } => format!("{label}: continuing session"),
         RevertDecision::Proceed => format!("{label}: keeping changes and proceeding"),
+    }
+}
+
+/// Handle key events in ConfirmRiskyConfig mode.
+pub(super) fn handle_confirm_risky_config_key(
+    app: &mut App,
+    key: KeyEvent,
+    key_variant: ConfigKey,
+    previous_mode: AppMode,
+) -> Result<TuiAction> {
+    match key.code {
+        KeyCode::Char('y') if is_plain_char(&key, 'y') => {
+            // Apply the config change
+            app.cycle_config_value(key_variant);
+            app.dirty_config = true;
+            app.set_status_message("Config updated");
+            app.mode = previous_mode;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('Y') if is_plain_char(&key, 'Y') => {
+            app.cycle_config_value(key_variant);
+            app.dirty_config = true;
+            app.set_status_message("Config updated");
+            app.mode = previous_mode;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('n') if is_plain_char(&key, 'n') => {
+            app.mode = previous_mode;
+            app.set_status_message("Config change cancelled");
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('N') if is_plain_char(&key, 'N') => {
+            app.mode = previous_mode;
+            app.set_status_message("Config change cancelled");
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Esc => {
+            app.mode = previous_mode;
+            app.set_status_message("Config change cancelled");
+            Ok(TuiAction::Continue)
+        }
+        _ => Ok(TuiAction::Continue),
     }
 }
 

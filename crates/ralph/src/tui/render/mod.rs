@@ -126,6 +126,9 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
                 input,
             );
         }
+        AppMode::ConfirmRiskyConfig { warning, .. } => {
+            overlays::draw_risky_config_dialog(f, size, warning);
+        }
 
         // Command palette overlay.
         AppMode::CommandPalette { query, selected } => {

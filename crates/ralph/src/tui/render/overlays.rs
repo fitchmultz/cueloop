@@ -12,6 +12,7 @@
 //! - Callers provide terminal areas sized for the current frame.
 //! - Overlay drawing clears the underlying area before rendering content.
 
+use super::super::config_edit::RiskLevel;
 use super::super::{help, App, ConfigFieldKind, TaskEditKind, TextInput};
 use super::utils::scroll_indicator;
 use crate::outpututil::truncate_chars;
@@ -199,6 +200,58 @@ pub(super) fn draw_confirm_dialog(f: &mut Frame<'_>, area: Rect, message: &str, 
     f.render_widget(popup, popup_area);
 }
 
+/// Draw risky config confirmation dialog.
+pub(super) fn draw_risky_config_dialog(f: &mut Frame<'_>, area: Rect, warning: &str) {
+    // Calculate dimensions based on warning text
+    let lines: Vec<&str> = warning.lines().collect();
+    let max_line_len = lines.iter().map(|l| l.len()).max().unwrap_or(0);
+    let popup_width = (max_line_len as u16 + 8)
+        .min(area.width.saturating_sub(4))
+        .max(44);
+    let popup_height = (lines.len() as u16 + 6).min(area.height).max(6);
+
+    let popup_area = Rect {
+        x: area.x + (area.width.saturating_sub(popup_width)) / 2,
+        y: area.y + (area.height.saturating_sub(popup_height)) / 2,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    f.render_widget(Clear, popup_area);
+
+    let mut text_lines: Vec<Line> = vec![Line::from("")];
+
+    for line in lines {
+        let style = if line.starts_with('⚠') {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
+        text_lines.push(Line::from(Span::styled(line.to_string(), style)));
+    }
+
+    text_lines.push(Line::from(""));
+    text_lines.push(Line::from(vec![
+        Span::styled("Confirm? ", Style::default()),
+        Span::styled("(y/n)", Style::default().fg(Color::Yellow)),
+    ]));
+    text_lines.push(Line::from(""));
+
+    let popup = Paragraph::new(Text::from(text_lines))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Warning")
+                .style(Style::default().bg(Color::DarkGray)),
+        )
+        .alignment(Alignment::Center)
+        .wrap(Wrap { trim: false });
+
+    f.render_widget(popup, popup_area);
+}
+
 /// Draw revert confirmation dialog.
 pub(super) fn draw_revert_dialog(
     f: &mut Frame<'_>,
@@ -365,12 +418,29 @@ pub(super) fn draw_config_editor(
                 }
             }
             let label = format!("{:label_width$}", entry.label);
-            let line_text = format!("{} {}", label, value);
+
+            // Build line with optional warning indicator
+            let (line_text, warning_style) = if entry.risk_level == RiskLevel::Danger {
+                let warning_icon = "⚠ ";
+                let text = format!("{}{} {}", label, value, warning_icon);
+                (text, Some(Color::Red))
+            } else if entry.risk_level == RiskLevel::Warning {
+                let info_icon = "ℹ ";
+                let text = format!("{}{} {}", label, value, info_icon);
+                (text, Some(Color::Yellow))
+            } else {
+                let text = format!("{} {}", label, value);
+                (text, None)
+            };
+
             let display = truncate_chars(&line_text, list_area.width as usize);
 
             let mut style = Style::default();
             if entry.value == "(global default)" {
                 style = style.fg(Color::DarkGray);
+            }
+            if let Some(color) = warning_style {
+                style = style.fg(color);
             }
             if is_selected {
                 style = style.bg(Color::Blue).add_modifier(Modifier::BOLD);

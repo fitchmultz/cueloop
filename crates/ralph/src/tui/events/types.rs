@@ -15,6 +15,7 @@
 use std::sync::mpsc;
 
 use crate::runutil::RevertDecision;
+use crate::tui::config_edit::ConfigKey;
 use crate::tui::TextInput;
 
 /// Actions that can result from handling a key event.
@@ -94,6 +95,13 @@ pub enum AppMode {
     },
     /// Executing a task (live output view)
     Executing { task_id: String },
+    /// Confirming a risky config toggle
+    ConfirmRiskyConfig {
+        key: ConfigKey,
+        new_value: String,
+        warning: String,
+        previous_mode: Box<AppMode>,
+    },
 }
 
 impl PartialEq for AppMode {
@@ -171,6 +179,25 @@ impl PartialEq for AppMode {
             }
             (Executing { task_id: left_id }, Executing { task_id: right_id }) => {
                 left_id == right_id
+            }
+            (
+                ConfirmRiskyConfig {
+                    key: left_key,
+                    new_value: left_new_value,
+                    warning: left_warning,
+                    previous_mode: left_previous,
+                },
+                ConfirmRiskyConfig {
+                    key: right_key,
+                    new_value: right_new_value,
+                    warning: right_warning,
+                    previous_mode: right_previous,
+                },
+            ) => {
+                left_key == right_key
+                    && left_new_value == right_new_value
+                    && left_warning == right_warning
+                    && left_previous == right_previous
             }
             _ => false,
         }

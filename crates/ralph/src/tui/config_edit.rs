@@ -28,6 +28,17 @@ pub enum ConfigFieldKind {
     Text,
 }
 
+/// Risk level for a config field, used to display warnings and require confirmation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RiskLevel {
+    /// No special risk; no warning needed.
+    None,
+    /// Warning level; show inline explanation.
+    Warning,
+    /// Danger level; show inline explanation and require confirmation when enabling.
+    Danger,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConfigKey {
     ProjectType,
@@ -65,6 +76,8 @@ pub struct ConfigEntry {
     pub label: &'static str,
     pub value: String,
     pub kind: ConfigFieldKind,
+    pub risk_level: RiskLevel,
+    pub description: &'static str,
 }
 
 impl App {
@@ -75,54 +88,72 @@ impl App {
                 label: "project_type",
                 value: display_project_type(self.project_config.project_type),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::QueueFile,
                 label: "queue.file",
                 value: display_path(self.project_config.queue.file.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::QueueDoneFile,
                 label: "queue.done_file",
                 value: display_path(self.project_config.queue.done_file.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::QueueIdPrefix,
                 label: "queue.id_prefix",
                 value: display_string(self.project_config.queue.id_prefix.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::QueueIdWidth,
                 label: "queue.id_width",
                 value: display_u8(self.project_config.queue.id_width),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRunner,
                 label: "agent.runner",
                 value: display_runner(self.project_config.agent.runner),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentModel,
                 label: "agent.model",
                 value: display_model(self.project_config.agent.model.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentReasoningEffort,
                 label: "agent.reasoning_effort",
                 value: display_reasoning_effort(self.project_config.agent.reasoning_effort),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentIterations,
                 label: "agent.iterations",
                 value: display_u8(self.project_config.agent.iterations),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentFollowupReasoningEffort,
@@ -131,36 +162,48 @@ impl App {
                     self.project_config.agent.followup_reasoning_effort,
                 ),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentCodexBin,
                 label: "agent.codex_bin",
                 value: display_string(self.project_config.agent.codex_bin.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentOpencodeBin,
                 label: "agent.opencode_bin",
                 value: display_string(self.project_config.agent.opencode_bin.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentGeminiBin,
                 label: "agent.gemini_bin",
                 value: display_string(self.project_config.agent.gemini_bin.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentClaudeBin,
                 label: "agent.claude_bin",
                 value: display_string(self.project_config.agent.claude_bin.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentCursorBin,
                 label: "agent.cursor_bin",
                 value: display_string(self.project_config.agent.cursor_bin.as_ref()),
                 kind: ConfigFieldKind::Text,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentClaudePermissionMode,
@@ -169,6 +212,8 @@ impl App {
                     self.project_config.agent.claude_permission_mode,
                 ),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::Warning,
+                description: "bypass_permissions allows unchecked edits",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRunnerCliOutputFormat,
@@ -181,6 +226,8 @@ impl App {
                         .and_then(|root| root.defaults.output_format),
                 ),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRunnerCliVerbosity,
@@ -193,6 +240,8 @@ impl App {
                         .and_then(|root| root.defaults.verbosity),
                 ),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRunnerCliApprovalMode,
@@ -205,6 +254,8 @@ impl App {
                         .and_then(|root| root.defaults.approval_mode),
                 ),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::Warning,
+                description: "yolo bypasses all approval prompts",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRunnerCliSandboxMode,
@@ -217,6 +268,8 @@ impl App {
                         .and_then(|root| root.defaults.sandbox),
                 ),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRunnerCliPlanMode,
@@ -229,6 +282,8 @@ impl App {
                         .and_then(|root| root.defaults.plan_mode),
                 ),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRunnerCliUnsupportedOptionPolicy,
@@ -241,36 +296,48 @@ impl App {
                         .and_then(|root| root.defaults.unsupported_option_policy),
                 ),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRepopromptPlanRequired,
                 label: "agent.repoprompt_plan_required",
                 value: display_bool(self.project_config.agent.repoprompt_plan_required),
                 kind: ConfigFieldKind::Toggle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentRepopromptToolInjection,
                 label: "agent.repoprompt_tool_injection",
                 value: display_bool(self.project_config.agent.repoprompt_tool_injection),
                 kind: ConfigFieldKind::Toggle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentGitRevertMode,
                 label: "agent.git_revert_mode",
                 value: display_git_revert_mode(self.project_config.agent.git_revert_mode),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
             ConfigEntry {
                 key: ConfigKey::AgentGitCommitPushEnabled,
                 label: "agent.git_commit_push_enabled",
                 value: display_bool(self.project_config.agent.git_commit_push_enabled),
                 kind: ConfigFieldKind::Toggle,
+                risk_level: RiskLevel::Danger,
+                description: "auto-pushes changes to remote",
             },
             ConfigEntry {
                 key: ConfigKey::AgentPhases,
                 label: "agent.phases",
                 value: display_u8(self.project_config.agent.phases),
                 kind: ConfigFieldKind::Cycle,
+                risk_level: RiskLevel::None,
+                description: "",
             },
         ]
     }

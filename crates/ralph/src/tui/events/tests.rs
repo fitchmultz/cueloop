@@ -1911,3 +1911,214 @@ fn mouse_left_click_on_empty_list_is_noop() {
     assert_eq!(app.selected, 0);
     assert!(app.details_focused());
 }
+
+#[test]
+fn risky_config_enabling_git_push_shows_confirmation() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001")],
+    };
+    let mut app = App::new(queue);
+    // Find the git_commit_push_enabled entry index
+    let idx = app
+        .config_entries()
+        .iter()
+        .position(|entry| matches!(entry.key, crate::tui::ConfigKey::AgentGitCommitPushEnabled))
+        .expect("git_commit_push_enabled entry");
+    app.mode = AppMode::EditingConfig {
+        selected: idx,
+        editing_value: None,
+    };
+    // Ensure git_commit_push_enabled is not already enabled
+    app.project_config.agent.git_commit_push_enabled = None;
+
+    let action =
+        handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z").expect("key");
+
+    assert_eq!(action, TuiAction::Continue);
+    // Should enter ConfirmRiskyConfig mode, not apply the change immediately
+    assert!(
+        matches!(app.mode, AppMode::ConfirmRiskyConfig { .. }),
+        "expected ConfirmRiskyConfig mode, got {:?}",
+        app.mode
+    );
+    // Config should not be marked dirty yet
+    assert!(!app.dirty_config);
+}
+
+#[test]
+fn risky_config_confirm_yes_applies_change() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001")],
+    };
+    let mut app = App::new(queue);
+    let idx = app
+        .config_entries()
+        .iter()
+        .position(|entry| matches!(entry.key, crate::tui::ConfigKey::AgentGitCommitPushEnabled))
+        .expect("git_commit_push_enabled entry");
+    app.mode = AppMode::ConfirmRiskyConfig {
+        key: crate::tui::ConfigKey::AgentGitCommitPushEnabled,
+        new_value: "true".to_string(),
+        warning: "Test warning".to_string(),
+        previous_mode: Box::new(AppMode::EditingConfig {
+            selected: idx,
+            editing_value: None,
+        }),
+    };
+
+    let action = handle_key_event(
+        &mut app,
+        key_event(KeyCode::Char('y')),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.project_config.agent.git_commit_push_enabled, Some(true));
+    assert!(app.dirty_config);
+    assert!(matches!(app.mode, AppMode::EditingConfig { .. }));
+}
+
+#[test]
+fn risky_config_confirm_no_cancels_change() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001")],
+    };
+    let mut app = App::new(queue);
+    let idx = app
+        .config_entries()
+        .iter()
+        .position(|entry| matches!(entry.key, crate::tui::ConfigKey::AgentGitCommitPushEnabled))
+        .expect("git_commit_push_enabled entry");
+    app.mode = AppMode::ConfirmRiskyConfig {
+        key: crate::tui::ConfigKey::AgentGitCommitPushEnabled,
+        new_value: "true".to_string(),
+        warning: "Test warning".to_string(),
+        previous_mode: Box::new(AppMode::EditingConfig {
+            selected: idx,
+            editing_value: None,
+        }),
+    };
+    // Pre-set the config value to ensure it doesn't change
+    app.project_config.agent.git_commit_push_enabled = Some(false);
+
+    let action = handle_key_event(
+        &mut app,
+        key_event(KeyCode::Char('n')),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("key");
+
+    assert_eq!(action, TuiAction::Continue);
+    // Config should remain unchanged
+    assert_eq!(
+        app.project_config.agent.git_commit_push_enabled,
+        Some(false)
+    );
+    assert!(!app.dirty_config);
+    assert!(matches!(app.mode, AppMode::EditingConfig { .. }));
+}
+
+#[test]
+fn risky_config_confirm_esc_cancels_change() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001")],
+    };
+    let mut app = App::new(queue);
+    let idx = app
+        .config_entries()
+        .iter()
+        .position(|entry| matches!(entry.key, crate::tui::ConfigKey::AgentGitCommitPushEnabled))
+        .expect("git_commit_push_enabled entry");
+    app.mode = AppMode::ConfirmRiskyConfig {
+        key: crate::tui::ConfigKey::AgentGitCommitPushEnabled,
+        new_value: "true".to_string(),
+        warning: "Test warning".to_string(),
+        previous_mode: Box::new(AppMode::EditingConfig {
+            selected: idx,
+            editing_value: None,
+        }),
+    };
+    app.project_config.agent.git_commit_push_enabled = Some(false);
+
+    let action =
+        handle_key_event(&mut app, key_event(KeyCode::Esc), "2026-01-20T00:00:00Z").expect("key");
+
+    assert_eq!(action, TuiAction::Continue);
+    // Config should remain unchanged
+    assert_eq!(
+        app.project_config.agent.git_commit_push_enabled,
+        Some(false)
+    );
+    assert!(!app.dirty_config);
+    assert!(matches!(app.mode, AppMode::EditingConfig { .. }));
+}
+
+#[test]
+fn risky_config_already_enabled_skips_confirmation() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001")],
+    };
+    let mut app = App::new(queue);
+    let idx = app
+        .config_entries()
+        .iter()
+        .position(|entry| matches!(entry.key, crate::tui::ConfigKey::AgentGitCommitPushEnabled))
+        .expect("git_commit_push_enabled entry");
+    app.mode = AppMode::EditingConfig {
+        selected: idx,
+        editing_value: None,
+    };
+    // Pre-enable git_commit_push_enabled - cycling should go to false without confirmation
+    app.project_config.agent.git_commit_push_enabled = Some(true);
+
+    let action =
+        handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z").expect("key");
+
+    assert_eq!(action, TuiAction::Continue);
+    // Should apply immediately since we're disabling, not enabling
+    assert!(
+        !matches!(app.mode, AppMode::ConfirmRiskyConfig { .. }),
+        "should not enter ConfirmRiskyConfig when disabling"
+    );
+    // Value should be cycled to false
+    assert_eq!(
+        app.project_config.agent.git_commit_push_enabled,
+        Some(false)
+    );
+}
+
+#[test]
+fn warning_level_config_no_confirmation() {
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![make_test_task("RQ-0001")],
+    };
+    let mut app = App::new(queue);
+    // Find approval_mode entry (Warning level, not Danger)
+    let idx = app
+        .config_entries()
+        .iter()
+        .position(|entry| matches!(entry.key, crate::tui::ConfigKey::AgentRunnerCliApprovalMode))
+        .expect("approval_mode entry");
+    app.mode = AppMode::EditingConfig {
+        selected: idx,
+        editing_value: None,
+    };
+
+    let action =
+        handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z").expect("key");
+
+    assert_eq!(action, TuiAction::Continue);
+    // Should apply immediately without confirmation (Warning level, not Danger)
+    assert!(
+        !matches!(app.mode, AppMode::ConfirmRiskyConfig { .. }),
+        "Warning level should not trigger confirmation"
+    );
+    assert!(app.dirty_config);
+}

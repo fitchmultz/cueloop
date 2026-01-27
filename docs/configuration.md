@@ -30,10 +30,13 @@ Supported fields:
 - `repoprompt_tool_injection`: inject RepoPrompt tooling reminders into prompts.
 - `git_revert_mode`: `ask`, `enabled`, or `disabled`.
 - `git_commit_push_enabled`: enable or disable automatic git commit/push after successful runs (default: `true`).
+  **Safety warning:** When enabled, Ralph will automatically push changes to the remote repository. This action is irreversible. The TUI will prompt for confirmation when enabling this setting.
 - `ci_gate_command`: command to run for the CI gate (default: `make ci`).
 - `ci_gate_enabled`: enable or disable the CI gate (default: `true`).
+  **Safety warning:** Disabling the CI gate skips validation before commit/push, which may allow broken code to be pushed.
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `cursor_bin`: override runner executable path/name (Cursor uses the `agent` binary).
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
+  **Safety warning:** `bypass_permissions` allows Claude to make edits without prompting for approval. Use with caution.
 - `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.
 - `instruction_files`: optional list of additional instruction file paths to inject at the top of every prompt sent to runner CLIs (repo-root relative, absolute, or `~/`).
 
@@ -55,6 +58,7 @@ Supported normalized fields:
 - `output_format`: `stream_json`, `json`, `text` (execution requires `stream_json`)
 - `verbosity`: `quiet`, `normal`, `verbose`
 - `approval_mode`: `default`, `auto_edits`, `yolo`, `safe`
+  **Safety warning:** `yolo` mode bypasses all approval prompts, allowing the runner to make changes without confirmation. Use with extreme caution.
 - `sandbox`: `default`, `enabled`, `disabled`
 - `plan_mode`: `default`, `enabled`, `disabled`
 - `unsupported_option_policy`: `ignore`, `warn`, `error`
@@ -133,3 +137,12 @@ Example:
 2. Project config (`.ralph/config.json`)
 3. Global config (`~/.config/ralph/config.json`)
 4. Schema defaults (`schemas/config.schema.json`)
+
+## TUI Safety Warnings
+
+When using the TUI config editor (`e` key in the task list), certain high-risk settings display inline warnings:
+
+- **Danger level** (⚠): Settings like `git_commit_push_enabled` that can cause irreversible actions. The TUI will prompt for confirmation before enabling these.
+- **Warning level** (ℹ): Settings like `approval_mode` and `claude_permission_mode` that reduce safety checks. These show descriptive text but don't require confirmation.
+
+The confirmation dialog for Danger-level settings explains the risk and requires an explicit `y` keypress to proceed. Pressing `n` or `Esc` cancels the change.

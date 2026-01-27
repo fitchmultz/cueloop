@@ -100,6 +100,11 @@ pub fn handle_key_event(
             );
             confirm::handle_confirm_revert_key(app, key, state)
         }
+        AppMode::ConfirmRiskyConfig {
+            key: config_key,
+            previous_mode,
+            ..
+        } => confirm::handle_confirm_risky_config_key(app, key, config_key, *previous_mode),
         AppMode::Executing { .. } => run::handle_executing_mode_key(app, key),
     }
 }

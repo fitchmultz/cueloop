@@ -7930,6 +7930,55 @@
         "RQ-0340"
       ],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0352",
+      "status": "done",
+      "title": "TUI UX: add safety explanations/warnings for risky config toggles (git push, approval mode)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "security",
+        "ux",
+        "config"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/config_edit.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "docs/configuration.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/config_edit.rs`: config editor exposes `agent.git_commit_push_enabled` as a toggle (lines 264-267).",
+        "Same file: config editor exposes `agent.runner_cli.defaults.approval_mode` (cycles through modes including `yolo`) at lines 198-207 and renders `bypass_permissions` for Claude permission mode at lines 165-172.",
+        "There is no inline explanation in the TUI of what these risky modes do (auto-push, bypass approvals).",
+        "`crates/ralph/src/tui/render/overlays.rs`: `draw_config_editor` at lines 305-400 renders config entries but has no mechanism to show field descriptions or warnings."
+      ],
+      "plan": [
+        "Add short inline descriptions or a help overlay for high-risk config fields (git auto-push, permission/approval modes, debug logging).",
+        "Add a confirmation prompt or warning banner when enabling the riskiest modes (e.g., yolo/bypass + auto-push).",
+        "Update docs (`docs/configuration.md`) to align with the TUI wording.",
+        "Add tests for the warning/confirmation flow.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Dependency RQ-0335 was invalid (not in queue) and has been removed.",
+        "Added RiskLevel enum (None/Warning/Danger) to config entries",
+        "Danger-level fields (git_commit_push_enabled) show confirmation dialog",
+        "Warning-level fields show inline icons without confirmation",
+        "Added 6 tests for risky config confirmation flow",
+        "Updated docs/configuration.md with safety warnings and TUI Safety Warnings section",
+        "All 648 library tests pass; clippy clean; formatting clean"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T23:18:22.154537000Z",
+      "completed_at": "2026-01-27T23:18:22.154537000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

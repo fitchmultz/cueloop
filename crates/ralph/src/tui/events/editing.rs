@@ -12,12 +12,41 @@
 //! - Text input uses cursor-aware `TextInput` edits.
 //! - Editing modes remain consistent with the selected entry index.
 
+use super::super::config_edit::{ConfigKey, RiskLevel};
 use super::super::input::{apply_text_input_key, TextInputEdit};
 use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
 use super::{is_plain_char, text_char, App};
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
+
+/// Check if cycling the config value would enable a risky behavior.
+/// Returns Some(warning_message) if confirmation is required, None otherwise.
+fn check_risky_config_change(app: &App, key: ConfigKey) -> Option<String> {
+    let entries = app.config_entries();
+    let entry = entries.iter().find(|e| e.key == key)?;
+
+    // Only check Danger level - Warning level just shows inline text
+    if entry.risk_level != RiskLevel::Danger {
+        return None;
+    }
+
+    match key {
+        ConfigKey::AgentGitCommitPushEnabled => {
+            // Check if we're about to enable auto-push (currently false or None)
+            let current = app.project_config.agent.git_commit_push_enabled;
+            if current != Some(true) {
+                Some(format!(
+                    "Enable automatic git commit and push?\n\n⚠ WARNING: {}",
+                    entry.description
+                ))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
 
 /// Result of handling a text-edit key.
 enum TextEditKeyResult {
@@ -320,12 +349,25 @@ pub(super) fn handle_editing_config_key(
                         editing_value: Some(TextInput::new(current)),
                     };
                 } else {
-                    app.cycle_config_value(entry.key);
-                    app.set_status_message("Config updated");
-                    app.mode = AppMode::EditingConfig {
-                        selected,
-                        editing_value: None,
-                    };
+                    // Check if this is a risky config change
+                    if let Some(warning) = check_risky_config_change(app, entry.key) {
+                        app.mode = AppMode::ConfirmRiskyConfig {
+                            key: entry.key,
+                            new_value: entry.value.clone(),
+                            warning,
+                            previous_mode: Box::new(AppMode::EditingConfig {
+                                selected,
+                                editing_value: None,
+                            }),
+                        };
+                    } else {
+                        app.cycle_config_value(entry.key);
+                        app.set_status_message("Config updated");
+                        app.mode = AppMode::EditingConfig {
+                            selected,
+                            editing_value: None,
+                        };
+                    }
                 }
                 Ok(TuiAction::Continue)
             }
@@ -337,12 +379,25 @@ pub(super) fn handle_editing_config_key(
                         editing_value: Some(TextInput::new(current)),
                     };
                 } else {
-                    app.cycle_config_value(entry.key);
-                    app.set_status_message("Config updated");
-                    app.mode = AppMode::EditingConfig {
-                        selected,
-                        editing_value: None,
-                    };
+                    // Check if this is a risky config change
+                    if let Some(warning) = check_risky_config_change(app, entry.key) {
+                        app.mode = AppMode::ConfirmRiskyConfig {
+                            key: entry.key,
+                            new_value: entry.value.clone(),
+                            warning,
+                            previous_mode: Box::new(AppMode::EditingConfig {
+                                selected,
+                                editing_value: None,
+                            }),
+                        };
+                    } else {
+                        app.cycle_config_value(entry.key);
+                        app.set_status_message("Config updated");
+                        app.mode = AppMode::EditingConfig {
+                            selected,
+                            editing_value: None,
+                        };
+                    }
                 }
                 Ok(TuiAction::Continue)
             }
