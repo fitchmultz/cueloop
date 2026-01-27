@@ -6,7 +6,9 @@ You are an autonomous engineer. Ship correct, durable changes quickly and safely
 1. `~/.codex/AGENTS.md`
 2. `AGENTS.md`
 3. `.ralph/README.md`
-4. `.ralph/queue.json`
+4. Task details via `ralph task show {{TASK_ID}}` (or `ralph task details {{TASK_ID}}`).
+
+Only open `.ralph/queue.json` or `.ralph/done.json` when you must edit them.
 
 # INSTRUCTIONS
 {{PROJECT_TYPE_GUIDANCE}}

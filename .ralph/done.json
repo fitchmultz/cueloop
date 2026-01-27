@@ -6317,6 +6317,53 @@
       "completed_at": "2026-01-27T01:05:36.563519000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0312",
+      "status": "done",
+      "title": "Add task details CLI command for queue and done",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "queue",
+        "task-details",
+        "feature",
+        "docs",
+        "prompts"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue/show.rs",
+        "crates/ralph/src/cli/queue/mod.rs",
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/queue/operations/query.rs",
+        "crates/ralph/assets/prompts/worker.md",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "`ralph queue show` already exists, loads queue + done via `load_and_validate_queues`, and selects tasks using `queue::find_task_across` (crates/ralph/src/cli/queue/show.rs; crates/ralph/src/queue/operations/query.rs).",
+        "`docs/cli.md` documents `ralph queue show` with json/compact output examples.",
+        "`TaskCommand` lacks a `details`/`show` subcommand in crates/ralph/src/cli/task.rs."
+      ],
+      "plan": [
+        "Confirm whether `ralph queue show` fully satisfies the request (queue + done lookup with JSON/compact output) and decide if a `ralph task details` alias is still desired for discoverability.",
+        "If an alias is needed, add a `task details` subcommand in crates/ralph/src/cli/task.rs that reuses the queue show logic and mirrors its flags/errors.",
+        "Update docs/cli.md and CLI help text to document the canonical command and any alias with clear examples.",
+        "Update crates/ralph/assets/prompts/worker.md to instruct agents to fetch task details via `ralph queue show <TASK_ID>` (or alias) instead of scanning full queue/done files.",
+        "Add/extend CLI tests for the chosen path (active queue hit, done archive hit, missing ID).",
+        "Run `make ci` and fix any failures."
+      ],
+      "notes": [
+        "Existing `ralph queue show` already provides task-detail lookup across queue + done; remaining work is prompt UX and optional aliasing under `ralph task`.",
+        "Added task show/details command and wired to queue show logic",
+        "Updated docs/prompts and expanded task show integration/help coverage",
+        "Hardened module docstrings for touched queue/show and help tests"
+      ],
+      "request": "Add a command, if one doesn't already exist, that enables grabbing a task and its details from queue.json or done.json quickly and easily without having to read the whole file. Something like 'ralph task details <TASK-ID>'. We can then modify prompts to have agents invoke this command to get the task details before beginning their work instead of having to read the entire queue.json or done.json file.",
+      "created_at": "2026-01-27T01:28:48Z",
+      "updated_at": "2026-01-27T02:03:18.473793000Z",
+      "completed_at": "2026-01-27T02:03:18.473793000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

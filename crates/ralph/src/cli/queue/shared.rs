@@ -1,4 +1,16 @@
 //! Shared queue CLI enums and conversions.
+//!
+//! Responsibilities:
+//! - Define shared clap enums used by queue/task commands.
+//! - Provide lightweight conversions for report/status types.
+//!
+//! Not handled here:
+//! - Command handlers or IO.
+//! - Business logic for queue mutations or reporting.
+//!
+//! Invariants/assumptions:
+//! - Enum variants map 1:1 with CLI strings.
+//! - Conversions are lossless and do not validate data.
 
 use clap::ValueEnum;
 
@@ -19,7 +31,7 @@ pub enum StatusArg {
     Rejected,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[clap(rename_all = "snake_case")]
 pub enum QueueShowFormat {
     /// Full JSON representation of the task.

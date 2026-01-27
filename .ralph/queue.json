@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0312",
-      "status": "todo",
-      "title": "Add task details CLI command for queue and done",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "queue",
-        "task-details",
-        "feature"
-      ],
-      "scope": [
-        "crates/ralph/src",
-        "crates/ralph/assets/prompts",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User requested a command to fetch a task and its details from queue.json or done.json (e.g., \"ralph task details <TASK-ID>\") without reading the whole file.",
-        "User requested updating prompts so agents invoke this command to get task details before work."
-      ],
-      "plan": [
-        "Audit existing queue/task CLI commands to confirm whether a task details command already exists and identify the right module for new CLI behavior.",
-        "Define command behavior and output format for queue.json vs done.json, including error handling for missing IDs.",
-        "Implement the command (or reuse existing functionality) to load a single task by ID from queue/done efficiently.",
-        "Add tests covering success and failure modes (missing task ID, bad input, empty files).",
-        "Update CLI help/examples and docs/cli.md, plus prompt templates that should call the new command.",
-        "Run make ci and address any failures."
-      ],
-      "notes": [],
-      "request": "Add a command, if one doesn't already exist, that enables grabbing a task and its details from queue.json or done.json quickly and easily without having to read the whole file. Something like 'ralph task details <TASK-ID>'. We can then modify prompts to have agents invoke this command to get the task details before beginning their work instead of having to read the entire queue.json or done.json file.",
-      "created_at": "2026-01-27T01:28:48Z",
-      "updated_at": "2026-01-27T01:28:48Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0303",
       "status": "todo",
       "title": "Achieve feature parity across all runners",

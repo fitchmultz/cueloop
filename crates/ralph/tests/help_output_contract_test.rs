@@ -1,4 +1,15 @@
 //! CLI help output contract tests for the Ralph binary.
+//!
+//! Responsibilities:
+//! - Assert key help text snippets remain present for core commands.
+//! - Guard against regression in documented flags and examples.
+//!
+//! Not handled here:
+//! - Full validation of help output formatting.
+//! - Behavior tests for command execution.
+//!
+//! Invariants/assumptions:
+//! - The Ralph binary is built and discoverable by the test harness.
 
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
@@ -152,6 +163,21 @@ fn task_help_mentions_default_and_explicit_build() {
 
     assert_contains(&combined, "ralph task");
     assert_contains(&combined, "build");
+}
+
+#[test]
+fn task_show_help_mentions_examples() {
+    let (status, stdout, stderr) = run(&["task", "show", "--help"]);
+    assert!(
+        status.success(),
+        "expected `ralph task show --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+
+    assert_contains(&combined, "ralph task show RQ-0001");
+    assert_contains(&combined, "--format");
+    assert_contains(&combined, "compact");
 }
 
 #[test]

@@ -45,6 +45,7 @@ pub use search::QueueSearchArgs;
 pub use shared::{
     QueueListFormat, QueueReportFormat, QueueShowFormat, QueueSortBy, QueueSortOrder, StatusArg,
 };
+pub(crate) use show::show_task;
 pub use show::QueueShowArgs;
 pub use sort::QueueSortArgs;
 pub use stats::QueueStatsArgs;

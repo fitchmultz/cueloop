@@ -435,6 +435,7 @@ Create tasks and edit task fields from CLI.
 
 Common subcommands:
 - `ralph task <request>`: create a task from a freeform request.
+- `ralph task show <TASK_ID>`: show task details (queue + done). Alias: `details`.
 - `ralph task status <draft|todo|doing|done|rejected> <TASK_ID>`: update status.
 - `ralph task edit <FIELD> <VALUE> <TASK_ID>`: edit any task field (default + custom).
 - `ralph task field <KEY> <VALUE> <TASK_ID>`: set one custom field.
@@ -455,6 +456,24 @@ ralph task edit title "Update queue edit docs" RQ-0001
 ralph task edit tags "cli, rust" RQ-0001
 ralph task edit custom_fields "severity=high, owner=ralph" RQ-0001
 ralph task edit request "" RQ-0001
+```
+
+### ralph task show
+
+Show a task by ID (searches queue + done).
+
+Flags:
+
+* `--format <json|compact>`: output format (default: `json`).
+
+Alias:
+
+* `ralph task details` (same flags and behavior).
+
+```bash
+ralph task show RQ-0001
+ralph task show RQ-0001 --format compact
+ralph task details RQ-0001 --format compact
 ```
 
 ### ralph task update

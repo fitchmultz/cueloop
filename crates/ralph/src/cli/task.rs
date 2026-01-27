@@ -16,6 +16,7 @@
 use anyhow::{bail, Result};
 use clap::{Args, Subcommand, ValueEnum};
 
+use crate::cli::queue::{show_task, QueueShowFormat};
 use crate::contracts::TaskStatus;
 use crate::queue::TaskEditKey;
 use crate::{
@@ -225,6 +226,8 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             )
         }
 
+        Some(TaskCommand::Show(args)) => show_task(&resolved, &args.task_id, args.format),
+
         None => {
             let args = args.build;
             let request = task_cmd::read_request_from_args_or_stdin(&args.request)?;
@@ -311,7 +314,7 @@ fn complete_task_or_signal(
 #[command(
     about = "Create and build tasks from freeform requests",
     subcommand_required = false,
-    after_long_help = "Examples:\n ralph task \"Add tests for the new queue logic\"\n ralph task --runner opencode --model gpt-5.2 \"Fix CLI help strings\"\n ralph task ready RQ-0005\n ralph task status doing --note \"Starting work\" RQ-0001\n ralph task update\n ralph task update RQ-0001\n ralph task update --fields scope,evidence RQ-0001\n ralph task edit title \"Refine queue edit\" RQ-0001\n ralph task field severity high RQ-0003\n ralph task done --note \"Finished work\" RQ-0001\n ralph task reject --note \"No longer needed\" RQ-0002\n ralph task build \"(explicit build subcommand still works)\""
+    after_long_help = "Examples:\n ralph task \"Add tests for the new queue logic\"\n ralph task --runner opencode --model gpt-5.2 \"Fix CLI help strings\"\n ralph task show RQ-0001\n ralph task show RQ-0001 --format compact\n ralph task ready RQ-0005\n ralph task status doing --note \"Starting work\" RQ-0001\n ralph task update\n ralph task update RQ-0001\n ralph task update --fields scope,evidence RQ-0001\n ralph task edit title \"Refine queue edit\" RQ-0001\n ralph task field severity high RQ-0003\n ralph task done --note \"Finished work\" RQ-0001\n ralph task reject --note \"No longer needed\" RQ-0002\n ralph task build \"(explicit build subcommand still works)\""
 )]
 pub struct TaskArgs {
     #[command(subcommand)]
@@ -328,6 +331,13 @@ pub enum TaskCommand {
         after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nExamples:\n ralph task \"Add integration tests for run one\"\n ralph task --tags cli,rust \"Refactor queue parsing\"\n ralph task --scope crates/ralph \"Fix TUI rendering bug\"\n ralph task --runner opencode --model gpt-5.2 \"Add docs for OpenCode setup\"\n ralph task --runner gemini --model gemini-3-flash-preview \"Draft risk checklist\"\n ralph task --runner codex --model gpt-5.2-codex --effort high \"Fix queue validation\"\n ralph task --rp-on \"Audit error handling\"\n ralph task --rp-off \"Quick typo fix\"\n echo \"Triage flaky CI\" | ralph task --runner codex --model gpt-5.2-codex --effort medium\n\nExplicit subcommand:\n ralph task build \"Add integration tests for run one\""
     )]
     Build(TaskBuildArgs),
+
+    /// Show a task by ID (queue + done).
+    #[command(
+        alias = "details",
+        after_long_help = "Examples:\n ralph task show RQ-0001\n ralph task details RQ-0001 --format compact"
+    )]
+    Show(TaskShowArgs),
 
     /// Promote a draft task to todo.
     #[command(
@@ -409,6 +419,20 @@ pub struct TaskBuildArgs {
     /// Force RepoPrompt flags off (planning requirement + tooling reminders).
     #[arg(long, conflicts_with = "rp_on")]
     pub rp_off: bool,
+}
+
+#[derive(Args)]
+#[command(
+    after_long_help = "Examples:\n ralph task show RQ-0001\n ralph task show RQ-0001 --format compact"
+)]
+pub struct TaskShowArgs {
+    /// Task ID to show.
+    #[arg(value_name = "TASK_ID")]
+    pub task_id: String,
+
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = QueueShowFormat::Json)]
+    pub format: QueueShowFormat,
 }
 
 #[derive(Args)]
@@ -610,8 +634,9 @@ impl From<TaskEditFieldArg> for TaskEditKey {
 
 #[cfg(test)]
 mod tests {
-    use clap::CommandFactory;
+    use clap::{CommandFactory, Parser};
 
+    use crate::cli::queue::QueueShowFormat;
     use crate::cli::Cli;
 
     #[test]
@@ -631,5 +656,44 @@ mod tests {
             help.contains("ralph task update --rp-off --fields scope,evidence RQ-0001"),
             "missing rp-off example: {help}"
         );
+    }
+
+    #[test]
+    fn task_show_help_mentions_examples() {
+        let mut cmd = Cli::command();
+        let task = cmd.find_subcommand_mut("task").expect("task subcommand");
+        let show = task
+            .find_subcommand_mut("show")
+            .expect("task show subcommand");
+        let help = show.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph task show RQ-0001"),
+            "missing show example: {help}"
+        );
+        assert!(
+            help.contains("--format compact"),
+            "missing format example: {help}"
+        );
+    }
+
+    #[test]
+    fn task_details_alias_parses() {
+        let cli =
+            Cli::try_parse_from(["ralph", "task", "details", "RQ-0001", "--format", "compact"])
+                .expect("parse");
+
+        match cli.command {
+            crate::cli::Command::Task(crate::cli::task::TaskArgs { command, .. }) => {
+                match command {
+                    Some(crate::cli::task::TaskCommand::Show(args)) => {
+                        assert_eq!(args.task_id, "RQ-0001");
+                        assert_eq!(args.format, QueueShowFormat::Compact);
+                    }
+                    _ => panic!("expected task show command"),
+                }
+            }
+            _ => panic!("expected task command"),
+        }
     }
 }
