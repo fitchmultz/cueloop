@@ -11,34 +11,25 @@
 //! Invariants/assumptions:
 //! - Search input uses cursor-aware `TextInput` updates.
 
-use super::super::input::{apply_text_input_key, TextInputEdit};
 use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
-use super::App;
+use super::{handle_filter_input_key, App};
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyEvent;
+
+fn set_search_mode(input: TextInput) -> AppMode {
+    AppMode::Searching(input)
+}
+
+fn apply_search_query(app: &mut App, value: &str) {
+    app.set_search_query(value.to_string());
+}
 
 /// Handle key events in Searching mode.
 pub(super) fn handle_searching_mode_key(
     app: &mut App,
     key: KeyEvent,
-    mut current: TextInput,
+    current: TextInput,
 ) -> Result<TuiAction> {
-    match key.code {
-        KeyCode::Enter => {
-            app.set_search_query(current.value().to_string());
-            app.mode = AppMode::Normal;
-            Ok(TuiAction::Continue)
-        }
-        KeyCode::Esc => {
-            app.mode = AppMode::Normal;
-            Ok(TuiAction::Continue)
-        }
-        _ => {
-            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
-                app.mode = AppMode::Searching(current);
-            }
-            Ok(TuiAction::Continue)
-        }
-    }
+    handle_filter_input_key(app, key, current, set_search_mode, apply_search_query)
 }

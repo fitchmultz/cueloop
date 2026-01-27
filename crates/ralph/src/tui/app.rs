@@ -61,6 +61,12 @@ pub struct FilterState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct FilterSnapshot {
+    filters: FilterState,
+    selected_task_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct FilterKey {
     query: String,
     statuses: Vec<TaskStatus>,
@@ -240,6 +246,8 @@ pub struct App {
     pub done_path: Option<PathBuf>,
     /// Active filters applied to the task list.
     pub filters: FilterState,
+    /// Snapshot of filters before entering a live filter input mode.
+    filter_snapshot: Option<FilterSnapshot>,
     /// Cached filtered task indices into `queue.tasks`.
     pub filtered_indices: Vec<usize>,
     /// Queue revision that changes whenever tasks are reordered or mutated.
@@ -301,6 +309,7 @@ impl App {
             id_width: 4,
             done_path: None,
             filters: FilterState::default(),
+            filter_snapshot: None,
             filtered_indices: Vec::new(),
             queue_rev: 0,
             id_to_index: HashMap::new(),
@@ -814,6 +823,44 @@ impl App {
         self.rebuild_filtered_view_with_preferred(preferred_id.as_deref());
     }
 
+    pub(crate) fn begin_filter_input(&mut self) {
+        if self.filter_snapshot.is_some() {
+            return;
+        }
+        self.filter_snapshot = Some(FilterSnapshot {
+            filters: self.filters.clone(),
+            selected_task_id: self.selected_task().map(|task| task.id.clone()),
+        });
+    }
+
+    pub(crate) fn commit_filter_input(&mut self) {
+        self.filter_snapshot = None;
+    }
+
+    pub(crate) fn restore_filter_snapshot(&mut self) {
+        let Some(snapshot) = self.filter_snapshot.take() else {
+            return;
+        };
+        self.filters = snapshot.filters;
+        self.rebuild_filtered_view_with_preferred(snapshot.selected_task_id.as_deref());
+    }
+
+    pub(crate) fn start_search_input(&mut self) {
+        self.begin_filter_input();
+        self.mode = AppMode::Searching(TextInput::new(self.filters.query.clone()));
+    }
+
+    pub(crate) fn start_filter_tags_input(&mut self) {
+        self.begin_filter_input();
+        self.mode = AppMode::FilteringTags(TextInput::new(self.filters.tags.join(",")));
+    }
+
+    pub(crate) fn start_filter_scopes_input(&mut self) {
+        self.begin_filter_input();
+        self.mode =
+            AppMode::FilteringScopes(TextInput::new(self.filters.search_options.scopes.join(",")));
+    }
+
     /// Clear all active filters (query, tags, status).
     pub fn clear_filters(&mut self) {
         let preferred_id = self.selected_task().map(|t| t.id.clone());
@@ -1211,17 +1258,15 @@ impl App {
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::Search => {
-                self.mode = AppMode::Searching(TextInput::new(self.filters.query.clone()));
+                self.start_search_input();
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::FilterTags => {
-                self.mode = AppMode::FilteringTags(TextInput::new(self.filters.tags.join(",")));
+                self.start_filter_tags_input();
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::FilterScopes => {
-                self.mode = AppMode::FilteringScopes(TextInput::new(
-                    self.filters.search_options.scopes.join(","),
-                ));
+                self.start_filter_scopes_input();
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::ClearFilters => {

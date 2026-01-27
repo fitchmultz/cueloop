@@ -16,7 +16,8 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::App;
+use super::input::{apply_text_input_key, TextInputEdit};
+use super::{App, TextInput};
 
 pub mod confirm;
 pub mod create;
@@ -120,6 +121,38 @@ pub(super) fn is_plain_char(key: &KeyEvent, expected: char) -> bool {
         return false;
     }
     key.code == KeyCode::Char(expected)
+}
+
+pub(super) fn handle_filter_input_key(
+    app: &mut App,
+    key: KeyEvent,
+    mut current: TextInput,
+    set_mode: fn(TextInput) -> AppMode,
+    apply_value: fn(&mut App, &str),
+) -> anyhow::Result<TuiAction> {
+    match key.code {
+        KeyCode::Enter => {
+            apply_value(app, current.value());
+            app.commit_filter_input();
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Esc => {
+            app.restore_filter_snapshot();
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        _ => {
+            let before = current.value().to_string();
+            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
+                if before != current.value() {
+                    apply_value(app, current.value());
+                }
+                app.mode = set_mode(current);
+            }
+            Ok(TuiAction::Continue)
+        }
+    }
 }
 
 fn should_open_help(app: &App, key: &KeyEvent) -> bool {

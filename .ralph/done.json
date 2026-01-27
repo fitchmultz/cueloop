@@ -6884,6 +6884,49 @@
       "completed_at": "2026-01-27T13:53:25.587193000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0323",
+      "status": "done",
+      "title": "TUI: apply search/tag/scope filters live while typing (preview + cancel restore)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "filters",
+        "input"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/search.rs",
+        "crates/ralph/src/tui/events/filter.rs",
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/search.rs`: `handle_searching_mode_key` only calls `set_search_query` on `KeyCode::Enter`; other keys just update `AppMode::Searching` without applying filters.",
+        "`crates/ralph/src/tui/events/filter.rs`: `handle_filtering_tags_key`/`handle_filtering_scopes_key` apply filters only on `KeyCode::Enter`; `KeyCode::Esc` returns to Normal without restore logic.",
+        "`crates/ralph/src/tui/events/tests.rs`: `search_escape_cancels_without_applying_query` and `enter_applies_scope_filter` encode the current commit-on-enter behavior."
+      ],
+      "plan": [
+        "Capture the prior filter state when entering search/tag/scope input modes (so cancel can restore).",
+        "Apply filter changes on each keystroke for a live preview of results.",
+        "On Esc, restore the prior filter state; on Enter, keep the latest preview as the committed filters.",
+        "Update/add tests in `crates/ralph/src/tui/events/tests.rs` for live preview and cancel restore across search/tag/scope inputs.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Current tests lock in commit-on-enter behavior for search and scope filters; tag input has no coverage yet.",
+        "Live preview applies search/tag/scope filters during typing with snapshot restore on Esc.",
+        "Centralized filter input handling and entry points now capture/commit snapshots.",
+        "Added TUI event tests for live preview + cancel restore; make ci passes."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T14:20:37.941812000Z",
+      "completed_at": "2026-01-27T14:20:37.941812000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

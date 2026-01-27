@@ -12,60 +12,49 @@
 //! - Input uses cursor-aware `TextInput` edits.
 //! - On submit or cancel, the mode returns to Normal.
 
-use super::super::input::{apply_text_input_key, TextInputEdit};
 use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
-use super::App;
+use super::{handle_filter_input_key, App};
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyEvent;
+
+fn set_filter_tags_mode(input: TextInput) -> AppMode {
+    AppMode::FilteringTags(input)
+}
+
+fn set_filter_scopes_mode(input: TextInput) -> AppMode {
+    AppMode::FilteringScopes(input)
+}
+
+fn apply_tag_filters(app: &mut App, value: &str) {
+    let tags = App::parse_tags(value);
+    app.set_tag_filters(tags);
+}
+
+fn apply_scope_filters(app: &mut App, value: &str) {
+    let scopes = App::parse_list(value);
+    app.set_scope_filters(scopes);
+}
 
 /// Handle key events in FilteringTags mode.
 pub(super) fn handle_filtering_tags_key(
     app: &mut App,
     key: KeyEvent,
-    mut current: TextInput,
+    current: TextInput,
 ) -> Result<TuiAction> {
-    match key.code {
-        KeyCode::Enter => {
-            let tags = App::parse_tags(current.value());
-            app.set_tag_filters(tags);
-            app.mode = AppMode::Normal;
-            Ok(TuiAction::Continue)
-        }
-        KeyCode::Esc => {
-            app.mode = AppMode::Normal;
-            Ok(TuiAction::Continue)
-        }
-        _ => {
-            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
-                app.mode = AppMode::FilteringTags(current);
-            }
-            Ok(TuiAction::Continue)
-        }
-    }
+    handle_filter_input_key(app, key, current, set_filter_tags_mode, apply_tag_filters)
 }
 
 pub(super) fn handle_filtering_scopes_key(
     app: &mut App,
     key: KeyEvent,
-    mut current: TextInput,
+    current: TextInput,
 ) -> Result<TuiAction> {
-    match key.code {
-        KeyCode::Enter => {
-            let scopes = App::parse_list(current.value());
-            app.set_scope_filters(scopes);
-            app.mode = AppMode::Normal;
-            Ok(TuiAction::Continue)
-        }
-        KeyCode::Esc => {
-            app.mode = AppMode::Normal;
-            Ok(TuiAction::Continue)
-        }
-        _ => {
-            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
-                app.mode = AppMode::FilteringScopes(current);
-            }
-            Ok(TuiAction::Continue)
-        }
-    }
+    handle_filter_input_key(
+        app,
+        key,
+        current,
+        set_filter_scopes_mode,
+        apply_scope_filters,
+    )
 }

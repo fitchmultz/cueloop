@@ -36,7 +36,7 @@ pub(super) fn handle_normal_mode_key(
         return Ok(TuiAction::Continue);
     }
     if is_ctrl_char(&key, 'f') {
-        app.mode = AppMode::Searching(TextInput::new(app.filters.query.clone()));
+        app.start_search_input();
         return Ok(TuiAction::Continue);
     }
 
@@ -198,17 +198,15 @@ pub(super) fn handle_normal_mode_key(
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('/') if is_plain_char(&key, '/') => {
-            app.mode = AppMode::Searching(TextInput::new(app.filters.query.clone()));
+            app.start_search_input();
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('t') if is_plain_char(&key, 't') => {
-            app.mode = AppMode::FilteringTags(TextInput::new(app.filters.tags.join(",")));
+            app.start_filter_tags_input();
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('o') if is_plain_char(&key, 'o') => {
-            app.mode = AppMode::FilteringScopes(TextInput::new(
-                app.filters.search_options.scopes.join(","),
-            ));
+            app.start_filter_scopes_input();
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('f') if is_plain_char(&key, 'f') => {
