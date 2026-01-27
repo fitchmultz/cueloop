@@ -17,6 +17,7 @@ use ralph::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
+use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
 
 pub fn path_has_repo_markers(path: &Path) -> bool {
@@ -50,6 +51,11 @@ pub fn temp_dir_outside_repo() -> TempDir {
     let base = find_non_repo_temp_base();
     std::fs::create_dir_all(&base).expect("ensure temp base exists");
     TempDir::new_in(&base).expect("create temp dir outside repo")
+}
+
+pub fn env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
 }
 
 /// Helper to create a test task.

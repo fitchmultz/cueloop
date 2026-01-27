@@ -7010,6 +7010,53 @@
       "completed_at": "2026-01-27T16:10:55.442497000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0331",
+      "status": "done",
+      "title": "Align RepoPrompt tool injection text with MCP inventory details",
+      "priority": "medium",
+      "tags": [
+        "repoprompt",
+        "prompts",
+        "tooling"
+      ],
+      "scope": [
+        "docs/repo_prompt_inventory.yaml",
+        "crates/ralph/src/prompts_internal/util.rs",
+        "crates/ralph/src/prompts_internal/worker_phases.rs",
+        "crates/ralph/src/prompts_internal/tests.rs",
+        "crates/ralph/assets/prompts/worker_phase1.md",
+        "crates/ralph/assets/prompts/worker_phase2.md",
+        "crates/ralph/assets/prompts/worker_phase2_handoff.md",
+        "crates/ralph/assets/prompts/worker_phase3.md",
+        "crates/ralph/assets/prompts/worker_single_phase.md",
+        "make ci"
+      ],
+      "evidence": [
+        "docs/repo_prompt_inventory.yaml defines the current RepoPrompt tool inventory and usage details.",
+        "crates/ralph/src/prompts_internal/util.rs defines REPOPROMPT_REQUIRED_INSTRUCTION with a short tool list (list_windows, select_window, apply_edits, read_file, file_search, etc.).",
+        "crates/ralph/src/prompts_internal/worker_phases.rs injects REPOPROMPT_REQUIRED_INSTRUCTION into {{REPOPROMPT_BLOCK}}, and the worker phase templates include that placeholder."
+      ],
+      "plan": [
+        "Compare docs/repo_prompt_inventory.yaml against REPOPROMPT_REQUIRED_INSTRUCTION (and any related RepoPrompt strings) to identify missing or inaccurate tool guidance.",
+        "Update crates/ralph/src/prompts_internal/util.rs to align the tooling reminder text with the inventory details, keeping the wording explicit and unambiguous.",
+        "Verify crates/ralph/src/prompts_internal/worker_phases.rs and the worker phase templates still inject the updated block; adjust templates only if placeholders or spacing need changes.",
+        "Extend crates/ralph/src/prompts_internal/tests.rs to assert the updated tooling reminder content and failure modes for missing/mismatched guidance.",
+        "Run make ci."
+      ],
+      "notes": [
+        "Repo-local .ralph/prompts overrides are not present; tooling reminder text is injected from embedded prompts via REPOPROMPT_REQUIRED_INSTRUCTION.",
+        "Expanded RepoPrompt tooling requirement block to match inventory (targeting, discovery, edits, git, planning).",
+        "Added assertions covering the updated RepoPrompt tool inventory in prompts and scan prompt tests.",
+        "Stabilized config env-path tests with a shared env lock; make ci passes."
+      ],
+      "request": "I have fetched the Repo Prompt MCP server tool descriptions. We need to revise the instances in which Repo Prompt information is injected into the prompts to accurately reflect the detailed information so agents use the tools properly. See docs/repo_prompt_inventory.yaml.",
+      "created_at": "2026-01-27T15:15:50Z",
+      "updated_at": "2026-01-27T16:33:27.793108000Z",
+      "completed_at": "2026-01-27T16:33:27.793108000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

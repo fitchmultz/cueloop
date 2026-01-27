@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0331",
-      "status": "todo",
-      "title": "Align RepoPrompt tool injection text with MCP inventory details",
-      "priority": "medium",
-      "tags": [
-        "repoprompt",
-        "prompts",
-        "tooling"
-      ],
-      "scope": [
-        "docs/repo_prompt_inventory.yaml",
-        "crates/ralph/assets/prompts/",
-        ".ralph/prompts/",
-        "crates/ralph/src/",
-        "docs/cli.md",
-        "make ci"
-      ],
-      "evidence": [
-        "User request: update RepoPrompt tool injection text to reflect the fetched MCP server tool descriptions in docs/repo_prompt_inventory.yaml."
-      ],
-      "plan": [
-        "Review docs/repo_prompt_inventory.yaml and identify the authoritative tool descriptions and usage constraints.",
-        "Locate every prompt/tool-injection location in Ralph that references RepoPrompt tooling and confirm where content is injected.",
-        "Update the injected prompt content to match the inventory details, keeping wording consistent and unambiguous.",
-        "Add or update tests to cover expected injected content and failure modes (missing or outdated tool descriptions).",
-        "Update docs/cli.md (and any prompt docs) to match the new injection behavior and examples.",
-        "Run make ci."
-      ],
-      "notes": [],
-      "request": "I have fetched the Repo Prompt MCP server tool descriptions. We need to revise the instances in which Repo Prompt information is injected into the prompts to accurately reflect the detailed information so agents use the tools properly. See docs/repo_prompt_inventory.yaml.",
-      "created_at": "2026-01-27T15:15:50Z",
-      "updated_at": "2026-01-27T15:15:50Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0325",
       "status": "todo",
       "title": "TUI: standardize confirm dialog keybindings (j/k, arrows, sensible defaults)",

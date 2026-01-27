@@ -212,7 +212,8 @@ fn scan_prompt_replaces_focus_and_can_wrap_rp() -> Result<()> {
     assert!(prompt.contains("CI gaps"));
     // The wrap_with_repoprompt_requirement function adds the instruction
     assert!(prompt.contains("TOOLING REQUIREMENT: RepoPrompt"));
-    assert!(prompt.contains("You MUST use the available RepoPrompt tools"));
+    assert!(prompt.contains("Targeting: use `list_windows` + `select_window`"));
+    assert!(prompt.contains("_tabID"));
     Ok(())
 }
 

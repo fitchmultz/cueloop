@@ -225,7 +225,41 @@ fn repoprompt_planning_instruction_mentions_preflight_and_parity() {
     assert!(instruction.contains("do NOT replace selection"));
     assert!(instruction.contains("provided chat ID"));
 }
-
+#[test]
+fn repoprompt_required_instruction_mentions_tool_inventory() {
+    let instruction = REPOPROMPT_REQUIRED_INSTRUCTION;
+    let required_fragments = [
+        "TOOLING REQUIREMENT: RepoPrompt",
+        "list_windows",
+        "select_window",
+        "_windowID",
+        "manage_workspaces",
+        "list_tabs",
+        "select_tab",
+        "_tabID",
+        "manage_selection",
+        "get_file_tree",
+        "file_search",
+        "read_file",
+        "get_code_structure",
+        "workspace_context",
+        "prompt",
+        "apply_edits",
+        "file_actions",
+        "git",
+        "status/diff/log/show/blame",
+        "context_builder",
+        "list_models",
+        "chat_send",
+        "chats",
+    ];
+    for fragment in required_fragments {
+        assert!(
+            instruction.contains(fragment),
+            "instruction missing fragment: {fragment}"
+        );
+    }
+}
 #[test]
 fn load_worker_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
     let dir = TempDir::new()?;
@@ -233,7 +267,6 @@ fn load_worker_prompt_falls_back_to_embedded_default_when_missing() -> Result<()
     assert!(prompt.contains("# MISSION"));
     Ok(())
 }
-
 #[test]
 fn load_worker_phase1_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
     let dir = TempDir::new()?;
@@ -241,7 +274,6 @@ fn load_worker_phase1_prompt_falls_back_to_embedded_default_when_missing() -> Re
     assert!(prompt.contains("# PLANNING MODE"));
     Ok(())
 }
-
 #[test]
 fn load_worker_phase2_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
     let dir = TempDir::new()?;

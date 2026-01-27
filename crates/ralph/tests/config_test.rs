@@ -8,6 +8,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
+use test_support::env_lock;
 
 mod test_support;
 
@@ -94,6 +95,7 @@ fn test_project_config_path() {
 
 #[test]
 fn test_global_config_path_xdg() {
+    let _guard = env_lock().lock().expect("env lock");
     let dir = TempDir::new().expect("create temp dir");
     let xdg_config = dir.path().join(".config");
     fs::create_dir_all(xdg_config.join("ralph")).expect("create xdg config dir");
@@ -111,6 +113,7 @@ fn test_global_config_path_xdg() {
 
 #[test]
 fn test_global_config_path_home() {
+    let _guard = env_lock().lock().expect("env lock");
     let dir = TempDir::new().expect("create temp dir");
     let home_config = dir.path().join(".config").join("ralph");
     fs::create_dir_all(&home_config).expect("create home config dir");
@@ -129,6 +132,7 @@ fn test_global_config_path_home() {
 
 #[test]
 fn test_global_config_path_none_if_no_home() {
+    let _guard = env_lock().lock().expect("env lock");
     env::remove_var("XDG_CONFIG_HOME");
     env::remove_var("HOME");
     let config_path = config::global_config_path();

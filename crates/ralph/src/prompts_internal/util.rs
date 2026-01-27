@@ -23,7 +23,13 @@ pub(crate) struct RequiredPlaceholder {
 /// Instructions for tooling requirements when RepoPrompt tooling reminders are enabled.
 pub(crate) const REPOPROMPT_REQUIRED_INSTRUCTION: &str = r#"
 ## TOOLING REQUIREMENT: RepoPrompt
-You are running in a RepoPrompt-enabled environment. You MUST use the available RepoPrompt tools (`list_windows`, `select_window`, `apply_edits`, `read_file`, `file_search`, etc.) to explore the codebase. Do not rely on internal knowledge or assumptions. Verify everything.
+You are running in a RepoPrompt-enabled environment. You MUST use the RepoPrompt tools to explore and edit the codebase; do not rely on internal knowledge or assumptions. Verify everything.
+
+Targeting: use `list_windows` + `select_window` (or pass `_windowID` on tool calls) and `manage_workspaces` with `list_tabs`/`select_tab` (or pass `_tabID`) to bind a stable window/tab context.
+Discovery/context: `manage_selection`, `get_file_tree`, `file_search`, `read_file`, `get_code_structure`, `workspace_context`, `prompt`.
+Edits: `apply_edits`, `file_actions`.
+Read-only git: `git` (status/diff/log/show/blame).
+Planning/review: `context_builder`, `list_models`, `chat_send`, `chats` when needed.
 "#;
 
 pub(crate) const REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION: &str = r#"
