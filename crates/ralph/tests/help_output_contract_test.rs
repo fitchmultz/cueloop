@@ -77,6 +77,7 @@ fn root_help_mentions_runner_and_models_and_precedence() {
     assert_contains(&combined, "opencode");
     assert_contains(&combined, "gemini");
     assert_contains(&combined, "claude");
+    assert_contains(&combined, "cursor");
 
     assert_contains(&combined, "Allowed models:");
     assert_contains(&combined, "gpt-5.2-codex");

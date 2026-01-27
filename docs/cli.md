@@ -16,7 +16,7 @@ ralph --force queue archive
 
 * `ralph init`: bootstrap `.ralph/queue.json`, `.ralph/done.json`, and `.ralph/config.json`.
 * `ralph queue <subcommand>`: inspect, search, validate, and maintain `.ralph/queue.json` + `.ralph/done.json`.
-* `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude).
+* `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude/cursor).
 * `ralph tui`: launch the interactive UI (queue + execution + loop).
 * `ralph prompt <subcommand>`: render compiled prompts for inspection.
 * `ralph task`: create a task from a request.

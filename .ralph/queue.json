@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0339",
-      "status": "todo",
-      "title": "CLI help/docs: include Cursor runner in supported runners and examples",
-      "priority": "high",
-      "tags": [
-        "cli",
-        "docs",
-        "ux",
-        "runner"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/mod.rs",
-        "docs/cli.md",
-        "README.md",
-        "crates/ralph/tests/help_output_contract_test.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/cli/mod.rs`: top-level `after_long_help` says “Allowed runners: codex, opencode, gemini, claude” (missing cursor), while `Runner` includes `cursor` (see `schemas/config.schema.json`).",
-        "`schemas/config.schema.json`: runner enum includes `cursor`, and config includes `cursor_bin` (default `agent`)."
-      ],
-      "plan": [
-        "Update CLI help text to list Cursor as a supported runner where applicable (and mention the `agent` binary name).",
-        "Update `docs/cli.md` and `README.md` examples to include a Cursor example that works with the normalized runner CLI options.",
-        "Update/extend help output contract tests so this cannot regress.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-27T18:17:26Z",
-      "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0340",
       "status": "todo",
       "title": "Open-source readiness: add LICENSE + crate metadata and enable publishing",

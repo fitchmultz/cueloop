@@ -7484,6 +7484,61 @@
       "completed_at": "2026-01-27T21:13:51.567545000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0339",
+      "status": "done",
+      "title": "CLI help/docs: include Cursor runner in supported runners and examples",
+      "priority": "high",
+      "tags": [
+        "cli",
+        "docs",
+        "ux",
+        "runner"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/mod.rs",
+        "docs/cli.md",
+        "README.md",
+        "crates/ralph/tests/help_output_contract_test.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/cli/mod.rs:37`: `after_long_help` says 'Allowed runners: codex, opencode, gemini, claude' - missing cursor.",
+        "`schemas/config.schema.json:386-392`: Runner enum includes `cursor` (confirmed current).",
+        "`schemas/config.schema.json:147-153`: `cursor_bin` config with default `agent` (confirmed current).",
+        "`docs/cli.md:19`: Lists 'codex/opencode/gemini/claude' - missing cursor in runner list.",
+        "`docs/cli.md:58-63`: Documents `cursor_bin` config key (confirmed current).",
+        "`docs/cli.md:206`: Lists `--runner <codex|opencode|gemini|claude|cursor>` - includes cursor (confirmed current).",
+        "`README.md:50`: Mentions 'Codex + OpenCode + Gemini + Claude + Cursor' - already includes cursor (confirmed current).",
+        "`crates/ralph/tests/help_output_contract_test.rs:75-79`: Tests for runners only checks codex, opencode, gemini, claude - missing cursor assertion."
+      ],
+      "plan": [
+        "Update `crates/ralph/src/cli/mod.rs` `after_long_help` to include 'cursor' in the allowed runners list.",
+        "Update `docs/cli.md` line 19 to include 'cursor' in the runner list (consistent with other references).",
+        "Add Cursor runner example to `docs/cli.md` and/or `README.md` showing usage with the `agent` binary.",
+        "Update `crates/ralph/tests/help_output_contract_test.rs` to assert 'cursor' appears in help output.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "README.md already mentions Cursor in the runners list (line 50).",
+        "docs/cli.md has inconsistent coverage: includes cursor in --runner flag docs (line 206) and cursor_bin config (lines 58-63), but misses it in the core commands list (line 19).",
+        "Cursor uses 'agent' as its binary name (not 'cursor'), which should be clearly documented.",
+        "Updated CLI help text to include cursor in allowed runners list",
+        "Added cursor examples to CLI help (scan and task commands)",
+        "Updated docs/cli.md runner list to include cursor",
+        "Added cursor assertion to help_output_contract_test.rs",
+        "make ci passes with all 641 tests"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T21:21:43.490101000Z",
+      "completed_at": "2026-01-27T21:21:43.490101000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
