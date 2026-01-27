@@ -7831,6 +7831,57 @@
       "completed_at": "2026-01-27T22:12:16.280522000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0347",
+      "status": "done",
+      "title": "Security docs: add `SECURITY.md` (secrets, raw logs/dumps, disclosure)",
+      "priority": "medium",
+      "tags": [
+        "security",
+        "docs"
+      ],
+      "scope": [
+        "SECURITY.md",
+        "README.md",
+        "crates/ralph/src/debuglog.rs",
+        "crates/ralph/src/fsutil.rs",
+        "crates/ralph/src/redaction.rs",
+        "docs/configuration.md",
+        "make ci"
+      ],
+      "evidence": [
+        "Repo root: `SECURITY.md` is missing.",
+        "`crates/ralph/src/debuglog.rs`: debug mode logs raw, unredacted runner output to disk.",
+        "`crates/ralph/src/fsutil.rs`: safeguard dumps now redact by default via `safeguard_text_dump_redacted()`, raw dumps require `RALPH_RAW_DUMP=1` or `--debug` opt-in.",
+        "`crates/ralph/src/redaction.rs`: redaction logic masks secrets (API keys, tokens, AWS keys, SSH keys) with `[REDACTED]` marker."
+      ],
+      "plan": [
+        "Add `SECURITY.md` describing how to report vulnerabilities and what data to avoid sharing (runner outputs, logs, dumps).",
+        "Document redaction behavior: safeguard dumps are redacted by default; raw dumps require explicit opt-in.",
+        "Document debug logging implications (`--debug` flag writes raw runner output to `.ralph/logs/debug.log`).",
+        "Link `SECURITY.md` from `README.md`.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Dependency RQ-0337 (safeguard redaction) is completed - redaction is now implemented in fsutil.rs and redaction.rs.",
+        "Created SECURITY.md with comprehensive security documentation",
+        "Updated README.md with link to SECURITY.md",
+        "Updated docs/index.md with Security entry",
+        "Updated docs/environment.md with RALPH_RAW_DUMP documentation",
+        "make ci passed (642 tests, all green)"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T22:19:03.053858000Z",
+      "completed_at": "2026-01-27T22:19:03.053858000Z",
+      "depends_on": [
+        "RQ-0337"
+      ],
+      "custom_fields": {}
     }
   ]
 }

@@ -8,6 +8,7 @@ Purpose: Provide a concise, navigable reference for Ralph configuration, CLI usa
 - CLI Reference: `docs/cli.md`
 - Workflow and Architecture: `docs/workflow.md`
 - Environment Variables: `docs/environment.md`
+- Security: `SECURITY.md`
 
 ## Source of Truth
 - Config schema: `schemas/config.schema.json`

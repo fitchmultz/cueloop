@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0347",
-      "status": "todo",
-      "title": "Security docs: add `SECURITY.md` (secrets, raw logs/dumps, disclosure)",
-      "priority": "medium",
-      "tags": [
-        "security",
-        "docs"
-      ],
-      "scope": [
-        "SECURITY.md",
-        "README.md",
-        "crates/ralph/src/debuglog.rs",
-        "crates/ralph/src/fsutil.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "Repo root: `SECURITY.md` is missing.",
-        "`crates/ralph/src/debuglog.rs`: debug mode logs raw, unredacted runner output to disk.",
-        "`crates/ralph/src/fsutil.rs`: safeguard dumps write raw output to disk today."
-      ],
-      "plan": [
-        "Add `SECURITY.md` describing how to report vulnerabilities and what data to avoid sharing (runner outputs, logs, dumps).",
-        "Document redaction expectations and the implications of `--debug`/safeguard dumps.",
-        "Link `SECURITY.md` from `README.md`.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-27T18:17:26Z",
-      "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [
-        "RQ-0337"
-      ],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0349",
       "status": "todo",
       "title": "Release process: add `CHANGELOG.md` + versioning/release steps",
