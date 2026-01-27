@@ -78,18 +78,35 @@ In **Execution view** (while a task is running):
 **Workflow**
 1. Press `N`
 2. Type your natural language request/description
-3. Press `Enter`
-4. The TUI switches to an **Executing** view showing the task builder progress/logs.
-5. On completion, the TUI reloads `queue.json` and returns to Normal mode.
+3. Press `Enter` to continue to advanced options
+4. Configure optional overrides (or leave as defaults):
+   - **Tags hint**: Comma-separated tags to suggest for the new task
+   - **Scope hint**: Comma-separated scope paths to suggest
+   - **Runner**: Override the agent runner (claude, codex, opencode, gemini, cursor)
+   - **Model**: Override the model (e.g., "sonnet", "gpt-5.2-codex")
+   - **Reasoning effort**: Override effort level (low, medium, high, xhigh)
+   - **RepoPrompt mode**: Override RepoPrompt behavior (tools, plan, off)
+5. Navigate to "[ Build Task ]" and press `Enter`
+6. The TUI switches to an **Executing** view showing the task builder progress/logs.
+7. On completion, the TUI reloads `queue.json` and returns to Normal mode.
 
-**Important differences vs CLI**
-- TUI task builder currently uses **project/global config defaults** for runner/model/effort.
-- TUI currently does **not** expose:
-  - `--runner`, `--model`, `--effort` overrides
-  - `--tags`, `--scope` hinting
-  - `--repo-prompt` overrides
+**Controls in Advanced Options**
+- `↑/↓` or `j/k`: Navigate between fields
+- `Space` or `Enter`: Cycle through enum options (runner, effort, repo-prompt)
+- Type directly: Edit text fields (tags, scope, model)
+- `x`: Clear the current field (reset to config default)
+- `Esc`: Cancel the task builder
 
-If you need those controls, use the CLI `ralph task build ...`.
+**CLI Parity**
+The TUI task builder now supports the same override options as the CLI:
+- `--runner` → Runner field
+- `--model` → Model field
+- `--effort` → Reasoning effort field
+- `--tags` → Tags hint field
+- `--scope` → Scope hint field
+- `--repo-prompt` → RepoPrompt mode field
+
+All overrides are optional; leaving them as "(use config default)" uses the project/global config values.
 
 ---
 
@@ -262,9 +279,9 @@ Editable fields include (at least):
    - CLI can be scripted in shell loops.
    - TUI is inherently interactive.
 
-3. **Task builder overrides not exposed in the TUI**
-   - CLI supports runner/model/effort/tags/scope overrides per call.
-   - TUI uses config defaults and empty tag/scope hints.
+3. ~~**Task builder overrides not exposed in the TUI**~~ ✅ **RESOLVED**
+   - TUI now supports runner/model/effort/tags/scope/repo-prompt overrides.
+   - Press `N`, enter description, then configure advanced options.
 
 4. **Done/Rejected are not auto-archived**
    - CLI `done/reject` immediately moves tasks to `done.json`.
@@ -286,13 +303,9 @@ If you want the TUI to mirror the CLI UX more closely, consider:
      - "Set status: Draft/Todo/Doing/Done/Rejected"
    - Avoid multi-step cycling when you know the target.
 
-3. **Task builder "advanced" input**
-   - Extend the build-task mode to optionally capture:
-     - tags/scope hints
-     - runner/model/effort overrides
-     - RepoPrompt requirement toggle
-   - Could be done via a multi-field modal or a single-line syntax like:
-     - `tags=cli,tui scope=crates/ralph :: Add feature ...`
+3. ~~**Task builder "advanced" input**~~ ✅ **IMPLEMENTED**
+   - TUI now has a two-step task builder flow with override options.
+   - Supports tags/scope hints, runner/model/effort overrides, and RepoPrompt mode.
 
 4. **Jump-to-ID**
    - Add command palette action: "Select task by ID"

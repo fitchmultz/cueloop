@@ -534,6 +534,8 @@ ralph task edit custom_fields "severity=high, owner=ralph" RQ-0001
 ralph task edit request "" RQ-0001
 ```
 
+**TUI Parity**: The TUI also supports building tasks with agent overrides. Press `N` in the TUI, enter a description, then configure optional overrides (runner, model, effort, tags, scope, repo-prompt mode) before building. See `docs/tui-task-management.md` for details.
+
 ### ralph task show
 
 Show a task by ID (searches queue + done).

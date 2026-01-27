@@ -7979,6 +7979,54 @@
       "completed_at": "2026-01-27T23:18:22.154537000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0351",
+      "status": "done",
+      "title": "TUI parity: expose task builder overrides (runner/model/effort, tags/scope, repo-prompt)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "parity",
+        "task"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/create.rs",
+        "crates/ralph/src/tui/events/palette.rs",
+        "crates/ralph/src/tui/app.rs",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`docs/tui-task-management.md`: task builder in TUI (Build task with agent) does not expose `--runner/--model/--effort`, `--tags/--scope` hinting, or `--repo-prompt` overrides.",
+        "`docs/tui-task-management.md`: recommends an advanced input flow to capture these overrides for closer CLI parity.",
+        "`crates/ralph/src/tui/app.rs:1744-1762`: `spawn_task_builder` hardcodes empty `hint_tags`, `hint_scope`, and `None` for all overrides (runner, model, reasoning_effort)."
+      ],
+      "plan": [
+        "Design a TUI advanced task builder flow (modal fields or a compact syntax) to capture runner/model/effort + repo-prompt + tags/scope hints.",
+        "Thread the captured overrides into the task-builder invocation used by the TUI (update `TaskBuildOptions` in `spawn_task_builder`).",
+        "Handle invalid runner/model/effort values with clear inline validation.",
+        "Add tests that cover success and failure modes (missing/invalid overrides, cancellation, happy path).",
+        "Update `docs/tui-task-management.md` and `docs/cli.md` to document the parity.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "The TUI task builder currently uses hardcoded defaults in `spawn_task_builder` - all override fields are set to empty/None.",
+        "Implemented TUI parity for task builder with override options (runner, model, effort, tags, scope, repo-prompt)",
+        "Two-step flow: description input → advanced options configuration",
+        "All tests pass, make ci clean",
+        "Minor UX note: text fields in advanced step use simple char insertion (no cursor nav/backspace) - acceptable for first iteration"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T23:48:34.033236000Z",
+      "completed_at": "2026-01-27T23:48:34.033236000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

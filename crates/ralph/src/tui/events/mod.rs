@@ -29,10 +29,11 @@ pub mod palette;
 pub mod run;
 pub mod scan;
 pub mod search;
+pub mod task_builder;
 pub mod types;
 
 pub use palette::{PaletteCommand, PaletteEntry};
-pub use types::{AppMode, ConfirmDiscardAction, TuiAction};
+pub use types::{AppMode, ConfirmDiscardAction, TaskBuilderState, TaskBuilderStep, TuiAction};
 
 #[cfg(test)]
 mod tests;
@@ -106,6 +107,9 @@ pub fn handle_key_event(
             ..
         } => confirm::handle_confirm_risky_config_key(app, key, config_key, *previous_mode),
         AppMode::Executing { .. } => run::handle_executing_mode_key(app, key),
+        AppMode::BuildingTaskOptions(state) => {
+            task_builder::handle_building_task_options_key(app, key, state)
+        }
     }
 }
 
@@ -240,6 +244,12 @@ fn mode_accepts_text_input(mode: &AppMode) -> bool {
         AppMode::EditingTask { editing_value, .. } => editing_value.is_some(),
         AppMode::EditingConfig { editing_value, .. } => editing_value.is_some(),
         AppMode::ConfirmRevert { selected, .. } => *selected == 2,
+        AppMode::BuildingTaskOptions(state) => {
+            matches!(
+                state.step,
+                crate::tui::events::types::TaskBuilderStep::Description
+            )
+        }
         _ => false,
     }
 }

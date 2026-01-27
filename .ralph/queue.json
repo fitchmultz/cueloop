@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0351",
-      "status": "todo",
-      "title": "TUI parity: expose task builder overrides (runner/model/effort, tags/scope, repo-prompt)",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "ux",
-        "parity",
-        "task"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/events/create.rs",
-        "crates/ralph/src/tui/events/palette.rs",
-        "crates/ralph/src/tui/app.rs",
-        "docs/tui-task-management.md",
-        "make ci"
-      ],
-      "evidence": [
-        "`docs/tui-task-management.md`: task builder in TUI (“Build task with agent”) does not expose `--runner/--model/--effort`, `--tags/--scope` hinting, or `--repo-prompt` overrides.",
-        "`docs/tui-task-management.md`: recommends an “advanced” input flow to capture these overrides for closer CLI parity."
-      ],
-      "plan": [
-        "Design a TUI “advanced task builder” flow (modal fields or a compact syntax) to capture runner/model/effort + repo-prompt + tags/scope hints.",
-        "Thread the captured overrides into the task-builder invocation used by the TUI.",
-        "Handle invalid runner/model/effort values with clear inline validation.",
-        "Add tests that cover success and failure modes (missing/invalid overrides, cancellation, happy path).",
-        "Update `docs/tui-task-management.md` and `docs/cli.md` to document the parity.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-27T18:17:26Z",
-      "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0330",
       "status": "todo",
       "title": "TUI: handle resize and other non-key events explicitly",

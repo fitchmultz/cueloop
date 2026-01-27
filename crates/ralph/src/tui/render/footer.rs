@@ -169,6 +169,24 @@ pub(super) fn help_footer_spans(app: &App, max_width: usize) -> Vec<Span<'static
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
         ],
+        AppMode::BuildingTaskOptions(state) => match state.step {
+            super::super::events::types::TaskBuilderStep::Description => vec![
+                Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(":continue "),
+                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(":cancel"),
+            ],
+            super::super::events::types::TaskBuilderStep::Advanced => vec![
+                Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(":nav "),
+                Span::styled("Space/Enter", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(":cycle "),
+                Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(":clear "),
+                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(":cancel"),
+            ],
+        },
     };
 
     let tail_spans = build_tail_spans(app, max_width, !help_text.is_empty());

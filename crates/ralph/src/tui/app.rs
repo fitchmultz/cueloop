@@ -32,7 +32,7 @@ use std::time::Duration;
 
 use super::events::{
     handle_key_event, handle_mouse_event, AppMode, ConfirmDiscardAction, PaletteCommand,
-    PaletteEntry, TuiAction,
+    PaletteEntry, TaskBuilderState, TaskBuilderStep, TuiAction,
 };
 use super::render::draw_ui;
 use super::TextInput;
@@ -1252,7 +1252,7 @@ impl App {
                 if self.runner_active {
                     self.set_status_message("Runner already active");
                 } else {
-                    self.mode = AppMode::CreatingTaskDescription(TextInput::new(""));
+                    self.start_task_builder_options_flow();
                 }
                 Ok(TuiAction::Continue)
             }
@@ -1437,6 +1437,24 @@ impl App {
         self.mode = AppMode::Executing {
             task_id: "Task Builder".to_string(),
         };
+    }
+
+    /// Start the advanced task builder flow with override options.
+    pub(crate) fn start_task_builder_options_flow(&mut self) {
+        let state = TaskBuilderState {
+            step: TaskBuilderStep::Description,
+            description: String::new(),
+            description_input: TextInput::new(""),
+            tags_hint: String::new(),
+            scope_hint: String::new(),
+            runner_override: None,
+            model_override_input: String::new(),
+            effort_override: None,
+            repoprompt_mode: None,
+            selected_field: 0,
+            error_message: None,
+        };
+        self.mode = AppMode::BuildingTaskOptions(state);
     }
 
     /// Select the next runnable task for loop mode.
@@ -1741,25 +1759,25 @@ where
     };
 
     // Helper to spawn task builder work.
-    let spawn_task_builder = |request: String, tx: mpsc::Sender<RunnerEvent>| {
+    let spawn_task_builder = |opts: crate::commands::task::TaskBuildOptions,
+                              repoprompt_mode: Option<crate::agent::RepoPromptMode>,
+                              tx: mpsc::Sender<RunnerEvent>| {
         let tx_clone = tx.clone();
         thread::spawn(move || {
             let result = || -> Result<()> {
                 let resolved = crate_config::resolve_from_cwd()?;
-                let repoprompt_tool_injection =
-                    crate::agent::resolve_repoprompt_flags(None, &resolved).tool_injection;
-                let opts = crate::commands::task::TaskBuildOptions {
-                    request,
-                    hint_tags: String::new(),
-                    hint_scope: String::new(),
-                    runner_override: None,
-                    model_override: None,
-                    reasoning_effort_override: None,
-                    runner_cli_overrides: crate::contracts::RunnerCliOptionsPatch::default(),
-                    force: false,
-                    repoprompt_tool_injection,
+                // Determine repoprompt_tool_injection based on mode
+                let repoprompt_tool_injection = match repoprompt_mode {
+                    Some(crate::agent::RepoPromptMode::Tools) => true,
+                    Some(crate::agent::RepoPromptMode::Plan) => true,
+                    Some(crate::agent::RepoPromptMode::Off) => false,
+                    None => crate::agent::resolve_repoprompt_flags(None, &resolved).tool_injection,
                 };
-                crate::commands::task::build_task_without_lock(&resolved, opts)?;
+                let opts_with_injection = crate::commands::task::TaskBuildOptions {
+                    repoprompt_tool_injection,
+                    ..opts
+                };
+                crate::commands::task::build_task_without_lock(&resolved, opts_with_injection)?;
                 Ok(())
             }();
 
@@ -1826,7 +1844,41 @@ where
                     } else {
                         app_ref.start_task_builder_execution(request.clone());
                         let tx_clone = tx.clone();
-                        spawn_task_builder(request, tx_clone);
+                        let opts = crate::commands::task::TaskBuildOptions {
+                            request,
+                            hint_tags: String::new(),
+                            hint_scope: String::new(),
+                            runner_override: None,
+                            model_override: None,
+                            reasoning_effort_override: None,
+                            runner_cli_overrides: crate::contracts::RunnerCliOptionsPatch::default(
+                            ),
+                            force: false,
+                            repoprompt_tool_injection: false,
+                        };
+                        spawn_task_builder(opts, None, tx_clone);
+                    }
+                    Ok(false)
+                }
+                TuiAction::BuildTaskWithOptions(options) => {
+                    if app_ref.runner_active {
+                        app_ref.set_status_message("Runner already active");
+                    } else {
+                        app_ref.start_task_builder_execution(options.request.clone());
+                        let tx_clone = tx.clone();
+                        let opts = crate::commands::task::TaskBuildOptions {
+                            request: options.request,
+                            hint_tags: options.hint_tags,
+                            hint_scope: options.hint_scope,
+                            runner_override: options.runner_override,
+                            model_override: options.model_override,
+                            reasoning_effort_override: options.reasoning_effort_override,
+                            runner_cli_overrides: crate::contracts::RunnerCliOptionsPatch::default(
+                            ),
+                            force: false,
+                            repoprompt_tool_injection: false,
+                        };
+                        spawn_task_builder(opts, options.repoprompt_mode, tx_clone);
                     }
                     Ok(false)
                 }

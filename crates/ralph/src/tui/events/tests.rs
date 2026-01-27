@@ -1586,7 +1586,8 @@ fn palette_build_task_agent_command() {
     app.execute_palette_command(PaletteCommand::BuildTaskAgent, "2026-01-20T00:00:00Z")
         .expect("execute command");
 
-    assert!(matches!(app.mode, AppMode::CreatingTaskDescription(_)));
+    // Now opens the advanced task builder flow instead of simple description input
+    assert!(matches!(app.mode, AppMode::BuildingTaskOptions(_)));
 }
 
 #[test]

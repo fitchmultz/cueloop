@@ -14,6 +14,8 @@
 
 use std::sync::mpsc;
 
+use crate::agent::RepoPromptMode;
+use crate::contracts::{ReasoningEffort, Runner};
 use crate::runutil::RevertDecision;
 use crate::tui::config_edit::ConfigKey;
 use crate::tui::TextInput;
@@ -33,6 +35,8 @@ pub enum TuiAction {
     RunTask(String),
     /// Trigger task builder agent with the given description
     BuildTask(String),
+    /// Trigger task builder agent with full options
+    BuildTaskWithOptions(TaskBuilderOptions),
 }
 
 /// Actions that can discard unsaved changes.
@@ -102,6 +106,63 @@ pub enum AppMode {
         warning: String,
         previous_mode: Box<AppMode>,
     },
+    /// Building a task with agent overrides (advanced task builder)
+    BuildingTaskOptions(TaskBuilderState),
+}
+
+/// State for the advanced task builder flow with override options.
+#[derive(Debug, Clone)]
+pub struct TaskBuilderState {
+    /// Current step in the builder flow
+    pub step: TaskBuilderStep,
+    /// The task description/request
+    pub description: String,
+    /// Text input for description (used in Description step)
+    pub description_input: TextInput,
+    /// Tags hint (comma-separated)
+    pub tags_hint: String,
+    /// Scope hint (comma-separated)
+    pub scope_hint: String,
+    /// Runner override (None = use config default)
+    pub runner_override: Option<Runner>,
+    /// Model override as raw input (validated on submit)
+    pub model_override_input: String,
+    /// Reasoning effort override
+    pub effort_override: Option<ReasoningEffort>,
+    /// RepoPrompt mode override
+    pub repoprompt_mode: Option<RepoPromptMode>,
+    /// Currently selected field index (for Advanced step)
+    pub selected_field: usize,
+    /// Error message for validation failures
+    pub error_message: Option<String>,
+}
+
+/// Steps in the task builder flow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskBuilderStep {
+    /// Entering the task description
+    Description,
+    /// Configuring advanced options
+    Advanced,
+}
+
+/// Options collected by the task builder for creating a task.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaskBuilderOptions {
+    /// The task description/request
+    pub request: String,
+    /// Tags hint (comma-separated)
+    pub hint_tags: String,
+    /// Scope hint (comma-separated)
+    pub hint_scope: String,
+    /// Runner override (None = use config default)
+    pub runner_override: Option<Runner>,
+    /// Model override
+    pub model_override: Option<crate::contracts::Model>,
+    /// Reasoning effort override
+    pub reasoning_effort_override: Option<ReasoningEffort>,
+    /// RepoPrompt mode override
+    pub repoprompt_mode: Option<RepoPromptMode>,
 }
 
 impl PartialEq for AppMode {
@@ -198,6 +259,18 @@ impl PartialEq for AppMode {
                     && left_new_value == right_new_value
                     && left_warning == right_warning
                     && left_previous == right_previous
+            }
+            (BuildingTaskOptions(left), BuildingTaskOptions(right)) => {
+                left.step == right.step
+                    && left.description == right.description
+                    && left.tags_hint == right.tags_hint
+                    && left.scope_hint == right.scope_hint
+                    && left.runner_override == right.runner_override
+                    && left.model_override_input == right.model_override_input
+                    && left.effort_override == right.effort_override
+                    && left.repoprompt_mode == right.repoprompt_mode
+                    && left.selected_field == right.selected_field
+                    && left.error_message == right.error_message
             }
             _ => false,
         }

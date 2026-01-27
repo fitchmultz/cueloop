@@ -151,6 +151,11 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
             overlays::draw_task_editor(f, app, size, *selected, editing_value.as_ref());
         }
 
+        // Task builder overlay.
+        AppMode::BuildingTaskOptions(state) => {
+            overlays::draw_task_builder(f, size, state);
+        }
+
         _ => {}
     }
 }
