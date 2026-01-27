@@ -3,7 +3,7 @@ PREFIX ?= $(HOME)/.local
 BIN_DIR ?= $(PREFIX)/bin
 BIN_NAME ?= ralph
 
-.PHONY: install update lint type-check format clean clean-temp test generate build build-release ci runners-help
+.PHONY: install update lint type-check format clean clean-temp test generate build build-release ci runners-help release
 
 install: build-release
 	@bin_dir="$(BIN_DIR)"; \
@@ -79,3 +79,39 @@ runners-help:
 	@echo ""
 	@echo "Runner CLI help captured under: target/tmp/runner_cli_inventory"
 	@echo "Next: update docs/runner_cli_inventory.md with findings for approval."
+
+# Release process: bump version, update changelog, tag, and publish
+# Usage: make release VERSION=0.2.0
+release:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required. Usage: make release VERSION=0.2.0"; \
+		exit 1; \
+	fi
+	@echo "Starting release process for v$(VERSION)..."
+	@# Validate version format (semver)
+	@echo "$(VERSION)" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$$' > /dev/null || \
+		{ echo "Error: VERSION must be in semver format (e.g., 0.2.0)"; exit 1; }
+	@# Update version in Cargo.toml
+	@sed -i.bak -E 's/^version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "$(VERSION)"/' crates/ralph/Cargo.toml && rm -f crates/ralph/Cargo.toml.bak
+	@echo "Updated version in crates/ralph/Cargo.toml to $(VERSION)"
+	@# Update CHANGELOG.md: move Unreleased section to new version
+	@today=$$(date +%Y-%m-%d); \
+	sed -i.bak -E \
+		-e "s/## \[Unreleased\]/## [Unreleased]\n\n## [$(VERSION)] - $$today/" \
+		-e "s/\[Unreleased\]: https:\/\/github.com\/mitchfultz\/ralph\/compare\/v[0-9]+\.[0-9]+\.[0-9]+\.\.\.HEAD/[Unreleased]: https:\/\/github.com\/mitchfultz\/ralph\/compare\/v$(VERSION)...HEAD\n[$(VERSION)]: https:\/\/github.com\/mitchfultz\/ralph\/releases\/tag\/v$(VERSION)/" \
+		CHANGELOG.md && rm -f CHANGELOG.md.bak
+	@echo "Updated CHANGELOG.md with version $(VERSION)"
+	@# Run CI to validate changes
+	@echo "Running CI validation..."
+	$(MAKE) ci
+	@# Create git tag
+	@git add crates/ralph/Cargo.toml CHANGELOG.md
+	@git commit -m "Release v$(VERSION)"
+	@git tag -a "v$(VERSION)" -m "Release v$(VERSION)"
+	@echo "Created git tag v$(VERSION)"
+	@echo ""
+	@echo "Release v$(VERSION) prepared successfully!"
+	@echo "Next steps:"
+	@echo "  1. Review the commit and tag: git log --oneline -3 && git show v$(VERSION)"
+	@echo "  2. Push to remote: git push origin main && git push origin v$(VERSION)"
+	@echo "  3. Publish to crates.io: cd crates/ralph && cargo publish"

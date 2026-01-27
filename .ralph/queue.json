@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0349",
-      "status": "todo",
-      "title": "Release process: add `CHANGELOG.md` + versioning/release steps",
-      "priority": "medium",
-      "tags": [
-        "release",
-        "docs"
-      ],
-      "scope": [
-        "CHANGELOG.md",
-        "crates/ralph/Cargo.toml",
-        "README.md",
-        "make ci"
-      ],
-      "evidence": [
-        "Repo root: `CHANGELOG.md` is missing.",
-        "`crates/ralph/Cargo.toml`: package is not currently publish-ready (`publish = false`)."
-      ],
-      "plan": [
-        "Add `CHANGELOG.md` and adopt a consistent format (e.g., Keep a Changelog + SemVer).",
-        "Document the manual release procedure (no remote CI), including required local checks (`make ci`) and how versions are bumped.",
-        "Update `README.md` to point to the changelog and release policy.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-27T18:17:26Z",
-      "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [
-        "RQ-0340"
-      ],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0352",
       "status": "todo",
       "title": "TUI UX: add safety explanations/warnings for risky config toggles (git push, approval mode)",

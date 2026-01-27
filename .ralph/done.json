@@ -7882,6 +7882,54 @@
         "RQ-0337"
       ],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0349",
+      "status": "done",
+      "title": "Release process: add `CHANGELOG.md` + versioning/release steps",
+      "priority": "medium",
+      "tags": [
+        "release",
+        "docs"
+      ],
+      "scope": [
+        "CHANGELOG.md",
+        "crates/ralph/Cargo.toml",
+        "README.md",
+        "Makefile"
+      ],
+      "evidence": [
+        "Repo root: `CHANGELOG.md` is missing - needs to be created.",
+        "`crates/ralph/Cargo.toml`: package is now publish-ready (no `publish = false` line present).",
+        "`crates/ralph/Cargo.toml`: version is 0.1.0, ready for initial release.",
+        "`README.md`: already has installation instructions via `cargo install ralph`."
+      ],
+      "plan": [
+        "Add `CHANGELOG.md` at repo root adopting Keep a Changelog format with SemVer.",
+        "Document the manual release procedure: version bump in Cargo.toml, update CHANGELOG, run `make ci`, git tag, push to crates.io.",
+        "Update `README.md` to add a 'Changelog' section linking to CHANGELOG.md.",
+        "Consider adding a `make release` target to Makefile for automated version bumping and tagging.",
+        "Run `make ci` to validate all changes."
+      ],
+      "notes": [
+        "Dependency RQ-0340 is completed - crate metadata and LICENSE are in place.",
+        "Cargo.toml is ready for publishing; no blocking issues remain.",
+        "Added CHANGELOG.md with Keep a Changelog format",
+        "Added 'make release' target for automated version bumping and tagging",
+        "Added Changelog section to README.md",
+        "Fixed sed commands to use -E for macOS compatibility"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T22:26:13.377779000Z",
+      "completed_at": "2026-01-27T22:26:13.377779000Z",
+      "depends_on": [
+        "RQ-0340"
+      ],
+      "custom_fields": {}
     }
   ]
 }

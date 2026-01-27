@@ -52,6 +52,10 @@ Ralph is developed and tested on **Unix-like systems** (Linux, macOS). Windows s
 
 For Windows users, we recommend using WSL2 for full functionality.
 
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for version history and release notes.
+
 ## Quick Start (Rust)
 
 - Install the `ralph` binary to `~/.local/bin`:
