@@ -57,6 +57,13 @@ impl RunnerCommandBuilder {
         self
     }
 
+    pub fn arg_opt(mut self, arg: &str, value: Option<&str>) -> Self {
+        if let Some(value) = value {
+            self.cmd.arg(arg).arg(value);
+        }
+        self
+    }
+
     #[allow(dead_code)]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
@@ -204,7 +211,8 @@ pub(super) fn permission_mode_to_arg(mode: ClaudePermissionMode) -> &'static str
 
 #[cfg(test)]
 mod tests {
-    use super::temp_prompt_file_error;
+    use super::{temp_prompt_file_error, RunnerCommandBuilder};
+    use std::path::Path;
 
     #[test]
     fn temp_prompt_file_error_includes_bin_and_step() {
@@ -213,5 +221,26 @@ mod tests {
         assert!(msg.contains("bin=opencode"));
         assert!(msg.contains("step=create_temp_dir"));
         assert!(msg.contains("boom"));
+    }
+
+    #[test]
+    fn arg_opt_adds_flag_and_value_when_present() {
+        let (cmd, _payload, _guards) = RunnerCommandBuilder::new("echo", Path::new("."))
+            .arg_opt("--flag", Some("value"))
+            .build();
+        let args = cmd
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(args, vec!["--flag".to_string(), "value".to_string()]);
+    }
+
+    #[test]
+    fn arg_opt_skips_when_none() {
+        let (cmd, _payload, _guards) = RunnerCommandBuilder::new("echo", Path::new("."))
+            .arg_opt("--flag", None)
+            .build();
+        let args = cmd.get_args().collect::<Vec<_>>();
+        assert!(args.is_empty());
     }
 }

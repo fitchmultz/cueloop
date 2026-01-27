@@ -1,6 +1,8 @@
 //! Task-building and task-updating command helpers (request parsing, runner invocation, and queue updates).
 
-use crate::contracts::{ClaudePermissionMode, Model, ProjectType, ReasoningEffort, Runner};
+use crate::contracts::{
+    ClaudePermissionMode, Model, ProjectType, ReasoningEffort, Runner, RunnerCliOptionsPatch,
+};
 use crate::{config, prompts, queue, runner, runutil, timeutil};
 use anyhow::{bail, Context, Result};
 use std::io::{IsTerminal, Read};
@@ -118,11 +120,21 @@ fn build_task_impl(
     )?;
 
     prompt = prompts::wrap_with_repoprompt_requirement(&prompt, opts.repoprompt_tool_injection);
+    prompt = prompts::wrap_with_instruction_files(&resolved.repo_root, &prompt, &resolved.config)?;
 
     let bins = runner::resolve_binaries(&resolved.config.agent);
     // Two-pass mode disabled for task (only generates task, should not implement)
     // Force BypassPermissions for task (needs tool access for exploration)
     let permission_mode = Some(ClaudePermissionMode::BypassPermissions);
+    let runner_cli = runner::resolve_agent_settings(
+        Some(opts.runner),
+        Some(opts.model.clone()),
+        opts.reasoning_effort,
+        &RunnerCliOptionsPatch::default(),
+        None,
+        &resolved.config.agent,
+    )?
+    .runner_cli;
 
     let _output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
@@ -131,6 +143,7 @@ fn build_task_impl(
             bins,
             model: opts.model,
             reasoning_effort: opts.reasoning_effort,
+            runner_cli,
             prompt: &prompt,
             timeout: None,
             permission_mode,
@@ -306,9 +319,20 @@ fn update_task_impl(
 
     let prompt =
         prompts::wrap_with_repoprompt_requirement(&prompt, settings.repoprompt_tool_injection);
+    let prompt =
+        prompts::wrap_with_instruction_files(&resolved.repo_root, &prompt, &resolved.config)?;
 
     let bins = runner::resolve_binaries(&resolved.config.agent);
     let permission_mode = Some(ClaudePermissionMode::BypassPermissions);
+    let runner_cli = runner::resolve_agent_settings(
+        Some(settings.runner),
+        Some(settings.model.clone()),
+        settings.reasoning_effort,
+        &RunnerCliOptionsPatch::default(),
+        None,
+        &resolved.config.agent,
+    )?
+    .runner_cli;
 
     let _output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
@@ -317,6 +341,7 @@ fn update_task_impl(
             bins,
             model: settings.model.clone(),
             reasoning_effort: settings.reasoning_effort,
+            runner_cli,
             prompt: &prompt,
             timeout: None,
             permission_mode,

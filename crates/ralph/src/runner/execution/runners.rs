@@ -19,6 +19,8 @@ use super::super::{
     runner_execution_error_with_source, ClaudePermissionMode, Model, OutputHandler, OutputStream,
     ReasoningEffort, RunnerError, RunnerOutput,
 };
+use super::cli_options::ResolvedRunnerCliOptions;
+use super::cli_spec;
 use super::command::RunnerCommandBuilder;
 use super::process::run_with_streaming_json;
 use crate::contracts::Runner;
@@ -27,6 +29,7 @@ use crate::contracts::Runner;
 pub(crate) fn run_codex(
     work_dir: &Path,
     bin: &str,
+    runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     reasoning_effort: Option<ReasoningEffort>,
     prompt: &str,
@@ -34,7 +37,9 @@ pub(crate) fn run_codex(
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
-    let (cmd, payload, _guards) = RunnerCommandBuilder::new(bin, work_dir)
+    let builder = RunnerCommandBuilder::new(bin, work_dir);
+    let builder = cli_spec::apply_codex_global_options(builder, runner_cli);
+    let (cmd, payload, _guards) = builder
         .arg("exec")
         .legacy_json_format()
         .model(&model)
@@ -58,6 +63,7 @@ pub(crate) fn run_codex(
 pub(crate) fn run_codex_resume(
     work_dir: &Path,
     bin: &str,
+    runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     reasoning_effort: Option<ReasoningEffort>,
     thread_id: &str,
@@ -66,7 +72,9 @@ pub(crate) fn run_codex_resume(
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
-    let (cmd, payload, _guards) = RunnerCommandBuilder::new(bin, work_dir)
+    let builder = RunnerCommandBuilder::new(bin, work_dir);
+    let builder = cli_spec::apply_codex_global_options(builder, runner_cli);
+    let (cmd, payload, _guards) = builder
         .arg("exec")
         .arg("resume")
         .arg(thread_id)
@@ -87,9 +95,11 @@ pub(crate) fn run_codex_resume(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn run_opencode(
     work_dir: &Path,
     bin: &str,
+    _runner_cli: ResolvedRunnerCliOptions,
     model: &Model,
     prompt: &str,
     timeout: Option<Duration>,
@@ -126,6 +136,7 @@ pub(crate) fn run_opencode(
 pub(crate) fn run_opencode_resume(
     work_dir: &Path,
     bin: &str,
+    _runner_cli: ResolvedRunnerCliOptions,
     model: &Model,
     session_id: &str,
     message: &str,
@@ -154,20 +165,22 @@ pub(crate) fn run_opencode_resume(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn run_gemini(
     work_dir: &Path,
     bin: &str,
+    runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     prompt: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
-    let (cmd, payload, _guards) = RunnerCommandBuilder::new(bin, work_dir)
+    let builder = RunnerCommandBuilder::new(bin, work_dir);
+    let builder = cli_spec::apply_gemini_options(builder, runner_cli);
+    let (cmd, payload, _guards) = builder
         .model(&model)
         .output_format("stream-json")
-        .arg("--approval-mode")
-        .arg("yolo")
         .stdin_payload(Some(prompt.as_bytes().to_vec()))
         .build();
 
@@ -186,6 +199,7 @@ pub(crate) fn run_gemini(
 pub(crate) fn run_gemini_resume(
     work_dir: &Path,
     bin: &str,
+    runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     session_id: &str,
     message: &str,
@@ -193,13 +207,13 @@ pub(crate) fn run_gemini_resume(
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
-    let (cmd, payload, _guards) = RunnerCommandBuilder::new(bin, work_dir)
+    let builder = RunnerCommandBuilder::new(bin, work_dir);
+    let builder = cli_spec::apply_gemini_options(builder, runner_cli);
+    let (cmd, payload, _guards) = builder
         .arg("--resume")
         .arg(session_id)
         .model(&model)
         .output_format("stream-json")
-        .arg("--approval-mode")
-        .arg("yolo")
         .arg(message)
         .build();
 
@@ -218,6 +232,7 @@ pub(crate) fn run_gemini_resume(
 pub(crate) fn run_claude(
     work_dir: &Path,
     bin: &str,
+    runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     prompt: &str,
     timeout: Option<Duration>,
@@ -225,12 +240,13 @@ pub(crate) fn run_claude(
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
-    let (cmd, payload, _guards) = RunnerCommandBuilder::new(bin, work_dir)
+    let builder = RunnerCommandBuilder::new(bin, work_dir);
+    let builder = cli_spec::apply_claude_options(builder, runner_cli);
+    let (cmd, payload, _guards) = builder
         .arg("-p")
         .model(&model)
         .permission_mode(permission_mode)
         .output_format("stream-json")
-        .arg("--verbose")
         .stdin_payload(Some(prompt.as_bytes().to_vec()))
         .build();
 
@@ -249,6 +265,7 @@ pub(crate) fn run_claude(
 pub(crate) fn run_claude_resume(
     work_dir: &Path,
     bin: &str,
+    runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     session_id: &str,
     message: &str,
@@ -257,13 +274,14 @@ pub(crate) fn run_claude_resume(
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
-    let (cmd, payload, _guards) = RunnerCommandBuilder::new(bin, work_dir)
+    let builder = RunnerCommandBuilder::new(bin, work_dir);
+    let builder = cli_spec::apply_claude_options(builder, runner_cli);
+    let (cmd, payload, _guards) = builder
         .arg("--resume")
         .arg(session_id)
         .model(&model)
         .permission_mode(permission_mode)
         .output_format("stream-json")
-        .arg("--verbose")
         .arg("-p")
         .arg(message)
         .build();
@@ -287,6 +305,7 @@ fn cursor_is_planning(text: &str) -> bool {
 pub(crate) fn run_cursor(
     work_dir: &Path,
     bin: &str,
+    runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     prompt: &str,
     timeout: Option<Duration>,
@@ -297,14 +316,8 @@ pub(crate) fn run_cursor(
     // Phase 1 prompts include "# PLANNING MODE" (from worker_phase1.md).
     let is_planning = cursor_is_planning(prompt);
 
-    let mut builder = RunnerCommandBuilder::new(bin, work_dir)
-        .model(&model)
-        .arg("--sandbox")
-        .arg(if is_planning { "enabled" } else { "disabled" });
-
-    if is_planning {
-        builder = builder.arg("--plan");
-    }
+    let builder = RunnerCommandBuilder::new(bin, work_dir).model(&model);
+    let builder = cli_spec::apply_cursor_options(builder, runner_cli, is_planning);
 
     let (cmd, payload, _guards) = builder
         .arg("--print")
@@ -328,6 +341,7 @@ pub(crate) fn run_cursor(
 pub(crate) fn run_cursor_resume(
     work_dir: &Path,
     bin: &str,
+    runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     session_id: &str,
     message: &str,
@@ -338,16 +352,11 @@ pub(crate) fn run_cursor_resume(
     // We only receive `message` for resume calls; use the same heuristic.
     let is_planning = cursor_is_planning(message);
 
-    let mut builder = RunnerCommandBuilder::new(bin, work_dir)
+    let builder = RunnerCommandBuilder::new(bin, work_dir)
         .arg("--resume")
         .arg(session_id)
-        .model(&model)
-        .arg("--sandbox")
-        .arg(if is_planning { "enabled" } else { "disabled" });
-
-    if is_planning {
-        builder = builder.arg("--plan");
-    }
+        .model(&model);
+    let builder = cli_spec::apply_cursor_options(builder, runner_cli, is_planning);
 
     let (cmd, payload, _guards) = builder
         .arg("--print")

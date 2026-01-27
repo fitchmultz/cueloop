@@ -4,6 +4,7 @@ use crate::config;
 use crate::contracts::Runner;
 use crate::gitutil;
 use crate::outpututil;
+use crate::prompts;
 use crate::queue;
 use crate::runner;
 use anyhow::Result;
@@ -186,6 +187,29 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
             model.as_str(),
             runner
         ));
+    }
+
+    // 3c. Instruction file injection checks
+    log::info!("Checking instruction file injection...");
+    let instruction_warnings =
+        prompts::instruction_file_warnings(&resolved.repo_root, &resolved.config);
+    if instruction_warnings.is_empty() {
+        if let Some(files) = resolved.config.agent.instruction_files.as_ref() {
+            if !files.is_empty() {
+                outpututil::log_success(&format!(
+                    "instruction_files valid ({} configured file(s))",
+                    files.len()
+                ));
+            }
+        }
+        let repo_agents = resolved.repo_root.join("AGENTS.md");
+        if repo_agents.exists() {
+            outpututil::log_success("AGENTS.md found and injectable");
+        }
+    } else {
+        for warning in instruction_warnings {
+            outpututil::log_warn(&warning);
+        }
     }
 
     // 4. Project Checks

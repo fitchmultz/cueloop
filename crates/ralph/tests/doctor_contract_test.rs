@@ -282,3 +282,41 @@ fn doctor_fails_with_invalid_done_archive() -> Result<()> {
     );
     Ok(())
 }
+
+#[test]
+fn doctor_warns_when_instruction_files_missing() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    // Setup valid repo
+    Command::new("git")
+        .current_dir(dir.path())
+        .arg("init")
+        .status()?;
+
+    // Setup ralph
+    Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .args(["init", "--force"])
+        .status()?;
+
+    // Setup Makefile
+    std::fs::write(dir.path().join("Makefile"), "ci:\n\tcargo test\n")?;
+
+    // Configure instruction file injection with a missing path.
+    let config_path = dir.path().join(".ralph/config.json");
+    let config_content =
+        r#"{"version":1,"agent":{"instruction_files":["missing-global-agents.md"]}}"#;
+    std::fs::write(&config_path, config_content)?;
+
+    let output = Command::new(ralph_bin())
+        .current_dir(dir.path())
+        .arg("doctor")
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{}\n{}", stdout, stderr);
+
+    assert!(output.status.success());
+    assert!(combined.contains("WARN") && combined.contains("instruction_files"));
+    Ok(())
+}

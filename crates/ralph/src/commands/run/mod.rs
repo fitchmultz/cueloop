@@ -310,6 +310,11 @@ fn run_one_impl(
         let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
         let mut base_prompt =
             prompts::render_worker_prompt(&template, &task_id, project_type, &resolved.config)?;
+        base_prompt = prompts::wrap_with_instruction_files(
+            &resolved.repo_root,
+            &base_prompt,
+            &resolved.config,
+        )?;
 
         // Inject an authoritative task context block to prevent the agent from selecting
         // a different task (e.g., "first todo" or "lowest ID") after Ralph marks the
@@ -416,6 +421,7 @@ fn resolve_run_agent_settings(
         overrides.runner,
         overrides.model.clone(),
         overrides.reasoning_effort,
+        &overrides.runner_cli,
         task.agent.as_ref(),
         &resolved.config.agent,
     )

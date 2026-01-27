@@ -14,6 +14,7 @@
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 /* ----------------------------- Config (JSON) ----------------------------- */
@@ -116,6 +117,19 @@ pub struct AgentConfig {
     /// BypassPermissions: skip all permission prompts (YOLO mode)
     pub claude_permission_mode: Option<ClaudePermissionMode>,
 
+    /// Normalized runner CLI behavior overrides (output/approval/sandbox/etc).
+    ///
+    /// This is additive: existing runner-specific fields remain supported.
+    pub runner_cli: Option<RunnerCliConfigRoot>,
+
+    /// Additional instruction files to inject at the top of every prompt sent to runner CLIs.
+    ///
+    /// Paths may be absolute, `~/`-prefixed, or repo-root relative. Missing files are treated as
+    /// configuration errors.
+    ///
+    /// NOTE: `AGENTS.md` at the repo root is injected automatically when present.
+    pub instruction_files: Option<Vec<PathBuf>>,
+
     /// Require RepoPrompt usage during planning (inject context_builder instructions).
     pub repoprompt_plan_required: Option<bool>,
 
@@ -184,6 +198,15 @@ impl AgentConfig {
         if other.claude_permission_mode.is_some() {
             self.claude_permission_mode = other.claude_permission_mode;
         }
+        if let Some(other_runner_cli) = other.runner_cli {
+            match &mut self.runner_cli {
+                Some(existing) => existing.merge_from(other_runner_cli),
+                None => self.runner_cli = Some(other_runner_cli),
+            }
+        }
+        if other.instruction_files.is_some() {
+            self.instruction_files = other.instruction_files;
+        }
         if other.repoprompt_plan_required.is_some() {
             self.repoprompt_plan_required = other.repoprompt_plan_required;
         }
@@ -208,6 +231,73 @@ impl AgentConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+pub struct RunnerCliConfigRoot {
+    /// Default normalized runner CLI options applied to all runners (unless overridden).
+    pub defaults: RunnerCliOptionsPatch,
+
+    /// Optional per-runner overrides, merged leaf-wise over `defaults`.
+    pub runners: BTreeMap<Runner, RunnerCliOptionsPatch>,
+}
+
+impl RunnerCliConfigRoot {
+    pub fn merge_from(&mut self, other: Self) {
+        self.defaults.merge_from(other.defaults);
+        for (runner, patch) in other.runners {
+            self.runners
+                .entry(runner)
+                .and_modify(|existing| existing.merge_from(patch.clone()))
+                .or_insert(patch);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+pub struct RunnerCliOptionsPatch {
+    /// Desired output format for runner execution.
+    pub output_format: Option<RunnerOutputFormat>,
+
+    /// Desired verbosity (when supported by the runner).
+    pub verbosity: Option<RunnerVerbosity>,
+
+    /// Desired approval/permission behavior.
+    pub approval_mode: Option<RunnerApprovalMode>,
+
+    /// Desired sandbox behavior (when supported by the runner).
+    pub sandbox: Option<RunnerSandboxMode>,
+
+    /// Desired plan/read-only behavior (when supported by the runner).
+    pub plan_mode: Option<RunnerPlanMode>,
+
+    /// Policy for unsupported options (warn/error/ignore).
+    pub unsupported_option_policy: Option<UnsupportedOptionPolicy>,
+}
+
+impl RunnerCliOptionsPatch {
+    pub fn merge_from(&mut self, other: Self) {
+        if other.output_format.is_some() {
+            self.output_format = other.output_format;
+        }
+        if other.verbosity.is_some() {
+            self.verbosity = other.verbosity;
+        }
+        if other.approval_mode.is_some() {
+            self.approval_mode = other.approval_mode;
+        }
+        if other.sandbox.is_some() {
+            self.sandbox = other.sandbox;
+        }
+        if other.plan_mode.is_some() {
+            self.plan_mode = other.plan_mode;
+        }
+        if other.unsupported_option_policy.is_some() {
+            self.unsupported_option_policy = other.unsupported_option_policy;
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ProjectType {
@@ -216,7 +306,9 @@ pub enum ProjectType {
     Docs,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Default, JsonSchema,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Runner {
     Codex,
@@ -233,6 +325,151 @@ pub enum ClaudePermissionMode {
     #[default]
     AcceptEdits,
     BypassPermissions,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RunnerOutputFormat {
+    /// Newline-delimited JSON objects (required for Ralph's streaming parser).
+    #[default]
+    StreamJson,
+    /// JSON output (may not be streaming; currently treated as unsupported by Ralph execution).
+    Json,
+    /// Plain text output (currently treated as unsupported by Ralph execution).
+    Text,
+}
+
+impl std::str::FromStr for RunnerOutputFormat {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match normalize_enum_token(value).as_str() {
+            "stream_json" => Ok(RunnerOutputFormat::StreamJson),
+            "json" => Ok(RunnerOutputFormat::Json),
+            "text" => Ok(RunnerOutputFormat::Text),
+            _ => Err("output_format must be 'stream_json', 'json', or 'text'"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RunnerVerbosity {
+    Quiet,
+    #[default]
+    Normal,
+    Verbose,
+}
+
+impl std::str::FromStr for RunnerVerbosity {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match normalize_enum_token(value).as_str() {
+            "quiet" => Ok(RunnerVerbosity::Quiet),
+            "normal" => Ok(RunnerVerbosity::Normal),
+            "verbose" => Ok(RunnerVerbosity::Verbose),
+            _ => Err("verbosity must be 'quiet', 'normal', or 'verbose'"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RunnerApprovalMode {
+    /// Do not apply any approval flags; runner defaults apply.
+    Default,
+    /// Attempt to auto-approve edits but not all tool actions (runner-specific).
+    AutoEdits,
+    /// Bypass approvals / run headless (runner-specific).
+    #[default]
+    Yolo,
+    /// Strict safety mode. Warning: some runners may become interactive and hang.
+    Safe,
+}
+
+impl std::str::FromStr for RunnerApprovalMode {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match normalize_enum_token(value).as_str() {
+            "default" => Ok(RunnerApprovalMode::Default),
+            "auto_edits" => Ok(RunnerApprovalMode::AutoEdits),
+            "yolo" => Ok(RunnerApprovalMode::Yolo),
+            "safe" => Ok(RunnerApprovalMode::Safe),
+            _ => Err("approval_mode must be 'default', 'auto_edits', 'yolo', or 'safe'"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RunnerSandboxMode {
+    #[default]
+    Default,
+    Enabled,
+    Disabled,
+}
+
+impl std::str::FromStr for RunnerSandboxMode {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match normalize_enum_token(value).as_str() {
+            "default" => Ok(RunnerSandboxMode::Default),
+            "enabled" => Ok(RunnerSandboxMode::Enabled),
+            "disabled" => Ok(RunnerSandboxMode::Disabled),
+            _ => Err("sandbox must be 'default', 'enabled', or 'disabled'"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RunnerPlanMode {
+    #[default]
+    Default,
+    Enabled,
+    Disabled,
+}
+
+impl std::str::FromStr for RunnerPlanMode {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match normalize_enum_token(value).as_str() {
+            "default" => Ok(RunnerPlanMode::Default),
+            "enabled" => Ok(RunnerPlanMode::Enabled),
+            "disabled" => Ok(RunnerPlanMode::Disabled),
+            _ => Err("plan_mode must be 'default', 'enabled', or 'disabled'"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum UnsupportedOptionPolicy {
+    Ignore,
+    #[default]
+    Warn,
+    Error,
+}
+
+impl std::str::FromStr for UnsupportedOptionPolicy {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match normalize_enum_token(value).as_str() {
+            "ignore" => Ok(UnsupportedOptionPolicy::Ignore),
+            "warn" => Ok(UnsupportedOptionPolicy::Warn),
+            "error" => Ok(UnsupportedOptionPolicy::Error),
+            _ => Err("unsupported_option_policy must be 'ignore', 'warn', or 'error'"),
+        }
+    }
+}
+
+fn normalize_enum_token(value: &str) -> String {
+    value.trim().to_lowercase().replace('-', "_")
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
@@ -391,6 +628,33 @@ impl Default for Config {
                 cursor_bin: Some("agent".to_string()),
                 phases: Some(3),
                 claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+                runner_cli: Some(RunnerCliConfigRoot {
+                    defaults: RunnerCliOptionsPatch {
+                        output_format: Some(RunnerOutputFormat::StreamJson),
+                        verbosity: Some(RunnerVerbosity::Normal),
+                        approval_mode: Some(RunnerApprovalMode::Yolo),
+                        sandbox: Some(RunnerSandboxMode::Default),
+                        plan_mode: Some(RunnerPlanMode::Default),
+                        unsupported_option_policy: Some(UnsupportedOptionPolicy::Warn),
+                    },
+                    runners: BTreeMap::from([
+                        (
+                            Runner::Codex,
+                            RunnerCliOptionsPatch {
+                                sandbox: Some(RunnerSandboxMode::Disabled),
+                                ..RunnerCliOptionsPatch::default()
+                            },
+                        ),
+                        (
+                            Runner::Claude,
+                            RunnerCliOptionsPatch {
+                                verbosity: Some(RunnerVerbosity::Verbose),
+                                ..RunnerCliOptionsPatch::default()
+                            },
+                        ),
+                    ]),
+                }),
+                instruction_files: None,
                 repoprompt_plan_required: Some(false),
                 repoprompt_tool_injection: Some(false),
                 ci_gate_command: Some("make ci".to_string()),
@@ -405,7 +669,10 @@ impl Default for Config {
 
 #[cfg(test)]
 mod tests {
-    use super::{AgentConfig, GitRevertMode};
+    use super::{
+        AgentConfig, GitRevertMode, RunnerApprovalMode, RunnerOutputFormat, RunnerPlanMode,
+        RunnerSandboxMode, RunnerVerbosity, UnsupportedOptionPolicy,
+    };
 
     #[test]
     fn git_revert_mode_parses_snake_case() {
@@ -441,5 +708,33 @@ mod tests {
         // None should not override an already-set value.
         base.merge_from(AgentConfig::default());
         assert_eq!(base.update_task_before_run, Some(true));
+    }
+
+    #[test]
+    fn runner_cli_enums_from_str_accept_hyphenated_tokens() {
+        assert_eq!(
+            "stream-json".parse::<RunnerOutputFormat>().unwrap(),
+            RunnerOutputFormat::StreamJson
+        );
+        assert_eq!(
+            "auto-edits".parse::<RunnerApprovalMode>().unwrap(),
+            RunnerApprovalMode::AutoEdits
+        );
+        assert_eq!(
+            "verbose".parse::<RunnerVerbosity>().unwrap(),
+            RunnerVerbosity::Verbose
+        );
+        assert_eq!(
+            "disabled".parse::<RunnerSandboxMode>().unwrap(),
+            RunnerSandboxMode::Disabled
+        );
+        assert_eq!(
+            "enabled".parse::<RunnerPlanMode>().unwrap(),
+            RunnerPlanMode::Enabled
+        );
+        assert_eq!(
+            "error".parse::<UnsupportedOptionPolicy>().unwrap(),
+            UnsupportedOptionPolicy::Error
+        );
     }
 }

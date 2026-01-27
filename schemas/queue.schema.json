@@ -43,6 +43,165 @@
         "claude"
       ]
     },
+    "RunnerApprovalMode": {
+      "oneOf": [
+        {
+          "description": "Do not apply any approval flags; runner defaults apply.",
+          "type": "string",
+          "enum": [
+            "default"
+          ]
+        },
+        {
+          "description": "Attempt to auto-approve edits but not all tool actions (runner-specific).",
+          "type": "string",
+          "enum": [
+            "auto_edits"
+          ]
+        },
+        {
+          "description": "Bypass approvals / run headless (runner-specific).",
+          "type": "string",
+          "enum": [
+            "yolo"
+          ]
+        },
+        {
+          "description": "Strict safety mode. Warning: some runners may become interactive and hang.",
+          "type": "string",
+          "enum": [
+            "safe"
+          ]
+        }
+      ]
+    },
+    "RunnerCliOptionsPatch": {
+      "type": "object",
+      "properties": {
+        "approval_mode": {
+          "description": "Desired approval/permission behavior.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerApprovalMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output_format": {
+          "description": "Desired output format for runner execution.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerOutputFormat"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "plan_mode": {
+          "description": "Desired plan/read-only behavior (when supported by the runner).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerPlanMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sandbox": {
+          "description": "Desired sandbox behavior (when supported by the runner).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerSandboxMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unsupported_option_policy": {
+          "description": "Policy for unsupported options (warn/error/ignore).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/UnsupportedOptionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verbosity": {
+          "description": "Desired verbosity (when supported by the runner).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerVerbosity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunnerOutputFormat": {
+      "oneOf": [
+        {
+          "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
+          "type": "string",
+          "enum": [
+            "stream_json"
+          ]
+        },
+        {
+          "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        },
+        {
+          "description": "Plain text output (currently treated as unsupported by Ralph execution).",
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        }
+      ]
+    },
+    "RunnerPlanMode": {
+      "type": "string",
+      "enum": [
+        "default",
+        "enabled",
+        "disabled"
+      ]
+    },
+    "RunnerSandboxMode": {
+      "type": "string",
+      "enum": [
+        "default",
+        "enabled",
+        "disabled"
+      ]
+    },
+    "RunnerVerbosity": {
+      "type": "string",
+      "enum": [
+        "quiet",
+        "normal",
+        "verbose"
+      ]
+    },
     "Task": {
       "type": "object",
       "required": [
@@ -213,6 +372,17 @@
               "type": "null"
             }
           ]
+        },
+        "runner_cli": {
+          "description": "Optional normalized runner CLI overrides for this task.\n\nThis is intended to express runner behavior intent (output/approval/sandbox/etc) without embedding runner-specific flag syntax into the queue.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerCliOptionsPatch"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -234,6 +404,14 @@
         "doing",
         "done",
         "rejected"
+      ]
+    },
+    "UnsupportedOptionPolicy": {
+      "type": "string",
+      "enum": [
+        "ignore",
+        "warn",
+        "error"
       ]
     }
   }

@@ -33,6 +33,16 @@ fn parse_json_line_handles_invalid_json() {
 }
 
 #[test]
+fn parse_json_line_parses_json_with_prefix_noise() {
+    let line = "[INFO] {\"type\":\"assistant\",\"session_id\":\"sess-001\"} trailing";
+    let json = parse_json_line(line).expect("should parse");
+    assert_eq!(
+        json.get("session_id").and_then(|v| v.as_str()),
+        Some("sess-001")
+    );
+}
+
+#[test]
 fn extract_session_id_from_json_codex_thread_id() {
     let payload = json!({
         "thread_id": "thread-123"

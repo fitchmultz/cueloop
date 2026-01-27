@@ -84,6 +84,8 @@ fn resolved_with_agent_defaults(
             phases: Some(2),
             update_task_before_run: None,
             claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+            runner_cli: None,
+            instruction_files: None,
             repoprompt_plan_required: None,
             repoprompt_tool_injection: None,
             ci_gate_command: Some("make ci".to_string()),
@@ -149,6 +151,8 @@ fn resolved_with_repo_root(repo_root: PathBuf) -> crate::config::Resolved {
             phases: Some(3),
             update_task_before_run: None,
             claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+            runner_cli: None,
+            instruction_files: None,
             repoprompt_plan_required: None,
             repoprompt_tool_injection: None,
             ci_gate_command: Some("make ci".to_string()),
@@ -263,6 +267,7 @@ fn resolve_run_agent_settings_task_agent_overrides_config() -> anyhow::Result<()
         model_effort: ModelEffort::High,
         iterations: None,
         followup_reasoning_effort: None,
+        runner_cli: None,
     });
 
     let overrides = super::AgentOverrides::default();
@@ -288,12 +293,14 @@ fn resolve_run_agent_settings_cli_overrides_task_agent_and_config() -> anyhow::R
         model_effort: ModelEffort::Low,
         iterations: None,
         followup_reasoning_effort: None,
+        runner_cli: None,
     });
 
     let overrides = super::AgentOverrides {
         runner: Some(Runner::Codex),
         model: Some(Model::Gpt52Codex),
         reasoning_effort: Some(ReasoningEffort::High),
+        runner_cli: crate::contracts::RunnerCliOptionsPatch::default(),
         phases: None,
         update_task_before_run: None,
         repoprompt_plan_required: None,
@@ -324,6 +331,7 @@ fn resolve_run_agent_settings_defaults_to_glm47_for_opencode_runner() -> anyhow:
         runner: Some(Runner::Opencode),
         model: None,
         reasoning_effort: None,
+        runner_cli: crate::contracts::RunnerCliOptionsPatch::default(),
         phases: None,
         update_task_before_run: None,
         repoprompt_plan_required: None,
@@ -354,6 +362,7 @@ fn resolve_run_agent_settings_defaults_to_gemini_flash_for_gemini_runner() -> an
         runner: Some(Runner::Gemini),
         model: None,
         reasoning_effort: None,
+        runner_cli: crate::contracts::RunnerCliOptionsPatch::default(),
         phases: None,
         update_task_before_run: None,
         repoprompt_plan_required: None,
@@ -400,6 +409,7 @@ fn resolve_run_agent_settings_model_effort_default_uses_config() -> anyhow::Resu
         model_effort: ModelEffort::Default,
         iterations: None,
         followup_reasoning_effort: None,
+        runner_cli: None,
     });
 
     let overrides = super::AgentOverrides::default();
@@ -423,6 +433,7 @@ fn resolve_run_agent_settings_model_effort_overrides_config_for_codex() -> anyho
         model_effort: ModelEffort::XHigh,
         iterations: None,
         followup_reasoning_effort: None,
+        runner_cli: None,
     });
 
     let overrides = super::AgentOverrides::default();
@@ -446,11 +457,13 @@ fn resolve_run_agent_settings_effort_is_ignored_for_opencode() -> anyhow::Result
         model_effort: ModelEffort::High,
         iterations: None,
         followup_reasoning_effort: None,
+        runner_cli: None,
     });
     let overrides = super::AgentOverrides {
         runner: Some(Runner::Opencode),
         model: Some(Model::Gpt52),
         reasoning_effort: Some(ReasoningEffort::High),
+        runner_cli: crate::contracts::RunnerCliOptionsPatch::default(),
         phases: None,
         update_task_before_run: None,
         repoprompt_plan_required: None,
@@ -491,6 +504,7 @@ fn resolve_iteration_settings_prefers_task_over_config() -> anyhow::Result<()> {
         model_effort: ModelEffort::Default,
         iterations: Some(2),
         followup_reasoning_effort: Some(ReasoningEffort::High),
+        runner_cli: None,
     });
 
     let settings = resolve_iteration_settings(&task, &resolved.config.agent)?;
@@ -508,6 +522,7 @@ fn apply_followup_reasoning_effort_overrides_codex_only() {
         runner: Runner::Codex,
         model: Model::Gpt52Codex,
         reasoning_effort: Some(ReasoningEffort::Medium),
+        runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let updated = apply_followup_reasoning_effort(&base, Some(ReasoningEffort::High), true);
     assert_eq!(updated.reasoning_effort, Some(ReasoningEffort::High));
@@ -516,6 +531,7 @@ fn apply_followup_reasoning_effort_overrides_codex_only() {
         runner: Runner::Opencode,
         model: Model::Glm47,
         reasoning_effort: None,
+        runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let updated_non_codex =
         apply_followup_reasoning_effort(&base_non_codex, Some(ReasoningEffort::High), true);
@@ -528,6 +544,7 @@ fn apply_followup_reasoning_effort_warns_for_non_codex() {
         runner: Runner::Opencode,
         model: Model::Glm47,
         reasoning_effort: None,
+        runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
 
     let (state, _) = take_logs();

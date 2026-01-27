@@ -5,7 +5,11 @@
 //! and agent settings configuration.
 
 use crate::config;
-use crate::contracts::{AgentConfig, GitRevertMode, Model, ReasoningEffort, Runner};
+use crate::contracts::{
+    AgentConfig, GitRevertMode, Model, ReasoningEffort, Runner, RunnerApprovalMode,
+    RunnerCliOptionsPatch, RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity,
+    UnsupportedOptionPolicy,
+};
 use anyhow::{anyhow, bail, Result};
 use clap::Args;
 
@@ -57,6 +61,30 @@ pub struct RunAgentArgs {
     /// Ignored for other runners.
     #[arg(long)]
     pub effort: Option<String>,
+
+    /// Desired runner output format (stream-json, json, text). Ralph execution requires stream-json.
+    #[arg(long)]
+    pub output_format: Option<String>,
+
+    /// Desired verbosity (quiet, normal, verbose). Only some runners support this.
+    #[arg(long)]
+    pub verbosity: Option<String>,
+
+    /// Desired approval mode (default, auto-edits, yolo, safe). Default is yolo.
+    #[arg(long)]
+    pub approval_mode: Option<String>,
+
+    /// Desired sandbox mode (default, enabled, disabled). Only some runners support this.
+    #[arg(long)]
+    pub sandbox: Option<String>,
+
+    /// Desired plan/read-only mode (default, enabled, disabled). Only Cursor currently supports this.
+    #[arg(long)]
+    pub plan_mode: Option<String>,
+
+    /// Policy for unsupported options (ignore, warn, error). Default is warn.
+    #[arg(long)]
+    pub unsupported_option_policy: Option<String>,
 
     /// Execution shape:
     /// - 1 => single-pass execution (no mandated planning step)
@@ -110,6 +138,7 @@ pub struct AgentOverrides {
     pub runner: Option<Runner>,
     pub model: Option<Model>,
     pub reasoning_effort: Option<ReasoningEffort>,
+    pub runner_cli: RunnerCliOptionsPatch,
     /// Execution shape override:
     /// - 1 => single-pass execution
     /// - 2 => two-pass execution (plan then implement)
@@ -171,6 +200,55 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         None => None,
     };
 
+    let output_format = match args.output_format.as_deref() {
+        Some(value) => Some(
+            value
+                .parse::<RunnerOutputFormat>()
+                .map_err(|err| anyhow!(err))?,
+        ),
+        None => None,
+    };
+    let verbosity = match args.verbosity.as_deref() {
+        Some(value) => Some(
+            value
+                .parse::<RunnerVerbosity>()
+                .map_err(|err| anyhow!(err))?,
+        ),
+        None => None,
+    };
+    let approval_mode = match args.approval_mode.as_deref() {
+        Some(value) => Some(
+            value
+                .parse::<RunnerApprovalMode>()
+                .map_err(|err| anyhow!(err))?,
+        ),
+        None => None,
+    };
+    let sandbox = match args.sandbox.as_deref() {
+        Some(value) => Some(
+            value
+                .parse::<RunnerSandboxMode>()
+                .map_err(|err| anyhow!(err))?,
+        ),
+        None => None,
+    };
+    let plan_mode = match args.plan_mode.as_deref() {
+        Some(value) => Some(
+            value
+                .parse::<RunnerPlanMode>()
+                .map_err(|err| anyhow!(err))?,
+        ),
+        None => None,
+    };
+    let unsupported_option_policy = match args.unsupported_option_policy.as_deref() {
+        Some(value) => Some(
+            value
+                .parse::<UnsupportedOptionPolicy>()
+                .map_err(|err| anyhow!(err))?,
+        ),
+        None => None,
+    };
+
     if let (Some(runner_kind), Some(model)) = (runner, model.as_ref()) {
         runner::validate_model_for_runner(runner_kind, model)?;
     }
@@ -210,6 +288,14 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         runner,
         model,
         reasoning_effort,
+        runner_cli: RunnerCliOptionsPatch {
+            output_format,
+            verbosity,
+            approval_mode,
+            sandbox,
+            plan_mode,
+            unsupported_option_policy,
+        },
         phases: args.phases,
         update_task_before_run,
         repoprompt_plan_required: repoprompt_override,
@@ -257,6 +343,7 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
         runner,
         model,
         reasoning_effort,
+        runner_cli: RunnerCliOptionsPatch::default(),
         phases: None,
         update_task_before_run: None,
         repoprompt_plan_required: repoprompt_override,
@@ -343,6 +430,8 @@ mod tests {
                 phases: Some(2),
                 update_task_before_run: None,
                 claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+                runner_cli: None,
+                instruction_files: None,
                 repoprompt_plan_required: None,
                 repoprompt_tool_injection: None,
                 ci_gate_command: Some("make ci".to_string()),
@@ -429,6 +518,7 @@ mod tests {
             runner: None,
             model: None,
             reasoning_effort: None,
+            runner_cli: RunnerCliOptionsPatch::default(),
             phases: None,
             update_task_before_run: None,
             repoprompt_plan_required: Some(false),
@@ -488,6 +578,12 @@ mod tests {
             runner: Some("codex".to_string()),
             model: Some("gpt-5.2-codex".to_string()),
             effort: Some("high".to_string()),
+            output_format: None,
+            verbosity: None,
+            approval_mode: None,
+            sandbox: None,
+            plan_mode: None,
+            unsupported_option_policy: None,
             phases: Some(2),
             rp_on: false,
             rp_off: false,
@@ -516,6 +612,12 @@ mod tests {
             runner: None,
             model: None,
             effort: None,
+            output_format: None,
+            verbosity: None,
+            approval_mode: None,
+            sandbox: None,
+            plan_mode: None,
+            unsupported_option_policy: None,
             phases: None,
             rp_on: false,
             rp_off: false,

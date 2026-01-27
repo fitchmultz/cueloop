@@ -112,6 +112,17 @@ By default, draft tasks (`status: draft`) are skipped during task selection (so 
 * `--update-task`: Automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution. This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. This runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via config: `agent.update_task_before_run: true`.
 * `--no-update-task`: Disable automatic pre-run task update (overrides config).
 
+### Normalized runner CLI options
+
+These flags configure a normalized runner CLI behavior surface across Codex/OpenCode/Gemini/Claude/Cursor. Unsupported options are dropped by default with a warning (see `--unsupported-option-policy`).
+
+* `--approval-mode <default|auto-edits|yolo|safe>`: approval/permission behavior (default: `yolo`).
+* `--sandbox <default|enabled|disabled>`: runner sandbox behavior when supported.
+* `--verbosity <quiet|normal|verbose>`: runner verbosity when supported.
+* `--plan-mode <default|enabled|disabled>`: Cursor plan/read-only mode control.
+* `--output-format <stream-json|json|text>`: execution requires `stream-json`.
+* `--unsupported-option-policy <ignore|warn|error>`: handling for unsupported options (default: `warn`).
+
 Examples:
 
 ```bash
@@ -131,6 +142,8 @@ ralph run loop --rp-off --max-tasks 1
 ralph run loop -i --max-tasks 3
 ralph run loop --max-tasks 1 --debug
 ralph run one --git-commit-push-off
+ralph run one --approval-mode yolo --sandbox disabled
+ralph run one --approval-mode auto-edits --runner claude
 ```
 
 Clean-repo checks for `run one` and `run loop` allow changes to `.ralph/config.json`

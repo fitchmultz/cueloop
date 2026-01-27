@@ -20,7 +20,9 @@ mod task;
 
 pub use config::{
     AgentConfig, ClaudePermissionMode, Config, GitRevertMode, Model, ModelEffort, ProjectType,
-    QueueConfig, ReasoningEffort, Runner,
+    QueueConfig, ReasoningEffort, Runner, RunnerApprovalMode, RunnerCliConfigRoot,
+    RunnerCliOptionsPatch, RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity,
+    UnsupportedOptionPolicy,
 };
 pub use queue::QueueFile;
 pub use task::{Task, TaskAgent, TaskPriority, TaskStatus};

@@ -16,6 +16,7 @@
         "gemini_bin": "gemini",
         "git_commit_push_enabled": true,
         "git_revert_mode": "ask",
+        "instruction_files": null,
         "iterations": 1,
         "model": "sonnet",
         "opencode_bin": "opencode",
@@ -24,6 +25,34 @@
         "repoprompt_plan_required": false,
         "repoprompt_tool_injection": false,
         "runner": "claude",
+        "runner_cli": {
+          "defaults": {
+            "approval_mode": "yolo",
+            "output_format": "stream_json",
+            "plan_mode": "default",
+            "sandbox": "default",
+            "unsupported_option_policy": "warn",
+            "verbosity": "normal"
+          },
+          "runners": {
+            "claude": {
+              "approval_mode": null,
+              "output_format": null,
+              "plan_mode": null,
+              "sandbox": null,
+              "unsupported_option_policy": null,
+              "verbosity": "verbose"
+            },
+            "codex": {
+              "approval_mode": null,
+              "output_format": null,
+              "plan_mode": null,
+              "sandbox": "disabled",
+              "unsupported_option_policy": null,
+              "verbosity": null
+            }
+          }
+        },
         "update_task_before_run": false
       },
       "allOf": [
@@ -163,6 +192,17 @@
             }
           ]
         },
+        "instruction_files": {
+          "description": "Additional instruction files to inject at the top of every prompt sent to runner CLIs.\n\nPaths may be absolute, `~/`-prefixed, or repo-root relative. Missing files are treated as configuration errors.\n\nNOTE: `AGENTS.md` at the repo root is injected automatically when present.",
+          "default": null,
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
         "iterations": {
           "description": "Number of iterations to run for each task (default: 1).",
           "default": null,
@@ -238,6 +278,18 @@
           "anyOf": [
             {
               "$ref": "#/definitions/Runner"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runner_cli": {
+          "description": "Normalized runner CLI behavior overrides (output/approval/sandbox/etc).\n\nThis is additive: existing runner-specific fields remain supported.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerCliConfigRoot"
             },
             {
               "type": "null"
@@ -337,6 +389,203 @@
         "gemini",
         "cursor",
         "claude"
+      ]
+    },
+    "RunnerApprovalMode": {
+      "oneOf": [
+        {
+          "description": "Do not apply any approval flags; runner defaults apply.",
+          "type": "string",
+          "enum": [
+            "default"
+          ]
+        },
+        {
+          "description": "Attempt to auto-approve edits but not all tool actions (runner-specific).",
+          "type": "string",
+          "enum": [
+            "auto_edits"
+          ]
+        },
+        {
+          "description": "Bypass approvals / run headless (runner-specific).",
+          "type": "string",
+          "enum": [
+            "yolo"
+          ]
+        },
+        {
+          "description": "Strict safety mode. Warning: some runners may become interactive and hang.",
+          "type": "string",
+          "enum": [
+            "safe"
+          ]
+        }
+      ]
+    },
+    "RunnerCliConfigRoot": {
+      "type": "object",
+      "properties": {
+        "defaults": {
+          "description": "Default normalized runner CLI options applied to all runners (unless overridden).",
+          "default": {
+            "approval_mode": null,
+            "output_format": null,
+            "plan_mode": null,
+            "sandbox": null,
+            "unsupported_option_policy": null,
+            "verbosity": null
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/RunnerCliOptionsPatch"
+            }
+          ]
+        },
+        "runners": {
+          "description": "Optional per-runner overrides, merged leaf-wise over `defaults`.",
+          "default": {},
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/RunnerCliOptionsPatch"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunnerCliOptionsPatch": {
+      "type": "object",
+      "properties": {
+        "approval_mode": {
+          "description": "Desired approval/permission behavior.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerApprovalMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output_format": {
+          "description": "Desired output format for runner execution.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerOutputFormat"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "plan_mode": {
+          "description": "Desired plan/read-only behavior (when supported by the runner).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerPlanMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sandbox": {
+          "description": "Desired sandbox behavior (when supported by the runner).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerSandboxMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unsupported_option_policy": {
+          "description": "Policy for unsupported options (warn/error/ignore).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/UnsupportedOptionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verbosity": {
+          "description": "Desired verbosity (when supported by the runner).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RunnerVerbosity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunnerOutputFormat": {
+      "oneOf": [
+        {
+          "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
+          "type": "string",
+          "enum": [
+            "stream_json"
+          ]
+        },
+        {
+          "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        },
+        {
+          "description": "Plain text output (currently treated as unsupported by Ralph execution).",
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        }
+      ]
+    },
+    "RunnerPlanMode": {
+      "type": "string",
+      "enum": [
+        "default",
+        "enabled",
+        "disabled"
+      ]
+    },
+    "RunnerSandboxMode": {
+      "type": "string",
+      "enum": [
+        "default",
+        "enabled",
+        "disabled"
+      ]
+    },
+    "RunnerVerbosity": {
+      "type": "string",
+      "enum": [
+        "quiet",
+        "normal",
+        "verbose"
+      ]
+    },
+    "UnsupportedOptionPolicy": {
+      "type": "string",
+      "enum": [
+        "ignore",
+        "warn",
+        "error"
       ]
     }
   }

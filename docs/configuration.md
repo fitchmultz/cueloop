@@ -34,12 +34,35 @@ Supported fields:
 - `ci_gate_enabled`: enable or disable the CI gate (default: `true`).
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `cursor_bin`: override runner executable path/name (Cursor uses the `agent` binary).
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
+- `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.
+- `instruction_files`: optional list of additional instruction file paths to inject at the top of every prompt sent to runner CLIs (repo-root relative, absolute, or `~/`).
 
 Notes:
 - `followup_reasoning_effort` is ignored for non-Codex runners.
 - Breaking change: `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
 - CI gate auto-retry: When enabled, Ralph automatically sends a strict compliance message and retries up to 2 times on CI failure during Phase 2, Phase 3, or single-phase execution. This behavior is not configurable; after 2 automatic retries, the user is prompted via the configured `git_revert_mode`. Post-run supervision prompts immediately on CI failure.
 - Phase 1 plan-only violations: when `git_revert_mode=ask`, the prompt includes a keep+continue override to proceed to the next phase without reverting changes.
+
+### `agent.runner_cli`
+
+`agent.runner_cli` provides a normalized configuration surface for runner CLI behavior so Ralph can keep parity across runners while still emitting runner-specific flags.
+
+Structure:
+- `agent.runner_cli.defaults`: applied to all runners (unless overridden)
+- `agent.runner_cli.runners.<runner>`: per-runner overrides (merged leaf-wise over `defaults`)
+
+Supported normalized fields:
+- `output_format`: `stream_json`, `json`, `text` (execution requires `stream_json`)
+- `verbosity`: `quiet`, `normal`, `verbose`
+- `approval_mode`: `default`, `auto_edits`, `yolo`, `safe`
+- `sandbox`: `default`, `enabled`, `disabled`
+- `plan_mode`: `default`, `enabled`, `disabled`
+- `unsupported_option_policy`: `ignore`, `warn`, `error`
+
+Notes:
+- Unsupported options are dropped by default with a warning (policy `warn`).
+- `agent.claude_permission_mode` remains supported; when `runner_cli.approval_mode` is set, it takes precedence for Claude mapping.
+- `AGENTS.md` at the repo root is injected automatically when present.
 
 Example:
 ```json
@@ -57,6 +80,17 @@ Example:
     "git_commit_push_enabled": true,
     "git_revert_mode": "ask",
     "claude_permission_mode": "bypass_permissions",
+    "runner_cli": {
+      "defaults": {
+        "output_format": "stream_json",
+        "approval_mode": "yolo",
+        "unsupported_option_policy": "warn"
+      },
+      "runners": {
+        "codex": { "sandbox": "disabled" },
+        "claude": { "verbosity": "verbose" }
+      }
+    },
     "ci_gate_command": "make ci",
     "ci_gate_enabled": true
   }

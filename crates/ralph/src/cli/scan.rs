@@ -31,6 +31,7 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
         overrides.runner,
         overrides.model,
         overrides.reasoning_effort,
+        &overrides.runner_cli,
         None,
         &resolved.config.agent,
     )?;

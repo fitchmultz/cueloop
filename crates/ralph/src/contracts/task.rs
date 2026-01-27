@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 
+use super::RunnerCliOptionsPatch;
 use super::{Model, ModelEffort, ReasoningEffort, Runner};
 
 /* ------------------------------ Task (JSON) ------------------------------ */
@@ -189,6 +190,13 @@ pub struct TaskAgent {
     /// Reasoning effort override for follow-up iterations (iterations > 1).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub followup_reasoning_effort: Option<ReasoningEffort>,
+
+    /// Optional normalized runner CLI overrides for this task.
+    ///
+    /// This is intended to express runner behavior intent (output/approval/sandbox/etc)
+    /// without embedding runner-specific flag syntax into the queue.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runner_cli: Option<RunnerCliOptionsPatch>,
 }
 
 fn model_effort_is_default(value: &ModelEffort) -> bool {

@@ -2,6 +2,7 @@
 
 use crate::contracts::{
     ClaudePermissionMode, GitRevertMode, Model, ProjectType, ReasoningEffort, Runner,
+    RunnerCliOptionsPatch,
 };
 use crate::{config, fsutil, gitutil, prompts, queue, runner, runutil, timeutil};
 use anyhow::{Context, Result};
@@ -77,11 +78,21 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         prompts::render_scan_prompt(&template, &opts.focus, project_type, &resolved.config)?;
 
     prompt = prompts::wrap_with_repoprompt_requirement(&prompt, opts.repoprompt_tool_injection);
+    prompt = prompts::wrap_with_instruction_files(&resolved.repo_root, &prompt, &resolved.config)?;
 
     let bins = runner::resolve_binaries(&resolved.config.agent);
     // Two-pass mode disabled for scan (only generates findings, should not implement)
     // Force BypassPermissions for scan (needs tool access for exploration)
     let permission_mode = Some(ClaudePermissionMode::BypassPermissions);
+    let runner_cli = runner::resolve_agent_settings(
+        Some(opts.runner),
+        Some(opts.model.clone()),
+        opts.reasoning_effort,
+        &RunnerCliOptionsPatch::default(),
+        None,
+        &resolved.config.agent,
+    )?
+    .runner_cli;
 
     let output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
@@ -90,6 +101,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             bins,
             model: opts.model,
             reasoning_effort: opts.reasoning_effort,
+            runner_cli,
             prompt: &prompt,
             timeout: None,
             permission_mode,

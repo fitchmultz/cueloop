@@ -73,6 +73,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 bins: ctx.bins,
                 model: ctx.settings.model.clone(),
                 reasoning_effort: ctx.settings.reasoning_effort,
+                runner_cli: ctx.settings.runner_cli,
                 prompt: &p3_prompt,
                 timeout: None,
                 permission_mode: ctx.resolved.config.agent.claude_permission_mode,

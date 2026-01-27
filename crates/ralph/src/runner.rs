@@ -14,8 +14,11 @@
 
 mod execution;
 
+pub(crate) use execution::ResolvedRunnerCliOptions;
+
 use crate::contracts::{
-    AgentConfig, ClaudePermissionMode, Model, ReasoningEffort, Runner, TaskAgent,
+    AgentConfig, ClaudePermissionMode, Model, ReasoningEffort, Runner, RunnerCliOptionsPatch,
+    TaskAgent,
 };
 use crate::redaction::{redact_text, RedactedString};
 use anyhow::{anyhow, bail, Result};
@@ -164,12 +167,14 @@ pub(crate) struct AgentSettings {
     pub runner: Runner,
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
+    pub runner_cli: execution::ResolvedRunnerCliOptions,
 }
 
 pub(crate) fn resolve_agent_settings(
     runner_override: Option<Runner>,
     model_override: Option<Model>,
     effort_override: Option<ReasoningEffort>,
+    runner_cli_override: &RunnerCliOptionsPatch,
     task_agent: Option<&TaskAgent>,
     config_agent: &AgentConfig,
 ) -> Result<AgentSettings> {
@@ -200,10 +205,18 @@ pub(crate) fn resolve_agent_settings(
 
     validate_model_for_runner(runner, &model)?;
 
+    let runner_cli = execution::resolve_runner_cli_options(
+        runner,
+        runner_cli_override,
+        task_agent.and_then(|a| a.runner_cli.as_ref()),
+        config_agent,
+    )?;
+
     Ok(AgentSettings {
         runner,
         model,
         reasoning_effort,
+        runner_cli,
     })
 }
 
@@ -305,6 +318,7 @@ pub(crate) fn run_prompt(
     bins: RunnerBinaries<'_>,
     model: Model,
     reasoning_effort: Option<ReasoningEffort>,
+    runner_cli: execution::ResolvedRunnerCliOptions,
     prompt: &str,
     timeout: Option<Duration>,
     permission_mode: Option<ClaudePermissionMode>,
@@ -330,6 +344,7 @@ pub(crate) fn run_prompt(
         Runner::Codex => execution::run_codex(
             work_dir,
             bins.codex,
+            runner_cli,
             model,
             reasoning_effort,
             prompt,
@@ -340,6 +355,7 @@ pub(crate) fn run_prompt(
         Runner::Opencode => execution::run_opencode(
             work_dir,
             bins.opencode,
+            runner_cli,
             &model,
             prompt,
             timeout,
@@ -349,6 +365,7 @@ pub(crate) fn run_prompt(
         Runner::Gemini => execution::run_gemini(
             work_dir,
             bins.gemini,
+            runner_cli,
             model,
             prompt,
             timeout,
@@ -358,6 +375,7 @@ pub(crate) fn run_prompt(
         Runner::Cursor => execution::run_cursor(
             work_dir,
             bins.cursor,
+            runner_cli,
             model,
             prompt,
             timeout,
@@ -367,10 +385,11 @@ pub(crate) fn run_prompt(
         Runner::Claude => execution::run_claude(
             work_dir,
             bins.claude,
+            runner_cli,
             model,
             prompt,
             timeout,
-            permission_mode,
+            runner_cli.effective_claude_permission_mode(permission_mode),
             output_handler,
             output_stream,
         )?,
@@ -403,6 +422,7 @@ pub(crate) fn resume_session(
     bins: RunnerBinaries<'_>,
     model: Model,
     reasoning_effort: Option<ReasoningEffort>,
+    runner_cli: execution::ResolvedRunnerCliOptions,
     session_id: &str,
     message: &str,
     permission_mode: Option<ClaudePermissionMode>,
@@ -451,6 +471,7 @@ pub(crate) fn resume_session(
         Runner::Codex => execution::run_codex_resume(
             work_dir,
             bins.codex,
+            runner_cli,
             model,
             reasoning_effort,
             session_id,
@@ -462,6 +483,7 @@ pub(crate) fn resume_session(
         Runner::Opencode => execution::run_opencode_resume(
             work_dir,
             bins.opencode,
+            runner_cli,
             &model,
             session_id,
             message,
@@ -472,6 +494,7 @@ pub(crate) fn resume_session(
         Runner::Gemini => execution::run_gemini_resume(
             work_dir,
             bins.gemini,
+            runner_cli,
             model,
             session_id,
             message,
@@ -482,6 +505,7 @@ pub(crate) fn resume_session(
         Runner::Cursor => execution::run_cursor_resume(
             work_dir,
             bins.cursor,
+            runner_cli,
             model,
             session_id,
             message,
@@ -492,11 +516,12 @@ pub(crate) fn resume_session(
         Runner::Claude => execution::run_claude_resume(
             work_dir,
             bins.claude,
+            runner_cli,
             model,
             session_id,
             message,
             timeout,
-            permission_mode,
+            runner_cli.effective_claude_permission_mode(permission_mode),
             output_handler,
             output_stream,
         ),
@@ -739,6 +764,7 @@ mod tests {
             bins,
             Model::Glm47,
             None,
+            ResolvedRunnerCliOptions::default(),
             "   ",
             "hello",
             None,
@@ -772,6 +798,7 @@ mod tests {
             bins,
             Model::Glm47,
             Some(ReasoningEffort::Low),
+            ResolvedRunnerCliOptions::default(),
             "prompt",
             None,
             None,

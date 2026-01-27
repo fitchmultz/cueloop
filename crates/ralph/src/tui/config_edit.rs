@@ -1,6 +1,22 @@
+//! TUI project config editor helpers.
+//!
+//! Responsibilities:
+//! - Define which config fields the TUI can display/edit in the "project config" overlay.
+//! - Provide display/cycle/clear behavior for supported config keys.
+//!
+//! Does not handle:
+//! - Loading/saving config files (handled by `crate::config` and `tui::app`).
+//! - Full-fidelity config editing (this editor intentionally covers a curated subset).
+//!
+//! Invariants/assumptions:
+//! - Edits apply to the *project* config layer (`.ralph/config.json`) as leaf-wise overrides.
+//! - Fields cycle through a fixed set of allowed values plus an "unset" state.
+
 use super::app::App;
 use crate::contracts::{
     ClaudePermissionMode, GitRevertMode, Model, ProjectType, ReasoningEffort, Runner,
+    RunnerApprovalMode, RunnerCliConfigRoot, RunnerCliOptionsPatch, RunnerOutputFormat,
+    RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity, UnsupportedOptionPolicy,
 };
 use anyhow::{anyhow, bail, Result};
 use std::path::PathBuf;
@@ -30,6 +46,12 @@ pub enum ConfigKey {
     AgentClaudeBin,
     AgentCursorBin,
     AgentClaudePermissionMode,
+    AgentRunnerCliOutputFormat,
+    AgentRunnerCliVerbosity,
+    AgentRunnerCliApprovalMode,
+    AgentRunnerCliSandboxMode,
+    AgentRunnerCliPlanMode,
+    AgentRunnerCliUnsupportedOptionPolicy,
     AgentRepopromptPlanRequired,
     AgentRepopromptToolInjection,
     AgentGitRevertMode,
@@ -145,6 +167,78 @@ impl App {
                 label: "agent.claude_permission_mode",
                 value: display_claude_permission_mode(
                     self.project_config.agent.claude_permission_mode,
+                ),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentRunnerCliOutputFormat,
+                label: "agent.runner_cli.defaults.output_format",
+                value: display_runner_output_format(
+                    self.project_config
+                        .agent
+                        .runner_cli
+                        .as_ref()
+                        .and_then(|root| root.defaults.output_format),
+                ),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentRunnerCliVerbosity,
+                label: "agent.runner_cli.defaults.verbosity",
+                value: display_runner_verbosity(
+                    self.project_config
+                        .agent
+                        .runner_cli
+                        .as_ref()
+                        .and_then(|root| root.defaults.verbosity),
+                ),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentRunnerCliApprovalMode,
+                label: "agent.runner_cli.defaults.approval_mode",
+                value: display_runner_approval_mode(
+                    self.project_config
+                        .agent
+                        .runner_cli
+                        .as_ref()
+                        .and_then(|root| root.defaults.approval_mode),
+                ),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentRunnerCliSandboxMode,
+                label: "agent.runner_cli.defaults.sandbox",
+                value: display_runner_sandbox_mode(
+                    self.project_config
+                        .agent
+                        .runner_cli
+                        .as_ref()
+                        .and_then(|root| root.defaults.sandbox),
+                ),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentRunnerCliPlanMode,
+                label: "agent.runner_cli.defaults.plan_mode",
+                value: display_runner_plan_mode(
+                    self.project_config
+                        .agent
+                        .runner_cli
+                        .as_ref()
+                        .and_then(|root| root.defaults.plan_mode),
+                ),
+                kind: ConfigFieldKind::Cycle,
+            },
+            ConfigEntry {
+                key: ConfigKey::AgentRunnerCliUnsupportedOptionPolicy,
+                label: "agent.runner_cli.defaults.unsupported_option_policy",
+                value: display_unsupported_option_policy(
+                    self.project_config
+                        .agent
+                        .runner_cli
+                        .as_ref()
+                        .and_then(|root| root.defaults.unsupported_option_policy),
                 ),
                 kind: ConfigFieldKind::Cycle,
             },
@@ -381,6 +475,37 @@ impl App {
                 self.project_config.agent.claude_permission_mode =
                     cycle_claude_permission_mode(self.project_config.agent.claude_permission_mode);
             }
+            ConfigKey::AgentRunnerCliOutputFormat => {
+                let defaults = runner_cli_defaults_mut(&mut self.project_config.agent);
+                defaults.output_format = cycle_runner_output_format(defaults.output_format);
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliVerbosity => {
+                let defaults = runner_cli_defaults_mut(&mut self.project_config.agent);
+                defaults.verbosity = cycle_runner_verbosity(defaults.verbosity);
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliApprovalMode => {
+                let defaults = runner_cli_defaults_mut(&mut self.project_config.agent);
+                defaults.approval_mode = cycle_runner_approval_mode(defaults.approval_mode);
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliSandboxMode => {
+                let defaults = runner_cli_defaults_mut(&mut self.project_config.agent);
+                defaults.sandbox = cycle_runner_sandbox_mode(defaults.sandbox);
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliPlanMode => {
+                let defaults = runner_cli_defaults_mut(&mut self.project_config.agent);
+                defaults.plan_mode = cycle_runner_plan_mode(defaults.plan_mode);
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliUnsupportedOptionPolicy => {
+                let defaults = runner_cli_defaults_mut(&mut self.project_config.agent);
+                defaults.unsupported_option_policy =
+                    cycle_unsupported_option_policy(defaults.unsupported_option_policy);
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
             ConfigKey::AgentRepopromptPlanRequired => {
                 self.project_config.agent.repoprompt_plan_required =
                     cycle_bool(self.project_config.agent.repoprompt_plan_required);
@@ -426,6 +551,42 @@ impl App {
             ConfigKey::AgentCursorBin => self.project_config.agent.cursor_bin = None,
             ConfigKey::AgentClaudePermissionMode => {
                 self.project_config.agent.claude_permission_mode = None;
+            }
+            ConfigKey::AgentRunnerCliOutputFormat => {
+                if let Some(root) = &mut self.project_config.agent.runner_cli {
+                    root.defaults.output_format = None;
+                }
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliVerbosity => {
+                if let Some(root) = &mut self.project_config.agent.runner_cli {
+                    root.defaults.verbosity = None;
+                }
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliApprovalMode => {
+                if let Some(root) = &mut self.project_config.agent.runner_cli {
+                    root.defaults.approval_mode = None;
+                }
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliSandboxMode => {
+                if let Some(root) = &mut self.project_config.agent.runner_cli {
+                    root.defaults.sandbox = None;
+                }
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliPlanMode => {
+                if let Some(root) = &mut self.project_config.agent.runner_cli {
+                    root.defaults.plan_mode = None;
+                }
+                prune_runner_cli_root(&mut self.project_config.agent);
+            }
+            ConfigKey::AgentRunnerCliUnsupportedOptionPolicy => {
+                if let Some(root) = &mut self.project_config.agent.runner_cli {
+                    root.defaults.unsupported_option_policy = None;
+                }
+                prune_runner_cli_root(&mut self.project_config.agent);
             }
             ConfigKey::AgentRepopromptPlanRequired => {
                 self.project_config.agent.repoprompt_plan_required = None
@@ -480,6 +641,61 @@ fn display_claude_permission_mode(value: Option<ClaudePermissionMode>) -> String
     match value {
         Some(ClaudePermissionMode::AcceptEdits) => "accept_edits".to_string(),
         Some(ClaudePermissionMode::BypassPermissions) => "bypass_permissions".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_runner_output_format(value: Option<RunnerOutputFormat>) -> String {
+    match value {
+        Some(RunnerOutputFormat::StreamJson) => "stream_json".to_string(),
+        Some(RunnerOutputFormat::Json) => "json".to_string(),
+        Some(RunnerOutputFormat::Text) => "text".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_runner_verbosity(value: Option<RunnerVerbosity>) -> String {
+    match value {
+        Some(RunnerVerbosity::Quiet) => "quiet".to_string(),
+        Some(RunnerVerbosity::Normal) => "normal".to_string(),
+        Some(RunnerVerbosity::Verbose) => "verbose".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_runner_approval_mode(value: Option<RunnerApprovalMode>) -> String {
+    match value {
+        Some(RunnerApprovalMode::Default) => "default".to_string(),
+        Some(RunnerApprovalMode::AutoEdits) => "auto_edits".to_string(),
+        Some(RunnerApprovalMode::Yolo) => "yolo".to_string(),
+        Some(RunnerApprovalMode::Safe) => "safe".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_runner_sandbox_mode(value: Option<RunnerSandboxMode>) -> String {
+    match value {
+        Some(RunnerSandboxMode::Default) => "default".to_string(),
+        Some(RunnerSandboxMode::Enabled) => "enabled".to_string(),
+        Some(RunnerSandboxMode::Disabled) => "disabled".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_runner_plan_mode(value: Option<RunnerPlanMode>) -> String {
+    match value {
+        Some(RunnerPlanMode::Default) => "default".to_string(),
+        Some(RunnerPlanMode::Enabled) => "enabled".to_string(),
+        Some(RunnerPlanMode::Disabled) => "disabled".to_string(),
+        None => default_config_value(),
+    }
+}
+
+fn display_unsupported_option_policy(value: Option<UnsupportedOptionPolicy>) -> String {
+    match value {
+        Some(UnsupportedOptionPolicy::Ignore) => "ignore".to_string(),
+        Some(UnsupportedOptionPolicy::Warn) => "warn".to_string(),
+        Some(UnsupportedOptionPolicy::Error) => "error".to_string(),
         None => default_config_value(),
     }
 }
@@ -568,6 +784,63 @@ fn cycle_claude_permission_mode(
     }
 }
 
+fn cycle_runner_output_format(value: Option<RunnerOutputFormat>) -> Option<RunnerOutputFormat> {
+    match value {
+        None => Some(RunnerOutputFormat::StreamJson),
+        Some(RunnerOutputFormat::StreamJson) => Some(RunnerOutputFormat::Json),
+        Some(RunnerOutputFormat::Json) => Some(RunnerOutputFormat::Text),
+        Some(RunnerOutputFormat::Text) => None,
+    }
+}
+
+fn cycle_runner_verbosity(value: Option<RunnerVerbosity>) -> Option<RunnerVerbosity> {
+    match value {
+        None => Some(RunnerVerbosity::Quiet),
+        Some(RunnerVerbosity::Quiet) => Some(RunnerVerbosity::Normal),
+        Some(RunnerVerbosity::Normal) => Some(RunnerVerbosity::Verbose),
+        Some(RunnerVerbosity::Verbose) => None,
+    }
+}
+
+fn cycle_runner_approval_mode(value: Option<RunnerApprovalMode>) -> Option<RunnerApprovalMode> {
+    match value {
+        None => Some(RunnerApprovalMode::Default),
+        Some(RunnerApprovalMode::Default) => Some(RunnerApprovalMode::AutoEdits),
+        Some(RunnerApprovalMode::AutoEdits) => Some(RunnerApprovalMode::Yolo),
+        Some(RunnerApprovalMode::Yolo) => Some(RunnerApprovalMode::Safe),
+        Some(RunnerApprovalMode::Safe) => None,
+    }
+}
+
+fn cycle_runner_sandbox_mode(value: Option<RunnerSandboxMode>) -> Option<RunnerSandboxMode> {
+    match value {
+        None => Some(RunnerSandboxMode::Default),
+        Some(RunnerSandboxMode::Default) => Some(RunnerSandboxMode::Enabled),
+        Some(RunnerSandboxMode::Enabled) => Some(RunnerSandboxMode::Disabled),
+        Some(RunnerSandboxMode::Disabled) => None,
+    }
+}
+
+fn cycle_runner_plan_mode(value: Option<RunnerPlanMode>) -> Option<RunnerPlanMode> {
+    match value {
+        None => Some(RunnerPlanMode::Default),
+        Some(RunnerPlanMode::Default) => Some(RunnerPlanMode::Enabled),
+        Some(RunnerPlanMode::Enabled) => Some(RunnerPlanMode::Disabled),
+        Some(RunnerPlanMode::Disabled) => None,
+    }
+}
+
+fn cycle_unsupported_option_policy(
+    value: Option<UnsupportedOptionPolicy>,
+) -> Option<UnsupportedOptionPolicy> {
+    match value {
+        None => Some(UnsupportedOptionPolicy::Ignore),
+        Some(UnsupportedOptionPolicy::Ignore) => Some(UnsupportedOptionPolicy::Warn),
+        Some(UnsupportedOptionPolicy::Warn) => Some(UnsupportedOptionPolicy::Error),
+        Some(UnsupportedOptionPolicy::Error) => None,
+    }
+}
+
 fn cycle_git_revert_mode(value: Option<GitRevertMode>) -> Option<GitRevertMode> {
     match value {
         None => Some(GitRevertMode::Ask),
@@ -592,5 +865,33 @@ fn cycle_phases(value: Option<u8>) -> Option<u8> {
         Some(2) => Some(3),
         Some(3) => None,
         Some(_) => None,
+    }
+}
+
+fn runner_cli_defaults_mut(
+    agent: &mut crate::contracts::AgentConfig,
+) -> &mut RunnerCliOptionsPatch {
+    if agent.runner_cli.is_none() {
+        agent.runner_cli = Some(RunnerCliConfigRoot::default());
+    }
+
+    &mut agent.runner_cli.as_mut().expect("runner_cli root").defaults
+}
+
+fn runner_cli_patch_is_empty(patch: &RunnerCliOptionsPatch) -> bool {
+    patch.output_format.is_none()
+        && patch.verbosity.is_none()
+        && patch.approval_mode.is_none()
+        && patch.sandbox.is_none()
+        && patch.plan_mode.is_none()
+        && patch.unsupported_option_policy.is_none()
+}
+
+fn prune_runner_cli_root(agent: &mut crate::contracts::AgentConfig) {
+    let Some(root) = agent.runner_cli.as_ref() else {
+        return;
+    };
+    if root.runners.is_empty() && runner_cli_patch_is_empty(&root.defaults) {
+        agent.runner_cli = None;
     }
 }

@@ -85,6 +85,7 @@ pub fn build_interactive_factories_with_invokers(
         overrides.runner,
         overrides.model.clone(),
         overrides.reasoning_effort,
+        &overrides.runner_cli,
         None,
         &resolved.config.agent,
     )?;

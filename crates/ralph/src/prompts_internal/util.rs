@@ -58,6 +58,127 @@ pub(crate) fn wrap_with_repoprompt_requirement(prompt: &str, required: bool) -> 
     format!("{}\n\n{}", REPOPROMPT_REQUIRED_INSTRUCTION.trim(), prompt)
 }
 
+pub(crate) fn wrap_with_instruction_files(
+    repo_root: &Path,
+    prompt: &str,
+    config: &Config,
+) -> Result<String> {
+    const MAX_INSTRUCTION_BYTES: usize = 128 * 1024;
+
+    let mut sources: Vec<(String, String)> = Vec::new();
+
+    // Global/user-specified instruction files.
+    if let Some(paths) = config.agent.instruction_files.as_ref() {
+        for raw in paths {
+            let resolved = resolve_instruction_path(repo_root, raw);
+            let content = read_instruction_file(&resolved, MAX_INSTRUCTION_BYTES)
+                .with_context(|| format!("read instruction file at {}", resolved.display()))?;
+            sources.push((resolved.display().to_string(), content));
+        }
+    }
+
+    // Repo-local AGENTS.md is auto-injected when present.
+    let repo_agents = repo_root.join("AGENTS.md");
+    if repo_agents.exists() {
+        let content = read_instruction_file(&repo_agents, MAX_INSTRUCTION_BYTES)
+            .with_context(|| format!("read repo instruction file at {}", repo_agents.display()))?;
+        sources.push((repo_agents.display().to_string(), content));
+    }
+
+    if sources.is_empty() {
+        return Ok(prompt.to_string());
+    }
+
+    let mut preamble = String::new();
+    preamble.push_str(
+        r#"## AGENTS / GLOBAL INSTRUCTIONS (AUTHORITATIVE)
+The following instruction files are authoritative for this run. Follow them exactly.
+
+"#,
+    );
+
+    for (idx, (label, content)) in sources.into_iter().enumerate() {
+        if idx > 0 {
+            preamble.push_str("\n---\n\n");
+        }
+        preamble.push_str(&format!("### Source: {label}\n\n"));
+        preamble.push_str(content.trim());
+        preamble.push('\n');
+    }
+
+    Ok(format!("{}\n\n---\n\n{}", preamble.trim(), prompt))
+}
+
+pub(crate) fn instruction_file_warnings(repo_root: &Path, config: &Config) -> Vec<String> {
+    const MAX_INSTRUCTION_BYTES: usize = 128 * 1024;
+    let mut warnings = Vec::new();
+
+    if let Some(paths) = config.agent.instruction_files.as_ref() {
+        for raw in paths {
+            let resolved = resolve_instruction_path(repo_root, raw);
+            if let Err(err) = read_instruction_file(&resolved, MAX_INSTRUCTION_BYTES) {
+                warnings.push(format!(
+                    "instruction_files entry '{}' (resolved: {}) is invalid: {}",
+                    raw.display(),
+                    resolved.display(),
+                    err
+                ));
+            }
+        }
+    }
+
+    let repo_agents = repo_root.join("AGENTS.md");
+    if repo_agents.exists() {
+        if let Err(err) = read_instruction_file(&repo_agents, MAX_INSTRUCTION_BYTES) {
+            warnings.push(format!(
+                "repo AGENTS.md (path: {}) is not readable as an instruction file: {}",
+                repo_agents.display(),
+                err
+            ));
+        }
+    }
+
+    warnings
+}
+
+fn resolve_instruction_path(repo_root: &Path, raw: &Path) -> std::path::PathBuf {
+    let as_string = raw.to_string_lossy();
+    if let Some(rest) = as_string.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            return std::path::PathBuf::from(home).join(rest);
+        }
+    }
+
+    if raw.is_absolute() {
+        raw.to_path_buf()
+    } else {
+        repo_root.join(raw)
+    }
+}
+
+fn read_instruction_file(path: &Path, max_bytes: usize) -> Result<String> {
+    let data = fs::read(path).with_context(|| format!("read bytes from {}", path.display()))?;
+    if data.len() > max_bytes {
+        bail!(
+            "instruction file {} is too large ({} bytes > {} bytes max)",
+            path.display(),
+            data.len(),
+            max_bytes
+        );
+    }
+    let text = String::from_utf8(data).map_err(|e| {
+        anyhow::anyhow!(
+            "instruction file {} is not valid UTF-8: {}",
+            path.display(),
+            e
+        )
+    })?;
+    if text.trim().is_empty() {
+        bail!("instruction file {} is empty", path.display());
+    }
+    Ok(text)
+}
+
 /// Expand environment variables and config values in a template string.
 ///
 /// Syntax:
@@ -311,5 +432,55 @@ pub(crate) fn apply_project_type_guidance_if_needed(
         apply_project_type_guidance(expanded, project_type)
     } else {
         expanded.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{instruction_file_warnings, wrap_with_instruction_files};
+    use crate::contracts::Config;
+    use std::path::Path;
+    use tempfile::TempDir;
+
+    #[test]
+    fn wrap_with_instruction_files_is_noop_when_none_configured_and_missing_agents() {
+        let dir = TempDir::new().expect("tempdir");
+        let cfg = Config::default();
+        let out = wrap_with_instruction_files(dir.path(), "hello", &cfg).expect("wrap");
+        assert_eq!(out, "hello");
+    }
+
+    #[test]
+    fn wrap_with_instruction_files_includes_repo_agents_md_when_present() {
+        let dir = TempDir::new().expect("tempdir");
+        std::fs::write(dir.path().join("AGENTS.md"), "Repo instructions").expect("write");
+        let cfg = Config::default();
+
+        let out = wrap_with_instruction_files(dir.path(), "hello", &cfg).expect("wrap");
+        assert!(out.contains("AGENTS / GLOBAL INSTRUCTIONS"));
+        assert!(out.contains("Repo instructions"));
+        assert!(out.ends_with("\n\n---\n\nhello"));
+    }
+
+    #[test]
+    fn wrap_with_instruction_files_errors_on_missing_configured_file() {
+        let dir = TempDir::new().expect("tempdir");
+        let mut cfg = Config::default();
+        cfg.agent.instruction_files = Some(vec![Path::new("missing.md").to_path_buf()]);
+
+        let err = wrap_with_instruction_files(dir.path(), "hello", &cfg).unwrap_err();
+        assert!(err.to_string().contains("missing.md"));
+    }
+
+    #[test]
+    fn instruction_file_warnings_reports_missing_configured_file() {
+        let dir = TempDir::new().expect("tempdir");
+        let mut cfg = Config::default();
+        cfg.agent.instruction_files = Some(vec![Path::new("missing.md").to_path_buf()]);
+
+        let warnings = instruction_file_warnings(dir.path(), &cfg);
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("instruction_files"));
+        assert!(warnings[0].contains("missing.md"));
     }
 }

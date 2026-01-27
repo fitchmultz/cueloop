@@ -4,6 +4,8 @@
 //! Not handled: runner selection, configuration validation, or prompt templating.
 //! Invariants/assumptions: callers pass validated runner inputs and manage temp lifetimes.
 
+mod cli_options;
+mod cli_spec;
 mod command;
 mod json;
 mod process;
@@ -19,3 +21,5 @@ pub(super) use runners::{
     run_claude, run_claude_resume, run_codex, run_codex_resume, run_cursor, run_cursor_resume,
     run_gemini, run_gemini_resume, run_opencode, run_opencode_resume,
 };
+
+pub(crate) use cli_options::{resolve_runner_cli_options, ResolvedRunnerCliOptions};

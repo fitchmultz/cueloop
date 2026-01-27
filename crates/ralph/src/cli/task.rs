@@ -167,6 +167,7 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                 overrides.runner,
                 overrides.model,
                 overrides.reasoning_effort,
+                &overrides.runner_cli,
                 None,
                 &resolved.config.agent,
             )?;
@@ -203,6 +204,7 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                 overrides.runner,
                 overrides.model,
                 overrides.reasoning_effort,
+                &overrides.runner_cli,
                 None,
                 &resolved.config.agent,
             )?;
@@ -242,6 +244,7 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                 overrides.runner,
                 overrides.model,
                 overrides.reasoning_effort,
+                &overrides.runner_cli,
                 None,
                 &resolved.config.agent,
             )?;

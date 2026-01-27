@@ -93,6 +93,18 @@ pub(crate) fn wrap_with_repoprompt_requirement(prompt: &str, required: bool) -> 
     prompts_internal::util::wrap_with_repoprompt_requirement(prompt, required)
 }
 
+pub(crate) fn wrap_with_instruction_files(
+    repo_root: &Path,
+    prompt: &str,
+    config: &Config,
+) -> Result<String> {
+    prompts_internal::util::wrap_with_instruction_files(repo_root, prompt, config)
+}
+
+pub(crate) fn instruction_file_warnings(repo_root: &Path, config: &Config) -> Vec<String> {
+    prompts_internal::util::instruction_file_warnings(repo_root, config)
+}
+
 pub(crate) fn load_worker_prompt(repo_root: &Path) -> Result<String> {
     prompts_internal::worker::load_worker_prompt(repo_root)
 }

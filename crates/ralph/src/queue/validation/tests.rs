@@ -113,6 +113,7 @@ fn validate_rejects_zero_agent_iterations() {
         model_effort: crate::contracts::ModelEffort::Default,
         iterations: Some(0),
         followup_reasoning_effort: None,
+        runner_cli: None,
     });
     let queue = QueueFile {
         version: 1,

@@ -221,6 +221,8 @@ pub fn build_worker_prompt(
     let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
     let base_prompt =
         prompts::render_worker_prompt(&template, &task_id, project_type, &resolved.config)?;
+    let base_prompt =
+        prompts::wrap_with_instruction_files(&resolved.repo_root, &base_prompt, &resolved.config)?;
 
     let policy = PromptPolicy {
         repoprompt_plan_required: opts.repoprompt_plan_required,
@@ -398,6 +400,8 @@ pub fn build_scan_prompt(resolved: &config::Resolved, opts: ScanPromptOptions) -
         prompts::render_scan_prompt(&template, &opts.focus, project_type, &resolved.config)?;
     let prompt =
         prompts::wrap_with_repoprompt_requirement(&rendered, opts.repoprompt_tool_injection);
+    let prompt =
+        prompts::wrap_with_instruction_files(&resolved.repo_root, &prompt, &resolved.config)?;
 
     if !opts.explain {
         return Ok(prompt);
@@ -447,6 +451,8 @@ pub fn build_task_builder_prompt(
     )?;
     let prompt =
         prompts::wrap_with_repoprompt_requirement(&rendered, opts.repoprompt_tool_injection);
+    let prompt =
+        prompts::wrap_with_instruction_files(&resolved.repo_root, &prompt, &resolved.config)?;
 
     if !opts.explain {
         return Ok(prompt);

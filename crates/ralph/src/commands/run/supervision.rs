@@ -32,12 +32,22 @@ pub(crate) fn resume_continue_session(
         bail!("Catastrophic: no session id captured; cannot Continue.");
     };
     let bins = crate::runner::resolve_binaries(&resolved.config.agent);
+    let runner_cli = crate::runner::resolve_agent_settings(
+        Some(session.runner),
+        Some(session.model.clone()),
+        session.reasoning_effort,
+        &crate::contracts::RunnerCliOptionsPatch::default(),
+        None,
+        &resolved.config.agent,
+    )?
+    .runner_cli;
     let output = crate::runner::resume_session(
         session.runner,
         &resolved.repo_root,
         bins,
         session.model.clone(),
         session.reasoning_effort,
+        runner_cli,
         session_id,
         message,
         resolved.config.agent.claude_permission_mode,
@@ -542,6 +552,8 @@ mod tests {
                 claude_permission_mode: Some(
                     crate::contracts::ClaudePermissionMode::BypassPermissions,
                 ),
+                runner_cli: None,
+                instruction_files: None,
                 repoprompt_plan_required: Some(false),
                 repoprompt_tool_injection: Some(false),
                 ci_gate_command: Some("make ci".to_string()),

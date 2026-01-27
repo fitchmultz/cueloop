@@ -3,7 +3,21 @@
 use serde_json::Value as JsonValue;
 
 pub(super) fn parse_json_line(line: &str) -> Option<JsonValue> {
-    serde_json::from_str::<JsonValue>(line).ok()
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Ok(value) = serde_json::from_str::<JsonValue>(trimmed) {
+        return Some(value);
+    }
+
+    // Some runners interleave logs or ANSI control sequences with JSON. As a best-effort
+    // compatibility layer, attempt to parse the first JSON value starting at the first '{'.
+    let json_start = trimmed.find('{')?;
+    let potential_json = &trimmed[json_start..];
+    let mut stream = serde_json::Deserializer::from_str(potential_json).into_iter::<JsonValue>();
+    stream.next().and_then(|res| res.ok())
 }
 
 pub(super) fn extract_session_id_from_json(json: &JsonValue) -> Option<String> {
