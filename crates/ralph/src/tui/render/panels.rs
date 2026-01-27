@@ -1,6 +1,20 @@
+//! TUI panel rendering for task list, task details, and execution view.
+//!
+//! Responsibilities:
+//! - Render the main task list and task details panels.
+//! - Render the execution log view during task runs.
+//!
+//! Not handled here:
+//! - Event handling or state mutation beyond layout caches.
+//! - Modal overlays (see `overlays`).
+//!
+//! Invariants/assumptions:
+//! - Caller provides layout areas that include borders.
+
 use super::super::{App, AppMode};
-use super::utils::{priority_color, status_color, wrap_text};
+use super::utils::{priority_color, scroll_indicator, status_color, wrap_text};
 use crate::contracts::{TaskPriority, TaskStatus};
+use crate::tui::app::{DetailsContext, DetailsContextMode};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Modifier, Style},
@@ -268,95 +282,92 @@ pub(super) fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
 pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     app.detail_width = area.width.saturating_sub(4); // Account for borders
 
-    let title = match &app.mode {
-        AppMode::EditingTask { .. } => Line::from(Span::styled(
+    let title_spans = match &app.mode {
+        AppMode::EditingTask { .. } => vec![Span::styled(
             "Task Editor",
             Style::default().add_modifier(Modifier::BOLD),
-        )),
-        AppMode::CreatingTask(title) => Line::from(vec![
+        )],
+        AppMode::CreatingTask(title) => vec![
             Span::styled("New Task: ", Style::default().add_modifier(Modifier::BOLD)),
             Span::styled(
-                title,
+                title.clone(),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
-        ]),
-        AppMode::CreatingTaskDescription(description) => Line::from(vec![
+        ],
+        AppMode::CreatingTaskDescription(description) => vec![
             Span::styled(
                 "Task Builder: ",
                 Style::default().add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                description,
+                description.clone(),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
-        ]),
-        AppMode::Searching(query) => Line::from(vec![
+        ],
+        AppMode::Searching(query) => vec![
             Span::styled("Search: ", Style::default().add_modifier(Modifier::BOLD)),
             Span::styled(
-                query,
+                query.clone(),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
-        ]),
-        AppMode::FilteringTags(tags) => Line::from(vec![
+        ],
+        AppMode::FilteringTags(tags) => vec![
             Span::styled(
                 "Filter Tags: ",
                 Style::default().add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                tags,
+                tags.clone(),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
-        ]),
-        AppMode::FilteringScopes(scopes) => Line::from(vec![
+        ],
+        AppMode::FilteringScopes(scopes) => vec![
             Span::styled(
                 "Filter Scopes: ",
                 Style::default().add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                scopes,
+                scopes.clone(),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
-        ]),
-        AppMode::Scanning(focus) => Line::from(vec![
+        ],
+        AppMode::Scanning(focus) => vec![
             Span::styled(
                 "Scan Focus: ",
                 Style::default().add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                focus,
+                focus.clone(),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
-        ]),
-        AppMode::CommandPalette { .. } => Line::from(Span::styled(
+        ],
+        AppMode::CommandPalette { .. } => vec![Span::styled(
             "Task Details",
             Style::default().add_modifier(Modifier::BOLD),
-        )),
-        _ => Line::from(Span::styled(
+        )],
+        _ => vec![Span::styled(
             "Task Details",
             Style::default().add_modifier(Modifier::BOLD),
-        )),
+        )],
     };
-
-    let block = Block::default().title(title).borders(Borders::ALL);
-    f.render_widget(block, area);
 
     let inner = area.inner(Margin {
         horizontal: 1,
@@ -391,11 +402,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         ];
 
         let title_text = if current.is_empty() {
-            "(enter a title)"
+            "(enter a title)".to_string()
         } else {
-            current
+            current.clone()
         };
-        for line in wrap_text(title_text, app.detail_width as usize) {
+        for line in wrap_text(&title_text, app.detail_width as usize) {
             let style = if current.is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
@@ -403,10 +414,18 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             };
             lines.push(Line::from(Span::styled(line, style)));
         }
-
-        let text = Text::from(lines);
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        f.render_widget(paragraph, inner);
+        render_details_panel(
+            f,
+            app,
+            area,
+            inner,
+            DetailsPanelContent {
+                title_spans: title_spans.clone(),
+                lines,
+                context_mode: DetailsContextMode::CreatingTask,
+                selected_id: None,
+            },
+        );
         return;
     }
 
@@ -422,11 +441,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             Line::from(""),
         ];
         let display = if current.is_empty() {
-            "(describe task you want to create, agent will add structure)"
+            "(describe task you want to create, agent will add structure)".to_string()
         } else {
-            current
+            current.clone()
         };
-        for line in wrap_text(display, app.detail_width as usize) {
+        for line in wrap_text(&display, app.detail_width as usize) {
             let style = if current.is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
@@ -444,9 +463,18 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             "Press Enter to build task or Esc to cancel.",
             Style::default().fg(Color::DarkGray),
         )));
-        let text = Text::from(lines);
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        f.render_widget(paragraph, inner);
+        render_details_panel(
+            f,
+            app,
+            area,
+            inner,
+            DetailsPanelContent {
+                title_spans: title_spans.clone(),
+                lines,
+                context_mode: DetailsContextMode::CreatingTaskDescription,
+                selected_id: None,
+            },
+        );
         return;
     }
 
@@ -462,11 +490,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             Line::from(""),
         ];
         let display = if current.is_empty() {
-            "(type to search across title, tags, scope, plan, evidence, notes)"
+            "(type to search across title, tags, scope, plan, evidence, notes)".to_string()
         } else {
-            current
+            current.clone()
         };
-        for line in wrap_text(display, app.detail_width as usize) {
+        for line in wrap_text(&display, app.detail_width as usize) {
             let style = if current.is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
@@ -479,9 +507,18 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             "Press Enter to apply or Esc to cancel.",
             Style::default().fg(Color::DarkGray),
         )));
-        let text = Text::from(lines);
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        f.render_widget(paragraph, inner);
+        render_details_panel(
+            f,
+            app,
+            area,
+            inner,
+            DetailsPanelContent {
+                title_spans: title_spans.clone(),
+                lines,
+                context_mode: DetailsContextMode::Searching,
+                selected_id: None,
+            },
+        );
         return;
     }
 
@@ -494,11 +531,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             Line::from(""),
         ];
         let display = if current.is_empty() {
-            "(e.g., tui, ux, docs)"
+            "(e.g., tui, ux, docs)".to_string()
         } else {
-            current
+            current.clone()
         };
-        for line in wrap_text(display, app.detail_width as usize) {
+        for line in wrap_text(&display, app.detail_width as usize) {
             let style = if current.is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
@@ -511,9 +548,18 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             "Press Enter to apply or Esc to cancel.",
             Style::default().fg(Color::DarkGray),
         )));
-        let text = Text::from(lines);
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        f.render_widget(paragraph, inner);
+        render_details_panel(
+            f,
+            app,
+            area,
+            inner,
+            DetailsPanelContent {
+                title_spans: title_spans.clone(),
+                lines,
+                context_mode: DetailsContextMode::FilteringTags,
+                selected_id: None,
+            },
+        );
         return;
     }
 
@@ -529,11 +575,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             Line::from(""),
         ];
         let display = if current.is_empty() {
-            "(optional: describe what to scan for)"
+            "(optional: describe what to scan for)".to_string()
         } else {
-            current
+            current.clone()
         };
-        for line in wrap_text(display, app.detail_width as usize) {
+        for line in wrap_text(&display, app.detail_width as usize) {
             let style = if current.is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
@@ -546,9 +592,18 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             "Press Enter to start scan or Esc to cancel.",
             Style::default().fg(Color::DarkGray),
         )));
-        let text = Text::from(lines);
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        f.render_widget(paragraph, inner);
+        render_details_panel(
+            f,
+            app,
+            area,
+            inner,
+            DetailsPanelContent {
+                title_spans: title_spans.clone(),
+                lines,
+                context_mode: DetailsContextMode::Scanning,
+                selected_id: None,
+            },
+        );
         return;
     }
 
@@ -556,7 +611,10 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         let mut lines = vec![
             Line::from(vec![
                 Span::styled("ID: ", Style::default().fg(Color::DarkGray)),
-                Span::styled(&task.id, Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    task.id.clone(),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("Status: ", Style::default().fg(Color::DarkGray)),
@@ -706,7 +764,7 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ),
             Span::styled(": ", Style::default()),
             Span::styled(
-                task.created_at.as_deref().unwrap_or("N/A"),
+                task.created_at.clone().unwrap_or_else(|| "N/A".to_string()),
                 Style::default().fg(Color::DarkGray),
             ),
         ]));
@@ -717,19 +775,28 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ),
             Span::styled(": ", Style::default()),
             Span::styled(
-                task.updated_at.as_deref().unwrap_or("N/A"),
+                task.updated_at.clone().unwrap_or_else(|| "N/A".to_string()),
                 Style::default().fg(Color::DarkGray),
             ),
         ]));
-
-        let text = Text::from(lines);
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        f.render_widget(paragraph, inner);
+        let selected_id = task.id.clone();
+        render_details_panel(
+            f,
+            app,
+            area,
+            inner,
+            DetailsPanelContent {
+                title_spans: title_spans.clone(),
+                lines,
+                context_mode: DetailsContextMode::TaskDetails,
+                selected_id: Some(selected_id),
+            },
+        );
         return;
     }
 
     if app.queue.tasks.is_empty() {
-        let text = Text::from(vec![
+        let lines = vec![
             Line::from(""),
             Line::from("No tasks in queue."),
             Line::from(""),
@@ -748,16 +815,27 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 "Press : to open the command palette.",
                 Style::default().fg(Color::DarkGray),
             )),
-        ]);
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        f.render_widget(paragraph, inner);
+        ];
+        render_details_panel(
+            f,
+            app,
+            area,
+            inner,
+            DetailsPanelContent {
+                title_spans: title_spans.clone(),
+                lines,
+                context_mode: DetailsContextMode::EmptyQueue,
+                selected_id: None,
+            },
+        );
         return;
     }
 
     let filter_hint = app
         .filter_summary()
         .unwrap_or_else(|| "filters active".to_string());
-    let text = Text::from(vec![
+    let filter_summary = filter_hint.clone();
+    let lines = vec![
         Line::from(""),
         Line::from("No tasks match current filters."),
         Line::from(Span::styled(
@@ -774,7 +852,80 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             "Press / to search or t to filter tags.",
             Style::default().fg(Color::DarkGray),
         )),
-    ]);
-    let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+    ];
+    render_details_panel(
+        f,
+        app,
+        area,
+        inner,
+        DetailsPanelContent {
+            title_spans,
+            lines,
+            context_mode: DetailsContextMode::FilteredEmpty {
+                summary: filter_summary,
+            },
+            selected_id: None,
+        },
+    );
+}
+
+struct DetailsPanelContent {
+    title_spans: Vec<Span<'static>>,
+    lines: Vec<Line<'static>>,
+    context_mode: DetailsContextMode,
+    selected_id: Option<String>,
+}
+
+fn wrapped_line_count(lines: &[Line<'static>], width: usize) -> usize {
+    let width = width.max(1);
+    lines
+        .iter()
+        .map(|line| {
+            let raw: String = line
+                .spans
+                .iter()
+                .map(|span| span.content.as_ref())
+                .collect();
+            wrap_text(&raw, width).len().max(1)
+        })
+        .sum()
+}
+
+fn render_details_panel(
+    f: &mut Frame<'_>,
+    app: &mut App,
+    area: Rect,
+    inner: Rect,
+    content: DetailsPanelContent,
+) {
+    let total_lines = wrapped_line_count(&content.lines, inner.width as usize);
+    let visible_lines = inner.height as usize;
+    let context = DetailsContext {
+        mode: content.context_mode,
+        selected_id: content.selected_id,
+        queue_rev: app.queue_rev(),
+        detail_width: app.detail_width,
+    };
+    app.set_details_viewport(visible_lines, total_lines, context);
+    let indicator = scroll_indicator(app.details_scroll, app.details_visible_lines(), total_lines);
+    let title = details_title(content.title_spans, indicator);
+
+    let block = Block::default().title(title).borders(Borders::ALL);
+    f.render_widget(block, area);
+
+    let paragraph = Paragraph::new(Text::from(content.lines))
+        .wrap(Wrap { trim: false })
+        .scroll((app.details_scroll as u16, 0));
     f.render_widget(paragraph, inner);
+}
+
+fn details_title(mut spans: Vec<Span<'static>>, indicator: Option<String>) -> Line<'static> {
+    if let Some(indicator) = indicator {
+        spans.push(Span::raw(" "));
+        spans.push(Span::styled(
+            indicator,
+            Style::default().fg(Color::DarkGray),
+        ));
+    }
+    Line::from(spans)
 }

@@ -13,6 +13,7 @@
 //! - Overlay drawing clears the underlying area before rendering content.
 
 use super::super::{help, App, ConfigFieldKind, TaskEditKind};
+use super::utils::scroll_indicator;
 use crate::outpututil::truncate_chars;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
@@ -39,7 +40,7 @@ pub(super) fn draw_help_overlay(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     let visible_lines = inner.height as usize;
     app.set_help_visible_lines(visible_lines, total_lines);
 
-    let indicator = help_indicator(app.help_scroll(), app.help_visible_lines(), total_lines);
+    let indicator = scroll_indicator(app.help_scroll(), app.help_visible_lines(), total_lines);
     let block = Block::default()
         .title(help_title(indicator))
         .borders(Borders::ALL);
@@ -48,21 +49,6 @@ pub(super) fn draw_help_overlay(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     let lines = help::help_overlay_lines(content_width);
     let paragraph = Paragraph::new(Text::from(lines)).scroll((app.help_scroll() as u16, 0));
     f.render_widget(paragraph, inner);
-}
-
-fn help_indicator(scroll: usize, visible_lines: usize, total_lines: usize) -> Option<String> {
-    if total_lines <= visible_lines {
-        return None;
-    }
-
-    let start = scroll.saturating_add(1);
-    let end = (scroll + visible_lines).min(total_lines);
-    let percent = if total_lines == 0 {
-        0
-    } else {
-        (end.saturating_mul(100)) / total_lines
-    };
-    Some(format!("({start}-{end}/{total_lines}, {percent}%)"))
 }
 
 fn help_title(indicator: Option<String>) -> Line<'static> {

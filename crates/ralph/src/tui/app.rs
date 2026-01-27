@@ -120,6 +120,45 @@ pub enum RunningKind {
     TaskBuilder,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FocusedPanel {
+    List,
+    Details,
+}
+
+impl FocusedPanel {
+    fn next(self) -> Self {
+        match self {
+            Self::List => Self::Details,
+            Self::Details => Self::List,
+        }
+    }
+
+    fn previous(self) -> Self {
+        self.next()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum DetailsContextMode {
+    TaskDetails,
+    CreatingTask,
+    CreatingTaskDescription,
+    Searching,
+    FilteringTags,
+    Scanning,
+    EmptyQueue,
+    FilteredEmpty { summary: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DetailsContext {
+    pub(crate) mode: DetailsContextMode,
+    pub(crate) selected_id: Option<String>,
+    pub(crate) queue_rev: u64,
+    pub(crate) detail_width: u16,
+}
+
 /// Application state for the TUI.
 pub struct App {
     /// The active task queue.
@@ -134,6 +173,16 @@ pub struct App {
     pub scroll: usize,
     /// Width of the right panel for text wrapping.
     pub detail_width: u16,
+    /// Which panel is focused for navigation input.
+    focused_panel: FocusedPanel,
+    /// Scroll offset for the task details panel.
+    pub details_scroll: usize,
+    /// Last known visible detail lines (for paging).
+    pub details_visible_lines: usize,
+    /// Last known total detail line count (post-wrap).
+    pub details_total_lines: usize,
+    /// Context key for details content (used to reset scroll on change).
+    details_context: Option<DetailsContext>,
     /// Flag indicating if active queue was modified (needs save).
     pub dirty: bool,
     /// Flag indicating if done archive was modified (needs save).
@@ -218,6 +267,11 @@ impl App {
             mode: AppMode::Normal,
             scroll: 0,
             detail_width: 60,
+            focused_panel: FocusedPanel::List,
+            details_scroll: 0,
+            details_visible_lines: 1,
+            details_total_lines: 0,
+            details_context: None,
             dirty: false,
             dirty_done: false,
             project_config: ConfigLayer::default(),
@@ -265,12 +319,28 @@ impl App {
         self.status_message = Some(message.into());
     }
 
+    pub(crate) fn focus_next_panel(&mut self) {
+        self.focused_panel = self.focused_panel.next();
+    }
+
+    pub(crate) fn focus_previous_panel(&mut self) {
+        self.focused_panel = self.focused_panel.previous();
+    }
+
+    pub(crate) fn details_focused(&self) -> bool {
+        self.focused_panel == FocusedPanel::Details
+    }
+
     pub(crate) fn unsafe_to_discard(&self) -> bool {
         self.dirty || self.dirty_done || self.dirty_config || self.save_error.is_some()
     }
 
     pub(crate) fn bump_queue_rev(&mut self) {
         self.queue_rev = self.queue_rev.wrapping_add(1);
+    }
+
+    pub(crate) fn queue_rev(&self) -> u64 {
+        self.queue_rev
     }
 
     fn ensure_id_index_map(&mut self) {
@@ -493,6 +563,33 @@ impl App {
             if self.selected >= self.scroll + list_height {
                 self.scroll = self.selected - list_height + 1;
             }
+        }
+    }
+
+    /// Move selection up by a page.
+    pub fn move_page_up(&mut self, list_height: usize) {
+        if self.filtered_len() == 0 {
+            return;
+        }
+        let list_height = list_height.max(1);
+        let step = list_height.saturating_sub(1).max(1);
+        self.selected = self.selected.saturating_sub(step);
+        if self.selected < self.scroll {
+            self.scroll = self.selected;
+        }
+    }
+
+    /// Move selection down by a page.
+    pub fn move_page_down(&mut self, list_height: usize) {
+        if self.filtered_len() == 0 {
+            return;
+        }
+        let list_height = list_height.max(1);
+        let step = list_height.saturating_sub(1).max(1);
+        let max_index = self.filtered_len().saturating_sub(1);
+        self.selected = (self.selected + step).min(max_index);
+        if self.selected >= self.scroll + list_height {
+            self.scroll = self.selected.saturating_sub(list_height.saturating_sub(1));
         }
     }
 
@@ -754,6 +851,48 @@ impl App {
     pub fn enable_autoscroll(&mut self, visible_lines: usize) {
         self.autoscroll = true;
         self.log_scroll = self.max_log_scroll(visible_lines);
+    }
+
+    pub fn details_visible_lines(&self) -> usize {
+        self.details_visible_lines.max(1)
+    }
+
+    pub(crate) fn set_details_viewport(
+        &mut self,
+        visible_lines: usize,
+        total_lines: usize,
+        context: DetailsContext,
+    ) {
+        let visible_lines = visible_lines.max(1);
+        if self.details_context.as_ref() != Some(&context) {
+            self.details_scroll = 0;
+            self.details_context = Some(context);
+        }
+        self.details_visible_lines = visible_lines;
+        self.details_total_lines = total_lines;
+        let max_scroll = self.max_details_scroll(total_lines);
+        if self.details_scroll > max_scroll {
+            self.details_scroll = max_scroll;
+        }
+    }
+
+    pub fn max_details_scroll(&self, total_lines: usize) -> usize {
+        total_lines.saturating_sub(self.details_visible_lines())
+    }
+
+    pub fn scroll_details_up(&mut self, lines: usize) {
+        if lines == 0 {
+            return;
+        }
+        self.details_scroll = self.details_scroll.saturating_sub(lines);
+    }
+
+    pub fn scroll_details_down(&mut self, lines: usize, total_lines: usize) {
+        if lines == 0 {
+            return;
+        }
+        let max_scroll = self.max_details_scroll(total_lines);
+        self.details_scroll = (self.details_scroll + lines).min(max_scroll);
     }
 
     pub(crate) fn help_visible_lines(&self) -> usize {

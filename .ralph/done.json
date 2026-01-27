@@ -6659,6 +6659,52 @@
       "completed_at": "2026-01-27T07:27:26.894418000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0318",
+      "status": "done",
+      "title": "TUI: add scrollable task details + focus switching (Tab)",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "navigation"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/normal.rs",
+        "crates/ralph/src/tui/render/panels.rs",
+        "crates/ralph/src/tui/render/tests.rs",
+        "crates/ralph/tests/tui_event_handling_test.rs",
+        "crates/ralph/tests/tui_rendering_panels_test.rs",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/render/panels.rs`: `draw_task_details` builds a wrapped `Paragraph` without any scroll offset, so long task details are clipped to the panel height.",
+        "`crates/ralph/src/tui/app.rs`: app state tracks `scroll` (list) and `log_scroll` (execution logs) but has no details-panel scroll or focus state.",
+        "`crates/ralph/src/tui/events/normal.rs` and `crates/ralph/tests/tui_event_handling_test.rs`: Tab is currently treated as an unknown key in Normal mode, so there is no focus switching or details scrolling binding."
+      ],
+      "plan": [
+        "Add a focused-panel concept (list vs details) to `App` plus a details scroll offset and visible height tracking.",
+        "Update Normal-mode key handling to switch focus on Tab/Shift-Tab and route Up/Down/PgUp/PgDn to the focused panel (keeping list navigation unchanged when list is focused).",
+        "Apply details scroll when rendering `draw_task_details` and render an overflow indicator when content exceeds the panel height; clamp/reset scroll when content or selection changes.",
+        "Update tests: render tests for details scrolling/indicator and event-handling tests for focus switching and details scroll behavior.",
+        "Refresh `docs/tui-task-management.md` key reference for the new focus/scroll bindings.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Count details scroll bounds using wrapped line counts so wrapped metadata doesn't hide lines.",
+        "Added render test covering long tag wrapping overflow indicator.",
+        "make ci passed.",
+        "Updated RQ-0320 stale_evidence: PgUp/PgDn list navigation already implemented."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T08:31:24.872698000Z",
+      "completed_at": "2026-01-27T08:31:24.872698000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -13,10 +13,11 @@
 
 use super::super::{help, App, AppMode};
 use super::utils::{priority_color, status_color, wrap_text};
-use crate::contracts::{QueueFile, TaskPriority, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 use crate::tui;
 use ratatui::text::Span;
 use ratatui::{buffer::Buffer, layout::Margin};
+use std::collections::HashMap;
 
 fn spans_to_string(spans: &[Span<'static>]) -> String {
     spans.iter().map(|span| span.content.as_ref()).collect()
@@ -53,6 +54,57 @@ fn line_to_string(line: &ratatui::text::Line<'static>) -> String {
         .iter()
         .map(|span| span.content.as_ref())
         .collect()
+}
+
+fn make_long_details_queue() -> QueueFile {
+    let evidence: Vec<String> = (0..20).map(|i| format!("Evidence line {i}")).collect();
+    let plan: Vec<String> = (0..10).map(|i| format!("Plan step {i}")).collect();
+    QueueFile {
+        version: 1,
+        tasks: vec![Task {
+            id: "RQ-0001".to_string(),
+            title: "Long Task".to_string(),
+            status: TaskStatus::Todo,
+            priority: TaskPriority::Medium,
+            tags: vec!["test".to_string()],
+            scope: vec!["crates/ralph".to_string()],
+            evidence,
+            plan,
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: Some("2026-01-19T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-19T00:00:00Z".to_string()),
+            completed_at: None,
+            depends_on: vec![],
+            custom_fields: HashMap::new(),
+        }],
+    }
+}
+
+fn make_long_tags_queue() -> QueueFile {
+    let tags: Vec<String> = (0..40).map(|i| format!("very-long-tag-{i:02}")).collect();
+    QueueFile {
+        version: 1,
+        tasks: vec![Task {
+            id: "RQ-0002".to_string(),
+            title: "Tagged Task".to_string(),
+            status: TaskStatus::Todo,
+            priority: TaskPriority::Low,
+            tags,
+            scope: vec![],
+            evidence: vec![],
+            plan: vec![],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: Some("2026-01-19T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-19T00:00:00Z".to_string()),
+            completed_at: None,
+            depends_on: vec![],
+            custom_fields: HashMap::new(),
+        }],
+    }
 }
 
 #[test]
@@ -175,6 +227,8 @@ fn help_overlay_includes_keymap_shortcuts() {
 
     for expected in [
         "K/J: move selected task up/down",
+        "Tab/Shift+Tab: switch focus between list/details",
+        "PgUp/PgDn: page list/details (focused panel)",
         "C: toggle case-sensitive search",
         "R: toggle regex search",
         "Ctrl+P: command palette (shortcut)",
@@ -273,6 +327,113 @@ fn help_overlay_scroll_offsets_visible_content() {
     let buffer = terminal.backend().buffer();
     let top_line = buffer_line(buffer, inner.x, inner.y, inner.width);
     assert_eq!(top_line, expected_top);
+}
+
+#[test]
+fn task_details_show_scroll_indicator_when_truncated() {
+    use ratatui::{backend::TestBackend, Terminal};
+
+    let backend = TestBackend::new(70, 10);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(make_long_details_queue());
+
+    terminal
+        .draw(|f| tui::draw_ui(f, &mut app))
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let rendered = buffer_to_string(buffer);
+    assert!(
+        rendered.contains("Task Details ("),
+        "expected details title to include scroll indicator"
+    );
+    assert!(
+        app.details_total_lines > app.details_visible_lines,
+        "expected details content to exceed visible height"
+    );
+}
+
+#[test]
+fn task_details_wraps_long_tags_for_scroll_bounds() {
+    use ratatui::{backend::TestBackend, Terminal};
+
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(make_long_tags_queue());
+
+    terminal
+        .draw(|f| tui::draw_ui(f, &mut app))
+        .expect("draw ui");
+
+    assert!(
+        app.details_total_lines > app.details_visible_lines,
+        "expected wrapped tags to exceed visible height"
+    );
+
+    let buffer = terminal.backend().buffer();
+    let rendered = buffer_to_string(buffer);
+    assert!(
+        rendered.contains("Task Details ("),
+        "expected details title to include scroll indicator"
+    );
+}
+
+#[test]
+fn task_details_scroll_offsets_visible_content() {
+    use ratatui::{
+        backend::TestBackend,
+        layout::{Constraint, Direction, Layout, Rect},
+        Terminal,
+    };
+
+    let backend = TestBackend::new(70, 10);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(make_long_details_queue());
+
+    terminal
+        .draw(|f| tui::draw_ui(f, &mut app))
+        .expect("draw ui");
+
+    app.details_scroll = 1;
+
+    terminal
+        .draw(|f| tui::draw_ui(f, &mut app))
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let area = Rect {
+        x: 0,
+        y: 0,
+        width: buffer.area.width,
+        height: buffer.area.height,
+    };
+    let outer = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(2), Constraint::Length(1)].as_ref())
+        .split(area);
+    let main = outer[0];
+    let chunks = if main.width < 90 {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+            .split(main)
+    } else {
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+            .split(main)
+    };
+    let details_area = chunks[1];
+    let inner = details_area.inner(Margin {
+        horizontal: 1,
+        vertical: 1,
+    });
+
+    let top_line = buffer_line(buffer, inner.x, inner.y, inner.width);
+    assert!(
+        top_line.contains("Status:"),
+        "expected scroll offset to move details content, got: {top_line:?}"
+    );
 }
 
 #[test]

@@ -67,11 +67,23 @@ const NORMAL_NAV_BINDINGS: &[KeyBinding] = &[
     KeyBinding {
         keys: &["Up", "Down", "j", "k"],
         keys_display: "Up/Down or j/k",
-        description: "move selection",
+        description: "move selection/scroll details (focused panel)",
         footer_hint: Some(FooterHint {
             keys: "↑↓",
             label: "nav",
         }),
+    },
+    KeyBinding {
+        keys: &["PgUp/PgDn"],
+        keys_display: "PgUp/PgDn",
+        description: "page list/details (focused panel)",
+        footer_hint: None,
+    },
+    KeyBinding {
+        keys: &["Tab", "Shift+Tab"],
+        keys_display: "Tab/Shift+Tab",
+        description: "switch focus between list/details",
+        footer_hint: None,
     },
     KeyBinding {
         keys: &["K", "J"],
@@ -456,7 +468,17 @@ mod tests {
     #[test]
     fn normal_keymap_includes_required_bindings() {
         let keys = collect_keys(normal_sections());
-        for expected in ["o", "C", "R", "K", "J", "Ctrl+P", "Ctrl+F"] {
+        for expected in [
+            "o",
+            "C",
+            "R",
+            "K",
+            "J",
+            "Ctrl+P",
+            "Ctrl+F",
+            "Tab",
+            "PgUp/PgDn",
+        ] {
             assert!(
                 keys.contains(expected),
                 "missing {expected} in Normal keymap"
@@ -483,6 +505,8 @@ mod tests {
 
         for expected in [
             "`K/J`: move selected task up/down",
+            "`Tab/Shift+Tab`: switch focus between list/details",
+            "`PgUp/PgDn`: page list/details (focused panel)",
             "`C`: toggle case-sensitive search",
             "`R`: toggle regex search",
             "`Ctrl+P`: command palette (shortcut)",

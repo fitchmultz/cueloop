@@ -545,13 +545,87 @@ fn test_handle_key_event_in_executing_mode_esc_returns() {
 }
 
 #[test]
+fn test_handle_key_event_tab_switches_focus_and_scrolls_details() {
+    let mut app = App::new(make_test_queue());
+    app.details_visible_lines = 5;
+    app.details_total_lines = 20;
+    let original_selected = app.selected;
+
+    let action =
+        tui::handle_key_event(&mut app, key_event(KeyCode::Tab), "2026-01-19T00:00:00Z").unwrap();
+    assert_eq!(action, TuiAction::Continue);
+
+    let action =
+        tui::handle_key_event(&mut app, key_event(KeyCode::Down), "2026-01-19T00:00:00Z").unwrap();
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.selected, original_selected);
+    assert_eq!(app.details_scroll, 1);
+
+    let action = tui::handle_key_event(
+        &mut app,
+        key_event(KeyCode::PageDown),
+        "2026-01-19T00:00:00Z",
+    )
+    .unwrap();
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.details_scroll, 5);
+}
+
+#[test]
+fn test_handle_key_event_shift_tab_returns_focus_to_list() {
+    let mut app = App::new(make_test_queue());
+    app.details_visible_lines = 5;
+    app.details_total_lines = 20;
+    let original_selected = app.selected;
+
+    let action =
+        tui::handle_key_event(&mut app, key_event(KeyCode::Tab), "2026-01-19T00:00:00Z").unwrap();
+    assert_eq!(action, TuiAction::Continue);
+
+    let action = tui::handle_key_event(
+        &mut app,
+        key_event(KeyCode::BackTab),
+        "2026-01-19T00:00:00Z",
+    )
+    .unwrap();
+    assert_eq!(action, TuiAction::Continue);
+
+    let action =
+        tui::handle_key_event(&mut app, key_event(KeyCode::Down), "2026-01-19T00:00:00Z").unwrap();
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.selected, original_selected + 1);
+    assert_eq!(app.details_scroll, 0);
+}
+
+#[test]
+fn test_handle_key_event_page_down_in_list_focus_moves_selection_by_page() {
+    let mut app = App::new(make_test_queue());
+    app.list_height = 3;
+
+    let action = tui::handle_key_event(
+        &mut app,
+        key_event(KeyCode::PageDown),
+        "2026-01-19T00:00:00Z",
+    )
+    .unwrap();
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.selected, 2);
+
+    let action =
+        tui::handle_key_event(&mut app, key_event(KeyCode::PageUp), "2026-01-19T00:00:00Z")
+            .unwrap();
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.selected, 0);
+}
+
+#[test]
 fn test_handle_key_event_unknown_key_continues() {
     let mut app = App::new(make_test_queue());
     let original_selected = app.selected;
 
     // Unknown key in normal mode
     let action =
-        tui::handle_key_event(&mut app, key_event(KeyCode::Tab), "2026-01-19T00:00:00Z").unwrap();
+        tui::handle_key_event(&mut app, key_event(KeyCode::F(1)), "2026-01-19T00:00:00Z").unwrap();
 
     assert_eq!(action, TuiAction::Continue);
     assert_eq!(app.selected, original_selected);

@@ -14,7 +14,9 @@ This guide maps **CLI task commands** (`ralph task ...`) to equivalent **TUI wor
 In **Normal mode**:
 
 Navigation:
-- `j` / `k` or `↓` / `↑`: move selection
+- `Tab/Shift+Tab`: switch focus between list/details
+- `j` / `k` or `↓` / `↑`: move selection (list focus) / scroll details (details focus)
+- `PgUp/PgDn`: page list/details (focused panel)
 - `K/J`: move selected task up/down
 - `Enter`: run selected task
 

@@ -198,6 +198,20 @@ fn test_render_task_details_shows_plan() {
 }
 
 #[test]
+fn test_render_task_details_shows_scroll_indicator_when_truncated() {
+    let mut queue = make_test_queue();
+    queue.tasks[0].evidence = (0..24).map(|i| format!("long evidence line {i}")).collect();
+    let mut app = App::new(queue);
+    let mut terminal = setup_test_terminal(80, 12);
+
+    let output = get_rendered_output(&mut terminal, &mut app);
+    assert!(
+        output.contains("Task Details ("),
+        "expected scroll indicator in details title when content overflows"
+    );
+}
+
+#[test]
 fn test_render_task_details_shows_timestamps() {
     let queue = make_test_queue();
     let mut app = App::new(queue);

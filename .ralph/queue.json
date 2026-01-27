@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0318",
-      "status": "todo",
-      "title": "TUI: add scrollable task details + focus switching (Tab)",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "ux",
-        "navigation"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/app.rs",
-        "crates/ralph/src/tui/events/normal.rs",
-        "crates/ralph/src/tui/render/panels.rs",
-        "crates/ralph/src/tui/render/tests.rs",
-        "crates/ralph/tests/tui_rendering_panels_test.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/tui/render/panels.rs`: `draw_task_details` renders a long `Paragraph` without any scroll offset; long tasks are clipped.",
-        "`crates/ralph/src/tui/app.rs`: app state tracks list scroll and log scroll, but there is no details scroll state.",
-        "`crates/ralph/src/tui/events/normal.rs`: no keybindings exist for scrolling task details or switching focus between list/details."
-      ],
-      "plan": [
-        "Introduce a focus concept (list vs details) and track a details scroll offset.",
-        "Bind Tab/Shift-Tab (and/or other keys) to switch focus; bind scroll keys to the focused panel.",
-        "Render a scroll indicator in the details panel when content overflows.",
-        "Add tests verifying details scroll affects rendered output and focus switching works.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T04:35:15Z",
-      "updated_at": "2026-01-27T04:35:15Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0319",
       "status": "todo",
       "title": "TUI: reusable text input with cursor editing for all input modes",
@@ -110,9 +73,11 @@
       "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-27T04:35:15Z",
-      "updated_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T08:31:09.065498000Z",
       "depends_on": [],
-      "custom_fields": {}
+      "custom_fields": {
+        "stale_evidence": "PageUp/PageDown now move the list selection in Normal mode when the list is focused (added in RQ-0318); remaining work is Home/End or additional navigation enhancements."
+      }
     },
     {
       "id": "RQ-0321",

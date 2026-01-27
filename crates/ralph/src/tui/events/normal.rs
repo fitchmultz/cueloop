@@ -52,25 +52,72 @@ pub(super) fn handle_normal_mode_key(
             app.execute_palette_command(PaletteCommand::Quit, now_rfc3339)
         }
         KeyCode::Esc => app.execute_palette_command(PaletteCommand::Quit, now_rfc3339),
+        KeyCode::Tab => {
+            app.focus_next_panel();
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::BackTab => {
+            app.focus_previous_panel();
+            Ok(TuiAction::Continue)
+        }
         KeyCode::Up => {
-            app.move_up();
+            if app.details_focused() {
+                app.scroll_details_up(1);
+            } else {
+                app.move_up();
+            }
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('k') if is_plain_char(&key, 'k') => {
-            app.move_up();
+            if app.details_focused() {
+                app.scroll_details_up(1);
+            } else {
+                app.move_up();
+            }
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('K') if is_plain_char(&key, 'K') => {
             app.execute_palette_command(PaletteCommand::MoveTaskUp, now_rfc3339)
         }
         KeyCode::Down => {
-            let list_height = app.list_height;
-            app.move_down(list_height);
+            if app.details_focused() {
+                let total_lines = app.details_total_lines;
+                app.scroll_details_down(1, total_lines);
+            } else {
+                let list_height = app.list_height;
+                app.move_down(list_height);
+            }
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('j') if is_plain_char(&key, 'j') => {
-            let list_height = app.list_height;
-            app.move_down(list_height);
+            if app.details_focused() {
+                let total_lines = app.details_total_lines;
+                app.scroll_details_down(1, total_lines);
+            } else {
+                let list_height = app.list_height;
+                app.move_down(list_height);
+            }
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::PageUp => {
+            if app.details_focused() {
+                let page_lines = app.details_visible_lines().saturating_sub(1).max(1);
+                app.scroll_details_up(page_lines);
+            } else {
+                let list_height = app.list_height;
+                app.move_page_up(list_height);
+            }
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::PageDown => {
+            if app.details_focused() {
+                let page_lines = app.details_visible_lines().saturating_sub(1).max(1);
+                let total_lines = app.details_total_lines;
+                app.scroll_details_down(page_lines, total_lines);
+            } else {
+                let list_height = app.list_height;
+                app.move_page_down(list_height);
+            }
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('J') if is_plain_char(&key, 'J') => {

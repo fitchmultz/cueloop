@@ -1,3 +1,16 @@
+//! Shared rendering helpers for the TUI.
+//!
+//! Responsibilities:
+//! - Provide text wrapping and color helpers for panel rendering.
+//! - Provide small formatting helpers used by multiple renderers.
+//!
+//! Not handled here:
+//! - Layout logic or widget composition.
+//! - Event handling or state mutation.
+//!
+//! Invariants/assumptions:
+//! - Callers clamp input widths before rendering to avoid zero-width layouts.
+
 use crate::contracts::{TaskPriority, TaskStatus};
 use ratatui::style::Color;
 
@@ -32,4 +45,24 @@ pub(super) fn priority_color(priority: TaskPriority) -> Color {
         TaskPriority::Medium => Color::Blue,
         TaskPriority::Low => Color::DarkGray,
     }
+}
+
+/// Format a scroll indicator string when content exceeds the viewport.
+pub(super) fn scroll_indicator(
+    scroll: usize,
+    visible_lines: usize,
+    total_lines: usize,
+) -> Option<String> {
+    if total_lines <= visible_lines {
+        return None;
+    }
+
+    let start = scroll.saturating_add(1);
+    let end = (scroll + visible_lines).min(total_lines);
+    let percent = if total_lines == 0 {
+        0
+    } else {
+        (end.saturating_mul(100)) / total_lines
+    };
+    Some(format!("({start}-{end}/{total_lines}, {percent}%)"))
 }
