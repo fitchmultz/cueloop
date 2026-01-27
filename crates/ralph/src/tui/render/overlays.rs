@@ -12,7 +12,7 @@
 //! - Callers provide terminal areas sized for the current frame.
 //! - Overlay drawing clears the underlying area before rendering content.
 
-use super::super::{keymap, App, ConfigFieldKind, TaskEditKind};
+use super::super::{help, App, ConfigFieldKind, TaskEditKind};
 use crate::outpututil::truncate_chars;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
@@ -22,120 +22,62 @@ use ratatui::{
     Frame,
 };
 
-#[derive(Debug, Clone)]
-enum HelpLine {
-    Title(&'static str),
-    Section(&'static str),
-    Text(String),
-    Blank,
-}
-
 /// Draw of full-screen help overlay with keybindings.
-pub(super) fn draw_help_overlay(f: &mut Frame<'_>, area: Rect) {
+pub(super) fn draw_help_overlay(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     let popup = area.inner(Margin {
         horizontal: 2,
         vertical: 1,
     });
     f.render_widget(Clear, popup);
 
-    let block = Block::default()
-        .title(Line::from(Span::styled(
-            "Help",
-            Style::default().add_modifier(Modifier::BOLD),
-        )))
-        .borders(Borders::ALL);
-    f.render_widget(block, popup);
-
     let inner = popup.inner(Margin {
         horizontal: 1,
         vertical: 1,
     });
+    let content_width = inner.width as usize;
+    let total_lines = help::help_line_count(content_width);
+    let visible_lines = inner.height as usize;
+    app.set_help_visible_lines(visible_lines, total_lines);
 
-    let lines = help_overlay_lines();
+    let indicator = help_indicator(app.help_scroll(), app.help_visible_lines(), total_lines);
+    let block = Block::default()
+        .title(help_title(indicator))
+        .borders(Borders::ALL);
+    f.render_widget(block, popup);
 
-    let paragraph = Paragraph::new(Text::from(lines)).wrap(Wrap { trim: false });
+    let lines = help::help_overlay_lines(content_width);
+    let paragraph = Paragraph::new(Text::from(lines)).scroll((app.help_scroll() as u16, 0));
     f.render_widget(paragraph, inner);
 }
 
-fn help_overlay_lines() -> Vec<Line<'static>> {
-    build_help_overlay_lines()
-        .into_iter()
-        .map(|line| match line {
-            HelpLine::Title(text) | HelpLine::Section(text) => Line::from(Span::styled(
-                text,
-                Style::default().add_modifier(Modifier::BOLD),
-            )),
-            HelpLine::Text(text) => Line::from(text),
-            HelpLine::Blank => Line::from(""),
-        })
-        .collect()
+fn help_indicator(scroll: usize, visible_lines: usize, total_lines: usize) -> Option<String> {
+    if total_lines <= visible_lines {
+        return None;
+    }
+
+    let start = scroll.saturating_add(1);
+    let end = (scroll + visible_lines).min(total_lines);
+    let percent = if total_lines == 0 {
+        0
+    } else {
+        (end.saturating_mul(100)) / total_lines
+    };
+    Some(format!("({start}-{end}/{total_lines}, {percent}%)"))
 }
 
-#[cfg(test)]
-pub(super) fn help_overlay_plain_lines() -> Vec<String> {
-    build_help_overlay_lines()
-        .into_iter()
-        .map(|line| match line {
-            HelpLine::Title(text) | HelpLine::Section(text) => text.to_string(),
-            HelpLine::Text(text) => text,
-            HelpLine::Blank => String::new(),
-        })
-        .collect()
-}
-
-fn build_help_overlay_lines() -> Vec<HelpLine> {
-    let mut lines = Vec::new();
-    lines.push(HelpLine::Title("Keybindings"));
-    let close_keys = join_keys(keymap::help_close_keys());
-    lines.push(HelpLine::Text(format!("Press {close_keys} to close.")));
-    lines.push(HelpLine::Blank);
-
-    for section in keymap::normal_sections() {
-        push_section_lines(&mut lines, section);
+fn help_title(indicator: Option<String>) -> Line<'static> {
+    let mut spans = vec![Span::styled(
+        "Help",
+        Style::default().add_modifier(Modifier::BOLD),
+    )];
+    if let Some(indicator) = indicator {
+        spans.push(Span::raw(" "));
+        spans.push(Span::styled(
+            indicator,
+            Style::default().fg(Color::DarkGray),
+        ));
     }
-
-    for section in keymap::executing_sections() {
-        push_section_lines(&mut lines, section);
-    }
-
-    while matches!(lines.last(), Some(HelpLine::Blank)) {
-        lines.pop();
-    }
-
-    lines
-}
-
-fn push_section_lines(lines: &mut Vec<HelpLine>, section: &keymap::KeymapSection) {
-    lines.push(HelpLine::Section(section.title));
-    for binding in section.bindings {
-        lines.push(HelpLine::Text(format!(
-            "{}: {}",
-            binding.keys_display, binding.description
-        )));
-    }
-    lines.push(HelpLine::Blank);
-}
-
-fn join_keys(keys: &[&str]) -> String {
-    match keys.len() {
-        0 => String::new(),
-        1 => keys[0].to_string(),
-        2 => format!("{} or {}", keys[0], keys[1]),
-        _ => {
-            let mut out = String::new();
-            for (idx, key) in keys.iter().enumerate() {
-                if idx > 0 {
-                    if idx == keys.len() - 1 {
-                        out.push_str(" or ");
-                    } else {
-                        out.push_str(", ");
-                    }
-                }
-                out.push_str(key);
-            }
-            out
-        }
-    }
+    Line::from(spans)
 }
 
 /// Draw command palette overlay.

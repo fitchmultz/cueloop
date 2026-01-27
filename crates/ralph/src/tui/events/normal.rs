@@ -41,14 +41,6 @@ pub(super) fn handle_normal_mode_key(
     }
 
     match key.code {
-        KeyCode::Char('?') if is_plain_char(&key, '?') => {
-            app.mode = AppMode::Help;
-            Ok(TuiAction::Continue)
-        }
-        KeyCode::Char('h') if is_plain_char(&key, 'h') => {
-            app.mode = AppMode::Help;
-            Ok(TuiAction::Continue)
-        }
         KeyCode::Char(':') if is_plain_char(&key, ':') => {
             app.mode = AppMode::CommandPalette {
                 query: String::new(),

@@ -11,11 +11,12 @@
 //! Invariants/assumptions:
 //! - Tests use deterministic buffers and ASCII-only assertions.
 
-use super::super::{App, AppMode};
+use super::super::{help, App, AppMode};
 use super::utils::{priority_color, status_color, wrap_text};
 use crate::contracts::{QueueFile, TaskPriority, TaskStatus};
 use crate::tui;
 use ratatui::text::Span;
+use ratatui::{buffer::Buffer, layout::Margin};
 
 fn spans_to_string(spans: &[Span<'static>]) -> String {
     spans.iter().map(|span| span.content.as_ref()).collect()
@@ -23,6 +24,35 @@ fn spans_to_string(spans: &[Span<'static>]) -> String {
 
 fn footer_text(app: &App, width: usize) -> String {
     spans_to_string(&super::footer::help_footer_spans(app, width))
+}
+
+fn buffer_to_string(buffer: &Buffer) -> String {
+    let mut lines = Vec::new();
+    for y in 0..buffer.area.height {
+        let mut line = String::new();
+        for x in 0..buffer.area.width {
+            let cell = buffer.cell((x, y)).expect("cell in buffer");
+            line.push_str(cell.symbol());
+        }
+        lines.push(line);
+    }
+    lines.join("\n")
+}
+
+fn buffer_line(buffer: &Buffer, x: u16, y: u16, width: u16) -> String {
+    let mut line = String::new();
+    for offset in 0..width {
+        let cell = buffer.cell((x + offset, y)).expect("cell in buffer");
+        line.push_str(cell.symbol());
+    }
+    line.trim_end().to_string()
+}
+
+fn line_to_string(line: &ratatui::text::Line<'static>) -> String {
+    line.spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect()
 }
 
 #[test]
@@ -140,7 +170,7 @@ fn help_footer_truncates_with_ellipsis_on_small_width() {
 
 #[test]
 fn help_overlay_includes_keymap_shortcuts() {
-    let lines = super::overlays::help_overlay_plain_lines();
+    let lines = help::help_overlay_plain_lines();
     let rendered = lines.join("\n");
 
     for expected in [
@@ -156,6 +186,93 @@ fn help_overlay_includes_keymap_shortcuts() {
             "help overlay missing: {expected}"
         );
     }
+}
+
+#[test]
+fn help_overlay_shows_scroll_indicator_when_truncated() {
+    use ratatui::{backend::TestBackend, layout::Rect, Terminal};
+
+    let backend = TestBackend::new(60, 8);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::Help;
+
+    terminal
+        .draw(|f| {
+            app.detail_width = f.area().width.saturating_sub(4);
+            tui::draw_ui(f, &mut app)
+        })
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let rendered = buffer_to_string(buffer);
+    assert!(
+        rendered.contains("Help ("),
+        "expected help title to include scroll indicator"
+    );
+
+    let area = Rect {
+        x: 0,
+        y: 0,
+        width: buffer.area.width,
+        height: buffer.area.height,
+    };
+    let popup = area.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let inner = popup.inner(Margin {
+        horizontal: 1,
+        vertical: 1,
+    });
+    let total_lines = help::help_line_count(inner.width as usize);
+    assert!(
+        total_lines > inner.height as usize,
+        "expected help content to exceed visible height"
+    );
+}
+
+#[test]
+fn help_overlay_scroll_offsets_visible_content() {
+    use ratatui::{backend::TestBackend, layout::Rect, Terminal};
+
+    let backend = TestBackend::new(70, 10);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::Help;
+
+    let area = Rect {
+        x: 0,
+        y: 0,
+        width: 70,
+        height: 10,
+    };
+    let popup = area.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let inner = popup.inner(Margin {
+        horizontal: 1,
+        vertical: 1,
+    });
+
+    let lines = help::help_overlay_lines(inner.width as usize);
+    let scroll_offset = 3usize;
+    let expected_top = line_to_string(&lines[scroll_offset]);
+
+    app.set_help_visible_lines(inner.height as usize, lines.len());
+    app.scroll_help_down(scroll_offset, lines.len());
+
+    terminal
+        .draw(|f| {
+            app.detail_width = f.area().width.saturating_sub(4);
+            tui::draw_ui(f, &mut app)
+        })
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let top_line = buffer_line(buffer, inner.x, inner.y, inner.width);
+    assert_eq!(top_line, expected_top);
 }
 
 #[test]

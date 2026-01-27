@@ -156,6 +156,14 @@ pub struct App {
     pub autoscroll: bool,
     /// Last known visible log lines in Executing view (for paging/auto-scroll).
     pub log_visible_lines: usize,
+    /// Scroll offset for the help overlay.
+    help_scroll: usize,
+    /// Last known visible help lines in Help overlay (for paging).
+    help_visible_lines: usize,
+    /// Last known total help line count (post-wrap).
+    help_total_lines: usize,
+    /// Previous mode before entering the Help overlay.
+    help_previous_mode: Option<AppMode>,
     /// Height of the task list (for scrolling calculation).
     pub list_height: usize,
     /// Whether a runner thread is currently executing a task.
@@ -221,6 +229,10 @@ impl App {
             log_scroll: 0,
             autoscroll: true,
             log_visible_lines: 20,
+            help_scroll: 0,
+            help_visible_lines: 1,
+            help_total_lines: 0,
+            help_previous_mode: None,
             list_height: 20,
             runner_active: false,
             running_task_id: None,
@@ -742,6 +754,70 @@ impl App {
     pub fn enable_autoscroll(&mut self, visible_lines: usize) {
         self.autoscroll = true;
         self.log_scroll = self.max_log_scroll(visible_lines);
+    }
+
+    pub(crate) fn help_visible_lines(&self) -> usize {
+        self.help_visible_lines.max(1)
+    }
+
+    pub(crate) fn help_total_lines(&self) -> usize {
+        self.help_total_lines
+    }
+
+    pub(crate) fn help_scroll(&self) -> usize {
+        self.help_scroll
+    }
+
+    pub(crate) fn set_help_visible_lines(&mut self, visible_lines: usize, total_lines: usize) {
+        let visible_lines = visible_lines.max(1);
+        self.help_visible_lines = visible_lines;
+        self.help_total_lines = total_lines;
+        let max_scroll = total_lines.saturating_sub(visible_lines);
+        if self.help_scroll > max_scroll {
+            self.help_scroll = max_scroll;
+        }
+    }
+
+    pub(crate) fn max_help_scroll(&self, total_lines: usize) -> usize {
+        total_lines.saturating_sub(self.help_visible_lines())
+    }
+
+    pub(crate) fn scroll_help_up(&mut self, lines: usize) {
+        if lines == 0 {
+            return;
+        }
+        self.help_scroll = self.help_scroll.saturating_sub(lines);
+    }
+
+    pub(crate) fn scroll_help_down(&mut self, lines: usize, total_lines: usize) {
+        if lines == 0 {
+            return;
+        }
+        let max_scroll = self.max_help_scroll(total_lines);
+        self.help_scroll = (self.help_scroll + lines).min(max_scroll);
+    }
+
+    pub(crate) fn scroll_help_top(&mut self) {
+        self.help_scroll = 0;
+    }
+
+    pub(crate) fn scroll_help_bottom(&mut self, total_lines: usize) {
+        self.help_scroll = self.max_help_scroll(total_lines);
+    }
+
+    pub(crate) fn enter_help_mode(&mut self, previous_mode: AppMode) {
+        self.help_previous_mode = Some(previous_mode);
+        self.help_scroll = 0;
+        self.mode = AppMode::Help;
+    }
+
+    pub(crate) fn exit_help_mode(&mut self) {
+        let previous_mode = self.help_previous_mode.take().unwrap_or(AppMode::Normal);
+        self.mode = previous_mode;
+    }
+
+    pub(crate) fn help_previous_mode(&self) -> Option<&AppMode> {
+        self.help_previous_mode.as_ref()
     }
 
     /// Build the palette entries for a given query.

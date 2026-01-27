@@ -427,6 +427,48 @@ fn help_key_enters_help_mode_with_h() {
 }
 
 #[test]
+fn help_opens_from_search_and_returns_to_previous_mode() {
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::Searching("needle".to_string());
+
+    let action = handle_key_event(
+        &mut app,
+        key_event(KeyCode::Char('?')),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.mode, AppMode::Help);
+    assert!(matches!(
+        app.help_previous_mode(),
+        Some(AppMode::Searching(query)) if query == "needle"
+    ));
+
+    let action = handle_key_event(&mut app, key_event(KeyCode::Esc), "2026-01-20T00:00:00Z")
+        .expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.mode, AppMode::Searching("needle".to_string()));
+}
+
+#[test]
+fn help_key_does_not_interrupt_search_input() {
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::Searching(String::new());
+
+    let action = handle_key_event(
+        &mut app,
+        key_event(KeyCode::Char('h')),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.mode, AppMode::Searching("h".to_string()));
+}
+
+#[test]
 fn help_mode_closes_on_escape() {
     let queue = QueueFile {
         version: 1,
@@ -440,6 +482,41 @@ fn help_mode_closes_on_escape() {
 
     assert_eq!(action, TuiAction::Continue);
     assert_eq!(app.mode, AppMode::Normal);
+}
+
+#[test]
+fn help_mode_scrolls_and_clamps() {
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::Help;
+    app.set_help_visible_lines(3, 7);
+
+    handle_key_event(&mut app, key_event(KeyCode::Down), "2026-01-20T00:00:00Z")
+        .expect("handle key");
+    assert_eq!(app.help_scroll(), 1);
+
+    handle_key_event(
+        &mut app,
+        key_event(KeyCode::PageDown),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("handle key");
+    assert_eq!(app.help_scroll(), 4);
+
+    handle_key_event(
+        &mut app,
+        key_event(KeyCode::PageDown),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("handle key");
+    assert_eq!(app.help_scroll(), 4);
+
+    handle_key_event(&mut app, key_event(KeyCode::Home), "2026-01-20T00:00:00Z")
+        .expect("handle key");
+    assert_eq!(app.help_scroll(), 0);
+
+    handle_key_event(&mut app, key_event(KeyCode::End), "2026-01-20T00:00:00Z")
+        .expect("handle key");
+    assert_eq!(app.help_scroll(), 4);
 }
 
 #[test]

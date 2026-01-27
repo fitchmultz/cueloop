@@ -36,6 +36,33 @@ pub(crate) struct KeymapSection {
 
 const HELP_CLOSE_KEYS: &[&str] = &["Esc", "?/h"];
 
+const HELP_BINDINGS: &[KeyBinding] = &[
+    KeyBinding {
+        keys: HELP_CLOSE_KEYS,
+        keys_display: "Esc or ?/h",
+        description: "close help overlay",
+        footer_hint: None,
+    },
+    KeyBinding {
+        keys: &["Up", "Down", "j", "k"],
+        keys_display: "Up/Down or j/k",
+        description: "scroll help",
+        footer_hint: None,
+    },
+    KeyBinding {
+        keys: &["PgUp/PgDn"],
+        keys_display: "PgUp/PgDn",
+        description: "page help",
+        footer_hint: None,
+    },
+    KeyBinding {
+        keys: &["Home", "End", "g", "G"],
+        keys_display: "Home/End or g/G",
+        description: "jump to top/bottom",
+        footer_hint: None,
+    },
+];
+
 const NORMAL_NAV_BINDINGS: &[KeyBinding] = &[
     KeyBinding {
         keys: &["Up", "Down", "j", "k"],
@@ -364,12 +391,21 @@ const EXECUTING_SECTIONS: &[KeymapSection] = &[KeymapSection {
     bindings: EXECUTING_BINDINGS,
 }];
 
+const HELP_SECTIONS: &[KeymapSection] = &[KeymapSection {
+    title: "Help Overlay",
+    bindings: HELP_BINDINGS,
+}];
+
 pub(crate) fn normal_sections() -> &'static [KeymapSection] {
     NORMAL_SECTIONS
 }
 
 pub(crate) fn executing_sections() -> &'static [KeymapSection] {
     EXECUTING_SECTIONS
+}
+
+pub(crate) fn help_sections() -> &'static [KeymapSection] {
+    HELP_SECTIONS
 }
 
 pub(crate) fn help_close_keys() -> &'static [&'static str] {

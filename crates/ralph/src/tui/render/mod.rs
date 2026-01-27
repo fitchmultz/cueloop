@@ -42,6 +42,7 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
         AppMode::ConfirmRevert { previous_mode, .. } => {
             matches!(previous_mode.as_ref(), AppMode::Executing { .. })
         }
+        AppMode::Help => matches!(app.help_previous_mode(), Some(AppMode::Executing { .. })),
         _ => false,
     };
 
@@ -84,7 +85,7 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
     // Modal overlays layered on top of the base UI.
     match &app.mode {
         AppMode::Help => {
-            overlays::draw_help_overlay(f, size);
+            overlays::draw_help_overlay(f, app, size);
         }
 
         // Confirmation dialogs.

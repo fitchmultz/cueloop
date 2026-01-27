@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0317",
-      "status": "todo",
-      "title": "TUI: make help overlay scrollable + openable from any mode",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "ux",
-        "help",
-        "keybindings"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/events/help.rs",
-        "crates/ralph/src/tui/events/mod.rs",
-        "crates/ralph/src/tui/render/overlays.rs",
-        "crates/ralph/src/tui/events/types.rs",
-        "crates/ralph/src/tui/events/tests.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/tui/events/help.rs`: Help mode only handles close keys (Esc/?/h); scrolling keys are ignored.",
-        "`crates/ralph/src/tui/render/overlays.rs`: help overlay renders a long static `Paragraph` with no scroll state; on small terminals much of it is inaccessible.",
-        "`crates/ralph/src/tui/events/normal.rs`: help is only entered from Normal mode; other modes cannot open help."
-      ],
-      "plan": [
-        "Add help overlay scroll state (and optionally a “previous mode” to return to).",
-        "Support Up/Down/PgUp/PgDn (and vim keys) to scroll within help.",
-        "Make `?` (and/or F1) a global key to open help from any mode.",
-        "Add a small scroll indicator (e.g., “Help 12%”) to the overlay header.",
-        "Add tests for help toggling and scrolling behavior.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T04:35:15Z",
-      "updated_at": "2026-01-27T04:35:15Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0318",
       "status": "todo",
       "title": "TUI: add scrollable task details + focus switching (Tab)",

@@ -43,6 +43,12 @@ pub fn handle_key_event(
     key: KeyEvent,
     now_rfc3339: &str,
 ) -> anyhow::Result<TuiAction> {
+    if should_open_help(app, &key) {
+        let previous_mode = app.mode.clone();
+        app.enter_help_mode(previous_mode);
+        return Ok(TuiAction::Continue);
+    }
+
     match app.mode.clone() {
         AppMode::Normal => normal::handle_normal_mode_key(app, key, now_rfc3339),
         AppMode::Help => help::handle_help_mode_key(app, key),
@@ -114,4 +120,33 @@ pub(super) fn is_plain_char(key: &KeyEvent, expected: char) -> bool {
         return false;
     }
     key.code == KeyCode::Char(expected)
+}
+
+fn should_open_help(app: &App, key: &KeyEvent) -> bool {
+    if app.mode == AppMode::Help {
+        return false;
+    }
+    if is_plain_char(key, '?') {
+        return true;
+    }
+    if is_plain_char(key, 'h') && !mode_accepts_text_input(&app.mode) {
+        return true;
+    }
+    false
+}
+
+fn mode_accepts_text_input(mode: &AppMode) -> bool {
+    match mode {
+        AppMode::CreatingTask(_)
+        | AppMode::CreatingTaskDescription(_)
+        | AppMode::Searching(_)
+        | AppMode::FilteringTags(_)
+        | AppMode::FilteringScopes(_)
+        | AppMode::Scanning(_)
+        | AppMode::CommandPalette { .. } => true,
+        AppMode::EditingTask { editing_value, .. } => editing_value.is_some(),
+        AppMode::EditingConfig { editing_value, .. } => editing_value.is_some(),
+        AppMode::ConfirmRevert { selected, .. } => *selected == 2,
+        _ => false,
+    }
 }

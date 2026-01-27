@@ -6606,6 +6606,59 @@
       "completed_at": "2026-01-27T06:49:22.969891000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0317",
+      "status": "done",
+      "title": "TUI: make help overlay scrollable + openable from any mode",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "help",
+        "keybindings"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/help.rs",
+        "crates/ralph/src/tui/events/mod.rs",
+        "crates/ralph/src/tui/events/normal.rs",
+        "crates/ralph/src/tui/events/types.rs",
+        "crates/ralph/src/tui/render/mod.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "crates/ralph/src/tui/render/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/help.rs`: Help mode only exits to `AppMode::Normal` and ignores scroll/navigation keys.",
+        "`crates/ralph/src/tui/events/normal.rs`: `?`/`h` enter Help only from Normal mode; other modes do not open help.",
+        "`crates/ralph/src/tui/render/overlays.rs`: help overlay renders a full `Paragraph` with no scroll offset or indicator, so long help text is clipped on small terminals.",
+        "`crates/ralph/src/tui/render/mod.rs`: `draw_help_overlay` is called without app state, so the overlay cannot reflect per-session scroll position.",
+        "`crates/ralph/src/tui/app.rs`: App state tracks list/log scrolling but has no help-specific scroll offset or previous-mode tracking."
+      ],
+      "plan": [
+        "Decide where to store help overlay state (scroll offset + previous mode) and add it to `App` or `AppMode` with clear invariants.",
+        "Update `handle_key_event` to open Help from any mode on `?`/`h` while preserving the prior mode for return.",
+        "Extend help-mode key handling to support Up/Down, PgUp/PgDn, Home/End (and vim keys) with clamped scroll bounds.",
+        "Pass scroll state into `draw_help_overlay`, render the help `Paragraph` with `.scroll`, and add a header indicator showing position/percent.",
+        "Update/extend tests in `crates/ralph/src/tui/events/tests.rs` and `crates/ralph/src/tui/render/tests.rs` for global open, return-to-previous-mode, and scrolling/indicator behavior.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Help currently always exits to Normal; opening from other modes should restore the prior mode to avoid losing in-progress input.",
+        "Help overlay now tracks scroll state and renders wrapped content with an indicator.",
+        "Help opens from any mode via ?, restores previous mode, and supports scrolling keys.",
+        "Prevented 'h' from interrupting text input; added search-mode regression test.",
+        "Centralized help overlay content and updated render/event tests.",
+        "make ci"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T07:27:26.894418000Z",
+      "completed_at": "2026-01-27T07:27:26.894418000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
