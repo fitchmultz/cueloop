@@ -3,7 +3,7 @@ PREFIX ?= $(HOME)/.local
 BIN_DIR ?= $(PREFIX)/bin
 BIN_NAME ?= ralph
 
-.PHONY: install update lint type-check format clean clean-temp test generate build build-release ci
+.PHONY: install update lint type-check format clean clean-temp test generate build build-release ci runners-help
 
 install: build-release
 	@bin_dir="$(BIN_DIR)"; \
@@ -58,3 +58,9 @@ build-release:
 	cargo build --workspace --release
 
 ci: generate format type-check lint build test install
+
+runners-help:
+	@scripts/runner_cli_inventory.sh --out target/tmp/runner_cli_inventory
+	@echo ""
+	@echo "Runner CLI help captured under: target/tmp/runner_cli_inventory"
+	@echo "Next: update docs/runner_cli_inventory.md with findings for approval."
