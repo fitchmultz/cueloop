@@ -91,14 +91,6 @@ pub fn build_interactive_factories_with_invokers(
     run_invoker: Arc<RunInvoker>,
     scan_invoker: Arc<ScanInvoker>,
 ) -> Result<InteractiveFactories> {
-    let scan_settings = runner::resolve_agent_settings(
-        overrides.runner,
-        overrides.model.clone(),
-        overrides.reasoning_effort,
-        &overrides.runner_cli,
-        None,
-        &resolved.config.agent,
-    )?;
     let scan_repoprompt_tool_injection = agent::resolve_rp_required(repo_prompt, resolved);
     let scan_git_revert_mode = overrides
         .git_revert_mode
@@ -126,13 +118,13 @@ pub fn build_interactive_factories_with_invokers(
     });
 
     let resolved_for_scan = resolved.clone();
-    let scan_settings = scan_settings.clone();
+    let scan_overrides = overrides.clone();
     let scan_invoker_for_factory = Arc::clone(&scan_invoker);
     let repoprompt_tool_injection = scan_repoprompt_tool_injection;
     let git_revert_mode = scan_git_revert_mode;
     let scan_factory: ScanFactory = Box::new(move |focus, handler, revert_prompt| {
         let resolved = resolved_for_scan.clone();
-        let settings = scan_settings.clone();
+        let overrides = scan_overrides.clone();
         let scan_invoker = Arc::clone(&scan_invoker_for_factory);
         let force = force;
         let repoprompt_tool_injection = repoprompt_tool_injection;
@@ -142,9 +134,10 @@ pub fn build_interactive_factories_with_invokers(
                 &resolved,
                 scan_cmd::ScanOptions {
                     focus,
-                    runner: settings.runner,
-                    model: settings.model,
-                    reasoning_effort: settings.reasoning_effort,
+                    runner_override: overrides.runner,
+                    model_override: overrides.model,
+                    reasoning_effort_override: overrides.reasoning_effort,
+                    runner_cli_overrides: overrides.runner_cli,
                     force,
                     repoprompt_tool_injection,
                     git_revert_mode,
@@ -320,10 +313,10 @@ mod tests {
             .expect("scan call");
         assert_eq!(scan_call.repo_root, resolved.repo_root);
         assert_eq!(scan_call.options.focus, "duplication audit");
-        assert_eq!(scan_call.options.runner, Runner::Codex);
-        assert_eq!(scan_call.options.model, Model::Gpt52Codex);
+        assert_eq!(scan_call.options.runner_override, Some(Runner::Codex));
+        assert_eq!(scan_call.options.model_override, Some(Model::Gpt52Codex));
         assert_eq!(
-            scan_call.options.reasoning_effort,
+            scan_call.options.reasoning_effort_override,
             Some(ReasoningEffort::High)
         );
         assert!(scan_call.options.force);
@@ -335,7 +328,7 @@ mod tests {
     }
 
     #[test]
-    fn interactive_factories_use_config_defaults_when_overrides_missing() {
+    fn interactive_factories_pass_empty_scan_overrides_when_missing() {
         let mut config = Config::default();
         config.agent.runner = Some(Runner::Gemini);
         config.agent.model = Some(Model::Custom("gemini-3-flash-preview".to_string()));
@@ -380,12 +373,9 @@ mod tests {
             .take()
             .expect("scan call");
         assert_eq!(scan_call.repo_root, resolved.repo_root);
-        assert_eq!(scan_call.options.runner, Runner::Gemini);
-        assert_eq!(
-            scan_call.options.model,
-            Model::Custom("gemini-3-flash-preview".to_string())
-        );
-        assert_eq!(scan_call.options.reasoning_effort, None);
+        assert!(scan_call.options.runner_override.is_none());
+        assert!(scan_call.options.model_override.is_none());
+        assert!(scan_call.options.reasoning_effort_override.is_none());
         assert!(!scan_call.options.force);
         assert!(scan_call.options.repoprompt_tool_injection);
         assert_eq!(scan_call.options.git_revert_mode, GitRevertMode::Disabled);

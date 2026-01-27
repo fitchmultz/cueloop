@@ -19,9 +19,7 @@ use clap::{Args, Subcommand, ValueEnum};
 use crate::cli::queue::{show_task, QueueShowFormat};
 use crate::contracts::TaskStatus;
 use crate::queue::TaskEditKey;
-use crate::{
-    agent, commands::task as task_cmd, completions, config, lock, queue, runner, timeutil,
-};
+use crate::{agent, commands::task as task_cmd, completions, config, lock, queue, timeutil};
 
 pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
@@ -161,21 +159,15 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                 model: args.model.clone(),
                 effort: args.effort.clone(),
                 repo_prompt: args.repo_prompt,
+                runner_cli: args.runner_cli.clone(),
             })?;
-            let settings = runner::resolve_agent_settings(
-                overrides.runner,
-                overrides.model,
-                overrides.reasoning_effort,
-                &overrides.runner_cli,
-                None,
-                &resolved.config.agent,
-            )?;
 
             let update_settings = task_cmd::TaskUpdateSettings {
                 fields: fields_to_update,
-                runner: settings.runner,
-                model: settings.model,
-                reasoning_effort: settings.reasoning_effort,
+                runner_override: overrides.runner,
+                model_override: overrides.model,
+                reasoning_effort_override: overrides.reasoning_effort,
+                runner_cli_overrides: overrides.runner_cli,
                 force,
                 repoprompt_tool_injection: agent::resolve_rp_required(args.repo_prompt, &resolved),
             };
@@ -193,15 +185,8 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                 model: args.model.clone(),
                 effort: args.effort.clone(),
                 repo_prompt: args.repo_prompt,
+                runner_cli: args.runner_cli.clone(),
             })?;
-            let settings = runner::resolve_agent_settings(
-                overrides.runner,
-                overrides.model,
-                overrides.reasoning_effort,
-                &overrides.runner_cli,
-                None,
-                &resolved.config.agent,
-            )?;
 
             task_cmd::build_task(
                 &resolved,
@@ -209,9 +194,10 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                     request,
                     hint_tags: args.tags,
                     hint_scope: args.scope,
-                    runner: settings.runner,
-                    model: settings.model,
-                    reasoning_effort: settings.reasoning_effort,
+                    runner_override: overrides.runner,
+                    model_override: overrides.model,
+                    reasoning_effort_override: overrides.reasoning_effort,
+                    runner_cli_overrides: overrides.runner_cli,
                     force,
                     repoprompt_tool_injection: agent::resolve_rp_required(
                         args.repo_prompt,
@@ -231,15 +217,8 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                 model: args.model.clone(),
                 effort: args.effort.clone(),
                 repo_prompt: args.repo_prompt,
+                runner_cli: args.runner_cli.clone(),
             })?;
-            let settings = runner::resolve_agent_settings(
-                overrides.runner,
-                overrides.model,
-                overrides.reasoning_effort,
-                &overrides.runner_cli,
-                None,
-                &resolved.config.agent,
-            )?;
 
             task_cmd::build_task(
                 &resolved,
@@ -247,9 +226,10 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
                     request,
                     hint_tags: args.tags,
                     hint_scope: args.scope,
-                    runner: settings.runner,
-                    model: settings.model,
-                    reasoning_effort: settings.reasoning_effort,
+                    runner_override: overrides.runner,
+                    model_override: overrides.model,
+                    reasoning_effort_override: overrides.reasoning_effort,
+                    runner_cli_overrides: overrides.runner_cli,
                     force,
                     repoprompt_tool_injection: agent::resolve_rp_required(
                         args.repo_prompt,
@@ -322,7 +302,7 @@ pub struct TaskArgs {
 pub enum TaskCommand {
     /// Build a new task from a natural language request.
     #[command(
-        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nExamples:\n ralph task \"Add integration tests for run one\"\n ralph task --tags cli,rust \"Refactor queue parsing\"\n ralph task --scope crates/ralph \"Fix TUI rendering bug\"\n ralph task --runner opencode --model gpt-5.2 \"Add docs for OpenCode setup\"\n ralph task --runner gemini --model gemini-3-flash-preview \"Draft risk checklist\"\n ralph task --runner codex --model gpt-5.2-codex --effort high \"Fix queue validation\"\n ralph task --repo-prompt plan \"Audit error handling\"\n ralph task --repo-prompt off \"Quick typo fix\"\n echo \"Triage flaky CI\" | ralph task --runner codex --model gpt-5.2-codex --effort medium\n\nExplicit subcommand:\n ralph task build \"Add integration tests for run one\""
+        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nRunner CLI options:\n - Override approval/sandbox/verbosity/plan-mode via flags.\n - Unsupported options follow --unsupported-option-policy.\n\nExamples:\n ralph task \"Add integration tests for run one\"\n ralph task --tags cli,rust \"Refactor queue parsing\"\n ralph task --scope crates/ralph \"Fix TUI rendering bug\"\n ralph task --runner opencode --model gpt-5.2 \"Add docs for OpenCode setup\"\n ralph task --runner gemini --model gemini-3-flash-preview \"Draft risk checklist\"\n ralph task --runner codex --model gpt-5.2-codex --effort high \"Fix queue validation\"\n ralph task --approval-mode auto-edits --runner claude \"Audit approvals\"\n ralph task --sandbox disabled --runner codex \"Audit sandbox\"\n ralph task --repo-prompt plan \"Audit error handling\"\n ralph task --repo-prompt off \"Quick typo fix\"\n echo \"Triage flaky CI\" | ralph task --runner codex --model gpt-5.2-codex --effort medium\n\nExplicit subcommand:\n ralph task build \"Add integration tests for run one\""
     )]
     Build(TaskBuildArgs),
 
@@ -374,7 +354,7 @@ pub enum TaskCommand {
 
     /// Update existing task fields based on current repository state.
     #[command(
-        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nField selection:\n - By default, all updatable fields are refreshed: scope, evidence, plan, notes, tags, depends_on.\n - Use --fields to specify which fields to update.\n\nTask selection:\n - Omit TASK_ID to update every task in the active queue.\n\nExamples:\n ralph task update\n ralph task update RQ-0001\n ralph task update --fields scope,evidence,plan RQ-0001\n ralph task update --runner opencode --model gpt-5.2 RQ-0001\n ralph task update --repo-prompt plan RQ-0001\n ralph task update --repo-prompt off --fields scope,evidence RQ-0001\n ralph task update --fields tags RQ-0042"
+        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nRunner CLI options:\n - Override approval/sandbox/verbosity/plan-mode via flags.\n - Unsupported options follow --unsupported-option-policy.\n\nField selection:\n - By default, all updatable fields are refreshed: scope, evidence, plan, notes, tags, depends_on.\n - Use --fields to specify which fields to update.\n\nTask selection:\n - Omit TASK_ID to update every task in the active queue.\n\nExamples:\n ralph task update\n ralph task update RQ-0001\n ralph task update --fields scope,evidence,plan RQ-0001\n ralph task update --runner opencode --model gpt-5.2 RQ-0001\n ralph task update --approval-mode auto-edits --runner claude RQ-0001\n ralph task update --repo-prompt plan RQ-0001\n ralph task update --repo-prompt off --fields scope,evidence RQ-0001\n ralph task update --fields tags RQ-0042"
     )]
     Update(TaskUpdateArgs),
 }
@@ -409,6 +389,9 @@ pub struct TaskBuildArgs {
     /// RepoPrompt mode (tools, plan, off). Alias: -rp.
     #[arg(long = "repo-prompt", value_enum, value_name = "MODE")]
     pub repo_prompt: Option<agent::RepoPromptMode>,
+
+    #[command(flatten)]
+    pub runner_cli: agent::RunnerCliArgs,
 }
 
 #[derive(Args)]
@@ -552,6 +535,9 @@ pub struct TaskUpdateArgs {
     #[arg(long = "repo-prompt", value_enum, value_name = "MODE")]
     pub repo_prompt: Option<agent::RepoPromptMode>,
 
+    #[command(flatten)]
+    pub runner_cli: agent::RunnerCliArgs,
+
     /// Task ID to update (omit to update all tasks).
     #[arg(value_name = "TASK_ID")]
     pub task_id: Option<String>,
@@ -642,6 +628,10 @@ mod tests {
             help.contains("ralph task update --repo-prompt off --fields scope,evidence RQ-0001"),
             "missing repo-prompt off example: {help}"
         );
+        assert!(
+            help.contains("ralph task update --approval-mode auto-edits --runner claude RQ-0001"),
+            "missing approval-mode example: {help}"
+        );
     }
 
     #[test]
@@ -670,15 +660,13 @@ mod tests {
                 .expect("parse");
 
         match cli.command {
-            crate::cli::Command::Task(crate::cli::task::TaskArgs { command, .. }) => {
-                match command {
-                    Some(crate::cli::task::TaskCommand::Show(args)) => {
-                        assert_eq!(args.task_id, "RQ-0001");
-                        assert_eq!(args.format, QueueShowFormat::Compact);
-                    }
-                    _ => panic!("expected task show command"),
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Show(args)) => {
+                    assert_eq!(args.task_id, "RQ-0001");
+                    assert_eq!(args.format, QueueShowFormat::Compact);
                 }
-            }
+                _ => panic!("expected task show command"),
+            },
             _ => panic!("expected task command"),
         }
     }
@@ -698,15 +686,39 @@ mod tests {
         .expect("parse");
 
         match cli.command {
-            crate::cli::Command::Task(crate::cli::task::TaskArgs { command, .. }) => {
-                match command {
-                    Some(crate::cli::task::TaskCommand::Build(args)) => {
-                        assert_eq!(args.repo_prompt, Some(crate::agent::RepoPromptMode::Plan));
-                        assert_eq!(args.effort.as_deref(), Some("high"));
-                    }
-                    _ => panic!("expected task build command"),
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Build(args)) => {
+                    assert_eq!(args.repo_prompt, Some(crate::agent::RepoPromptMode::Plan));
+                    assert_eq!(args.effort.as_deref(), Some("high"));
                 }
-            }
+                _ => panic!("expected task build command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_build_parses_runner_cli_overrides() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "task",
+            "build",
+            "--approval-mode",
+            "yolo",
+            "--sandbox",
+            "disabled",
+            "Add tests",
+        ])
+        .expect("parse");
+
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Build(args)) => {
+                    assert_eq!(args.runner_cli.approval_mode.as_deref(), Some("yolo"));
+                    assert_eq!(args.runner_cli.sandbox.as_deref(), Some("disabled"));
+                }
+                _ => panic!("expected task build command"),
+            },
             _ => panic!("expected task command"),
         }
     }
@@ -726,16 +738,41 @@ mod tests {
         .expect("parse");
 
         match cli.command {
-            crate::cli::Command::Task(crate::cli::task::TaskArgs { command, .. }) => {
-                match command {
-                    Some(crate::cli::task::TaskCommand::Update(args)) => {
-                        assert_eq!(args.repo_prompt, Some(crate::agent::RepoPromptMode::Off));
-                        assert_eq!(args.effort.as_deref(), Some("low"));
-                        assert_eq!(args.task_id.as_deref(), Some("RQ-0001"));
-                    }
-                    _ => panic!("expected task update command"),
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Update(args)) => {
+                    assert_eq!(args.repo_prompt, Some(crate::agent::RepoPromptMode::Off));
+                    assert_eq!(args.effort.as_deref(), Some("low"));
+                    assert_eq!(args.task_id.as_deref(), Some("RQ-0001"));
                 }
-            }
+                _ => panic!("expected task update command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_update_parses_runner_cli_overrides() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "task",
+            "update",
+            "--approval-mode",
+            "auto-edits",
+            "--sandbox",
+            "disabled",
+            "RQ-0001",
+        ])
+        .expect("parse");
+
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Update(args)) => {
+                    assert_eq!(args.runner_cli.approval_mode.as_deref(), Some("auto-edits"));
+                    assert_eq!(args.runner_cli.sandbox.as_deref(), Some("disabled"));
+                    assert_eq!(args.task_id.as_deref(), Some("RQ-0001"));
+                }
+                _ => panic!("expected task update command"),
+            },
             _ => panic!("expected task command"),
         }
     }

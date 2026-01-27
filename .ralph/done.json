@@ -7233,6 +7233,55 @@
       "completed_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0336",
+      "status": "done",
+      "title": "Scan/Task builder: stop forcing bypass permissions; respect config/flags",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "scan",
+        "task",
+        "runner"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/scan.rs",
+        "crates/ralph/src/commands/task.rs",
+        "crates/ralph/src/contracts/config.rs",
+        "crates/ralph/src/agent.rs",
+        "crates/ralph/src/cli/scan.rs",
+        "crates/ralph/src/cli/task.rs",
+        "docs/cli.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/commands/scan.rs`: `run_scan` sets `permission_mode = Some(ClaudePermissionMode::BypassPermissions)` with an explicit “Force BypassPermissions for scan” comment.",
+        "`crates/ralph/src/commands/task.rs`: task builder and task updater both set `permission_mode = Some(ClaudePermissionMode::BypassPermissions)` (forced bypass in multiple code paths).",
+        "`crates/ralph/src/agent.rs`: `AgentArgs` used by scan/task exposes runner/model/effort/repo-prompt only—no approval or permission overrides are available for those commands.",
+        "`crates/ralph/src/contracts/config.rs`: config supports `agent.claude_permission_mode` plus `runner_cli.defaults.approval_mode`, but scan/task ignore them today."
+      ],
+      "plan": [
+        "Define the desired precedence for scan/task/task-update permission behavior (explicit CLI flags > config runner_cli/claude_permission_mode > runner defaults) and document the per-runner mapping.",
+        "Remove hardcoded `BypassPermissions` in scan, task builder, and task updater; plumb resolved permission/approval settings into the runner invocation.",
+        "If CLI overrides are required, extend `AgentArgs` + scan/task clap wiring and update `--help`/`docs/cli.md` (ensure CLI/TUI parity or document any divergence).",
+        "Add tests covering scan/task builder/task updater for config defaults, CLI overrides, and non-interactive failure modes when approvals would block.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Task updater (`ralph task update`) currently forces bypass permissions the same way as the task builder; treat it as part of the same fix.",
+        "Run commands already expose approval/sandbox CLI overrides via `RunAgentArgs`; scan/task do not, so reuse that pattern or document why not.",
+        "Removed forced Claude bypass for scan/task/task update; now use config + runner_cli resolution.",
+        "Added shared RunnerCliArgs parsing for scan/task and plumbed runner CLI overrides through options.",
+        "Updated CLI/docs/help examples and tests for approval/sandbox overrides and permission precedence.",
+        "make ci"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T19:52:57.705092000Z",
+      "completed_at": "2026-01-27T19:52:57.705092000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -1,14 +1,26 @@
-//! Unit tests for commands/scan.rs (codebase scanning, focus filtering).
+//! Unit tests for commands/scan.rs (scan option wiring and focus handling).
+//!
+//! Responsibilities:
+//! - Validate ScanOptions construction behavior and override wiring.
+//! - Ensure focus text handling covers common edge cases.
+//!
+//! Not handled here:
+//! - End-to-end scan execution or queue mutation.
+//! - Runner invocation behavior or prompt rendering.
+//!
+//! Invariants/assumptions:
+//! - ScanOptions runner/model fields represent overrides, not resolved defaults.
 
 use ralph::commands::scan as scan_cmd;
-use ralph::contracts::{GitRevertMode, Model, Runner};
+use ralph::contracts::{GitRevertMode, Model, Runner, RunnerCliOptionsPatch};
 
 fn base_scan_options() -> scan_cmd::ScanOptions {
     scan_cmd::ScanOptions {
         focus: String::new(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
+        runner_override: Some(Runner::Codex),
+        model_override: Some(Model::Gpt52Codex),
+        reasoning_effort_override: None,
+        runner_cli_overrides: RunnerCliOptionsPatch::default(),
         force: false,
         repoprompt_tool_injection: false,
         git_revert_mode: GitRevertMode::Ask,
@@ -23,9 +35,9 @@ fn test_scan_options_default_values() {
     let opts = base_scan_options();
 
     assert!(opts.focus.is_empty());
-    assert_eq!(opts.runner, Runner::Codex);
-    assert_eq!(opts.model, Model::Gpt52Codex);
-    assert!(opts.reasoning_effort.is_none());
+    assert_eq!(opts.runner_override, Some(Runner::Codex));
+    assert_eq!(opts.model_override, Some(Model::Gpt52Codex));
+    assert!(opts.reasoning_effort_override.is_none());
     assert!(!opts.force);
 }
 
@@ -51,7 +63,7 @@ fn test_scan_options_all_runners() {
     for runner in runners {
         let opts = scan_cmd::ScanOptions {
             focus: "test".to_string(),
-            runner,
+            runner_override: Some(runner),
             ..base_scan_options()
         };
         assert_eq!(opts.focus, "test");
@@ -70,8 +82,8 @@ fn test_scan_options_all_models() {
     for model in models {
         let opts = scan_cmd::ScanOptions {
             focus: "test".to_string(),
-            runner: Runner::Codex,
-            model,
+            runner_override: Some(Runner::Codex),
+            model_override: Some(model),
             ..base_scan_options()
         };
         assert_eq!(opts.focus, "test");
@@ -91,7 +103,7 @@ fn test_scan_options_all_reasoning_efforts() {
     for effort in efforts {
         let opts = scan_cmd::ScanOptions {
             focus: "test".to_string(),
-            reasoning_effort: effort,
+            reasoning_effort_override: effort,
             ..base_scan_options()
         };
         assert_eq!(opts.focus, "test");

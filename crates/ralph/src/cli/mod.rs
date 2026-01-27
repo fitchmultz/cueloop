@@ -54,7 +54,7 @@ pub enum Command {
     Queue(queue::QueueArgs),
     Config(config::ConfigArgs),
     Run(run::RunArgs),
-    Task(task::TaskArgs),
+    Task(Box<task::TaskArgs>),
     Scan(scan::ScanArgs),
     Init(init::InitArgs),
     /// Launch the interactive TUI (queue management + execution + loop).
@@ -214,7 +214,7 @@ mod tests {
     fn cli_parses_task_update_without_id() {
         let cli = Cli::try_parse_from(["ralph", "task", "update"]).expect("parse");
         match cli.command {
-            Command::Task(task::TaskArgs { command, .. }) => match command {
+            Command::Task(args) => match args.command {
                 Some(task::TaskCommand::Update(args)) => {
                     assert!(args.task_id.is_none());
                 }
@@ -228,7 +228,7 @@ mod tests {
     fn cli_parses_task_update_with_id() {
         let cli = Cli::try_parse_from(["ralph", "task", "update", "RQ-0001"]).expect("parse");
         match cli.command {
-            Command::Task(task::TaskArgs { command, .. }) => match command {
+            Command::Task(args) => match args.command {
                 Some(task::TaskCommand::Update(args)) => {
                     assert_eq!(args.task_id.as_deref(), Some("RQ-0001"));
                 }
@@ -266,9 +266,12 @@ mod tests {
     fn cli_parses_task_default_subcommand() {
         let cli = Cli::try_parse_from(["ralph", "task", "Add", "tests"]).expect("parse");
         match cli.command {
-            Command::Task(task::TaskArgs { command, build }) => {
-                assert!(command.is_none(), "expected implicit build subcommand");
-                assert_eq!(build.request, vec!["Add".to_string(), "tests".to_string()]);
+            Command::Task(args) => {
+                assert!(args.command.is_none(), "expected implicit build subcommand");
+                assert_eq!(
+                    args.build.request,
+                    vec!["Add".to_string(), "tests".to_string()]
+                );
             }
             _ => panic!("expected task command"),
         }
@@ -278,7 +281,7 @@ mod tests {
     fn cli_parses_task_ready_subcommand() {
         let cli = Cli::try_parse_from(["ralph", "task", "ready", "RQ-0005"]).expect("parse");
         match cli.command {
-            Command::Task(task::TaskArgs { command, .. }) => match command {
+            Command::Task(args) => match args.command {
                 Some(task::TaskCommand::Ready(args)) => {
                     assert_eq!(args.task_id, "RQ-0005");
                 }
@@ -292,7 +295,7 @@ mod tests {
     fn cli_parses_task_done_subcommand() {
         let cli = Cli::try_parse_from(["ralph", "task", "done", "RQ-0001"]).expect("parse");
         match cli.command {
-            Command::Task(task::TaskArgs { command, .. }) => match command {
+            Command::Task(args) => match args.command {
                 Some(task::TaskCommand::Done(args)) => {
                     assert_eq!(args.task_id, "RQ-0001");
                 }
@@ -306,7 +309,7 @@ mod tests {
     fn cli_parses_task_reject_subcommand() {
         let cli = Cli::try_parse_from(["ralph", "task", "reject", "RQ-0002"]).expect("parse");
         match cli.command {
-            Command::Task(task::TaskArgs { command, .. }) => match command {
+            Command::Task(args) => match args.command {
                 Some(task::TaskCommand::Reject(args)) => {
                     assert_eq!(args.task_id, "RQ-0002");
                 }

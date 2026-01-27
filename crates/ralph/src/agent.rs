@@ -33,6 +33,34 @@ pub enum RepoPromptMode {
     Off,
 }
 
+/// CLI arguments for runner CLI overrides.
+#[derive(Args, Clone, Debug, Default)]
+pub struct RunnerCliArgs {
+    /// Desired runner output format (stream-json, json, text). Ralph execution requires stream-json.
+    #[arg(long)]
+    pub output_format: Option<String>,
+
+    /// Desired verbosity (quiet, normal, verbose). Only some runners support this.
+    #[arg(long)]
+    pub verbosity: Option<String>,
+
+    /// Desired approval mode (default, auto-edits, yolo, safe). Default is yolo.
+    #[arg(long)]
+    pub approval_mode: Option<String>,
+
+    /// Desired sandbox mode (default, enabled, disabled). Only some runners support this.
+    #[arg(long)]
+    pub sandbox: Option<String>,
+
+    /// Desired plan/read-only mode (default, enabled, disabled). Only Cursor currently supports this.
+    #[arg(long)]
+    pub plan_mode: Option<String>,
+
+    /// Policy for unsupported options (ignore, warn, error). Default is warn.
+    #[arg(long)]
+    pub unsupported_option_policy: Option<String>,
+}
+
 /// CLI arguments for agent configuration.
 ///
 /// Used by `task` and `scan` commands.
@@ -57,6 +85,9 @@ pub struct AgentArgs {
     /// RepoPrompt mode (tools, plan, off). Alias: -rp.
     #[arg(long = "repo-prompt", value_enum, value_name = "MODE")]
     pub repo_prompt: Option<RepoPromptMode>,
+
+    #[command(flatten)]
+    pub runner_cli: RunnerCliArgs,
 }
 
 /// Extended agent arguments for run commands (includes phases).
@@ -78,29 +109,8 @@ pub struct RunAgentArgs {
     #[arg(short = 'e', long)]
     pub effort: Option<String>,
 
-    /// Desired runner output format (stream-json, json, text). Ralph execution requires stream-json.
-    #[arg(long)]
-    pub output_format: Option<String>,
-
-    /// Desired verbosity (quiet, normal, verbose). Only some runners support this.
-    #[arg(long)]
-    pub verbosity: Option<String>,
-
-    /// Desired approval mode (default, auto-edits, yolo, safe). Default is yolo.
-    #[arg(long)]
-    pub approval_mode: Option<String>,
-
-    /// Desired sandbox mode (default, enabled, disabled). Only some runners support this.
-    #[arg(long)]
-    pub sandbox: Option<String>,
-
-    /// Desired plan/read-only mode (default, enabled, disabled). Only Cursor currently supports this.
-    #[arg(long)]
-    pub plan_mode: Option<String>,
-
-    /// Policy for unsupported options (ignore, warn, error). Default is warn.
-    #[arg(long)]
-    pub unsupported_option_policy: Option<String>,
+    #[command(flatten)]
+    pub runner_cli: RunnerCliArgs,
 
     /// Execution shape:
     /// - 1 => single-pass execution (no mandated planning step)
@@ -187,48 +197,7 @@ fn repoprompt_flags_from_mode(mode: RepoPromptMode) -> RepopromptFlags {
     }
 }
 
-/// Parse a runner string into a Runner enum.
-pub fn parse_runner(value: &str) -> Result<Runner> {
-    let normalized = value.trim().to_lowercase();
-    match normalized.as_str() {
-        "codex" => Ok(Runner::Codex),
-        "opencode" => Ok(Runner::Opencode),
-        "gemini" => Ok(Runner::Gemini),
-        "claude" => Ok(Runner::Claude),
-        "cursor" => Ok(Runner::Cursor),
-        _ => bail!(
-            "Invalid runner: --runner must be 'codex', 'opencode', 'gemini', 'claude', or 'cursor' (got: {}). Set a supported runner in .ralph/config.json or via the --runner flag.",
-            value.trim()
-        ),
-    }
-}
-
-/// Parse git revert mode from a CLI string.
-pub fn parse_git_revert_mode(value: &str) -> Result<GitRevertMode> {
-    value.parse().map_err(|err: &str| anyhow!(err))
-}
-
-/// Resolve agent overrides from CLI arguments for run commands.
-///
-/// This parses the CLI arguments and validates runner/model compatibility.
-pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides> {
-    use crate::runner;
-
-    let runner = match args.runner.as_deref() {
-        Some(value) => Some(parse_runner(value)?),
-        None => None,
-    };
-
-    let model = match args.model.as_deref() {
-        Some(value) => Some(runner::parse_model(value)?),
-        None => None,
-    };
-
-    let reasoning_effort = match args.effort.as_deref() {
-        Some(value) => Some(runner::parse_reasoning_effort(value)?),
-        None => None,
-    };
-
+fn parse_runner_cli_patch(args: &RunnerCliArgs) -> Result<RunnerCliOptionsPatch> {
     let output_format = match args.output_format.as_deref() {
         Some(value) => Some(
             value
@@ -278,6 +247,59 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         None => None,
     };
 
+    Ok(RunnerCliOptionsPatch {
+        output_format,
+        verbosity,
+        approval_mode,
+        sandbox,
+        plan_mode,
+        unsupported_option_policy,
+    })
+}
+
+/// Parse a runner string into a Runner enum.
+pub fn parse_runner(value: &str) -> Result<Runner> {
+    let normalized = value.trim().to_lowercase();
+    match normalized.as_str() {
+        "codex" => Ok(Runner::Codex),
+        "opencode" => Ok(Runner::Opencode),
+        "gemini" => Ok(Runner::Gemini),
+        "claude" => Ok(Runner::Claude),
+        "cursor" => Ok(Runner::Cursor),
+        _ => bail!(
+            "Invalid runner: --runner must be 'codex', 'opencode', 'gemini', 'claude', or 'cursor' (got: {}). Set a supported runner in .ralph/config.json or via the --runner flag.",
+            value.trim()
+        ),
+    }
+}
+
+/// Parse git revert mode from a CLI string.
+pub fn parse_git_revert_mode(value: &str) -> Result<GitRevertMode> {
+    value.parse().map_err(|err: &str| anyhow!(err))
+}
+
+/// Resolve agent overrides from CLI arguments for run commands.
+///
+/// This parses the CLI arguments and validates runner/model compatibility.
+pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides> {
+    use crate::runner;
+
+    let runner = match args.runner.as_deref() {
+        Some(value) => Some(parse_runner(value)?),
+        None => None,
+    };
+
+    let model = match args.model.as_deref() {
+        Some(value) => Some(runner::parse_model(value)?),
+        None => None,
+    };
+
+    let reasoning_effort = match args.effort.as_deref() {
+        Some(value) => Some(runner::parse_reasoning_effort(value)?),
+        None => None,
+    };
+    let runner_cli = parse_runner_cli_patch(&args.runner_cli)?;
+
     if let (Some(runner_kind), Some(model)) = (runner, model.as_ref()) {
         runner::validate_model_for_runner(runner_kind, model)?;
     }
@@ -311,14 +333,7 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         runner,
         model,
         reasoning_effort,
-        runner_cli: RunnerCliOptionsPatch {
-            output_format,
-            verbosity,
-            approval_mode,
-            sandbox,
-            plan_mode,
-            unsupported_option_policy,
-        },
+        runner_cli,
         phases: args.phases,
         update_task_before_run,
         repoprompt_plan_required: repoprompt_override.map(|flags| flags.plan_required),
@@ -355,12 +370,13 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
     }
 
     let repoprompt_override = args.repo_prompt.map(repoprompt_flags_from_mode);
+    let runner_cli = parse_runner_cli_patch(&args.runner_cli)?;
 
     Ok(AgentOverrides {
         runner,
         model,
         reasoning_effort,
-        runner_cli: RunnerCliOptionsPatch::default(),
+        runner_cli,
         phases: None,
         update_task_before_run: None,
         repoprompt_plan_required: repoprompt_override.map(|flags| flags.plan_required),
@@ -418,7 +434,10 @@ pub fn resolve_rp_required(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contracts::{AgentConfig, ClaudePermissionMode, Config, GitRevertMode, QueueConfig};
+    use crate::contracts::{
+        AgentConfig, ClaudePermissionMode, Config, GitRevertMode, QueueConfig, RunnerApprovalMode,
+        RunnerPlanMode, RunnerSandboxMode,
+    };
     use tempfile::TempDir;
 
     fn resolved_with_defaults() -> config::Resolved {
@@ -550,6 +569,7 @@ mod tests {
             model: Some("gpt-5.2".to_string()),
             effort: None,
             repo_prompt: None,
+            runner_cli: RunnerCliArgs::default(),
         };
 
         let overrides = resolve_agent_overrides(&args).unwrap();
@@ -570,6 +590,7 @@ mod tests {
             model: None,
             effort: None,
             repo_prompt: Some(RepoPromptMode::Plan),
+            runner_cli: RunnerCliArgs::default(),
         };
 
         let overrides = resolve_agent_overrides(&args).unwrap();
@@ -587,6 +608,7 @@ mod tests {
             model: None,
             effort: None,
             repo_prompt: Some(RepoPromptMode::Tools),
+            runner_cli: RunnerCliArgs::default(),
         };
         let tools_overrides = resolve_agent_overrides(&tools_args).unwrap();
         assert_eq!(tools_overrides.repoprompt_plan_required, Some(false));
@@ -597,10 +619,36 @@ mod tests {
             model: None,
             effort: None,
             repo_prompt: Some(RepoPromptMode::Off),
+            runner_cli: RunnerCliArgs::default(),
         };
         let off_overrides = resolve_agent_overrides(&off_args).unwrap();
         assert_eq!(off_overrides.repoprompt_plan_required, Some(false));
         assert_eq!(off_overrides.repoprompt_tool_injection, Some(false));
+    }
+
+    #[test]
+    fn resolve_agent_overrides_parses_runner_cli_args() {
+        let args = AgentArgs {
+            runner: None,
+            model: None,
+            effort: None,
+            repo_prompt: None,
+            runner_cli: RunnerCliArgs {
+                approval_mode: Some("auto-edits".to_string()),
+                sandbox: Some("disabled".to_string()),
+                ..RunnerCliArgs::default()
+            },
+        };
+
+        let overrides = resolve_agent_overrides(&args).unwrap();
+        assert_eq!(
+            overrides.runner_cli.approval_mode,
+            Some(RunnerApprovalMode::AutoEdits)
+        );
+        assert_eq!(
+            overrides.runner_cli.sandbox,
+            Some(RunnerSandboxMode::Disabled)
+        );
     }
 
     #[test]
@@ -609,12 +657,7 @@ mod tests {
             runner: Some("codex".to_string()),
             model: Some("gpt-5.2-codex".to_string()),
             effort: Some("high".to_string()),
-            output_format: None,
-            verbosity: None,
-            approval_mode: None,
-            sandbox: None,
-            plan_mode: None,
-            unsupported_option_policy: None,
+            runner_cli: RunnerCliArgs::default(),
             phases: Some(2),
             repo_prompt: None,
             git_revert_mode: Some("enabled".to_string()),
@@ -637,17 +680,44 @@ mod tests {
     }
 
     #[test]
+    fn resolve_run_agent_overrides_parses_runner_cli_args() {
+        let args = RunAgentArgs {
+            runner: None,
+            model: None,
+            effort: None,
+            runner_cli: RunnerCliArgs {
+                approval_mode: Some("yolo".to_string()),
+                plan_mode: Some("enabled".to_string()),
+                ..RunnerCliArgs::default()
+            },
+            phases: None,
+            repo_prompt: None,
+            git_revert_mode: None,
+            git_commit_push_on: false,
+            git_commit_push_off: false,
+            include_draft: false,
+            update_task: false,
+            no_update_task: false,
+        };
+
+        let overrides = resolve_run_agent_overrides(&args).unwrap();
+        assert_eq!(
+            overrides.runner_cli.approval_mode,
+            Some(RunnerApprovalMode::Yolo)
+        );
+        assert_eq!(
+            overrides.runner_cli.plan_mode,
+            Some(RunnerPlanMode::Enabled)
+        );
+    }
+
+    #[test]
     fn resolve_run_agent_overrides_can_disable_update_task_via_cli() {
         let args = RunAgentArgs {
             runner: None,
             model: None,
             effort: None,
-            output_format: None,
-            verbosity: None,
-            approval_mode: None,
-            sandbox: None,
-            plan_mode: None,
-            unsupported_option_policy: None,
+            runner_cli: RunnerCliArgs::default(),
             phases: None,
             repo_prompt: None,
             git_revert_mode: None,

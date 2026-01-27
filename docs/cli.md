@@ -159,6 +159,7 @@ Key flags:
 * `--focus <TEXT>`: Optional focus prompt to guide the scan.
 * `--runner <codex|opencode|gemini|claude|cursor>`, `--model <model-id>`, `--effort <low|medium|high|xhigh>` (alias: `-e`): Override runner/model/effort for this invocation.
 * `--repo-prompt <tools|plan|off>` (alias: `-rp`): `tools` = tooling reminders only, `plan` = planning requirement + tooling reminders, `off` = disable both.
+* Runner CLI overrides: `--approval-mode <default|auto-edits|yolo|safe>`, `--sandbox <default|enabled|disabled>`, `--verbosity <quiet|normal|verbose>`, `--plan-mode <default|enabled|disabled>`, `--output-format <stream-json|json|text>`, `--unsupported-option-policy <ignore|warn|error>`.
 
 Clean-repo checks for `scan` allow changes to `.ralph/queue.json` and `.ralph/done.json`
 only (unlike `run`, changes to `.ralph/config.json` are *not* allowed). Use `--force` to
@@ -171,6 +172,8 @@ ralph scan
 ralph scan --focus "production readiness gaps"
 ralph scan --runner opencode --model gpt-5.2 --focus "CI and safety gaps"
 ralph scan --force --focus "scan even with uncommitted changes"
+ralph scan --approval-mode auto-edits --runner claude --focus "auto edits review"
+ralph scan --sandbox disabled --runner codex --focus "sandbox audit"
 ralph scan --repo-prompt plan --focus "Deep codebase analysis"
 ralph scan --repo-prompt off --focus "Quick surface scan"
 ```
@@ -516,6 +519,7 @@ Flags:
 - `--fields <FIELD_NAMES>` - specific fields to update (comma-separated, default: all)
 - `--runner/--model/--effort` (`-e`) - runner override for this invocation
 - `--repo-prompt <tools|plan|off>` (alias: `-rp`) - RepoPrompt planning/tooling mode
+- Runner CLI overrides: `--approval-mode <default|auto-edits|yolo|safe>`, `--sandbox <default|enabled|disabled>`, `--verbosity <quiet|normal|verbose>`, `--plan-mode <default|enabled|disabled>`, `--output-format <stream-json|json|text>`, `--unsupported-option-policy <ignore|warn|error>`.
 
 Examples:
 ```bash
@@ -523,6 +527,7 @@ ralph task update
 ralph task update RQ-0001
 ralph task update --fields scope,evidence,plan RQ-0001
 ralph task update --runner opencode --model gpt-5.2 RQ-0001
+ralph task update --approval-mode auto-edits --runner claude RQ-0001
 ralph task update --repo-prompt plan RQ-0001
 ralph task update --repo-prompt off --fields scope,evidence RQ-0001
 ralph task update --fields tags RQ-0042
@@ -555,8 +560,19 @@ These flags are supported on `task`, `scan`, `run one`, `run loop`, and `tui`:
 * `--model <model-id>`
 * `--effort <low|medium|high|xhigh>` (codex only; alias: `-e`)
 * `--repo-prompt <tools|plan|off>` (alias: `-rp`) — `tools` = tooling reminders only, `plan` = planning requirement + tooling reminders, `off` = disable both.
+* `--approval-mode <default|auto-edits|yolo|safe>`
+* `--sandbox <default|enabled|disabled>`
+* `--verbosity <quiet|normal|verbose>`
+* `--plan-mode <default|enabled|disabled>`
+* `--output-format <stream-json|json|text>` (execution requires `stream-json`)
+* `--unsupported-option-policy <ignore|warn|error>`
 
 Note: `--rp-on`/`--rp-off` were removed in favor of `--repo-prompt <tools|plan|off>`.
+
+Claude permission precedence:
+- CLI `--approval-mode` overrides config `agent.runner_cli.*` approval defaults.
+- `approval-mode=auto-edits` maps to Claude `acceptEdits`; `approval-mode=yolo` maps to `bypassPermissions`.
+- `approval-mode=default|safe` uses `agent.claude_permission_mode` (if set); otherwise runner defaults apply.
 
 Examples:
 

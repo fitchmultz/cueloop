@@ -1,4 +1,19 @@
 //! Task scanning command that inspects repo state and updates the queue.
+//!
+//! Responsibilities:
+//! - Validate queue state before/after scanning and persist updated tasks.
+//! - Render scan prompts with repo context and dispatch runner execution.
+//! - Enforce clean-repo and queue-lock safety around scan operations.
+//!
+//! Not handled here:
+//! - CLI parsing or interactive UI wiring.
+//! - Runner process implementation details or output parsing.
+//! - Queue schema definitions or config persistence.
+//!
+//! Invariants/assumptions:
+//! - Queue/done files are the source of truth for task ordering and status.
+//! - Runner execution requires stream-json output for parsing.
+//! - Permission/approval defaults come from config unless overridden at CLI.
 
 use crate::contracts::{
     ClaudePermissionMode, GitRevertMode, Model, ProjectType, ReasoningEffort, Runner,
@@ -9,9 +24,10 @@ use anyhow::{Context, Result};
 
 pub struct ScanOptions {
     pub focus: String,
-    pub runner: Runner,
-    pub model: Model,
-    pub reasoning_effort: Option<ReasoningEffort>,
+    pub runner_override: Option<Runner>,
+    pub model_override: Option<Model>,
+    pub reasoning_effort_override: Option<ReasoningEffort>,
+    pub runner_cli_overrides: RunnerCliOptionsPatch,
     pub force: bool,
     pub repoprompt_tool_injection: bool,
     pub git_revert_mode: GitRevertMode,
@@ -27,6 +43,37 @@ pub struct ScanOptions {
 pub enum ScanLockMode {
     Acquire,
     Held,
+}
+
+#[derive(Debug, Clone)]
+struct ScanRunnerSettings {
+    runner: Runner,
+    model: Model,
+    reasoning_effort: Option<ReasoningEffort>,
+    runner_cli: runner::ResolvedRunnerCliOptions,
+    permission_mode: Option<ClaudePermissionMode>,
+}
+
+fn resolve_scan_runner_settings(
+    resolved: &config::Resolved,
+    opts: &ScanOptions,
+) -> Result<ScanRunnerSettings> {
+    let settings = runner::resolve_agent_settings(
+        opts.runner_override,
+        opts.model_override.clone(),
+        opts.reasoning_effort_override,
+        &opts.runner_cli_overrides,
+        None,
+        &resolved.config.agent,
+    )?;
+
+    Ok(ScanRunnerSettings {
+        runner: settings.runner,
+        model: settings.model,
+        reasoning_effort: settings.reasoning_effort,
+        runner_cli: settings.runner_cli,
+        permission_mode: resolved.config.agent.claude_permission_mode,
+    })
 }
 
 pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
@@ -82,31 +129,21 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     prompt = prompts::wrap_with_repoprompt_requirement(&prompt, opts.repoprompt_tool_injection);
     prompt = prompts::wrap_with_instruction_files(&resolved.repo_root, &prompt, &resolved.config)?;
 
+    let settings = resolve_scan_runner_settings(resolved, &opts)?;
     let bins = runner::resolve_binaries(&resolved.config.agent);
     // Two-pass mode disabled for scan (only generates findings, should not implement)
-    // Force BypassPermissions for scan (needs tool access for exploration)
-    let permission_mode = Some(ClaudePermissionMode::BypassPermissions);
-    let runner_cli = runner::resolve_agent_settings(
-        Some(opts.runner),
-        Some(opts.model.clone()),
-        opts.reasoning_effort,
-        &RunnerCliOptionsPatch::default(),
-        None,
-        &resolved.config.agent,
-    )?
-    .runner_cli;
 
     let output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
             repo_root: &resolved.repo_root,
-            runner_kind: opts.runner,
+            runner_kind: settings.runner,
             bins,
-            model: opts.model,
-            reasoning_effort: opts.reasoning_effort,
-            runner_cli,
+            model: settings.model,
+            reasoning_effort: settings.reasoning_effort,
+            runner_cli: settings.runner_cli,
             prompt: &prompt,
             timeout: None,
-            permission_mode,
+            permission_mode: settings.permission_mode,
             revert_on_error: true,
             git_revert_mode: opts.git_revert_mode,
             output_handler: opts.output_handler.clone(),
@@ -223,4 +260,140 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contracts::{
+        ClaudePermissionMode, Config, GitRevertMode, RunnerApprovalMode, RunnerCliConfigRoot,
+        RunnerCliOptionsPatch, RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode,
+        RunnerVerbosity, UnsupportedOptionPolicy,
+    };
+    use std::collections::BTreeMap;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn resolved_with_config(config: Config) -> (config::Resolved, TempDir) {
+        let dir = TempDir::new().expect("temp dir");
+        let repo_root = dir.path().to_path_buf();
+        let queue_rel = config
+            .queue
+            .file
+            .clone()
+            .unwrap_or_else(|| PathBuf::from(".ralph/queue.json"));
+        let done_rel = config
+            .queue
+            .done_file
+            .clone()
+            .unwrap_or_else(|| PathBuf::from(".ralph/done.json"));
+        let id_prefix = config
+            .queue
+            .id_prefix
+            .clone()
+            .unwrap_or_else(|| "RQ".to_string());
+        let id_width = config.queue.id_width.unwrap_or(4) as usize;
+
+        (
+            config::Resolved {
+                config,
+                repo_root: repo_root.clone(),
+                queue_path: repo_root.join(queue_rel),
+                done_path: repo_root.join(done_rel),
+                id_prefix,
+                id_width,
+                global_config_path: None,
+                project_config_path: Some(repo_root.join(".ralph/config.json")),
+            },
+            dir,
+        )
+    }
+
+    fn scan_opts() -> ScanOptions {
+        ScanOptions {
+            focus: "scan".to_string(),
+            runner_override: None,
+            model_override: None,
+            reasoning_effort_override: None,
+            runner_cli_overrides: RunnerCliOptionsPatch::default(),
+            force: false,
+            repoprompt_tool_injection: false,
+            git_revert_mode: GitRevertMode::Ask,
+            lock_mode: ScanLockMode::Held,
+            output_handler: None,
+            revert_prompt: None,
+        }
+    }
+
+    #[test]
+    fn scan_respects_config_permission_mode_when_approval_default() {
+        let mut config = Config::default();
+        config.agent.claude_permission_mode = Some(ClaudePermissionMode::AcceptEdits);
+        config.agent.runner_cli = Some(RunnerCliConfigRoot {
+            defaults: RunnerCliOptionsPatch {
+                output_format: Some(RunnerOutputFormat::StreamJson),
+                verbosity: Some(RunnerVerbosity::Normal),
+                approval_mode: Some(RunnerApprovalMode::Default),
+                sandbox: Some(RunnerSandboxMode::Default),
+                plan_mode: Some(RunnerPlanMode::Default),
+                unsupported_option_policy: Some(UnsupportedOptionPolicy::Warn),
+            },
+            runners: BTreeMap::new(),
+        });
+
+        let (resolved, _dir) = resolved_with_config(config);
+        let settings = resolve_scan_runner_settings(&resolved, &scan_opts()).expect("settings");
+        let effective = settings
+            .runner_cli
+            .effective_claude_permission_mode(settings.permission_mode);
+        assert_eq!(effective, Some(ClaudePermissionMode::AcceptEdits));
+    }
+
+    #[test]
+    fn scan_cli_override_yolo_bypasses_permission_mode() {
+        let mut config = Config::default();
+        config.agent.claude_permission_mode = Some(ClaudePermissionMode::AcceptEdits);
+        config.agent.runner_cli = Some(RunnerCliConfigRoot {
+            defaults: RunnerCliOptionsPatch {
+                output_format: Some(RunnerOutputFormat::StreamJson),
+                verbosity: Some(RunnerVerbosity::Normal),
+                approval_mode: Some(RunnerApprovalMode::Default),
+                sandbox: Some(RunnerSandboxMode::Default),
+                plan_mode: Some(RunnerPlanMode::Default),
+                unsupported_option_policy: Some(UnsupportedOptionPolicy::Warn),
+            },
+            runners: BTreeMap::new(),
+        });
+
+        let mut opts = scan_opts();
+        opts.runner_cli_overrides = RunnerCliOptionsPatch {
+            approval_mode: Some(RunnerApprovalMode::Yolo),
+            ..RunnerCliOptionsPatch::default()
+        };
+
+        let (resolved, _dir) = resolved_with_config(config);
+        let settings = resolve_scan_runner_settings(&resolved, &opts).expect("settings");
+        let effective = settings
+            .runner_cli
+            .effective_claude_permission_mode(settings.permission_mode);
+        assert_eq!(effective, Some(ClaudePermissionMode::BypassPermissions));
+    }
+
+    #[test]
+    fn scan_fails_fast_when_safe_approval_requires_prompt() {
+        let mut config = Config::default();
+        config.agent.runner_cli = Some(RunnerCliConfigRoot {
+            defaults: RunnerCliOptionsPatch {
+                output_format: Some(RunnerOutputFormat::StreamJson),
+                approval_mode: Some(RunnerApprovalMode::Safe),
+                unsupported_option_policy: Some(UnsupportedOptionPolicy::Error),
+                ..RunnerCliOptionsPatch::default()
+            },
+            runners: BTreeMap::new(),
+        });
+
+        let (resolved, _dir) = resolved_with_config(config);
+        let err = resolve_scan_runner_settings(&resolved, &scan_opts()).expect_err("error");
+        assert!(err.to_string().contains("approval_mode=safe"));
+    }
 }

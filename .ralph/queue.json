@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0336",
-      "status": "todo",
-      "title": "Scan/Task builder: stop forcing bypass permissions; respect config/flags",
-      "priority": "critical",
-      "tags": [
-        "security",
-        "scan",
-        "task",
-        "runner"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/scan.rs",
-        "crates/ralph/src/commands/task.rs",
-        "crates/ralph/src/contracts/config.rs",
-        "crates/ralph/src/cli/scan.rs",
-        "crates/ralph/src/cli/task.rs",
-        "docs/cli.md",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/commands/scan.rs`: scan forces `permission_mode = Some(ClaudePermissionMode::BypassPermissions)` (comment: “Force BypassPermissions for scan”).",
-        "`crates/ralph/src/commands/task.rs`: task builder forces `permission_mode = Some(ClaudePermissionMode::BypassPermissions)` (comment: “Force BypassPermissions for task”).",
-        "`crates/ralph/src/contracts/config.rs`: `agent.claude_permission_mode` is configurable, but scan/task builder currently bypass it."
-      ],
-      "plan": [
-        "Decide how scan/task-builder should choose permission/approval behavior by runner (config default vs CLI flag vs per-command override).",
-        "Implement plumbing so scan/task-builder use the chosen setting (stop hardcoding `BypassPermissions`).",
-        "Update `--help` and `docs/cli.md` to document the behavior and the opt-in override for bypass/YOLO modes.",
-        "Add tests that assert scan/task-builder use the configured permission mode and error clearly when interactive approval would block non-interactive runs.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T18:17:26Z",
-      "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0337",
       "status": "todo",
       "title": "Security: redact or gate safeguard output dumps (avoid writing secrets to disk)",
@@ -74,11 +35,12 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [
-        "RQ-0335"
-      ],
+      "depends_on": [],
       "custom_fields": {}
     },
     {
@@ -110,12 +72,12 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
-      "agent": {
-        "model_effort": "low"
-      },
       "custom_fields": {}
     },
     {
@@ -148,6 +110,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
@@ -158,9 +123,6 @@
       "status": "todo",
       "title": "CLI help/docs: include Cursor runner in supported runners and examples",
       "priority": "high",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "cli",
         "docs",
@@ -186,6 +148,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
@@ -196,9 +161,6 @@
       "status": "todo",
       "title": "Open-source readiness: add LICENSE + crate metadata and enable publishing",
       "priority": "high",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "release",
         "crates.io",
@@ -224,6 +186,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
@@ -234,9 +199,6 @@
       "status": "todo",
       "title": "Repo hygiene: remove stray source backup file `util.rs.bak` and prevent recurrence",
       "priority": "high",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "cleanup",
         "prompts",
@@ -259,6 +221,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
@@ -269,9 +234,6 @@
       "status": "todo",
       "title": "Docs parity: fix `.ralph/README.md` stale command (`queue done` → `queue archive`)",
       "priority": "medium",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "docs",
         "ux"
@@ -296,6 +258,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
@@ -342,9 +307,6 @@
       "status": "todo",
       "title": "Contributor docs: dedupe and update `.cursorrules`/`CLAUDE.md`/`GEMINI.md` (remove stale flags)",
       "priority": "medium",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "docs",
         "contributors",
@@ -369,6 +331,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [
@@ -381,9 +346,6 @@
       "status": "todo",
       "title": "Public docs: clarify supported platforms (Unix-only today vs Windows support plan)",
       "priority": "medium",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "platform",
         "docs",
@@ -411,6 +373,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
@@ -421,9 +386,6 @@
       "status": "todo",
       "title": "Security docs: add `SECURITY.md` (secrets, raw logs/dumps, disclosure)",
       "priority": "medium",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "security",
         "docs"
@@ -448,6 +410,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [
@@ -460,9 +425,6 @@
       "status": "todo",
       "title": "Release process: add `CHANGELOG.md` + versioning/release steps",
       "priority": "medium",
-      "agent": {
-        "model_effort": "high"
-      },
       "tags": [
         "release",
         "docs"
@@ -485,6 +447,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [
@@ -497,9 +462,6 @@
       "status": "todo",
       "title": "TUI UX: add safety explanations/warnings for risky config toggles (git push, approval mode)",
       "priority": "medium",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "tui",
         "security",
@@ -526,6 +488,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [
@@ -538,9 +503,6 @@
       "status": "todo",
       "title": "TUI parity: expose task builder overrides (runner/model/effort, tags/scope, repo-prompt)",
       "priority": "medium",
-      "agent": {
-        "model_effort": "high"
-      },
       "tags": [
         "tui",
         "ux",
@@ -568,6 +530,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],
@@ -578,9 +543,6 @@
       "status": "todo",
       "title": "TUI: handle resize and other non-key events explicitly",
       "priority": "medium",
-      "agent": {
-        "model_effort": "high"
-      },
       "tags": [
         "tui",
         "ux",
@@ -604,6 +566,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T04:35:15Z",
       "updated_at": "2026-01-27T14:51:00.505336000Z",
       "depends_on": [],
@@ -616,9 +581,6 @@
       "status": "todo",
       "title": "TUI: standardize confirm dialog keybindings (j/k, arrows, sensible defaults)",
       "priority": "medium",
-      "agent": {
-        "model_effort": "high"
-      },
       "tags": [
         "tui",
         "ux",
@@ -644,6 +606,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T04:35:15Z",
       "updated_at": "2026-01-27T04:35:15Z",
       "depends_on": [],
@@ -654,9 +619,6 @@
       "status": "todo",
       "title": "TUI: add “jump to task by ID” command (palette + input)",
       "priority": "medium",
-      "agent": {
-        "model_effort": "high"
-      },
       "tags": [
         "tui",
         "ux",
@@ -686,6 +648,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T04:35:15Z",
       "updated_at": "2026-01-27T04:35:15Z",
       "depends_on": [],
@@ -696,9 +661,6 @@
       "status": "todo",
       "title": "TUI: direct set-status/set-priority commands + optional auto-archive on terminal",
       "priority": "medium",
-      "agent": {
-        "model_effort": "high"
-      },
       "tags": [
         "tui",
         "ux",
@@ -728,6 +690,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T04:35:15Z",
       "updated_at": "2026-01-27T04:35:15Z",
       "depends_on": [],
@@ -738,9 +703,6 @@
       "status": "todo",
       "title": "TUI: add a mode/status bar for discoverability (mode, dirty/save, filters)",
       "priority": "low",
-      "agent": {
-        "model_effort": "medium"
-      },
       "tags": [
         "tui",
         "ux",
@@ -765,6 +727,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T04:35:15Z",
       "updated_at": "2026-01-27T04:35:15Z",
       "depends_on": [],
@@ -775,9 +740,6 @@
       "status": "todo",
       "title": "TUI: improve command palette matching (fuzzy scoring + better ordering)",
       "priority": "low",
-      "agent": {
-        "model_effort": "medium"
-      },
       "tags": [
         "tui",
         "ux",
@@ -800,6 +762,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T04:35:15Z",
       "updated_at": "2026-01-27T04:35:15Z",
       "depends_on": [],
@@ -810,9 +775,6 @@
       "status": "todo",
       "title": "Community: add `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md` for public release",
       "priority": "low",
-      "agent": {
-        "model_effort": "low"
-      },
       "tags": [
         "docs",
         "community"
@@ -835,6 +797,9 @@
       ],
       "notes": [],
       "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
       "created_at": "2026-01-27T18:17:26Z",
       "updated_at": "2026-01-27T18:17:26Z",
       "depends_on": [],

@@ -1,11 +1,25 @@
 //! Run command orchestration and supervision.
 //!
-//! This module owns task selection, queue bookkeeping, and post-run supervision.
-//! Phase-specific prompt/runner execution lives in `crate::commands::run::phases`.
+//! Responsibilities:
+//! - Select runnable tasks and orchestrate run loop/one workflows.
+//! - Coordinate queue bookkeeping, pre-run updates, and post-run supervision.
+//! - Delegate phase-specific execution to `crate::commands::run::phases`.
+//!
+//! Not handled here:
+//! - CLI argument parsing or config persistence.
+//! - Runner process implementation details.
+//! - Prompt template rendering outside run phases.
+//!
+//! Invariants/assumptions:
+//! - Queue ordering is authoritative for task selection.
+//! - Pre-run updates and CI gates honor config defaults unless overridden.
+//! - Phase runners expect stream-json output for execution.
 
 use crate::commands::task as task_cmd;
 use crate::config;
-use crate::contracts::{AgentConfig, GitRevertMode, ProjectType, ReasoningEffort, TaskStatus};
+use crate::contracts::{
+    AgentConfig, GitRevertMode, ProjectType, ReasoningEffort, RunnerCliOptionsPatch, TaskStatus,
+};
 use crate::promptflow;
 use crate::{gitutil, prompts, queue, runner, runutil, timeutil};
 use anyhow::{bail, Context, Result};
@@ -272,11 +286,20 @@ fn run_one_impl(
 
     if update_task_before_run {
         log::info!("Task {task_id}: pre-run update enabled; running task updater");
+        let runner_cli_overrides = RunnerCliOptionsPatch {
+            output_format: Some(base_settings.runner_cli.output_format),
+            verbosity: Some(base_settings.runner_cli.verbosity),
+            approval_mode: Some(base_settings.runner_cli.approval_mode),
+            sandbox: Some(base_settings.runner_cli.sandbox),
+            plan_mode: Some(base_settings.runner_cli.plan_mode),
+            unsupported_option_policy: Some(base_settings.runner_cli.unsupported_option_policy),
+        };
         let update_settings = task_cmd::TaskUpdateSettings {
             fields: "scope,evidence,plan,notes,tags,depends_on".to_string(),
-            runner: base_settings.runner,
-            model: base_settings.model.clone(),
-            reasoning_effort: base_settings.reasoning_effort,
+            runner_override: Some(base_settings.runner),
+            model_override: Some(base_settings.model.clone()),
+            reasoning_effort_override: base_settings.reasoning_effort,
+            runner_cli_overrides,
             force,
             repoprompt_tool_injection: policy.repoprompt_tool_injection,
         };

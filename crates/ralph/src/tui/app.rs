@@ -1746,24 +1746,16 @@ where
         thread::spawn(move || {
             let result = || -> Result<()> {
                 let resolved = crate_config::resolve_from_cwd()?;
-                let runner = resolved.config.agent.runner.unwrap_or_default();
-                let model = resolved
-                    .config
-                    .agent
-                    .model
-                    .as_ref()
-                    .cloned()
-                    .unwrap_or_default();
-                let reasoning_effort = resolved.config.agent.reasoning_effort;
                 let repoprompt_tool_injection =
                     crate::agent::resolve_repoprompt_flags(None, &resolved).tool_injection;
                 let opts = crate::commands::task::TaskBuildOptions {
                     request,
                     hint_tags: String::new(),
                     hint_scope: String::new(),
-                    runner,
-                    model,
-                    reasoning_effort,
+                    runner_override: None,
+                    model_override: None,
+                    reasoning_effort_override: None,
+                    runner_cli_overrides: crate::contracts::RunnerCliOptionsPatch::default(),
                     force: false,
                     repoprompt_tool_injection,
                 };

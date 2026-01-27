@@ -1,7 +1,18 @@
-//! Unit tests for commands/task.rs (task building, request parsing, and settings structs).
+//! Unit tests for commands/task.rs (request parsing and option wiring).
+//!
+//! Responsibilities:
+//! - Validate request parsing behavior for task builder inputs.
+//! - Assert TaskBuildOptions/TaskUpdateSettings field wiring for overrides.
+//!
+//! Not handled here:
+//! - End-to-end runner execution or queue mutation.
+//! - Prompt rendering or task update side effects.
+//!
+//! Invariants/assumptions:
+//! - Runner/model fields on options represent overrides, not resolved defaults.
 
 use ralph::commands::task as task_cmd;
-use ralph::contracts::{Model, Runner};
+use ralph::contracts::{Model, Runner, RunnerCliOptionsPatch};
 
 #[test]
 fn test_read_request_from_args_or_stdin_with_args() {
@@ -65,9 +76,10 @@ fn test_task_build_options_default_values() {
         request: "test request".to_string(),
         hint_tags: String::new(),
         hint_scope: String::new(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
+        runner_override: Some(Runner::Codex),
+        model_override: Some(Model::Gpt52Codex),
+        reasoning_effort_override: None,
+        runner_cli_overrides: RunnerCliOptionsPatch::default(),
         force: false,
         repoprompt_tool_injection: false,
     };
@@ -75,9 +87,9 @@ fn test_task_build_options_default_values() {
     assert_eq!(opts.request, "test request");
     assert!(opts.hint_tags.is_empty());
     assert!(opts.hint_scope.is_empty());
-    assert_eq!(opts.runner, Runner::Codex);
-    assert_eq!(opts.model, Model::Gpt52Codex);
-    assert!(opts.reasoning_effort.is_none());
+    assert_eq!(opts.runner_override, Some(Runner::Codex));
+    assert_eq!(opts.model_override, Some(Model::Gpt52Codex));
+    assert!(opts.reasoning_effort_override.is_none());
     assert!(!opts.force);
 }
 
@@ -87,9 +99,10 @@ fn test_task_build_options_with_values() {
         request: "implement feature".to_string(),
         hint_tags: "rust,testing".to_string(),
         hint_scope: "crates/ralph/src".to_string(),
-        runner: Runner::Opencode,
-        model: Model::Gpt52,
-        reasoning_effort: Some(ralph::contracts::ReasoningEffort::High),
+        runner_override: Some(Runner::Opencode),
+        model_override: Some(Model::Gpt52),
+        reasoning_effort_override: Some(ralph::contracts::ReasoningEffort::High),
+        runner_cli_overrides: RunnerCliOptionsPatch::default(),
         force: true,
         repoprompt_tool_injection: false,
     };
@@ -97,9 +110,9 @@ fn test_task_build_options_with_values() {
     assert_eq!(opts.request, "implement feature");
     assert_eq!(opts.hint_tags, "rust,testing");
     assert_eq!(opts.hint_scope, "crates/ralph/src");
-    assert_eq!(opts.runner, Runner::Opencode);
-    assert_eq!(opts.model, Model::Gpt52);
-    assert!(opts.reasoning_effort.is_some());
+    assert_eq!(opts.runner_override, Some(Runner::Opencode));
+    assert_eq!(opts.model_override, Some(Model::Gpt52));
+    assert!(opts.reasoning_effort_override.is_some());
     assert!(opts.force);
 }
 
@@ -110,9 +123,10 @@ fn test_task_build_options_empty_request_validation() {
         request: "".to_string(),
         hint_tags: String::new(),
         hint_scope: String::new(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
+        runner_override: Some(Runner::Codex),
+        model_override: Some(Model::Gpt52Codex),
+        reasoning_effort_override: None,
+        runner_cli_overrides: RunnerCliOptionsPatch::default(),
         force: false,
         repoprompt_tool_injection: false,
     };
@@ -126,9 +140,10 @@ fn test_task_build_options_whitespace_request_validation() {
         request: "   ".to_string(),
         hint_tags: String::new(),
         hint_scope: String::new(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
+        runner_override: Some(Runner::Codex),
+        model_override: Some(Model::Gpt52Codex),
+        reasoning_effort_override: None,
+        runner_cli_overrides: RunnerCliOptionsPatch::default(),
         force: false,
         repoprompt_tool_injection: false,
     };
@@ -150,9 +165,10 @@ fn test_task_build_options_all_runners() {
             request: "test".to_string(),
             hint_tags: String::new(),
             hint_scope: String::new(),
-            runner,
-            model: Model::Gpt52Codex,
-            reasoning_effort: None,
+            runner_override: Some(runner),
+            model_override: Some(Model::Gpt52Codex),
+            reasoning_effort_override: None,
+            runner_cli_overrides: RunnerCliOptionsPatch::default(),
             force: false,
             repoprompt_tool_injection: false,
         };
@@ -174,9 +190,10 @@ fn test_task_build_options_all_models() {
             request: "test".to_string(),
             hint_tags: String::new(),
             hint_scope: String::new(),
-            runner: Runner::Codex,
-            model,
-            reasoning_effort: None,
+            runner_override: Some(Runner::Codex),
+            model_override: Some(model),
+            reasoning_effort_override: None,
+            runner_cli_overrides: RunnerCliOptionsPatch::default(),
             force: false,
             repoprompt_tool_injection: false,
         };
@@ -199,9 +216,10 @@ fn test_task_build_options_all_reasoning_efforts() {
             request: "test".to_string(),
             hint_tags: String::new(),
             hint_scope: String::new(),
-            runner: Runner::Codex,
-            model: Model::Gpt52Codex,
-            reasoning_effort: effort,
+            runner_override: Some(Runner::Codex),
+            model_override: Some(Model::Gpt52Codex),
+            reasoning_effort_override: effort,
+            runner_cli_overrides: RunnerCliOptionsPatch::default(),
             force: false,
             repoprompt_tool_injection: false,
         };
@@ -251,17 +269,18 @@ fn test_read_request_preserves_internal_whitespace() {
 fn test_task_update_settings_default_values() {
     let settings = task_cmd::TaskUpdateSettings {
         fields: String::new(),
-        runner: Runner::Codex,
-        model: Model::Gpt52Codex,
-        reasoning_effort: None,
+        runner_override: Some(Runner::Codex),
+        model_override: Some(Model::Gpt52Codex),
+        reasoning_effort_override: None,
+        runner_cli_overrides: RunnerCliOptionsPatch::default(),
         force: false,
         repoprompt_tool_injection: false,
     };
 
     assert!(settings.fields.is_empty());
-    assert_eq!(settings.runner, Runner::Codex);
-    assert_eq!(settings.model, Model::Gpt52Codex);
-    assert!(settings.reasoning_effort.is_none());
+    assert_eq!(settings.runner_override, Some(Runner::Codex));
+    assert_eq!(settings.model_override, Some(Model::Gpt52Codex));
+    assert!(settings.reasoning_effort_override.is_none());
     assert!(!settings.force);
 }
 
@@ -269,17 +288,18 @@ fn test_task_update_settings_default_values() {
 fn test_task_update_settings_with_values() {
     let settings = task_cmd::TaskUpdateSettings {
         fields: "scope,evidence,plan".to_string(),
-        runner: Runner::Opencode,
-        model: Model::Gpt52,
-        reasoning_effort: Some(ralph::contracts::ReasoningEffort::High),
+        runner_override: Some(Runner::Opencode),
+        model_override: Some(Model::Gpt52),
+        reasoning_effort_override: Some(ralph::contracts::ReasoningEffort::High),
+        runner_cli_overrides: RunnerCliOptionsPatch::default(),
         force: true,
         repoprompt_tool_injection: true,
     };
 
     assert_eq!(settings.fields, "scope,evidence,plan");
-    assert_eq!(settings.runner, Runner::Opencode);
-    assert_eq!(settings.model, Model::Gpt52);
-    assert!(settings.reasoning_effort.is_some());
+    assert_eq!(settings.runner_override, Some(Runner::Opencode));
+    assert_eq!(settings.model_override, Some(Model::Gpt52));
+    assert!(settings.reasoning_effort_override.is_some());
     assert!(settings.force);
     assert!(settings.repoprompt_tool_injection);
 }
@@ -328,9 +348,10 @@ fn test_task_update_settings_all_runners() {
     for runner in runners {
         let settings = task_cmd::TaskUpdateSettings {
             fields: String::new(),
-            runner,
-            model: Model::Gpt52Codex,
-            reasoning_effort: None,
+            runner_override: Some(runner),
+            model_override: Some(Model::Gpt52Codex),
+            reasoning_effort_override: None,
+            runner_cli_overrides: RunnerCliOptionsPatch::default(),
             force: false,
             repoprompt_tool_injection: false,
         };
@@ -350,9 +371,10 @@ fn test_task_update_settings_all_models() {
     for model in models {
         let settings = task_cmd::TaskUpdateSettings {
             fields: String::new(),
-            runner: Runner::Codex,
-            model,
-            reasoning_effort: None,
+            runner_override: Some(Runner::Codex),
+            model_override: Some(model),
+            reasoning_effort_override: None,
+            runner_cli_overrides: RunnerCliOptionsPatch::default(),
             force: false,
             repoprompt_tool_injection: false,
         };
@@ -373,9 +395,10 @@ fn test_task_update_settings_all_reasoning_efforts() {
     for effort in efforts {
         let settings = task_cmd::TaskUpdateSettings {
             fields: String::new(),
-            runner: Runner::Codex,
-            model: Model::Gpt52Codex,
-            reasoning_effort: effort,
+            runner_override: Some(Runner::Codex),
+            model_override: Some(Model::Gpt52Codex),
+            reasoning_effort_override: effort,
+            runner_cli_overrides: RunnerCliOptionsPatch::default(),
             force: false,
             repoprompt_tool_injection: false,
         };
