@@ -1,4 +1,659 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0313",
+      "status": "todo",
+      "title": "TUI: prevent data loss on reload/quit when dirty",
+      "priority": "critical",
+      "tags": [
+        "tui",
+        "ux",
+        "bug",
+        "data-loss"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/normal.rs",
+        "crates/ralph/src/tui/events/types.rs",
+        "crates/ralph/src/tui/events/confirm.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/normal.rs`: `r` returns `TuiAction::ReloadQueue` with no confirmation.",
+        "`crates/ralph/src/tui/app.rs`: `reload_queues_from_disk` clears `dirty`, `dirty_done`, and `save_error` after reload.",
+        "`crates/ralph/src/tui/app.rs`: `PaletteCommand::Quit` only prompts when `runner_active`, not when there are unsaved changes or `save_error`."
+      ],
+      "plan": [
+        "Define what counts as unsafe-to-discard (dirty flags and/or save_error).",
+        "Add a confirmation mode for discarding local state (reload/quit).",
+        "Gate `ReloadQueue` and `Quit` behind the new confirmation when unsafe.",
+        "Ensure confirmation UI clearly states what will be discarded.",
+        "Add tests covering reload/quit prompts and confirm/cancel flows.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0314",
+      "status": "todo",
+      "title": "TUI: pass KeyEvent (modifiers) through event pipeline + Ctrl shortcuts",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "keybindings"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/mod.rs",
+        "crates/ralph/src/tui/events/*",
+        "crates/ralph/src/tui/events/tests.rs",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/app.rs`: input loop calls `handle_key_event(&mut app_ref, key.code, ...)`, dropping modifiers.",
+        "`crates/ralph/src/tui/events/mod.rs`: `handle_key_event` accepts `KeyCode`, so mode handlers cannot distinguish Ctrl/Alt/Shift.",
+        "`crates/ralph/src/tui/events/normal.rs`: `KeyCode::Char('c')` enters config edit; with modifiers dropped, Ctrl+C cannot be safely bound to quit and may be misinterpreted."
+      ],
+      "plan": [
+        "Change event dispatch to pass `crossterm::event::KeyEvent` (or an internal key type) instead of `KeyCode`.",
+        "Update all mode handlers to use the richer key type while preserving existing bindings.",
+        "Add canonical shortcuts (e.g., Ctrl+C/Ctrl+Q quit, Ctrl+P palette, Ctrl+F search) without breaking existing keys.",
+        "Update tests to cover modifier-aware behavior (including Ctrl+C not triggering config edit).",
+        "Update `docs/tui-task-management.md` key reference for new shortcuts.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0315",
+      "status": "todo",
+      "title": "TUI: command palette scroll + allow typing all characters (fix j/k capture)",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "palette",
+        "keybindings"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/palette.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/events/types.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/palette.rs`: `KeyCode::Char('j')`/`'k'` are used for navigation, preventing typing those letters into the palette query.",
+        "`crates/ralph/src/tui/render/overlays.rs`: `draw_command_palette` renders `entries[..visible_len]` with no scroll offset; items beyond the viewport are not visible.",
+        "`crates/ralph/src/tui/render/overlays.rs`: selection highlight clamps to the visible subset (`selected.min(visible_entries.len()-1)`), so the UI can misrepresent the real selection."
+      ],
+      "plan": [
+        "Change palette state to track both selection and scroll offset.",
+        "Update palette key handling so characters always edit the query; move navigation to arrows and/or modifier-based keys.",
+        "Update palette rendering to show the correct window into entries and keep selected entry visible.",
+        "Add tests covering: typing `j`/`k` in the query, selecting entries beyond the first page, and correct highlight behavior.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0316",
+      "status": "todo",
+      "title": "TUI: single source-of-truth keymap; sync footer + help overlay + docs",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "keybindings",
+        "docs"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/*",
+        "crates/ralph/src/tui/render/footer.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "docs/tui-task-management.md",
+        "crates/ralph/src/tui/render/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/normal.rs`: Normal mode binds `o` (scope filter) and `C`/`R` (case/regex toggles).",
+        "`crates/ralph/src/tui/render/footer.rs`: Normal mode footer hints omit `o`, `C`, and `R` and do not mention `K/J` (move task up/down).",
+        "`crates/ralph/src/tui/render/overlays.rs`: help overlay key list is separately hardcoded, creating drift risk vs actual handlers."
+      ],
+      "plan": [
+        "Define a keymap table (mode -> actions -> bindings) as the single source of truth.",
+        "Generate footer hints from the keymap (and make them width-aware so they do not overflow small terminals).",
+        "Generate the help overlay from the same keymap.",
+        "Update `docs/tui-task-management.md` key reference to match the keymap.",
+        "Add tests that lock keymap/footer/help consistency (and prevent missing `o`/`C`/`R` regressions).",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0317",
+      "status": "todo",
+      "title": "TUI: make help overlay scrollable + openable from any mode",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "help",
+        "keybindings"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/help.rs",
+        "crates/ralph/src/tui/events/mod.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/events/types.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/help.rs`: Help mode only handles close keys (Esc/?/h); scrolling keys are ignored.",
+        "`crates/ralph/src/tui/render/overlays.rs`: help overlay renders a long static `Paragraph` with no scroll state; on small terminals much of it is inaccessible.",
+        "`crates/ralph/src/tui/events/normal.rs`: help is only entered from Normal mode; other modes cannot open help."
+      ],
+      "plan": [
+        "Add help overlay scroll state (and optionally a “previous mode” to return to).",
+        "Support Up/Down/PgUp/PgDn (and vim keys) to scroll within help.",
+        "Make `?` (and/or F1) a global key to open help from any mode.",
+        "Add a small scroll indicator (e.g., “Help 12%”) to the overlay header.",
+        "Add tests for help toggling and scrolling behavior.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0318",
+      "status": "todo",
+      "title": "TUI: add scrollable task details + focus switching (Tab)",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "navigation"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/normal.rs",
+        "crates/ralph/src/tui/render/panels.rs",
+        "crates/ralph/src/tui/render/tests.rs",
+        "crates/ralph/tests/tui_rendering_panels_test.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/render/panels.rs`: `draw_task_details` renders a long `Paragraph` without any scroll offset; long tasks are clipped.",
+        "`crates/ralph/src/tui/app.rs`: app state tracks list scroll and log scroll, but there is no details scroll state.",
+        "`crates/ralph/src/tui/events/normal.rs`: no keybindings exist for scrolling task details or switching focus between list/details."
+      ],
+      "plan": [
+        "Introduce a focus concept (list vs details) and track a details scroll offset.",
+        "Bind Tab/Shift-Tab (and/or other keys) to switch focus; bind scroll keys to the focused panel.",
+        "Render a scroll indicator in the details panel when content overflows.",
+        "Add tests verifying details scroll affects rendered output and focus switching works.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0319",
+      "status": "todo",
+      "title": "TUI: reusable text input with cursor editing for all input modes",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "input",
+        "keybindings"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/create.rs",
+        "crates/ralph/src/tui/events/search.rs",
+        "crates/ralph/src/tui/events/filter.rs",
+        "crates/ralph/src/tui/events/scan.rs",
+        "crates/ralph/src/tui/events/editing.rs",
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/editing.rs`: `handle_text_edit_key` only supports append, backspace, commit, cancel (no cursor movement/edit-in-middle).",
+        "`crates/ralph/src/tui/events/create.rs`, `search.rs`, `filter.rs`, `scan.rs`: each re-implements simple “push char / pop” input handling.",
+        "Several TUI modes depend on string input, but there is no shared input model for consistent behavior across modes."
+      ],
+      "plan": [
+        "Introduce a small reusable input model (text + cursor position + editing helpers).",
+        "Add support for Left/Right/Home/End/Delete and word-wise delete where reasonable.",
+        "Refactor create/search/filter/scan/editing modes to use the shared input model.",
+        "Update rendering to show cursor position (not always at end).",
+        "Add tests covering cursor moves, mid-string edits, and cancel/commit behavior.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0320",
+      "status": "todo",
+      "title": "TUI: fast task list navigation (PgUp/PgDn/Home/End)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "navigation",
+        "keybindings"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/normal.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/normal.rs`: Normal mode only supports Up/Down and j/k for navigation (no page or jump keys).",
+        "`crates/ralph/src/tui/app.rs`: selection and scroll logic exists, but there are no helpers for page/jump navigation."
+      ],
+      "plan": [
+        "Add page/jump helpers on `App` (page up/down, jump to top/bottom) that respect filtered view.",
+        "Bind keys in Normal mode (PageUp/PageDown/Home/End) and document them.",
+        "Add tests for page navigation behavior (including edge clamping).",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0321",
+      "status": "todo",
+      "title": "TUI: replace manual list highlight overlay with ListState highlight_style",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "rendering"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/render/panels.rs",
+        "crates/ralph/src/tui/render/tests.rs",
+        "crates/ralph/tests/tui_rendering_panels_test.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/render/panels.rs`: `draw_task_list` renders a `List`, then manually draws a full-width blue `Paragraph` to indicate selection.",
+        "Manual overlay highlighting is atypical in Ratatui and risks erasing the list row content depending on widget behavior."
+      ],
+      "plan": [
+        "Refactor task list rendering to use `ListState` + `highlight_style`/`highlight_symbol`.",
+        "Remove the manual highlight overlay pass.",
+        "Add rendering tests that assert selected row text is still visible and highlighted.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0322",
+      "status": "todo",
+      "title": "TUI: truncate/filter-summary rendering to avoid title overflow",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "rendering",
+        "filters"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/render/panels.rs",
+        "crates/ralph/src/tui/render/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/app.rs`: `filter_summary` can include multiple `scope=...` tokens and an unbounded `query=...` string.",
+        "`crates/ralph/src/tui/render/panels.rs`: task list title includes `filter_summary` with no truncation, so it can overflow/clamp on smaller terminals."
+      ],
+      "plan": [
+        "Change filter summary rendering to be width-aware and truncated (with ellipsis) when needed.",
+        "Prefer compact tokens (counts) over fully inlining long lists into the title.",
+        "Add tests covering long query/tag/scope summaries on small terminal widths.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0323",
+      "status": "todo",
+      "title": "TUI: apply search/tag/scope filters live while typing (preview + cancel restore)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "filters",
+        "input"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/search.rs",
+        "crates/ralph/src/tui/events/filter.rs",
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/search.rs`: filters are only applied on Enter; typing does not update the list.",
+        "`crates/ralph/src/tui/events/filter.rs`: tag/scope filters are only applied on Enter; typing does not update the list."
+      ],
+      "plan": [
+        "Store the prior filter state when entering search/tag/scope input modes.",
+        "Apply filter changes on each keystroke for a live preview of results.",
+        "On Esc, restore the prior filter state; on Enter, commit.",
+        "Add tests covering live preview and cancel restore.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0324",
+      "status": "todo",
+      "title": "TUI: remove unused mouse capture or implement mouse scrolling/click selection",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "input"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/mod.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/app.rs`: terminal setup enables `EnableMouseCapture`.",
+        "`crates/ralph/src/tui/app.rs`: input loop only handles `Event::Key` and ignores non-key events (no `Event::Mouse` handling)."
+      ],
+      "plan": [
+        "Decide whether the TUI should support mouse interactions; prefer the simplest correct path.",
+        "Either remove mouse capture entirely, or handle mouse wheel/click events in the input loop.",
+        "If adding mouse support, map wheel to scrolling for the focused panel and click to selection.",
+        "Add tests where feasible and include manual QA steps for mouse behavior.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0325",
+      "status": "todo",
+      "title": "TUI: standardize confirm dialog keybindings (j/k, arrows, sensible defaults)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "keybindings"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/confirm.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/render/footer.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/confirm.rs`: `ConfirmRevert` navigation uses Up/Down only (no j/k), unlike other TUI navigation modes.",
+        "`crates/ralph/src/tui/render/overlays.rs`: revert dialog instructs “Up/Down: select”, reinforcing the inconsistency."
+      ],
+      "plan": [
+        "Standardize confirm dialog navigation keys across confirm modes (arrows + vim keys).",
+        "Ensure Enter activates the currently selected option and Esc maps to a clear default.",
+        "Update overlay/footer hints to match behavior.",
+        "Add tests for confirm revert navigation via both arrows and j/k.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0326",
+      "status": "todo",
+      "title": "TUI: add “jump to task by ID” command (palette + input)",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "navigation",
+        "palette"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/palette.rs",
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/palette.rs`: `PaletteCommand` enum has no “select task by ID” command.",
+        "`crates/ralph/src/tui/app.rs`: app tracks an `id_to_index` map and can rebuild it (`ensure_id_index_map`), which can back a jump-to-ID feature.",
+        "`docs/tui-task-management.md`: “Jump-to-ID” is listed as a suggested enhancement but is not implemented."
+      ],
+      "plan": [
+        "Add a palette command and an input mode/overlay for entering a task ID (e.g., RQ-####).",
+        "Use the id->index cache to select the task and adjust scroll to keep it visible.",
+        "Handle missing/invalid IDs with a clear status message.",
+        "Add tests for successful jumps and failure modes.",
+        "Update `docs/tui-task-management.md` to document the new workflow.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0327",
+      "status": "todo",
+      "title": "TUI: direct set-status/set-priority commands + optional auto-archive on terminal",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "queue",
+        "palette"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/palette.rs",
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/task_edit.rs",
+        "docs/tui-task-management.md",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/task_edit.rs`: task status and priority updates are currently “cycle” only (`cycle_status` / `cycle_priority`).",
+        "`crates/ralph/src/tui/app.rs`: archiving terminal tasks is a separate explicit command (`archive_terminal_tasks`).",
+        "`docs/tui-task-management.md`: notes the TUI requires a 2-step “set terminal status then archive” workflow and suggests auto-archive / direct set-status as improvements."
+      ],
+      "plan": [
+        "Add palette commands for setting an explicit status (Draft/Todo/Doing/Done/Rejected) and priority (Critical/High/Medium/Low).",
+        "Implement explicit set operations (not cycling) using the queue edit APIs.",
+        "Add an optional prompt (or config toggle) to archive immediately when setting Done/Rejected.",
+        "Add tests for explicit set-status/set-priority and the auto-archive/prompt flow.",
+        "Update docs and help key reference accordingly.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0328",
+      "status": "todo",
+      "title": "TUI: improve command palette matching (fuzzy scoring + better ordering)",
+      "priority": "low",
+      "tags": [
+        "tui",
+        "ux",
+        "palette"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/app.rs`: `palette_entries` filters commands via case-insensitive substring match only (`title.contains(q)`), with no scoring or ranking."
+      ],
+      "plan": [
+        "Introduce a small fuzzy scoring/ranking for palette entries (keeping stable ordering when query is empty).",
+        "Sort entries by score and add tie-breakers for predictable results.",
+        "Add tests that lock in ranking behavior for common queries.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0329",
+      "status": "todo",
+      "title": "TUI: add a mode/status bar for discoverability (mode, dirty/save, filters)",
+      "priority": "low",
+      "tags": [
+        "tui",
+        "ux",
+        "rendering"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/render/mod.rs",
+        "crates/ralph/src/tui/render/panels.rs",
+        "crates/ralph/src/tui/render/footer.rs",
+        "crates/ralph/src/tui/render/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/render/mod.rs`: base UI renders list+details plus a footer, but there is no dedicated header/status bar for current mode or save state.",
+        "`crates/ralph/src/tui/app.rs`: app tracks status like `dirty`, `save_error`, and `runner_active`, but most of it is not surfaced persistently in the UI."
+      ],
+      "plan": [
+        "Add a compact header/status bar that shows current mode, selection, filters, and save/runner state.",
+        "Make the header responsive to terminal width (truncate long fields).",
+        "Add rendering tests for small and normal terminal widths.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0330",
+      "status": "todo",
+      "title": "TUI: handle resize and other non-key events explicitly",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "stability"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/mod.rs",
+        "crates/ralph/src/tui/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/app.rs`: input loop only processes events matching `Event::Key`; `Event::Resize` is ignored.",
+        "`crates/ralph/src/tui/app.rs`: the same pattern implies other event types (mouse/paste) are ignored unless added explicitly."
+      ],
+      "plan": [
+        "Handle `Event::Resize` to avoid stale cached layout state and to prevent rendering artifacts on terminal resize.",
+        "Ensure non-key events are either ignored intentionally (without side-effects) or handled (mouse support task covers mouse).",
+        "Add a focused test (or a small harness) to ensure resize events do not panic and update cached dimensions appropriately.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T04:35:15Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
