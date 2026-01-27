@@ -6170,6 +6170,56 @@
       "completed_at": "2026-01-26T23:52:50.539916000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0306",
+      "status": "done",
+      "title": "Audit and improve CLI help examples",
+      "priority": "low",
+      "tags": [
+        "documentation",
+        "cli",
+        "housekeeping",
+        "help"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/mod.rs",
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/cli/scan.rs",
+        "crates/ralph/src/cli/prompt.rs",
+        "crates/ralph/src/cli/queue/mod.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "TaskCommand::Update in crates/ralph/src/cli/task.rs lists runner overrides and field selection but does not show --rp-on/--rp-off examples.",
+        "RunCommand::Loop in crates/ralph/src/cli/run.rs lists phases and runner examples but does not include --rp-on/--rp-off, while RunCommand::One does.",
+        "RunCommand::One in crates/ralph/src/cli/run.rs lists --phases 3/2/1 without describing the plan/implement/review semantics.",
+        "Queue validate and queue next-id help strings in crates/ralph/src/cli/queue/mod.rs still use single-line examples only."
+      ],
+      "plan": [
+        "Review all after_long_help blocks in crates/ralph/src/cli/ (mod, task, run, scan, prompt, queue) and align examples with docs/cli.md.",
+        "Add --rp-on/--rp-off examples to TaskCommand::Update in crates/ralph/src/cli/task.rs.",
+        "Add --rp-on/--rp-off examples to RunCommand::Loop in crates/ralph/src/cli/run.rs.",
+        "Expand run one --phases examples with short phase meaning (plan/implement/review) in crates/ralph/src/cli/run.rs.",
+        "Expand queue validate and queue next-id examples in crates/ralph/src/cli/queue/mod.rs while staying within supported flags.",
+        "Verify help output with cargo run -p ralph -- <command> --help for touched commands.",
+        "Run make ci."
+      ],
+      "notes": [
+        "Focus on making examples actionable and covering newer flags like --rp-on, --rp-off, and --phases consistently.",
+        "Ensure examples match the actual behavior described in docs/cli.md.",
+        "Run loop examples should mirror run one for RepoPrompt flags.",
+        "Expanded CLI help examples for run/task/scan/queue with RepoPrompt flags and phase semantics.",
+        "Added/updated help-output tests to lock in the new examples.",
+        "Documented CLI module responsibilities/invariants in touched files."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-26T15:35:00Z",
+      "updated_at": "2026-01-27T00:11:07.570049000Z",
+      "completed_at": "2026-01-27T00:11:07.570049000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

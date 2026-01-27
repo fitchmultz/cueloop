@@ -1,4 +1,17 @@
 //! `ralph scan` command: Clap types and handler.
+//!
+//! Responsibilities:
+//! - Define clap arguments for scan commands.
+//! - Dispatch scan execution with resolved runner overrides.
+//!
+//! Not handled here:
+//! - Queue storage and task persistence.
+//! - Runner implementation details or model execution.
+//! - Config precedence rules beyond loading the current repo config.
+//!
+//! Invariants/assumptions:
+//! - Configuration is resolved from the current working directory.
+//! - Runner overrides are validated by the agent resolution helpers.
 
 use anyhow::Result;
 use clap::Args;
@@ -50,7 +63,7 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Scan repository for new tasks and focus areas",
-    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nSafety:\n  - Clean-repo checks allow changes to `.ralph/queue.json` and `.ralph/done.json` only (not `.ralph/config.json`).\n  - Use `--force` to bypass the clean-repo check (and stale queue locks) entirely if needed.\n\nExamples:\n  ralph scan --focus \"production readiness gaps\"\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI and safety gaps\"\n  ralph scan --runner gemini --model gemini-3-flash-preview --focus \"risk audit\"\n  ralph scan --runner codex --model gpt-5.2-codex --effort high --focus \"queue correctness\"\n  ralph scan --rp-on \"Deep codebase analysis\"\n  ralph scan --rp-off \"Quick surface scan\""
+    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nSafety:\n  - Clean-repo checks allow changes to `.ralph/queue.json` and `.ralph/done.json` only (not `.ralph/config.json`).\n  - Use `--force` to bypass the clean-repo check (and stale queue locks) entirely if needed.\n\nExamples:\n  ralph scan --focus \"production readiness gaps\"\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI and safety gaps\"\n  ralph scan --runner gemini --model gemini-3-flash-preview --focus \"risk audit\"\n  ralph scan --runner codex --model gpt-5.2-codex --effort high --focus \"queue correctness\"\n  ralph scan --rp-on --focus \"Deep codebase analysis\"\n  ralph scan --rp-off --focus \"Quick surface scan\""
 )]
 pub struct ScanArgs {
     /// Optional focus prompt to guide the scan.
@@ -77,4 +90,27 @@ pub struct ScanArgs {
     /// Force RepoPrompt flags off (planning requirement + tooling reminders).
     #[arg(long, conflicts_with = "rp_on")]
     pub rp_off: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::CommandFactory;
+
+    use crate::cli::Cli;
+
+    #[test]
+    fn scan_help_examples_include_rp_focus() {
+        let mut cmd = Cli::command();
+        let scan = cmd.find_subcommand_mut("scan").expect("scan subcommand");
+        let help = scan.render_long_help().to_string();
+
+        assert!(
+            help.contains("--rp-on --focus \"Deep codebase analysis\""),
+            "missing rp-on example: {help}"
+        );
+        assert!(
+            help.contains("--rp-off --focus \"Quick surface scan\""),
+            "missing rp-off example: {help}"
+        );
+    }
 }

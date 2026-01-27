@@ -370,7 +370,7 @@ pub enum TaskCommand {
 
     /// Update existing task fields based on current repository state.
     #[command(
-        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nField selection:\n - By default, all updatable fields are refreshed: scope, evidence, plan, notes, tags, depends_on.\n - Use --fields to specify which fields to update.\n\nTask selection:\n - Omit TASK_ID to update every task in the active queue.\n\nExamples:\n ralph task update\n ralph task update RQ-0001\n ralph task update --fields scope,evidence,plan RQ-0001\n ralph task update --runner opencode --model gpt-5.2 RQ-0001\n ralph task update --fields tags RQ-0042"
+        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nField selection:\n - By default, all updatable fields are refreshed: scope, evidence, plan, notes, tags, depends_on.\n - Use --fields to specify which fields to update.\n\nTask selection:\n - Omit TASK_ID to update every task in the active queue.\n\nExamples:\n ralph task update\n ralph task update RQ-0001\n ralph task update --fields scope,evidence,plan RQ-0001\n ralph task update --runner opencode --model gpt-5.2 RQ-0001\n ralph task update --rp-on RQ-0001\n ralph task update --rp-off --fields scope,evidence RQ-0001\n ralph task update --fields tags RQ-0042"
     )]
     Update(TaskUpdateArgs),
 }
@@ -605,5 +605,31 @@ impl From<TaskEditFieldArg> for TaskEditKey {
             TaskEditFieldArg::UpdatedAt => TaskEditKey::UpdatedAt,
             TaskEditFieldArg::CompletedAt => TaskEditKey::CompletedAt,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::CommandFactory;
+
+    use crate::cli::Cli;
+
+    #[test]
+    fn task_update_help_mentions_rp_examples() {
+        let mut cmd = Cli::command();
+        let task = cmd.find_subcommand_mut("task").expect("task subcommand");
+        let update = task
+            .find_subcommand_mut("update")
+            .expect("task update subcommand");
+        let help = update.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph task update --rp-on RQ-0001"),
+            "missing rp-on example: {help}"
+        );
+        assert!(
+            help.contains("ralph task update --rp-off --fields scope,evidence RQ-0001"),
+            "missing rp-off example: {help}"
+        );
     }
 }

@@ -1,6 +1,19 @@
 //! Tests for queue CLI subcommand handlers.
+//!
+//! Responsibilities:
+//! - Validate queue CLI help output and basic handler behavior.
+//! - Guard against regressions in command examples and formatting.
+//!
+//! Not handled here:
+//! - Full end-to-end CLI invocation and filesystem side effects.
+//! - Runner execution paths or task queue persistence.
+//!
+//! Invariants/assumptions:
+//! - Clap command definitions are accessible through `crate::cli::Cli`.
+//! - Help output is rendered using clap's long help formatter.
 
 use anyhow::Result;
+use clap::CommandFactory;
 use tempfile::TempDir;
 
 use super::{list, search, QueueListArgs, QueueListFormat, QueueSearchArgs, QueueSortOrder};
@@ -130,4 +143,42 @@ fn queue_list_handle_smoke() -> Result<()> {
     list::handle(&resolved, args)?;
 
     Ok(())
+}
+
+#[test]
+fn queue_validate_help_examples_expanded() {
+    let mut cmd = crate::cli::Cli::command();
+    let queue = cmd.find_subcommand_mut("queue").expect("queue subcommand");
+    let validate = queue
+        .find_subcommand_mut("validate")
+        .expect("queue validate subcommand");
+    let help = validate.render_long_help().to_string();
+
+    assert!(
+        help.contains("ralph queue validate"),
+        "missing validate example: {help}"
+    );
+    assert!(
+        help.contains("ralph --verbose queue validate"),
+        "missing verbose validate example: {help}"
+    );
+}
+
+#[test]
+fn queue_next_id_help_examples_expanded() {
+    let mut cmd = crate::cli::Cli::command();
+    let queue = cmd.find_subcommand_mut("queue").expect("queue subcommand");
+    let next_id = queue
+        .find_subcommand_mut("next-id")
+        .expect("queue next-id subcommand");
+    let help = next_id.render_long_help().to_string();
+
+    assert!(
+        help.contains("ralph queue next-id"),
+        "missing next-id example: {help}"
+    );
+    assert!(
+        help.contains("ralph --verbose queue next-id"),
+        "missing verbose next-id example: {help}"
+    );
 }

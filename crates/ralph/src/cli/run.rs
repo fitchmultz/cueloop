@@ -1,4 +1,17 @@
 //! `ralph run ...` command group: Clap types and handler.
+//!
+//! Responsibilities:
+//! - Define clap structures for run commands and flags.
+//! - Route run subcommands to task execution and TUI entry points.
+//!
+//! Not handled here:
+//! - Queue persistence and task status transitions (see `crate::queue`).
+//! - Runner implementations or model execution (see `crate::runner`).
+//! - Global configuration precedence rules (see `crate::config`).
+//!
+//! Invariants/assumptions:
+//! - Configuration is resolved from the current working directory.
+//! - Queue mutations occur inside downstream command handlers.
 
 use anyhow::Result;
 use clap::{Args, Subcommand};
@@ -176,9 +189,9 @@ Examples:\n\
  ralph run one --id RQ-0001\n\
  ralph run one -i\n\
  ralph run one --debug\n\
- ralph run one --phases 3\n\
- ralph run one --phases 2\n\
- ralph run one --phases 1\n\
+ ralph run one --phases 3 (plan/implement+CI/review+complete)\n\
+ ralph run one --phases 2 (plan/implement)\n\
+ ralph run one --phases 1 (single-pass)\n\
  ralph run one --runner opencode --model gpt-5.2\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
  ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
@@ -195,9 +208,9 @@ Examples:\n\
         about = "Run tasks repeatedly until no todo remain (or --max-tasks is reached)",
         after_long_help = "Examples:\n\
  ralph run loop --max-tasks 0\n\
- ralph run loop --phases 3 --max-tasks 0\n\
- ralph run loop --phases 2 --max-tasks 0\n\
- ralph run loop --phases 1 --max-tasks 1\n\
+ ralph run loop --phases 3 --max-tasks 0 (plan/implement+CI/review+complete)\n\
+ ralph run loop --phases 2 --max-tasks 0 (plan/implement)\n\
+ ralph run loop --phases 1 --max-tasks 1 (single-pass)\n\
  ralph run loop --max-tasks 3\n\
  ralph run loop --max-tasks 1 --debug\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
@@ -205,6 +218,8 @@ Examples:\n\
  ralph run loop --git-revert-mode disabled --max-tasks 1\n\
  ralph run loop --git-commit-push-off --max-tasks 1\n\
  ralph run loop --update-task --max-tasks 1\n\
+ ralph run loop --rp-on --max-tasks 1\n\
+ ralph run loop --rp-off --max-tasks 1\n\
  ralph run loop -i\n\
  ralph tui"
     )]
@@ -245,4 +260,51 @@ pub struct RunLoopArgs {
 
     #[command(flatten)]
     pub agent: crate::agent::RunAgentArgs,
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::CommandFactory;
+
+    use crate::cli::Cli;
+
+    #[test]
+    fn run_one_help_includes_phase_semantics() {
+        let mut cmd = Cli::command();
+        let run = cmd.find_subcommand_mut("run").expect("run subcommand");
+        let run_one = run.find_subcommand_mut("one").expect("run one subcommand");
+        let help = run_one.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph run one --phases 3 (plan/implement+CI/review+complete)"),
+            "missing phases=3 example: {help}"
+        );
+        assert!(
+            help.contains("ralph run one --phases 2 (plan/implement)"),
+            "missing phases=2 example: {help}"
+        );
+        assert!(
+            help.contains("ralph run one --phases 1 (single-pass)"),
+            "missing phases=1 example: {help}"
+        );
+    }
+
+    #[test]
+    fn run_loop_help_mentions_rp_examples() {
+        let mut cmd = Cli::command();
+        let run = cmd.find_subcommand_mut("run").expect("run subcommand");
+        let run_loop = run
+            .find_subcommand_mut("loop")
+            .expect("run loop subcommand");
+        let help = run_loop.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph run loop --rp-on --max-tasks 1"),
+            "missing rp-on example: {help}"
+        );
+        assert!(
+            help.contains("ralph run loop --rp-off --max-tasks 1"),
+            "missing rp-off example: {help}"
+        );
+    }
 }

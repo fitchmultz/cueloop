@@ -89,6 +89,13 @@ Run iterations are controlled by config and task settings:
 - `agent.followup_reasoning_effort` or `task.agent.followup_reasoning_effort` applies to follow-up iterations.
 - `task.agent.model_effort` overrides `agent.reasoning_effort` for Codex tasks (`default` defers to config).
 
+### Phases
+
+Use `--phases <1|2|3>` (or `agent.phases` in config) to control execution shape:
+- `1`: single-pass execution (no mandated planning step).
+- `2`: plan -> implement.
+- `3`: plan -> implement+CI -> review+complete.
+
 ### Interactive flags
 
 * `ralph run one -i` launches the same TUI as `ralph tui`.
@@ -109,12 +116,18 @@ Examples:
 
 ```bash
 ralph run one
+ralph run one --phases 3
+ralph run one --phases 2
+ralph run one --phases 1
 ralph run one --include-draft
 ralph run one -i
 ralph run one --update-task
 ralph run loop --max-tasks 0
+ralph run loop --phases 3 --max-tasks 0
 ralph run loop --include-draft --max-tasks 1
 ralph run loop --update-task --max-tasks 1
+ralph run loop --rp-on --max-tasks 1
+ralph run loop --rp-off --max-tasks 1
 ralph run loop -i --max-tasks 3
 ralph run loop --max-tasks 1 --debug
 ralph run one --git-commit-push-off
@@ -145,6 +158,8 @@ ralph scan
 ralph scan --focus "production readiness gaps"
 ralph scan --runner opencode --model gpt-5.2 --focus "CI and safety gaps"
 ralph scan --force --focus "scan even with uncommitted changes"
+ralph scan --rp-on --focus "Deep codebase analysis"
+ralph scan --rp-off --focus "Quick surface scan"
 ```
 
 ## `ralph queue`
@@ -200,6 +215,7 @@ Validate `.ralph/queue.json` (and `.ralph/done.json` if present).
 
 ```bash
 ralph queue validate
+ralph --verbose queue validate
 ```
 
 ### `ralph queue prune`
@@ -246,6 +262,7 @@ Print the next available task ID (across queue + done archive).
 
 ```bash
 ralph queue next-id
+ralph --verbose queue next-id
 ```
 
 ### `ralph queue show`
@@ -474,6 +491,8 @@ ralph task update
 ralph task update RQ-0001
 ralph task update --fields scope,evidence,plan RQ-0001
 ralph task update --runner opencode --model gpt-5.2 RQ-0001
+ralph task update --rp-on RQ-0001
+ralph task update --rp-off --fields scope,evidence RQ-0001
 ralph task update --fields tags RQ-0042
 ```
 

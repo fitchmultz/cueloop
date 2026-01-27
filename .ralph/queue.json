@@ -46,50 +46,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0306",
-      "status": "todo",
-      "title": "Audit and improve CLI help examples",
-      "priority": "low",
-      "tags": [
-        "documentation",
-        "cli",
-        "housekeeping"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/mod.rs",
-        "crates/ralph/src/cli/task.rs",
-        "crates/ralph/src/cli/run.rs",
-        "crates/ralph/src/cli/scan.rs",
-        "crates/ralph/src/cli/prompt.rs",
-        "crates/ralph/src/cli/queue/mod.rs"
-      ],
-      "evidence": [
-        "Audit of `crates/ralph/src/cli/` reveals that while many commands have good examples, some gaps remain.",
-        "`TaskCommand::Update` in `task.rs` lacks explicit `--rp-on`/`--rp-off` examples in its `after_long_help` block.",
-        "`RunCommand::Loop` in `run.rs` lacks `--rp-on`/`--rp-off` examples, unlike `RunCommand::One`.",
-        "`RunCommand::One` examples for `--phases` are present but could be more descriptive about what each phase does (Plan/Implement/Review).",
-        "Most `queue` commands are well-documented, but `ralph queue validate` and `ralph queue next-id` have very minimal single-line examples."
-      ],
-      "plan": [
-        "Review and audit all `after_long_help` blocks in `crates/ralph/src/cli/` submodules.",
-        "Add `--rp-on` and `--rp-off` examples to `TaskCommand::Update` in `crates/ralph/src/cli/task.rs`.",
-        "Add `--rp-on` and `--rp-off` examples to `RunCommand::Loop` in `crates/ralph/src/cli/run.rs`.",
-        "Expand `--phases` examples in `run.rs` to clarify the 3-phase, 2-phase, and 1-phase workflows.",
-        "Enhance minimal examples for utility commands like `queue validate` and `queue next-id`.",
-        "Run `cargo run -p ralph -- <command> --help` to verify all help texts look polished and consistent.",
-        "Run `make ci` to ensure no regressions."
-      ],
-      "notes": [
-        "Focus on making examples actionable and covering newer flags like `--rp-on`, `--rp-off`, and `--phases` consistently.",
-        "Ensure examples match the actual behavior described in `docs/cli.md`."
-      ],
-      "request": "scan finding",
-      "created_at": "2026-01-26T15:35:00Z",
-      "updated_at": "2026-01-26T23:55:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0307",
       "status": "todo",
       "title": "Optimize TUI filtering and indexing",

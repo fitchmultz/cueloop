@@ -1,4 +1,17 @@
 //! `ralph queue ...` command group: Clap types and handler facade.
+//!
+//! Responsibilities:
+//! - Define clap structures for queue-related subcommands.
+//! - Route queue subcommands to their specific handlers.
+//! - Re-export argument types used by queue commands.
+//!
+//! Not handled here:
+//! - Queue persistence and locking semantics (see `crate::queue` and `crate::lock`).
+//! - Task execution or runner behavior.
+//!
+//! Invariants/assumptions:
+//! - Configuration is resolved from the current working directory.
+//! - Queue state changes occur within the subcommand handlers.
 
 mod archive;
 mod burndown;
@@ -70,7 +83,9 @@ pub struct QueueArgs {
 #[derive(Subcommand)]
 pub enum QueueCommand {
     /// Validate the active queue (and done archive if present).
-    #[command(after_long_help = "Example:\n ralph queue validate")]
+    #[command(
+        after_long_help = "Examples:\n ralph queue validate\n ralph --verbose queue validate"
+    )]
     Validate,
 
     /// Prune tasks from the done archive based on age, status, or keep-last rules.
@@ -84,7 +99,7 @@ pub enum QueueCommand {
     Next(QueueNextArgs),
 
     /// Print the next available task ID (across queue + done archive).
-    #[command(after_long_help = "Example:\n ralph queue next-id")]
+    #[command(after_long_help = "Examples:\n ralph queue next-id\n ralph --verbose queue next-id")]
     NextId,
 
     /// Show a task by ID.
