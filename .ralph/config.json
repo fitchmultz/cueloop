@@ -8,8 +8,8 @@
     "id_width": 4
   },
   "agent": {
-    "runner": "codex",
-    "model": "gpt-5.2-codex",
+    "runner": "opencode",
+    "model": "kimi-for-coding/k2p5",
     "phases": 3,
     "iterations": 1,
     "reasoning_effort": "medium",
@@ -40,7 +40,7 @@
       "~/.codex/AGENTS.md"
     ],
     "repoprompt_plan_required": false,
-    "repoprompt_tool_injection": false,
+    "repoprompt_tool_injection": true,
     "ci_gate_command": "make ci",
     "ci_gate_enabled": true,
     "git_commit_push_enabled": true,
