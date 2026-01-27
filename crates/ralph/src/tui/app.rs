@@ -34,6 +34,7 @@ use super::events::{
     handle_key_event, AppMode, ConfirmDiscardAction, PaletteCommand, PaletteEntry, TuiAction,
 };
 use super::render::draw_ui;
+use super::TextInput;
 
 /// Options that control how the TUI boots.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -1141,14 +1142,14 @@ impl App {
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::NewTask => {
-                self.mode = AppMode::CreatingTask(String::new());
+                self.mode = AppMode::CreatingTask(TextInput::new(""));
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::BuildTaskAgent => {
                 if self.runner_active {
                     self.set_status_message("Runner already active");
                 } else {
-                    self.mode = AppMode::CreatingTaskDescription(String::new());
+                    self.mode = AppMode::CreatingTaskDescription(TextInput::new(""));
                 }
                 Ok(TuiAction::Continue)
             }
@@ -1174,20 +1175,22 @@ impl App {
                 if self.runner_active {
                     self.set_status_message("Runner already active");
                 } else {
-                    self.mode = AppMode::Scanning(String::new());
+                    self.mode = AppMode::Scanning(TextInput::new(""));
                 }
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::Search => {
-                self.mode = AppMode::Searching(self.filters.query.clone());
+                self.mode = AppMode::Searching(TextInput::new(self.filters.query.clone()));
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::FilterTags => {
-                self.mode = AppMode::FilteringTags(self.filters.tags.join(","));
+                self.mode = AppMode::FilteringTags(TextInput::new(self.filters.tags.join(",")));
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::FilterScopes => {
-                self.mode = AppMode::FilteringScopes(self.filters.search_options.scopes.join(","));
+                self.mode = AppMode::FilteringScopes(TextInput::new(
+                    self.filters.search_options.scopes.join(","),
+                ));
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::ClearFilters => {
@@ -1823,7 +1826,7 @@ where
                             label,
                             allow_proceed,
                             selected: 0,
-                            input: String::new(),
+                            input: TextInput::new(""),
                             reply_sender: reply,
                             previous_mode: Box::new(previous_mode),
                         };

@@ -1,14 +1,23 @@
 //! Contract tests for TUI task operations.
 //!
-//! Focus: state mutations that operate on task list (status cycling, deletion, editing) and
-//! timestamp policy when status changes.
+//! Responsibilities:
+//! - Validate task list mutations (status cycling, deletion, editing) via TUI actions.
+//! - Verify timestamp policy when task status changes.
+//!
+//! Not handled here:
+//! - Rendering output or terminal UI behavior.
+//! - Runner execution or queue persistence side effects.
+//!
+//! Invariants/assumptions:
+//! - Tests use deterministic queues and timestamps.
+//! - Key events are synthetic and scoped to App state changes.
 
 mod test_support;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ralph::contracts::{QueueFile, TaskStatus};
 use ralph::timeutil;
-use ralph::tui::{self, App, AppMode, TuiAction};
+use ralph::tui::{self, App, AppMode, TextInput, TuiAction};
 use test_support::{make_test_queue, make_test_task};
 
 fn key_event(code: KeyCode) -> KeyEvent {
@@ -134,7 +143,7 @@ fn test_editing_task_updates_title() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("New Title".to_string()),
+        editing_value: Some(TextInput::new("New Title")),
     };
 
     let action =
@@ -154,7 +163,7 @@ fn test_editing_task_rejects_empty_title() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("".to_string()),
+        editing_value: Some(TextInput::new("")),
     };
 
     let action =

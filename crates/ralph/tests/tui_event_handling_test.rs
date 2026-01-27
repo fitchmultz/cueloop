@@ -1,19 +1,32 @@
 //! Contract tests for TUI key event handling.
 //!
-//! These tests exercise `tui::handle_key_event` across multiple `AppMode` states, ensuring key
-//! bindings perform the correct state transitions and side effects.
+//! Responsibilities:
+//! - Exercise `tui::handle_key_event` across core `AppMode` states.
+//! - Validate keybindings drive the intended state transitions and effects.
+//!
+//! Not handled here:
+//! - Rendering assertions or terminal IO behavior.
+//! - Runner execution or queue persistence side effects.
+//!
+//! Invariants/assumptions:
+//! - Tests use deterministic in-memory queues.
+//! - Key events are synthetic and scoped to state changes.
 
 mod test_support;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ralph::contracts::{TaskPriority, TaskStatus};
 use ralph::runutil::RevertDecision;
-use ralph::tui::{self, App, AppMode, TuiAction};
+use ralph::tui::{self, App, AppMode, TextInput, TuiAction};
 use std::sync::mpsc;
 use test_support::make_test_queue;
 
 fn key_event(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
+}
+
+fn editing_value_str(editing_value: &Option<TextInput>) -> Option<&str> {
+    editing_value.as_ref().map(|input| input.value())
 }
 
 #[test]
@@ -156,7 +169,7 @@ fn test_handle_key_event_in_editing_mode_char() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("Test".to_string()),
+        editing_value: Some(TextInput::new("Test")),
     };
 
     let action = tui::handle_key_event(
@@ -173,7 +186,7 @@ fn test_handle_key_event_in_editing_mode_char() {
             editing_value,
         } => {
             assert_eq!(*selected, 0);
-            assert_eq!(editing_value.as_deref(), Some("TestX"));
+            assert_eq!(editing_value_str(editing_value), Some("TestX"));
         }
         _ => panic!("Expected EditingTask mode"),
     }
@@ -184,7 +197,7 @@ fn test_handle_key_event_in_editing_mode_backspace() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("Test".to_string()),
+        editing_value: Some(TextInput::new("Test")),
     };
 
     let action = tui::handle_key_event(
@@ -201,7 +214,7 @@ fn test_handle_key_event_in_editing_mode_backspace() {
             editing_value,
         } => {
             assert_eq!(*selected, 0);
-            assert_eq!(editing_value.as_deref(), Some("Tes"));
+            assert_eq!(editing_value_str(editing_value), Some("Tes"));
         }
         _ => panic!("Expected EditingTask mode"),
     }
@@ -212,7 +225,7 @@ fn test_handle_key_event_in_editing_mode_enter_saves() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("New Title".to_string()),
+        editing_value: Some(TextInput::new("New Title")),
     };
 
     let action =
@@ -235,7 +248,7 @@ fn test_handle_key_event_in_editing_mode_esc_cancels() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("Modified Title".to_string()),
+        editing_value: Some(TextInput::new("Modified Title")),
     };
 
     let action =
@@ -345,7 +358,7 @@ fn test_handle_key_event_editing_task_validation_error_keeps_editing() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("".to_string()),
+        editing_value: Some(TextInput::new("")),
     };
 
     let action =
@@ -424,7 +437,7 @@ fn test_handle_key_event_in_confirm_revert_reverts() {
         label: "Phase 2 CI failure".to_string(),
         allow_proceed: false,
         selected: 1,
-        input: String::new(),
+        input: TextInput::new(""),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };
@@ -445,7 +458,7 @@ fn test_handle_key_event_in_confirm_revert_keeps() {
         label: "Phase 2 CI failure".to_string(),
         allow_proceed: false,
         selected: 0,
-        input: String::new(),
+        input: TextInput::new(""),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };
@@ -466,7 +479,7 @@ fn test_handle_key_event_in_confirm_revert_continues_with_message() {
         label: "Phase 2 CI failure".to_string(),
         allow_proceed: false,
         selected: 2,
-        input: "Please continue".to_string(),
+        input: TextInput::new("Please continue"),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };
@@ -492,7 +505,7 @@ fn test_handle_key_event_in_confirm_revert_requires_message() {
         label: "Phase 2 CI failure".to_string(),
         allow_proceed: false,
         selected: 2,
-        input: String::new(),
+        input: TextInput::new(""),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };
@@ -513,7 +526,7 @@ fn test_handle_key_event_in_confirm_revert_enter_defaults_keep() {
         label: "Phase 2 CI failure".to_string(),
         allow_proceed: false,
         selected: 0,
-        input: String::new(),
+        input: TextInput::new(""),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };

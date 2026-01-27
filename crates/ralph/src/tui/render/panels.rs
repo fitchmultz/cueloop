@@ -290,12 +290,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         AppMode::CreatingTask(title) => vec![
             Span::styled("New Task: ", Style::default().add_modifier(Modifier::BOLD)),
             Span::styled(
-                title.clone(),
+                title.with_cursor_marker('_'),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ],
         AppMode::CreatingTaskDescription(description) => vec![
             Span::styled(
@@ -303,22 +302,20 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 Style::default().add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                description.clone(),
+                description.with_cursor_marker('_'),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ],
         AppMode::Searching(query) => vec![
             Span::styled("Search: ", Style::default().add_modifier(Modifier::BOLD)),
             Span::styled(
-                query.clone(),
+                query.with_cursor_marker('_'),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ],
         AppMode::FilteringTags(tags) => vec![
             Span::styled(
@@ -326,12 +323,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 Style::default().add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                tags.clone(),
+                tags.with_cursor_marker('_'),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ],
         AppMode::FilteringScopes(scopes) => vec![
             Span::styled(
@@ -339,12 +335,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 Style::default().add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                scopes.clone(),
+                scopes.with_cursor_marker('_'),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ],
         AppMode::Scanning(focus) => vec![
             Span::styled(
@@ -352,12 +347,11 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 Style::default().add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                focus.clone(),
+                focus.with_cursor_marker('_'),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
         ],
         AppMode::CommandPalette { .. } => vec![Span::styled(
             "Task Details",
@@ -401,13 +395,13 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]),
         ];
 
-        let title_text = if current.is_empty() {
+        let title_text = if current.value().is_empty() {
             "(enter a title)".to_string()
         } else {
-            current.clone()
+            current.value().to_string()
         };
         for line in wrap_text(&title_text, app.detail_width as usize) {
-            let style = if current.is_empty() {
+            let style = if current.value().is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
                 Style::default().add_modifier(Modifier::BOLD)
@@ -440,13 +434,13 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]),
             Line::from(""),
         ];
-        let display = if current.is_empty() {
+        let display = if current.value().is_empty() {
             "(describe task you want to create, agent will add structure)".to_string()
         } else {
-            current.clone()
+            current.value().to_string()
         };
         for line in wrap_text(&display, app.detail_width as usize) {
-            let style = if current.is_empty() {
+            let style = if current.value().is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
                 Style::default().add_modifier(Modifier::BOLD)
@@ -489,13 +483,13 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]),
             Line::from(""),
         ];
-        let display = if current.is_empty() {
+        let display = if current.value().is_empty() {
             "(type to search across title, tags, scope, plan, evidence, notes)".to_string()
         } else {
-            current.clone()
+            current.value().to_string()
         };
         for line in wrap_text(&display, app.detail_width as usize) {
-            let style = if current.is_empty() {
+            let style = if current.value().is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
                 Style::default().add_modifier(Modifier::BOLD)
@@ -530,13 +524,13 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]),
             Line::from(""),
         ];
-        let display = if current.is_empty() {
+        let display = if current.value().is_empty() {
             "(e.g., tui, ux, docs)".to_string()
         } else {
-            current.clone()
+            current.value().to_string()
         };
         for line in wrap_text(&display, app.detail_width as usize) {
-            let style = if current.is_empty() {
+            let style = if current.value().is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
                 Style::default().add_modifier(Modifier::BOLD)
@@ -574,13 +568,13 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             ]),
             Line::from(""),
         ];
-        let display = if current.is_empty() {
+        let display = if current.value().is_empty() {
             "(optional: describe what to scan for)".to_string()
         } else {
-            current.clone()
+            current.value().to_string()
         };
         for line in wrap_text(&display, app.detail_width as usize) {
-            let style = if current.is_empty() {
+            let style = if current.value().is_empty() {
                 Style::default().fg(Color::DarkGray)
             } else {
                 Style::default().add_modifier(Modifier::BOLD)

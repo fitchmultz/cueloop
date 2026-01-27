@@ -1,16 +1,18 @@
 //! TUI event handling extracted from `crate::tui`.
 //!
-//! This module contains all key-event dispatch and per-mode handlers.
-//! Public API is preserved via `crate::tui` re-exporting:
-//! - `AppMode`
-//! - `TuiAction`
-//! - `handle_key_event`
+//! Responsibilities:
+//! - Dispatch key events to the active `AppMode` handlers.
+//! - Expose `handle_key_event` and shared helpers for input parsing.
+//! - Centralize mode-aware keybinding behavior.
 //!
-//! The interaction model is intentionally user-centric:
-//! - `:` opens a command palette (discoverability)
-//! - `l` toggles loop mode (auto-run tasks)
-//! - `a` archives terminal tasks (done/rejected) with confirmation
-//! - `?`/`h` shows the help overlay
+//! Not handled here:
+//! - Rendering or layout concerns (see `tui::render`).
+//! - Queue persistence details or runner execution.
+//!
+//! Invariants/assumptions:
+//! - `AppMode` variants fully describe the active interaction state.
+//! - Keybinding behavior remains consistent across handlers.
+//! - User-centric shortcuts remain discoverable (e.g. `:` palette, `?`/`h` help).
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
@@ -56,24 +58,22 @@ pub fn handle_key_event(
             selected,
             editing_value,
         } => editing::handle_editing_task_key(app, key, selected, editing_value, now_rfc3339),
-        AppMode::CreatingTask(ref current) => {
+        AppMode::CreatingTask(current) => {
             create::handle_creating_mode_key(app, key, current, now_rfc3339)
         }
-        AppMode::CreatingTaskDescription(ref current) => {
+        AppMode::CreatingTaskDescription(current) => {
             create::handle_creating_description_mode_key(app, key, current)
         }
-        AppMode::Searching(ref current) => search::handle_searching_mode_key(app, key, current),
-        AppMode::FilteringTags(ref current) => filter::handle_filtering_tags_key(app, key, current),
-        AppMode::FilteringScopes(ref current) => {
-            filter::handle_filtering_scopes_key(app, key, current)
-        }
+        AppMode::Searching(current) => search::handle_searching_mode_key(app, key, current),
+        AppMode::FilteringTags(current) => filter::handle_filtering_tags_key(app, key, current),
+        AppMode::FilteringScopes(current) => filter::handle_filtering_scopes_key(app, key, current),
         AppMode::EditingConfig {
             selected,
             editing_value,
         } => editing::handle_editing_config_key(app, key, selected, editing_value),
-        AppMode::Scanning(ref current) => scan::handle_scanning_mode_key(app, key, current),
+        AppMode::Scanning(current) => scan::handle_scanning_mode_key(app, key, current),
         AppMode::CommandPalette { query, selected } => {
-            palette::handle_command_palette_key(app, key, &query, selected, now_rfc3339)
+            palette::handle_command_palette_key(app, key, query, selected, now_rfc3339)
         }
         AppMode::ConfirmDelete => confirm::handle_confirm_delete_key(app, key),
         AppMode::ConfirmArchive => confirm::handle_confirm_archive_key(app, key, now_rfc3339),

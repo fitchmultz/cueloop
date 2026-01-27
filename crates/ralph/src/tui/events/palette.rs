@@ -9,9 +9,11 @@
 //! - Definition of palette entries (see `App`).
 //!
 //! Invariants/assumptions:
-//! - Input uses plain characters (Ctrl/Alt modifiers are ignored).
+//! - Input uses cursor-aware `TextInput` edits.
 
-use super::{text_char, App, AppMode, TuiAction};
+use super::super::input::{apply_text_input_key, TextInputEdit};
+use super::super::TextInput;
+use super::{App, AppMode, TuiAction};
 use crossterm::event::{KeyCode, KeyEvent};
 
 /// High-level commands available in the command palette.
@@ -51,11 +53,11 @@ pub struct PaletteEntry {
 pub(super) fn handle_command_palette_key(
     app: &mut App,
     key: KeyEvent,
-    query: &str,
+    mut query: TextInput,
     selected: usize,
     now_rfc3339: &str,
 ) -> anyhow::Result<TuiAction> {
-    let entries = app.palette_entries(query);
+    let entries = app.palette_entries(query.value());
     let max_index = entries.len().saturating_sub(1);
     let selected = selected.min(max_index);
 
@@ -77,7 +79,7 @@ pub(super) fn handle_command_palette_key(
         KeyCode::Up => {
             let next_selected = selected.saturating_sub(1);
             app.mode = AppMode::CommandPalette {
-                query: query.to_string(),
+                query,
                 selected: next_selected,
             };
             Ok(TuiAction::Continue)
@@ -85,27 +87,18 @@ pub(super) fn handle_command_palette_key(
         KeyCode::Down => {
             let next_selected = (selected + 1).min(max_index);
             app.mode = AppMode::CommandPalette {
-                query: query.to_string(),
+                query,
                 selected: next_selected,
             };
             Ok(TuiAction::Continue)
         }
-        KeyCode::Backspace => {
-            let mut next = query.to_string();
-            next.pop();
-            app.mode = AppMode::CommandPalette {
-                query: next,
-                selected: 0,
-            };
-            Ok(TuiAction::Continue)
-        }
         _ => {
-            if let Some(ch) = text_char(&key) {
-                let mut next = query.to_string();
-                next.push(ch);
+            let before = query.value().to_string();
+            if apply_text_input_key(&mut query, &key) == TextInputEdit::Changed {
+                let value_changed = before != query.value();
                 app.mode = AppMode::CommandPalette {
-                    query: next,
-                    selected: 0,
+                    query,
+                    selected: if value_changed { 0 } else { selected },
                 };
             }
             Ok(TuiAction::Continue)

@@ -9,12 +9,13 @@
 //! - Rendering or palette command execution.
 //!
 //! Invariants/assumptions:
-//! - Text input ignores Ctrl/Alt modified characters.
+//! - Cursor-aware text input is provided by `TextInput`.
 //! - Callers provide the current input state for editing.
 
-use super::super::AppMode;
+use super::super::input::{apply_text_input_key, TextInputEdit};
+use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
-use super::{text_char, App};
+use super::App;
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -22,12 +23,12 @@ use crossterm::event::{KeyCode, KeyEvent};
 pub(super) fn handle_creating_mode_key(
     app: &mut App,
     key: KeyEvent,
-    current: &str,
+    mut current: TextInput,
     now_rfc3339: &str,
 ) -> Result<TuiAction> {
     match key.code {
         KeyCode::Enter => {
-            if let Err(e) = app.create_task_from_title(current, now_rfc3339) {
+            if let Err(e) = app.create_task_from_title(current.value(), now_rfc3339) {
                 app.set_status_message(format!("Error: {}", e));
             }
             Ok(TuiAction::Continue)
@@ -36,17 +37,9 @@ pub(super) fn handle_creating_mode_key(
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
         }
-        KeyCode::Backspace => {
-            let mut new_title = current.to_string();
-            new_title.pop();
-            app.mode = AppMode::CreatingTask(new_title);
-            Ok(TuiAction::Continue)
-        }
         _ => {
-            if let Some(ch) = text_char(&key) {
-                let mut new_title = current.to_string();
-                new_title.push(ch);
-                app.mode = AppMode::CreatingTask(new_title);
+            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
+                app.mode = AppMode::CreatingTask(current);
             }
             Ok(TuiAction::Continue)
         }
@@ -57,11 +50,11 @@ pub(super) fn handle_creating_mode_key(
 pub(super) fn handle_creating_description_mode_key(
     app: &mut App,
     key: KeyEvent,
-    current: &str,
+    mut current: TextInput,
 ) -> Result<TuiAction> {
     match key.code {
         KeyCode::Enter => {
-            let description = current.trim().to_string();
+            let description = current.value().trim().to_string();
             if description.is_empty() {
                 app.mode = AppMode::Normal;
                 app.set_status_message("Description cannot be empty");
@@ -74,17 +67,9 @@ pub(super) fn handle_creating_description_mode_key(
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
         }
-        KeyCode::Backspace => {
-            let mut new_description = current.to_string();
-            new_description.pop();
-            app.mode = AppMode::CreatingTaskDescription(new_description);
-            Ok(TuiAction::Continue)
-        }
         _ => {
-            if let Some(ch) = text_char(&key) {
-                let mut new_description = current.to_string();
-                new_description.push(ch);
-                app.mode = AppMode::CreatingTaskDescription(new_description);
+            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
+                app.mode = AppMode::CreatingTaskDescription(current);
             }
             Ok(TuiAction::Continue)
         }

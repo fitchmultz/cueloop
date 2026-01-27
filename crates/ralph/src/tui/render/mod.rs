@@ -1,14 +1,17 @@
 //! TUI rendering implementation extracted from `crate::tui`.
 //!
-//! This module contains all rendering/layout logic for the terminal UI.
-//! It is split into focused components (mirroring the `tui/events/` pattern):
-//! - `panels`: primary layout panels (task list, task details, execution view)
-//! - `overlays`: modal overlays (help, command palette, editors, confirmations)
-//! - `footer`: footer help/status line
-//! - `utils`: shared text/color helpers
+//! Responsibilities:
+//! - Render the terminal UI layout and mode-specific overlays.
+//! - Provide shared render helpers for panels, footer, and overlay components.
+//! - Expose the `draw_ui` entrypoint re-exported by `crate::tui`.
 //!
-//! Public API is preserved via `crate::tui::draw_ui` re-exporting
-//! `render::draw_ui`.
+//! Not handled here:
+//! - Event handling or key dispatch (see `tui::events`).
+//! - Queue mutations or runner execution side effects.
+//!
+//! Invariants/assumptions:
+//! - Rendering operates on the current `App` state without mutating it.
+//! - Layout components remain consistent with TUI styling conventions.
 
 use super::events::types::ConfirmDiscardAction;
 use super::{App, AppMode};
@@ -125,7 +128,7 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
             selected,
             editing_value,
         } => {
-            overlays::draw_config_editor(f, app, size, *selected, editing_value.as_deref());
+            overlays::draw_config_editor(f, app, size, *selected, editing_value.as_ref());
         }
 
         // Task editor overlay.
@@ -133,7 +136,7 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
             selected,
             editing_value,
         } => {
-            overlays::draw_task_editor(f, app, size, *selected, editing_value.as_deref());
+            overlays::draw_task_editor(f, app, size, *selected, editing_value.as_ref());
         }
 
         _ => {}

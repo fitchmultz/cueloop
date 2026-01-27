@@ -1,13 +1,22 @@
 //! Rendering tests for modal/editor/dialog states.
 //!
-//! These tests validate overlays/dialogs that are controlled by `AppMode`
-//! (task editor, create task prompt, confirm dialogs, revert dialog).
+//! Responsibilities:
+//! - Validate overlays/dialogs driven by `AppMode` values.
+//! - Ensure render output includes expected mode-specific text.
+//!
+//! Not handled here:
+//! - Event handling or keybinding behavior.
+//! - Visual styling correctness beyond text presence.
+//!
+//! Invariants/assumptions:
+//! - Tests use deterministic `TestBackend` buffers.
+//! - Assertions rely on ASCII text in rendered output.
 
 mod test_support;
 mod tui_rendering_support;
 
 use ralph::tui::ConfirmDiscardAction;
-use ralph::tui::{App, AppMode};
+use ralph::tui::{App, AppMode, TextInput};
 use test_support::make_render_test_queue as make_test_queue;
 use tui_rendering_support::{get_rendered_output, setup_test_terminal};
 
@@ -17,7 +26,7 @@ fn test_render_editing_task_mode() {
     let mut app = App::new(queue);
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("Modified Title".to_string()),
+        editing_value: Some(TextInput::new("Modified Title")),
     };
     let mut terminal = setup_test_terminal(80, 24);
 
@@ -31,7 +40,7 @@ fn test_render_editing_task_mode() {
 fn test_render_creating_task_mode_shows_prompt_and_title() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
-    app.mode = AppMode::CreatingTask("New Task".to_string());
+    app.mode = AppMode::CreatingTask(TextInput::new("New Task"));
     let mut terminal = setup_test_terminal(80, 24);
 
     let output = get_rendered_output(&mut terminal, &mut app);
@@ -45,7 +54,7 @@ fn test_render_creating_task_mode_shows_prompt_and_title() {
 fn test_render_creating_task_mode_shows_placeholder_when_empty() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
-    app.mode = AppMode::CreatingTask(String::new());
+    app.mode = AppMode::CreatingTask(TextInput::new(""));
     let mut terminal = setup_test_terminal(80, 24);
 
     let output = get_rendered_output(&mut terminal, &mut app);
@@ -113,7 +122,7 @@ fn test_render_confirm_revert_dialog() {
         label: "Phase 2 CI failure".to_string(),
         allow_proceed: false,
         selected: 0,
-        input: String::new(),
+        input: TextInput::new(""),
         reply_sender: tx,
         previous_mode: Box::new(AppMode::Normal),
     };

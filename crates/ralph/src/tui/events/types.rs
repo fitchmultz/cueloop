@@ -15,6 +15,7 @@
 use std::sync::mpsc;
 
 use crate::runutil::RevertDecision;
+use crate::tui::TextInput;
 
 /// Actions that can result from handling a key event.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,27 +53,27 @@ pub enum AppMode {
     /// Editing task fields
     EditingTask {
         selected: usize,
-        editing_value: Option<String>,
+        editing_value: Option<TextInput>,
     },
     /// Creating a new task (title input)
-    CreatingTask(String),
+    CreatingTask(TextInput),
     /// Creating a new task via task builder agent (description input)
-    CreatingTaskDescription(String),
+    CreatingTaskDescription(TextInput),
     /// Searching tasks (query input)
-    Searching(String),
+    Searching(TextInput),
     /// Filtering tasks by tag list (comma-separated input)
-    FilteringTags(String),
+    FilteringTags(TextInput),
     /// Filtering tasks by scope list (comma-separated input)
-    FilteringScopes(String),
+    FilteringScopes(TextInput),
     /// Editing project configuration
     EditingConfig {
         selected: usize,
-        editing_value: Option<String>,
+        editing_value: Option<TextInput>,
     },
     /// Running a scan (focus input)
-    Scanning(String),
+    Scanning(TextInput),
     /// Command palette (":" style)
-    CommandPalette { query: String, selected: usize },
+    CommandPalette { query: TextInput, selected: usize },
     /// Confirming task deletion
     ConfirmDelete,
     /// Confirming archive of done/rejected tasks
@@ -86,7 +87,7 @@ pub enum AppMode {
         label: String,
         allow_proceed: bool,
         selected: usize,
-        input: String,
+        input: TextInput,
         reply_sender: mpsc::Sender<RevertDecision>,
         previous_mode: Box<AppMode>,
     },

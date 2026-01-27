@@ -12,7 +12,7 @@
 //! - Callers provide terminal areas sized for the current frame.
 //! - Overlay drawing clears the underlying area before rendering content.
 
-use super::super::{help, App, ConfigFieldKind, TaskEditKind};
+use super::super::{help, App, ConfigFieldKind, TaskEditKind, TextInput};
 use super::utils::scroll_indicator;
 use crate::outpututil::truncate_chars;
 use ratatui::{
@@ -71,10 +71,10 @@ pub(super) fn draw_command_palette(
     f: &mut Frame<'_>,
     app: &App,
     area: Rect,
-    query: &str,
+    query: &TextInput,
     selected: usize,
 ) {
-    let entries = app.palette_entries(query);
+    let entries = app.palette_entries(query.value());
 
     let popup_width = 70.min(area.width.saturating_sub(4));
 
@@ -109,6 +109,7 @@ pub(super) fn draw_command_palette(
         .constraints([Constraint::Length(1), Constraint::Min(1)].as_ref())
         .split(inner);
 
+    let input_text = query.with_cursor_marker('_');
     let input = Line::from(vec![
         Span::styled(
             ":",
@@ -116,9 +117,7 @@ pub(super) fn draw_command_palette(
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         ),
-        // Avoid allocating a new String every frame.
-        Span::styled(query, Style::default().fg(Color::Yellow)),
-        Span::styled("_", Style::default().fg(Color::Yellow)),
+        Span::styled(input_text, Style::default().fg(Color::Yellow)),
     ]);
     f.render_widget(Paragraph::new(input), inner_chunks[0]);
 
@@ -207,7 +206,7 @@ pub(super) fn draw_revert_dialog(
     label: &str,
     allow_proceed: bool,
     selected: usize,
-    input: &str,
+    input: &TextInput,
 ) {
     let popup_width = 64.min(area.width.saturating_sub(4));
     // Clamp to available height to avoid drawing outside the frame on tiny terminals.
@@ -251,7 +250,7 @@ pub(super) fn draw_revert_dialog(
 
     lines.push(Line::from(""));
     let message_line = if selected == 2 {
-        format!("Message: {}", input)
+        format!("Message: {}", input.with_cursor_marker('_'))
     } else {
         "Message: (select Other to type)".to_string()
     };
@@ -287,7 +286,7 @@ pub(super) fn draw_config_editor(
     app: &App,
     area: Rect,
     selected: usize,
-    editing_value: Option<&str>,
+    editing_value: Option<&TextInput>,
 ) {
     let entries = app.config_entries();
     if entries.is_empty() {
@@ -340,7 +339,7 @@ pub(super) fn draw_config_editor(
             let mut value = entry.value.clone();
             if is_selected && entry.kind == ConfigFieldKind::Text {
                 if let Some(editing) = editing_value {
-                    value = format!("{}_", editing);
+                    value = editing.with_cursor_marker('_');
                 }
             }
             let label = format!("{:label_width$}", entry.label);
@@ -384,7 +383,7 @@ pub(super) fn draw_task_editor(
     app: &App,
     area: Rect,
     selected: usize,
-    editing_value: Option<&str>,
+    editing_value: Option<&TextInput>,
 ) {
     let entries = app.task_edit_entries();
     if entries.is_empty() {
@@ -439,7 +438,7 @@ pub(super) fn draw_task_editor(
                     | TaskEditKind::Map
                     | TaskEditKind::OptionalText => {
                         if let Some(editing) = editing_value {
-                            value = format!("{}_", editing);
+                            value = editing.with_cursor_marker('_');
                         }
                     }
                 }

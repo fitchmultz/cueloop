@@ -2,47 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0319",
-      "status": "todo",
-      "title": "TUI: reusable text input with cursor editing for all input modes",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "ux",
-        "input",
-        "keybindings"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/events/create.rs",
-        "crates/ralph/src/tui/events/search.rs",
-        "crates/ralph/src/tui/events/filter.rs",
-        "crates/ralph/src/tui/events/scan.rs",
-        "crates/ralph/src/tui/events/editing.rs",
-        "crates/ralph/src/tui/app.rs",
-        "crates/ralph/src/tui/events/tests.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/tui/events/editing.rs`: `handle_text_edit_key` only supports append, backspace, commit, cancel (no cursor movement/edit-in-middle).",
-        "`crates/ralph/src/tui/events/create.rs`, `search.rs`, `filter.rs`, `scan.rs`: each re-implements simple “push char / pop” input handling.",
-        "Several TUI modes depend on string input, but there is no shared input model for consistent behavior across modes."
-      ],
-      "plan": [
-        "Introduce a small reusable input model (text + cursor position + editing helpers).",
-        "Add support for Left/Right/Home/End/Delete and word-wise delete where reasonable.",
-        "Refactor create/search/filter/scan/editing modes to use the shared input model.",
-        "Update rendering to show cursor position (not always at end).",
-        "Add tests covering cursor moves, mid-string edits, and cancel/commit behavior.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T04:35:15Z",
-      "updated_at": "2026-01-27T04:35:15Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0320",
       "status": "todo",
       "title": "TUI: fast task list navigation (PgUp/PgDn/Home/End)",

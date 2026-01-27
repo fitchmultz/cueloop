@@ -12,7 +12,7 @@
 //! - `App` state mutations are safe to perform immediately on key press.
 //! - Shared commands should use `execute_palette_command` for unified gating.
 
-use super::super::AppMode;
+use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
 use super::{is_ctrl_char, is_plain_char, App};
 use crate::tui::PaletteCommand;
@@ -30,20 +30,20 @@ pub(super) fn handle_normal_mode_key(
     }
     if is_ctrl_char(&key, 'p') {
         app.mode = AppMode::CommandPalette {
-            query: String::new(),
+            query: TextInput::new(""),
             selected: 0,
         };
         return Ok(TuiAction::Continue);
     }
     if is_ctrl_char(&key, 'f') {
-        app.mode = AppMode::Searching(app.filters.query.clone());
+        app.mode = AppMode::Searching(TextInput::new(app.filters.query.clone()));
         return Ok(TuiAction::Continue);
     }
 
     match key.code {
         KeyCode::Char(':') if is_plain_char(&key, ':') => {
             app.mode = AppMode::CommandPalette {
-                query: String::new(),
+                query: TextInput::new(""),
                 selected: 0,
             };
             Ok(TuiAction::Continue)
@@ -163,32 +163,34 @@ pub(super) fn handle_normal_mode_key(
             if app.runner_active {
                 app.set_status_message("Runner already active");
             } else {
-                app.mode = AppMode::Scanning(String::new());
+                app.mode = AppMode::Scanning(TextInput::new(""));
             }
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('n') if is_plain_char(&key, 'n') => {
-            app.mode = AppMode::CreatingTask(String::new());
+            app.mode = AppMode::CreatingTask(TextInput::new(""));
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('N') if is_plain_char(&key, 'N') => {
             if app.runner_active {
                 app.set_status_message("Runner already active");
             } else {
-                app.mode = AppMode::CreatingTaskDescription(String::new());
+                app.mode = AppMode::CreatingTaskDescription(TextInput::new(""));
             }
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('/') if is_plain_char(&key, '/') => {
-            app.mode = AppMode::Searching(app.filters.query.clone());
+            app.mode = AppMode::Searching(TextInput::new(app.filters.query.clone()));
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('t') if is_plain_char(&key, 't') => {
-            app.mode = AppMode::FilteringTags(app.filters.tags.join(","));
+            app.mode = AppMode::FilteringTags(TextInput::new(app.filters.tags.join(",")));
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('o') if is_plain_char(&key, 'o') => {
-            app.mode = AppMode::FilteringScopes(app.filters.search_options.scopes.join(","));
+            app.mode = AppMode::FilteringScopes(TextInput::new(
+                app.filters.search_options.scopes.join(","),
+            ));
             Ok(TuiAction::Continue)
         }
         KeyCode::Char('f') if is_plain_char(&key, 'f') => {

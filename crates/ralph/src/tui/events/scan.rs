@@ -9,11 +9,12 @@
 //! - Rendering the scanning UI.
 //!
 //! Invariants/assumptions:
-//! - Scan input ignores Ctrl/Alt-modified characters.
+//! - Scan input uses cursor-aware `TextInput` edits.
 
-use super::super::AppMode;
+use super::super::input::{apply_text_input_key, TextInputEdit};
+use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
-use super::{text_char, App};
+use super::App;
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -21,7 +22,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 pub(super) fn handle_scanning_mode_key(
     app: &mut App,
     key: KeyEvent,
-    current: &str,
+    mut current: TextInput,
 ) -> Result<TuiAction> {
     match key.code {
         KeyCode::Enter => {
@@ -29,7 +30,7 @@ pub(super) fn handle_scanning_mode_key(
                 app.set_status_message("Runner already active");
                 return Ok(TuiAction::Continue);
             }
-            let focus = current.trim().to_string();
+            let focus = current.value().trim().to_string();
             app.mode = AppMode::Normal;
             Ok(TuiAction::RunScan(focus))
         }
@@ -37,17 +38,9 @@ pub(super) fn handle_scanning_mode_key(
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
         }
-        KeyCode::Backspace => {
-            let mut next = current.to_string();
-            next.pop();
-            app.mode = AppMode::Scanning(next);
-            Ok(TuiAction::Continue)
-        }
         _ => {
-            if let Some(ch) = text_char(&key) {
-                let mut next = current.to_string();
-                next.push(ch);
-                app.mode = AppMode::Scanning(next);
+            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
+                app.mode = AppMode::Scanning(current);
             }
             Ok(TuiAction::Continue)
         }

@@ -11,7 +11,7 @@
 //! Invariants/assumptions:
 //! - Tests use deterministic buffers and ASCII-only assertions.
 
-use super::super::{help, App, AppMode};
+use super::super::{help, App, AppMode, TextInput};
 use super::utils::{priority_color, status_color, wrap_text};
 use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 use crate::tui;
@@ -472,7 +472,7 @@ fn command_palette_scrolls_selected_entry_into_view() {
     let mut terminal = Terminal::new(backend).expect("create terminal");
     let mut app = App::new(QueueFile::default());
     app.mode = AppMode::CommandPalette {
-        query: "".to_string(),
+        query: TextInput::new(""),
         selected: 16,
     };
 
@@ -533,7 +533,7 @@ fn command_palette_overlay_does_not_panic_on_tiny_terminals() {
     let mut terminal = Terminal::new(backend).expect("create terminal");
     let mut app = App::new(QueueFile::default());
     app.mode = AppMode::CommandPalette {
-        query: "".to_string(),
+        query: TextInput::new(""),
         selected: 0,
     };
 
@@ -543,6 +543,57 @@ fn command_palette_overlay_does_not_panic_on_tiny_terminals() {
             tui::draw_ui(f, &mut app)
         })
         .expect("draw ui");
+}
+
+#[test]
+fn command_palette_renders_cursor_at_position() {
+    use ratatui::{backend::TestBackend, Terminal};
+
+    let backend = TestBackend::new(60, 8);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::CommandPalette {
+        query: TextInput::from_parts("run", 1),
+        selected: 0,
+    };
+
+    terminal
+        .draw(|f| {
+            app.detail_width = f.area().width.saturating_sub(4);
+            tui::draw_ui(f, &mut app)
+        })
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let output = buffer_to_string(buffer);
+    assert!(
+        output.contains(":r_un"),
+        "expected cursor marker in command palette input, got: {output:?}"
+    );
+}
+
+#[test]
+fn task_details_title_renders_cursor_at_position() {
+    use ratatui::{backend::TestBackend, Terminal};
+
+    let backend = TestBackend::new(80, 10);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::CreatingTask(TextInput::from_parts("hello", 2));
+
+    terminal
+        .draw(|f| {
+            app.detail_width = f.area().width.saturating_sub(4);
+            tui::draw_ui(f, &mut app)
+        })
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let output = buffer_to_string(buffer);
+    assert!(
+        output.contains("New Task: he_llo"),
+        "expected cursor marker in details title, got: {output:?}"
+    );
 }
 
 #[test]

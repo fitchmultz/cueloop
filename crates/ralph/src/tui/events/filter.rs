@@ -9,12 +9,13 @@
 //! - Shortcut handling outside filter modes.
 //!
 //! Invariants/assumptions:
-//! - Input is treated as plain text; Ctrl/Alt-modified chars are ignored.
+//! - Input uses cursor-aware `TextInput` edits.
 //! - On submit or cancel, the mode returns to Normal.
 
-use super::super::AppMode;
+use super::super::input::{apply_text_input_key, TextInputEdit};
+use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
-use super::{text_char, App};
+use super::App;
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -22,11 +23,11 @@ use crossterm::event::{KeyCode, KeyEvent};
 pub(super) fn handle_filtering_tags_key(
     app: &mut App,
     key: KeyEvent,
-    current: &str,
+    mut current: TextInput,
 ) -> Result<TuiAction> {
     match key.code {
         KeyCode::Enter => {
-            let tags = App::parse_tags(current);
+            let tags = App::parse_tags(current.value());
             app.set_tag_filters(tags);
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
@@ -35,17 +36,9 @@ pub(super) fn handle_filtering_tags_key(
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
         }
-        KeyCode::Backspace => {
-            let mut next = current.to_string();
-            next.pop();
-            app.mode = AppMode::FilteringTags(next);
-            Ok(TuiAction::Continue)
-        }
         _ => {
-            if let Some(ch) = text_char(&key) {
-                let mut next = current.to_string();
-                next.push(ch);
-                app.mode = AppMode::FilteringTags(next);
+            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
+                app.mode = AppMode::FilteringTags(current);
             }
             Ok(TuiAction::Continue)
         }
@@ -55,11 +48,11 @@ pub(super) fn handle_filtering_tags_key(
 pub(super) fn handle_filtering_scopes_key(
     app: &mut App,
     key: KeyEvent,
-    current: &str,
+    mut current: TextInput,
 ) -> Result<TuiAction> {
     match key.code {
         KeyCode::Enter => {
-            let scopes = App::parse_list(current);
+            let scopes = App::parse_list(current.value());
             app.set_scope_filters(scopes);
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
@@ -68,17 +61,9 @@ pub(super) fn handle_filtering_scopes_key(
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
         }
-        KeyCode::Backspace => {
-            let mut next = current.to_string();
-            next.pop();
-            app.mode = AppMode::FilteringScopes(next);
-            Ok(TuiAction::Continue)
-        }
         _ => {
-            if let Some(ch) = text_char(&key) {
-                let mut next = current.to_string();
-                next.push(ch);
-                app.mode = AppMode::FilteringScopes(next);
+            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
+                app.mode = AppMode::FilteringScopes(current);
             }
             Ok(TuiAction::Continue)
         }

@@ -9,11 +9,12 @@
 //! - Regex validation or search execution details.
 //!
 //! Invariants/assumptions:
-//! - Search input ignores Ctrl/Alt-modified characters.
+//! - Search input uses cursor-aware `TextInput` updates.
 
-use super::super::AppMode;
+use super::super::input::{apply_text_input_key, TextInputEdit};
+use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
-use super::{text_char, App};
+use super::App;
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -21,11 +22,11 @@ use crossterm::event::{KeyCode, KeyEvent};
 pub(super) fn handle_searching_mode_key(
     app: &mut App,
     key: KeyEvent,
-    current: &str,
+    mut current: TextInput,
 ) -> Result<TuiAction> {
     match key.code {
         KeyCode::Enter => {
-            app.set_search_query(current.to_string());
+            app.set_search_query(current.value().to_string());
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
         }
@@ -33,17 +34,9 @@ pub(super) fn handle_searching_mode_key(
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)
         }
-        KeyCode::Backspace => {
-            let mut next = current.to_string();
-            next.pop();
-            app.mode = AppMode::Searching(next);
-            Ok(TuiAction::Continue)
-        }
         _ => {
-            if let Some(ch) = text_char(&key) {
-                let mut next = current.to_string();
-                next.push(ch);
-                app.mode = AppMode::Searching(next);
+            if apply_text_input_key(&mut current, &key) == TextInputEdit::Changed {
+                app.mode = AppMode::Searching(current);
             }
             Ok(TuiAction::Continue)
         }

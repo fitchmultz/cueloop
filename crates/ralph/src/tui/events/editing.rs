@@ -9,10 +9,11 @@
 //! - Persistence of edits beyond updating `App` state.
 //!
 //! Invariants/assumptions:
-//! - Text input ignores Ctrl/Alt modified characters.
+//! - Text input uses cursor-aware `TextInput` edits.
 //! - Editing modes remain consistent with the selected entry index.
 
-use super::super::AppMode;
+use super::super::input::{apply_text_input_key, TextInputEdit};
+use super::super::{AppMode, TextInput};
 use super::types::TuiAction;
 use super::{is_plain_char, text_char, App};
 use anyhow::Result;
@@ -20,29 +21,23 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 /// Result of handling a text-edit key.
 enum TextEditKeyResult {
-    Commit(String),
+    Commit(TextInput),
     Cancel,
-    Update(String),
+    Update(TextInput),
     Noop,
 }
 
-fn handle_text_edit_key(key: KeyEvent, value: String) -> TextEditKeyResult {
+fn handle_text_edit_key(key: KeyEvent, mut value: TextInput) -> TextEditKeyResult {
     match key.code {
         KeyCode::Enter => TextEditKeyResult::Commit(value),
         KeyCode::Esc => TextEditKeyResult::Cancel,
-        KeyCode::Backspace => {
-            let mut updated = value;
-            updated.pop();
-            TextEditKeyResult::Update(updated)
-        }
-        _ => match text_char(&key) {
-            Some(ch) => {
-                let mut updated = value;
-                updated.push(ch);
-                TextEditKeyResult::Update(updated)
+        _ => {
+            if apply_text_input_key(&mut value, &key) == TextInputEdit::Changed {
+                TextEditKeyResult::Update(value)
+            } else {
+                TextEditKeyResult::Noop
             }
-            None => TextEditKeyResult::Noop,
-        },
+        }
     }
 }
 
@@ -51,7 +46,7 @@ pub(super) fn handle_editing_task_key(
     app: &mut App,
     key: KeyEvent,
     selected: usize,
-    editing_value: Option<String>,
+    editing_value: Option<TextInput>,
     now_rfc3339: &str,
 ) -> Result<TuiAction> {
     let entries = app.task_edit_entries();
@@ -67,7 +62,7 @@ pub(super) fn handle_editing_task_key(
     if let Some(value) = editing_value {
         match handle_text_edit_key(key, value) {
             TextEditKeyResult::Commit(value) => {
-                match app.apply_task_edit(entry.key, &value, now_rfc3339) {
+                match app.apply_task_edit(entry.key, value.value(), now_rfc3339) {
                     Ok(()) => {
                         app.mode = AppMode::EditingTask {
                             selected,
@@ -157,7 +152,7 @@ pub(super) fn handle_editing_task_key(
                         let current = app.task_value_for_edit(entry.key);
                         app.mode = AppMode::EditingTask {
                             selected,
-                            editing_value: Some(current),
+                            editing_value: Some(TextInput::new(current)),
                         };
                     }
                 }
@@ -181,7 +176,7 @@ pub(super) fn handle_editing_task_key(
                         let current = app.task_value_for_edit(entry.key);
                         app.mode = AppMode::EditingTask {
                             selected,
-                            editing_value: Some(current),
+                            editing_value: Some(TextInput::new(current)),
                         };
                     }
                 }
@@ -208,11 +203,11 @@ pub(super) fn handle_editing_task_key(
                     | crate::tui::TaskEditKind::Map
                     | crate::tui::TaskEditKind::OptionalText => {
                         if let Some(ch) = text_char(&key) {
-                            let mut current = app.task_value_for_edit(entry.key);
-                            current.push(ch);
+                            let mut input = TextInput::new(app.task_value_for_edit(entry.key));
+                            input.insert_char(ch);
                             app.mode = AppMode::EditingTask {
                                 selected,
-                                editing_value: Some(current),
+                                editing_value: Some(input),
                             };
                         }
                     }
@@ -229,7 +224,7 @@ pub(super) fn handle_editing_config_key(
     app: &mut App,
     key: KeyEvent,
     selected: usize,
-    editing_value: Option<String>,
+    editing_value: Option<TextInput>,
 ) -> Result<TuiAction> {
     let entries = app.config_entries();
     if entries.is_empty() {
@@ -244,7 +239,7 @@ pub(super) fn handle_editing_config_key(
     if let Some(value) = editing_value {
         match handle_text_edit_key(key, value) {
             TextEditKeyResult::Commit(value) => {
-                match app.apply_config_text_value(entry.key, &value) {
+                match app.apply_config_text_value(entry.key, value.value()) {
                     Ok(()) => {
                         app.mode = AppMode::EditingConfig {
                             selected,
@@ -322,7 +317,7 @@ pub(super) fn handle_editing_config_key(
                     let current = app.config_value_for_edit(entry.key);
                     app.mode = AppMode::EditingConfig {
                         selected,
-                        editing_value: Some(current),
+                        editing_value: Some(TextInput::new(current)),
                     };
                 } else {
                     app.cycle_config_value(entry.key);
@@ -339,7 +334,7 @@ pub(super) fn handle_editing_config_key(
                     let current = app.config_value_for_edit(entry.key);
                     app.mode = AppMode::EditingConfig {
                         selected,
-                        editing_value: Some(current),
+                        editing_value: Some(TextInput::new(current)),
                     };
                 } else {
                     app.cycle_config_value(entry.key);
@@ -359,11 +354,11 @@ pub(super) fn handle_editing_config_key(
             KeyCode::Char(_) => {
                 if entry.kind == crate::tui::ConfigFieldKind::Text {
                     if let Some(ch) = text_char(&key) {
-                        let mut current = app.config_value_for_edit(entry.key);
-                        current.push(ch);
+                        let mut input = TextInput::new(app.config_value_for_edit(entry.key));
+                        input.insert_char(ch);
                         app.mode = AppMode::EditingConfig {
                             selected,
-                            editing_value: Some(current),
+                            editing_value: Some(input),
                         };
                     }
                 }

@@ -12,7 +12,8 @@
 //! - Confirmation modes always return to `AppMode::Normal` on cancel.
 //! - Confirm actions are idempotent at the `TuiAction` level.
 
-use super::super::AppMode;
+use super::super::input::apply_text_input_key;
+use super::super::{AppMode, TextInput};
 use super::types::{ConfirmDiscardAction, TuiAction};
 use super::{is_plain_char, text_char, App};
 use crate::runutil::RevertDecision;
@@ -153,7 +154,7 @@ pub(super) struct ConfirmRevertState {
     label: String,
     allow_proceed: bool,
     selected: usize,
-    input: String,
+    input: TextInput,
     reply_sender: mpsc::Sender<RevertDecision>,
     previous_mode: AppMode,
 }
@@ -163,7 +164,7 @@ impl ConfirmRevertState {
         label: String,
         allow_proceed: bool,
         selected: usize,
-        input: String,
+        input: TextInput,
         reply_sender: mpsc::Sender<RevertDecision>,
         previous_mode: AppMode,
     ) -> Self {
@@ -222,47 +223,16 @@ pub(super) fn handle_confirm_revert_key(
             state.selected = (state.selected + 1).min(state.max_index());
         }
         KeyCode::Char(_) => {
-            if let Some(ch) = text_char(&key) {
-                match ch {
-                    '1' => {
-                        if state.selected == 2 {
-                            state.input.push('1');
-                        } else {
-                            state.selected = 0;
-                        }
-                    }
-                    '2' => {
-                        if state.selected == 2 {
-                            state.input.push('2');
-                        } else {
-                            state.selected = 1;
-                        }
-                    }
-                    '3' => {
-                        if state.selected == 2 {
-                            state.input.push('3');
-                        } else {
-                            state.selected = 2;
-                        }
-                    }
-                    '4' => {
-                        if state.selected == 2 {
-                            state.input.push('4');
-                        } else if state.allow_proceed {
-                            state.selected = 3;
-                        }
-                    }
-                    _ => {
-                        if state.selected == 2 {
-                            state.input.push(ch);
-                        }
-                    }
-                }
-            }
-        }
-        KeyCode::Backspace => {
             if state.selected == 2 {
-                state.input.pop();
+                let _ = apply_text_input_key(&mut state.input, &key);
+            } else if let Some(ch) = text_char(&key) {
+                match ch {
+                    '1' => state.selected = 0,
+                    '2' => state.selected = 1,
+                    '3' => state.selected = 2,
+                    '4' if state.allow_proceed => state.selected = 3,
+                    _ => {}
+                }
             }
         }
         KeyCode::Enter => {
@@ -270,7 +240,7 @@ pub(super) fn handle_confirm_revert_key(
                 0 => RevertDecision::Keep,
                 1 => RevertDecision::Revert,
                 2 => {
-                    if state.input.trim().is_empty() {
+                    if state.input.value().trim().is_empty() {
                         let hint = if state.allow_proceed {
                             "enter a message to continue or choose Keep/Revert/Proceed"
                         } else {
@@ -281,7 +251,7 @@ pub(super) fn handle_confirm_revert_key(
                         return Ok(TuiAction::Continue);
                     }
                     RevertDecision::Continue {
-                        message: state.input,
+                        message: state.input.into_value(),
                     }
                 }
                 3 if state.allow_proceed => RevertDecision::Proceed,
@@ -307,7 +277,11 @@ pub(super) fn handle_confirm_revert_key(
             app.mode = state.previous_mode;
             return Ok(TuiAction::Continue);
         }
-        _ => {}
+        _ => {
+            if state.selected == 2 {
+                let _ = apply_text_input_key(&mut state.input, &key);
+            }
+        }
     }
 
     app.mode = state.into_mode();

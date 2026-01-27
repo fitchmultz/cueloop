@@ -6705,6 +6705,58 @@
       "completed_at": "2026-01-27T08:31:24.872698000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0319",
+      "status": "done",
+      "title": "TUI: reusable text input with cursor editing for all input modes",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "input",
+        "keybindings",
+        "rendering"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/create.rs",
+        "crates/ralph/src/tui/events/search.rs",
+        "crates/ralph/src/tui/events/filter.rs",
+        "crates/ralph/src/tui/events/scan.rs",
+        "crates/ralph/src/tui/events/editing.rs",
+        "crates/ralph/src/tui/events/types.rs",
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/render/panels.rs",
+        "crates/ralph/src/tui/render/tests.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/editing.rs`: `handle_text_edit_key` only handles Enter/Esc/Backspace and appending characters; there is no cursor movement or delete-in-middle support.",
+        "`crates/ralph/src/tui/events/create.rs`, `search.rs`, `filter.rs`, `scan.rs`: input handlers only `push`/`pop` characters, so edits always occur at the end.",
+        "`crates/ralph/src/tui/events/types.rs`: input-bearing `AppMode` variants store only a `String`, with no cursor position tracked.",
+        "`crates/ralph/src/tui/render/panels.rs`: draw_task_details renders the cursor underscore after the full input text, indicating an end-only cursor.",
+        "There is no shared, cursor-aware input model used across the TUI input modes."
+      ],
+      "plan": [
+        "Introduce a shared text input model (text + cursor index + edit helpers) in a dedicated TUI module.",
+        "Update `AppMode` variants and the create/search/filter/scan/editing handlers to use the shared cursor-aware model (Left/Right/Home/End/Delete + word-wise delete).",
+        "Update `draw_task_details` to render the cursor at the active position and adjust any supporting helpers/state as needed.",
+        "Add tests in `crates/ralph/src/tui/events/tests.rs` for cursor moves, mid-string edits, commit/cancel, and delete behaviors, plus rendering coverage in `crates/ralph/src/tui/render/tests.rs`.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Input cursor rendering for these modes currently lives in `crates/ralph/src/tui/render/panels.rs` and was added to scope for updates.",
+        "Add cursor-aware TextInput model and wire all TUI input modes to use it.",
+        "Render cursor at active position in details/overlays and extend event/render tests.",
+        "Tighten module/test docstrings for updated TUI surfaces."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T12:46:58.976535000Z",
+      "completed_at": "2026-01-27T12:46:58.976535000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -1,12 +1,20 @@
 //! Contract tests for TUI mode transitions.
 //!
-//! These tests focus on verifying `AppMode` changes caused by key events, independent of
-//! rendering/terminal concerns.
+//! Responsibilities:
+//! - Verify `AppMode` transitions caused by key events.
+//! - Confirm mode changes occur without relying on rendering.
+//!
+//! Not handled here:
+//! - Rendering output or terminal backend integration.
+//! - Queue persistence or runner side effects.
+//!
+//! Invariants/assumptions:
+//! - Tests use synthetic key events against in-memory queues.
 
 mod test_support;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ralph::tui::{self, App, AppMode, TuiAction};
+use ralph::tui::{self, App, AppMode, TextInput, TuiAction};
 use test_support::make_test_queue;
 
 fn key_event(code: KeyCode) -> KeyEvent {
@@ -59,7 +67,7 @@ fn test_mode_transition_editing_to_list_on_save() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("New Title".to_string()),
+        editing_value: Some(TextInput::new("New Title")),
     };
 
     let _ =
@@ -79,7 +87,7 @@ fn test_mode_transition_editing_to_list_on_cancel() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("New Title".to_string()),
+        editing_value: Some(TextInput::new("New Title")),
     };
 
     let _ =

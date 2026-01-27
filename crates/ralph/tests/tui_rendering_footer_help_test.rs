@@ -16,7 +16,7 @@ mod test_support;
 mod tui_rendering_support;
 
 use ralph::tui::ConfirmDiscardAction;
-use ralph::tui::{App, AppMode};
+use ralph::tui::{App, AppMode, TextInput};
 use test_support::make_render_test_queue as make_test_queue;
 use tui_rendering_support::{get_rendered_output, setup_test_terminal};
 
@@ -56,7 +56,7 @@ fn test_render_help_footer_editing_mode() {
     let mut app = App::new(queue);
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some("test".to_string()),
+        editing_value: Some(TextInput::new("test")),
     };
     let mut terminal = setup_test_terminal(80, 24);
 
@@ -69,7 +69,7 @@ fn test_render_help_footer_editing_mode() {
 fn test_render_help_footer_creating_mode() {
     let queue = make_test_queue();
     let mut app = App::new(queue);
-    app.mode = AppMode::CreatingTask("new".to_string());
+    app.mode = AppMode::CreatingTask(TextInput::new("new"));
     let mut terminal = setup_test_terminal(80, 24);
 
     let output = get_rendered_output(&mut terminal, &mut app);

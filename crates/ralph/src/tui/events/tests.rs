@@ -15,6 +15,7 @@
 use super::types::ConfirmDiscardAction;
 use super::*;
 use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use crate::tui::TextInput;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 fn key_event(code: KeyCode) -> KeyEvent {
@@ -23,6 +24,24 @@ fn key_event(code: KeyCode) -> KeyEvent {
 
 fn ctrl_key_event(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::CONTROL)
+}
+
+fn input(value: &str) -> TextInput {
+    TextInput::new(value)
+}
+
+fn input_with_cursor(value: &str, cursor: usize) -> TextInput {
+    TextInput::from_parts(value, cursor)
+}
+
+fn assert_search_input(app: &App, expected: &str, cursor: usize) {
+    match &app.mode {
+        AppMode::Searching(query) => {
+            assert_eq!(query.value(), expected);
+            assert_eq!(query.cursor(), cursor);
+        }
+        other => panic!("expected search mode, got {:?}", other),
+    }
 }
 
 #[test]
@@ -385,7 +404,7 @@ fn n_enters_create_mode_with_empty_queue() {
     .expect("handle key");
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::CreatingTask(String::new()));
+    assert_eq!(app.mode, AppMode::CreatingTask(input("")));
 }
 
 #[test]
@@ -429,7 +448,7 @@ fn help_key_enters_help_mode_with_h() {
 #[test]
 fn help_opens_from_search_and_returns_to_previous_mode() {
     let mut app = App::new(QueueFile::default());
-    app.mode = AppMode::Searching("needle".to_string());
+    app.mode = AppMode::Searching(input("needle"));
 
     let action = handle_key_event(
         &mut app,
@@ -442,20 +461,20 @@ fn help_opens_from_search_and_returns_to_previous_mode() {
     assert_eq!(app.mode, AppMode::Help);
     assert!(matches!(
         app.help_previous_mode(),
-        Some(AppMode::Searching(query)) if query == "needle"
+        Some(AppMode::Searching(query)) if query.value() == "needle"
     ));
 
     let action = handle_key_event(&mut app, key_event(KeyCode::Esc), "2026-01-20T00:00:00Z")
         .expect("handle key");
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::Searching("needle".to_string()));
+    assert_eq!(app.mode, AppMode::Searching(input("needle")));
 }
 
 #[test]
 fn help_key_does_not_interrupt_search_input() {
     let mut app = App::new(QueueFile::default());
-    app.mode = AppMode::Searching(String::new());
+    app.mode = AppMode::Searching(input(""));
 
     let action = handle_key_event(
         &mut app,
@@ -465,7 +484,79 @@ fn help_key_does_not_interrupt_search_input() {
     .expect("handle key");
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::Searching("h".to_string()));
+    assert_eq!(app.mode, AppMode::Searching(input("h")));
+}
+
+#[test]
+fn search_enter_applies_query_and_returns_to_normal() {
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::Searching(input("needle"));
+
+    let action = handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z")
+        .expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.mode, AppMode::Normal);
+    assert_eq!(app.filters.query, "needle");
+}
+
+#[test]
+fn search_escape_cancels_without_applying_query() {
+    let mut app = App::new(QueueFile::default());
+    app.filters.query = "prior".to_string();
+    app.mode = AppMode::Searching(input("new"));
+
+    let action = handle_key_event(&mut app, key_event(KeyCode::Esc), "2026-01-20T00:00:00Z")
+        .expect("handle key");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.mode, AppMode::Normal);
+    assert_eq!(app.filters.query, "prior");
+}
+
+#[test]
+fn search_input_supports_cursor_edits_and_deletes() {
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::Searching(input_with_cursor("ac", 1));
+
+    handle_key_event(
+        &mut app,
+        key_event(KeyCode::Char('b')),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("handle key");
+    assert_search_input(&app, "abc", 2);
+
+    handle_key_event(&mut app, key_event(KeyCode::Left), "2026-01-20T00:00:00Z")
+        .expect("handle key");
+    assert_search_input(&app, "abc", 1);
+
+    handle_key_event(&mut app, key_event(KeyCode::Delete), "2026-01-20T00:00:00Z")
+        .expect("handle key");
+    assert_search_input(&app, "ac", 1);
+
+    handle_key_event(
+        &mut app,
+        key_event(KeyCode::Backspace),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("handle key");
+    assert_search_input(&app, "c", 0);
+}
+
+#[test]
+fn search_ctrl_w_deletes_previous_word() {
+    let mut app = App::new(QueueFile::default());
+    app.mode = AppMode::Searching(input("alpha beta"));
+
+    handle_key_event(
+        &mut app,
+        ctrl_key_event(KeyCode::Char('w')),
+        "2026-01-20T00:00:00Z",
+    )
+    .expect("handle key");
+
+    assert_search_input(&app, "alpha ", 6);
 }
 
 #[test]
@@ -587,7 +678,7 @@ fn command_palette_runs_selected_command() {
     };
     let mut app = App::new(queue);
     app.mode = AppMode::CommandPalette {
-        query: "run selected".to_string(),
+        query: input("run selected"),
         selected: 0,
     };
 
@@ -606,7 +697,7 @@ fn command_palette_with_no_matches_sets_status_message() {
     };
     let mut app = App::new(queue);
     app.mode = AppMode::CommandPalette {
-        query: "nope".to_string(),
+        query: input("nope"),
         selected: 0,
     };
 
@@ -622,7 +713,7 @@ fn command_palette_with_no_matches_sets_status_message() {
 fn command_palette_typing_jk_appends_query_and_resets_selection() {
     let mut app = App::new(QueueFile::default());
     app.mode = AppMode::CommandPalette {
-        query: "ru".to_string(),
+        query: input("ru"),
         selected: 4,
     };
 
@@ -636,7 +727,7 @@ fn command_palette_typing_jk_appends_query_and_resets_selection() {
     assert_eq!(action, TuiAction::Continue);
     match &app.mode {
         AppMode::CommandPalette { query, selected } => {
-            assert_eq!(query, "ruj");
+            assert_eq!(query.value(), "ruj");
             assert_eq!(*selected, 0);
         }
         other => panic!("expected command palette, got {:?}", other),
@@ -652,7 +743,7 @@ fn command_palette_typing_jk_appends_query_and_resets_selection() {
     assert_eq!(action, TuiAction::Continue);
     match &app.mode {
         AppMode::CommandPalette { query, selected } => {
-            assert_eq!(query, "rujk");
+            assert_eq!(query.value(), "rujk");
             assert_eq!(*selected, 0);
         }
         other => panic!("expected command palette, got {:?}", other),
@@ -663,7 +754,7 @@ fn command_palette_typing_jk_appends_query_and_resets_selection() {
 fn command_palette_up_down_navigation_preserves_query() {
     let mut app = App::new(QueueFile::default());
     app.mode = AppMode::CommandPalette {
-        query: "run".to_string(),
+        query: input("run"),
         selected: 1,
     };
 
@@ -673,7 +764,7 @@ fn command_palette_up_down_navigation_preserves_query() {
     assert_eq!(action, TuiAction::Continue);
     match &app.mode {
         AppMode::CommandPalette { query, selected } => {
-            assert_eq!(query, "run");
+            assert_eq!(query.value(), "run");
             assert_eq!(*selected, 0);
         }
         other => panic!("expected command palette, got {:?}", other),
@@ -685,7 +776,7 @@ fn command_palette_up_down_navigation_preserves_query() {
     assert_eq!(action, TuiAction::Continue);
     match &app.mode {
         AppMode::CommandPalette { query, selected } => {
-            assert_eq!(query, "run");
+            assert_eq!(query.value(), "run");
             assert_eq!(*selected, 1);
         }
         other => panic!("expected command palette, got {:?}", other),
@@ -696,7 +787,7 @@ fn command_palette_up_down_navigation_preserves_query() {
 fn command_palette_ctrl_char_is_ignored_for_text_entry() {
     let mut app = App::new(QueueFile::default());
     app.mode = AppMode::CommandPalette {
-        query: "run".to_string(),
+        query: input("run"),
         selected: 2,
     };
 
@@ -710,7 +801,7 @@ fn command_palette_ctrl_char_is_ignored_for_text_entry() {
     assert_eq!(action, TuiAction::Continue);
     match &app.mode {
         AppMode::CommandPalette { query, selected } => {
-            assert_eq!(query, "run");
+            assert_eq!(query.value(), "run");
             assert_eq!(*selected, 2);
         }
         other => panic!("expected command palette, got {:?}", other),
@@ -816,7 +907,7 @@ fn ctrl_f_enters_search_mode() {
     .expect("key");
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::Searching("needle".to_string()));
+    assert_eq!(app.mode, AppMode::Searching(input("needle")));
 }
 
 #[test]
@@ -848,7 +939,7 @@ fn scan_mode_enter_runs_scan() {
         tasks: vec![make_test_task("RQ-0001")],
     };
     let mut app = App::new(queue);
-    app.mode = AppMode::Scanning("focus".to_string());
+    app.mode = AppMode::Scanning(input("focus"));
 
     let action =
         handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z").expect("key");
@@ -864,7 +955,7 @@ fn scan_mode_escape_cancels() {
         tasks: vec![make_test_task("RQ-0001")],
     };
     let mut app = App::new(queue);
-    app.mode = AppMode::Scanning("focus".to_string());
+    app.mode = AppMode::Scanning(input("focus"));
 
     let action =
         handle_key_event(&mut app, key_event(KeyCode::Esc), "2026-01-20T00:00:00Z").expect("key");
@@ -881,7 +972,7 @@ fn scan_palette_command_enters_scan_mode() {
     };
     let mut app = App::new(queue);
     app.mode = AppMode::CommandPalette {
-        query: "scan".to_string(),
+        query: input("scan"),
         selected: 0,
     };
 
@@ -903,7 +994,7 @@ fn scan_rejected_when_runner_active() {
     };
     let mut app = App::new(queue);
     app.runner_active = true;
-    app.mode = AppMode::Scanning("focus".to_string());
+    app.mode = AppMode::Scanning(input("focus"));
 
     let action =
         handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z").expect("key");
@@ -1135,7 +1226,7 @@ fn enter_applies_scope_filter() {
         tasks: vec![make_test_task("RQ-0001")],
     };
     let mut app = App::new(queue);
-    app.mode = AppMode::FilteringScopes("crates/ralph".to_string());
+    app.mode = AppMode::FilteringScopes(input("crates/ralph"));
 
     let action = handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z")
         .expect("handle key");
@@ -1171,7 +1262,7 @@ fn uppercase_n_enters_task_builder_mode() {
 #[test]
 fn task_builder_mode_handles_character_input() {
     let mut app = App::new(QueueFile::default());
-    app.mode = AppMode::CreatingTaskDescription(String::new());
+    app.mode = AppMode::CreatingTaskDescription(input(""));
 
     let action = handle_key_event(
         &mut app,
@@ -1181,13 +1272,13 @@ fn task_builder_mode_handles_character_input() {
     .expect("handle key");
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::CreatingTaskDescription("a".to_string()));
+    assert_eq!(app.mode, AppMode::CreatingTaskDescription(input("a")));
 }
 
 #[test]
 fn task_builder_mode_handles_backspace() {
     let mut app = App::new(QueueFile::default());
-    app.mode = AppMode::CreatingTaskDescription("ab".to_string());
+    app.mode = AppMode::CreatingTaskDescription(input("ab"));
 
     let action = handle_key_event(
         &mut app,
@@ -1197,13 +1288,13 @@ fn task_builder_mode_handles_backspace() {
     .expect("handle key");
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.mode, AppMode::CreatingTaskDescription("a".to_string()));
+    assert_eq!(app.mode, AppMode::CreatingTaskDescription(input("a")));
 }
 
 #[test]
 fn task_builder_mode_escape_cancels() {
     let mut app = App::new(QueueFile::default());
-    app.mode = AppMode::CreatingTaskDescription("test description".to_string());
+    app.mode = AppMode::CreatingTaskDescription(input("test description"));
 
     let action = handle_key_event(&mut app, key_event(KeyCode::Esc), "2026-01-20T00:00:00Z")
         .expect("handle key");
@@ -1215,7 +1306,7 @@ fn task_builder_mode_escape_cancels() {
 #[test]
 fn task_builder_mode_empty_description_returns_to_normal() {
     let mut app = App::new(QueueFile::default());
-    app.mode = AppMode::CreatingTaskDescription(String::new());
+    app.mode = AppMode::CreatingTaskDescription(input(""));
 
     let action = handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z")
         .expect("handle key");
@@ -1231,7 +1322,7 @@ fn task_builder_mode_empty_description_returns_to_normal() {
 #[test]
 fn task_builder_mode_whitespace_only_returns_to_normal() {
     let mut app = App::new(QueueFile::default());
-    app.mode = AppMode::CreatingTaskDescription("   ".to_string());
+    app.mode = AppMode::CreatingTaskDescription(input("   "));
 
     let action = handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z")
         .expect("handle key");
@@ -1247,7 +1338,7 @@ fn task_builder_mode_whitespace_only_returns_to_normal() {
 #[test]
 fn task_builder_mode_valid_description_builds_task() {
     let mut app = App::new(QueueFile::default());
-    app.mode = AppMode::CreatingTaskDescription("Add a new feature".to_string());
+    app.mode = AppMode::CreatingTaskDescription(input("Add a new feature"));
 
     let action = handle_key_event(&mut app, key_event(KeyCode::Enter), "2026-01-20T00:00:00Z")
         .expect("handle key");
@@ -1430,7 +1521,7 @@ fn command_palette_move_task_up_executes() {
     };
     let mut app = App::new(queue);
     app.mode = AppMode::CommandPalette {
-        query: "move selected task up".to_string(),
+        query: input("move selected task up"),
         selected: 0,
     };
     app.selected = 1; // Select RQ-0002
