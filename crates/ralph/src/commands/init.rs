@@ -205,6 +205,32 @@ mod tests {
     }
 
     #[test]
+    fn init_generates_readme_with_correct_archive_command() -> Result<()> {
+        let dir = TempDir::new()?;
+        let resolved = resolved_for(&dir);
+        run_init(
+            &resolved,
+            InitOptions {
+                force: false,
+                force_lock: false,
+            },
+        )?;
+        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        let readme_raw = std::fs::read_to_string(readme_path)?;
+        // Verify the correct command is present
+        assert!(
+            readme_raw.contains("ralph queue archive"),
+            "README should contain 'ralph queue archive' command"
+        );
+        // Verify the stale command is NOT present (regression check)
+        assert!(
+            !readme_raw.contains("ralph queue done"),
+            "README should NOT contain stale 'ralph queue done' command"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn init_skips_existing_when_not_forced() -> Result<()> {
         let dir = TempDir::new()?;
         let resolved = resolved_for(&dir);

@@ -20,7 +20,7 @@ This repo is using Ralph. The `.ralph/` directory holds repo-local state.
 - Next task ID:
   - `ralph queue next-id`
 - Archive completed tasks:
-  - `ralph queue done`
+  - `ralph queue archive`
 - Build a task from a request:
   - `ralph task "<request>"`
 - Seed tasks from a scan:

@@ -2,6 +2,43 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0343",
+      "status": "todo",
+      "title": "Docs parity: fix `.ralph/README.md` stale command (`queue done` → `queue archive`)",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "ux"
+      ],
+      "scope": [
+        ".ralph/README.md",
+        "crates/ralph/assets/ralph_readme.md",
+        "crates/ralph/src/commands/init.rs",
+        "docs/workflow.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`.ralph/README.md`: “Archive completed tasks” lists `ralph queue done` (stale/outdated command name).",
+        "`crates/ralph/src/cli/queue/mod.rs`: the queue subcommand is `archive` (`QueueCommand::Archive`).",
+        "`crates/ralph/assets/ralph_readme.md`: uses `ralph queue archive`, so the runtime README and embedded README are out of sync."
+      ],
+      "plan": [
+        "Update `.ralph/README.md` to use `ralph queue archive` and ensure examples match `docs/cli.md`.",
+        "Update the embedded `crates/ralph/assets/ralph_readme.md` so `ralph init` produces the corrected README.",
+        "Add/update a test in `crates/ralph/src/commands/init.rs` to assert the generated README contains `queue archive`.",
+        "Run `make ci`."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T18:17:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0344",
       "status": "todo",
       "title": "Queue API clarity: rename `archive_done_tasks` to `archive_terminal_tasks` (Done+Rejected)",
