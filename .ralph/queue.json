@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0341",
-      "status": "todo",
-      "title": "Repo hygiene: remove stray source backup file `util.rs.bak` and prevent recurrence",
-      "priority": "high",
-      "tags": [
-        "cleanup",
-        "prompts",
-        "maintainability"
-      ],
-      "scope": [
-        "crates/ralph/src/prompts_internal/util.rs.bak",
-        "crates/ralph/src/prompts_internal/",
-        "Makefile",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/prompts_internal/util.rs.bak` exists in the source tree and contains duplicate/outdated prompt utility code.",
-        "`crates/ralph/src/prompts_internal/util.rs` is the real module; the `.bak` file is not referenced but is still shipped in-repo."
-      ],
-      "plan": [
-        "Delete `crates/ralph/src/prompts_internal/util.rs.bak`.",
-        "Add a CI/Makefile check (or a test) that fails if backup artifacts like `*.bak` exist under `crates/ralph/src/`.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "agent": {
-        "model_effort": "medium"
-      },
-      "created_at": "2026-01-27T18:17:26Z",
-      "updated_at": "2026-01-27T18:17:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0343",
       "status": "todo",
       "title": "Docs parity: fix `.ralph/README.md` stale command (`queue done` → `queue archive`)",

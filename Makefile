@@ -63,7 +63,16 @@ check-env-safety:
 		exit 1; \
 	fi
 
-ci: check-env-safety generate format type-check lint build test install
+check-backup-artifacts:
+	@bak_files=$$(find crates/ralph/src/ -name '*.bak' -type f 2>/dev/null); \
+	if [ -n "$$bak_files" ]; then \
+		echo "ERROR: Backup artifacts found in crates/ralph/src/:"; \
+		echo "$$bak_files"; \
+		echo "Remove these files before committing."; \
+		exit 1; \
+	fi
+
+ci: check-env-safety check-backup-artifacts generate format type-check lint build test install
 
 runners-help:
 	@scripts/runner_cli_inventory.sh --out target/tmp/runner_cli_inventory

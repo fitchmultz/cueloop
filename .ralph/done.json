@@ -7585,6 +7585,52 @@
       "completed_at": "2026-01-27T21:28:17.207661000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0341",
+      "status": "done",
+      "title": "Repo hygiene: remove stray source backup file `util.rs.bak` and prevent recurrence",
+      "priority": "high",
+      "tags": [
+        "cleanup",
+        "prompts",
+        "maintainability"
+      ],
+      "scope": [
+        "crates/ralph/src/prompts_internal/util.rs.bak",
+        "crates/ralph/src/prompts_internal/",
+        "Makefile",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/prompts_internal/util.rs.bak` exists (272 lines) and contains outdated prompt utility code.",
+        "`crates/ralph/src/prompts_internal/util.rs` is the active module (492 lines), referenced in `mod.rs`.",
+        "`crates/ralph/src/prompts_internal/mod.rs` declares `pub(crate) mod util;` (the .bak file is not referenced).",
+        "Makefile has `check-env-safety` pattern that can be extended for backup artifact detection."
+      ],
+      "plan": [
+        "Delete `crates/ralph/src/prompts_internal/util.rs.bak`.",
+        "Add a Makefile check (e.g., `check-backup-artifacts`) that fails if `*.bak` files exist under `crates/ralph/src/`.",
+        "Integrate the check into the `ci` target or add as a pre-commit validation.",
+        "Run `make ci` to verify."
+      ],
+      "notes": [
+        "File sizes as of 2026-01-27: util.rs=492 lines, util.rs.bak=272 lines.",
+        "The .bak file is significantly smaller, confirming it is outdated.",
+        "Deleted stray backup file crates/ralph/src/prompts_internal/util.rs.bak (272 lines of outdated code)",
+        "Added check-backup-artifacts Makefile target that fails CI if *.bak files exist under crates/ralph/src/",
+        "Integrated check into ci target (runs after check-env-safety)",
+        "make ci passes: 641 tests all green"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T18:17:26Z",
+      "updated_at": "2026-01-27T21:32:47.074121000Z",
+      "completed_at": "2026-01-27T21:32:47.074121000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
