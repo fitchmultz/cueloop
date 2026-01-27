@@ -110,12 +110,21 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
         }
         AppMode::ConfirmRevert {
             label,
+            preface,
             allow_proceed,
             selected,
             input,
             ..
         } => {
-            overlays::draw_revert_dialog(f, size, label, *allow_proceed, *selected, input);
+            overlays::draw_revert_dialog(
+                f,
+                size,
+                label,
+                preface.as_deref(),
+                *allow_proceed,
+                *selected,
+                input,
+            );
         }
 
         // Command palette overlay.

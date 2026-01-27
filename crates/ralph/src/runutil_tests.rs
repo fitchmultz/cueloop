@@ -1,10 +1,22 @@
 //! Tests for runutil helpers and runner error handling.
+//!
+//! Responsibilities:
+//! - Validate revert prompt parsing, formatting, and output ordering.
+//! - Exercise runner error handling utilities with controlled inputs.
+//!
+//! Not handled here:
+//! - Integration with real runner binaries or network calls.
+//! - CLI/TUI rendering behavior beyond prompt IO surfaces.
+//!
+//! Invariants/assumptions:
+//! - Tests run against isolated temp git repos.
+//! - Prompt IO is deterministic for provided inputs.
 
 use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffort, Runner};
 use crate::runutil::{
     apply_git_revert_mode, apply_git_revert_mode_with_context, parse_revert_response,
-    run_prompt_with_handling_backend, RevertDecision, RevertOutcome, RevertPromptContext,
-    RevertPromptHandler, RunnerBackend, RunnerErrorMessages, RunnerInvocation,
+    prompt_revert_choice_with_io, run_prompt_with_handling_backend, RevertDecision, RevertOutcome,
+    RevertPromptContext, RevertPromptHandler, RunnerBackend, RunnerErrorMessages, RunnerInvocation,
 };
 use crate::{gitutil, runner};
 use std::fs;
@@ -96,6 +108,50 @@ fn parse_revert_response_allows_proceed_when_enabled() {
         RevertDecision::Continue {
             message: "4".to_string()
         }
+    );
+}
+
+fn prompt_with_preface(input: &str) -> (RevertDecision, String) {
+    let context = RevertPromptContext::new("Scan validation failure", false).with_preface(
+        "Scan validation failed after run.\n(raw stdout saved to /tmp/output.txt)\nDetails",
+    );
+    let mut reader = std::io::Cursor::new(input.as_bytes());
+    let mut output = Vec::new();
+    let decision = prompt_revert_choice_with_io(&context, &mut reader, &mut output)
+        .expect("prompt with preface");
+    let rendered = String::from_utf8(output).expect("output utf8");
+    (decision, rendered)
+}
+
+#[test]
+fn prompt_revert_choice_writes_preface_before_prompt_for_keep() {
+    let (decision, output) = prompt_with_preface("1\n");
+    assert_eq!(decision, RevertDecision::Keep);
+    let preface_idx = output
+        .find("Scan validation failed after run.")
+        .expect("preface in output");
+    let prompt_idx = output
+        .find("Scan validation failure: action?")
+        .expect("prompt in output");
+    assert!(
+        preface_idx < prompt_idx,
+        "expected preface before prompt, got: {output:?}"
+    );
+}
+
+#[test]
+fn prompt_revert_choice_writes_preface_before_prompt_for_revert() {
+    let (decision, output) = prompt_with_preface("2\n");
+    assert_eq!(decision, RevertDecision::Revert);
+    let preface_idx = output
+        .find("Scan validation failed after run.")
+        .expect("preface in output");
+    let prompt_idx = output
+        .find("Scan validation failure: action?")
+        .expect("prompt in output");
+    assert!(
+        preface_idx < prompt_idx,
+        "expected preface before prompt, got: {output:?}"
     );
 }
 

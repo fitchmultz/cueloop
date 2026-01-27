@@ -874,3 +874,49 @@ fn confirm_dialog_overlay_does_not_panic_on_tiny_terminals() {
         })
         .expect("draw ui");
 }
+
+#[test]
+fn confirm_revert_overlay_renders_preface_before_prompt() {
+    use ratatui::{backend::TestBackend, Terminal};
+    use std::sync::mpsc;
+
+    let backend = TestBackend::new(80, 16);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(QueueFile::default());
+    let (tx, _rx) = mpsc::channel();
+    let preface = "Scan validation failed after run.\n(raw stdout saved to /tmp/output.txt)";
+
+    app.mode = AppMode::ConfirmRevert {
+        label: "Scan validation failure".to_string(),
+        preface: Some(preface.to_string()),
+        allow_proceed: false,
+        selected: 0,
+        input: TextInput::new(""),
+        reply_sender: tx,
+        previous_mode: Box::new(AppMode::Normal),
+    };
+
+    terminal
+        .draw(|f| {
+            app.detail_width = f.area().width.saturating_sub(4);
+            tui::draw_ui(f, &mut app)
+        })
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let output = buffer_to_string(buffer);
+    let lines: Vec<&str> = output.lines().collect();
+    let preface_row = lines
+        .iter()
+        .position(|line| line.contains("Scan validation failed after run."))
+        .expect("preface line");
+    let prompt_row = lines
+        .iter()
+        .position(|line| line.contains("Scan validation failure: action?"))
+        .expect("prompt line");
+
+    assert!(
+        preface_row < prompt_row,
+        "expected preface above prompt, got: {output:?}"
+    );
+}

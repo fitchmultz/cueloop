@@ -82,6 +82,7 @@ pub fn handle_key_event(
         AppMode::ConfirmDiscard { action } => confirm::handle_confirm_discard_key(app, key, action),
         AppMode::ConfirmRevert {
             label,
+            preface,
             allow_proceed,
             selected,
             input,
@@ -90,6 +91,7 @@ pub fn handle_key_event(
         } => {
             let state = confirm::ConfirmRevertState::new(
                 label,
+                preface,
                 allow_proceed,
                 selected,
                 input,

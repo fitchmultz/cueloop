@@ -59,10 +59,12 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         queue::validate_queue_set(&before, done_ref, &resolved.id_prefix, resolved.id_width)
             .context("validate queue set before scan")
     {
-        let outcome = runutil::apply_git_revert_mode(
+        let preface = format!("Scan validation failed before run.\n{err:#}");
+        let outcome = runutil::apply_git_revert_mode_with_context(
             &resolved.repo_root,
             opts.git_revert_mode,
-            "Scan validation failure (pre-run)",
+            runutil::RevertPromptContext::new("Scan validation failure (pre-run)", false)
+                .with_preface(preface),
             opts.revert_prompt.as_ref(),
         )?;
         return Err(err).context(runutil::format_revert_failure_message(
@@ -148,16 +150,18 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
                     log::warn!("failed to save safeguard dump: {}", e);
                 }
             }
-            let outcome = runutil::apply_git_revert_mode(
-                &resolved.repo_root,
-                opts.git_revert_mode,
-                "Scan queue read failure",
-                opts.revert_prompt.as_ref(),
-            )?;
             let context = format!(
                 "{}{}",
                 "Scan failed to reload queue after runner output.", safeguard_msg
             );
+            let preface = format!("{context}\n{err:#}");
+            let outcome = runutil::apply_git_revert_mode_with_context(
+                &resolved.repo_root,
+                opts.git_revert_mode,
+                runutil::RevertPromptContext::new("Scan queue read failure", false)
+                    .with_preface(preface),
+                opts.revert_prompt.as_ref(),
+            )?;
             return Err(err).context(runutil::format_revert_failure_message(&context, outcome));
         }
     };
@@ -186,13 +190,15 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
                 log::warn!("failed to save safeguard dump: {}", e);
             }
         }
-        let outcome = runutil::apply_git_revert_mode(
+        let context = format!("{}{}", "Scan validation failed after run.", safeguard_msg);
+        let preface = format!("{context}\n{err:#}");
+        let outcome = runutil::apply_git_revert_mode_with_context(
             &resolved.repo_root,
             opts.git_revert_mode,
-            "Scan validation failure (post-run)",
+            runutil::RevertPromptContext::new("Scan validation failure (post-run)", false)
+                .with_preface(preface),
             opts.revert_prompt.as_ref(),
         )?;
-        let context = format!("{}{}", "Scan validation failed after run.", safeguard_msg);
         return Err(err).context(runutil::format_revert_failure_message(&context, outcome));
     }
 

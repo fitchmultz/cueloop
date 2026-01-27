@@ -204,13 +204,17 @@ pub(super) fn draw_revert_dialog(
     f: &mut Frame<'_>,
     area: Rect,
     label: &str,
+    preface: Option<&str>,
     allow_proceed: bool,
     selected: usize,
     input: &TextInput,
 ) {
     let popup_width = 64.min(area.width.saturating_sub(4));
+    let preface_lines = preface.map(|text| text.lines().count()).unwrap_or(0);
+    let base_height =
+        7 + options_len(allow_proceed) + preface_lines + if preface_lines > 0 { 1 } else { 0 };
     // Clamp to available height to avoid drawing outside the frame on tiny terminals.
-    let popup_height = 12.min(area.height);
+    let popup_height = (base_height as u16).min(area.height).max(8);
 
     let popup_area = Rect {
         x: area.x + (area.width.saturating_sub(popup_width)) / 2,
@@ -237,6 +241,16 @@ pub(super) fn draw_revert_dialog(
 
     let mut lines = Vec::new();
     lines.push(Line::from(""));
+    if let Some(preface) = preface {
+        for line in preface.lines() {
+            if line.is_empty() {
+                lines.push(Line::from(""));
+            } else {
+                lines.push(Line::from(Span::raw(line.to_string())));
+            }
+        }
+        lines.push(Line::from(""));
+    }
     lines.push(Line::from(Span::styled(
         format!("{label}: action?"),
         Style::default().add_modifier(Modifier::BOLD),
@@ -278,6 +292,14 @@ pub(super) fn draw_revert_dialog(
         .wrap(Wrap { trim: false });
 
     f.render_widget(popup, popup_area);
+}
+
+fn options_len(allow_proceed: bool) -> usize {
+    if allow_proceed {
+        4
+    } else {
+        3
+    }
 }
 
 /// Draw config editor overlay.

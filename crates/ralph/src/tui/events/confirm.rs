@@ -152,6 +152,7 @@ pub(super) fn handle_confirm_discard_key(
 /// Private struct encapsulating ConfirmRevert mode state.
 pub(super) struct ConfirmRevertState {
     label: String,
+    preface: Option<String>,
     allow_proceed: bool,
     selected: usize,
     input: TextInput,
@@ -162,6 +163,7 @@ pub(super) struct ConfirmRevertState {
 impl ConfirmRevertState {
     pub(super) fn new(
         label: String,
+        preface: Option<String>,
         allow_proceed: bool,
         selected: usize,
         input: TextInput,
@@ -170,6 +172,7 @@ impl ConfirmRevertState {
     ) -> Self {
         Self {
             label,
+            preface,
             allow_proceed,
             selected,
             input,
@@ -189,6 +192,7 @@ impl ConfirmRevertState {
     fn into_mode(self) -> AppMode {
         AppMode::ConfirmRevert {
             label: self.label,
+            preface: self.preface,
             allow_proceed: self.allow_proceed,
             selected: self.selected,
             input: self.input,

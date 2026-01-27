@@ -70,6 +70,7 @@ pub enum RevertDecision {
 pub struct RevertPromptContext {
     pub label: String,
     pub allow_proceed: bool,
+    pub preface: Option<String>,
 }
 
 impl RevertPromptContext {
@@ -77,7 +78,17 @@ impl RevertPromptContext {
         Self {
             label: label.to_string(),
             allow_proceed,
+            preface: None,
         }
+    }
+
+    pub fn with_preface(mut self, preface: impl Into<String>) -> Self {
+        let preface = preface.into();
+        if preface.trim().is_empty() {
+            return self;
+        }
+        self.preface = Some(preface);
+        self
     }
 }
 
@@ -573,7 +584,27 @@ pub fn shell_command(command: &str) -> Command {
 }
 
 fn prompt_revert_choice(prompt_context: &RevertPromptContext) -> Result<RevertDecision> {
+    let stdin = std::io::stdin();
+    let mut reader = BufReader::new(stdin.lock());
     let mut stderr = std::io::stderr();
+    prompt_revert_choice_with_io(prompt_context, &mut reader, &mut stderr)
+}
+
+pub(crate) fn prompt_revert_choice_with_io<R: BufRead, W: Write>(
+    prompt_context: &RevertPromptContext,
+    reader: &mut R,
+    writer: &mut W,
+) -> Result<RevertDecision> {
+    if let Some(preface) = prompt_context.preface.as_ref() {
+        if !preface.trim().is_empty() {
+            write!(writer, "{preface}")?;
+            if !preface.ends_with('\n') {
+                writeln!(writer)?;
+            }
+            writer.flush().ok();
+        }
+    }
+
     let mut prompt = format!(
         "{}: action? [1=keep (default), 2=revert, 3=other",
         prompt_context.label
@@ -582,11 +613,8 @@ fn prompt_revert_choice(prompt_context: &RevertPromptContext) -> Result<RevertDe
         prompt.push_str(", 4=keep+continue");
     }
     prompt.push_str("]: ");
-    eprint!("{prompt}");
-    stderr.flush().ok();
-
-    let stdin = std::io::stdin();
-    let mut reader = BufReader::new(stdin.lock());
+    write!(writer, "{prompt}")?;
+    writer.flush().ok();
 
     let mut input = String::new();
     reader.read_line(&mut input)?;
@@ -594,11 +622,12 @@ fn prompt_revert_choice(prompt_context: &RevertPromptContext) -> Result<RevertDe
     let mut decision = parse_revert_response(&input, prompt_context.allow_proceed);
 
     if matches!(decision, RevertDecision::Continue { ref message } if message.is_empty()) {
-        eprint!(
+        write!(
+            writer,
             "{}: enter message to send (empty => keep): ",
             prompt_context.label
-        );
-        stderr.flush().ok();
+        )?;
+        writer.flush().ok();
 
         let mut msg = String::new();
         reader.read_line(&mut msg)?;

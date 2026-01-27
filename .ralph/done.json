@@ -7112,6 +7112,51 @@
       "completed_at": "2026-01-27T17:18:28.242223000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0333",
+      "status": "done",
+      "title": "Scan: show validation error details before prompting for post-run action",
+      "priority": "high",
+      "tags": [
+        "cli",
+        "scan",
+        "validation",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/scan.rs",
+        "crates/ralph/src/runutil.rs",
+        "crates/ralph/src/runutil_tests.rs",
+        "docs/cli.md",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/commands/scan.rs`: post-run validation failure calls `apply_git_revert_mode` before building the `context`, so the revert prompt runs before the error text is attached.",
+        "`crates/ralph/src/runutil.rs`: `prompt_revert_choice` prints the action prompt to stderr immediately, explaining why the prompt appears before error details.",
+        "`crates/ralph/src/commands/scan.rs`: the safeguard stdout path is appended in `context` (\"Scan validation failed after run.\" + `safeguard_msg`) only after the prompt is handled."
+      ],
+      "plan": [
+        "Inspect scan post-run validation and revert prompting to confirm current output order.",
+        "Adjust the post-run validation error path to surface validation details (including safeguard path) before prompting for the post-run action.",
+        "Ensure revert prompt handlers (CLI/TUI) still behave correctly after the reorder.",
+        "Add/extend tests (near scan or in `crates/ralph/src/runutil_tests.rs`) asserting error details are emitted before the prompt for keep/revert paths.",
+        "Update `docs/cli.md` if the user-visible flow or example output changes.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Current post-run failure path in `scan.rs` defers message formatting until after prompting, so the prompt precedes the error output.",
+        "Show scan validation details before revert prompt via preface context.",
+        "TUI confirm-revert overlay renders preface above the action prompt.",
+        "Added prompt ordering tests and updated runutil_tests module docs.",
+        "make ci"
+      ],
+      "request": "There is a bug. When 'ralph scan' finishes with an invalid queue the user is not shown the reason until after selecting an option of what to do. See below:\n\"\"\"\nScan validation failure (post-run): action? [1=keep (default), 2=revert, 3=other]: 1Error: Scan validation failed after run. (raw stdout saved to /var/folders/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/ralph/ralph_scan_validation_error_bRLFdT/output.txt) Revert skipped (user chose to keep changes).: validate queue set after scan: task[0] created_at must be a valid RFC3339 UTC timestamp (got: 2026-01-27T16:03:39.3NZ, id=RQ-0146). Example: '2026-01-19T05:23:13.000000000Z'.: parse RFC3339 timestamp '2026-01-27T16:03:39.3NZ': the 'offset hour' component could not be parsed: the 'offset hour' component could not be parsed\n\"\"\"",
+      "created_at": "2026-01-27T16:34:33Z",
+      "updated_at": "2026-01-27T17:53:17.931772000Z",
+      "completed_at": "2026-01-27T17:53:17.931772000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

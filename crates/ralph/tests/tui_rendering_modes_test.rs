@@ -120,6 +120,7 @@ fn test_render_confirm_revert_dialog() {
     let (tx, _rx) = std::sync::mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
+        preface: None,
         allow_proceed: false,
         selected: 0,
         input: TextInput::new(""),

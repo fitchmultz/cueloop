@@ -435,6 +435,7 @@ fn test_handle_key_event_in_confirm_revert_reverts() {
     let (tx, rx) = mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
+        preface: None,
         allow_proceed: false,
         selected: 1,
         input: TextInput::new(""),
@@ -456,6 +457,7 @@ fn test_handle_key_event_in_confirm_revert_keeps() {
     let (tx, rx) = mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
+        preface: None,
         allow_proceed: false,
         selected: 0,
         input: TextInput::new(""),
@@ -477,6 +479,7 @@ fn test_handle_key_event_in_confirm_revert_continues_with_message() {
     let (tx, rx) = mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
+        preface: None,
         allow_proceed: false,
         selected: 2,
         input: TextInput::new("Please continue"),
@@ -503,6 +506,7 @@ fn test_handle_key_event_in_confirm_revert_requires_message() {
     let (tx, rx) = mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
+        preface: None,
         allow_proceed: false,
         selected: 2,
         input: TextInput::new(""),
@@ -524,6 +528,7 @@ fn test_handle_key_event_in_confirm_revert_enter_defaults_keep() {
     let (tx, rx) = mpsc::channel();
     app.mode = AppMode::ConfirmRevert {
         label: "Phase 2 CI failure".to_string(),
+        preface: None,
         allow_proceed: false,
         selected: 0,
         input: TextInput::new(""),

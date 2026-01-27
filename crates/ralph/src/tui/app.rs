@@ -1637,6 +1637,7 @@ pub(crate) enum RunnerEvent {
     /// Revert prompt requested by the runner.
     RevertPrompt {
         label: String,
+        preface: Option<String>,
         allow_proceed: bool,
         reply: mpsc::Sender<runutil::RevertDecision>,
     },
@@ -1693,6 +1694,7 @@ where
                 if tx_clone_for_prompt
                     .send(RunnerEvent::RevertPrompt {
                         label: context.label.clone(),
+                        preface: context.preface.clone(),
                         allow_proceed: context.allow_proceed,
                         reply: reply_tx,
                     })
@@ -1951,12 +1953,14 @@ where
                     }
                     RunnerEvent::RevertPrompt {
                         label,
+                        preface,
                         allow_proceed,
                         reply,
                     } => {
                         let previous_mode = app_ref.mode.clone();
                         app_ref.mode = AppMode::ConfirmRevert {
                             label,
+                            preface,
                             allow_proceed,
                             selected: 0,
                             input: TextInput::new(""),

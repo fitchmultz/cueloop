@@ -85,6 +85,7 @@ pub enum AppMode {
     /// Confirming revert of uncommitted changes.
     ConfirmRevert {
         label: String,
+        preface: Option<String>,
         allow_proceed: bool,
         selected: usize,
         input: TextInput,
@@ -144,6 +145,7 @@ impl PartialEq for AppMode {
             (
                 ConfirmRevert {
                     label: left_label,
+                    preface: left_preface,
                     allow_proceed: left_allow_proceed,
                     selected: left_selected,
                     input: left_input,
@@ -152,6 +154,7 @@ impl PartialEq for AppMode {
                 },
                 ConfirmRevert {
                     label: right_label,
+                    preface: right_preface,
                     allow_proceed: right_allow_proceed,
                     selected: right_selected,
                     input: right_input,
@@ -160,6 +163,7 @@ impl PartialEq for AppMode {
                 },
             ) => {
                 left_label == right_label
+                    && left_preface == right_preface
                     && left_allow_proceed == right_allow_proceed
                     && left_selected == right_selected
                     && left_input == right_input

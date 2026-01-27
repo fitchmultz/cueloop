@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0333",
-      "status": "todo",
-      "title": "Scan: show validation error details before prompting for post-run action",
-      "priority": "high",
-      "tags": [
-        "cli",
-        "scan",
-        "validation",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/",
-        "docs/cli.md",
-        "make ci"
-      ],
-      "evidence": [
-        "User report: when `ralph scan` finishes with an invalid queue, the validation error is only shown after the user selects a post-run action prompt.",
-        "User report example shows the error message printing after the prompt line, obscuring the reason until after selection."
-      ],
-      "plan": [
-        "Locate the scan post-run validation flow and the prompt that asks how to proceed on validation failure.",
-        "Reorder output so validation failure details are printed before prompting for the post-run action.",
-        "Ensure raw stdout error file path (if any) is still surfaced alongside the failure details.",
-        "Add tests that cover success and failure modes, asserting the error appears before the prompt text.",
-        "Update CLI docs/help examples if the user-visible flow changed.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "There is a bug. When 'ralph scan' finishes with an invalid queue the user is not shown the reason until after selecting an option of what to do. See below:\n\"\"\"\nScan validation failure (post-run): action? [1=keep (default), 2=revert, 3=other]: 1Error: Scan validation failed after run. (raw stdout saved to /var/folders/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/ralph/ralph_scan_validation_error_bRLFdT/output.txt) Revert skipped (user chose to keep changes).: validate queue set after scan: task[0] created_at must be a valid RFC3339 UTC timestamp (got: 2026-01-27T16:03:39.3NZ, id=RQ-0146). Example: '2026-01-19T05:23:13.000000000Z'.: parse RFC3339 timestamp '2026-01-27T16:03:39.3NZ': the 'offset hour' component could not be parsed: the 'offset hour' component could not be parsed\n\"\"\"",
-      "created_at": "2026-01-27T16:34:33Z",
-      "updated_at": "2026-01-27T16:34:33Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0325",
       "status": "todo",
       "title": "TUI: standardize confirm dialog keybindings (j/k, arrows, sensible defaults)",
