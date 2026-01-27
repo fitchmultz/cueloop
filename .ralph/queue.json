@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0322",
-      "status": "todo",
-      "title": "TUI: truncate/filter-summary rendering to avoid title overflow",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "ux",
-        "rendering",
-        "filters"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/app.rs",
-        "crates/ralph/src/tui/render/panels.rs",
-        "crates/ralph/src/tui/render/tests.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/tui/app.rs`: `filter_summary` can include multiple `scope=...` tokens and an unbounded `query=...` string.",
-        "`crates/ralph/src/tui/render/panels.rs`: task list title includes `filter_summary` with no truncation, so it can overflow/clamp on smaller terminals."
-      ],
-      "plan": [
-        "Change filter summary rendering to be width-aware and truncated (with ellipsis) when needed.",
-        "Prefer compact tokens (counts) over fully inlining long lists into the title.",
-        "Add tests covering long query/tag/scope summaries on small terminal widths.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T04:35:15Z",
-      "updated_at": "2026-01-27T04:35:15Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0323",
       "status": "todo",
       "title": "TUI: apply search/tag/scope filters live while typing (preview + cancel restore)",

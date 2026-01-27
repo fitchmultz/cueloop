@@ -12,7 +12,8 @@
 //! - Callers clamp input widths before rendering to avoid zero-width layouts.
 
 use crate::contracts::{TaskPriority, TaskStatus};
-use ratatui::style::Color;
+use crate::outpututil::truncate_chars;
+use ratatui::{style::Color, text::Span};
 
 /// Wrap text to fit within a given width.
 pub(super) fn wrap_text(text: &str, width: usize) -> Vec<String> {
@@ -65,4 +66,58 @@ pub(super) fn scroll_indicator(
         (end.saturating_mul(100)) / total_lines
     };
     Some(format!("({start}-{end}/{total_lines}, {percent}%)"))
+}
+
+pub(super) fn truncate_spans_with_ellipsis(
+    spans: &[Span<'static>],
+    max_width: usize,
+) -> Vec<Span<'static>> {
+    if max_width == 0 {
+        return Vec::new();
+    }
+
+    if spans_width(spans) <= max_width {
+        return spans.to_vec();
+    }
+
+    let ellipsis = "...";
+    let ellipsis_width = ellipsis.len();
+    if max_width <= ellipsis_width {
+        return vec![Span::raw(truncate_chars(ellipsis, max_width))];
+    }
+
+    let target_width = max_width.saturating_sub(ellipsis_width);
+    let mut out = Vec::new();
+    let mut used = 0usize;
+
+    for span in spans {
+        let width = span_width(span);
+        if used + width <= target_width {
+            out.push(span.clone());
+            used += width;
+            continue;
+        }
+
+        let remaining = target_width.saturating_sub(used);
+        if remaining > 0 {
+            out.push(truncate_span(span, remaining));
+        }
+        break;
+    }
+
+    out.push(Span::raw(ellipsis));
+    out
+}
+
+pub(super) fn spans_width(spans: &[Span<'static>]) -> usize {
+    spans.iter().map(span_width).sum()
+}
+
+pub(super) fn span_width(span: &Span<'static>) -> usize {
+    span.content.chars().count()
+}
+
+fn truncate_span(span: &Span<'static>, max_width: usize) -> Span<'static> {
+    let truncated = truncate_chars(span.content.as_ref(), max_width);
+    Span::styled(truncated, span.style)
 }

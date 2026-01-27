@@ -12,8 +12,9 @@
 //! - Caller provides layout areas that include borders.
 
 use super::super::{App, AppMode};
-use super::utils::{priority_color, scroll_indicator, status_color, wrap_text};
+use super::utils::{priority_color, scroll_indicator, spans_width, status_color, wrap_text};
 use crate::contracts::{TaskPriority, TaskStatus};
+use crate::outpututil::truncate_chars;
 use crate::tui::app::{DetailsContext, DetailsContextMode};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
@@ -149,58 +150,27 @@ pub(super) fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     } else {
         format!("{}", total_count)
     };
-    let filter_summary = app.filter_summary();
-
     let mut title_spans = vec![
         Span::styled("Tasks", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" ("),
         Span::styled(count_label, Style::default().fg(Color::DarkGray)),
-        Span::raw(") "),
-        Span::styled(
-            filter_summary.unwrap_or_default(),
-            Style::default().fg(Color::DarkGray),
-        ),
+        Span::raw(")"),
     ];
 
-    if app.runner_active {
-        title_spans.push(Span::raw(" "));
-        title_spans.push(Span::styled("|", Style::default().fg(Color::DarkGray)));
-        title_spans.push(Span::raw(" "));
-        title_spans.push(Span::styled(
-            "RUNNING",
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ));
-        if let Some(id) = app.running_task_id.as_deref() {
+    let suffix_spans = task_list_suffix_spans(app);
+    let title_width = area.width.saturating_sub(2) as usize;
+    let base_width = spans_width(&title_spans);
+    let suffix_width = spans_width(&suffix_spans);
+    let available = title_width.saturating_sub(base_width.saturating_add(suffix_width));
+
+    if available > 1 {
+        if let Some(summary) = filter_summary_for_width(app, available.saturating_sub(1)) {
             title_spans.push(Span::raw(" "));
-            title_spans.push(Span::styled(id, Style::default().fg(Color::Cyan)));
+            title_spans.push(Span::styled(summary, Style::default().fg(Color::DarkGray)));
         }
     }
 
-    if app.loop_active {
-        title_spans.push(Span::raw(" "));
-        title_spans.push(Span::styled("|", Style::default().fg(Color::DarkGray)));
-        title_spans.push(Span::raw(" "));
-        title_spans.push(Span::styled(
-            "LOOP",
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ));
-        title_spans.push(Span::raw(" "));
-        title_spans.push(Span::styled(
-            format!("ran {}", app.loop_ran),
-            Style::default().fg(Color::Yellow),
-        ));
-        if let Some(max) = app.loop_max_tasks {
-            title_spans.push(Span::raw("/"));
-            title_spans.push(Span::styled(
-                format!("{}", max),
-                Style::default().fg(Color::Yellow),
-            ));
-        }
-    }
+    title_spans.extend(suffix_spans);
 
     let title = Line::from(title_spans);
 
@@ -265,6 +235,105 @@ pub(super) fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     state.select(selected_in_view);
 
     f.render_stateful_widget(list, area, &mut state);
+}
+
+fn task_list_suffix_spans(app: &App) -> Vec<Span<'static>> {
+    let mut spans = Vec::new();
+
+    if app.runner_active {
+        push_title_separator(&mut spans);
+        spans.push(Span::styled(
+            "RUNNING",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ));
+        if let Some(id) = app.running_task_id.as_deref() {
+            spans.push(Span::raw(" "));
+            spans.push(Span::styled(
+                id.to_string(),
+                Style::default().fg(Color::Cyan),
+            ));
+        }
+    }
+
+    if app.loop_active {
+        push_title_separator(&mut spans);
+        spans.push(Span::styled(
+            "LOOP",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ));
+        spans.push(Span::raw(" "));
+        spans.push(Span::styled(
+            format!("ran {}", app.loop_ran),
+            Style::default().fg(Color::Yellow),
+        ));
+        if let Some(max) = app.loop_max_tasks {
+            spans.push(Span::raw("/"));
+            spans.push(Span::styled(
+                format!("{}", max),
+                Style::default().fg(Color::Yellow),
+            ));
+        }
+    }
+
+    spans
+}
+
+fn push_title_separator(spans: &mut Vec<Span<'static>>) {
+    spans.push(Span::raw(" "));
+    spans.push(Span::styled("|", Style::default().fg(Color::DarkGray)));
+    spans.push(Span::raw(" "));
+}
+
+fn filter_summary_for_width(app: &App, max_width: usize) -> Option<String> {
+    if max_width == 0 || !app.has_active_filters() {
+        return None;
+    }
+
+    let mut parts = Vec::new();
+
+    match app.filters.statuses.len() {
+        0 => {}
+        1 => {
+            let status = app.filters.statuses[0].as_str();
+            parts.push(format!("status={status}"));
+        }
+        count => parts.push(format!("status={count}")),
+    }
+
+    match app.filters.tags.len() {
+        0 => {}
+        1 => parts.push(format!("tags={}", app.filters.tags[0])),
+        count => parts.push(format!("tags={count}")),
+    }
+
+    let query = app.filters.query.trim();
+    if !query.is_empty() {
+        parts.push(format!("query={query}"));
+    }
+
+    match app.filters.search_options.scopes.len() {
+        0 => {}
+        1 => parts.push(format!("scope={}", app.filters.search_options.scopes[0])),
+        count => parts.push(format!("scopes={count}")),
+    }
+
+    if app.filters.search_options.use_regex {
+        parts.push("regex".to_string());
+    }
+    if app.filters.search_options.case_sensitive {
+        parts.push("case-sensitive".to_string());
+    }
+
+    if parts.is_empty() {
+        return None;
+    }
+
+    let summary = format!("filters: {}", parts.join(" "));
+    Some(truncate_chars(&summary, max_width))
 }
 
 /// Draw the task details panel.
@@ -814,8 +883,7 @@ pub(super) fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         return;
     }
 
-    let filter_hint = app
-        .filter_summary()
+    let filter_hint = filter_summary_for_width(app, inner.width as usize)
         .unwrap_or_else(|| "filters active".to_string());
     let filter_summary = filter_hint.clone();
     let lines = vec![

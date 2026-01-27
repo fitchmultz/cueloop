@@ -14,6 +14,7 @@
 
 use super::super::events::types::ConfirmDiscardAction;
 use super::super::{keymap, App, AppMode};
+use super::utils::{spans_width, truncate_spans_with_ellipsis};
 use crate::outpututil::truncate_chars;
 use ratatui::{
     layout::{Alignment, Rect},
@@ -242,55 +243,4 @@ fn push_separator(
     spans.push(Span::raw(" "));
     *remaining = remaining.saturating_sub(3);
     true
-}
-
-fn truncate_spans_with_ellipsis(spans: &[Span<'static>], max_width: usize) -> Vec<Span<'static>> {
-    if max_width == 0 {
-        return Vec::new();
-    }
-
-    if spans_width(spans) <= max_width {
-        return spans.to_vec();
-    }
-
-    let ellipsis = "...";
-    let ellipsis_width = ellipsis.len();
-    if max_width <= ellipsis_width {
-        return vec![Span::raw(truncate_chars(ellipsis, max_width))];
-    }
-
-    let target_width = max_width.saturating_sub(ellipsis_width);
-    let mut out = Vec::new();
-    let mut used = 0usize;
-
-    for span in spans {
-        let width = span_width(span);
-        if used + width <= target_width {
-            out.push(span.clone());
-            used += width;
-            continue;
-        }
-
-        let remaining = target_width.saturating_sub(used);
-        if remaining > 0 {
-            out.push(truncate_span(span, remaining));
-        }
-        break;
-    }
-
-    out.push(Span::raw(ellipsis));
-    out
-}
-
-fn truncate_span(span: &Span<'static>, max_width: usize) -> Span<'static> {
-    let truncated = truncate_chars(span.content.as_ref(), max_width);
-    Span::styled(truncated, span.style)
-}
-
-fn spans_width(spans: &[Span<'static>]) -> usize {
-    spans.iter().map(span_width).sum()
-}
-
-fn span_width(span: &Span<'static>) -> usize {
-    span.content.chars().count()
 }

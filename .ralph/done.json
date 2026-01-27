@@ -6843,6 +6843,47 @@
       "completed_at": "2026-01-27T13:26:14.874849000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0322",
+      "status": "done",
+      "title": "TUI: truncate/filter-summary rendering to avoid title overflow",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "rendering",
+        "filters"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/render/panels.rs",
+        "crates/ralph/src/tui/render/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/app.rs`: `filter_summary` concatenates the full tag list (`tags=...`), the full query string (`query=...`), and every scope entry (`scope=...`) without any length limit.",
+        "`crates/ralph/src/tui/render/panels.rs`: `draw_task_list` injects `filter_summary` directly into the task list title spans and passes them to `Block::title` without width-aware truncation."
+      ],
+      "plan": [
+        "Add a width-aware filter summary formatter that prefers compact tokens (counts) and truncates with ellipsis when needed.",
+        "Use the width-aware summary in the task list title (and reuse it for the filtered-empty hint to keep behavior consistent).",
+        "Add render tests that cover long query/tag/scope summaries on narrow widths and assert ellipsis/compact output.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Existing truncation helpers live in `crates/ralph/src/outpututil.rs` and `crates/ralph/src/tui/render/footer.rs`; reuse or centralize rather than duplicating logic.",
+        "Add width-aware filter summaries for TUI list title and filtered-empty hint",
+        "Centralize span truncation helpers in render utils",
+        "Add rendering tests for narrow title truncation and compact summaries",
+        "CI: make ci"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T13:53:25.587193000Z",
+      "completed_at": "2026-01-27T13:53:25.587193000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -467,6 +467,135 @@ fn task_details_scroll_offsets_visible_content() {
 }
 
 #[test]
+fn task_list_title_truncates_filter_summary_on_narrow_width() {
+    use ratatui::{
+        backend::TestBackend,
+        layout::{Constraint, Direction, Layout, Rect},
+        Terminal,
+    };
+
+    let backend = TestBackend::new(50, 10);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(make_task_list_queue());
+    app.filters.statuses = vec![TaskStatus::Todo, TaskStatus::Doing];
+    app.set_tag_filters(vec![
+        "alpha".to_string(),
+        "beta".to_string(),
+        "gamma".to_string(),
+    ]);
+    app.set_scope_filters(vec!["crates/ralph".to_string(), "docs".to_string()]);
+    app.set_search_query("a very long query that should be truncated".to_string());
+    app.filters.search_options.use_regex = true;
+    app.filters.search_options.case_sensitive = true;
+    app.rebuild_filtered_view();
+
+    terminal
+        .draw(|f| tui::draw_ui(f, &mut app))
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let area = Rect {
+        x: 0,
+        y: 0,
+        width: buffer.area.width,
+        height: buffer.area.height,
+    };
+    let outer = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(2), Constraint::Length(1)].as_ref())
+        .split(area);
+    let main = outer[0];
+    let chunks = if main.width < 90 {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+            .split(main)
+    } else {
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+            .split(main)
+    };
+    let list_area = chunks[0];
+    let title_line = buffer_line(buffer, list_area.x, list_area.y, list_area.width);
+
+    assert!(title_line.contains("filters:"));
+    assert!(title_line.contains("tags=3"));
+    assert!(title_line.contains("..."));
+    assert!(
+        !title_line.contains("alpha"),
+        "expected compact tag counts, got: {title_line:?}"
+    );
+}
+
+#[test]
+fn filtered_empty_hint_uses_compact_filter_summary() {
+    use ratatui::{
+        backend::TestBackend,
+        layout::{Constraint, Direction, Layout, Rect},
+        Terminal,
+    };
+
+    let backend = TestBackend::new(80, 12);
+    let mut terminal = Terminal::new(backend).expect("create terminal");
+    let mut app = App::new(make_task_list_queue());
+    app.filters.statuses = vec![TaskStatus::Todo, TaskStatus::Doing];
+    app.set_tag_filters(vec![
+        "alpha".to_string(),
+        "beta".to_string(),
+        "gamma".to_string(),
+    ]);
+    app.set_scope_filters(vec!["crates/ralph".to_string(), "docs".to_string()]);
+    app.set_search_query("needle".to_string());
+    app.filters.search_options.use_regex = true;
+    app.filters.search_options.case_sensitive = true;
+    app.rebuild_filtered_view();
+    assert_eq!(app.filtered_len(), 0);
+
+    terminal
+        .draw(|f| tui::draw_ui(f, &mut app))
+        .expect("draw ui");
+
+    let buffer = terminal.backend().buffer();
+    let area = Rect {
+        x: 0,
+        y: 0,
+        width: buffer.area.width,
+        height: buffer.area.height,
+    };
+    let outer = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(2), Constraint::Length(1)].as_ref())
+        .split(area);
+    let main = outer[0];
+    let chunks = if main.width < 90 {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+            .split(main)
+    } else {
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
+            .split(main)
+    };
+    let details_area = chunks[1];
+    let inner = details_area.inner(Margin {
+        horizontal: 1,
+        vertical: 1,
+    });
+    let summary_line = buffer_line(buffer, inner.x, inner.y + 2, inner.width);
+
+    assert!(summary_line.contains("filters:"));
+    assert!(summary_line.contains("tags=3"));
+    assert!(summary_line.contains("scopes=2"));
+    assert!(
+        !summary_line.contains("alpha"),
+        "expected compact tag counts, got: {summary_line:?}"
+    );
+}
+
+#[test]
 fn executing_view_updates_visible_lines_cache() {
     use ratatui::{backend::TestBackend, Terminal};
 
