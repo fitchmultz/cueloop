@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0313",
-      "status": "todo",
-      "title": "TUI: prevent data loss on reload/quit when dirty",
-      "priority": "critical",
-      "tags": [
-        "tui",
-        "ux",
-        "bug",
-        "data-loss"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/app.rs",
-        "crates/ralph/src/tui/events/normal.rs",
-        "crates/ralph/src/tui/events/types.rs",
-        "crates/ralph/src/tui/events/confirm.rs",
-        "crates/ralph/src/tui/render/overlays.rs",
-        "crates/ralph/src/tui/events/tests.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "`crates/ralph/src/tui/events/normal.rs`: `r` returns `TuiAction::ReloadQueue` with no confirmation.",
-        "`crates/ralph/src/tui/app.rs`: `reload_queues_from_disk` clears `dirty`, `dirty_done`, and `save_error` after reload.",
-        "`crates/ralph/src/tui/app.rs`: `PaletteCommand::Quit` only prompts when `runner_active`, not when there are unsaved changes or `save_error`."
-      ],
-      "plan": [
-        "Define what counts as unsafe-to-discard (dirty flags and/or save_error).",
-        "Add a confirmation mode for discarding local state (reload/quit).",
-        "Gate `ReloadQueue` and `Quit` behind the new confirmation when unsafe.",
-        "Ensure confirmation UI clearly states what will be discarded.",
-        "Add tests covering reload/quit prompts and confirm/cancel flows.",
-        "Run `make ci`."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T04:35:15Z",
-      "updated_at": "2026-01-27T04:35:15Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0314",
       "status": "todo",
       "title": "TUI: pass KeyEvent (modifiers) through event pipeline + Ctrl shortcuts",

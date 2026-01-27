@@ -1,3 +1,17 @@
+//! Normal-mode key handling for the TUI.
+//!
+//! Responsibilities:
+//! - Map single-key shortcuts into TUI actions or mode transitions.
+//! - Route shared actions through palette command execution for consistency.
+//!
+//! Not handled here:
+//! - Confirmation dialogs or other modal key handling.
+//! - Rendering logic.
+//!
+//! Invariants/assumptions:
+//! - `App` state mutations are safe to perform immediately on key press.
+//! - Shared commands should use `execute_palette_command` for unified gating.
+
 use super::super::AppMode;
 use super::types::TuiAction;
 use super::App;
@@ -118,7 +132,7 @@ pub(super) fn handle_normal_mode_key(
         KeyCode::Char('p') => {
             app.execute_palette_command(PaletteCommand::CyclePriority, now_rfc3339)
         }
-        KeyCode::Char('r') => Ok(TuiAction::ReloadQueue),
+        KeyCode::Char('r') => app.execute_palette_command(PaletteCommand::ReloadQueue, now_rfc3339),
         KeyCode::Char('R') => app.execute_palette_command(PaletteCommand::ToggleRegex, now_rfc3339),
         _ => Ok(TuiAction::Continue),
     }

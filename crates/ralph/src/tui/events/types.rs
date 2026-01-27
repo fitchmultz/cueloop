@@ -1,3 +1,17 @@
+//! TUI event types and interaction modes.
+//!
+//! Responsibilities:
+//! - Define `TuiAction` values returned by key handling.
+//! - Define `AppMode` and related enums that model TUI state.
+//!
+//! Not handled here:
+//! - Event dispatch logic (see `tui/events/mod.rs`).
+//! - Rendering or side effects.
+//!
+//! Invariants/assumptions:
+//! - `AppMode` variants fully describe UI state used by handlers and renderers.
+//! - Public enums remain stable for callers constructing or matching on modes.
+
 use std::sync::mpsc;
 
 use crate::runutil::RevertDecision;
@@ -17,6 +31,15 @@ pub enum TuiAction {
     RunTask(String),
     /// Trigger task builder agent with the given description
     BuildTask(String),
+}
+
+/// Actions that can discard unsaved changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfirmDiscardAction {
+    /// Reload queues from disk.
+    ReloadQueue,
+    /// Quit the TUI.
+    Quit,
 }
 
 /// Interaction modes for the TUI.
@@ -56,6 +79,8 @@ pub enum AppMode {
     ConfirmArchive,
     /// Confirming quit while a task is running
     ConfirmQuit,
+    /// Confirming discard of unsaved changes before reload/quit.
+    ConfirmDiscard { action: ConfirmDiscardAction },
     /// Confirming revert of uncommitted changes.
     ConfirmRevert {
         label: String,
@@ -114,6 +139,7 @@ impl PartialEq for AppMode {
             (ConfirmDelete, ConfirmDelete) => true,
             (ConfirmArchive, ConfirmArchive) => true,
             (ConfirmQuit, ConfirmQuit) => true,
+            (ConfirmDiscard { action: left }, ConfirmDiscard { action: right }) => left == right,
             (
                 ConfirmRevert {
                     label: left_label,

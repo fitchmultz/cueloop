@@ -5,6 +5,7 @@
 mod test_support;
 mod tui_rendering_support;
 
+use ralph::tui::ConfirmDiscardAction;
 use ralph::tui::{App, AppMode};
 use test_support::make_render_test_queue as make_test_queue;
 use tui_rendering_support::{get_rendered_output, setup_test_terminal};
@@ -89,6 +90,36 @@ fn test_render_help_footer_confirm_quit_mode() {
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("y:quit"));
     assert!(output.contains("n:stay"));
+    assert!(output.contains("Esc:cancel"));
+}
+
+#[test]
+fn test_render_help_footer_confirm_discard_reload_mode() {
+    let queue = make_test_queue();
+    let mut app = App::new(queue);
+    app.mode = AppMode::ConfirmDiscard {
+        action: ConfirmDiscardAction::ReloadQueue,
+    };
+    let mut terminal = setup_test_terminal(80, 24);
+
+    let output = get_rendered_output(&mut terminal, &mut app);
+    assert!(output.contains("y:reload"));
+    assert!(output.contains("n:cancel"));
+    assert!(output.contains("Esc:cancel"));
+}
+
+#[test]
+fn test_render_help_footer_confirm_discard_quit_mode() {
+    let queue = make_test_queue();
+    let mut app = App::new(queue);
+    app.mode = AppMode::ConfirmDiscard {
+        action: ConfirmDiscardAction::Quit,
+    };
+    let mut terminal = setup_test_terminal(80, 24);
+
+    let output = get_rendered_output(&mut terminal, &mut app);
+    assert!(output.contains("y:quit"));
+    assert!(output.contains("n:cancel"));
     assert!(output.contains("Esc:cancel"));
 }
 

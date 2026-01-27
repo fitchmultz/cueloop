@@ -30,7 +30,9 @@ use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
 
-use super::events::{handle_key_event, AppMode, PaletteCommand, PaletteEntry, TuiAction};
+use super::events::{
+    handle_key_event, AppMode, ConfirmDiscardAction, PaletteCommand, PaletteEntry, TuiAction,
+};
 use super::render::draw_ui;
 
 /// Options that control how the TUI boots.
@@ -249,6 +251,10 @@ impl App {
 
     pub fn set_status_message(&mut self, message: impl Into<String>) {
         self.status_message = Some(message.into());
+    }
+
+    pub(crate) fn unsafe_to_discard(&self) -> bool {
+        self.dirty || self.dirty_done || self.dirty_config || self.save_error.is_some()
     }
 
     pub(crate) fn bump_queue_rev(&mut self) {
@@ -998,7 +1004,16 @@ impl App {
                 self.toggle_regex();
                 Ok(TuiAction::Continue)
             }
-            PaletteCommand::ReloadQueue => Ok(TuiAction::ReloadQueue),
+            PaletteCommand::ReloadQueue => {
+                if self.unsafe_to_discard() {
+                    self.mode = AppMode::ConfirmDiscard {
+                        action: ConfirmDiscardAction::ReloadQueue,
+                    };
+                    Ok(TuiAction::Continue)
+                } else {
+                    Ok(TuiAction::ReloadQueue)
+                }
+            }
             PaletteCommand::MoveTaskUp => {
                 if let Err(e) = self.move_task_up(now_rfc3339) {
                     self.set_status_message(format!("Error: {}", e));
@@ -1014,6 +1029,11 @@ impl App {
             PaletteCommand::Quit => {
                 if self.runner_active {
                     self.mode = AppMode::ConfirmQuit;
+                    Ok(TuiAction::Continue)
+                } else if self.unsafe_to_discard() {
+                    self.mode = AppMode::ConfirmDiscard {
+                        action: ConfirmDiscardAction::Quit,
+                    };
                     Ok(TuiAction::Continue)
                 } else {
                     Ok(TuiAction::Quit)

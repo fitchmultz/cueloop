@@ -1,3 +1,18 @@
+//! Footer rendering for the TUI.
+//!
+//! Responsibilities:
+//! - Render the bottom help/status line for each TUI mode.
+//! - Surface save errors and status messages alongside key hints.
+//!
+//! Not handled here:
+//! - Main panel rendering or modal overlays.
+//! - Input handling logic.
+//!
+//! Invariants/assumptions:
+//! - Footer text is short enough to truncate gracefully on narrow terminals.
+//! - Caller supplies the footer area row.
+
+use super::super::events::types::ConfirmDiscardAction;
 use super::super::{App, AppMode};
 use ratatui::{
     layout::{Alignment, Rect},
@@ -165,6 +180,20 @@ pub(super) fn help_footer_spans(app: &App) -> Vec<Span<'static>> {
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
         ],
+        AppMode::ConfirmDiscard { action } => {
+            let yes_label = match action {
+                ConfirmDiscardAction::ReloadQueue => "reload",
+                ConfirmDiscardAction::Quit => "quit",
+            };
+            vec![
+                Span::styled("y", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(":{} ", yes_label)),
+                Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(":cancel "),
+                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(":cancel"),
+            ]
+        }
         AppMode::ConfirmRevert { .. } => vec![
             Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":select "),

@@ -29,7 +29,7 @@ pub mod search;
 pub mod types;
 
 pub use palette::{PaletteCommand, PaletteEntry};
-pub use types::{AppMode, TuiAction};
+pub use types::{AppMode, ConfirmDiscardAction, TuiAction};
 
 #[cfg(test)]
 mod tests;
@@ -72,6 +72,7 @@ pub fn handle_key_event(
         AppMode::ConfirmDelete => confirm::handle_confirm_delete_key(app, key),
         AppMode::ConfirmArchive => confirm::handle_confirm_archive_key(app, key, now_rfc3339),
         AppMode::ConfirmQuit => confirm::handle_confirm_quit_key(app, key),
+        AppMode::ConfirmDiscard { action } => confirm::handle_confirm_discard_key(app, key, action),
         AppMode::ConfirmRevert {
             label,
             allow_proceed,

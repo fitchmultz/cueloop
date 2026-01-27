@@ -10,6 +10,7 @@
 //! Public API is preserved via `crate::tui::draw_ui` re-exporting
 //! `render::draw_ui`.
 
+use super::events::types::ConfirmDiscardAction;
 use super::{App, AppMode};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
@@ -95,6 +96,13 @@ pub fn draw_ui(f: &mut Frame<'_>, app: &mut App) {
         }
         AppMode::ConfirmQuit => {
             overlays::draw_confirm_dialog(f, size, "Task still running. Quit?", "(y/n)");
+        }
+        AppMode::ConfirmDiscard { action } => {
+            let message = match action {
+                ConfirmDiscardAction::ReloadQueue => "Reload and discard unsaved changes?",
+                ConfirmDiscardAction::Quit => "Quit and discard unsaved changes?",
+            };
+            overlays::draw_confirm_dialog(f, size, message, "(y/n)");
         }
         AppMode::ConfirmRevert {
             label,

@@ -11,6 +11,8 @@ mod tests;
 
 pub use app::{prepare_tui_session, run_tui, App, FilterState, RunningKind, TuiOptions};
 pub use config_edit::{ConfigEntry, ConfigFieldKind, ConfigKey};
-pub use events::{handle_key_event, AppMode, PaletteCommand, PaletteEntry, TuiAction};
+pub use events::{
+    handle_key_event, AppMode, ConfirmDiscardAction, PaletteCommand, PaletteEntry, TuiAction,
+};
 pub use render::draw_ui;
 pub use task_edit::{TaskEditEntry, TaskEditKind};

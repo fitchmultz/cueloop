@@ -1,5 +1,19 @@
+//! Confirmation-mode key handling for the TUI.
+//!
+//! Responsibilities:
+//! - Handle key input for destructive/confirm dialogs.
+//! - Translate confirm/cancel actions into `TuiAction` values.
+//!
+//! Not handled here:
+//! - Rendering of confirmation dialogs.
+//! - Non-confirmation input handling.
+//!
+//! Invariants/assumptions:
+//! - Confirmation modes always return to `AppMode::Normal` on cancel.
+//! - Confirm actions are idempotent at the `TuiAction` level.
+
 use super::super::AppMode;
-use super::types::TuiAction;
+use super::types::{ConfirmDiscardAction, TuiAction};
 use super::App;
 use crate::runutil::RevertDecision;
 use anyhow::Result;
@@ -50,6 +64,28 @@ pub(super) fn handle_confirm_archive_key(
 pub(super) fn handle_confirm_quit_key(app: &mut App, key: KeyCode) -> Result<TuiAction> {
     match key {
         KeyCode::Char('y') | KeyCode::Char('Y') => Ok(TuiAction::Quit),
+        KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        _ => Ok(TuiAction::Continue),
+    }
+}
+
+/// Handle key events in ConfirmDiscard mode.
+pub(super) fn handle_confirm_discard_key(
+    app: &mut App,
+    key: KeyCode,
+    action: ConfirmDiscardAction,
+) -> Result<TuiAction> {
+    match key {
+        KeyCode::Char('y') | KeyCode::Char('Y') => {
+            app.mode = AppMode::Normal;
+            Ok(match action {
+                ConfirmDiscardAction::ReloadQueue => TuiAction::ReloadQueue,
+                ConfirmDiscardAction::Quit => TuiAction::Quit,
+            })
+        }
         KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
             app.mode = AppMode::Normal;
             Ok(TuiAction::Continue)

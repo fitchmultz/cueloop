@@ -1,3 +1,17 @@
+//! TUI modal/overlay rendering helpers.
+//!
+//! Responsibilities:
+//! - Render modal overlays such as help, palettes, editors, and confirmations.
+//! - Keep overlay layout consistent with TUI styling conventions.
+//!
+//! Not handled here:
+//! - Event handling for overlay interaction.
+//! - Base layout panels or footer rendering.
+//!
+//! Invariants/assumptions:
+//! - Callers provide terminal areas sized for the current frame.
+//! - Overlay drawing clears the underlying area before rendering content.
+
 use super::super::{App, ConfigFieldKind, TaskEditKind};
 use crate::outpututil::truncate_chars;
 use ratatui::{

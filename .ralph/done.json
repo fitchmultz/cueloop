@@ -6419,6 +6419,54 @@
       "completed_at": "2026-01-27T04:23:05.570030000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0313",
+      "status": "done",
+      "title": "TUI: prevent data loss on reload/quit when dirty",
+      "priority": "critical",
+      "tags": [
+        "tui",
+        "ux",
+        "bug",
+        "data-loss"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/mod.rs",
+        "crates/ralph/src/tui/events/normal.rs",
+        "crates/ralph/src/tui/events/types.rs",
+        "crates/ralph/src/tui/events/confirm.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/events/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/events/normal.rs`: `KeyCode::Char('r')` returns `TuiAction::ReloadQueue` without any dirty/save_error checks.",
+        "`crates/ralph/src/tui/app.rs`: `execute_palette_command` maps `PaletteCommand::ReloadQueue` straight to `TuiAction::ReloadQueue` (no confirmation).",
+        "`crates/ralph/src/tui/app.rs`: `PaletteCommand::Quit` only enters `ConfirmQuit` when `runner_active`, otherwise it returns `TuiAction::Quit` even if changes are unsaved.",
+        "`crates/ralph/src/tui/app.rs`: `reload_queues_from_disk` resets `dirty`, `dirty_done`, and `save_error` after loading."
+      ],
+      "plan": [
+        "Define a single `unsafe_to_discard` predicate (dirty/dirty_done/dirty_config or save_error) for reload/quit decisions.",
+        "Introduce a confirm-discard mode (reload vs quit) in `AppMode` and route it through event dispatch.",
+        "Gate `ReloadQueue` and `Quit` (including palette commands) behind the confirm mode when unsafe.",
+        "Render a confirmation dialog that names the action and what will be lost.",
+        "Add tests for reload/quit prompting, confirm, and cancel flows when dirty or save_error is set.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Gate reload/quit behind confirm-discard when unsafe_to_discard is true",
+        "Add ConfirmDiscard mode/action wiring plus dialog/footer messaging",
+        "Add event + rendering tests for confirm-discard flows",
+        "make ci clean"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-27T05:19:53.947706000Z",
+      "completed_at": "2026-01-27T05:19:53.947706000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
