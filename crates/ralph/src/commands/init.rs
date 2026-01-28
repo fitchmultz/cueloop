@@ -27,6 +27,10 @@ const DEFAULT_RALPH_README: &str = include_str!(concat!(
     "/assets/ralph_readme.md"
 ));
 
+/// Current version of the embedded README template.
+/// Increment this when updating the template to trigger update detection.
+pub const README_VERSION: u32 = 2;
+
 /// Options for initializing Ralph files.
 pub struct InitOptions {
     /// Overwrite existing files if they already exist.
@@ -35,6 +39,8 @@ pub struct InitOptions {
     pub force_lock: bool,
     /// Run interactive onboarding wizard.
     pub interactive: bool,
+    /// Update README if it exists (force overwrite with latest template).
+    pub update_readme: bool,
 }
 
 /// Answers collected from the interactive wizard.
@@ -74,6 +80,23 @@ impl Default for WizardAnswers {
 pub enum FileInitStatus {
     Created,
     Valid,
+    Updated,
+}
+
+/// Result of checking if README is current.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReadmeCheckResult {
+    /// README is current with the specified version.
+    Current(u32),
+    /// README is outdated (has older version).
+    Outdated {
+        current_version: u32,
+        embedded_version: u32,
+    },
+    /// README is missing.
+    Missing,
+    /// README not applicable (prompts don't reference it).
+    NotApplicable,
 }
 
 #[derive(Debug)]
@@ -81,7 +104,8 @@ pub struct InitReport {
     pub queue_status: FileInitStatus,
     pub done_status: FileInitStatus,
     pub config_status: FileInitStatus,
-    pub readme_status: Option<FileInitStatus>,
+    /// (status, version) tuple - version is Some if README was read/created
+    pub readme_status: Option<(FileInitStatus, Option<u32>)>,
 }
 
 pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitReport> {
@@ -119,7 +143,8 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
     let mut readme_status = None;
     if prompts::prompts_reference_readme(&resolved.repo_root)? {
         let readme_path = resolved.repo_root.join(".ralph/README.md");
-        readme_status = Some(write_readme(&readme_path, opts.force)?);
+        let (status, version) = write_readme(&readme_path, opts.force, opts.update_readme)?;
+        readme_status = Some((status, version));
     }
 
     // Print completion message for interactive mode
@@ -570,16 +595,91 @@ fn write_config(
     Ok(FileInitStatus::Created)
 }
 
-fn write_readme(path: &Path, force: bool) -> Result<FileInitStatus> {
-    if path.exists() && !force {
-        return Ok(FileInitStatus::Valid);
+/// Extract version from README content.
+/// Looks for `<!-- RALPH_README_VERSION: X -->` marker.
+fn extract_readme_version(content: &str) -> Option<u32> {
+    // Look for version marker: <!-- RALPH_README_VERSION: X -->
+    let marker_start = "<!-- RALPH_README_VERSION:";
+    if let Some(start_idx) = content.find(marker_start) {
+        let after_marker = &content[start_idx + marker_start.len()..];
+        if let Some(end_idx) = after_marker.find("-->") {
+            let version_str = &after_marker[..end_idx];
+            return version_str.trim().parse::<u32>().ok();
+        }
     }
+    // Legacy: no version marker means version 1
+    Some(1)
+}
+
+/// Check if README is current without modifying it.
+/// Returns the check result with version information.
+pub fn check_readme_current(resolved: &config::Resolved) -> Result<ReadmeCheckResult> {
+    // First check if README is applicable
+    if !prompts::prompts_reference_readme(&resolved.repo_root)? {
+        return Ok(ReadmeCheckResult::NotApplicable);
+    }
+
+    let readme_path = resolved.repo_root.join(".ralph/README.md");
+
+    if !readme_path.exists() {
+        return Ok(ReadmeCheckResult::Missing);
+    }
+
+    let content = fs::read_to_string(&readme_path)
+        .with_context(|| format!("read {}", readme_path.display()))?;
+
+    let current_version = extract_readme_version(&content).unwrap_or(1);
+
+    if current_version >= README_VERSION {
+        Ok(ReadmeCheckResult::Current(current_version))
+    } else {
+        Ok(ReadmeCheckResult::Outdated {
+            current_version,
+            embedded_version: README_VERSION,
+        })
+    }
+}
+
+fn write_readme(path: &Path, force: bool, update: bool) -> Result<(FileInitStatus, Option<u32>)> {
+    if path.exists() && !force && !update {
+        // Check version for reporting purposes
+        let content =
+            fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+        let version = extract_readme_version(&content);
+        return Ok((FileInitStatus::Valid, version));
+    }
+
+    // Check if we need to update (version mismatch)
+    let should_update = if update && path.exists() && !force {
+        let content =
+            fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+        let current_version = extract_readme_version(&content).unwrap_or(1);
+        current_version < README_VERSION
+    } else {
+        true // Create new or force overwrite
+    };
+
+    if !should_update {
+        // Version is current, no update needed
+        let content =
+            fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+        let version = extract_readme_version(&content);
+        return Ok((FileInitStatus::Valid, version));
+    }
+
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
     }
+
+    let is_update = path.exists();
     fsutil::write_atomic(path, DEFAULT_RALPH_README.as_bytes())
         .with_context(|| format!("write readme {}", path.display()))?;
-    Ok(FileInitStatus::Created)
+
+    if is_update {
+        Ok((FileInitStatus::Updated, Some(README_VERSION)))
+    } else {
+        Ok((FileInitStatus::Created, Some(README_VERSION)))
+    }
 }
 
 #[cfg(test)]
@@ -615,12 +715,16 @@ mod tests {
                 force: false,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         )?;
         assert_eq!(report.queue_status, FileInitStatus::Created);
         assert_eq!(report.done_status, FileInitStatus::Created);
         assert_eq!(report.config_status, FileInitStatus::Created);
-        assert_eq!(report.readme_status, Some(FileInitStatus::Created));
+        assert!(matches!(
+            report.readme_status,
+            Some((FileInitStatus::Created, Some(2)))
+        ));
         let queue = crate::queue::load_queue(&resolved.queue_path)?;
         assert_eq!(queue.version, 1);
         let done = crate::queue::load_queue(&resolved.done_path)?;
@@ -645,6 +749,7 @@ mod tests {
                 force: false,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         )?;
         let readme_path = resolved.repo_root.join(".ralph/README.md");
@@ -717,12 +822,16 @@ mod tests {
                 force: false,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         )?;
         assert_eq!(report.queue_status, FileInitStatus::Valid);
         assert_eq!(report.done_status, FileInitStatus::Valid);
         assert_eq!(report.config_status, FileInitStatus::Valid);
-        assert_eq!(report.readme_status, Some(FileInitStatus::Created));
+        assert!(matches!(
+            report.readme_status,
+            Some((FileInitStatus::Created, Some(2)))
+        ));
         let raw = std::fs::read_to_string(&resolved.queue_path)?;
         assert!(raw.contains("Keep"));
         let done_raw = std::fs::read_to_string(&resolved.done_path)?;
@@ -747,12 +856,16 @@ mod tests {
                 force: true,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         )?;
         assert_eq!(report.queue_status, FileInitStatus::Created);
         assert_eq!(report.done_status, FileInitStatus::Created);
         assert_eq!(report.config_status, FileInitStatus::Created);
-        assert_eq!(report.readme_status, Some(FileInitStatus::Created));
+        assert!(matches!(
+            report.readme_status,
+            Some((FileInitStatus::Created, Some(2)))
+        ));
         let cfg_raw = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
         let cfg: Config = serde_json::from_str(&cfg_raw)?;
         assert_eq!(cfg.project_type, Some(ProjectType::Code));
@@ -791,6 +904,7 @@ mod tests {
                 force: false,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         )?;
         assert_eq!(report.queue_status, FileInitStatus::Created);
@@ -840,6 +954,7 @@ mod tests {
                 force: false,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         )?;
         assert_eq!(report.readme_status, None);
@@ -885,6 +1000,7 @@ mod tests {
                 force: false,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         );
 
@@ -933,6 +1049,7 @@ mod tests {
                 force: false,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         );
 
@@ -963,6 +1080,7 @@ mod tests {
                 force: false,
                 force_lock: false,
                 interactive: false,
+                update_readme: false,
             },
         )?;
 
@@ -1008,5 +1126,210 @@ mod tests {
         assert!(answers.first_task_title.is_none());
         assert!(answers.first_task_description.is_none());
         assert_eq!(answers.first_task_priority, TaskPriority::Medium);
+    }
+
+    #[test]
+    fn extract_readme_version_finds_version_marker() {
+        let content = "<!-- RALPH_README_VERSION: 5 -->\n# Heading";
+        assert_eq!(extract_readme_version(content), Some(5));
+
+        let content_v2 = "<!-- RALPH_README_VERSION: 2 -->\n# Ralph";
+        assert_eq!(extract_readme_version(content_v2), Some(2));
+    }
+
+    #[test]
+    fn extract_readme_version_returns_none_for_no_marker() {
+        let content = "# Ralph runtime files\nSome content";
+        // Legacy content without marker returns Some(1) as default
+        assert_eq!(extract_readme_version(content), Some(1));
+    }
+
+    #[test]
+    fn write_readme_creates_new_file_with_version() -> Result<()> {
+        let dir = TempDir::new()?;
+        let readme_path = dir.path().join("README.md");
+
+        let (status, version) = write_readme(&readme_path, false, false)?;
+
+        assert_eq!(status, FileInitStatus::Created);
+        assert_eq!(version, Some(README_VERSION));
+        assert!(readme_path.exists());
+
+        let content = std::fs::read_to_string(&readme_path)?;
+        assert!(content.contains("RALPH_README_VERSION"));
+        Ok(())
+    }
+
+    #[test]
+    fn write_readme_preserves_existing_when_no_update() -> Result<()> {
+        let dir = TempDir::new()?;
+        let readme_path = dir.path().join("README.md");
+
+        // Create an existing README with old version
+        let old_content = "<!-- RALPH_README_VERSION: 1 -->\n# Old content";
+        std::fs::write(&readme_path, old_content)?;
+
+        let (status, version) = write_readme(&readme_path, false, false)?;
+
+        assert_eq!(status, FileInitStatus::Valid);
+        assert_eq!(version, Some(1));
+
+        // Content should be preserved
+        let content = std::fs::read_to_string(&readme_path)?;
+        assert!(content.contains("Old content"));
+        Ok(())
+    }
+
+    #[test]
+    fn write_readme_updates_when_version_mismatch() -> Result<()> {
+        let dir = TempDir::new()?;
+        let readme_path = dir.path().join("README.md");
+
+        // Create an existing README with old version
+        let old_content = "<!-- RALPH_README_VERSION: 1 -->\n# Old content";
+        std::fs::write(&readme_path, old_content)?;
+
+        let (status, version) = write_readme(&readme_path, false, true)?;
+
+        assert_eq!(status, FileInitStatus::Updated);
+        assert_eq!(version, Some(README_VERSION));
+
+        // Content should be updated
+        let content = std::fs::read_to_string(&readme_path)?;
+        assert!(!content.contains("Old content"));
+        assert!(content.contains("Ralph runtime files"));
+        Ok(())
+    }
+
+    #[test]
+    fn write_readme_skips_update_when_current() -> Result<()> {
+        let dir = TempDir::new()?;
+        let readme_path = dir.path().join("README.md");
+
+        // Create an existing README with current version
+        let current_content = format!(
+            "<!-- RALPH_README_VERSION: {} -->\n# Current",
+            README_VERSION
+        );
+        std::fs::write(&readme_path, &current_content)?;
+
+        let (status, version) = write_readme(&readme_path, false, true)?;
+
+        // Should be Valid since version is current
+        assert_eq!(status, FileInitStatus::Valid);
+        assert_eq!(version, Some(README_VERSION));
+
+        // Content should be preserved
+        let content = std::fs::read_to_string(&readme_path)?;
+        assert!(content.contains("Current"));
+        Ok(())
+    }
+
+    #[test]
+    fn write_readme_force_overwrites_regardless() -> Result<()> {
+        let dir = TempDir::new()?;
+        let readme_path = dir.path().join("README.md");
+
+        // Create an existing README
+        std::fs::write(&readme_path, "<!-- RALPH_README_VERSION: 99 -->\n# Custom")?;
+
+        let (status, version) = write_readme(&readme_path, true, false)?;
+
+        // When force-overwriting an existing file, status is Updated
+        assert_eq!(status, FileInitStatus::Updated);
+        assert_eq!(version, Some(README_VERSION));
+
+        // Content should be overwritten
+        let content = std::fs::read_to_string(&readme_path)?;
+        assert!(!content.contains("Custom"));
+        Ok(())
+    }
+
+    #[test]
+    fn check_readme_current_detects_missing() -> Result<()> {
+        let dir = TempDir::new()?;
+        let resolved = resolved_for(&dir);
+
+        let result = check_readme_current(&resolved)?;
+
+        // README is applicable but missing
+        assert!(matches!(result, ReadmeCheckResult::Missing));
+        Ok(())
+    }
+
+    #[test]
+    fn check_readme_current_detects_outdated() -> Result<()> {
+        let dir = TempDir::new()?;
+        let resolved = resolved_for(&dir);
+
+        // Create README with old version
+        fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+        let old_readme = "<!-- RALPH_README_VERSION: 1 -->\n# Old";
+        fs::write(resolved.repo_root.join(".ralph/README.md"), old_readme)?;
+
+        let result = check_readme_current(&resolved)?;
+
+        assert!(
+            matches!(result, ReadmeCheckResult::Outdated { current_version: 1, embedded_version } if embedded_version == README_VERSION)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn check_readme_current_detects_current() -> Result<()> {
+        let dir = TempDir::new()?;
+        let resolved = resolved_for(&dir);
+
+        // Create README with current version
+        fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+        let current_readme = format!(
+            "<!-- RALPH_README_VERSION: {} -->\n# Current",
+            README_VERSION
+        );
+        fs::write(resolved.repo_root.join(".ralph/README.md"), current_readme)?;
+
+        let result = check_readme_current(&resolved)?;
+
+        assert!(matches!(result, ReadmeCheckResult::Current(v) if v == README_VERSION));
+        Ok(())
+    }
+
+    #[test]
+    fn init_update_readme_flag_updates_outdated() -> Result<()> {
+        let dir = TempDir::new()?;
+        let resolved = resolved_for(&dir);
+
+        // Create an existing README with old version
+        fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+        let old_readme = "<!-- RALPH_README_VERSION: 1 -->\n# Old content";
+        fs::write(resolved.repo_root.join(".ralph/README.md"), old_readme)?;
+        fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
+        fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
+        fs::write(
+            resolved.project_config_path.as_ref().unwrap(),
+            r#"{"version":1}"#,
+        )?;
+
+        let report = run_init(
+            &resolved,
+            InitOptions {
+                force: false,
+                force_lock: false,
+                interactive: false,
+                update_readme: true,
+            },
+        )?;
+
+        // README should be updated
+        assert!(matches!(
+            report.readme_status,
+            Some((FileInitStatus::Updated, Some(2)))
+        ));
+
+        // Content should be new
+        let content = std::fs::read_to_string(resolved.repo_root.join(".ralph/README.md"))?;
+        assert!(!content.contains("Old content"));
+        assert!(content.contains("Ralph runtime files"));
+        Ok(())
     }
 }
