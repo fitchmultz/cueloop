@@ -15,6 +15,7 @@
 //! - CLI parsing happens after argument normalization in `main`.
 
 pub mod config;
+pub mod context;
 pub mod doctor;
 pub mod init;
 pub mod interactive;
@@ -67,6 +68,11 @@ pub enum Command {
     /// Verify environment readiness and configuration.
     #[command(after_long_help = "Example:\n  ralph doctor")]
     Doctor,
+    /// Manage project context (AGENTS.md) for AI agents.
+    #[command(
+        after_long_help = "Examples:\n  ralph context init\n  ralph context init --project-type rust\n  ralph context update --section troubleshooting\n  ralph context validate\n  ralph context update --dry-run"
+    )]
+    Context(context::ContextArgs),
 }
 
 pub(crate) fn load_and_validate_queues(

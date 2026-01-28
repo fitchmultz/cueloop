@@ -29,6 +29,7 @@ ralph --force queue archive
 ## Core Commands
 
 * `ralph init`: bootstrap `.ralph/queue.json`, `.ralph/done.json`, and `.ralph/config.json`.
+* `ralph context <subcommand>`: manage project context (AGENTS.md) for AI agents.
 * `ralph queue <subcommand>`: inspect, search, validate, and maintain `.ralph/queue.json` + `.ralph/done.json`.
 * `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude/cursor).
 * `ralph tui`: launch the interactive UI (queue + execution + loop).
@@ -36,6 +37,89 @@ ralph --force queue archive
 * `ralph task`: create a task from a request.
 * `ralph scan`: generate new tasks via scanning.
 * `ralph doctor`: verify environment readiness.
+
+## `ralph context`
+
+Manage project context (AGENTS.md) for AI agents. This command generates and maintains an `AGENTS.md` file that documents project conventions, build commands, testing guidelines, and workflow contracts for AI agents working on the codebase.
+
+### Subcommands
+
+* `init`: Generate initial AGENTS.md from project detection.
+* `update`: Update AGENTS.md with new learnings.
+* `validate`: Validate AGENTS.md is up to date with project structure.
+
+### `ralph context init`
+
+Generate an initial AGENTS.md file based on detected project type (Rust, Python, TypeScript, Go, or Generic).
+
+Flags:
+
+* `--force`: Overwrite existing AGENTS.md if it already exists.
+* `--project-type <rust|python|typescript|go|generic>`: Override auto-detection with a specific project type.
+* `--output <PATH>`: Output path for AGENTS.md (default: `AGENTS.md` in repo root).
+* `--interactive`: Interactive mode to guide through context creation (not yet implemented).
+
+Examples:
+
+```bash
+ralph context init
+ralph context init --force
+ralph context init --project-type rust
+ralph context init --project-type python --output docs/AGENTS.md
+```
+
+### `ralph context update`
+
+Update AGENTS.md with new learnings. This appends content to specific sections without regenerating the entire file.
+
+Flags:
+
+* `--section <NAME>`: Section to update (can be specified multiple times).
+* `--file <PATH>`: File containing new learnings to append.
+* `--interactive`: Interactive mode to select sections and input learnings (not yet implemented).
+* `--dry-run`: Preview changes without writing to disk.
+* `--output <PATH>`: Output path (default: existing AGENTS.md location).
+
+Examples:
+
+```bash
+ralph context update --section troubleshooting
+ralph context update --section troubleshooting --section git-hygiene
+ralph context update --file new_learnings.md
+ralph context update --section troubleshooting --dry-run
+```
+
+### `ralph context validate`
+
+Validate that AGENTS.md exists and contains required sections.
+
+Flags:
+
+* `--strict`: Fail if any recommended sections are missing (not just required sections).
+* `--path <PATH>`: Path to AGENTS.md (default: auto-discover in repo root).
+
+Examples:
+
+```bash
+ralph context validate
+ralph context validate --strict
+ralph context validate --path docs/AGENTS.md
+```
+
+### AGENTS.md Structure
+
+The generated AGENTS.md includes these sections:
+
+* **Non-Negotiables**: Rules that must always be followed (CI gate, documentation requirements, testing).
+* **Repository Map**: Overview of the codebase structure.
+* **Build, Test, and CI**: Commands for building, testing, and running CI.
+* **Language Conventions**: Language-specific conventions (Rust/Python/TypeScript/Go).
+* **Testing**: Testing guidelines and patterns.
+* **Workflow Contracts**: How tasks are tracked and executed.
+* **Configuration**: Config precedence and key settings.
+* **Git Hygiene**: Commit message format and git practices.
+* **Documentation Maintenance**: When to update documentation.
+* **Troubleshooting**: Common issues and solutions.
 
 ## `ralph doctor`
 

@@ -7,6 +7,7 @@
 **/.ty_cache/
 target/
 ralph_tui/ralph
+!.ralph/queue.json
 .ralph/cache/completions
 .ralph/cache/phase2_final
 .ralph/cache/plans
@@ -15,3 +16,4 @@ ralph_tui/ralph
 .ralph/cache/queue.json.backup*
 .ralph
 .learnings
+!.ralph/queue.json
