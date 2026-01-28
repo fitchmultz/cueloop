@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0356",
-      "status": "todo",
-      "title": "Add dependency status validation before task execution",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "queue",
-        "dependencies",
-        "workflow"
-      ],
-      "scope": [
-        "crates/ralph/src/queue/validation.rs",
-        "crates/ralph/src/commands/run/selection.rs"
-      ],
-      "evidence": [
-        "validation.rs:268-359 validates dependency existence and cycles but NOT terminal status",
-        "A task may start execution even if dependencies are still 'doing' or 'todo'",
-        "This breaks the dependency contract - tasks should only run when deps are 'done' or 'rejected'"
-      ],
-      "plan": [
-        "Add validation in validate_dependencies() to check dependency status",
-        "Create helper function is_dependency_satisfied() that checks terminal status",
-        "Update selection.rs to filter out tasks with non-terminal dependencies",
-        "Add clear error message when task is blocked by incomplete dependency",
-        "Add tests for dependency status validation"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T04:11:49Z",
-      "updated_at": "2026-01-28T04:11:49Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0357",
       "status": "todo",
       "title": "Fix unbounded buffer growth in JSON stream reader",

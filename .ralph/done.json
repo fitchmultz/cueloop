@@ -8462,6 +8462,53 @@
       "completed_at": "2026-01-28T04:55:24.380518000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0356",
+      "status": "done",
+      "title": "Add dependency status validation before task execution",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "queue",
+        "dependencies",
+        "workflow"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/operations/query.rs",
+        "crates/ralph/src/commands/run/selection.rs"
+      ],
+      "evidence": [
+        "validation.rs:268-359 validates dependency existence and cycles",
+        "query.rs:60-78 are_dependencies_met() already checks terminal status (Done/Rejected)",
+        "selection.rs delegates to query.rs for dependency checking",
+        "Tests verify: test_next_runnable_task_skips_blocked, test_next_runnable_task_allows_rejected_dep",
+        "The core functionality appears implemented - verify completeness and edge cases"
+      ],
+      "plan": [
+        "Verify are_dependencies_met() handles all edge cases correctly",
+        "Check if validation.rs should also validate dependency status (static validation)",
+        "Ensure error messages are clear when tasks are blocked by dependencies",
+        "Review test coverage for dependency status validation",
+        "If complete, mark task as done; otherwise identify remaining gaps"
+      ],
+      "notes": [
+        "2026-01-27: Dependency status validation appears already implemented in query.rs",
+        "are_dependencies_met() returns false if dep status is not Done or Rejected",
+        "Task may need to be marked complete or repurposed for any remaining gaps",
+        "Verified: dependency status validation already fully implemented",
+        "are_dependencies_met() correctly checks for Done/Rejected terminal status",
+        "Tests cover all edge cases: blocked, rejected, missing, done deps",
+        "All 749 tests pass, CI gate clean",
+        "No code changes required - functionality existed"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T05:02:45.879318000Z",
+      "completed_at": "2026-01-28T05:02:45.879318000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
