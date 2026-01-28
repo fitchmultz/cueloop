@@ -33,7 +33,7 @@ use std::time::Duration;
 
 use super::events::{
     handle_key_event, handle_mouse_event, AppMode, ConfirmDiscardAction, PaletteCommand,
-    PaletteEntry, TaskBuilderState, TaskBuilderStep, TuiAction,
+    PaletteEntry, ScoredPaletteEntry, TaskBuilderState, TaskBuilderStep, TuiAction,
 };
 use super::render::draw_ui;
 use super::TextInput;
@@ -1242,6 +1242,88 @@ impl App {
         self.help_previous_mode.as_ref()
     }
 
+    /// Score a palette entry title against a query using fuzzy matching.
+    ///
+    /// Returns a positive score for matches, 0 for no match.
+    /// Higher scores indicate better matches.
+    ///
+    /// Scoring algorithm:
+    /// - Exact match: +1000
+    /// - Prefix match: +500 (minus position penalty)
+    /// - Word boundary match: +300 (minus position penalty)
+    /// - Substring match: +100 (minus position penalty)
+    /// - Fuzzy match: +5 per character matched, +10 per consecutive match
+    fn score_palette_entry(title: &str, query: &str) -> i32 {
+        let title_lower = title.to_lowercase();
+
+        // Exact match (case-insensitive)
+        if title_lower == query {
+            return 1000;
+        }
+
+        // Prefix match
+        if title_lower.starts_with(query) {
+            return 500 - (query.len() as i32);
+        }
+
+        // Word boundary match (after space, hyphen, colon)
+        let word_boundaries: Vec<usize> = title_lower
+            .chars()
+            .enumerate()
+            .filter(|(i, c)| *i == 0 || *c == ' ' || *c == '-' || *c == ':' || *c == '/')
+            .map(|(i, _)| i)
+            .collect();
+
+        for start in word_boundaries {
+            let check_start = if start == 0 { 0 } else { start + 1 };
+            if title_lower[check_start..].starts_with(query) {
+                return 300 - (check_start as i32);
+            }
+        }
+
+        // Substring match
+        if let Some(pos) = title_lower.find(query) {
+            return 100 - (pos as i32);
+        }
+
+        // Fuzzy match: check if query chars appear in order
+        let mut score = 0;
+        let mut title_chars = title_lower.chars().peekable();
+        let mut last_match_pos: Option<usize> = None;
+        let mut consecutive_bonus = 0;
+
+        for (q_idx, q_char) in query.chars().enumerate() {
+            let mut found = false;
+
+            for (current_pos, t_char) in title_chars.by_ref().enumerate() {
+                if t_char == q_char {
+                    found = true;
+                    // Base score for matching character
+                    score += 5;
+
+                    // Bonus for consecutive matches
+                    if let Some(last) = last_match_pos {
+                        if current_pos == last + 1 && q_idx > 0 {
+                            consecutive_bonus += 10;
+                        }
+                    }
+
+                    last_match_pos = Some(current_pos);
+                    break;
+                }
+            }
+
+            if !found {
+                return 0; // All query chars must match for fuzzy
+            }
+        }
+
+        // Penalty for distance from start
+        let distance_penalty = last_match_pos.unwrap_or(0) as i32;
+
+        score + consecutive_bonus - distance_penalty
+    }
+
     /// Build the palette entries for a given query.
     pub fn palette_entries(&self, query: &str) -> Vec<PaletteEntry> {
         let toggle_label = if self.loop_active {
@@ -1250,7 +1332,7 @@ impl App {
             "Start loop"
         };
 
-        let mut entries = vec![
+        let entries = vec![
             PaletteEntry {
                 cmd: PaletteCommand::RunSelected,
                 title: "Run selected task".to_string(),
@@ -1377,13 +1459,37 @@ impl App {
             },
         ];
 
-        let q = query.trim().to_lowercase();
+        let q = query.trim();
         if q.is_empty() {
             return entries;
         }
 
-        entries.retain(|e| e.title.to_lowercase().contains(&q));
-        entries
+        let q_lower = q.to_lowercase();
+
+        // Score and filter entries using fuzzy matching
+        let mut scored: Vec<ScoredPaletteEntry> = entries
+            .into_iter()
+            .enumerate()
+            .map(|(idx, entry)| {
+                let score = Self::score_palette_entry(&entry.title, &q_lower);
+                ScoredPaletteEntry {
+                    entry,
+                    score,
+                    original_index: idx,
+                }
+            })
+            .filter(|s| s.score > 0)
+            .collect();
+
+        // Sort by score (desc), then title length (asc), then original index (asc)
+        scored.sort_by(|a, b| {
+            b.score
+                .cmp(&a.score)
+                .then_with(|| a.entry.title.len().cmp(&b.entry.title.len()))
+                .then_with(|| a.original_index.cmp(&b.original_index))
+        });
+
+        scored.into_iter().map(|s| s.entry).collect()
     }
 
     /// Execute a palette command (also used by direct keybinds for consistency).

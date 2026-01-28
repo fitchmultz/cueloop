@@ -32,7 +32,7 @@ pub mod search;
 pub mod task_builder;
 pub mod types;
 
-pub use palette::{PaletteCommand, PaletteEntry};
+pub use palette::{PaletteCommand, PaletteEntry, ScoredPaletteEntry};
 pub use types::{AppMode, ConfirmDiscardAction, TaskBuilderState, TaskBuilderStep, TuiAction};
 
 #[cfg(test)]

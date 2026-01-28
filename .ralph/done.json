@@ -8276,6 +8276,53 @@
       "completed_at": "2026-01-28T02:08:01.520344000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0328",
+      "status": "done",
+      "title": "TUI: improve command palette matching (fuzzy scoring + better ordering)",
+      "priority": "low",
+      "tags": [
+        "tui",
+        "ux",
+        "palette"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/events/palette.rs",
+        "crates/ralph/src/tui/tests.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/tui/app.rs:1380-1385`: `palette_entries` filters commands via case-insensitive substring match only (`title.to_lowercase().contains(&q)`), with no scoring or ranking.",
+        "`crates/ralph/src/tui/events/palette.rs`: Palette entries are rendered in order returned by `palette_entries()` without additional sorting.",
+        "Current implementation returns entries in fixed order when query is empty, filters by substring match when query is non-empty."
+      ],
+      "plan": [
+        "Introduce a small fuzzy scoring/ranking for palette entries (keeping stable ordering when query is empty).",
+        "Sort entries by score and add tie-breakers for predictable results.",
+        "Add tests that lock in ranking behavior for common queries.",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "Verified: All scope files exist and are current.",
+        "The palette command list includes 25+ commands including new status/priority direct set commands (SetStatusDraft/Todo/Doing/Done/Rejected, SetPriorityCritical/High/Medium/Low).",
+        "Implemented fuzzy scoring and better ordering for TUI command palette",
+        "Added score_palette_entry() with exact/prefix/word-boundary/substring/fuzzy matching",
+        "Added ScoredPaletteEntry struct for stable sorting with tie-breakers",
+        "Added 13 comprehensive tests covering all matching scenarios",
+        "All 746 tests pass, make ci completes successfully"
+      ],
+      "request": "scan finding",
+      "agent": {
+        "model_effort": "medium"
+      },
+      "created_at": "2026-01-27T04:35:15Z",
+      "updated_at": "2026-01-28T02:24:15.709309000Z",
+      "completed_at": "2026-01-28T02:24:15.709309000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

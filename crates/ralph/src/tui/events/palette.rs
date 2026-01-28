@@ -59,6 +59,17 @@ pub struct PaletteEntry {
     pub title: String,
 }
 
+/// A scored palette entry for ranking search results.
+///
+/// Used internally by the fuzzy matching algorithm to sort palette entries
+/// by relevance score while preserving stability through original_index.
+#[derive(Debug, Clone)]
+pub struct ScoredPaletteEntry {
+    pub entry: PaletteEntry,
+    pub score: i32,
+    pub original_index: usize,
+}
+
 /// Handle key events in CommandPalette mode.
 pub(super) fn handle_command_palette_key(
     app: &mut App,
