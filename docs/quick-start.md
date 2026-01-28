@@ -4,6 +4,16 @@ Get up and running with Ralph in minutes.
 
 ## Installation
 
+### From crates.io (recommended)
+
+```bash
+cargo install ralph
+```
+
+This installs the latest published version from crates.io.
+
+### From source
+
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -87,6 +97,26 @@ Ralph uses a structured workflow to ensure quality:
 - **Phase 3: Review**: Final review and completion steps
 
 Choose fewer phases for quick fixes, more phases for complex features.
+
+## Runner Comparison
+
+Ralph supports multiple AI runners. Choose based on your needs:
+
+| Runner | Best For | Model Options | Notes |
+|--------|----------|---------------|-------|
+| **Claude** | General purpose, reasoning | `sonnet` (default), `opus`, or arbitrary IDs | Full tool use support, excellent for complex tasks |
+| **Codex** | Code generation, OpenAI ecosystem | `gpt-5.2-codex`, `gpt-5.2` only | Reasoning effort control (`low` to `xhigh`) |
+| **OpenCode** | Flexible model selection | Arbitrary model IDs (e.g., `zai-coding-plan/glm-4.7`) | Good for custom model endpoints |
+| **Gemini** | Google ecosystem, cost efficiency | `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs | Fast, good for quick iterations |
+| **Cursor** | Cursor IDE users | Uses Cursor's `agent` binary | Integrates with Cursor workflow |
+
+## Phase Mode Comparison
+
+| Mode | Phases | Best For | Trade-off |
+|------|--------|----------|-----------|
+| **1-Phase** | Single pass | Quick fixes, simple refactors, typo corrections | Fastest, but no planning or review |
+| **2-Phase** | Plan → Implement | Medium complexity tasks where review is less critical | Faster than 3-phase, skips formal review |
+| **3-Phase** | Plan → Implement → Review | Complex features, architectural changes, production code | Slowest, but highest quality and safety |
 
 ## Creating Tasks
 

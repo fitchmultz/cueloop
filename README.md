@@ -15,7 +15,9 @@ The Ralph CLI is in `crates/ralph/`.
 
 ## Documentation
 
-Start with `docs/index.md` for configuration, queue/task schema, CLI usage, workflow, and environment variables.
+**New to Ralph?** Start with the [Quick Start Guide](docs/quick-start.md) to get up and running in minutes.
+
+For complete reference, see `docs/index.md` for configuration, queue/task schema, CLI usage, workflow, and environment variables.
 
 - For security policies and vulnerability reporting, see [SECURITY.md](./SECURITY.md).
 - For contribution guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).

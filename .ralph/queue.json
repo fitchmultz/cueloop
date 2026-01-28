@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0373",
-      "status": "todo",
-      "title": "Create Quick Start Guide with common workflows and comparisons",
-      "priority": "medium",
-      "tags": [
-        "documentation",
-        "quick-start",
-        "ux"
-      ],
-      "scope": [
-        "docs/quick-start.md",
-        "docs/index.md",
-        "README.md"
-      ],
-      "evidence": [
-        "User request: Quick Start Guide - Single-page getting started doc with common workflows and comparisons",
-        "Existing docs are comprehensive but scattered across multiple files: configuration.md, cli.md, workflow.md, queue-and-tasks.md",
-        "New users need a single entry point covering installation, first task, common workflows, and runner comparisons",
-        "docs/index.md currently just lists other docs without onboarding guidance",
-        "README.md has setup info but lacks workflow examples and runner comparisons"
-      ],
-      "plan": [
-        "Create docs/quick-start.md as a single-page guide",
-        "Include installation section (cargo install, binary download, build from source)",
-        "Cover 'ralph init' for bootstrapping a new project",
-        "Document first task workflow: ralph task -> ralph run one",
-        "Add common workflow examples: quick fix, multi-phase task, scan mode, TUI usage",
-        "Include runner comparison table (Codex, OpenCode, Gemini, Claude, Cursor) with use cases",
-        "Add phase mode comparison (1-phase vs 2-phase vs 3-phase) with when to use each",
-        "Include minimal config example to get started",
-        "Add troubleshooting section for common first-time issues",
-        "Update docs/index.md to list quick-start.md as the entry point",
-        "Update README.md to reference the Quick Start Guide",
-        "Run 'make ci' to verify docs build and links are valid"
-      ],
-      "notes": [],
-      "request": "Quick Start Guide - Single-page getting started doc with common workflows and comparisons.",
-      "created_at": "2026-01-28T05:00:00Z",
-      "updated_at": "2026-01-28T05:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0371",
       "status": "todo",
       "title": "Add support for 'kimi' and 'pi' runners",

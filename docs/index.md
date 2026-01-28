@@ -3,6 +3,7 @@
 Purpose: Provide a concise, navigable reference for Ralph configuration, CLI usage, queue/task schema, workflow, and environment settings.
 
 ## Start Here
+- **Quick Start Guide: `docs/quick-start.md`** — Get up and running in minutes
 - Configuration: `docs/configuration.md`
 - Queue and Tasks: `docs/queue-and-tasks.md`
 - CLI Reference: `docs/cli.md`
