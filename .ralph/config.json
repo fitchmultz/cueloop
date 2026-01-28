@@ -8,8 +8,8 @@
     "id_width": 4
   },
   "agent": {
-    "runner": "codex",
-    "model": "gpt-5.2-codex",
+    "runner": "claude",
+    "model": "opus",
     "phases": 3,
     "iterations": 1,
     "reasoning_effort": "high",
