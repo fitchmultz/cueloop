@@ -121,6 +121,12 @@ pub struct RunAgentArgs {
     #[arg(long, value_parser = clap::value_parser!(u8).range(1..=3))]
     pub phases: Option<u8>,
 
+    /// Quick mode: skip planning phase and run single-pass execution.
+    ///
+    /// Equivalent to --phases=1. Cannot be used with --phases.
+    #[arg(long, conflicts_with = "phases")]
+    pub quick: bool,
+
     /// RepoPrompt mode (tools, plan, off). Alias: -rp.
     #[arg(long = "repo-prompt", value_enum, value_name = "MODE")]
     pub repo_prompt: Option<RepoPromptMode>,
@@ -329,12 +335,15 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         None
     };
 
+    // Handle --quick flag: when set, override phases to 1 (single-pass execution)
+    let phases = if args.quick { Some(1) } else { args.phases };
+
     Ok(AgentOverrides {
         runner,
         model,
         reasoning_effort,
         runner_cli,
-        phases: args.phases,
+        phases,
         update_task_before_run,
         repoprompt_plan_required: repoprompt_override.map(|flags| flags.plan_required),
         repoprompt_tool_injection: repoprompt_override.map(|flags| flags.tool_injection),
@@ -659,6 +668,7 @@ mod tests {
             effort: Some("high".to_string()),
             runner_cli: RunnerCliArgs::default(),
             phases: Some(2),
+            quick: false,
             repo_prompt: None,
             git_revert_mode: Some("enabled".to_string()),
             git_commit_push_on: false,
@@ -691,6 +701,7 @@ mod tests {
                 ..RunnerCliArgs::default()
             },
             phases: None,
+            quick: false,
             repo_prompt: None,
             git_revert_mode: None,
             git_commit_push_on: false,
@@ -719,6 +730,7 @@ mod tests {
             effort: None,
             runner_cli: RunnerCliArgs::default(),
             phases: None,
+            quick: false,
             repo_prompt: None,
             git_revert_mode: None,
             git_commit_push_on: false,
@@ -730,5 +742,49 @@ mod tests {
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
         assert_eq!(overrides.update_task_before_run, Some(false));
+    }
+
+    #[test]
+    fn resolve_run_agent_overrides_quick_flag_sets_phases_to_one() {
+        let args = RunAgentArgs {
+            runner: None,
+            model: None,
+            effort: None,
+            runner_cli: RunnerCliArgs::default(),
+            phases: None,
+            quick: true,
+            repo_prompt: None,
+            git_revert_mode: None,
+            git_commit_push_on: false,
+            git_commit_push_off: false,
+            include_draft: false,
+            update_task: false,
+            no_update_task: false,
+        };
+
+        let overrides = resolve_run_agent_overrides(&args).unwrap();
+        assert_eq!(overrides.phases, Some(1));
+    }
+
+    #[test]
+    fn resolve_run_agent_overrides_phases_override_takes_precedence_when_quick_false() {
+        let args = RunAgentArgs {
+            runner: None,
+            model: None,
+            effort: None,
+            runner_cli: RunnerCliArgs::default(),
+            phases: Some(3),
+            quick: false,
+            repo_prompt: None,
+            git_revert_mode: None,
+            git_commit_push_on: false,
+            git_commit_push_off: false,
+            include_draft: false,
+            update_task: false,
+            no_update_task: false,
+        };
+
+        let overrides = resolve_run_agent_overrides(&args).unwrap();
+        assert_eq!(overrides.phases, Some(3));
     }
 }

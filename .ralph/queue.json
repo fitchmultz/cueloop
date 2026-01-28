@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0379",
-      "status": "todo",
-      "title": "Add --quick flag to run one for immediate execution without planning phase",
-      "priority": "medium",
-      "tags": [
-        "enhancement",
-        "cli",
-        "quick-start",
-        "workflow"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/run.rs",
-        "crates/ralph/src/agent.rs",
-        "crates/ralph/src/commands/run/mod.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User request: Quick Start Mode - Add --quick flag to run one that skips the planning phase for users who want immediate execution",
-        "Reference: snarktank/ralph approach for immediate execution workflow",
-        "Current Ralph has 3-phase workflow: Planning (phase 1) -> Implementation (phase 2) -> Review (phase 3)",
-        "Phase count controlled by --phases flag (1, 2, or 3) in RunAgentArgs (agent.rs:122)",
-        "Phase execution dispatched in commands/run/mod.rs:417-431",
-        "execute_phase1_planning in phases/phase1.rs runs the dedicated planning phase",
-        "Single-phase mode (phases=1) uses execute_single_phase which skips separate planning",
-        "--quick should effectively bypass phase 1 planning and jump to immediate implementation"
-      ],
-      "plan": [
-        "Add --quick flag to RunOneArgs in cli/run.rs (conflicts with --phases)",
-        "Update RunAgentArgs in agent.rs to include quick_mode field",
-        "Update AgentOverrides to include quick_mode flag",
-        "Modify resolve_run_agent_overrides to handle --quick flag",
-        "Update run_one_impl in commands/run/mod.rs to detect quick mode",
-        "When quick mode is enabled: override phases to skip planning (treat as phases=1 or skip phase1)",
-        "Add --quick examples to run one help text",
-        "Update docs/cli.md with --quick flag documentation and examples",
-        "Add tests for --quick flag parsing and phase override behavior",
-        "Run 'make ci' to verify all changes"
-      ],
-      "notes": [],
-      "request": "Quick Start Mode - Add --quick flag to run one that skips the planning phase for users who want immediate execution (similar to snarktank/ralph's approach)",
-      "created_at": "2026-01-28T18:00:00Z",
-      "updated_at": "2026-01-28T18:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0378",
       "status": "todo",
       "title": "Add iteration progress visualization to TUI execution view with phase indicators and time tracking",

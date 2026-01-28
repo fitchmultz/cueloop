@@ -190,6 +190,7 @@ Examples:\n\
  ralph run one --phases 3 (plan/implement+CI/review+complete)\n\
  ralph run one --phases 2 (plan/implement)\n\
  ralph run one --phases 1 (single-pass)\n\
+ ralph run one --quick (single-pass, same as --phases 1)\n\
  ralph run one --runner opencode --model gpt-5.2\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
  ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
@@ -209,6 +210,7 @@ Examples:\n\
  ralph run loop --phases 3 --max-tasks 0 (plan/implement+CI/review+complete)\n\
  ralph run loop --phases 2 --max-tasks 0 (plan/implement)\n\
  ralph run loop --phases 1 --max-tasks 1 (single-pass)\n\
+ ralph run loop --quick --max-tasks 1 (single-pass, same as --phases 1)\n\
  ralph run loop --max-tasks 3\n\
  ralph run loop --max-tasks 1 --debug\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
@@ -284,6 +286,10 @@ mod tests {
         assert!(
             help.contains("ralph run one --phases 1 (single-pass)"),
             "missing phases=1 example: {help}"
+        );
+        assert!(
+            help.contains("ralph run one --quick (single-pass, same as --phases 1)"),
+            "missing --quick example: {help}"
         );
     }
 

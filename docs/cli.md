@@ -283,6 +283,8 @@ Use `--phases <1|2|3>` (or `agent.phases` in config) to control execution shape:
 - `2`: plan -> implement.
 - `3`: plan -> implement+CI -> review+complete.
 
+Use `--quick` as a shorthand for `--phases 1` to skip the planning phase and run single-pass execution immediately.
+
 ### Interactive flags
 
 * `ralph run one -i` launches the same TUI as `ralph tui`.
@@ -317,11 +319,13 @@ ralph run one
 ralph run one --phases 3
 ralph run one --phases 2
 ralph run one --phases 1
+ralph run one --quick
 ralph run one --include-draft
 ralph run one -i
 ralph run one --update-task
 ralph run loop --max-tasks 0
 ralph run loop --phases 3 --max-tasks 0
+ralph run loop --quick --max-tasks 1
 ralph run loop --include-draft --max-tasks 1
 ralph run loop --update-task --max-tasks 1
 ralph run loop --repo-prompt tools --max-tasks 1
