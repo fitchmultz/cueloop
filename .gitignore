@@ -13,3 +13,5 @@ ralph_tui/ralph
 .ralph/logs/
 .ralph/lock
 .ralph/cache/queue.json.backup*
+.ralph
+.learnings
