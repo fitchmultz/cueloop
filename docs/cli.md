@@ -573,8 +573,14 @@ ralph queue next --with-title
 
 Print the next available task ID (across queue + done archive).
 
+Flags:
+
+* `--count <N>` (or `-n`): Number of sequential IDs to generate (default: 1, max: 100).
+
 ```bash
 ralph queue next-id
+ralph queue next-id --count 5
+ralph queue next-id -n 3
 ralph --verbose queue next-id
 ```
 

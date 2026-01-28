@@ -39,6 +39,7 @@ pub use burndown::QueueBurndownArgs;
 pub use history::QueueHistoryArgs;
 pub use list::QueueListArgs;
 pub use next::QueueNextArgs;
+pub use next_id::QueueNextIdArgs;
 pub use prune::QueuePruneArgs;
 pub use repair::RepairArgs;
 pub use search::QueueSearchArgs;
@@ -55,7 +56,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
     match cmd {
         QueueCommand::Validate => validate::handle(&resolved),
         QueueCommand::Next(args) => next::handle(&resolved, args),
-        QueueCommand::NextId => next_id::handle(&resolved),
+        QueueCommand::NextId(args) => next_id::handle(&resolved, args),
         QueueCommand::Show(args) => show::handle(&resolved, args),
         QueueCommand::List(args) => list::handle(&resolved, args),
         QueueCommand::Search(args) => search::handle(&resolved, args),
@@ -100,8 +101,10 @@ pub enum QueueCommand {
     Next(QueueNextArgs),
 
     /// Print the next available task ID (across queue + done archive).
-    #[command(after_long_help = "Examples:\n ralph queue next-id\n ralph --verbose queue next-id")]
-    NextId,
+    #[command(
+        after_long_help = "Examples:\n ralph queue next-id\n ralph queue next-id --count 5\n ralph queue next-id -n 3\n ralph --verbose queue next-id"
+    )]
+    NextId(QueueNextIdArgs),
 
     /// Show a task by ID.
     Show(QueueShowArgs),
