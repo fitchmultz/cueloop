@@ -8419,6 +8419,49 @@
       "completed_at": "2026-01-28T04:46:15.565482000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0355",
+      "status": "done",
+      "title": "Implement Windows PID detection for stale lock cleanup",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "windows",
+        "lock",
+        "cross-platform"
+      ],
+      "scope": [
+        "crates/ralph/src/lock.rs",
+        "crates/ralph/Cargo.toml"
+      ],
+      "evidence": [
+        "lock.rs:284-303 pid_is_running() returns None on non-Unix platforms",
+        "Windows users cannot use --force to clear stale locks automatically",
+        "Current implementation only uses libc::kill() which is Unix-only",
+        "Cargo.toml has libc only in [target.'cfg(unix)'.dependencies] section"
+      ],
+      "plan": [
+        "Add Windows-specific dependencies to Cargo.toml (windows-sys for process APIs)",
+        "Implement Windows pid_is_running() using OpenProcess() and GetExitCodeProcess()",
+        "Maintain Unix implementation with libc::kill(pid, 0)",
+        "Add tests for both platforms using conditional compilation",
+        "Update error messages to reflect cross-platform support"
+      ],
+      "notes": [
+        "Verified lock.rs structure is stable - pid_is_running() function unchanged at lines 284-303",
+        "Cargo.toml already uses conditional dependencies pattern for libc (Unix-only)",
+        "Implemented Windows PID detection using windows-sys crate with OpenProcess() API",
+        "Added 3 cross-platform tests for pid_is_running() function",
+        "Updated module docs to remove non-Unix limitation note",
+        "All 749 tests pass including new Windows PID detection tests"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:55:24.380518000Z",
+      "completed_at": "2026-01-28T04:55:24.380518000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

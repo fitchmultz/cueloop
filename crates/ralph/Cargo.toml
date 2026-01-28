@@ -33,3 +33,7 @@ time = { version = "0.3.45", features = ["formatting", "parsing", "macros"] }
 # libc is only used on Unix platforms for process group control and PID liveness detection
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.180"
+
+# windows-sys is used on Windows platforms for PID liveness detection
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_System_Threading", "Win32_Foundation"] }

@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0355",
-      "status": "todo",
-      "title": "Implement Windows PID detection for stale lock cleanup",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "windows",
-        "lock",
-        "cross-platform"
-      ],
-      "scope": [
-        "crates/ralph/src/lock.rs"
-      ],
-      "evidence": [
-        "lock.rs:284-303 pid_is_running() returns None on non-Unix platforms",
-        "Windows users cannot use --force to clear stale locks automatically",
-        "Current implementation only uses libc::kill() which is Unix-only"
-      ],
-      "plan": [
-        "Add Windows implementation using OpenProcess() and GetExitCodeProcess() APIs",
-        "Use winapi or windows-sys crate for Windows process handle access",
-        "Maintain Unix implementation with libc::kill(pid, 0)",
-        "Add tests for both platforms using conditional compilation",
-        "Update error messages to reflect cross-platform support"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T04:11:49Z",
-      "updated_at": "2026-01-28T04:11:49Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0356",
       "status": "todo",
       "title": "Add dependency status validation before task execution",

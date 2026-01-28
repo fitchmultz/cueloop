@@ -9,7 +9,6 @@
 //! Not handled here:
 //! - Atomic writes or temp file cleanup (see `crate::fsutil`).
 //! - Cross-machine locking or distributed coordination.
-//! - Guaranteed PID liveness on non-Unix platforms.
 //! - Lock timeouts/backoff beyond the current retry/force logic.
 //!
 //! Invariants/assumptions:
@@ -295,7 +294,32 @@ fn pid_is_running(pid: u32) -> Option<bool> {
         None
     }
 
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::{CloseHandle, ERROR_INVALID_PARAMETER};
+        use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION};
+
+        unsafe {
+            let handle = OpenProcess(PROCESS_QUERY_INFORMATION, 0, pid);
+            if handle != 0 {
+                // Process exists - close the handle and return true
+                CloseHandle(handle);
+                Some(true)
+            } else {
+                // OpenProcess failed - check why
+                let err = windows_sys::Win32::Foundation::GetLastError();
+                if err == ERROR_INVALID_PARAMETER {
+                    // Invalid PID means process doesn't exist
+                    Some(false)
+                } else {
+                    // Other error - can't determine status
+                    None
+                }
+            }
+        }
+    }
+
+    #[cfg(not(any(unix, windows)))]
     {
         let _ = pid;
         None
@@ -310,5 +334,52 @@ fn command_line() -> String {
         "unknown".to_string()
     } else {
         trimmed.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that the current process PID is detected as running.
+    /// This test works on both Unix and Windows platforms.
+    #[test]
+    fn test_pid_is_running_current_process() {
+        let current_pid = std::process::id();
+        let result = pid_is_running(current_pid);
+        // Should be Some(true) on supported platforms
+        assert_eq!(
+            result,
+            Some(true),
+            "Current process should be detected as running"
+        );
+    }
+
+    /// Test that a non-existent PID is detected as not running.
+    /// Uses a very high PID that's extremely unlikely to exist.
+    #[test]
+    fn test_pid_is_running_nonexistent() {
+        // Use the maximum possible PID value (0xFFFFFFFF on 32-bit systems)
+        // This is extremely unlikely to be a real process
+        let result = pid_is_running(0xFFFFFFFE);
+        // Should be either Some(false) or None, never Some(true)
+        assert_ne!(
+            result,
+            Some(true),
+            "Non-existent PID should not return Some(true)"
+        );
+    }
+
+    /// Test that PID 0 is handled correctly.
+    /// On Unix, PID 0 is a special "swapper/sched" process that always exists.
+    /// On Windows, PID 0 is the "System Idle Process" which is also always present.
+    #[test]
+    fn test_pid_is_running_system_idle() {
+        let result = pid_is_running(0);
+        // PID 0 should either be running or indeterminate, never explicitly "not running"
+        // On most systems, PID 0 exists and is the idle process
+        if result == Some(false) {
+            panic!("PID 0 should not be reported as not running");
+        }
     }
 }
