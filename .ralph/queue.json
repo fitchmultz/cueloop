@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0357",
-      "status": "todo",
-      "title": "Fix unbounded buffer growth in JSON stream reader",
-      "priority": "medium",
-      "tags": [
-        "bug",
-        "runner",
-        "memory",
-        "streaming"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/execution/stream.rs"
-      ],
-      "evidence": [
-        "stream.rs:88 line_buf accumulates output without size limits",
-        "A malicious or buggy runner could produce infinite output without newlines",
-        "No maximum line length check before parse_json_line() call"
-      ],
-      "plan": [
-        "Add MAX_LINE_LENGTH constant (e.g., 10MB) to prevent unbounded growth",
-        "Implement line length tracking in spawn_json_reader loop",
-        "When limit exceeded, truncate and log warning with runner identification",
-        "Add test with simulated infinite output to verify protection",
-        "Document the limit in runner integration docs"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T04:11:49Z",
-      "updated_at": "2026-01-28T04:11:49Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0358",
       "status": "todo",
       "title": "Optimize redaction performance - cache sensitive env vars",

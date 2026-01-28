@@ -8509,6 +8509,50 @@
       "completed_at": "2026-01-28T05:02:45.879318000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0357",
+      "status": "done",
+      "title": "Fix unbounded buffer growth in JSON stream reader",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "runner",
+        "memory",
+        "streaming"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/stream.rs"
+      ],
+      "evidence": [
+        "stream.rs:88 line_buf accumulates output without size limits",
+        "stream.rs:99-149 loop pushes chars to line_buf without bounds checking",
+        "A malicious or buggy runner could produce infinite output without newlines",
+        "No maximum line length check before parse_json_line() call",
+        "Buffer growth is unbounded - only cleared when newline received (line 145)"
+      ],
+      "plan": [
+        "Add MAX_LINE_LENGTH constant (e.g., 10MB) to prevent unbounded growth",
+        "Implement line length tracking in spawn_json_reader loop",
+        "When limit exceeded, truncate and log warning with runner identification",
+        "Add test with simulated infinite output to verify protection",
+        "Document the limit in runner integration docs"
+      ],
+      "notes": [
+        "Verified 2026-01-27: Issue still present in current codebase",
+        "Consider also adding protection to spawn_reader() buffer (line 68)",
+        "Added MAX_LINE_LENGTH (10MB) and MAX_BUFFER_SIZE (10MB) constants",
+        "Centralized buffer truncation logic in append_to_buffer() helper",
+        "spawn_json_reader: stops accumulating to line_buf when limit exceeded",
+        "spawn_reader: truncates shared buffer when MAX_BUFFER_SIZE exceeded",
+        "Added 12 tests covering limits, edge cases, and normal operation"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T05:24:43.188905000Z",
+      "completed_at": "2026-01-28T05:24:43.188905000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

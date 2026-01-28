@@ -1,4 +1,25 @@
 //! Streaming reader and display helpers for runner output.
+//!
+//! This module provides buffered reading and JSON parsing for AI runner output,
+//! with protection against unbounded memory growth from malicious or buggy runners.
+//!
+//! Responsibilities:
+//! - Read stdout/stderr streams from runner processes incrementally
+//! - Parse JSON lines and extract meaningful display content
+//! - Buffer output with size limits (MAX_LINE_LENGTH, MAX_BUFFER_SIZE)
+//! - Handle tool use/result tracking for display purposes
+//!
+//! Explicitly does NOT handle:
+//! - Runner process lifecycle (spawning, killing) - see `super::command`
+//! - Output redaction (secrets filtering) - see `crate::redaction`
+//! - Debug logging - see `crate::debuglog`
+//! - Session ID persistence - only extracts to a shared buffer
+//!
+//! Invariants/Assumptions:
+//! - Readers assume UTF-8 input (uses `String::from_utf8_lossy` for invalid bytes)
+//! - JSON parsing is best-effort; non-JSON lines are passed through as-is
+//! - Buffer limits are enforced by truncation (oldest content dropped first)
+//! - Line length limit is checked per-line; buffer size limit is checked per-read
 
 use anyhow::Context;
 use serde_json::Value as JsonValue;
@@ -14,6 +35,10 @@ use super::json::{extract_session_id_from_json, parse_json_line};
 
 const CODEX_REASONING_PREFIX: &str = "[Reasoning] ";
 const TOOL_VALUE_MAX_LEN: usize = 160;
+
+/// Maximum line length before truncation (10MB)
+/// Prevents unbounded buffer growth from malicious or buggy runners
+pub(crate) const MAX_LINE_LENGTH: usize = 10 * 1024 * 1024;
 
 pub(super) enum StreamSink {
     Stdout,
@@ -44,6 +69,41 @@ impl StreamSink {
     }
 }
 
+/// Maximum buffer size for spawn_reader before truncation (10MB)
+/// Prevents unbounded memory growth from malicious or buggy runners
+pub(crate) const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+
+/// Append text to buffer, truncating older content if MAX_BUFFER_SIZE would be exceeded.
+/// Returns true if truncation occurred (and it was the first time), false otherwise.
+fn append_to_buffer(buffer: &mut String, text: &str, exceeded_logged: &mut bool) -> bool {
+    if buffer.len() + text.len() > MAX_BUFFER_SIZE {
+        let should_log = !*exceeded_logged;
+        if should_log {
+            log::warn!(
+                "Runner output buffer exceeded {}MB limit; truncating older content",
+                MAX_BUFFER_SIZE / (1024 * 1024)
+            );
+            *exceeded_logged = true;
+        }
+        // Keep only the most recent content within limit
+        if text.len() >= MAX_BUFFER_SIZE {
+            // New text alone exceeds limit, keep just the end of it
+            buffer.clear();
+            buffer.push_str(&text[text.len() - MAX_BUFFER_SIZE..]);
+        } else {
+            // Trim old content to make room for new text
+            let keep_from = buffer.len() + text.len() - MAX_BUFFER_SIZE;
+            let remaining = buffer.split_off(keep_from);
+            *buffer = remaining;
+            buffer.push_str(text);
+        }
+        should_log
+    } else {
+        buffer.push_str(text);
+        false
+    }
+}
+
 pub(super) fn spawn_reader<R: Read + Send + 'static>(
     mut reader: R,
     sink: StreamSink,
@@ -53,6 +113,7 @@ pub(super) fn spawn_reader<R: Read + Send + 'static>(
 ) -> thread::JoinHandle<anyhow::Result<()>> {
     thread::spawn(move || {
         let mut buf = [0u8; 8192];
+        let mut buffer_exceeded_logged = false;
         loop {
             let read = reader.read(&mut buf).context("read child output")?;
             if read == 0 {
@@ -65,7 +126,33 @@ pub(super) fn spawn_reader<R: Read + Send + 'static>(
             let mut guard = buffer
                 .lock()
                 .map_err(|_| anyhow::anyhow!("lock output buffer"))?;
-            guard.push_str(&text);
+
+            // Check if adding this text would exceed the buffer limit
+            if guard.len() + text.len() > MAX_BUFFER_SIZE {
+                if !buffer_exceeded_logged {
+                    log::warn!(
+                        "Runner output buffer exceeded {}MB limit; truncating older content",
+                        MAX_BUFFER_SIZE / (1024 * 1024)
+                    );
+                    buffer_exceeded_logged = true;
+                }
+                // Keep only the most recent content within limit
+                let text_str = text.as_ref();
+                if text_str.len() >= MAX_BUFFER_SIZE {
+                    // New text alone exceeds limit, keep just the end of it
+                    guard.clear();
+                    guard.push_str(&text_str[text_str.len() - MAX_BUFFER_SIZE..]);
+                } else {
+                    // Trim old content to make room for new text
+                    let keep_from = guard.len() + text_str.len() - MAX_BUFFER_SIZE;
+                    let remaining = guard.split_off(keep_from);
+                    *guard = remaining;
+                    guard.push_str(text_str);
+                }
+            } else {
+                guard.push_str(&text);
+            }
+
             if let Some(handler) = &output_handler {
                 handler(&text);
             }
@@ -86,6 +173,8 @@ pub(super) fn spawn_json_reader<R: Read + Send + 'static>(
     thread::spawn(move || {
         let mut buf = [0u8; 8192];
         let mut line_buf = String::new();
+        let mut line_length_exceeded = false;
+        let mut buffer_exceeded_logged = false;
         let mut tool_name_by_id: HashMap<String, String> = HashMap::new();
 
         loop {
@@ -98,6 +187,14 @@ pub(super) fn spawn_json_reader<R: Read + Send + 'static>(
             debuglog::write_runner_chunk(DebugStream::Stdout, text.as_ref());
             for ch in text.chars() {
                 if ch == '\n' {
+                    if line_length_exceeded {
+                        // Log warning and reset the flag
+                        log::warn!(
+                            "Runner output line exceeded {}MB limit; truncating",
+                            MAX_LINE_LENGTH / (1024 * 1024)
+                        );
+                        line_length_exceeded = false;
+                    }
                     if let Some(mut json) = parse_json_line(&line_buf) {
                         if let Some(event_type) = json.get("type").and_then(|t| t.as_str()) {
                             if event_type == "tool_use" {
@@ -143,6 +240,9 @@ pub(super) fn spawn_json_reader<R: Read + Send + 'static>(
                         }
                     }
                     line_buf.clear();
+                } else if line_buf.len() >= MAX_LINE_LENGTH {
+                    // Buffer limit reached - mark as exceeded but continue reading until newline
+                    line_length_exceeded = true;
                 } else {
                     line_buf.push(ch);
                 }
@@ -151,10 +251,17 @@ pub(super) fn spawn_json_reader<R: Read + Send + 'static>(
             let mut guard = buffer
                 .lock()
                 .map_err(|_| anyhow::anyhow!("lock output buffer"))?;
-            guard.push_str(&text);
+
+            append_to_buffer(&mut guard, &text, &mut buffer_exceeded_logged);
         }
 
         if !line_buf.trim().is_empty() {
+            if line_length_exceeded {
+                log::warn!(
+                    "Runner output line exceeded {}MB limit; truncating",
+                    MAX_LINE_LENGTH / (1024 * 1024)
+                );
+            }
             let mut line = line_buf.clone();
             sink.write_all(line.as_bytes(), output_stream)?;
             sink.write_all(b"\n", output_stream)?;
