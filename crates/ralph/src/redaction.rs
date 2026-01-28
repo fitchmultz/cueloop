@@ -1,9 +1,86 @@
 //! Redaction logic for sensitive data in strings, errors, and logs.
+//!
+//! This module provides functionality to redact sensitive information from text,
+//! including API keys, tokens, passwords, and other secrets. It uses a cached
+//! approach for environment variable redaction to avoid repeatedly scanning
+//! all environment variables.
+//!
+//! # Invariants
+//! - Sensitive environment variable values are cached at first access using a thread-safe `RwLock`
+//! - The cache is never refreshed during runtime; environment variable changes
+//!   after first redaction call will not be detected
+//! - All redaction functions are pure (no side effects except cache initialization)
 
+use std::collections::HashSet;
 use std::fmt;
+use std::sync::RwLock;
 
 const REDACTED: &str = "[REDACTED]";
 const MIN_ENV_VALUE_LEN: usize = 6;
+
+/// Cache for sensitive environment variable values.
+/// Uses RwLock to allow cache clearing in tests while maintaining
+/// thread-safe access in production.
+static SENSITIVE_ENV_CACHE: RwLock<Option<HashSet<String>>> = RwLock::new(None);
+
+/// Initializes the sensitive environment variable cache.
+///
+/// Scans all environment variables once, filtering for:
+/// - Keys that look sensitive (contain KEY, SECRET, TOKEN, PASSWORD, etc.)
+/// - Non-path-like keys (excludes PATH, HOME, etc.)
+/// - Values meeting minimum length requirement (6 chars)
+///
+/// Returns a HashSet of sensitive values for O(1) lookup during redaction.
+fn init_sensitive_env_cache() -> HashSet<String> {
+    let mut sensitive_values = HashSet::new();
+    for (key, value) in std::env::vars() {
+        if !looks_sensitive_env_key(&key) {
+            continue;
+        }
+        if is_path_like_env_key(&key) {
+            continue;
+        }
+        let trimmed = value.trim();
+        if trimmed.len() < MIN_ENV_VALUE_LEN {
+            continue;
+        }
+        sensitive_values.insert(trimmed.to_string());
+    }
+    sensitive_values
+}
+
+/// Returns the cached set of sensitive environment variable values.
+/// Initializes the cache on first call if not already populated.
+fn get_sensitive_env_values() -> HashSet<String> {
+    // Fast path: check if cache is already populated
+    if let Ok(guard) = SENSITIVE_ENV_CACHE.read() {
+        if let Some(ref values) = *guard {
+            return values.clone();
+        }
+    }
+
+    // Slow path: initialize cache
+    if let Ok(mut guard) = SENSITIVE_ENV_CACHE.write() {
+        if guard.is_none() {
+            *guard = Some(init_sensitive_env_cache());
+        }
+        guard.as_ref().unwrap().clone()
+    } else {
+        // Fallback if lock fails: compute on the fly
+        init_sensitive_env_cache()
+    }
+}
+
+/// Clears the sensitive environment variable cache.
+///
+/// Intended for tests only to ensure clean state between tests
+/// that modify environment variables.
+#[cfg(test)]
+fn clear_sensitive_env_cache() {
+    if let Ok(mut guard) = SENSITIVE_ENV_CACHE.write() {
+        *guard = None;
+    }
+}
 
 /// A wrapper around `String` that applies redaction when displayed via `Display` or `Debug`.
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -376,20 +453,19 @@ fn redact_bearer_tokens(text: &str) -> String {
     out
 }
 
+/// Redacts sensitive environment variable values from text.
+///
+/// Uses a cached set of sensitive values for efficient O(k) lookup where k
+/// is the number of sensitive environment variables (typically 0-5),
+/// rather than O(n) where n is all environment variables (typically 50-100+).
 fn redact_sensitive_env_values(text: &str) -> String {
+    let sensitive_values = get_sensitive_env_values();
+    if sensitive_values.is_empty() {
+        return text.to_string();
+    }
     let mut redacted = text.to_string();
-    for (key, value) in std::env::vars() {
-        if !looks_sensitive_env_key(&key) {
-            continue;
-        }
-        if is_path_like_env_key(&key) {
-            continue;
-        }
-        let trimmed = value.trim();
-        if trimmed.len() < MIN_ENV_VALUE_LEN {
-            continue;
-        }
-        redacted = redacted.replace(trimmed, REDACTED);
+    for value in &sensitive_values {
+        redacted = redacted.replace(value.as_str(), REDACTED);
     }
     redacted
 }
@@ -512,6 +588,7 @@ mod tests {
     #[test]
     fn redact_text_masks_sensitive_env_values() {
         let _guard = env_lock().lock().expect("env lock");
+        clear_sensitive_env_cache();
         std::env::set_var("API_TOKEN", "supersecretvalue");
 
         let input = "token is supersecretvalue";
@@ -526,6 +603,7 @@ mod tests {
     #[test]
     fn redact_text_leaves_non_sensitive_env_values() {
         let _guard = env_lock().lock().expect("env lock");
+        clear_sensitive_env_cache();
         std::env::set_var("PATH", "/usr/bin");
 
         let input = "PATH=/usr/bin";
@@ -539,6 +617,7 @@ mod tests {
     #[test]
     fn redact_text_masks_privatekey_env_value() {
         let _guard = env_lock().lock().expect("env lock");
+        clear_sensitive_env_cache();
         std::env::set_var("PRIVATEKEY", "supersecretkeyvalue");
 
         let input = "key is supersecretkeyvalue";

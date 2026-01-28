@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0358",
-      "status": "todo",
-      "title": "Optimize redaction performance - cache sensitive env vars",
-      "priority": "medium",
-      "tags": [
-        "performance",
-        "redaction",
-        "optimization"
-      ],
-      "scope": [
-        "crates/ralph/src/redaction.rs"
-      ],
-      "evidence": [
-        "redaction.rs:379-395 redact_sensitive_env_values() iterates ALL env vars on every call",
-        "This is O(n*m) where n = env vars and m = redaction calls",
-        "High-output scenarios (long runner sessions) suffer performance degradation"
-      ],
-      "plan": [
-        "Use lazy_static or OnceLock to cache sensitive env var values at startup",
-        "Filter env vars once and store matching keys/values in static cache",
-        "Update redact_sensitive_env_values() to use cached values only",
-        "Add benchmark to measure redaction performance before/after",
-        "Ensure cache is refreshed on SIGUSR1 or similar if needed"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T04:11:49Z",
-      "updated_at": "2026-01-28T04:11:49Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0359",
       "status": "todo",
       "title": "Fix TUI filter cache not detecting external queue modifications",
