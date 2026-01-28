@@ -1,4 +1,558 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0354",
+      "status": "todo",
+      "title": "Fix TUI app.rs file size violation - split into focused modules",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "tui",
+        "code-quality"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs"
+      ],
+      "evidence": [
+        "File is ~2500 LOC, violating CLAUDE.md guideline: 'Files exceeding ~1000 LOC are presumed to be mis-scoped'",
+        "App struct handles: queue state, filter caching, task operations, loop mode, scroll management, palette execution",
+        "Multiple responsibilities in one file reduces maintainability and increases merge conflicts"
+      ],
+      "plan": [
+        "Create tui/app_state.rs for core state management (App struct, queue/done state)",
+        "Create tui/app_filters.rs for filter caching and indexing logic",
+        "Create tui/app_loop.rs for loop mode state machine handling",
+        "Move event handlers to existing events/ module or create app_events.rs",
+        "Update imports and re-exports in tui/mod.rs",
+        "Ensure all tests pass after refactoring"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0355",
+      "status": "todo",
+      "title": "Implement Windows PID detection for stale lock cleanup",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "windows",
+        "lock",
+        "cross-platform"
+      ],
+      "scope": [
+        "crates/ralph/src/lock.rs"
+      ],
+      "evidence": [
+        "lock.rs:284-303 pid_is_running() returns None on non-Unix platforms",
+        "Windows users cannot use --force to clear stale locks automatically",
+        "Current implementation only uses libc::kill() which is Unix-only"
+      ],
+      "plan": [
+        "Add Windows implementation using OpenProcess() and GetExitCodeProcess() APIs",
+        "Use winapi or windows-sys crate for Windows process handle access",
+        "Maintain Unix implementation with libc::kill(pid, 0)",
+        "Add tests for both platforms using conditional compilation",
+        "Update error messages to reflect cross-platform support"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0356",
+      "status": "todo",
+      "title": "Add dependency status validation before task execution",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "queue",
+        "dependencies",
+        "workflow"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/commands/run/selection.rs"
+      ],
+      "evidence": [
+        "validation.rs:268-359 validates dependency existence and cycles but NOT terminal status",
+        "A task may start execution even if dependencies are still 'doing' or 'todo'",
+        "This breaks the dependency contract - tasks should only run when deps are 'done' or 'rejected'"
+      ],
+      "plan": [
+        "Add validation in validate_dependencies() to check dependency status",
+        "Create helper function is_dependency_satisfied() that checks terminal status",
+        "Update selection.rs to filter out tasks with non-terminal dependencies",
+        "Add clear error message when task is blocked by incomplete dependency",
+        "Add tests for dependency status validation"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0357",
+      "status": "todo",
+      "title": "Fix unbounded buffer growth in JSON stream reader",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "runner",
+        "memory",
+        "streaming"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/stream.rs"
+      ],
+      "evidence": [
+        "stream.rs:88 line_buf accumulates output without size limits",
+        "A malicious or buggy runner could produce infinite output without newlines",
+        "No maximum line length check before parse_json_line() call"
+      ],
+      "plan": [
+        "Add MAX_LINE_LENGTH constant (e.g., 10MB) to prevent unbounded growth",
+        "Implement line length tracking in spawn_json_reader loop",
+        "When limit exceeded, truncate and log warning with runner identification",
+        "Add test with simulated infinite output to verify protection",
+        "Document the limit in runner integration docs"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0358",
+      "status": "todo",
+      "title": "Optimize redaction performance - cache sensitive env vars",
+      "priority": "medium",
+      "tags": [
+        "performance",
+        "redaction",
+        "optimization"
+      ],
+      "scope": [
+        "crates/ralph/src/redaction.rs"
+      ],
+      "evidence": [
+        "redaction.rs:379-395 redact_sensitive_env_values() iterates ALL env vars on every call",
+        "This is O(n*m) where n = env vars and m = redaction calls",
+        "High-output scenarios (long runner sessions) suffer performance degradation"
+      ],
+      "plan": [
+        "Use lazy_static or OnceLock to cache sensitive env var values at startup",
+        "Filter env vars once and store matching keys/values in static cache",
+        "Update redact_sensitive_env_values() to use cached values only",
+        "Add benchmark to measure redaction performance before/after",
+        "Ensure cache is refreshed on SIGUSR1 or similar if needed"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0359",
+      "status": "todo",
+      "title": "Fix TUI filter cache not detecting external queue modifications",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "tui",
+        "cache",
+        "consistency"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs"
+      ],
+      "evidence": [
+        "app.rs:258-264 filter cache uses queue_rev for invalidation",
+        "No mechanism to detect external queue.json modifications (another process editing)",
+        "TUI may display stale data if queue is modified externally while TUI is running"
+      ],
+      "plan": [
+        "Add file modification time (mtime) check for queue.json",
+        "Compare current mtime with cached mtime on each refresh",
+        "Invalidate filter cache when mtime changes",
+        "Add visual indicator in TUI when external changes detected",
+        "Consider file hash for additional consistency check if needed"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0360",
+      "status": "todo",
+      "title": "Fix Cursor runner phase detection fragility",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "runner",
+        "cursor",
+        "robustness"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/runners.rs"
+      ],
+      "evidence": [
+        "runners.rs:300-302 cursor_is_planning() uses string matching on '# PLANNING MODE'",
+        "Phase detection relies on prompt template content which may change",
+        "If prompt template changes, Cursor receives incorrect CLI options silently"
+      ],
+      "plan": [
+        "Add explicit phase metadata to PhaseInvocation struct",
+        "Pass phase information through runner execution context",
+        "Use structured phase enum (Planning/Implementation/Review) instead of string detection",
+        "Update cursor_is_planning() to use context instead of text search",
+        "Add test to ensure phase detection works correctly"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0361",
+      "status": "todo",
+      "title": "Fix lock cleanup race condition in DirLock Drop",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "lock",
+        "race-condition"
+      ],
+      "scope": [
+        "crates/ralph/src/lock.rs"
+      ],
+      "evidence": [
+        "lock.rs:34-44 Drop impl ignores errors from remove_file and remove_dir",
+        "If lock directory contains files (race with another process), remove_dir fails silently",
+        "Orphaned lock directories may accumulate over time"
+      ],
+      "plan": [
+        "Add retry logic with exponential backoff for lock cleanup",
+        "Log warnings when cleanup fails for debugging",
+        "Consider using fs::remove_dir_all for force cleanup on stale locks",
+        "Add diagnostic command 'ralph doctor' to detect orphaned locks",
+        "Add test simulating concurrent lock acquisition/release"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0362",
+      "status": "todo",
+      "title": "Enhance JSON repair for more agent-induced errors",
+      "priority": "medium",
+      "tags": [
+        "enhancement",
+        "queue",
+        "robustness"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "queue.rs:96-133 attempt_json_repair only handles trailing commas and missing brackets",
+        "Cannot fix: malformed JSON strings, invalid escape sequences, type mismatches",
+        "Agents may still produce unrecoverable JSON that causes queue load failures"
+      ],
+      "plan": [
+        "Add repair for common string escaping errors (unescaped quotes, newlines)",
+        "Add repair for missing quotes around object keys",
+        "Add repair for single-quoted strings (convert to double-quoted)",
+        "Add logging of repair attempts for debugging",
+        "Consider using a more robust JSON repair library if available"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0363",
+      "status": "todo",
+      "title": "Fix pre-run task update failures being silently ignored",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "workflow",
+        "error-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/mod.rs"
+      ],
+      "evidence": [
+        "mod.rs:307-319 pre-run update failure is logged as warning but execution continues",
+        "If update fails due to persistent issue (runner misconfiguration), task runs with stale data",
+        "User may not notice the warning in log output"
+      ],
+      "plan": [
+        "Add config option 'fail_on_prerun_update_error' (default: false for compatibility)",
+        "When enabled, fail fast with clear error message on pre-run update failure",
+        "Add retry logic with exponential backoff for transient failures",
+        "Improve error message to include troubleshooting steps",
+        "Log the full error to debug log for investigation"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0364",
+      "status": "todo",
+      "title": "Fix atomic write temp file leak on persist failure",
+      "priority": "low",
+      "tags": [
+        "bug",
+        "fs",
+        "cleanup"
+      ],
+      "scope": [
+        "crates/ralph/src/fsutil.rs"
+      ],
+      "evidence": [
+        "fsutil.rs:192-211 write_atomic() may leak temp file if persist() fails after write",
+        "NamedTempFile::persist() error path doesn't explicitly clean up",
+        "Temp file accumulation in target directory over time"
+      ],
+      "plan": [
+        "Use NamedTempFile::close() or let it drop to auto-cleanup on error",
+        "Wrap persist in match statement with explicit cleanup on Err",
+        "Add periodic cleanup of orphaned temp files in ralph_temp_root()",
+        "Add test verifying no temp files remain after failed writes"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0365",
+      "status": "todo",
+      "title": "Add config validation for instruction_files existence",
+      "priority": "low",
+      "tags": [
+        "enhancement",
+        "config",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs"
+      ],
+      "evidence": [
+        "config.rs:127-204 validate_config() doesn't check instruction_files paths exist",
+        "Missing instruction files only discovered at runtime during prompt rendering",
+        "User gets late error instead of early validation feedback"
+      ],
+      "plan": [
+        "Add validation loop for instruction_files in validate_config()",
+        "Check each path exists and is readable",
+        "Return helpful error with file path and suggestion to create or fix path",
+        "Add --validate-config flag to ralph config command for early checking",
+        "Add test for missing instruction file detection"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0366",
+      "status": "todo",
+      "title": "Improve runner process timeout handling race condition",
+      "priority": "low",
+      "tags": [
+        "bug",
+        "runner",
+        "race-condition"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/process.rs"
+      ],
+      "evidence": [
+        "process.rs:86-170 wait_for_child() has race between timeout detection and process exit",
+        "Process exiting between interrupt and kill may have exit status misinterpreted",
+        "Lines 155-162: status checked after timeout but timeout error takes precedence"
+      ],
+      "plan": [
+        "Refactor to use select/poll for proper timeout handling",
+        "Check exit status immediately after interrupt before timeout error",
+        "Add state machine for process lifecycle (Running -> Interrupting -> Killed)",
+        "Add test with simulated slow-exiting process",
+        "Log process state transitions for debugging"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0367",
+      "status": "todo",
+      "title": "Add TUI help text for all key bindings and commands",
+      "priority": "low",
+      "tags": [
+        "ux",
+        "tui",
+        "documentation"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "TUI has many key bindings but no built-in help overlay showing all options",
+        "Users must refer to external docs or discover keys by trial",
+        "Help overlay exists but may not cover all available actions"
+      ],
+      "plan": [
+        "Audit all key bindings in tui/events/ module",
+        "Create comprehensive help overlay showing all bindings by category",
+        "Add '?' key to toggle help overlay from any mode",
+        "Include command palette shortcuts in help",
+        "Update docs/cli.md with TUI key reference"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0368",
+      "status": "todo",
+      "title": "Add LFS smudge/clean filter validation before commit",
+      "priority": "low",
+      "tags": [
+        "enhancement",
+        "git",
+        "lfs",
+        "data-integrity"
+      ],
+      "scope": [
+        "crates/ralph/src/gitutil.rs"
+      ],
+      "evidence": [
+        "gitutil.rs:250-274 LFS detection only checks tracking files, not filter health",
+        "Doesn't handle LFS pointer file corruption or smudge/clean filter failures",
+        "Potential data loss if LFS files committed as pointers due to filter misconfiguration"
+      ],
+      "plan": [
+        "Add pre-commit LFS filter validation check",
+        "Run 'git lfs status' to detect files that should be LFS but aren't",
+        "Warn user if LFS filters are not properly configured",
+        "Add option to abort commit on LFS misconfiguration",
+        "Add test with mock LFS repository"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0369",
+      "status": "todo",
+      "title": "Fix debug log test interference from concurrent access",
+      "priority": "low",
+      "tags": [
+        "bug",
+        "testing",
+        "concurrency"
+      ],
+      "scope": [
+        "crates/ralph/src/debuglog.rs"
+      ],
+      "evidence": [
+        "debuglog.rs:55-70 enable() silently succeeds if already enabled",
+        "reset_for_tests() requires test lock but tests may not always acquire it",
+        "If tests run concurrently without lock, they may interfere with debug log state"
+      ],
+      "plan": [
+        "Add test-only mutex guard around all debug log operations",
+        "Use thread-local storage for test isolation where possible",
+        "Add panic if debug log state changes unexpectedly during tests",
+        "Document test concurrency requirements in module docs",
+        "Add test verifying concurrent debug log access is safe"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0370",
+      "status": "todo",
+      "title": "Add CLI completion scripts for bash/zsh/fish",
+      "priority": "low",
+      "tags": [
+        "enhancement",
+        "cli",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/",
+        "completions/"
+      ],
+      "evidence": [
+        "Ralph has many CLI commands and flags but no shell completion support",
+        "Users must type full command names and remember all flags",
+        "Clap supports generating completion scripts via clap_complete crate"
+      ],
+      "plan": [
+        "Add clap_complete dependency",
+        "Create 'ralph completions <shell>' command",
+        "Generate completions for bash, zsh, fish, and PowerShell",
+        "Add installation instructions to README and docs/cli.md",
+        "Consider including pre-generated scripts in repo"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:11:49Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
