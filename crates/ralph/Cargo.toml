@@ -29,6 +29,8 @@ regex = "1.11"
 schemars = { version = "0.8", features = ["derive"] }
 thiserror = "2.0.18"
 time = { version = "0.3.45", features = ["formatting", "parsing", "macros"] }
+dialoguer = { version = "0.11", features = ["fuzzy-select"] }
+atty = "0.2"
 
 # libc is only used on Unix platforms for process group control and PID liveness detection
 [target.'cfg(unix)'.dependencies]

@@ -10,7 +10,8 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
     test_support::git_init(dir.path())?;
 
     // Ensure ralph runtime files exist.
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -81,7 +82,8 @@ fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_disabled() -> Result<
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -132,7 +134,8 @@ fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_ask_non_tty() -> Resu
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

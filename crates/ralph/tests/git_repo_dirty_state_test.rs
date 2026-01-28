@@ -10,7 +10,8 @@ fn run_one_refuses_to_run_when_repo_is_dirty_and_a_todo_exists() -> Result<()> {
     test_support::git_init(dir.path())?;
 
     // Ensure ralph runtime files exist.
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -42,7 +43,8 @@ fn run_one_succeeds_when_repo_is_dirty_and_force_is_used() -> Result<()> {
     test_support::git_init(dir.path())?;
 
     // Ensure ralph runtime files exist.
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -78,7 +80,8 @@ fn scan_refuses_to_run_when_repo_is_dirty() -> Result<()> {
     test_support::git_init(dir.path())?;
 
     // Ensure ralph runtime files exist.
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

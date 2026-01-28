@@ -9,7 +9,8 @@ fn init_and_validate_work_in_fresh_git_repo() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

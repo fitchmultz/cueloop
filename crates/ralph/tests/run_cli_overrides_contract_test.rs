@@ -20,7 +20,8 @@ fn run_one_accepts_runner_and_model_overrides_without_todo_tasks() -> Result<()>
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -130,7 +131,8 @@ fn run_one_accepts_repo_prompt_mode_and_alias() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -158,7 +160,8 @@ fn run_one_rejects_invalid_repo_prompt_value() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -206,7 +209,8 @@ fn run_one_rejects_invalid_model_flag() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -241,7 +245,8 @@ fn run_one_accepts_custom_model_for_opencode() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

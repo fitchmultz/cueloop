@@ -52,7 +52,8 @@ fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
 fn queue_next_reports_empty_queue_with_done_tasks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
 
-    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

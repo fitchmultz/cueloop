@@ -180,7 +180,8 @@ fn runner_fails_and_safeguards_stdout() -> Result<()> {
     git_init(dir.path())?;
 
     // 1. Setup Ralph
-    let (status, _stdout, _stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, _stdout, _stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(status.success(), "ralph init failed");
 
     // 2. Add a task
@@ -243,7 +244,8 @@ fn scan_fails_validation_and_safeguards_stdout() -> Result<()> {
     git_init(dir.path())?;
 
     // 1. Setup Ralph
-    let (status, _stdout, _stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, _stdout, _stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(status.success(), "ralph init failed");
 
     // 2. Create a runner that produces INVALID queue.json (corrupts it)

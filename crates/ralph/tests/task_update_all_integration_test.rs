@@ -191,7 +191,8 @@ fn write_empty_queue(dir: &Path) -> Result<()> {
 fn task_update_without_id_updates_all_tasks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
 
-    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -224,7 +225,8 @@ fn task_update_without_id_updates_all_tasks() -> Result<()> {
 fn task_update_without_id_fails_on_empty_queue() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
 
-    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

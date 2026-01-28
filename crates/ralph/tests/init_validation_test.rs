@@ -41,6 +41,7 @@ fn init_fails_on_invalid_config_json() -> Result<()> {
         InitOptions {
             force: false,
             force_lock: false,
+            interactive: false,
         },
     );
 
@@ -78,6 +79,7 @@ fn init_fails_on_structurally_invalid_queue() -> Result<()> {
         InitOptions {
             force: false,
             force_lock: false,
+            interactive: false,
         },
     );
 

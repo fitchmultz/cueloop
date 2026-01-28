@@ -10,7 +10,8 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
     test_support::git_init(dir.path())?;
 
     // 1. Setup Ralph
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

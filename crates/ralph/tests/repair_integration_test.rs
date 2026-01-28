@@ -52,7 +52,8 @@ fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
 fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
 
-    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
@@ -220,7 +221,8 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
 fn repair_remaps_dependencies_for_invalid_ids() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
 
-    let (status, stdout, stderr) = run_in_dir(dir.path(), &["init", "--force"]);
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

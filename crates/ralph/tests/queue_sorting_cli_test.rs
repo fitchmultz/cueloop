@@ -50,7 +50,7 @@ fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
 }
 
 fn init_repo(dir: &Path) -> Result<()> {
-    let (status, stdout, stderr) = run_in_dir(dir, &["init", "--force"]);
+    let (status, stdout, stderr) = run_in_dir(dir, &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"

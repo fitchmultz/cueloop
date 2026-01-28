@@ -28,7 +28,7 @@ ralph --force queue archive
 
 ## Core Commands
 
-* `ralph init`: bootstrap `.ralph/queue.json`, `.ralph/done.json`, and `.ralph/config.json`.
+* `ralph init`: bootstrap `.ralph/queue.json`, `.ralph/done.json`, and `.ralph/config.json` with optional interactive wizard.
 * `ralph context <subcommand>`: manage project context (AGENTS.md) for AI agents.
 * `ralph queue <subcommand>`: inspect, search, validate, and maintain `.ralph/queue.json` + `.ralph/done.json`.
 * `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude/cursor).
@@ -37,6 +37,49 @@ ralph --force queue archive
 * `ralph task`: create a task from a request.
 * `ralph scan`: generate new tasks via scanning.
 * `ralph doctor`: verify environment readiness.
+
+## `ralph init`
+
+Bootstrap Ralph files in the current repository with an optional interactive onboarding wizard.
+
+### Interactive Wizard
+
+When running in a TTY (or with `--interactive`), the wizard guides new users through:
+
+1. **Runner Selection**: Choose from Claude, Codex, OpenCode, Gemini, or Cursor
+2. **Model Selection**: Pick the appropriate model for your chosen runner
+3. **Workflow Mode**: Select 1-phase (quick), 2-phase (standard), or 3-phase (full) workflow
+4. **First Task**: Optionally create your first task with title, description, and priority
+
+The wizard explains each option and generates a properly configured `.ralph/config.json` and `.ralph/queue.json`.
+
+### Flags
+
+* `--force`: Overwrite existing files if they already exist.
+* `--interactive` (`-i`): Force interactive wizard mode (even if not a TTY).
+* `--non-interactive`: Skip interactive prompts even if running in a TTY (use defaults).
+
+### Workflow Modes
+
+* **3-phase (Full)**: Plan → Implement + CI → Review + Complete [Recommended]
+* **2-phase (Standard)**: Plan → Implement (faster, less review)
+* **1-phase (Quick)**: Single-pass execution (simple fixes only)
+
+### Examples
+
+```bash
+# Auto-detect TTY and run wizard if interactive
+ralph init
+
+# Force wizard mode
+ralph init --interactive
+
+# Skip wizard, use defaults (good for CI/scripts)
+ralph init --non-interactive
+
+# Overwrite existing files with wizard
+ralph init --force --interactive
+```
 
 ## `ralph context`
 
