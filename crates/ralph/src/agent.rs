@@ -156,6 +156,18 @@ pub struct RunAgentArgs {
     /// Disable automatic pre-run task update (overrides config).
     #[arg(long, conflicts_with = "update_task")]
     pub no_update_task: bool,
+
+    /// Enable desktop notification on task completion (overrides config).
+    #[arg(long, conflicts_with = "no_notify")]
+    pub notify: bool,
+
+    /// Disable desktop notification on task completion (overrides config).
+    #[arg(long, conflicts_with = "notify")]
+    pub no_notify: bool,
+
+    /// Enable sound alert with notification (requires --notify or config enabled).
+    #[arg(long)]
+    pub notify_sound: bool,
 }
 
 /// Agent overrides from CLI arguments.
@@ -178,6 +190,10 @@ pub struct AgentOverrides {
     pub git_revert_mode: Option<GitRevertMode>,
     pub git_commit_push_enabled: Option<bool>,
     pub include_draft: Option<bool>,
+    /// Enable/disable desktop notification on task completion.
+    pub notify_on_complete: Option<bool>,
+    /// Enable sound alert with notification.
+    pub notify_sound: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -338,6 +354,17 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
     // Handle --quick flag: when set, override phases to 1 (single-pass execution)
     let phases = if args.quick { Some(1) } else { args.phases };
 
+    // Handle notification flags
+    let notify_on_complete = if args.notify {
+        Some(true)
+    } else if args.no_notify {
+        Some(false)
+    } else {
+        None
+    };
+
+    let notify_sound = if args.notify_sound { Some(true) } else { None };
+
     Ok(AgentOverrides {
         runner,
         model,
@@ -350,6 +377,8 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         git_revert_mode,
         git_commit_push_enabled,
         include_draft,
+        notify_on_complete,
+        notify_sound,
     })
 }
 
@@ -393,6 +422,8 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
         git_revert_mode: None,
         git_commit_push_enabled: None,
         include_draft: None,
+        notify_on_complete: None,
+        notify_sound: None,
     })
 }
 
@@ -444,8 +475,8 @@ pub fn resolve_rp_required(
 mod tests {
     use super::*;
     use crate::contracts::{
-        AgentConfig, ClaudePermissionMode, Config, GitRevertMode, QueueConfig, RunnerApprovalMode,
-        RunnerPlanMode, RunnerSandboxMode,
+        AgentConfig, ClaudePermissionMode, Config, GitRevertMode, NotificationConfig, QueueConfig,
+        RunnerApprovalMode, RunnerPlanMode, RunnerSandboxMode,
     };
     use tempfile::TempDir;
 
@@ -476,6 +507,7 @@ mod tests {
                 ci_gate_enabled: Some(true),
                 git_revert_mode: Some(GitRevertMode::Ask),
                 git_commit_push_enabled: Some(true),
+                notification: NotificationConfig::default(),
             },
             queue: QueueConfig::default(),
             ..Config::default()
@@ -564,6 +596,8 @@ mod tests {
             git_revert_mode: None,
             git_commit_push_enabled: None,
             include_draft: None,
+            notify_on_complete: None,
+            notify_sound: None,
         };
 
         let flags = resolve_repoprompt_flags_from_overrides(&overrides, &resolved);
@@ -676,6 +710,9 @@ mod tests {
             include_draft: true,
             update_task: true,
             no_update_task: false,
+            notify: false,
+            no_notify: false,
+            notify_sound: false,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -709,6 +746,9 @@ mod tests {
             include_draft: false,
             update_task: false,
             no_update_task: false,
+            notify: false,
+            no_notify: false,
+            notify_sound: false,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -738,6 +778,9 @@ mod tests {
             include_draft: false,
             update_task: false,
             no_update_task: true,
+            notify: false,
+            no_notify: false,
+            notify_sound: false,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -760,6 +803,9 @@ mod tests {
             include_draft: false,
             update_task: false,
             no_update_task: false,
+            notify: false,
+            no_notify: false,
+            notify_sound: false,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -782,6 +828,9 @@ mod tests {
             include_draft: false,
             update_task: false,
             no_update_task: false,
+            notify: false,
+            no_notify: false,
+            notify_sound: false,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();

@@ -412,6 +412,8 @@ fn run_one_impl(
                 phase3_completion_guidance,
                 is_final_iteration,
                 allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                notify_on_complete: agent_overrides.notify_on_complete,
+                notify_sound: agent_overrides.notify_sound,
             };
 
             match phases {

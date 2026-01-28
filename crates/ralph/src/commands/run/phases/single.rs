@@ -57,6 +57,8 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 ctx.git_revert_mode,
                 ctx.git_commit_push_enabled,
                 ctx.revert_prompt.clone(),
+                ctx.notify_on_complete,
+                ctx.notify_sound,
             )?;
         } else {
             let continue_session = supervision::ContinueSession {

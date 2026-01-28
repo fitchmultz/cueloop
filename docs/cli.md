@@ -1133,6 +1133,9 @@ The `run one` and `run loop` commands also support:
 * `--include-draft`: Include draft tasks (`status: draft`) when selecting what to run.
 * `--update-task`: Automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution. This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. Runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via config: `agent.update_task_before_run: true`.
 * `--no-update-task`: Disable automatic pre-run task update for this invocation (overrides config).
+* `--notify`: Enable desktop notification on task completion (overrides config).
+* `--no-notify`: Disable desktop notification on task completion (overrides config).
+* `--notify-sound`: Enable sound alert with notification (works with `--notify` or when enabled in config).
 * `--git-revert-mode <ask|enabled|disabled>`
 * `--git-commit-push-on` / `--git-commit-push-off`
 * `--debug` (capture raw supervisor + runner output to `.ralph/logs/debug.log`)
@@ -1143,6 +1146,9 @@ Examples:
 ralph run one --include-draft
 ralph run one --update-task
 ralph run one --no-update-task
+ralph run one --notify
+ralph run one --notify --notify-sound
+ralph run one --no-notify
 ralph run one --git-revert-mode disabled
 ralph run one --git-commit-push-off
 ralph run loop --include-draft --max-tasks 1

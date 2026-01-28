@@ -35,6 +35,7 @@ pub mod tui;
 pub mod fsutil;
 pub mod gitutil;
 pub mod lock;
+pub mod notification;
 pub mod outpututil;
 pub mod promptflow;
 pub mod prompts;

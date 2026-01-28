@@ -126,6 +126,8 @@ pub fn execute_phase2_implementation(
                 ctx.git_revert_mode,
                 ctx.git_commit_push_enabled,
                 ctx.revert_prompt.clone(),
+                ctx.notify_on_complete,
+                ctx.notify_sound,
             )?;
         } else {
             let continue_session = supervision::ContinueSession {

@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0374",
-      "status": "todo",
-      "title": "Add desktop notifications on task completion with optional sound alerts",
-      "priority": "medium",
-      "tags": [
-        "enhancement",
-        "notifications",
-        "ux",
-        "desktop"
-      ],
-      "scope": [
-        "crates/ralph/src/",
-        "docs/configuration.md"
-      ],
-      "evidence": [
-        "User request: Notification Integration - Desktop notifications on task completion with optional sound alerts",
-        "Long-running tasks require users to monitor terminal; notifications improve UX",
-        "Cross-platform notification support needed (macOS, Linux, Windows)",
-        "Sound alerts should be optional and configurable"
-      ],
-      "plan": [
-        "Research Rust notification crates (notify-rust, tauri-notification, or platform-specific APIs)",
-        "Add notification config section to AgentConfig (enable/disable, sound on/off, sound file path)",
-        "Implement notify_task_complete() function in runner module",
-        "Trigger notification after successful task completion in supervise flow",
-        "Add sound alert support with platform-appropriate default sounds",
-        "Ensure notifications work on macOS (NotificationCenter), Linux (notify-send/dbus), Windows (toast)",
-        "Add CLI flag --notify/--no-notify to override config",
-        "Update docs/configuration.md with notification settings",
-        "Add tests for notification configuration parsing",
-        "Run 'make ci' to verify all changes"
-      ],
-      "notes": [],
-      "request": "Notification Integration - Desktop notifications on task completion with optional sound alerts.",
-      "created_at": "2026-01-28T16:11:57Z",
-      "updated_at": "2026-01-28T16:11:57Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0373",
       "status": "todo",
       "title": "Create Quick Start Guide with common workflows and comparisons",

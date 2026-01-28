@@ -19,6 +19,12 @@
         "instruction_files": null,
         "iterations": 1,
         "model": "sonnet",
+        "notification": {
+          "enabled": true,
+          "sound_enabled": false,
+          "sound_path": null,
+          "timeout_ms": 8000
+        },
         "opencode_bin": "opencode",
         "phases": 3,
         "reasoning_effort": "medium",
@@ -236,6 +242,20 @@
             }
           ]
         },
+        "notification": {
+          "description": "Desktop notification configuration for task completion.",
+          "default": {
+            "enabled": null,
+            "sound_enabled": null,
+            "sound_path": null,
+            "timeout_ms": null
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/NotificationConfig"
+            }
+          ]
+        },
         "opencode_bin": {
           "description": "Override the opencode executable name/path (default is \"opencode\" if None).",
           "default": null,
@@ -361,6 +381,48 @@
     },
     "Model": {
       "type": "string"
+    },
+    "NotificationConfig": {
+      "description": "Desktop notification configuration.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Enable desktop notifications on task completion (default: true).",
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "sound_enabled": {
+          "description": "Enable sound alerts with notifications (default: false).",
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "sound_path": {
+          "description": "Custom sound file path (platform-specific format). If not set, uses platform default sounds.",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timeout_ms": {
+          "description": "Notification timeout in milliseconds (default: 8000).",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "maximum": 60000.0,
+          "minimum": 1000.0
+        }
+      },
+      "additionalProperties": false
     },
     "ProjectType": {
       "type": "string",

@@ -46,4 +46,8 @@ pub struct PhaseInvocation<'a> {
     pub phase3_completion_guidance: &'a str,
     pub is_final_iteration: bool,
     pub allow_dirty_repo: bool,
+    /// Notification override from CLI (--notify/--no-notify).
+    pub notify_on_complete: Option<bool>,
+    /// Sound notification override from CLI (--notify-sound).
+    pub notify_sound: Option<bool>,
 }

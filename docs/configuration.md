@@ -146,3 +146,37 @@ When using the TUI config editor (`e` key in the task list), certain high-risk s
 - **Warning level** (ℹ): Settings like `approval_mode` and `claude_permission_mode` that reduce safety checks. These show descriptive text but don't require confirmation.
 
 The confirmation dialog for Danger-level settings explains the risk and requires an explicit `y` keypress to proceed. Pressing `n` or `Esc` cancels the change.
+
+## Notification Configuration
+
+`agent.notification` controls desktop notifications when tasks complete successfully.
+
+Supported fields:
+- `enabled`: enable/disable notifications (default: `true`).
+- `sound_enabled`: play sound with notification (default: `false`).
+- `sound_path`: custom sound file path (optional, platform-specific).
+- `timeout_ms`: notification display duration in milliseconds (default: `8000`, range: `1000-60000`).
+
+Platform notes:
+- **macOS**: Uses NotificationCenter; sound plays via `afplay` (default: `/System/Library/Sounds/Glass.aiff`).
+- **Linux**: Uses D-Bus/notify-send; sound plays via `paplay`/`aplay` or `canberra-gtk-play` for default sounds.
+- **Windows**: Uses toast notifications; sound is built into the toast.
+
+Example:
+```json
+{
+  "version": 1,
+  "agent": {
+    "notification": {
+      "enabled": true,
+      "sound_enabled": true,
+      "timeout_ms": 10000
+    }
+  }
+}
+```
+
+CLI overrides:
+- `--notify`: Enable notification for this run (overrides config).
+- `--no-notify`: Disable notification for this run (overrides config).
+- `--notify-sound`: Enable sound for this run (works with `--notify` or when enabled in config).

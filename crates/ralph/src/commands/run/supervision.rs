@@ -5,6 +5,7 @@
 use super::logging;
 use crate::contracts::{GitRevertMode, QueueFile, TaskStatus};
 use crate::gitutil::GitError;
+use crate::notification;
 use crate::{gitutil, outpututil, queue, runutil, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
@@ -75,6 +76,8 @@ pub(crate) fn post_run_supervise(
     git_revert_mode: GitRevertMode,
     git_commit_push_enabled: bool,
     revert_prompt: Option<runutil::RevertPromptHandler>,
+    notify_on_complete: Option<bool>,
+    notify_sound: Option<bool>,
 ) -> Result<()> {
     let label = format!("PostRunSupervise for {}", task_id.trim());
     logging::with_scope(&label, || {
@@ -144,6 +147,12 @@ pub(crate) fn post_run_supervise(
 
             finalize_git_state(resolved, task_id, &task_title, git_commit_push_enabled)
                 .context("Git finalization failed")?;
+
+            // Trigger completion notification on successful completion
+            let notify_config =
+                build_notification_config(resolved, notify_on_complete, notify_sound);
+            notification::notify_task_complete(task_id, &task_title, &notify_config);
+
             return Ok(());
         }
 
@@ -153,6 +162,12 @@ pub(crate) fn post_run_supervise(
             } else {
                 log::info!("Auto git commit/push disabled; skipping push.");
             }
+
+            // Trigger completion notification on successful completion
+            let notify_config =
+                build_notification_config(resolved, notify_on_complete, notify_sound);
+            notification::notify_task_complete(task_id, &task_title, &notify_config);
+
             return Ok(());
         }
 
@@ -182,8 +197,39 @@ pub(crate) fn post_run_supervise(
 
         finalize_git_state(resolved, task_id, &task_title, git_commit_push_enabled)
             .context("Git finalization failed")?;
+
+        // Trigger completion notification on successful completion
+        let notify_config = build_notification_config(resolved, notify_on_complete, notify_sound);
+        notification::notify_task_complete(task_id, &task_title, &notify_config);
+
         Ok(())
     })
+}
+
+/// Build notification configuration from resolved config and CLI overrides.
+fn build_notification_config(
+    resolved: &crate::config::Resolved,
+    notify_on_complete: Option<bool>,
+    notify_sound: Option<bool>,
+) -> notification::NotificationConfig {
+    // CLI overrides take precedence over config
+    let enabled = notify_on_complete
+        .or(resolved.config.agent.notification.enabled)
+        .unwrap_or(true);
+    let sound_enabled = notify_sound
+        .or(resolved.config.agent.notification.sound_enabled)
+        .unwrap_or(false);
+    notification::NotificationConfig {
+        enabled,
+        sound_enabled,
+        sound_path: resolved.config.agent.notification.sound_path.clone(),
+        timeout_ms: resolved
+            .config
+            .agent
+            .notification
+            .timeout_ms
+            .unwrap_or(8000),
+    }
 }
 
 /// Loads, repairs (backfills completed_at), and validates the queue and done files.
@@ -466,7 +512,8 @@ pub(super) fn ci_gate_command_label(resolved: &crate::config::Resolved) -> Strin
 mod tests {
     use super::*;
     use crate::contracts::{
-        AgentConfig, Config, QueueConfig, QueueFile, Runner, Task, TaskPriority, TaskStatus,
+        AgentConfig, Config, NotificationConfig, QueueConfig, QueueFile, Runner, Task,
+        TaskPriority, TaskStatus,
     };
     use crate::queue;
     use crate::testsupport::git as git_test;
@@ -530,6 +577,10 @@ mod tests {
                 git_commit_push_enabled: Some(true),
                 phases: Some(2),
                 update_task_before_run: Some(false),
+                notification: NotificationConfig {
+                    enabled: Some(false),
+                    ..NotificationConfig::default()
+                },
             },
             queue: QueueConfig {
                 file: Some(PathBuf::from(".ralph/queue.json")),
@@ -591,7 +642,15 @@ mod tests {
         std::fs::write(temp.path().join("work.txt"), "change")?;
 
         let resolved = resolved_for_repo(temp.path());
-        post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, true, None)?;
+        post_run_supervise(
+            &resolved,
+            "RQ-0001",
+            GitRevertMode::Disabled,
+            true,
+            None,
+            None,
+            None,
+        )?;
 
         let status = git_test::git_output(temp.path(), &["status", "--porcelain"])?;
         anyhow::ensure!(status.trim().is_empty(), "expected clean repo");
@@ -614,7 +673,15 @@ mod tests {
         std::fs::write(temp.path().join("work.txt"), "change")?;
 
         let resolved = resolved_for_repo(temp.path());
-        post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, false, None)?;
+        post_run_supervise(
+            &resolved,
+            "RQ-0001",
+            GitRevertMode::Disabled,
+            false,
+            None,
+            None,
+            None,
+        )?;
 
         let status = git_test::git_output(temp.path(), &["status", "--porcelain"])?;
         anyhow::ensure!(!status.trim().is_empty(), "expected dirty repo");
@@ -629,7 +696,15 @@ mod tests {
         git_test::commit_all(temp.path(), "init")?;
 
         let resolved = resolved_for_repo(temp.path());
-        post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, false, None)?;
+        post_run_supervise(
+            &resolved,
+            "RQ-0001",
+            GitRevertMode::Disabled,
+            false,
+            None,
+            None,
+            None,
+        )?;
 
         let done_file = queue::load_queue_or_default(&resolved.done_path)?;
         let task = done_file
@@ -676,8 +751,16 @@ mod tests {
         std::fs::write(temp.path().join("work.txt"), "change")?;
 
         let resolved = resolved_for_repo(temp.path());
-        let err = post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, true, None)
-            .expect_err("expected push failure");
+        let err = post_run_supervise(
+            &resolved,
+            "RQ-0001",
+            GitRevertMode::Disabled,
+            true,
+            None,
+            None,
+            None,
+        )
+        .expect_err("expected push failure");
         assert!(format!("{err:#}").contains("Git push failed"));
         Ok(())
     }
@@ -711,7 +794,15 @@ mod tests {
         std::fs::write(temp.path().join("work.txt"), "change")?;
 
         let resolved = resolved_for_repo(temp.path());
-        post_run_supervise(&resolved, "RQ-0001", GitRevertMode::Disabled, false, None)?;
+        post_run_supervise(
+            &resolved,
+            "RQ-0001",
+            GitRevertMode::Disabled,
+            false,
+            None,
+            None,
+            None,
+        )?;
         Ok(())
     }
 }

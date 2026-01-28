@@ -161,6 +161,9 @@ pub struct AgentConfig {
     ///
     /// Default: false (opt-in).
     pub update_task_before_run: Option<bool>,
+
+    /// Desktop notification configuration for task completion.
+    pub notification: NotificationConfig,
 }
 
 impl AgentConfig {
@@ -231,6 +234,7 @@ impl AgentConfig {
         if other.update_task_before_run.is_some() {
             self.update_task_before_run = other.update_task_before_run;
         }
+        self.notification.merge_from(other.notification);
     }
 }
 
@@ -539,6 +543,42 @@ impl TuiConfig {
     }
 }
 
+/// Desktop notification configuration.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+pub struct NotificationConfig {
+    /// Enable desktop notifications on task completion (default: true).
+    pub enabled: Option<bool>,
+
+    /// Enable sound alerts with notifications (default: false).
+    pub sound_enabled: Option<bool>,
+
+    /// Custom sound file path (platform-specific format).
+    /// If not set, uses platform default sounds.
+    pub sound_path: Option<String>,
+
+    /// Notification timeout in milliseconds (default: 8000).
+    #[schemars(range(min = 1000, max = 60000))]
+    pub timeout_ms: Option<u32>,
+}
+
+impl NotificationConfig {
+    pub fn merge_from(&mut self, other: Self) {
+        if other.enabled.is_some() {
+            self.enabled = other.enabled;
+        }
+        if other.sound_enabled.is_some() {
+            self.sound_enabled = other.sound_enabled;
+        }
+        if other.sound_path.is_some() {
+            self.sound_path = other.sound_path;
+        }
+        if other.timeout_ms.is_some() {
+            self.timeout_ms = other.timeout_ms;
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Model {
     #[default]
@@ -707,6 +747,12 @@ impl Default for Config {
                 git_revert_mode: Some(GitRevertMode::Ask),
                 git_commit_push_enabled: Some(true),
                 update_task_before_run: Some(false),
+                notification: NotificationConfig {
+                    enabled: Some(true),
+                    sound_enabled: Some(false),
+                    sound_path: None,
+                    timeout_ms: Some(8000),
+                },
             },
             tui: TuiConfig::default(),
         }

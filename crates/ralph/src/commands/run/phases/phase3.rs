@@ -145,6 +145,8 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                     ctx.git_revert_mode,
                     ctx.git_commit_push_enabled,
                     ctx.revert_prompt.clone(),
+                    ctx.notify_on_complete,
+                    ctx.notify_sound,
                 )?
             {
                 finalized = true;
@@ -215,6 +217,7 @@ fn load_phase3_task_snapshot(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn finalize_phase3_if_done(
     resolved: &config::Resolved,
     task_id: &str,
@@ -222,6 +225,8 @@ pub(crate) fn finalize_phase3_if_done(
     git_revert_mode: GitRevertMode,
     git_commit_push_enabled: bool,
     revert_prompt: Option<runutil::RevertPromptHandler>,
+    notify_on_complete: Option<bool>,
+    notify_sound: Option<bool>,
 ) -> Result<bool> {
     let should_finalize = if matches!(applied_status, Some(TaskStatus::Done)) {
         true
@@ -241,6 +246,8 @@ pub(crate) fn finalize_phase3_if_done(
         git_revert_mode,
         git_commit_push_enabled,
         revert_prompt,
+        notify_on_complete,
+        notify_sound,
     )?;
     Ok(true)
 }
