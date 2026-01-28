@@ -2,59 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0380",
-      "status": "doing",
-      "title": "Make ralph init interactive with onboarding wizard for new users",
-      "priority": "high",
-      "tags": [
-        "enhancement",
-        "cli",
-        "onboarding",
-        "ux",
-        "init"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/init.rs",
-        "crates/ralph/src/cli/init.rs",
-        "docs/cli.md",
-        "docs/quick-start.md (to be created)"
-      ],
-      "evidence": [
-        "Current init command (crates/ralph/src/commands/init.rs) creates skeleton files without user guidance - just writes default queue.json, done.json, config.json, and README.md",
-        "InitArgs in cli/init.rs only supports --force flag; no interactive options exist",
-        "Supported runners (crates/ralph/src/contracts/config.rs:316): Codex, Opencode, Gemini, Cursor, Claude (5 runners) - no Kimi/Pi support yet (separate task RQ-0371)",
-        "Config supports phases setting (1, 2, or 3) for controlling workflow depth",
-        "New users lack understanding of: 3-phase workflow, runner differences, config options, task structure",
-        "Interactive wizard would reduce onboarding friction significantly"
-      ],
-      "plan": [
-        "Add dialoguer or inquire dependency to Cargo.toml for interactive prompts",
-        "Extend InitArgs in cli/init.rs with --interactive (-i) and --non-interactive flags",
-        "Design wizard flow: welcome -> runner selection -> phase mode -> first task -> confirm",
-        "Create welcome screen with ASCII art explaining ralph's purpose",
-        "Implement runner selection prompt with descriptions of each supported runner",
-        "Add phase mode explanation (1-phase=quick fixes, 2-phase=plan+implement, 3-phase=full review)",
-        "Prompt for first task title and description with examples",
-        "Generate config.json with user-selected runner and phase defaults",
-        "Generate queue.json with user's first task pre-populated",
-        "Add --non-interactive flag for CI/scripts using defaults",
-        "Update docs/cli.md with init --interactive examples and wizard documentation",
-        "Create docs/quick-start.md referencing the new onboarding wizard",
-        "Add unit tests for wizard state machine and non-interactive flow",
-        "Run 'make ci' to verify all changes"
-      ],
-      "notes": [
-        "Kimi and Pi runners are NOT yet supported (tracked in RQ-0371) - wizard should only offer Codex, OpenCode, Gemini, Claude, Cursor",
-        "Consider using existing inquire crate if already in dependency tree, otherwise dialoguer is popular",
-        "Wizard should detect TTY and auto-enable interactive mode unless --non-interactive is passed"
-      ],
-      "request": "Onboarding Wizard - Make ralph init interactive, guiding new users through first task creation, explaining the 3-phase workflow with examples, and setting up default config with explanations.",
-      "created_at": "2026-01-28T20:00:00Z",
-      "updated_at": "2026-01-28T17:02:44.157734000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0379",
       "status": "todo",
       "title": "Add --quick flag to run one for immediate execution without planning phase",
