@@ -29,7 +29,7 @@ const DEFAULT_RALPH_README: &str = include_str!(concat!(
 
 /// Current version of the embedded README template.
 /// Increment this when updating the template to trigger update detection.
-pub const README_VERSION: u32 = 2;
+pub const README_VERSION: u32 = 3;
 
 /// Options for initializing Ralph files.
 pub struct InitOptions {
@@ -723,7 +723,7 @@ mod tests {
         assert_eq!(report.config_status, FileInitStatus::Created);
         assert!(matches!(
             report.readme_status,
-            Some((FileInitStatus::Created, Some(2)))
+            Some((FileInitStatus::Created, Some(3)))
         ));
         let queue = crate::queue::load_queue(&resolved.queue_path)?;
         assert_eq!(queue.version, 1);
@@ -830,7 +830,7 @@ mod tests {
         assert_eq!(report.config_status, FileInitStatus::Valid);
         assert!(matches!(
             report.readme_status,
-            Some((FileInitStatus::Created, Some(2)))
+            Some((FileInitStatus::Created, Some(3)))
         ));
         let raw = std::fs::read_to_string(&resolved.queue_path)?;
         assert!(raw.contains("Keep"));
@@ -864,7 +864,7 @@ mod tests {
         assert_eq!(report.config_status, FileInitStatus::Created);
         assert!(matches!(
             report.readme_status,
-            Some((FileInitStatus::Created, Some(2)))
+            Some((FileInitStatus::Created, Some(3)))
         ));
         let cfg_raw = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
         let cfg: Config = serde_json::from_str(&cfg_raw)?;
@@ -1323,7 +1323,7 @@ mod tests {
         // README should be updated
         assert!(matches!(
             report.readme_status,
-            Some((FileInitStatus::Updated, Some(2)))
+            Some((FileInitStatus::Updated, Some(3)))
         ));
 
         // Content should be new

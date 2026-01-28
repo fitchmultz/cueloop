@@ -1,4 +1,4 @@
-<!-- RALPH_README_VERSION: 2 -->
+<!-- RALPH_README_VERSION: 3 -->
 # Ralph runtime files
 
 This repo is using Ralph. The `.ralph/` directory holds repo-local state.
@@ -7,7 +7,7 @@ This repo is using Ralph. The `.ralph/` directory holds repo-local state.
 
 - `.ralph/queue.json` — JSON task queue (source of truth for active work).
 - `.ralph/done.json` — JSON archive of completed tasks (same schema as queue); only `done`/`rejected` statuses are valid.
-- `.ralph/prompts/` — optional prompt overrides (defaults are embedded in the Rust CLI under `crates/ralph/assets/prompts/`).
+- `.ralph/prompts/` — optional prompt overrides (defaults are embedded in the Ralph binary).
 - `.ralph/cache/` — runtime cache for plans, completions, and temporary state.
 
 ## Core Commands
@@ -135,7 +135,11 @@ Note: Standard placeholders like `{{USER_REQUEST}}` are still processed after va
 
 ## Prompt Organization
 
-Worker prompts are composed from a base prompt plus phase-specific wrappers:
+Worker prompts are composed from a base prompt plus phase-specific wrappers. All
+default prompts are embedded in the Ralph binary. You can create override files
+in `.ralph/prompts/` to customize behavior for this project.
+
+Optional override locations:
 - Base: `.ralph/prompts/worker.md`
 - Phase wrappers: `.ralph/prompts/worker_phase1.md`, `.ralph/prompts/worker_phase2.md`,
   `.ralph/prompts/worker_phase2_handoff.md`, `.ralph/prompts/worker_phase3.md`,
@@ -144,8 +148,14 @@ Worker prompts are composed from a base prompt plus phase-specific wrappers:
   `.ralph/prompts/phase2_handoff_checklist.md`, `.ralph/prompts/iteration_checklist.md`,
   `.ralph/prompts/code_review.md`
 
-If a repo-local override is missing, Ralph falls back to the embedded defaults in
-`crates/ralph/assets/prompts/`.
+If a repo-local override is missing, Ralph falls back to the embedded defaults.
+
+### Viewing Default Prompts
+
+To preview the composed prompts that will be sent to the runner:
+- `ralph prompt worker --phase 1` — Preview the Phase 1 planning prompt
+- `ralph prompt worker --phase 2` — Preview the Phase 2 implementation prompt
+- `ralph prompt worker --phase 3` — Preview the Phase 3 review prompt
 
 ## Runners (Codex + OpenCode + Gemini + Claude + Cursor)
 

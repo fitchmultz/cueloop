@@ -2,6 +2,101 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0385",
+      "status": "todo",
+      "title": "Add mechanism to view and sync default prompts without source code access",
+      "priority": "high",
+      "tags": [
+        "enhancement",
+        "prompts",
+        "ux",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/prompt.rs",
+        "crates/ralph/src/prompts.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "Users cannot see default embedded prompts without having Ralph source code",
+        "User request: 'figure out a way to allow users to see default prompts without having the source code'",
+        "User request: 'We also need a way to keep those default prompts up to date if they change in later versions of ralph'",
+        "User request: 'Something similar needs to happen for default prompts so users can review them and use them as a base for their own custom prompts'",
+        "Embedded prompts exist in crates/ralph/assets/prompts/: worker.md, worker_phase1.md, scan.md, task_builder.md, etc.",
+        "Current 'ralph prompt' command likely only shows composed prompts, not raw embedded defaults"
+      ],
+      "plan": [
+        "Add 'ralph prompt list' subcommand to show all available embedded prompt names",
+        "Add 'ralph prompt show <name> --raw' to display raw embedded prompt content (e.g., 'ralph prompt show worker --raw')",
+        "Add 'ralph prompt export [--all | <name>]' to write embedded prompts to .ralph/prompts/ directory for customization",
+        "Design update mechanism: store embedded prompt version/hash in .ralph/cache/prompt_version.json",
+        "Add 'ralph prompt sync' to check for outdated prompts and optionally update them (preserving user modifications)",
+        "When exporting, add a header comment indicating the prompt version and warning about auto-updates",
+        "Handle merge conflicts: if user modified a prompt, show diff and ask before overwriting",
+        "Add --force flag to sync to overwrite without prompting",
+        "Update docs/cli.md with new prompt management commands and examples",
+        "Update .ralph/README.md template (from RQ-0384) to reference the new prompt commands",
+        "Run 'make ci' to verify all changes"
+      ],
+      "notes": [],
+      "request": ".ralph/READEME.md (which gets created in EACH repo that uses ralph) contains some verbiage that points to project files that won't exist unless ralph is being used in the ralph project itself. We need to fix this verbiage and figure out a way to allow users to see default prompts without having the source code. We also need a way to keep those default prompts up to date if they change in later versions of ralph without wiping out custom user prompts. Something similar needs to happen for default prompts so users can review them and use them as a base for their own custom prompts.",
+      "created_at": "2026-01-28T21:00:00Z",
+      "updated_at": "2026-01-28T21:00:00Z",
+      "depends_on": [
+        "RQ-0384"
+      ],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0383",
+      "status": "todo",
+      "title": "Ensure CLI and TUI compatibility across terminal applications",
+      "priority": "medium",
+      "tags": [
+        "enhancement",
+        "tui",
+        "cli",
+        "terminal",
+        "compatibility",
+        "cross-platform"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/render/",
+        "crates/ralph/src/tui/events/",
+        "crates/ralph/src/cli/",
+        "Cargo.toml"
+      ],
+      "evidence": [
+        "User request: Ensure CLI and TUI support a variety of terminal applications beyond iTerm",
+        "Current testing has primarily used iTerm; compatibility with macOS Terminal and other common terminals is untested",
+        "TUI uses crossterm 0.28.0 and ratatui 0.29.0 for terminal handling",
+        "Different terminals may have varying support for: alternate screen buffer, mouse capture, raw mode, color/ANSI codes, key sequences",
+        "crossterm provides cross-platform abstractions but terminal-specific quirks may still exist"
+      ],
+      "plan": [
+        "Identify terminal types to test: macOS Terminal.app, iTerm2, Windows Terminal, GNOME Terminal, Konsole, Alacritty, WezTerm, tmux, screen",
+        "Test TUI launch and basic navigation on each terminal type",
+        "Verify alternate screen buffer enters/exits cleanly without garbling shell output",
+        "Test mouse capture support (clicking, scrolling) - gracefully degrade if unsupported",
+        "Verify color rendering: 256-color support, truecolor detection, fallback to 16 colors",
+        "Test key input: function keys, arrow keys, Ctrl/Alt combinations, special sequences",
+        "Check Unicode/box-drawing character rendering for TUI borders and symbols",
+        "Add terminal capability detection using crossterm::terminal or terminfo",
+        "Implement graceful fallbacks: disable mouse if unsupported, reduce colors if needed, use ASCII borders if Unicode fails",
+        "Add --no-mouse flag to TUI for terminals with broken mouse support",
+        "Add --color flag with auto/always/never options for color control",
+        "Document tested terminals and known limitations in docs/cli.md",
+        "Run 'make ci' to verify all changes"
+      ],
+      "notes": [],
+      "request": "We need to ensure the CLI and TUI support a variety of terminal applications. User has been using iTerm without issue but we need to ensure compatibility with the MacOS terminal and other common terminal types.",
+      "created_at": "2026-01-28T20:16:00Z",
+      "updated_at": "2026-01-28T20:16:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0375",
       "status": "todo",
       "title": "Add task dependencies visualization with graph view and critical path highlighting",
