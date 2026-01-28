@@ -312,6 +312,58 @@ ralph tui --read-only
 ralph tui --runner codex --model gpt-5.2-codex --effort high
 ```
 
+### Terminal Compatibility
+
+The TUI automatically detects terminal capabilities and adjusts rendering accordingly:
+
+* **Color support**: Auto-detected from `TERM`, `COLORTERM`, and `TERM_PROGRAM` environment variables. Supports truecolor, 256-color, 16-color, and monochrome modes.
+* **Mouse support**: Enabled by default on terminals that support it. Use `--no-mouse` to disable mouse capture for terminals with broken mouse support.
+* **Unicode support**: Uses Unicode box-drawing characters by default. Use `--ascii-borders` for ASCII-only terminals.
+
+Terminal compatibility flags:
+
+* `--no-mouse`: Disable mouse capture (useful for terminals with broken mouse support or when running over SSH).
+* `--color <auto|always|never>`: Control color output. `auto` detects terminal capabilities (default), `always` forces colors, `never` disables colors. Also respects the `NO_COLOR` environment variable.
+* `--ascii-borders`: Use ASCII characters (`+`, `-`, `|`) for borders instead of Unicode box-drawing characters.
+
+Examples:
+
+```bash
+# Disable mouse capture
+ralph tui --no-mouse
+
+# Force colors even in pipes or non-TTY environments
+ralph tui --color always
+
+# Disable colors entirely
+ralph tui --color never
+
+# Use ASCII borders for older terminals
+ralph tui --ascii-borders
+
+# Combine options for maximum compatibility
+ralph tui --no-mouse --color never --ascii-borders
+```
+
+### Tested Terminals
+
+The TUI has been tested on the following terminal applications:
+
+| Terminal | Color | Mouse | Unicode | Notes |
+|----------|-------|-------|---------|-------|
+| iTerm2 (macOS) | Full | Yes | Yes | Primary development target |
+| Terminal.app (macOS) | Full | Yes | Yes | Default macOS terminal |
+| Windows Terminal | Full | Yes | Yes | Modern Windows terminal |
+| GNOME Terminal | Full | Yes | Yes | Common Linux terminal |
+| Konsole | Full | Yes | Yes | KDE terminal |
+| Alacritty | Full | Yes | Yes | GPU-accelerated terminal |
+| WezTerm | Full | Yes | Yes | Modern terminal emulator |
+| tmux | Full | Yes | Yes | Terminal multiplexer |
+| screen | 16-color | Basic | Yes | Legacy multiplexer |
+| VS Code terminal | Full | Yes | Yes | Embedded terminal |
+
+If you encounter issues with a specific terminal, try the compatibility flags above.
+
 ## `ralph run`
 
 ### Subcommands

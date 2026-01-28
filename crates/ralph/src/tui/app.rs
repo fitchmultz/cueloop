@@ -36,6 +36,7 @@ use super::events::{
     PaletteEntry, ScoredPaletteEntry, TaskBuilderState, TaskBuilderStep, TuiAction,
 };
 use super::render::draw_ui;
+use super::terminal::{BorderStyle, ColorOption, ColorSupport, TerminalCapabilities};
 use super::TextInput;
 use crate::tui::app_filters::normalize_filter_token;
 use crate::tui::app_palette::{scan_label, score_palette_entry};
@@ -51,6 +52,12 @@ pub struct TuiOptions {
     pub loop_include_draft: bool,
     /// If true, show flowchart visualization on start.
     pub show_flowchart: bool,
+    /// If true, disable mouse capture.
+    pub no_mouse: bool,
+    /// Color output control.
+    pub color: ColorOption,
+    /// If true, use ASCII borders instead of Unicode.
+    pub ascii_borders: bool,
 }
 
 /// Active filters applied to the task list.
@@ -318,6 +325,12 @@ pub struct App {
     id_index_rebuilds: usize,
     #[cfg(test)]
     filtered_rebuilds: usize,
+    /// Terminal capabilities detected at startup.
+    pub terminal_capabilities: Option<TerminalCapabilities>,
+    /// Color support level resolved from CLI and environment.
+    pub color_support: Option<ColorSupport>,
+    /// Border style for rendering (Unicode or ASCII).
+    pub border_style: BorderStyle,
 }
 
 impl App {
@@ -381,6 +394,9 @@ impl App {
             id_index_rebuilds: 0,
             #[cfg(test)]
             filtered_rebuilds: 0,
+            terminal_capabilities: None,
+            color_support: None,
+            border_style: BorderStyle::Unicode,
         };
         app.rebuild_filtered_view();
         app
@@ -2133,10 +2149,26 @@ where
         };
     }
 
+    // Detect terminal capabilities.
+    let capabilities = TerminalCapabilities::detect();
+    let color_support = options.color.resolve(capabilities.colors);
+    let enable_mouse = !options.no_mouse && capabilities.has_mouse();
+    let border_style = BorderStyle::for_capabilities(capabilities, options.ascii_borders);
+
+    // Store capabilities in app for render-time decisions.
+    app.terminal_capabilities = Some(capabilities);
+    app.color_support = Some(color_support);
+    app.border_style = border_style;
+
     // Setup terminal.
     enable_raw_mode().context("enable raw mode")?;
     let mut stdout = std::io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture).context("enter alternate screen")?;
+    if enable_mouse {
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture)
+            .context("enter alternate screen with mouse")?;
+    } else {
+        execute!(stdout, EnterAlternateScreen).context("enter alternate screen")?;
+    }
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).context("create terminal")?;
 
@@ -2524,14 +2556,13 @@ where
     }));
 
     // Cleanup terminal.
-    disable_raw_mode().context("disable raw mode")?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )
-    .context("leave alternate screen")?;
-    terminal.show_cursor().context("show cursor")?;
+    let _ = disable_raw_mode();
+    let backend = terminal.backend_mut();
+    let _ = execute!(backend, LeaveAlternateScreen);
+    if enable_mouse {
+        let _ = execute!(backend, DisableMouseCapture);
+    }
+    let _ = terminal.show_cursor();
 
     match result {
         Ok(Ok(id)) => Ok(id),

@@ -124,6 +124,9 @@ mod tests {
     fn suppress_terminal_logs_for_tui() {
         let cmd = cli::Command::Tui(cli::tui::TuiArgs {
             read_only: false,
+            no_mouse: false,
+            color: cli::tui::ColorArg::Auto,
+            ascii_borders: false,
             agent: ralph::agent::RunAgentArgs::default(),
         });
         assert!(suppress_terminal_logs(&cmd));

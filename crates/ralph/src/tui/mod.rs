@@ -22,6 +22,7 @@ mod input;
 mod keymap;
 mod render;
 mod task_edit;
+pub mod terminal;
 
 #[cfg(test)]
 mod tests;

@@ -42,6 +42,9 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     loop_max_tasks: None,
                     loop_include_draft: args.agent.include_draft,
                     show_flowchart: args.visualize,
+                    no_mouse: false,
+                    color: crate::tui::terminal::ColorOption::Auto,
+                    ascii_borders: false,
                 };
                 let _ = tui::run_tui(
                     &resolved,
@@ -86,6 +89,9 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     loop_max_tasks: max,
                     loop_include_draft: args.agent.include_draft,
                     show_flowchart: args.visualize,
+                    no_mouse: false,
+                    color: crate::tui::terminal::ColorOption::Auto,
+                    ascii_borders: false,
                 };
 
                 let _ = tui::run_tui(

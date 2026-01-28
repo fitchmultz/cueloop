@@ -14,10 +14,33 @@
 //! - RepoPrompt mode selection (if any) is already normalized.
 
 use anyhow::{anyhow, Result};
-use clap::Args;
+use clap::{Args, ValueEnum};
 
 use crate::cli::interactive;
+use crate::tui::terminal::ColorOption;
 use crate::{agent, config, runner, runutil, tui};
+
+/// Color output control options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
+pub enum ColorArg {
+    /// Auto-detect based on terminal capabilities.
+    #[default]
+    Auto,
+    /// Always use colors.
+    Always,
+    /// Never use colors.
+    Never,
+}
+
+impl From<ColorArg> for ColorOption {
+    fn from(arg: ColorArg) -> Self {
+        match arg {
+            ColorArg::Auto => ColorOption::Auto,
+            ColorArg::Always => ColorOption::Always,
+            ColorArg::Never => ColorOption::Never,
+        }
+    }
+}
 
 #[derive(Args)]
 #[command(
@@ -33,12 +56,27 @@ Examples:\n\
  ralph tui --read-only\n\
  ralph tui --runner codex --model gpt-5.2-codex --effort high\n\
  ralph tui --runner claude --model opus\n\
- ralph tui --runner opencode --model gpt-5.2\n"
+ ralph tui --runner opencode --model gpt-5.2\n\
+ ralph tui --no-mouse\n\
+ ralph tui --color never\n\
+ ralph tui --ascii-borders\n"
 )]
 pub struct TuiArgs {
     /// Disable task execution (browse/edit only).
     #[arg(long)]
     pub read_only: bool,
+
+    /// Disable mouse capture in TUI.
+    #[arg(long)]
+    pub no_mouse: bool,
+
+    /// Color output control.
+    #[arg(long, value_enum, default_value = "auto")]
+    pub color: ColorArg,
+
+    /// Use ASCII borders instead of Unicode box-drawing.
+    #[arg(long)]
+    pub ascii_borders: bool,
 
     #[command(flatten)]
     pub agent: crate::agent::RunAgentArgs,
@@ -47,16 +85,18 @@ pub struct TuiArgs {
 pub fn handle_tui(args: TuiArgs, force_lock: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
 
+    // Build TUI options from CLI arguments.
+    let options = tui::TuiOptions {
+        no_mouse: args.no_mouse,
+        color: args.color.into(),
+        ascii_borders: args.ascii_borders,
+        ..tui::TuiOptions::default()
+    };
+
     if args.read_only {
         let runner_factory = browse_only_runner;
         let scan_factory = browse_only_scan_runner;
-        let _ = tui::run_tui(
-            &resolved,
-            force_lock,
-            tui::TuiOptions::default(),
-            runner_factory,
-            scan_factory,
-        )?;
+        let _ = tui::run_tui(&resolved, force_lock, options, runner_factory, scan_factory)?;
         return Ok(());
     }
 
@@ -71,7 +111,7 @@ pub fn handle_tui(args: TuiArgs, force_lock: bool) -> Result<()> {
     let _ = tui::run_tui(
         &resolved,
         force_lock,
-        tui::TuiOptions::default(),
+        options,
         factories.runner_factory,
         factories.scan_factory,
     )?;

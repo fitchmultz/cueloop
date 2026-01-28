@@ -450,7 +450,9 @@ mod tests {
         let cli = Cli::try_parse_from(["ralph", "tui", "--runner", "claude", "--model", "opus"])
             .expect("parse");
         match cli.command {
-            Command::Tui(tui::TuiArgs { read_only, agent }) => {
+            Command::Tui(tui::TuiArgs {
+                read_only, agent, ..
+            }) => {
                 assert!(!read_only);
                 assert_eq!(agent.runner.as_deref(), Some("claude"));
                 assert_eq!(agent.model.as_deref(), Some("opus"));
@@ -472,7 +474,9 @@ mod tests {
         ])
         .expect("parse");
         match cli.command {
-            Command::Tui(tui::TuiArgs { read_only, agent }) => {
+            Command::Tui(tui::TuiArgs {
+                read_only, agent, ..
+            }) => {
                 assert!(read_only);
                 assert_eq!(agent.runner.as_deref(), Some("opencode"));
                 assert_eq!(agent.model.as_deref(), Some("gpt-5.2"));
