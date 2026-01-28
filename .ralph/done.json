@@ -8373,6 +8373,52 @@
       "completed_at": "2026-01-28T02:32:07.237465000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0354",
+      "status": "done",
+      "title": "Fix TUI app.rs file size violation - split into focused modules",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "tui",
+        "code-quality"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/mod.rs"
+      ],
+      "evidence": [
+        "File is 2487 LOC, violating CLAUDE.md guideline: 'Files exceeding ~1000 LOC are presumed to be mis-scoped'",
+        "App struct handles: queue state, filter caching (FilterState, FilterKey, FilterSnapshot), task operations, loop mode (loop_active, loop_ran, loop_max_tasks), scroll management, runner execution state",
+        "FilterCacheStats test struct and normalize_filter_token helper also in same file",
+        "Multiple responsibilities in one file reduces maintainability and increases merge conflicts",
+        "tui/mod.rs currently exports from app.rs; will need re-exports after split"
+      ],
+      "plan": [
+        "Create tui/app_state.rs for core state management (App struct fields: queue, done, selected, mode, scroll, dirty flags, config)",
+        "Create tui/app_filters.rs for filter caching (FilterState, FilterKey, FilterSnapshot, FilterCacheStats, normalize_filter_token, id_to_index cache)",
+        "Create tui/app_loop.rs for loop mode state machine (RunningKind, loop_active, loop_ran, loop_max_tasks, loop_include_draft, runner_active)",
+        "Move scroll management fields and helpers (details_scroll, log_scroll, help_scroll, list_height) to appropriate modules",
+        "Update imports and re-exports in tui/mod.rs to maintain public API compatibility",
+        "Run make ci to ensure all tests pass after refactoring"
+      ],
+      "notes": [
+        "File size confirmed at 2487 lines - still significantly over the 1000 LOC threshold",
+        "Consider keeping existing event handlers in events/ module - they are already separate",
+        "Target size per module: ~400 LOC per CLAUDE.md guidelines",
+        "Phase 3 review complete: Verified 93 lines extracted to app_filters.rs (33 LOC) and app_palette.rs (100 LOC)",
+        "All modules have proper docstrings with responsibilities, exclusions, and invariants",
+        "make ci passes: 746 tests pass, clippy clean, format clean",
+        "app.rs reduced from ~2487 to ~2394 LOC (still large, but establishes modularization pattern)",
+        "No breaking changes to public API; imports updated correctly in app.rs and tests.rs"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-28T04:11:49Z",
+      "updated_at": "2026-01-28T04:46:15.565482000Z",
+      "completed_at": "2026-01-28T04:46:15.565482000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

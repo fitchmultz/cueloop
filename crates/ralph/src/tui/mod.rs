@@ -13,6 +13,8 @@
 //! - Public exports remain cohesive to the TUI surface area.
 
 mod app;
+mod app_filters;
+mod app_palette;
 mod config_edit;
 mod events;
 mod help;

@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0354",
-      "status": "todo",
-      "title": "Fix TUI app.rs file size violation - split into focused modules",
-      "priority": "high",
-      "tags": [
-        "refactor",
-        "tui",
-        "code-quality"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/app.rs"
-      ],
-      "evidence": [
-        "File is ~2500 LOC, violating CLAUDE.md guideline: 'Files exceeding ~1000 LOC are presumed to be mis-scoped'",
-        "App struct handles: queue state, filter caching, task operations, loop mode, scroll management, palette execution",
-        "Multiple responsibilities in one file reduces maintainability and increases merge conflicts"
-      ],
-      "plan": [
-        "Create tui/app_state.rs for core state management (App struct, queue/done state)",
-        "Create tui/app_filters.rs for filter caching and indexing logic",
-        "Create tui/app_loop.rs for loop mode state machine handling",
-        "Move event handlers to existing events/ module or create app_events.rs",
-        "Update imports and re-exports in tui/mod.rs",
-        "Ensure all tests pass after refactoring"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T04:11:49Z",
-      "updated_at": "2026-01-28T04:11:49Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0355",
       "status": "todo",
       "title": "Implement Windows PID detection for stale lock cleanup",
