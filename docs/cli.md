@@ -35,6 +35,7 @@ ralph --force queue archive
 * `ralph tui`: launch the interactive UI (queue + execution + loop).
 * `ralph prompt <subcommand>`: render compiled prompts for inspection.
 * `ralph task`: create a task from a request.
+* `ralph prd <subcommand>`: convert PRD (Product Requirements Document) markdown to tasks.
 * `ralph scan`: generate new tasks via scanning.
 * `ralph doctor`: verify environment readiness.
 
@@ -745,6 +746,117 @@ ralph task update --approval-mode auto-edits --runner claude RQ-0001
 ralph task update --repo-prompt plan RQ-0001
 ralph task update --repo-prompt off --fields scope,evidence RQ-0001
 ralph task update --fields tags RQ-0042
+```
+
+## `ralph prd`
+
+Convert PRD (Product Requirements Document) markdown files to Ralph tasks automatically.
+
+### Subcommands
+
+* `create <PATH>`: Create task(s) from a PRD markdown file.
+
+### `ralph prd create`
+
+Parses a PRD markdown file and converts it to one or more Ralph tasks.
+
+By default, creates a single consolidated task containing all PRD content. Use `--multi` to create one task per user story found in the PRD.
+
+#### PRD Format
+
+The PRD should follow standard markdown structure:
+
+* **Title**: First `# Heading` becomes the task title
+* **Introduction/Overview** (optional): Content under `## Introduction` or `## Overview`
+* **User Stories** (optional): `### US-XXX: Story Title` format with:
+  * Description (the "As a... I want... so that..." part)
+  * Acceptance Criteria (checkbox list `- [ ]`)
+* **Functional Requirements** (optional): Bulleted or numbered list
+* **Non-Goals** (optional): Out of scope items
+
+Example PRD structure:
+
+```markdown
+# New Feature PRD
+
+## Introduction
+
+Overview of the feature and its purpose.
+
+## User Stories
+
+### US-001: User Authentication
+**Description:** As a user, I want to log in so that I can access my account.
+
+**Acceptance Criteria:**
+- [ ] Login form validates email format
+- [ ] Password must be at least 8 characters
+- [ ] Session persists for 24 hours
+
+### US-002: Password Reset
+**Description:** As a user, I want to reset my password so that I can recover access.
+
+**Acceptance Criteria:**
+- [ ] Reset link sent to verified email
+- [ ] Link expires after 1 hour
+
+## Functional Requirements
+
+1. Support email/password authentication
+2. Implement OAuth2 for Google/GitHub
+3. Store passwords hashed with bcrypt
+
+## Non-Goals
+
+- Two-factor authentication (future phase)
+- Social media profile import
+```
+
+#### Flags
+
+* `--multi`: Create multiple tasks (one per user story) instead of a single consolidated task.
+* `--dry-run`: Preview generated tasks without inserting into the queue.
+* `--priority <low|medium|high|critical>`: Set priority for generated tasks (default: medium).
+* `--tag <TAG>`: Add tags to all generated tasks (repeatable).
+* `--draft`: Create tasks with draft status instead of todo.
+
+#### Task Generation
+
+**Single Task Mode (default):**
+* `title`: PRD title
+* `request`: PRD introduction + reference
+* `plan`: Functional requirements + acceptance criteria from all user stories
+* `notes`: Non-goals section
+* `tags`: "prd" + any `--tag` values
+
+**Multi Task Mode (`--multi`):**
+* One task per user story (US-XXX)
+* `title`: "[PRD Title] - [Story Title]"
+* `request`: Story description
+* `plan`: Story acceptance criteria
+* `depends_on`: Previous story ID (creates sequential dependency chain)
+* `tags`: "prd", "user-story" + any `--tag` values
+
+#### Examples
+
+```bash
+# Create a single consolidated task from PRD
+ralph prd create docs/prd/new-feature.md
+
+# Create one task per user story
+ralph prd create docs/prd/new-feature.md --multi
+
+# Preview without modifying queue
+ralph prd create docs/prd/new-feature.md --dry-run
+
+# Create with high priority and tags
+ralph prd create docs/prd/new-feature.md --priority high --tag feature --tag v2.0
+
+# Create as draft tasks
+ralph prd create docs/prd/new-feature.md --draft
+
+# Multi-task mode with custom priority and tags
+ralph prd create docs/prd/new-feature.md --multi --priority medium --tag user-story
 ```
 
 ## `ralph prompt`

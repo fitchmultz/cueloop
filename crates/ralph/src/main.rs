@@ -64,6 +64,7 @@ fn run() -> Result<()> {
         cli::Command::Doctor => cli::doctor::handle_doctor(),
         cli::Command::Tui(args) => cli::tui::handle_tui(args, cli.force),
         cli::Command::Context(args) => cli::context::handle_context(args),
+        cli::Command::Prd(args) => cli::prd::handle_prd(args, cli.force),
     }
 }
 

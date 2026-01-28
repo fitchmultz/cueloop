@@ -19,6 +19,7 @@ pub mod context;
 pub mod doctor;
 pub mod init;
 pub mod interactive;
+pub mod prd;
 pub mod prompt;
 pub mod queue;
 pub mod run;
@@ -73,6 +74,11 @@ pub enum Command {
         after_long_help = "Examples:\n  ralph context init\n  ralph context init --project-type rust\n  ralph context update --section troubleshooting\n  ralph context validate\n  ralph context update --dry-run"
     )]
     Context(context::ContextArgs),
+    /// Convert PRD (Product Requirements Document) markdown to tasks.
+    #[command(
+        after_long_help = "Examples:\n  ralph prd create docs/prd/new-feature.md\n  ralph prd create docs/prd/new-feature.md --multi\n  ralph prd create docs/prd/new-feature.md --dry-run\n  ralph prd create docs/prd/new-feature.md --priority high --tag feature\n  ralph prd create docs/prd/new-feature.md --draft"
+    )]
+    Prd(prd::PrdArgs),
 }
 
 pub(crate) fn load_and_validate_queues(

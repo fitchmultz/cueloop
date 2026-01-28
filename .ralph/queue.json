@@ -2,56 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0377",
-      "status": "todo",
-      "title": "Add ralph prd create command to convert PRD markdown to tasks",
-      "priority": "medium",
-      "tags": [
-        "enhancement",
-        "cli",
-        "prd",
-        "workflow"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/prd.rs",
-        "crates/ralph/src/commands/mod.rs",
-        "crates/ralph/src/cli.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User request: Simplified PRD Workflow - Add ralph prd create command to convert PRD markdown to task(s) automatically",
-        "Reference implementation: https://github.com/snarktank/ralph has PRD -> JSON flow",
-        "Ralph already has task creation via 'ralph task' command that could be extended",
-        "Queue format is well-defined in docs/queue-and-tasks.md with required fields",
-        "PRD documents typically contain: title, description, requirements, acceptance criteria, scope"
-      ],
-      "plan": [
-        "Research snarktank's PRD -> JSON flow for implementation patterns",
-        "Design PRD markdown parsing strategy (headers, sections, bullet points)",
-        "Create 'ralph prd create <path>' subcommand in new prd.rs module",
-        "Parse PRD markdown to extract: title, description, requirements, acceptance criteria",
-        "Map PRD sections to task fields: title -> task.title, description -> task.request, requirements -> task.plan",
-        "Support multiple task generation from PRD sections (e.g., one task per requirement)",
-        "Add --single flag to create one consolidated task vs --multi for multiple tasks",
-        "Add --dry-run flag to preview generated tasks without inserting",
-        "Add --priority flag to set default priority for generated tasks",
-        "Add --tag flag to add tags to all generated tasks",
-        "Generate proper task IDs using queue next-id logic",
-        "Insert generated tasks at correct position in queue (respecting doing task)",
-        "Add validation: ensure PRD file exists, is readable, contains parseable content",
-        "Add helpful error messages for malformed PRD files",
-        "Update docs/cli.md with prd command examples and workflow documentation",
-        "Add tests for PRD parsing with various markdown formats",
-        "Run 'make ci' to verify all changes"
-      ],
-      "notes": [],
-      "request": "Simplified PRD Workflow - Add ralph prd create command to convert PRD markdown to task(s) automatically (similar to snarktank's PRD -> JSON flow). https://github.com/snarktank/ralph",
-      "created_at": "2026-01-28T16:14:13Z",
-      "updated_at": "2026-01-28T16:14:13Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0376",
       "status": "todo",
       "title": "Add interactive flowchart for terminal-based 3-phase workflow visualization",
