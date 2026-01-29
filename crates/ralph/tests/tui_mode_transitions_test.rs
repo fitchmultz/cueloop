@@ -14,7 +14,7 @@
 mod test_support;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ralph::tui::{self, App, AppMode, TextInput, TuiAction};
+use ralph::tui::{self, App, AppMode, MultiLineInput, TuiAction};
 use test_support::make_test_queue;
 
 fn key_event(code: KeyCode) -> KeyEvent {
@@ -67,7 +67,7 @@ fn test_mode_transition_editing_to_list_on_save() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("New Title")),
+        editing_value: Some(MultiLineInput::new("New Title", false)),
     };
 
     let _ =
@@ -87,7 +87,7 @@ fn test_mode_transition_editing_to_list_on_cancel() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("New Title")),
+        editing_value: Some(MultiLineInput::new("New Title", false)),
     };
 
     let _ =

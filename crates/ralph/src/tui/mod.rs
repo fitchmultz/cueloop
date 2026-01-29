@@ -32,6 +32,7 @@ mod keymap;
 mod render;
 mod task_edit;
 pub mod terminal;
+mod textarea_input;
 
 #[cfg(test)]
 mod tests;
@@ -52,3 +53,4 @@ pub use events::{
 pub use input::TextInput;
 pub use render::draw_ui;
 pub use task_edit::{TaskEditEntry, TaskEditKind};
+pub use textarea_input::MultiLineInput;

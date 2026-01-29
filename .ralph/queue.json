@@ -2,47 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0418",
-      "status": "todo",
-      "title": "Integrate tui-textarea for multi-line task editing",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "ratatui-ecosystem",
-        "textarea",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/Cargo.toml",
-        "crates/ralph/src/tui/input.rs",
-        "crates/ralph/src/tui/task_edit.rs",
-        "crates/ralph/src/tui/render/overlays/editors.rs",
-        "crates/ralph/src/tui/events/editing.rs"
-      ],
-      "evidence": [
-        "Assessment: tui-textarea 0.7.0 is compatible with ratatui 0.29 and actively maintained",
-        "Current pain point: TextInput is single-line only with basic cursor rendering (underscore marker)",
-        "Current pain point: Multi-line fields edited as comma-separated single lines in task_edit.rs",
-        "Expected outcome: Remove ~100 LOC of custom input handling, enable proper multi-line editing for scope/evidence/plan/notes",
-        "tui-textarea features: Emacs shortcuts, undo/redo, line numbers, text selection, mouse scrolling"
-      ],
-      "plan": [
-        "Add dependency: tui-textarea = \"0.7\" to Cargo.toml",
-        "Replace TextInput with TextArea in task editing overlays",
-        "Update task_edit.rs to use textarea for: title, scope, evidence, notes, plan, request fields",
-        "Update editors.rs rendering to use textarea widget instead of custom cursor marker",
-        "Update events/editing.rs to handle textarea input (Emacs shortcuts, selection, etc.)",
-        "Test multi-line editing for all task fields",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [],
-      "request": "Read /tmp/ratatui-ecosystem-assessment.md and create tasks to have the recommended crates onboarded and put in place to replace all parts of the codebase that can eliminate complex custom code.",
-      "created_at": "2026-01-29T21:55:00Z",
-      "updated_at": "2026-01-29T21:55:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0419",
       "status": "todo",
       "title": "Integrate tui-term for ANSI-aware execution log display",

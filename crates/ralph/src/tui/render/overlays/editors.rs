@@ -10,11 +10,11 @@
 //!
 //! Invariants/assumptions:
 //! - Callers provide a properly sized terminal area.
-//! - Editing values are tracked via `TextInput` state.
+//! - Editing values are tracked via `MultiLineInput` state for multi-line editing.
 
 use crate::outpututil::truncate_chars;
 use crate::tui::config_edit::RiskLevel;
-use crate::tui::{App, ConfigFieldKind, TaskEditKind, TextInput};
+use crate::tui::{App, MultiLineInput};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -29,7 +29,7 @@ pub fn draw_config_editor(
     app: &App,
     area: Rect,
     selected: usize,
-    editing_value: Option<&TextInput>,
+    editing_value: Option<&MultiLineInput>,
 ) {
     let entries = app.config_entries();
     if entries.is_empty() {
@@ -79,12 +79,8 @@ pub fn draw_config_editor(
         .take(list_area.height as usize)
         .map(|(idx, entry)| {
             let is_selected = idx == selected;
-            let mut value = entry.value.clone();
-            if is_selected && entry.kind == ConfigFieldKind::Text {
-                if let Some(editing) = editing_value {
-                    value = editing.with_cursor_marker('_');
-                }
-            }
+            let value = entry.value.clone();
+            // Note: editing_value is now rendered separately as a textarea overlay
             let label = format!("{:label_width$}", entry.label);
 
             // Build line with optional warning indicator
@@ -121,13 +117,24 @@ pub fn draw_config_editor(
     let list = List::new(items).block(Block::default());
     f.render_widget(list, list_area);
 
+    // Render textarea overlay when editing
+    if let Some(textarea) = editing_value {
+        let edit_area = Rect {
+            x: popup_area.x + 2,
+            y: popup_area.y + 2 + selected as u16,
+            width: popup_width.saturating_sub(4),
+            height: 6.min(popup_height.saturating_sub(4)),
+        };
+        f.render_widget(textarea.widget(), edit_area);
+    }
+
     let hint = Line::from(vec![
-        Span::styled("Enter/Space", Style::default().add_modifier(Modifier::BOLD)),
-        Span::raw(":edit "),
-        Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
-        Span::raw(":clear "),
+        Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":commit "),
+        Span::styled("Alt+Enter", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(":newline "),
         Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-        Span::raw(":close"),
+        Span::raw(":cancel"),
     ]);
     f.render_widget(
         Paragraph::new(hint)
@@ -143,7 +150,7 @@ pub fn draw_task_editor(
     app: &App,
     area: Rect,
     selected: usize,
-    editing_value: Option<&TextInput>,
+    editing_value: Option<&MultiLineInput>,
 ) {
     let entries = app.task_edit_entries();
     if entries.is_empty() {
@@ -183,26 +190,21 @@ pub fn draw_task_editor(
 
     let label_width = 18usize;
 
+    // Check if we're currently editing
+    let is_editing = editing_value.is_some();
+
     let items: Vec<ListItem> = entries
         .iter()
         .enumerate()
         .take(list_area.height as usize)
         .map(|(idx, entry)| {
             let is_selected = idx == selected;
-            let mut value = entry.value.clone();
-            if is_selected {
-                match entry.kind {
-                    TaskEditKind::Cycle => {}
-                    TaskEditKind::Text
-                    | TaskEditKind::List
-                    | TaskEditKind::Map
-                    | TaskEditKind::OptionalText => {
-                        if let Some(editing) = editing_value {
-                            value = editing.with_cursor_marker('_');
-                        }
-                    }
-                }
-            }
+            let value = if is_selected && is_editing {
+                // Show placeholder when editing (actual textarea renders separately)
+                "...".to_string()
+            } else {
+                entry.value.clone()
+            };
             let label = format!("{:label_width$}", entry.label);
             let line_text = format!("{} {}", label, value);
             let display = truncate_chars(&line_text, list_area.width as usize);
@@ -222,19 +224,41 @@ pub fn draw_task_editor(
     let list = List::new(items).block(Block::default());
     f.render_widget(list, list_area);
 
-    let hint = Line::from(vec![
-        Span::styled("Enter/Space", Style::default().add_modifier(Modifier::BOLD)),
-        Span::raw(":edit "),
-        Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
-        Span::raw(":nav "),
-        Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
-        Span::raw(":clear "),
-        Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-        Span::raw(":close"),
-    ]);
+    // Render textarea overlay when editing
+    if let Some(textarea) = editing_value {
+        let edit_area = Rect {
+            x: popup_area.x + 2,
+            y: popup_area.y + 2 + selected as u16,
+            width: popup_width.saturating_sub(4),
+            height: 6.min(popup_height.saturating_sub(4)),
+        };
+        f.render_widget(textarea.widget(), edit_area);
+    }
+
+    let hint = if is_editing {
+        Line::from(vec![
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":commit "),
+            Span::styled("Alt+Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":newline "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ])
+    } else {
+        Line::from(vec![
+            Span::styled("Enter/Space", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":edit "),
+            Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":nav "),
+            Span::styled("x", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":clear "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":close"),
+        ])
+    };
     let format_hint = Line::from(vec![
         Span::styled("lists", Style::default().add_modifier(Modifier::BOLD)),
-        Span::raw(": a, b, c  "),
+        Span::raw(": one item per line  "),
         Span::styled("maps", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(": key=value"),
     ]);

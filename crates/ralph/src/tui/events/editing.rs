@@ -13,12 +13,11 @@
 //! - Editing modes remain consistent with the selected entry index.
 
 use super::super::config_edit::{ConfigKey, RiskLevel};
-use super::super::input::{apply_text_input_key, TextInputEdit};
-use super::super::{AppMode, TextInput};
+use super::super::{AppMode, MultiLineInput};
 use super::types::TuiAction;
 use super::{is_plain_char, text_char, App};
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /// Check if cycling the config value would enable a risky behavior.
 /// Returns Some(warning_message) if confirmation is required, None otherwise.
@@ -50,19 +49,31 @@ fn check_risky_config_change(app: &App, key: ConfigKey) -> Option<String> {
 
 /// Result of handling a text-edit key.
 enum TextEditKeyResult {
-    Commit(TextInput),
+    Commit(MultiLineInput),
     Cancel,
-    Update(TextInput),
+    Update(MultiLineInput),
     Noop,
 }
 
-fn handle_text_edit_key(key: KeyEvent, mut value: TextInput) -> TextEditKeyResult {
+fn handle_textarea_edit_key(key: KeyEvent, mut textarea: MultiLineInput) -> TextEditKeyResult {
     match key.code {
-        KeyCode::Enter => TextEditKeyResult::Commit(value),
+        KeyCode::Enter => {
+            // Check if Alt is pressed - if so, insert newline
+            if key.modifiers.contains(KeyModifiers::ALT) {
+                if textarea.input(key) {
+                    TextEditKeyResult::Update(textarea)
+                } else {
+                    TextEditKeyResult::Noop
+                }
+            } else {
+                // Plain Enter commits
+                TextEditKeyResult::Commit(textarea)
+            }
+        }
         KeyCode::Esc => TextEditKeyResult::Cancel,
         _ => {
-            if apply_text_input_key(&mut value, &key) == TextInputEdit::Changed {
-                TextEditKeyResult::Update(value)
+            if textarea.input(key) {
+                TextEditKeyResult::Update(textarea)
             } else {
                 TextEditKeyResult::Noop
             }
@@ -75,7 +86,7 @@ pub(super) fn handle_editing_task_key(
     app: &mut App,
     key: KeyEvent,
     selected: usize,
-    editing_value: Option<TextInput>,
+    editing_value: Option<MultiLineInput>,
     now_rfc3339: &str,
 ) -> Result<TuiAction> {
     let entries = app.task_edit_entries();
@@ -89,9 +100,15 @@ pub(super) fn handle_editing_task_key(
     let entry = entries[selected].clone();
 
     if let Some(value) = editing_value {
-        match handle_text_edit_key(key, value) {
+        match handle_textarea_edit_key(key, value) {
             TextEditKeyResult::Commit(value) => {
-                match app.apply_task_edit(entry.key, value.value(), now_rfc3339) {
+                // For list fields, get the lines as a comma-separated string
+                let edit_value = if app.is_list_field(entry.key) {
+                    value.lines().join(", ")
+                } else {
+                    value.value()
+                };
+                match app.apply_task_edit(entry.key, &edit_value, now_rfc3339) {
                     Ok(()) => {
                         app.mode = AppMode::EditingTask {
                             selected,
@@ -179,9 +196,10 @@ pub(super) fn handle_editing_task_key(
                     | crate::tui::TaskEditKind::Map
                     | crate::tui::TaskEditKind::OptionalText => {
                         let current = app.task_value_for_edit(entry.key);
+                        let is_list = app.is_list_field(entry.key);
                         app.mode = AppMode::EditingTask {
                             selected,
-                            editing_value: Some(TextInput::new(current)),
+                            editing_value: Some(MultiLineInput::new(current, is_list)),
                         };
                     }
                 }
@@ -203,9 +221,10 @@ pub(super) fn handle_editing_task_key(
                     | crate::tui::TaskEditKind::Map
                     | crate::tui::TaskEditKind::OptionalText => {
                         let current = app.task_value_for_edit(entry.key);
+                        let is_list = app.is_list_field(entry.key);
                         app.mode = AppMode::EditingTask {
                             selected,
-                            editing_value: Some(TextInput::new(current)),
+                            editing_value: Some(MultiLineInput::new(current, is_list)),
                         };
                     }
                 }
@@ -232,8 +251,11 @@ pub(super) fn handle_editing_task_key(
                     | crate::tui::TaskEditKind::Map
                     | crate::tui::TaskEditKind::OptionalText => {
                         if let Some(ch) = text_char(&key) {
-                            let mut input = TextInput::new(app.task_value_for_edit(entry.key));
-                            input.insert_char(ch);
+                            let current = app.task_value_for_edit(entry.key);
+                            let is_list = app.is_list_field(entry.key);
+                            let mut input = MultiLineInput::new(current, is_list);
+                            // Simulate typing the character
+                            input.textarea_mut().insert_char(ch);
                             app.mode = AppMode::EditingTask {
                                 selected,
                                 editing_value: Some(input),
@@ -253,7 +275,7 @@ pub(super) fn handle_editing_config_key(
     app: &mut App,
     key: KeyEvent,
     selected: usize,
-    editing_value: Option<TextInput>,
+    editing_value: Option<MultiLineInput>,
 ) -> Result<TuiAction> {
     let entries = app.config_entries();
     if entries.is_empty() {
@@ -266,9 +288,9 @@ pub(super) fn handle_editing_config_key(
     let entry = entries[selected].clone();
 
     if let Some(value) = editing_value {
-        match handle_text_edit_key(key, value) {
+        match handle_textarea_edit_key(key, value) {
             TextEditKeyResult::Commit(value) => {
-                match app.apply_config_text_value(entry.key, value.value()) {
+                match app.apply_config_text_value(entry.key, &value.value()) {
                     Ok(()) => {
                         app.mode = AppMode::EditingConfig {
                             selected,
@@ -346,7 +368,7 @@ pub(super) fn handle_editing_config_key(
                     let current = app.config_value_for_edit(entry.key);
                     app.mode = AppMode::EditingConfig {
                         selected,
-                        editing_value: Some(TextInput::new(current)),
+                        editing_value: Some(MultiLineInput::new(current, false)),
                     };
                 } else {
                     // Check if this is a risky config change
@@ -376,7 +398,7 @@ pub(super) fn handle_editing_config_key(
                     let current = app.config_value_for_edit(entry.key);
                     app.mode = AppMode::EditingConfig {
                         selected,
-                        editing_value: Some(TextInput::new(current)),
+                        editing_value: Some(MultiLineInput::new(current, false)),
                     };
                 } else {
                     // Check if this is a risky config change
@@ -409,8 +431,10 @@ pub(super) fn handle_editing_config_key(
             KeyCode::Char(_) => {
                 if entry.kind == crate::tui::ConfigFieldKind::Text {
                     if let Some(ch) = text_char(&key) {
-                        let mut input = TextInput::new(app.config_value_for_edit(entry.key));
-                        input.insert_char(ch);
+                        let current = app.config_value_for_edit(entry.key);
+                        let mut input = MultiLineInput::new(current, false);
+                        // Simulate typing the character
+                        input.textarea_mut().insert_char(ch);
                         app.mode = AppMode::EditingConfig {
                             selected,
                             editing_value: Some(input),

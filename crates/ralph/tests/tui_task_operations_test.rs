@@ -17,7 +17,7 @@ mod test_support;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ralph::contracts::{QueueFile, TaskStatus};
 use ralph::timeutil;
-use ralph::tui::{self, App, AppMode, TextInput, TuiAction};
+use ralph::tui::{self, App, AppMode, MultiLineInput, TuiAction};
 use test_support::{make_test_queue, make_test_task};
 
 fn key_event(code: KeyCode) -> KeyEvent {
@@ -143,7 +143,7 @@ fn test_editing_task_updates_title() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("New Title")),
+        editing_value: Some(MultiLineInput::new("New Title", false)),
     };
 
     let action =
@@ -163,7 +163,7 @@ fn test_editing_task_rejects_empty_title() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("")),
+        editing_value: Some(MultiLineInput::new("", false)),
     };
 
     let action =

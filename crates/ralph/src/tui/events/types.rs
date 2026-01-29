@@ -18,7 +18,7 @@ use crate::agent::RepoPromptMode;
 use crate::contracts::{ReasoningEffort, Runner};
 use crate::runutil::RevertDecision;
 use crate::tui::config_edit::ConfigKey;
-use crate::tui::TextInput;
+use crate::tui::{MultiLineInput, TextInput};
 
 /// Actions that can result from handling a key event.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,7 +58,7 @@ pub enum AppMode {
     /// Editing task fields
     EditingTask {
         selected: usize,
-        editing_value: Option<TextInput>,
+        editing_value: Option<MultiLineInput>,
     },
     /// Creating a new task (title input)
     CreatingTask(TextInput),
@@ -73,7 +73,7 @@ pub enum AppMode {
     /// Editing project configuration
     EditingConfig {
         selected: usize,
-        editing_value: Option<TextInput>,
+        editing_value: Option<MultiLineInput>,
     },
     /// Running a scan (focus input)
     Scanning(TextInput),

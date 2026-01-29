@@ -17,7 +17,7 @@ mod test_support;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ralph::contracts::{TaskPriority, TaskStatus};
 use ralph::runutil::RevertDecision;
-use ralph::tui::{self, App, AppMode, TextInput, TuiAction};
+use ralph::tui::{self, App, AppMode, MultiLineInput, TextInput, TuiAction};
 use std::sync::mpsc;
 use test_support::make_test_queue;
 
@@ -25,7 +25,7 @@ fn key_event(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
 }
 
-fn editing_value_str(editing_value: &Option<TextInput>) -> Option<&str> {
+fn editing_value_str(editing_value: &Option<MultiLineInput>) -> Option<String> {
     editing_value.as_ref().map(|input| input.value())
 }
 
@@ -169,7 +169,7 @@ fn test_handle_key_event_in_editing_mode_char() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("Test")),
+        editing_value: Some(MultiLineInput::new("Test", false)),
     };
 
     let action = tui::handle_key_event(
@@ -186,7 +186,7 @@ fn test_handle_key_event_in_editing_mode_char() {
             editing_value,
         } => {
             assert_eq!(*selected, 0);
-            assert_eq!(editing_value_str(editing_value), Some("TestX"));
+            assert_eq!(editing_value_str(editing_value), Some("TestX".to_string()));
         }
         _ => panic!("Expected EditingTask mode"),
     }
@@ -197,7 +197,7 @@ fn test_handle_key_event_in_editing_mode_backspace() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("Test")),
+        editing_value: Some(MultiLineInput::new("Test", false)),
     };
 
     let action = tui::handle_key_event(
@@ -214,7 +214,7 @@ fn test_handle_key_event_in_editing_mode_backspace() {
             editing_value,
         } => {
             assert_eq!(*selected, 0);
-            assert_eq!(editing_value_str(editing_value), Some("Tes"));
+            assert_eq!(editing_value_str(editing_value), Some("Tes".to_string()));
         }
         _ => panic!("Expected EditingTask mode"),
     }
@@ -225,7 +225,7 @@ fn test_handle_key_event_in_editing_mode_enter_saves() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("New Title")),
+        editing_value: Some(MultiLineInput::new("New Title", false)),
     };
 
     let action =
@@ -248,7 +248,7 @@ fn test_handle_key_event_in_editing_mode_esc_cancels() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("Modified Title")),
+        editing_value: Some(MultiLineInput::new("Modified Title", false)),
     };
 
     let action =
@@ -358,7 +358,7 @@ fn test_handle_key_event_editing_task_validation_error_keeps_editing() {
     let mut app = App::new(make_test_queue());
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("")),
+        editing_value: Some(MultiLineInput::new("", false)),
     };
 
     let action =

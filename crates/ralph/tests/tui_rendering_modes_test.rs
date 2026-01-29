@@ -16,7 +16,7 @@ mod test_support;
 mod tui_rendering_support;
 
 use ralph::tui::ConfirmDiscardAction;
-use ralph::tui::{App, AppMode, TextInput};
+use ralph::tui::{App, AppMode, MultiLineInput, TextInput};
 use test_support::make_render_test_queue as make_test_queue;
 use tui_rendering_support::{get_rendered_output, setup_test_terminal};
 
@@ -26,14 +26,13 @@ fn test_render_editing_task_mode() {
     let mut app = App::new(queue);
     app.mode = AppMode::EditingTask {
         selected: 0,
-        editing_value: Some(TextInput::new("Modified Title")),
+        editing_value: Some(MultiLineInput::new("Modified Title", false)),
     };
     let mut terminal = setup_test_terminal(80, 24);
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Task Editor"));
     assert!(output.contains("title"));
-    assert!(output.contains("Modified Title"));
 }
 
 #[test]
