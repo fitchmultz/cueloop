@@ -582,6 +582,7 @@ Inspect and manage the task queue (`.ralph/queue.json`) and done archive (`.ralp
 * `history`: show task history timeline (creation/completion events by day).
 * `burndown`: show burndown chart of remaining tasks over time.
 * `schema`: print the JSON schema for the queue file.
+* `export`: export task data to CSV, TSV, or JSON format.
 
 ### Queue Flags
 
@@ -870,6 +871,51 @@ ralph queue graph --include-done
 
 # JSON output for programmatic use
 ralph queue graph --format json
+```
+
+### `ralph queue export`
+
+Export task data to CSV, TSV, or JSON format for external analysis and reporting.
+
+Flags:
+
+* `--format <csv|tsv|json>`: output format (default: `csv`).
+* `--output <PATH>` (or `-o`): output file path (default: stdout).
+* `--status <draft|todo|doing|done|rejected>`: filter by status (repeatable).
+* `--tag <TAG>`: filter by tag (repeatable, case-insensitive).
+* `--scope <TOKEN>`: filter by scope token (repeatable, case-insensitive; substring match).
+* `--id-pattern <PATTERN>`: filter by task ID substring match.
+* `--created-after <DATE>`: filter tasks created after date (RFC3339 or YYYY-MM-DD).
+* `--created-before <DATE>`: filter tasks created before date (RFC3339 or YYYY-MM-DD).
+* `--include-archive`: include tasks from `.ralph/done.json` archive.
+* `--only-archive`: only export tasks from `.ralph/done.json` (ignores active queue).
+
+CSV/TSV output includes all task fields with arrays flattened to delimited strings:
+* `tags`, `scope`, `depends_on`: comma-separated
+* `evidence`, `plan`, `notes`: semicolon-separated
+* `custom_fields`: key=value pairs, comma-separated
+
+```bash
+# Export all tasks to CSV (default)
+ralph queue export
+
+# Export to file
+ralph queue export --format csv --output tasks.csv
+
+# Export completed tasks to JSON
+ralph queue export --format json --status done
+
+# Export tasks with specific tags to TSV
+ralph queue export --format tsv --tag rust --tag cli
+
+# Include archive tasks
+ralph queue export --include-archive --format csv
+
+# Export only archived tasks from last 30 days
+ralph queue export --only-archive --format csv --created-after 2026-01-01
+
+# Export tasks matching ID pattern
+ralph queue export --id-pattern RQ-01
 ```
 
 ## `ralph task`

@@ -16,7 +16,10 @@ use anyhow::Result;
 use clap::CommandFactory;
 use tempfile::TempDir;
 
-use super::{list, search, QueueListArgs, QueueListFormat, QueueSearchArgs, QueueSortOrder};
+use super::{
+    export, list, search, QueueExportArgs, QueueExportFormat, QueueListArgs, QueueListFormat,
+    QueueSearchArgs, QueueSortOrder,
+};
 use crate::config;
 use crate::contracts::{Config, QueueFile, Task, TaskStatus};
 use std::collections::HashMap;
@@ -93,6 +96,22 @@ fn base_search_args() -> QueueSearchArgs {
         format: QueueListFormat::Compact,
         limit: 50,
         all: false,
+    }
+}
+
+fn base_export_args() -> QueueExportArgs {
+    QueueExportArgs {
+        format: QueueExportFormat::Csv,
+        output: None,
+        status: vec![],
+        tag: vec![],
+        scope: vec![],
+        id_pattern: None,
+        created_after: None,
+        created_before: None,
+        include_archive: false,
+        only_archive: false,
+        quiet: false,
     }
 }
 
@@ -181,5 +200,47 @@ fn queue_next_id_help_examples_expanded() {
     assert!(
         help.contains("ralph --verbose queue next-id"),
         "missing verbose next-id example: {help}"
+    );
+}
+
+#[test]
+fn queue_export_rejects_conflicting_archive_flags() {
+    let dir = TempDir::new().expect("temp dir");
+    let resolved = resolved_for_dir(&dir);
+
+    let mut args = base_export_args();
+    args.include_archive = true;
+    args.only_archive = true;
+
+    let err = export::handle(&resolved, args).expect_err("expected error");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("Conflicting flags")
+            && msg.contains("--include-archive")
+            && msg.contains("--only-archive"),
+        "unexpected error: {msg}"
+    );
+}
+
+#[test]
+fn queue_export_help_examples_expanded() {
+    let mut cmd = crate::cli::Cli::command();
+    let queue = cmd.find_subcommand_mut("queue").expect("queue subcommand");
+    let export_cmd = queue
+        .find_subcommand_mut("export")
+        .expect("queue export subcommand");
+    let help = export_cmd.render_long_help().to_string();
+
+    assert!(
+        help.contains("ralph queue export"),
+        "missing export example: {help}"
+    );
+    assert!(
+        help.contains("--format csv"),
+        "missing format example: {help}"
+    );
+    assert!(
+        help.contains("--output tasks.csv"),
+        "missing output example: {help}"
     );
 }

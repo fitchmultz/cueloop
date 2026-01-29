@@ -60,6 +60,17 @@ pub enum QueueReportFormat {
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[clap(rename_all = "snake_case")]
+pub enum QueueExportFormat {
+    /// Comma-separated values (CSV) format.
+    Csv,
+    /// Tab-separated values (TSV) format.
+    Tsv,
+    /// JSON format (array of task objects).
+    Json,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+#[clap(rename_all = "snake_case")]
 pub enum QueueSortBy {
     /// Sort by priority.
     Priority,

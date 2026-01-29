@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0392",
-      "status": "todo",
-      "title": "Add export command for task data",
-      "priority": "low",
-      "tags": [
-        "enhancement",
-        "cli",
-        "data-export"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/",
-        "crates/ralph/src/commands/"
-      ],
-      "evidence": [
-        "No way to export task data for external analysis or reporting",
-        "Users may want to export to CSV, JSON, or other formats",
-        "Queue data is JSON but not easily consumable by spreadsheet tools",
-        "Useful for project retrospectives and metrics analysis"
-      ],
-      "plan": [
-        "Create 'ralph export' command with format options",
-        "Support CSV, TSV, and JSON output formats",
-        "Allow filtering by status, tags, date range",
-        "Include all task fields in export",
-        "Add examples to docs/cli.md"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T05:30:00Z",
-      "updated_at": "2026-01-28T05:30:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0393",
       "status": "todo",
       "title": "Fix TUI app state being too large and unfocused",

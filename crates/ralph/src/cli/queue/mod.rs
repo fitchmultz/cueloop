@@ -15,6 +15,7 @@
 
 mod archive;
 mod burndown;
+mod export;
 mod graph;
 mod history;
 mod list;
@@ -37,6 +38,7 @@ use clap::{Args, Subcommand};
 use crate::config;
 
 pub use burndown::QueueBurndownArgs;
+pub use export::QueueExportArgs;
 pub use graph::QueueGraphArgs;
 pub use history::QueueHistoryArgs;
 pub use list::QueueListArgs;
@@ -46,7 +48,8 @@ pub use prune::QueuePruneArgs;
 pub use repair::RepairArgs;
 pub use search::QueueSearchArgs;
 pub use shared::{
-    QueueListFormat, QueueReportFormat, QueueShowFormat, QueueSortBy, QueueSortOrder, StatusArg,
+    QueueExportFormat, QueueListFormat, QueueReportFormat, QueueShowFormat, QueueSortBy,
+    QueueSortOrder, StatusArg,
 };
 pub(crate) use show::show_task;
 pub use show::QueueShowArgs;
@@ -72,6 +75,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Schema => schema::handle(),
         QueueCommand::Prune(args) => prune::handle(&resolved, force, args),
         QueueCommand::Graph(args) => graph::handle(&resolved, args),
+        QueueCommand::Export(args) => export::handle(&resolved, args),
     }
 }
 
@@ -164,6 +168,12 @@ pub enum QueueCommand {
         after_long_help = "Examples:\n ralph queue graph\n ralph queue graph --task RQ-0001\n ralph queue graph --format dot\n ralph queue graph --critical\n ralph queue graph --reverse --task RQ-0001"
     )]
     Graph(QueueGraphArgs),
+
+    /// Export task data to CSV, TSV, or JSON format.
+    #[command(
+        after_long_help = "Examples:\n ralph queue export\n ralph queue export --format csv --output tasks.csv\n ralph queue export --format json --status done\n ralph queue export --format tsv --tag rust --tag cli\n ralph queue export --include-archive --format csv\n ralph queue export --format csv --created-after 2026-01-01"
+    )]
+    Export(QueueExportArgs),
 }
 
 #[cfg(test)]
