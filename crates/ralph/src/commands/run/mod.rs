@@ -287,6 +287,11 @@ fn run_one_impl(
         .or(resolved.config.agent.update_task_before_run)
         .unwrap_or(false);
 
+    let fail_on_prerun_update_error = agent_overrides
+        .fail_on_prerun_update_error
+        .or(resolved.config.agent.fail_on_prerun_update_error)
+        .unwrap_or(false);
+
     if update_task_before_run {
         log::info!("Task {task_id}: pre-run update enabled; running task updater");
         let runner_cli_overrides = RunnerCliOptionsPatch {
@@ -313,10 +318,23 @@ fn run_one_impl(
                 log::info!("Task {task_id}: pre-run update completed successfully");
             }
             Err(err) => {
+                if fail_on_prerun_update_error {
+                    return Err(anyhow::anyhow!(
+                        "Pre-run task update failed for {}: {}\n\n\
+                         Troubleshooting:\n\
+                         - Check runner configuration (agent.runner, agent.model)\n\
+                         - Verify runner binary is on PATH\n\
+                         - Run with --force to skip this check\n\
+                         - Or set fail_on_prerun_update_error: false in config to warn only",
+                        task_id,
+                        err
+                    ));
+                }
                 log::warn!(
                     "Task {task_id}: pre-run update failed (continuing with original task): {:#}",
                     err
                 );
+                log::debug!("Pre-run update error details: {:?}", err);
                 // Continue with original task - don't fail the run
             }
         }

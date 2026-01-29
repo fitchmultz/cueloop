@@ -12,6 +12,7 @@
         "claude_permission_mode": "bypass_permissions",
         "codex_bin": "codex",
         "cursor_bin": "agent",
+        "fail_on_prerun_update_error": false,
         "followup_reasoning_effort": null,
         "gemini_bin": "gemini",
         "git_commit_push_enabled": true,
@@ -184,6 +185,14 @@
           "default": null,
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "fail_on_prerun_update_error": {
+          "description": "If true, fail the run when pre-run task update fails. If false (default), log a warning and continue with original task data.",
+          "default": null,
+          "type": [
+            "boolean",
             "null"
           ]
         },

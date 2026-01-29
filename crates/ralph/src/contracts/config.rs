@@ -168,6 +168,10 @@ pub struct AgentConfig {
     /// Default: false (opt-in).
     pub update_task_before_run: Option<bool>,
 
+    /// If true, fail the run when pre-run task update fails.
+    /// If false (default), log a warning and continue with original task data.
+    pub fail_on_prerun_update_error: Option<bool>,
+
     /// Desktop notification configuration for task completion.
     pub notification: NotificationConfig,
 }
@@ -245,6 +249,9 @@ impl AgentConfig {
         }
         if other.update_task_before_run.is_some() {
             self.update_task_before_run = other.update_task_before_run;
+        }
+        if other.fail_on_prerun_update_error.is_some() {
+            self.fail_on_prerun_update_error = other.fail_on_prerun_update_error;
         }
         self.notification.merge_from(other.notification);
     }
@@ -777,6 +784,7 @@ impl Default for Config {
                 git_revert_mode: Some(GitRevertMode::Ask),
                 git_commit_push_enabled: Some(true),
                 update_task_before_run: Some(false),
+                fail_on_prerun_update_error: Some(false),
                 notification: NotificationConfig {
                     enabled: Some(true),
                     sound_enabled: Some(false),
@@ -830,6 +838,26 @@ mod tests {
         // None should not override an already-set value.
         base.merge_from(AgentConfig::default());
         assert_eq!(base.update_task_before_run, Some(true));
+    }
+
+    #[test]
+    fn agent_config_merge_from_merges_fail_on_prerun_update_error_leafwise() {
+        let mut base = AgentConfig {
+            fail_on_prerun_update_error: Some(false),
+            ..Default::default()
+        };
+
+        let other = AgentConfig {
+            fail_on_prerun_update_error: Some(true),
+            ..Default::default()
+        };
+
+        base.merge_from(other);
+        assert_eq!(base.fail_on_prerun_update_error, Some(true));
+
+        // None should not override an already-set value.
+        base.merge_from(AgentConfig::default());
+        assert_eq!(base.fail_on_prerun_update_error, Some(true));
     }
 
     #[test]

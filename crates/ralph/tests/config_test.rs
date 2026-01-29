@@ -566,6 +566,7 @@ fn test_agent_config_merge_from_partial() {
         git_revert_mode: Some(GitRevertMode::Ask),
         git_commit_push_enabled: Some(true),
         update_task_before_run: None,
+        fail_on_prerun_update_error: None,
         notification: NotificationConfig::default(),
     };
 
@@ -593,6 +594,7 @@ fn test_agent_config_merge_from_partial() {
         git_revert_mode: Some(GitRevertMode::Disabled),
         git_commit_push_enabled: Some(false),
         update_task_before_run: None,
+        fail_on_prerun_update_error: None,
         notification: NotificationConfig::default(),
     };
 

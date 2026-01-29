@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0363",
-      "status": "todo",
-      "title": "Fix pre-run task update failures being silently ignored",
-      "priority": "medium",
-      "tags": [
-        "bug",
-        "workflow",
-        "error-handling"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/mod.rs"
-      ],
-      "evidence": [
-        "mod.rs:307-319 pre-run update failure is logged as warning but execution continues",
-        "If update fails due to persistent issue (runner misconfiguration), task runs with stale data",
-        "User may not notice the warning in log output"
-      ],
-      "plan": [
-        "Add config option 'fail_on_prerun_update_error' (default: false for compatibility)",
-        "When enabled, fail fast with clear error message on pre-run update failure",
-        "Add retry logic with exponential backoff for transient failures",
-        "Improve error message to include troubleshooting steps",
-        "Log the full error to debug log for investigation"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T04:11:49Z",
-      "updated_at": "2026-01-28T04:11:49Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0364",
       "status": "todo",
       "title": "Fix atomic write temp file leak on persist failure",

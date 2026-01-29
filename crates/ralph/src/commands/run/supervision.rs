@@ -571,6 +571,8 @@ mod tests {
                 claude_permission_mode: Some(
                     crate::contracts::ClaudePermissionMode::BypassPermissions,
                 ),
+                update_task_before_run: None,
+                fail_on_prerun_update_error: None,
                 runner_cli: None,
                 instruction_files: None,
                 repoprompt_plan_required: Some(false),
@@ -580,7 +582,6 @@ mod tests {
                 git_revert_mode: Some(GitRevertMode::Disabled),
                 git_commit_push_enabled: Some(true),
                 phases: Some(2),
-                update_task_before_run: Some(false),
                 notification: NotificationConfig {
                     enabled: Some(false),
                     ..NotificationConfig::default()
