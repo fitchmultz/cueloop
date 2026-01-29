@@ -109,6 +109,15 @@ const NORMAL_NAV_BINDINGS: &[KeyBinding] = &[
             label: "run",
         }),
     },
+    KeyBinding {
+        keys: &["G"],
+        keys_display: "G",
+        description: "jump to task by ID",
+        footer_hint: Some(FooterHint {
+            keys: "G",
+            label: "jump",
+        }),
+    },
 ];
 
 const NORMAL_ACTION_BINDINGS: &[KeyBinding] = &[
@@ -188,6 +197,15 @@ const NORMAL_ACTION_BINDINGS: &[KeyBinding] = &[
         footer_hint: Some(FooterHint {
             keys: "g",
             label: "scan",
+        }),
+    },
+    KeyBinding {
+        keys: &["v"],
+        keys_display: "v",
+        description: "view dependency graph",
+        footer_hint: Some(FooterHint {
+            keys: "v",
+            label: "graph",
         }),
     },
     KeyBinding {

@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0367",
-      "status": "todo",
-      "title": "Add TUI help text for all key bindings and commands",
-      "priority": "low",
-      "tags": [
-        "ux",
-        "tui",
-        "documentation"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "TUI has many key bindings but no built-in help overlay showing all options",
-        "Users must refer to external docs or discover keys by trial",
-        "Help overlay exists but may not cover all available actions"
-      ],
-      "plan": [
-        "Audit all key bindings in tui/events/ module",
-        "Create comprehensive help overlay showing all bindings by category",
-        "Add '?' key to toggle help overlay from any mode",
-        "Include command palette shortcuts in help",
-        "Update docs/cli.md with TUI key reference"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T04:11:49Z",
-      "updated_at": "2026-01-28T04:11:49Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0368",
       "status": "todo",
       "title": "Add LFS smudge/clean filter validation before commit",

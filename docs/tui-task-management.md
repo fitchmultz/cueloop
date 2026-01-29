@@ -31,6 +31,7 @@ Actions:
 - `N`: build a task using the task builder agent (prompt for description)
 - `c`: edit project config
 - `g`: scan repository
+- `v`: view dependency graph
 - `r`: reload queue from disk
 - `?` / `h`: help overlay
 - `q` / `Esc`: quit (may prompt if runner active)
@@ -53,8 +54,6 @@ Filters & Search:
 Quick Changes:
 - `s`: cycle selected task status
 - `p`: cycle selected task priority
-- `S`: set selected task status (via palette)
-- `P`: set selected task priority (via palette)
 
 In **Execution view** (while a task is running):
 - `Esc`: return to task list
