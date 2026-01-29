@@ -64,6 +64,7 @@ Optional hint scope (may be empty):
     - If its `status` is `doing`, insert new task(s) at position 1 (immediately below the in-progress task).
     - Otherwise, insert at position 0 (top of the queue).
 - IMPORTANT (avoid reversed ordering): if you add multiple tasks and are using `ralph queue next-id` repeatedly, do NOT insert each newly created task at the absolute top of the file. That reverses the intended priority order. Instead, insert the first new task at the chosen insertion position, then insert subsequent new tasks immediately BELOW the previously inserted new tasks.
+- CRITICAL (dependency ordering): If a task has `depends_on` pointing to another task ID, the dependency MUST appear BEFORE the dependent task in the queue file (execution is top-to-bottom). When adding related tasks, insert dependencies first, then insert dependent tasks BELOW them. Run `ralph queue validate` after editing to verify the queue is valid.
 - Set `request` on each task to the original user request.
 - Set `created_at` and `updated_at` to current UTC RFC3339 time.
 

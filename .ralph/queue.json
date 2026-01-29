@@ -2,44 +2,333 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0406",
+      "id": "RQ-0413",
       "status": "todo",
-      "title": "Assess migration to OpenTUI framework for TUI components",
+      "title": "Implement 'ralph task build refactor' shortcut for automated large-file refactoring tasks",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "task-builder",
+        "refactor",
+        "automation",
+        "code-quality"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/cli/",
+        "crates/ralph/src/queue/",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "User request: 'Implement a task builder shortcut such as ralph task build refactor that identifies large files with large LOC'",
+        "User example: Previously used manual prompt 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
+        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
+        "Existing pattern: Tasks RQ-0407 through RQ-0412 were manually created for this purpose",
+        "Batching requirement: User wants closely related files batched when appropriate"
+      ],
+      "plan": [
+        "Design 'ralph task build refactor' subcommand structure and argument parsing",
+        "Implement file discovery: scan codebase for files exceeding LOC threshold (default 1000, configurable via --threshold)",
+        "Implement file analysis: group closely related files by directory/module patterns for batching",
+        "Implement task generation: create properly structured tasks for each file/group",
+        "Add --dry-run flag to preview tasks without inserting into queue",
+        "Add --threshold flag to customize LOC threshold (default: 1000)",
+        "Add --batch flag to control batching behavior (auto, never, aggressive)",
+        "Integrate with existing task builder to generate proper JSON task structure",
+        "Update CLI help text with examples for 'ralph task build refactor'",
+        "Update docs/cli.md with new command documentation",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Batching heuristics: files in same directory with similar names (e.g., tests.rs, test_*.rs) can be batched",
+        "Task titles should follow pattern: 'Refactor <path>: split <N> LOC into smaller modules'",
+        "Generated tasks should include proper scope, evidence, and plan arrays"
+      ],
+      "request": "Implement a task builder shortcut such as 'ralph task build refactor' that identifies large files with large LOC and creates individual tasks to have each refactored into smaller files. If it makes sense to batch some files together, due to very closely aligned or overlapping functionality, a single task may allow for multiple files to be refactored if it is not too much for an agent to handle.",
+      "created_at": "2026-01-29T15:34:04Z",
+      "updated_at": "2026-01-29T15:34:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0407",
+      "status": "todo",
+      "title": "Refactor tui/events/tests.rs: split 3,160 LOC test file into cohesive modules",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "tui",
+        "tests",
+        "code-quality",
+        "module-boundaries"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/tests.rs",
+        "crates/ralph/src/tui/events/"
+      ],
+      "evidence": [
+        "User request: 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
+        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
+        "File stats: tui/events/tests.rs has 3,160 LOC - more than 3x the 1,000 LOC threshold",
+        "File stats: This is the largest source file in the codebase"
+      ],
+      "plan": [
+        "Analyze tui/events/tests.rs to identify logical groupings/cohesion boundaries",
+        "Design module structure: split into focused test modules by functionality (e.g., input_tests.rs, navigation_tests.rs, etc.)",
+        "Ensure each new module has a single cohesive responsibility under ~400 LOC",
+        "Move tests to new modules preserving all test coverage",
+        "Update module declarations and imports",
+        "Run 'make ci' to validate all tests still pass",
+        "Verify no regression in test coverage"
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files.",
+      "created_at": "2026-01-29T15:29:58Z",
+      "updated_at": "2026-01-29T15:29:58Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0408",
+      "status": "todo",
+      "title": "Refactor tui/app.rs: split 2,683 LOC app module into smaller cohesive files",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "tui",
+        "app",
+        "code-quality",
+        "module-boundaries"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/"
+      ],
+      "evidence": [
+        "User request: 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
+        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
+        "File stats: tui/app.rs has 2,683 LOC - more than 2.5x the 1,000 LOC threshold",
+        "File stats: Second largest source file in the codebase"
+      ],
+      "plan": [
+        "Analyze tui/app.rs to identify distinct responsibilities (state management, event handling, lifecycle, etc.)",
+        "Design module structure: extract cohesive submodules (e.g., app/state.rs, app/events.rs, app/lifecycle.rs)",
+        "Ensure each new module has a single cohesive responsibility under ~400 LOC",
+        "Refactor app.rs to be a thin coordinator module re-exporting public API",
+        "Update all imports across the codebase",
+        "Run 'make ci' to validate changes",
+        "Verify TUI functionality remains intact"
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files.",
+      "created_at": "2026-01-29T15:29:58Z",
+      "updated_at": "2026-01-29T15:29:58Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0409",
+      "status": "todo",
+      "title": "Refactor gitutil.rs: split 1,611 LOC utility module into focused submodules",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "git",
+        "utilities",
+        "code-quality",
+        "module-boundaries"
+      ],
+      "scope": [
+        "crates/ralph/src/gitutil.rs",
+        "crates/ralph/src/"
+      ],
+      "evidence": [
+        "User request: 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
+        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
+        "File stats: gitutil.rs has 1,611 LOC - more than 1.5x the 1,000 LOC threshold"
+      ],
+      "plan": [
+        "Analyze gitutil.rs to identify distinct git operations (status, diff, commit, branch, etc.)",
+        "Design module structure: create git/ subdirectory with focused modules (git/status.rs, git/diff.rs, git/commit.rs, etc.)",
+        "Ensure each new module has a single cohesive responsibility under ~400 LOC",
+        "Refactor gitutil.rs to re-export public API or become a module index",
+        "Update all imports across the codebase",
+        "Run 'make ci' to validate changes",
+        "Verify git operations remain functional"
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files.",
+      "created_at": "2026-01-29T15:29:58Z",
+      "updated_at": "2026-01-29T15:29:58Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0410",
+      "status": "todo",
+      "title": "Refactor commands/init.rs: split 1,335 LOC init command into smaller modules",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "commands",
+        "init",
+        "code-quality",
+        "module-boundaries"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/init.rs",
+        "crates/ralph/src/commands/"
+      ],
+      "evidence": [
+        "User request: 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
+        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
+        "File stats: commands/init.rs has 1,335 LOC - exceeds 1,000 LOC threshold"
+      ],
+      "plan": [
+        "Analyze commands/init.rs to identify distinct initialization phases (config creation, directory setup, prompt installation, etc.)",
+        "Design module structure: extract submodules for each phase (init/config.rs, init/dirs.rs, init/prompts.rs, etc.)",
+        "Ensure each new module has a single cohesive responsibility under ~400 LOC",
+        "Refactor init.rs to orchestrate the initialization flow",
+        "Update all imports across the codebase",
+        "Run 'make ci' to validate changes",
+        "Verify init command functionality remains intact"
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files.",
+      "created_at": "2026-01-29T15:29:58Z",
+      "updated_at": "2026-01-29T15:29:58Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0411",
+      "status": "todo",
+      "title": "Refactor tui/render/overlays.rs: split 1,276 LOC render module",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "tui",
+        "render",
+        "code-quality",
+        "module-boundaries"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/render/overlays.rs",
+        "crates/ralph/src/tui/render/"
+      ],
+      "evidence": [
+        "User request: 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
+        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
+        "File stats: tui/render/overlays.rs has 1,276 LOC - exceeds 1,000 LOC threshold"
+      ],
+      "plan": [
+        "Analyze tui/render/overlays.rs to identify distinct overlay types (modals, dialogs, popups, etc.)",
+        "Design module structure: split into focused overlay modules (overlays/modal.rs, overlays/dialog.rs, etc.)",
+        "Ensure each new module has a single cohesive responsibility under ~400 LOC",
+        "Update render module structure and exports",
+        "Update all imports across the codebase",
+        "Run 'make ci' to validate changes",
+        "Verify overlay rendering remains functional"
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files.",
+      "created_at": "2026-01-29T15:29:58Z",
+      "updated_at": "2026-01-29T15:29:58Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0412",
+      "status": "todo",
+      "title": "Refactor tui/render/tests.rs: split 1,254 LOC render test file",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "tui",
+        "render",
+        "tests",
+        "code-quality",
+        "module-boundaries"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/render/tests.rs",
+        "crates/ralph/src/tui/render/"
+      ],
+      "evidence": [
+        "User request: 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
+        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
+        "File stats: tui/render/tests.rs has 1,254 LOC - exceeds 1,000 LOC threshold"
+      ],
+      "plan": [
+        "Analyze tui/render/tests.rs to identify logical test groupings (panel tests, overlay tests, header tests, footer tests, etc.)",
+        "Design module structure: split into focused test modules by component",
+        "Ensure each new module has a single cohesive responsibility under ~400 LOC",
+        "Move tests to new modules preserving all test coverage",
+        "Update module declarations and imports",
+        "Run 'make ci' to validate all tests still pass",
+        "Verify no regression in test coverage"
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files.",
+      "created_at": "2026-01-29T15:29:58Z",
+      "updated_at": "2026-01-29T15:29:58Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0414",
+      "status": "todo",
+      "title": "Assess ratatui-ecosystem crates for TUI enhancement opportunities",
       "priority": "medium",
       "tags": [
         "assessment",
         "tui",
-        "opentui",
-        "architecture",
-        "refactor"
+        "ratatui",
+        "ecosystem",
+        "research",
+        "architecture"
       ],
       "scope": [
         "crates/ralph/src/tui/",
-        "https://github.com/anomalyco/opentui",
-        "/tmp/opentui-ralph-assessment.md"
+        "crates/ralph/Cargo.toml",
+        "https://docs.rs/tui-widgets",
+        "https://docs.rs/ratatui-explorer",
+        "https://docs.rs/ratatui-image",
+        "https://docs.rs/ratatui-textarea",
+        "/tmp/ratatui-ecosystem-assessment.md"
       ],
       "evidence": [
-        "User request: 'Do an assessment on whether or not we should have built this project on opentui'",
-        "User context: OpenTUI is rapidly gaining adoption in the dev space",
-        "User context: 'We have loads of custom TUI code that could probably be dropped if we migrated'",
-        "User context: 'We have 0 active users besides me, the dev, so i am not worried about confusing users'",
-        "User constraint: Still rely on Rust as the performant safe underlayer",
-        "OpenTUI URL: https://github.com/anomalyco/opentui"
+        "User request: 'Create a task or series of tasks to have the project integrate with well-known ratatui crates that could enhance our TUI'",
+        "User goal: Improve user experience, reduce development responsibilities to maintain custom code",
+        "User constraint: Do not integrate crates that are no longer maintained",
+        "Candidate crates: tui-widgets, ratatui-explorer, ratatui-image, ratatui-textarea",
+        "Related task RQ-0406: OpenTUI assessment - this assessment should consider compatibility with that decision",
+        "Related task RQ-0398: TUI resize handling issues indicate current TUI has maintenance burden",
+        "Related task RQ-0405: Color support improvements planned - ecosystem crates may provide better theming"
       ],
       "plan": [
-        "Research OpenTUI framework capabilities, architecture, and API surface",
-        "Inventory current custom TUI code in Ralph to understand replacement scope",
-        "Analyze OpenTUI feature parity with current TUI implementation",
-        "Assess level of effort for migration (breaking changes, rewrite scope, testing needs)",
-        "Document pros: reduced maintenance burden, community support, standard patterns",
-        "Document cons: migration cost, feature gaps, dependency risk, learning curve",
-        "Provide recommendation: migrate, partial adopt, or stay with custom TUI",
-        "Generate assessment report at /tmp/opentui-ralph-assessment.md"
+        "Research each candidate crate on crates.io and docs.rs for maintenance status and activity",
+        "Check GitHub repositories for commit activity, open issues, and maintenance indicators",
+        "Inventory current custom TUI code that could be replaced by ecosystem crates",
+        "Assess tui-widgets: additional widgets that could replace custom implementations",
+        "Assess ratatui-explorer: file explorer widget for potential file browsing features",
+        "Assess ratatui-image: image support for potential logo/screenshot display",
+        "Assess ratatui-textarea: better text input for task editing, search, or configuration",
+        "Document maintenance status: last commit, release cadence, issue response time",
+        "Document integration effort: API compatibility, breaking changes, dependency overhead",
+        "Document benefits: reduced LOC, improved UX, community-tested code",
+        "Provide prioritized recommendations: which crates to adopt, in what order",
+        "Generate assessment report at /tmp/ratatui-ecosystem-assessment.md"
       ],
-      "notes": [],
-      "request": "Do an assessment on whether or not we should have built this project on opentui which is rapidly gaining adoption in the dev space. No code changes required, just generate a report in /tmp/opentui-ralph-assessment.md with your findings. We have loads of custom TUI code that could probably be dropped if we migrated to ths opentui framework. We have 0 active users besides me, the dev, so i am not worried about confusing users. Make an assessment, include level of effort, pros and cons, etc. We would still rely on rust as the performant safe under layer. https://github.com/anomalyco/opentui",
-      "created_at": "2026-01-29T15:18:03Z",
-      "updated_at": "2026-01-29T15:18:03Z",
+      "notes": [
+        "Assessment is research-only; no code changes required",
+        "Consider overlap with OpenTUI assessment (RQ-0406) - if OpenTUI is adopted, some ecosystem crates may be redundant",
+        "Focus on crates that solve real pain points in current TUI implementation",
+        "ratatui-textarea may be most immediately useful for text input improvements"
+      ],
+      "request": "Create a task or series of tasks to have the project integrate with well-known ralph crates that could enhance our TUI and eliminate some of our custom code overhead. This will improve user experience, reduce development responsibilities to maintain lots of custom code, and overall improve the TUI part of the app. Below is a starter list of crates to assess. Do Not integrate crates that are no longer maintained. Adopt ratatui Ecosystem Crates: tui-widgets, ratatui-explorer, ratatui-image, ratatui-textarea",
+      "created_at": "2026-01-29T15:36:01Z",
+      "updated_at": "2026-01-29T15:36:01Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -123,49 +412,6 @@
       ],
       "notes": [],
       "request": "I believe we added support for model_effort in the task queue. this is primarily only beneficial for the codex runner with GPT models but just wanted to make sure we have support for that and it is documented. If it is added during task creation and an unsupported runner/model is used it is just ignored (intended) but it doesn't hurt to have it added. Acceptable values are (low, medium, high, xhigh). xhigh should only be used very rarely as it consumes usage limits extremely fast. both task builder and scan can utilize this field as long as we clarify its purpose. the purpose is to dynamically override the model reasoning effort via this optional field so users can run loops without having to stop and change their config as varying levels of tasks are in progress.",
-      "created_at": "2026-01-29T19:50:00Z",
-      "updated_at": "2026-01-29T19:50:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0405",
-      "status": "todo",
-      "title": "Add color support to CLI and TUI for enhanced user experience",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "cli",
-        "ux",
-        "colors"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/",
-        "crates/ralph/src/cli/",
-        "crates/ralph/src/output/",
-        "Cargo.toml"
-      ],
-      "evidence": [
-        "User request: 'we should be using colors in the CLI and TUI whenever possible'",
-        "User context: Colors should guide users to important information during long 'ralph run loop' tasks",
-        "User context: Current output can be bland white text in black box",
-        "User suggestion: Color-code agent reasoning/thinking blocks, tool calls, supervisor calls",
-        "User constraint: Don't colorize everything like a preschool art class - find balance"
-      ],
-      "plan": [
-        "Audit current CLI output for opportunities to add semantic coloring",
-        "Audit TUI rendering for color enhancement opportunities",
-        "Design color palette: success (green), error (red), warning (yellow), info (blue), emphasis (cyan/magenta)",
-        "Add color support for agent reasoning/thinking blocks (subtle gray/blue)",
-        "Add color support for tool calls (distinct color like cyan)",
-        "Add color support for supervisor/system messages (distinct color like magenta)",
-        "Add color support for task status indicators (todo/doing/done)",
-        "Add --no-color flag and NO_COLOR env var support for accessibility",
-        "Ensure colors work well on both light and dark terminal backgrounds",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [],
-      "request": "we should be using colors in the CLI and TUI whenever possible to enhance the user experience. Users should be guided by colors, especially but not limited to when long 'ralph run loop' tasks are ongoing, so they can focus on the important information and not get clouded by verbosity. I think the verbosity is good right now but can sometimes be bland when a user runs 'ralph run loop' and sees nothing but white text inside a black box. Maybe we look to color code agent reasoning/thinking blocks, tool calls, supervisor calls, etc? We dont have to colorize everything to make it look like a preschool art class but a nice balance might be beneficial for user expereince.",
       "created_at": "2026-01-29T19:50:00Z",
       "updated_at": "2026-01-29T19:50:00Z",
       "depends_on": [],
@@ -293,6 +539,49 @@
       "depends_on": [
         "RQ-0399"
       ],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0405",
+      "status": "todo",
+      "title": "Add color support to CLI and TUI for enhanced user experience",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "cli",
+        "ux",
+        "colors"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/src/cli/",
+        "crates/ralph/src/output/",
+        "Cargo.toml"
+      ],
+      "evidence": [
+        "User request: 'we should be using colors in the CLI and TUI whenever possible'",
+        "User context: Colors should guide users to important information during long 'ralph run loop' tasks",
+        "User context: Current output can be bland white text in black box",
+        "User suggestion: Color-code agent reasoning/thinking blocks, tool calls, supervisor calls",
+        "User constraint: Don't colorize everything like a preschool art class - find balance"
+      ],
+      "plan": [
+        "Audit current CLI output for opportunities to add semantic coloring",
+        "Audit TUI rendering for color enhancement opportunities",
+        "Design color palette: success (green), error (red), warning (yellow), info (blue), emphasis (cyan/magenta)",
+        "Add color support for agent reasoning/thinking blocks (subtle gray/blue)",
+        "Add color support for tool calls (distinct color like cyan)",
+        "Add color support for supervisor/system messages (distinct color like magenta)",
+        "Add color support for task status indicators (todo/doing/done)",
+        "Add --no-color flag and NO_COLOR env var support for accessibility",
+        "Ensure colors work well on both light and dark terminal backgrounds",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [],
+      "request": "we should be using colors in the CLI and TUI whenever possible to enhance the user experience. Users should be guided by colors, especially but not limited to when long 'ralph run loop' tasks are ongoing, so they can focus on the important information and not get clouded by verbosity. I think the verbosity is good right now but can sometimes be bland when a user runs 'ralph run loop' and sees nothing but white text inside a black box. Maybe we look to color code agent reasoning/thinking blocks, tool calls, supervisor calls, etc? We dont have to colorize everything to make it look like a preschool art class but a nice balance might be beneficial for user expereince.",
+      "created_at": "2026-01-29T19:50:00Z",
+      "updated_at": "2026-01-29T19:50:00Z",
+      "depends_on": [],
       "custom_fields": {}
     },
     {
