@@ -65,12 +65,18 @@ pub fn extract_readme_version(content: &str) -> Option<u32> {
 /// Check if README is current without modifying it.
 /// Returns the check result with version information.
 pub fn check_readme_current(resolved: &config::Resolved) -> Result<ReadmeCheckResult> {
+    check_readme_current_from_root(&resolved.repo_root)
+}
+
+/// Check if README is current from a repo root path.
+/// This is a helper for migration context that doesn't need full Resolved config.
+pub fn check_readme_current_from_root(repo_root: &std::path::Path) -> Result<ReadmeCheckResult> {
     // First check if README is applicable
-    if !prompts::prompts_reference_readme(&resolved.repo_root)? {
+    if !prompts::prompts_reference_readme(repo_root)? {
         return Ok(ReadmeCheckResult::NotApplicable);
     }
 
-    let readme_path = resolved.repo_root.join(".ralph/README.md");
+    let readme_path = repo_root.join(".ralph/README.md");
 
     if !readme_path.exists() {
         return Ok(ReadmeCheckResult::Missing);

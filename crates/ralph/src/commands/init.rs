@@ -21,6 +21,7 @@
 use crate::config;
 use crate::queue;
 use anyhow::{Context, Result};
+use colored::Colorize;
 use std::fs;
 
 pub mod readme;
@@ -99,6 +100,9 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
         readme_status = Some((status, version));
     }
 
+    // Check for pending migrations and warn if any exist
+    check_pending_migrations(resolved)?;
+
     // Print completion message for interactive mode
     if opts.interactive {
         wizard::print_completion_message(wizard_answers.as_ref(), &resolved.queue_path);
@@ -110,6 +114,35 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
         config_status,
         readme_status,
     })
+}
+
+/// Check for pending migrations and display a warning if any exist.
+fn check_pending_migrations(resolved: &config::Resolved) -> anyhow::Result<()> {
+    use crate::migration::{self, MigrationCheckResult};
+
+    let ctx = match migration::MigrationContext::from_resolved(resolved) {
+        Ok(ctx) => ctx,
+        Err(e) => {
+            log::debug!("Could not create migration context: {}", e);
+            return Ok(());
+        }
+    };
+
+    match migration::check_migrations(&ctx)? {
+        MigrationCheckResult::Current => {
+            // No migrations pending, nothing to do
+        }
+        MigrationCheckResult::Pending(migrations) => {
+            eprintln!();
+            eprintln!(
+                "{}",
+                format!("⚠ Warning: {} migration(s) pending", migrations.len()).yellow()
+            );
+            eprintln!("Run {} to apply them.", "ralph migrate --apply".cyan());
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

@@ -97,11 +97,41 @@ Runner/model specifics live in `README.md` (supported runners and model constrai
 - Call out any breaking behavior explicitly and update docs/help accordingly.
 - When working from an issue/PR, prefer `gh` for context (`gh issue view ...`, `gh pr view ...`).
 
+## Migrations
+
+When making breaking changes to config keys or file formats, use the migration system:
+
+- Migration registry: `crates/ralph/src/migration/registry.rs` - add new migrations here
+- Migration types: `ConfigKeyRename`, `FileRename`, `ReadmeUpdate`
+- History tracking: `.ralph/cache/migrations.json` (auto-generated)
+- CLI command: `ralph migrate` (check/list/apply)
+
+### Adding a New Migration
+
+1. Define the migration in `registry.rs`:
+   ```rust
+   Migration {
+       id: "config_key_rename_2026_02",
+       description: "Rename agent.runner_cli to agent.runner_options",
+       migration_type: MigrationType::ConfigKeyRename {
+           old_key: "agent.runner_cli",
+           new_key: "agent.runner_options",
+       },
+   }
+   ```
+
+2. Migrations are applied automatically when users run `ralph migrate --apply`
+
+3. Config key renames preserve JSONC comments via text-based replacement
+
+4. File migrations keep backups (original file is not deleted)
+
 ## Documentation Maintenance
 
 - Schema changes: update code, run `make generate`, and keep `schemas/*.schema.json` + `docs/configuration.md` aligned.
 - CLI changes: update help text/examples and keep `docs/cli.md` aligned.
 - Queue/task field changes: update `docs/queue-and-tasks.md`.
+- Migration changes: update this section and the migration module docs.
 
 ## Troubleshooting
 

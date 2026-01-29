@@ -20,6 +20,7 @@ pub mod context;
 pub mod doctor;
 pub mod init;
 pub mod interactive;
+pub mod migrate;
 pub mod prd;
 pub mod prompt;
 pub mod queue;
@@ -85,6 +86,11 @@ pub enum Command {
         after_long_help = "Examples:\n  ralph completions bash\n  ralph completions bash > ~/.local/share/bash-completion/completions/ralph\n  ralph completions zsh > ~/.zfunc/_ralph\n  ralph completions fish > ~/.config/fish/completions/ralph.fish\n  ralph completions powershell\n\nInstallation locations by shell:\n  Bash:   ~/.local/share/bash-completion/completions/ralph\n  Zsh:    ~/.zfunc/_ralph (and add 'fpath+=~/.zfunc' to ~/.zshrc)\n  Fish:   ~/.config/fish/completions/ralph.fish\n  PowerShell: Add to $PROFILE (see: $PROFILE | Get-Member -Type NoteProperty)"
     )]
     Completions(completions::CompletionsArgs),
+    /// Check and apply migrations for config and project files.
+    #[command(
+        after_long_help = "Examples:\n  ralph migrate              # Check for pending migrations\n  ralph migrate --check      # Exit with error code if migrations pending (CI)\n  ralph migrate --apply      # Apply all pending migrations\n  ralph migrate --list       # List all migrations and their status\n  ralph migrate status       # Show detailed migration status"
+    )]
+    Migrate(migrate::MigrateArgs),
 }
 
 pub(crate) fn load_and_validate_queues(

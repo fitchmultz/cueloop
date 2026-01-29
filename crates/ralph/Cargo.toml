@@ -34,6 +34,7 @@ time = { version = "0.3.45", features = ["formatting", "parsing", "macros"] }
 dialoguer = { version = "0.11", features = ["fuzzy-select"] }
 atty = "0.2"
 notify-rust = { version = "4", optional = true }
+chrono = { version = "0.4", features = ["serde"] }
 
 # libc is only used on Unix platforms for process group control and PID liveness detection
 [target.'cfg(unix)'.dependencies]

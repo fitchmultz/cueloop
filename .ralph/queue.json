@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0403",
-      "status": "todo",
-      "title": "Implement migration system for config and README changes",
-      "priority": "high",
-      "tags": [
-        "config",
-        "migration",
-        "ux",
-        "breaking-changes"
-      ],
-      "scope": [
-        "crates/ralph/src/config/",
-        "crates/ralph/src/init.rs",
-        "crates/ralph/assets/",
-        "docs/configuration.md"
-      ],
-      "evidence": [
-        "User request: 'We need to consider migrations when we implement changes to the config, .ralph/README.md, etc.'",
-        "User concern: Users may modify .ralph/README.md but we need to update it when Ralph changes",
-        "User concern: Config key renames should migrate user values automatically",
-        "User concern: Default file changes (e.g., queue.json to queue.jsonc) need safe migration",
-        "User context: Rapid development means frequent changes that need seamless user experience"
-      ],
-      "plan": [
-        "Design migration tracking system (version metadata for .ralph/ files)",
-        "Add RALPH_README_VERSION header detection and migration logic for .ralph/README.md",
-        "Implement config key migration framework with rename mappings",
-        "Add queue.json to queue.jsonc migration path with safe fallback",
-        "Create 'ralph migrate' command to check and apply pending migrations",
-        "Integrate automatic migration checks into 'ralph init' and startup",
-        "Add migration history tracking to prevent duplicate migrations",
-        "Document migration patterns for future developers",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [],
-      "request": "We need to consider migrations when we implement changes to the config, .ralph/README.md, etc. Users aren't updating .ralph/READEME.md, or at least shouldn't be as it is mainly there for agents, but they might, but when we change content of the READEME.md we need to ensure we are updating .ralph/READEME.md in other projects after they run ralph after updating. Same thing for checking config. If we change the name of a config key to a new value we should be migrating that value for the user and keeping what they set that config param to. If we decide to change the default task queue.json to queue.jsonc (which we just added support for) then we should consider migrating that safely too. These are things that users expect to be seamless.",
-      "created_at": "2026-01-29T19:50:00Z",
-      "updated_at": "2026-01-29T19:50:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0404",
       "status": "todo",
       "title": "Verify and document reasoning_effort field support in task queue",
