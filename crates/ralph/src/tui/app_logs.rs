@@ -2,6 +2,7 @@
 //!
 //! Responsibilities:
 //! - Store execution logs with a size limit (circular buffer behavior).
+//! - Store raw ANSI bytes for terminal emulation display (tui-term integration).
 //! - Track scroll position and autoscroll state.
 //! - Provide methods for appending lines and scrolling.
 //!
@@ -12,6 +13,7 @@
 //!
 //! Invariants/assumptions:
 //! - Maximum log size is 10,000 lines; older lines are dropped when exceeded.
+//! - ANSI buffer grows with raw output; vt100 parser recreates screen state each render.
 //! - Autoscroll automatically moves to the bottom when new lines are added.
 //! - Manual scrolling disables autoscroll.
 
@@ -20,11 +22,16 @@
 /// Maximum number of log lines to keep in memory.
 const MAX_LOG_LINES: usize = 10_000;
 
+/// Maximum size of ANSI buffer in bytes (10MB limit to prevent unbounded growth).
+const MAX_ANSI_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+
 /// State for execution log management.
 #[derive(Debug)]
 pub struct LogState {
-    /// Execution logs.
+    /// Execution logs (text lines for display and scrolling).
     pub logs: Vec<String>,
+    /// Raw ANSI bytes for terminal emulation display (tui-term integration).
+    pub ansi_buffer: Vec<u8>,
     /// Scroll offset for execution logs.
     pub scroll: usize,
     /// Whether to auto-scroll execution logs.
@@ -37,6 +44,7 @@ impl Default for LogState {
     fn default() -> Self {
         Self {
             logs: Vec::new(),
+            ansi_buffer: Vec::new(),
             scroll: 0,
             autoscroll: true,
             visible_lines: 20,
@@ -74,12 +82,17 @@ impl LogState {
     ///
     /// If the buffer exceeds `MAX_LOG_LINES`, old lines are removed.
     /// If autoscroll is enabled, scrolls to the bottom.
+    /// Also appends to the ANSI buffer for terminal emulation display.
     pub fn append_lines<I>(&mut self, lines: I)
     where
         I: IntoIterator<Item = String>,
     {
         for line in lines {
-            self.logs.push(line);
+            // Add to text logs
+            self.logs.push(line.clone());
+            // Add to ANSI buffer with newline for terminal emulation
+            self.ansi_buffer.extend_from_slice(line.as_bytes());
+            self.ansi_buffer.push(b'\n');
         }
 
         // Trim old lines if we exceed the maximum
@@ -87,6 +100,12 @@ impl LogState {
             let excess = self.logs.len() - MAX_LOG_LINES;
             self.logs.drain(0..excess);
             self.scroll = self.scroll.saturating_sub(excess);
+        }
+
+        // Trim ANSI buffer if it exceeds the maximum size
+        if self.ansi_buffer.len() > MAX_ANSI_BUFFER_SIZE {
+            let excess = self.ansi_buffer.len() - MAX_ANSI_BUFFER_SIZE;
+            self.ansi_buffer.drain(0..excess);
         }
 
         // Autoscroll if enabled
@@ -98,6 +117,7 @@ impl LogState {
     /// Clear all logs and reset scroll.
     pub fn clear(&mut self) {
         self.logs.clear();
+        self.ansi_buffer.clear();
         self.scroll = 0;
     }
 
@@ -166,6 +186,17 @@ impl LogState {
 
         self.append_lines(lines);
     }
+
+    /// Create a vt100 parser with the current ANSI buffer processed.
+    ///
+    /// Returns a parser configured with the given dimensions and the
+    /// ANSI buffer processed through it. This is used by tui-term's
+    /// PseudoTerminal widget for rendering ANSI-aware output.
+    pub fn create_vt100_parser(&self, rows: u16, cols: u16) -> vt100::Parser {
+        let mut parser = vt100::Parser::new(rows, cols, 0);
+        parser.process(&self.ansi_buffer);
+        parser
+    }
 }
 
 #[cfg(test)]
@@ -180,6 +211,8 @@ mod tests {
         assert_eq!(state.len(), 2);
         assert_eq!(state.logs[0], "line1");
         assert_eq!(state.logs[1], "line2");
+        // Verify ANSI buffer is also populated
+        assert_eq!(state.ansi_buffer, b"line1\nline2\n");
     }
 
     #[test]
@@ -236,6 +269,8 @@ mod tests {
 
         assert!(state.is_empty());
         assert_eq!(state.scroll, 0);
+        // Verify ANSI buffer is also cleared
+        assert!(state.ansi_buffer.is_empty());
     }
 
     #[test]
@@ -246,5 +281,47 @@ mod tests {
         assert_eq!(state.logs[0], "Error summary");
         assert_eq!(state.logs[1], "Detail 1");
         assert_eq!(state.logs[2], "Detail 2");
+    }
+
+    #[test]
+    fn test_ansi_buffer_populated() {
+        let mut state = LogState::new();
+        state.append_lines(vec!["Hello".to_string(), "World".to_string()]);
+
+        // ANSI buffer should contain lines with newlines
+        assert_eq!(state.ansi_buffer, b"Hello\nWorld\n");
+    }
+
+    #[test]
+    fn test_create_vt100_parser() {
+        let mut state = LogState::new();
+        // Add some ANSI-colored output
+        state.append_lines(vec![
+            "\x1b[32mGreen text\x1b[0m".to_string(),
+            "Normal text".to_string(),
+        ]);
+
+        // Create parser and verify it processes the buffer
+        let parser = state.create_vt100_parser(10, 80);
+        let screen = parser.screen();
+
+        // Screen should have the configured dimensions
+        assert_eq!(screen.size(), (10, 80));
+        // The screen should have processed the buffer without errors
+        // (actual content format depends on vt100 crate internals)
+    }
+
+    #[test]
+    fn test_ansi_buffer_size_limit() {
+        let mut state = LogState::new();
+
+        // Add a large line that would exceed the buffer limit if added many times
+        let large_line = "x".repeat(1000);
+        for _ in 0..(MAX_ANSI_BUFFER_SIZE / 1000 + 10) {
+            state.append_lines(vec![large_line.clone()]);
+        }
+
+        // Buffer should be trimmed to max size
+        assert!(state.ansi_buffer.len() <= MAX_ANSI_BUFFER_SIZE);
     }
 }

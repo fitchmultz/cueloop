@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0419",
-      "status": "todo",
-      "title": "Integrate tui-term for ANSI-aware execution log display",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "ratatui-ecosystem",
-        "terminal",
-        "ansi",
-        "logs"
-      ],
-      "scope": [
-        "crates/ralph/Cargo.toml",
-        "crates/ralph/src/tui/render/panels.rs",
-        "crates/ralph/src/tui/app_logs.rs"
-      ],
-      "evidence": [
-        "Assessment: tui-term 0.3.1 provides pseudoterminal widget for ANSI escape sequence parsing",
-        "Current pain point: ANSI escape sequences shown as raw text in runner output (not rendered)",
-        "Current pain point: No terminal emulation for runner output colors/formatting",
-        "Expected outcome: Runner output displays with proper colors/formatting, progress bars/spinners work",
-        "Risk: Need to verify ratatui 0.29 compatibility (depends on ratatui-core ^0.3.0)"
-      ],
-      "plan": [
-        "Verify ratatui 0.29 compatibility first (check dependency resolution with tui-term)",
-        "Add dependency: tui-term = \"0.3\" to Cargo.toml",
-        "Replace Paragraph widget in execution view with PseudoTerminal",
-        "Update app_logs.rs to integrate with terminal widget for ANSI rendering",
-        "Test with cargo build output, test output, and various runner outputs",
-        "Verify colors and formatting display correctly in execution view",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [],
-      "request": "Read /tmp/ratatui-ecosystem-assessment.md and create tasks to have the recommended crates onboarded and put in place to replace all parts of the codebase that can eliminate complex custom code.",
-      "created_at": "2026-01-29T21:55:00Z",
-      "updated_at": "2026-01-29T21:55:00Z",
-      "depends_on": [
-        "RQ-0418"
-      ],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0420",
       "status": "todo",
       "title": "Integrate tui-widgets scrollview for better details panel scrolling",

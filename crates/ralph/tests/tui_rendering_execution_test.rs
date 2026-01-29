@@ -59,9 +59,12 @@ fn test_render_executing_mode_shows_logs() {
     app.mode = AppMode::Executing {
         task_id: "RQ-0001".to_string(),
     };
-    app.logs.push("Log line 1".to_string());
-    app.logs.push("Log line 2".to_string());
-    app.logs.push("Log line 3".to_string());
+    // Populate both logs and ansi_buffer for the PseudoTerminal widget
+    for line in ["Log line 1", "Log line 2", "Log line 3"] {
+        app.logs.push(line.to_string());
+        app.log_ansi_buffer.extend_from_slice(line.as_bytes());
+        app.log_ansi_buffer.push(b'\n');
+    }
     let mut terminal = setup_test_terminal(80, 24);
 
     let output = get_rendered_output(&mut terminal, &mut app);
@@ -80,10 +83,20 @@ fn test_render_executing_mode_clears_shorter_lines() {
     app.running_task_id = Some("RQ-0001".to_string());
     let mut terminal = setup_test_terminal(40, 10);
 
-    app.logs = vec!["XXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string()];
+    // Populate both logs and ansi_buffer for the PseudoTerminal widget
+    let long_line = "XXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    app.logs.push(long_line.to_string());
+    app.log_ansi_buffer.extend_from_slice(long_line.as_bytes());
+    app.log_ansi_buffer.push(b'\n');
     let _ = get_rendered_output(&mut terminal, &mut app);
 
-    app.logs = vec!["short".to_string()];
+    // Clear and add new shorter line
+    app.logs.clear();
+    app.log_ansi_buffer.clear();
+    let short_line = "short";
+    app.logs.push(short_line.to_string());
+    app.log_ansi_buffer.extend_from_slice(short_line.as_bytes());
+    app.log_ansi_buffer.push(b'\n');
     let output = get_rendered_output(&mut terminal, &mut app);
 
     assert!(output.contains("short"));

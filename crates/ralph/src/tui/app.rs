@@ -259,6 +259,8 @@ pub struct App {
     pub status_message: Option<String>,
     /// Execution logs.
     pub logs: Vec<String>,
+    /// Raw ANSI bytes for terminal emulation display (tui-term integration).
+    pub log_ansi_buffer: Vec<u8>,
     /// Scroll offset for execution logs.
     pub log_scroll: usize,
     /// Whether to auto-scroll execution logs.
@@ -368,6 +370,7 @@ impl App {
             save_error: None,
             status_message: None,
             logs: Vec::new(),
+            log_ansi_buffer: Vec::new(),
             log_scroll: 0,
             autoscroll: true,
             log_visible_lines: 20,
@@ -652,17 +655,30 @@ impl App {
         }
     }
 
+    /// Maximum size of ANSI buffer in bytes (10MB limit).
+    const MAX_ANSI_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+
     pub(crate) fn append_log_lines<I>(&mut self, lines: I)
     where
         I: IntoIterator<Item = String>,
     {
         for line in lines {
-            self.logs.push(line);
+            // Add to text logs (for backward compatibility and scroll calculations)
+            self.logs.push(line.clone());
+            // Add to ANSI buffer with newline for terminal emulation
+            self.log_ansi_buffer.extend_from_slice(line.as_bytes());
+            self.log_ansi_buffer.push(b'\n');
         }
+        // Trim old logs if we exceed the maximum
         if self.logs.len() > 10000 {
             let excess = self.logs.len() - 10000;
             self.logs.drain(0..excess);
             self.log_scroll = self.log_scroll.saturating_sub(excess);
+        }
+        // Trim ANSI buffer if it exceeds the maximum size
+        if self.log_ansi_buffer.len() > Self::MAX_ANSI_BUFFER_SIZE {
+            let excess = self.log_ansi_buffer.len() - Self::MAX_ANSI_BUFFER_SIZE;
+            self.log_ansi_buffer.drain(0..excess);
         }
         if self.autoscroll {
             let visible_lines = self.log_visible_lines();
@@ -1845,8 +1861,14 @@ impl App {
         if append_logs && !self.logs.is_empty() {
             self.logs.push(String::new());
             self.logs.push(format!("=== Executing {} ===", task_id));
+            // Also add to ANSI buffer for terminal emulation
+            self.log_ansi_buffer.push(b'\n');
+            self.log_ansi_buffer
+                .extend_from_slice(format!("=== Executing {} ===", task_id).as_bytes());
+            self.log_ansi_buffer.push(b'\n');
         } else {
             self.logs.clear();
+            self.log_ansi_buffer.clear();
         }
 
         self.log_scroll = 0;
@@ -1876,8 +1898,14 @@ impl App {
         if append_logs && !self.logs.is_empty() {
             self.logs.push(String::new());
             self.logs.push(format!("=== {} ===", label));
+            // Also add to ANSI buffer for terminal emulation
+            self.log_ansi_buffer.push(b'\n');
+            self.log_ansi_buffer
+                .extend_from_slice(format!("=== {} ===", label).as_bytes());
+            self.log_ansi_buffer.push(b'\n');
         } else {
             self.logs.clear();
+            self.log_ansi_buffer.clear();
         }
 
         self.log_scroll = 0;
@@ -1903,8 +1931,11 @@ impl App {
     /// Start execution of the task builder agent.
     pub(crate) fn start_task_builder_execution(&mut self, request: String) {
         self.logs.clear();
-        self.logs
-            .push(format!("=== Building task from: {} ===", request));
+        self.log_ansi_buffer.clear();
+        let header = format!("=== Building task from: {} ===", request);
+        self.logs.push(header.clone());
+        self.log_ansi_buffer.extend_from_slice(header.as_bytes());
+        self.log_ansi_buffer.push(b'\n');
         self.log_scroll = 0;
         self.autoscroll = true;
         self.set_status_message("Starting task builder...");

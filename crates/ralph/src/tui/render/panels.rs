@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Render the main task list and task details panels.
-//! - Render the execution log view during task runs.
+//! - Render the execution log view during task runs using tui-term for ANSI-aware display.
 //!
 //! Not handled here:
 //! - Event handling or state mutation beyond layout caches.
@@ -10,6 +10,7 @@
 //!
 //! Invariants/assumptions:
 //! - Caller provides layout areas that include borders.
+//! - ANSI buffer in App contains raw terminal output for tui-term rendering.
 
 use super::super::{App, AppMode};
 use super::utils::{priority_color, scroll_indicator, spans_width, status_color, wrap_text};
@@ -26,6 +27,7 @@ use ratatui::{
     Frame,
 };
 use std::time::Duration;
+use tui_term::widget::PseudoTerminal;
 
 /// Draw the execution view (full-screen output during task execution).
 pub(super) fn draw_execution_view(f: &mut Frame<'_>, app: &mut App, area: Rect) {
@@ -105,31 +107,25 @@ pub(super) fn draw_execution_view(f: &mut Frame<'_>, app: &mut App, area: Rect) 
     f.render_widget(Clear, log_area);
     f.render_widget(Clear, status_area);
 
-    // Calculate visible log lines
+    // Calculate visible log lines for scroll tracking
     let visible_height = log_area.height as usize;
     app.set_log_visible_lines(visible_height);
     let log_count = app.logs.len();
-    let start_idx = if app.log_scroll + visible_height > log_count {
-        log_count.saturating_sub(visible_height)
+
+    // Render logs using tui-term's PseudoTerminal for ANSI-aware display
+    if !app.log_ansi_buffer.is_empty() {
+        // Create vt100 parser and process ANSI buffer
+        let mut parser = vt100::Parser::new(log_area.height, log_area.width, 0);
+        parser.process(&app.log_ansi_buffer);
+
+        // Render using PseudoTerminal widget
+        let pseudo_term = PseudoTerminal::new(parser.screen()).block(Block::default());
+        f.render_widget(pseudo_term, log_area);
     } else {
-        app.log_scroll
-    };
-
-    // Render logs (avoid an intermediate Vec<&String> allocation).
-    let log_text = Text::from(
-        app.logs
-            .iter()
-            .skip(start_idx)
-            .take(visible_height)
-            .map(|line| Line::from(line.as_str()))
-            .collect::<Vec<_>>(),
-    );
-
-    let paragraph = Paragraph::new(log_text)
-        .block(Block::default())
-        .wrap(Wrap { trim: true });
-
-    f.render_widget(paragraph, log_area);
+        // No ANSI buffer yet, render empty block
+        let block = Block::default();
+        f.render_widget(block, log_area);
+    }
 
     // Draw status indicator at bottom
     let mut status_parts = vec![

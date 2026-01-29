@@ -22,6 +22,8 @@ log = "0.4.29"
 ratatui = "0.29.0"
 crossterm = "0.28.0"
 tui-textarea = "0.7"
+tui-term = "0.2"
+vt100 = "0.15"
 textwrap = "0.16"
 unicode-width = "0.2"
 serde = { version = "1.0.228", features = ["derive"] }
