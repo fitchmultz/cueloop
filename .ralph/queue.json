@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0388",
-      "status": "todo",
-      "title": "Implement Windows custom sound support in notifications",
-      "priority": "low",
-      "tags": [
-        "enhancement",
-        "windows",
-        "notification",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/notification.rs"
-      ],
-      "evidence": [
-        "notification.rs:182-191 play_windows_sound() has unused _custom_path parameter",
-        "Comment acknowledges: 'Custom sounds not yet supported on Windows via this API'",
-        "macOS and Linux have custom sound support; Windows parity is missing"
-      ],
-      "plan": [
-        "Research Windows sound APIs for custom notification sounds",
-        "Implement play_windows_sound() to support custom sound files",
-        "Use Windows API or external tool (afplay equivalent on Windows)",
-        "Test on Windows with various sound file formats",
-        "Update documentation to reflect Windows sound support"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T05:30:00Z",
-      "updated_at": "2026-01-28T05:30:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0389",
       "status": "todo",
       "title": "Reduce unwrap/expect usage in production code",

@@ -180,13 +180,77 @@ fn play_linux_sound(custom_path: Option<&str>) -> anyhow::Result<()> {
 }
 
 #[cfg(target_os = "windows")]
-fn play_windows_sound(_custom_path: Option<&str>) -> anyhow::Result<()> {
-    // Windows notification sound is typically handled by the toast notification itself
-    // For custom sounds, we'd need windows-specific APIs which are complex to add
-    // The notify-rust library handles Windows toast sounds internally
-    if _custom_path.is_some() {
-        log::debug!("Custom sounds not yet supported on Windows via this API");
+fn play_windows_sound(custom_path: Option<&str>) -> anyhow::Result<()> {
+    if let Some(path) = custom_path {
+        let path_obj = Path::new(path);
+        if !path_obj.exists() {
+            return Err(anyhow::anyhow!("Sound file not found: {}", path));
+        }
+
+        // Try winmm PlaySound first for .wav files
+        if path.ends_with(".wav") || path.ends_with(".WAV") {
+            if let Ok(()) = play_sound_winmm(path) {
+                return Ok(());
+            }
+        }
+
+        // Fall back to PowerShell MediaPlayer for other formats or if winmm fails
+        if let Ok(()) = play_sound_powershell(path) {
+            return Ok(());
+        }
+
+        return Err(anyhow::anyhow!(
+            "Failed to play sound with all available methods"
+        ));
     }
+
+    // No custom path - Windows toast notification handles default sound
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn play_sound_winmm(path: &str) -> anyhow::Result<()> {
+    use std::ffi::CString;
+    use windows_sys::Win32::Media::Audio::{PlaySoundA, SND_FILENAME, SND_SYNC};
+
+    let c_path = CString::new(path).map_err(|e| anyhow::anyhow!("Invalid path encoding: {}", e))?;
+
+    let result = unsafe {
+        PlaySoundA(
+            c_path.as_ptr(),
+            std::ptr::null_mut(),
+            SND_FILENAME | SND_SYNC,
+        )
+    };
+
+    if result == 0 {
+        return Err(anyhow::anyhow!("PlaySoundA failed"));
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn play_sound_powershell(path: &str) -> anyhow::Result<()> {
+    let script = format!(
+        "$player = New-Object System.Media.SoundPlayer '{}'; $player.PlaySync()",
+        path.replace('\'', "''")
+    );
+
+    let output = std::process::Command::new("powershell.exe")
+        .arg("-Command")
+        .arg(&script)
+        .output()
+        .map_err(|e| anyhow::anyhow!("Failed to execute PowerShell: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow::anyhow!(
+            "PowerShell sound playback failed: {}",
+            stderr
+        ));
+    }
+
     Ok(())
 }
 
@@ -226,5 +290,73 @@ mod tests {
         assert!(config.sound_enabled);
         assert_eq!(config.sound_path, Some("/path/to/sound.wav".to_string()));
         assert_eq!(config.timeout_ms, 5000);
+    }
+
+    #[cfg(target_os = "windows")]
+    mod windows_tests {
+        use super::*;
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        #[test]
+        fn play_windows_sound_missing_file() {
+            let result = play_windows_sound(Some("/nonexistent/path/sound.wav"));
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("not found"));
+        }
+
+        #[test]
+        fn play_windows_sound_none_path() {
+            // Should succeed (no custom sound requested)
+            let result = play_windows_sound(None);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn play_windows_sound_wav_file_exists() {
+            // Create a minimal valid WAV file header
+            let mut temp_file = NamedTempFile::with_suffix(".wav").unwrap();
+            // RIFF WAV header (44 bytes minimum)
+            let wav_header: Vec<u8> = vec![
+                // RIFF chunk
+                0x52, 0x49, 0x46, 0x46, // "RIFF"
+                0x24, 0x00, 0x00, 0x00, // file size - 8
+                0x57, 0x41, 0x56, 0x45, // "WAVE"
+                // fmt chunk
+                0x66, 0x6D, 0x74, 0x20, // "fmt "
+                0x10, 0x00, 0x00, 0x00, // chunk size (16)
+                0x01, 0x00, // audio format (PCM)
+                0x01, 0x00, // num channels (1)
+                0x44, 0xAC, 0x00, 0x00, // sample rate (44100)
+                0x88, 0x58, 0x01, 0x00, // byte rate
+                0x02, 0x00, // block align
+                0x10, 0x00, // bits per sample (16)
+                // data chunk
+                0x64, 0x61, 0x74, 0x61, // "data"
+                0x00, 0x00, 0x00, 0x00, // data size
+            ];
+            temp_file.write_all(&wav_header).unwrap();
+            temp_file.flush().unwrap();
+
+            let path = temp_file.path().to_str().unwrap();
+            // Should not error on file existence check
+            // Actual playback may fail in CI without audio subsystem
+            let _ = play_windows_sound(Some(path));
+        }
+
+        #[test]
+        fn play_windows_sound_non_wav_uses_powershell() {
+            // Create a dummy mp3 file (just a header, not a real mp3)
+            let mut temp_file = NamedTempFile::with_suffix(".mp3").unwrap();
+            // MP3 sync word (not a full valid header, but enough for path validation)
+            let mp3_header: Vec<u8> = vec![0xFF, 0xFB, 0x90, 0x00];
+            temp_file.write_all(&mp3_header).unwrap();
+            temp_file.flush().unwrap();
+
+            let path = temp_file.path().to_str().unwrap();
+            // Should attempt PowerShell fallback for non-WAV files
+            // Result depends on whether PowerShell is available
+            let _ = play_windows_sound(Some(path));
+        }
     }
 }

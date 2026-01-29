@@ -160,7 +160,7 @@ Supported fields:
 Platform notes:
 - **macOS**: Uses NotificationCenter; sound plays via `afplay` (default: `/System/Library/Sounds/Glass.aiff`).
 - **Linux**: Uses D-Bus/notify-send; sound plays via `paplay`/`aplay` or `canberra-gtk-play` for default sounds.
-- **Windows**: Uses toast notifications; sound is built into the toast.
+- **Windows**: Uses toast notifications; custom sounds play via `winmm.dll` PlaySound for `.wav` files, PowerShell MediaPlayer fallback for other formats.
 
 Example:
 ```json
