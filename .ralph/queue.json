@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0366",
-      "status": "todo",
-      "title": "Improve runner process timeout handling race condition",
-      "priority": "low",
-      "tags": [
-        "bug",
-        "runner",
-        "race-condition"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/execution/process.rs"
-      ],
-      "evidence": [
-        "process.rs:86-170 wait_for_child() has race between timeout detection and process exit",
-        "Process exiting between interrupt and kill may have exit status misinterpreted",
-        "Lines 155-162: status checked after timeout but timeout error takes precedence"
-      ],
-      "plan": [
-        "Refactor to use select/poll for proper timeout handling",
-        "Check exit status immediately after interrupt before timeout error",
-        "Add state machine for process lifecycle (Running -> Interrupting -> Killed)",
-        "Add test with simulated slow-exiting process",
-        "Log process state transitions for debugging"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T04:11:49Z",
-      "updated_at": "2026-01-28T04:11:49Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0367",
       "status": "todo",
       "title": "Add TUI help text for all key bindings and commands",

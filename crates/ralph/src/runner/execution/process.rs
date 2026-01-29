@@ -3,6 +3,8 @@
 //! Responsibilities:
 //! - Spawn runner processes, stream stdout/stderr, and capture session output.
 //! - Coordinate Ctrl-C handling and timeouts for runner execution.
+//! - Handle timeout race conditions: if a process exits cleanly (code 0) after timeout
+//!   interrupt, it is treated as success rather than timeout failure.
 //!
 //! Does not handle:
 //! - Building runner command arguments (see command module).
@@ -11,6 +13,10 @@
 //! Assumptions/invariants:
 //! - Callers provide a fully constructed `Command` and validated runner/bin.
 //! - Streaming threads must be joined to avoid output loss.
+//! - Timeout handling uses a 2-second grace period after SIGINT before SIGKILL.
+//! - Process state transitions are: Running → TimeoutInterrupt/CtrlCInterrupt → (Exited | Killed).
+//! - Ctrl-C interrupts are handled separately from timeout interrupts to ensure
+//!   proper error propagation (Interrupted vs Timeout errors).
 
 use std::io::Write;
 use std::process::{Command, ExitStatus, Stdio};
@@ -30,9 +36,9 @@ use super::json::extract_session_id_from_text;
 use super::stream::{spawn_json_reader, spawn_reader, StreamSink};
 use crate::contracts::Runner;
 
-pub(super) struct CtrlCState {
-    pub(super) active_pgid: Mutex<Option<i32>>,
-    pub(super) interrupted: AtomicBool,
+pub(crate) struct CtrlCState {
+    pub(crate) active_pgid: Mutex<Option<i32>>,
+    pub(crate) interrupted: AtomicBool,
 }
 
 pub(super) fn ctrlc_state() -> &'static Arc<CtrlCState> {
@@ -83,24 +89,55 @@ pub(super) fn ensure_self_on_path(cmd: &mut Command) {
     }
 }
 
-pub(super) fn wait_for_child(
+/// Tracks the state of process termination handling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProcessState {
+    /// Process is running normally.
+    Running,
+    /// Process has been interrupted due to timeout (SIGINT sent) at the given time.
+    TimeoutInterrupt(Instant),
+    /// Process has been interrupted due to Ctrl-C (SIGINT sent) at the given time.
+    CtrlCInterrupt(Instant),
+    /// Process has been killed (SIGKILL sent).
+    Killed,
+}
+
+/// Waits for a child process to exit, handling timeouts and Ctrl-C interrupts.
+///
+/// # Timeout Handling
+///
+/// When a timeout is specified and the process exceeds it:
+/// 1. SIGINT is sent to the process group (graceful shutdown request)
+/// 2. A 2-second grace period allows the process to exit cleanly
+/// 3. If still running after grace period, SIGKILL is sent (forceful termination)
+///
+/// # Race Condition Fix
+///
+/// Previously, if a process exited *after* the timeout threshold but *before*
+/// `try_wait()` was called, the function would incorrectly return `Timeout`
+/// even though the process succeeded. Now, if the process exits with code 0
+/// after receiving the interrupt signal, `Ok(status)` is returned instead of
+/// `Err(RunnerError::Timeout)`.
+///
+/// If the process exits non-zero or is killed after timeout/interrupt,
+/// `Err(RunnerError::Timeout)` is returned so callers can handle safeguard
+/// dumps and git revert appropriately.
+pub(crate) fn wait_for_child(
     child: &mut std::process::Child,
     ctrlc: &CtrlCState,
     timeout: Option<Duration>,
 ) -> Result<ExitStatus, RunnerError> {
-    let mut interrupt_sent = false;
-    let mut kill_sent = false;
+    let mut state = ProcessState::Running;
     let start = Instant::now();
-    let mut interrupt_time = None;
 
     loop {
         let now = Instant::now();
 
+        // Check for timeout and send interrupt if needed
         if let Some(timeout) = timeout {
-            if now.duration_since(start) > timeout && !interrupt_sent {
+            if now.duration_since(start) > timeout && state == ProcessState::Running {
                 log::warn!("Runner timed out after {:?}; sending interrupt", timeout);
-                interrupt_sent = true;
-                interrupt_time = Some(now);
+                state = ProcessState::TimeoutInterrupt(now);
                 #[cfg(unix)]
                 {
                     let pgid = ctrlc.active_pgid.lock().ok().and_then(|guard| *guard);
@@ -117,9 +154,10 @@ pub(super) fn wait_for_child(
             }
         }
 
-        if ctrlc.interrupted.load(Ordering::SeqCst) && !interrupt_sent {
-            interrupt_sent = true;
-            interrupt_time = Some(now);
+        // Check for Ctrl-C interrupt
+        if ctrlc.interrupted.load(Ordering::SeqCst) && state == ProcessState::Running {
+            log::debug!("Ctrl-C detected; sending interrupt to runner process");
+            state = ProcessState::CtrlCInterrupt(now);
             #[cfg(unix)]
             {
                 let pgid = ctrlc.active_pgid.lock().ok().and_then(|guard| *guard);
@@ -135,10 +173,18 @@ pub(super) fn wait_for_child(
             }
         }
 
-        if interrupt_sent && !kill_sent {
-            let elapsed_since_interrupt = now.duration_since(interrupt_time.unwrap());
+        // Check if we need to escalate to kill after grace period
+        let interrupt_time = match state {
+            ProcessState::TimeoutInterrupt(t) | ProcessState::CtrlCInterrupt(t) => Some(t),
+            _ => None,
+        };
+        if let Some(interrupt_time) = interrupt_time {
+            let elapsed_since_interrupt = now.duration_since(interrupt_time);
             if elapsed_since_interrupt > Duration::from_secs(2) {
-                kill_sent = true;
+                log::debug!(
+                    "Interrupt grace period expired (2s); sending SIGKILL to runner process"
+                );
+                state = ProcessState::Killed;
                 #[cfg(unix)]
                 {
                     let pgid = ctrlc.active_pgid.lock().ok().and_then(|guard| *guard);
@@ -152,16 +198,61 @@ pub(super) fn wait_for_child(
             }
         }
 
+        // Check process status
         match child.try_wait() {
             Ok(Some(status)) => {
-                if let Some(timeout) = timeout {
-                    if now.duration_since(start) > timeout {
-                        return Err(RunnerError::Timeout);
+                // Race condition fix: if the process exited successfully (code 0) after
+                // receiving an interrupt (timeout or Ctrl-C), treat it as success
+                // rather than returning Timeout or Interrupted errors.
+                //
+                // If the process exited non-zero after timeout interrupt, return Timeout error
+                // so callers can handle safeguard dumps and git revert appropriately.
+                // If the process exited non-zero after Ctrl-C, return the actual exit status
+                // and let run_with_streaming_json handle the Interrupted error.
+                if status.success() {
+                    match state {
+                        ProcessState::TimeoutInterrupt(_) | ProcessState::CtrlCInterrupt(_) => {
+                            log::debug!(
+                                "Process exited cleanly (code 0) after interrupt; treating as success"
+                            );
+                            return Ok(status);
+                        }
+                        ProcessState::Killed => {
+                            // Process was killed but exited 0 - still treat as success
+                            log::debug!(
+                                "Process exited cleanly (code 0) after kill; treating as success"
+                            );
+                            return Ok(status);
+                        }
+                        ProcessState::Running => {
+                            return Ok(status);
+                        }
                     }
                 }
-                return Ok(status);
+
+                // Process exited with non-zero status
+                if let Some(code) = status.code() {
+                    log::debug!("Process exited with non-zero code: {}", code);
+                } else {
+                    log::debug!("Process terminated by signal");
+                }
+
+                // If the process was interrupted due to timeout or killed,
+                // return Timeout error so callers can handle safeguard dumps.
+                // For Ctrl-C, return the actual exit status and let
+                // run_with_streaming_json check ctrlc.interrupted and return Interrupted.
+                match state {
+                    ProcessState::TimeoutInterrupt(_) | ProcessState::Killed => {
+                        return Err(RunnerError::Timeout);
+                    }
+                    ProcessState::CtrlCInterrupt(_) | ProcessState::Running => {
+                        return Ok(status);
+                    }
+                }
             }
-            Ok(None) => {}
+            Ok(None) => {
+                // Process still running, continue loop
+            }
             Err(e) => return Err(RunnerError::Io(e)),
         }
 

@@ -2,5 +2,6 @@
 
 mod debuglog;
 mod parsing;
+mod process;
 mod response;
 mod stream;
