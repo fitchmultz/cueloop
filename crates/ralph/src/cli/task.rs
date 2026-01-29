@@ -244,7 +244,7 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             handle_template_command(&resolved, template_args)
         }
 
-        Some(TaskCommand::BuildRefactor(args)) => {
+        Some(TaskCommand::BuildRefactor(args)) | Some(TaskCommand::Refactor(args)) => {
             let overrides = agent::resolve_agent_overrides(&agent::AgentArgs {
                 runner: args.runner.clone(),
                 model: args.model.clone(),
@@ -378,8 +378,15 @@ pub enum TaskCommand {
 
     /// Automatically create refactoring tasks for large files.
     #[command(
+        alias = "ref",
+        after_long_help = "Examples:\n ralph task refactor\n ralph task refactor --threshold 700\n ralph task refactor --path crates/ralph/src/cli\n ralph task refactor --dry-run --threshold 500\n ralph task refactor --batch never\n ralph task refactor --tags urgent,technical-debt\n ralph task ref --threshold 800"
+    )]
+    Refactor(TaskBuildRefactorArgs),
+
+    /// Automatically create refactoring tasks for large files (alternative to 'refactor').
+    #[command(
         name = "build-refactor",
-        after_long_help = "Examples:\n ralph task build refactor\n ralph task build refactor --threshold 700\n ralph task build refactor --path crates/ralph/src/cli\n ralph task build refactor --dry-run --threshold 500\n ralph task build refactor --batch never\n ralph task build refactor --tags urgent,technical-debt"
+        after_long_help = "Alternative command name. Prefer 'ralph task refactor'.\n\nExamples:\n ralph task build-refactor\n ralph task build-refactor --threshold 700"
     )]
     BuildRefactor(TaskBuildRefactorArgs),
 
@@ -1170,6 +1177,48 @@ mod tests {
                     assert!(!args.dry_run);
                 }
                 _ => panic!("expected task update command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_refactor_parses() {
+        let cli = Cli::try_parse_from(["ralph", "task", "refactor"]).expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Refactor(_)) => {}
+                _ => panic!("expected task refactor command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_ref_alias_parses() {
+        let cli =
+            Cli::try_parse_from(["ralph", "task", "ref", "--threshold", "800"]).expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Refactor(args)) => {
+                    assert_eq!(args.threshold, 800);
+                }
+                _ => panic!("expected task refactor command via alias"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_build_refactor_parses() {
+        let cli = Cli::try_parse_from(["ralph", "task", "build-refactor", "--threshold", "700"])
+            .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::BuildRefactor(args)) => {
+                    assert_eq!(args.threshold, 700);
+                }
+                _ => panic!("expected task build-refactor command"),
             },
             _ => panic!("expected task command"),
         }
