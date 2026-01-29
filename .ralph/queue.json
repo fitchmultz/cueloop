@@ -2,55 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0413",
-      "status": "todo",
-      "title": "Implement 'ralph task build refactor' shortcut for automated large-file refactoring tasks",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "task-builder",
-        "refactor",
-        "automation",
-        "code-quality"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/task.rs",
-        "crates/ralph/src/cli/",
-        "crates/ralph/src/queue/",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User request: 'Implement a task builder shortcut such as ralph task build refactor that identifies large files with large LOC'",
-        "User example: Previously used manual prompt 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
-        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
-        "Existing pattern: Tasks RQ-0407 through RQ-0412 were manually created for this purpose",
-        "Batching requirement: User wants closely related files batched when appropriate"
-      ],
-      "plan": [
-        "Design 'ralph task build refactor' subcommand structure and argument parsing",
-        "Implement file discovery: scan codebase for files exceeding LOC threshold (default 1000, configurable via --threshold)",
-        "Implement file analysis: group closely related files by directory/module patterns for batching",
-        "Implement task generation: create properly structured tasks for each file/group",
-        "Add --dry-run flag to preview tasks without inserting into queue",
-        "Add --threshold flag to customize LOC threshold (default: 1000)",
-        "Add --batch flag to control batching behavior (auto, never, aggressive)",
-        "Integrate with existing task builder to generate proper JSON task structure",
-        "Update CLI help text with examples for 'ralph task build refactor'",
-        "Update docs/cli.md with new command documentation",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [
-        "Batching heuristics: files in same directory with similar names (e.g., tests.rs, test_*.rs) can be batched",
-        "Task titles should follow pattern: 'Refactor <path>: split <N> LOC into smaller modules'",
-        "Generated tasks should include proper scope, evidence, and plan arrays"
-      ],
-      "request": "Implement a task builder shortcut such as 'ralph task build refactor' that identifies large files with large LOC and creates individual tasks to have each refactored into smaller files. If it makes sense to batch some files together, due to very closely aligned or overlapping functionality, a single task may allow for multiple files to be refactored if it is not too much for an agent to handle.",
-      "created_at": "2026-01-29T15:34:04Z",
-      "updated_at": "2026-01-29T15:34:04Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0407",
       "status": "todo",
       "title": "Refactor tui/events/tests.rs: split 3,160 LOC test file into cohesive modules",

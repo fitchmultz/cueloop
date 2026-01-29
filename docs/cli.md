@@ -1042,6 +1042,55 @@ ralph task update --fields tags RQ-0042
 ralph task update --dry-run RQ-0001
 ```
 
+### ralph task build refactor
+
+Automatically create refactoring tasks for large files exceeding a LOC threshold.
+
+Scans the specified directory for Rust files exceeding the LOC threshold and creates refactoring tasks using the built-in "refactor" template. Files are grouped based on the batch mode:
+- `auto`: Groups related files (e.g., test files with their source) in the same directory.
+- `never`: Creates one task per file.
+- `aggressive`: Groups all large files in the same module/directory.
+
+Generated tasks include:
+- Title indicating the file(s) and LOC count
+- Scope pointing to the relevant file(s)
+- Tags: "refactor", "large-file", plus any user-specified tags
+- The "refactor" template plan
+
+Flags:
+- `--threshold <N>` - LOC threshold (default: 1000). Files exceeding this are flagged.
+- `--path <DIR>` - Directory to scan (default: crates/ralph/src).
+- `--dry-run` - Preview tasks without creating them.
+- `--batch <MODE>` - Batching behavior: `auto`, `never`, or `aggressive` (default: `auto`).
+- `--tags <TAGS>` - Additional tags for generated tasks (comma-separated).
+- `--runner/--model/--effort` (`-e`) - runner override for this invocation
+- `--repo-prompt <tools|plan|off>` (alias: `-rp`) - RepoPrompt planning/tooling mode
+- Runner CLI overrides: `--approval-mode <default|auto-edits|yolo|safe>`, `--sandbox <default|enabled|disabled>`, `--verbosity <quiet|normal|verbose>`, `--plan-mode <default|enabled|disabled>`, `--output-format <stream-json|json|text>`, `--unsupported-option-policy <ignore|warn|error>`.
+
+Examples:
+```bash
+# Scan default directory with default threshold (1000 LOC)
+ralph task build refactor
+
+# Use lower threshold
+ralph task build refactor --threshold 700
+
+# Scan specific directory
+ralph task build refactor --path crates/ralph/src/cli
+
+# Preview without creating tasks
+ralph task build refactor --dry-run
+
+# Create individual tasks per file (no batching)
+ralph task build refactor --batch never
+
+# Add custom tags
+ralph task build refactor --tags urgent,technical-debt
+
+# Combine options
+ralph task build refactor --threshold 500 --path src --dry-run
+```
+
 ## `ralph prd`
 
 Convert PRD (Product Requirements Document) markdown files to Ralph tasks automatically.

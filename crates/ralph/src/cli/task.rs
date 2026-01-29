@@ -244,6 +244,36 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             handle_template_command(&resolved, template_args)
         }
 
+        Some(TaskCommand::BuildRefactor(args)) => {
+            let overrides = agent::resolve_agent_overrides(&agent::AgentArgs {
+                runner: args.runner.clone(),
+                model: args.model.clone(),
+                effort: args.effort.clone(),
+                repo_prompt: args.repo_prompt,
+                runner_cli: args.runner_cli.clone(),
+            })?;
+
+            task_cmd::build_refactor_tasks(
+                &resolved,
+                task_cmd::TaskBuildRefactorOptions {
+                    threshold: args.threshold,
+                    path: args.path,
+                    dry_run: args.dry_run,
+                    batch: args.batch.into(),
+                    extra_tags: args.tags.unwrap_or_default(),
+                    runner_override: overrides.runner,
+                    model_override: overrides.model,
+                    reasoning_effort_override: overrides.reasoning_effort,
+                    runner_cli_overrides: overrides.runner_cli,
+                    force,
+                    repoprompt_tool_injection: agent::resolve_rp_required(
+                        args.repo_prompt,
+                        &resolved,
+                    ),
+                },
+            )
+        }
+
         Some(TaskCommand::Show(args)) => show_task(&resolved, &args.task_id, args.format),
 
         None => {
@@ -346,6 +376,13 @@ pub enum TaskCommand {
     )]
     Build(TaskBuildArgs),
 
+    /// Automatically create refactoring tasks for large files.
+    #[command(
+        name = "build-refactor",
+        after_long_help = "Examples:\n ralph task build refactor\n ralph task build refactor --threshold 700\n ralph task build refactor --path crates/ralph/src/cli\n ralph task build refactor --dry-run --threshold 500\n ralph task build refactor --batch never\n ralph task build refactor --tags urgent,technical-debt"
+    )]
+    BuildRefactor(TaskBuildRefactorArgs),
+
     /// Show a task by ID (queue + done).
     #[command(
         alias = "details",
@@ -442,6 +479,73 @@ pub struct TaskBuildArgs {
     /// Template to use for pre-filling task fields (bug, feature, refactor, test, docs).
     #[arg(short = 't', long, value_name = "TEMPLATE")]
     pub template: Option<String>,
+}
+
+/// Batching mode for grouping related files in build-refactor.
+#[derive(ValueEnum, Clone, Copy, Debug, Default)]
+#[clap(rename_all = "snake_case")]
+pub enum BatchMode {
+    /// Group files in same directory with similar names (e.g., test files with source).
+    #[default]
+    Auto,
+    /// Create individual task per file.
+    Never,
+    /// Group all files in same module/directory.
+    Aggressive,
+}
+
+#[derive(Args)]
+#[command(after_long_help = "Examples:
+ ralph task build refactor
+ ralph task build refactor --threshold 700
+ ralph task build refactor --path crates/ralph/src/cli
+ ralph task build refactor --dry-run --threshold 500
+ ralph task build refactor --batch never
+ ralph task build refactor --tags urgent,technical-debt")]
+pub struct TaskBuildRefactorArgs {
+    /// LOC threshold for flagging files as "large" (default: 1000).
+    /// Files exceeding ~1000 LOC are presumed mis-scoped per AGENTS.md.
+    #[arg(long, default_value = "1000")]
+    pub threshold: usize,
+
+    /// Directory to scan for Rust files (default: crates/ralph/src).
+    #[arg(long)]
+    pub path: Option<std::path::PathBuf>,
+
+    /// Preview tasks without inserting into queue.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Batching behavior for related files.
+    /// - auto: Group files in same directory with similar names (default).
+    /// - never: Create individual task per file.
+    /// - aggressive: Group all files in same module.
+    #[arg(long, value_enum, default_value = "auto")]
+    pub batch: BatchMode,
+
+    /// Additional tags to add to generated tasks (comma-separated).
+    #[arg(long)]
+    pub tags: Option<String>,
+
+    /// Runner to use. CLI flag overrides config defaults (project > global > built-in).
+    #[arg(long)]
+    pub runner: Option<String>,
+
+    /// Model to use. CLI flag overrides config defaults (project > global > built-in).
+    #[arg(long)]
+    pub model: Option<String>,
+
+    /// Codex reasoning effort. CLI flag overrides config defaults (project > global > built-in).
+    /// Ignored for opencode and gemini.
+    #[arg(short = 'e', long)]
+    pub effort: Option<String>,
+
+    /// RepoPrompt mode (tools, plan, off). Alias: -rp.
+    #[arg(long = "repo-prompt", value_enum, value_name = "MODE")]
+    pub repo_prompt: Option<agent::RepoPromptMode>,
+
+    #[command(flatten)]
+    pub runner_cli: agent::RunnerCliArgs,
 }
 
 #[derive(Args)]
