@@ -142,23 +142,6 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
   model: sonnet\n\
   gemini_bin: gemini\n\
  \n\
-Notes:\n\
- - Allowed runners: codex, opencode, gemini, claude\n\
- - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude accept arbitrary model ids)\n\
- - `--effort` is codex-only and is ignored for other runners.\n\
- - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
- - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
- - `--update-task` runs `ralph task update <TASK_ID>` once per task immediately before the task is marked `doing`.\n\
- - Clean-repo checks allow changes to `.ralph/config.json` (plus `.ralph/queue.json` and `.ralph/done.json`); use `--force` to bypass entirely.\n\
- - TUI entrypoints: `ralph tui`, `ralph run one -i`, `ralph run loop -i`.\n\
-\n\
-To change defaults for this repo, edit .ralph/config.json:\n\
- version: 1\n\
- agent:\n\
- runner: claude\n\
- model: sonnet\n\
- gemini_bin: gemini\n\
-\n\
 Examples:\n\
  ralph run one\n\
  ralph run one --phases 2\n\

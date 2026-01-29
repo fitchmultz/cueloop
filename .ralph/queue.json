@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0387",
-      "status": "todo",
-      "title": "Fix duplicate help text in CLI run command",
-      "priority": "medium",
-      "tags": [
-        "bug",
-        "cli",
-        "documentation",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/run.rs"
-      ],
-      "evidence": [
-        "run.rs:119-183 after_long_help contains duplicated content",
-        "Notes section appears twice (lines 128-136 and 145-153)",
-        "To change defaults section appears twice (lines 138-144 and 155-161)",
-        "Creates confusing help output for users"
-      ],
-      "plan": [
-        "Remove duplicate Notes section from after_long_help",
-        "Remove duplicate To change defaults section",
-        "Verify help text renders correctly with 'ralph run --help'",
-        "Check other CLI commands for similar duplication issues",
-        "Run 'make ci' to verify changes"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T05:30:00Z",
-      "updated_at": "2026-01-28T05:30:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0388",
       "status": "todo",
       "title": "Implement Windows custom sound support in notifications",
