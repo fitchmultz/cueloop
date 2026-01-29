@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0420",
-      "status": "todo",
-      "title": "Integrate tui-widgets scrollview for better details panel scrolling",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "ratatui-ecosystem",
-        "scrollview",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/Cargo.toml",
-        "crates/ralph/src/tui/app_details.rs",
-        "crates/ralph/src/tui/render/panels.rs"
-      ],
-      "evidence": [
-        "Assessment: tui-widgets 0.7.0 provides scrollview feature for smoother fractional scrolling",
-        "Current pain point: Custom scroll handling code in details panel with manual viewport tracking",
-        "Expected outcome: Smoother scrolling in task details, ~30 LOC reduction",
-        "Recommended feature: scrollview only via tui-widgets = { version = \"0.7\", features = [\"scrollview\"] }"
-      ],
-      "plan": [
-        "Add dependency with scrollview feature only: tui-widgets = { version = \"0.7\", features = [\"scrollview\"] }",
-        "Replace custom scroll handling in app_details.rs with ScrollView widget",
-        "Update panels.rs details rendering to use ScrollView",
-        "Test with long task descriptions to verify smooth scrolling",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [],
-      "request": "Read /tmp/ratatui-ecosystem-assessment.md and create tasks to have the recommended crates onboarded and put in place to replace all parts of the codebase that can eliminate complex custom code.",
-      "created_at": "2026-01-29T21:55:00Z",
-      "updated_at": "2026-01-29T21:55:00Z",
-      "depends_on": [
-        "RQ-0418"
-      ],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0399",
       "status": "todo",
       "title": "Design and implement local release workflow without GitHub Actions",

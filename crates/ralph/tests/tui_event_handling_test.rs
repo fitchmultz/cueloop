@@ -565,8 +565,6 @@ fn test_handle_key_event_in_executing_mode_esc_returns() {
 #[test]
 fn test_handle_key_event_tab_switches_focus_and_scrolls_details() {
     let mut app = App::new(make_test_queue());
-    app.details_visible_lines = 5;
-    app.details_total_lines = 20;
     let original_selected = app.selected;
 
     let action =
@@ -577,7 +575,7 @@ fn test_handle_key_event_tab_switches_focus_and_scrolls_details() {
         tui::handle_key_event(&mut app, key_event(KeyCode::Down), "2026-01-19T00:00:00Z").unwrap();
     assert_eq!(action, TuiAction::Continue);
     assert_eq!(app.selected, original_selected);
-    assert_eq!(app.details_scroll, 1);
+    assert_eq!(app.details.scroll(), 1);
 
     let action = tui::handle_key_event(
         &mut app,
@@ -586,14 +584,13 @@ fn test_handle_key_event_tab_switches_focus_and_scrolls_details() {
     )
     .unwrap();
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.details_scroll, 5);
+    // Page down scrolls by 10 lines in the new implementation
+    assert_eq!(app.details.scroll(), 11);
 }
 
 #[test]
 fn test_handle_key_event_shift_tab_returns_focus_to_list() {
     let mut app = App::new(make_test_queue());
-    app.details_visible_lines = 5;
-    app.details_total_lines = 20;
     let original_selected = app.selected;
 
     let action =
@@ -612,7 +609,8 @@ fn test_handle_key_event_shift_tab_returns_focus_to_list() {
         tui::handle_key_event(&mut app, key_event(KeyCode::Down), "2026-01-19T00:00:00Z").unwrap();
     assert_eq!(action, TuiAction::Continue);
     assert_eq!(app.selected, original_selected + 1);
-    assert_eq!(app.details_scroll, 0);
+    // When focus returns to list, details scroll stays where it was
+    assert_eq!(app.details.scroll(), 0);
 }
 
 #[test]

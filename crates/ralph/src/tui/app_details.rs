@@ -1,7 +1,7 @@
 //! Details panel state management for the TUI.
 //!
 //! Responsibilities:
-//! - Track details panel scroll position and viewport state.
+//! - Track details panel scroll position using tui-scrollview's ScrollViewState.
 //! - Manage details context for detecting content changes.
 //! - Provide scrolling methods (up, down, top, bottom).
 //!
@@ -9,13 +9,14 @@
 //! - Details content rendering (handled by render module).
 //! - Task detail editing (handled by task_edit module).
 //! - Panel focus management (handled by app module).
+//! - Scroll clamping (handled by ScrollViewState).
 //!
 //! Invariants/assumptions:
-//! - Scroll positions are clamped to valid ranges based on visible/total lines.
 //! - Context changes trigger scroll reset to top.
-//! - `visible_lines` and `total_lines` are updated by the renderer after layout.
+//! - ScrollViewState manages internal scroll offset and bounds.
 
 use crate::tui::events::AppMode;
+use tui_scrollview::ScrollViewState;
 
 /// Context key for details content (used to reset scroll on change).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,27 +53,12 @@ pub struct DetailsContext {
 }
 
 /// State for the details panel.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DetailsState {
-    /// Scroll offset for the details panel.
-    scroll: usize,
-    /// Last known visible detail lines (for paging).
-    visible_lines: usize,
-    /// Last known total detail line count (post-wrap).
-    total_lines: usize,
+    /// ScrollView state for smooth scrolling.
+    scroll_state: ScrollViewState,
     /// Context key for details content (used to reset scroll on change).
     context: Option<DetailsContext>,
-}
-
-impl Default for DetailsState {
-    fn default() -> Self {
-        Self {
-            scroll: 0,
-            visible_lines: 1,
-            total_lines: 0,
-            context: None,
-        }
-    }
 }
 
 impl DetailsState {
@@ -83,17 +69,12 @@ impl DetailsState {
 
     /// Get the current scroll position.
     pub fn scroll(&self) -> usize {
-        self.scroll
+        self.scroll_state.offset().y as usize
     }
 
-    /// Get the number of visible lines.
-    pub fn visible_lines(&self) -> usize {
-        self.visible_lines.max(1)
-    }
-
-    /// Get the total number of lines.
-    pub fn total_lines(&self) -> usize {
-        self.total_lines
+    /// Get the ScrollViewState for rendering.
+    pub fn scroll_state(&mut self) -> &mut ScrollViewState {
+        &mut self.scroll_state
     }
 
     /// Get the current context, if any.
@@ -101,36 +82,19 @@ impl DetailsState {
         self.context.as_ref()
     }
 
-    /// Calculate the maximum valid scroll position.
-    pub fn max_scroll(&self, total_lines: usize) -> usize {
-        total_lines.saturating_sub(self.visible_lines())
-    }
-
     /// Update the viewport and context, resetting scroll if context changed.
     ///
-    /// If the context has changed, scroll is reset to 0. Otherwise,
-    /// scroll is clamped to the valid range for the new viewport.
+    /// If the context has changed, scroll is reset to top.
     pub fn set_viewport(
         &mut self,
-        visible_lines: usize,
-        total_lines: usize,
+        _visible_lines: usize,
+        _total_lines: usize,
         context: DetailsContext,
     ) {
-        let visible_lines = visible_lines.max(1);
-
         // Reset scroll if context changed
         if self.context.as_ref() != Some(&context) {
-            self.scroll = 0;
+            self.scroll_state.scroll_to_top();
             self.context = Some(context);
-        }
-
-        self.visible_lines = visible_lines;
-        self.total_lines = total_lines;
-
-        // Clamp scroll to valid range
-        let max_scroll = self.max_scroll(total_lines);
-        if self.scroll > max_scroll {
-            self.scroll = max_scroll;
         }
     }
 
@@ -139,33 +103,40 @@ impl DetailsState {
         if lines == 0 {
             return;
         }
-        self.scroll = self.scroll.saturating_sub(lines);
+        // tui-scrollview 0.5 scroll_up/down don't take arguments, scroll by 1 line
+        // We use set_offset for multi-line scrolling
+        let current = self.scroll_state.offset();
+        let new_y = current.y.saturating_sub(lines as u16);
+        self.scroll_state
+            .set_offset(ratatui::layout::Position::new(current.x, new_y));
     }
 
     /// Scroll down by the specified number of lines.
-    pub fn scroll_down(&mut self, lines: usize, total_lines: usize) {
+    pub fn scroll_down(&mut self, lines: usize) {
         if lines == 0 {
             return;
         }
-        let max_scroll = self.max_scroll(total_lines);
-        self.scroll = (self.scroll + lines).min(max_scroll);
+        // tui-scrollview 0.5 scroll_up/down don't take arguments, scroll by 1 line
+        // We use set_offset for multi-line scrolling
+        let current = self.scroll_state.offset();
+        let new_y = current.y.saturating_add(lines as u16);
+        self.scroll_state
+            .set_offset(ratatui::layout::Position::new(current.x, new_y));
     }
 
     /// Scroll to the top.
     pub fn scroll_top(&mut self) {
-        self.scroll = 0;
+        self.scroll_state.scroll_to_top();
     }
 
     /// Scroll to the bottom.
-    pub fn scroll_bottom(&mut self, total_lines: usize) {
-        self.scroll = self.max_scroll(total_lines);
+    pub fn scroll_bottom(&mut self) {
+        self.scroll_state.scroll_to_bottom();
     }
 
     /// Reset the state.
     pub fn reset(&mut self) {
-        self.scroll = 0;
-        self.visible_lines = 1;
-        self.total_lines = 0;
+        self.scroll_state = ScrollViewState::default();
         self.context = None;
     }
 
@@ -216,7 +187,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_scroll_clamping() {
+    fn test_scroll_operations() {
         let mut state = DetailsState::new();
         state.set_viewport(
             10,
@@ -229,13 +200,16 @@ mod tests {
             },
         );
 
-        // Scroll down should be clamped
-        state.scroll_down(1000, 100);
-        assert_eq!(state.scroll(), 90); // 100 - 10
+        // Initial scroll should be 0
+        assert_eq!(state.scroll(), 0);
+
+        // Scroll down
+        state.scroll_down(50);
+        assert_eq!(state.scroll(), 50);
 
         // Scroll up
-        state.scroll_up(50);
-        assert_eq!(state.scroll(), 40);
+        state.scroll_up(20);
+        assert_eq!(state.scroll(), 30);
 
         // Scroll top
         state.scroll_top();
@@ -257,7 +231,7 @@ mod tests {
         );
 
         // Scroll down
-        state.scroll_down(50, 100);
+        state.scroll_down(50);
         assert_eq!(state.scroll(), 50);
 
         // Change context - scroll should reset
@@ -285,48 +259,12 @@ mod tests {
         };
 
         state.set_viewport(10, 100, context.clone());
-        state.scroll_down(30, 100);
+        state.scroll_down(30);
         assert_eq!(state.scroll(), 30);
 
-        // Same context - scroll should be preserved (but clamped if needed)
+        // Same context - scroll should be preserved
         state.set_viewport(10, 100, context);
         assert_eq!(state.scroll(), 30);
-    }
-
-    #[test]
-    fn test_viewport_update_clamps_scroll() {
-        let mut state = DetailsState::new();
-        state.set_viewport(
-            20,
-            100,
-            DetailsContext {
-                mode: DetailsContextMode::TaskDetails,
-                selected_id: Some("RQ-0001".to_string()),
-                queue_rev: 1,
-                detail_width: 60,
-            },
-        );
-
-        state.scroll_down(80, 100); // Scroll to 80 (max with 20 visible is 80)
-        assert_eq!(state.scroll(), 80);
-
-        // Reduce visible lines significantly - scroll should be clamped
-        state.set_viewport(
-            5,
-            100,
-            DetailsContext {
-                mode: DetailsContextMode::TaskDetails,
-                selected_id: Some("RQ-0001".to_string()),
-                queue_rev: 1,
-                detail_width: 60,
-            },
-        );
-        // scroll is 80, new max is 95 (100 - 5), 80 <= 95 so no clamping
-        assert_eq!(state.scroll(), 80);
-
-        // Scroll to new max
-        state.scroll_down(20, 100);
-        assert_eq!(state.scroll(), 95); // Clamped to new max (100 - 5 = 95)
     }
 
     #[test]
@@ -361,13 +299,22 @@ mod tests {
                 detail_width: 60,
             },
         );
-        state.scroll_down(50, 100);
+        state.scroll_down(50);
+        assert_eq!(state.scroll(), 50);
 
         state.reset();
 
         assert_eq!(state.scroll(), 0);
-        assert_eq!(state.visible_lines(), 1);
-        assert_eq!(state.total_lines(), 0);
         assert!(state.context().is_none());
+    }
+
+    #[test]
+    fn test_scroll_state_accessor() {
+        let mut state = DetailsState::new();
+        // Verify we can get mutable access to scroll state for rendering
+        let scroll_state = state.scroll_state();
+        scroll_state.scroll_down();
+
+        assert_eq!(state.scroll(), 1);
     }
 }

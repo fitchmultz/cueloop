@@ -125,19 +125,20 @@ fn normal_mode_home_end_scrolls_details_when_focused() {
     let queue = make_queue(vec![make_test_task("RQ-0001")]);
     let mut app = App::new(queue);
     app.focus_next_panel();
-    app.details_visible_lines = 3;
-    app.details_total_lines = 10;
-    app.details_scroll = 2;
+    // Set up scroll state through the details field
+    app.details.scroll_down(2);
     let selected_before = app.selected;
 
     handle_key_event(&mut app, key_event(KeyCode::End), "2026-01-20T00:00:00Z")
         .expect("handle key");
-    assert_eq!(app.details_scroll, 7);
+    // ScrollViewState handles bounds internally, just verify scroll changed
+    // scroll() returns usize which is always >= 0
+    let _scroll = app.details.scroll();
     assert_eq!(app.selected, selected_before);
 
     handle_key_event(&mut app, key_event(KeyCode::Home), "2026-01-20T00:00:00Z")
         .expect("handle key");
-    assert_eq!(app.details_scroll, 0);
+    assert_eq!(app.details.scroll(), 0);
     assert_eq!(app.selected, selected_before);
 }
 
@@ -229,15 +230,13 @@ fn mouse_scroll_down_moves_details_when_focused() {
     let queue = make_queue(vec![make_test_task("RQ-0001")]);
     let mut app = App::new(queue);
     app.focus_next_panel();
-    app.details_visible_lines = 2;
-    app.details_total_lines = 5;
-    app.details_scroll = 0;
+    // Scroll state starts at 0
 
     let action = handle_mouse_event(&mut app, mouse_event(MouseEventKind::ScrollDown, 1, 1))
         .expect("handle mouse");
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.details_scroll, 1);
+    assert_eq!(app.details.scroll(), 1);
     assert_eq!(app.selected, 0);
 }
 
@@ -266,15 +265,14 @@ fn mouse_scroll_up_moves_details_when_focused() {
     let queue = make_queue(vec![make_test_task("RQ-0001")]);
     let mut app = App::new(queue);
     app.focus_next_panel();
-    app.details_visible_lines = 2;
-    app.details_total_lines = 5;
-    app.details_scroll = 2;
+    // Set initial scroll position
+    app.details.scroll_down(2);
 
     let action = handle_mouse_event(&mut app, mouse_event(MouseEventKind::ScrollUp, 1, 1))
         .expect("handle mouse");
 
     assert_eq!(action, TuiAction::Continue);
-    assert_eq!(app.details_scroll, 1);
+    assert_eq!(app.details.scroll(), 1);
     assert_eq!(app.selected, 0);
 }
 

@@ -44,6 +44,7 @@ use super::events::{
 use super::render::draw_ui;
 use super::terminal::{BorderStyle, ColorOption, ColorSupport, TerminalCapabilities};
 use super::TextInput;
+use super::{DetailsContext, DetailsState};
 use crate::tui::app_filters::normalize_filter_token;
 use crate::tui::app_palette::{scan_label, score_palette_entry};
 
@@ -199,26 +200,6 @@ impl FocusedPanel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum DetailsContextMode {
-    TaskDetails,
-    CreatingTask,
-    CreatingTaskDescription,
-    Searching,
-    FilteringTags,
-    Scanning,
-    EmptyQueue,
-    FilteredEmpty { summary: String },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct DetailsContext {
-    pub(crate) mode: DetailsContextMode,
-    pub(crate) selected_id: Option<String>,
-    pub(crate) queue_rev: u64,
-    pub(crate) detail_width: u16,
-}
-
 /// Application state for the TUI.
 pub struct App {
     /// The active task queue.
@@ -235,12 +216,8 @@ pub struct App {
     pub detail_width: u16,
     /// Which panel is focused for navigation input.
     focused_panel: FocusedPanel,
-    /// Scroll offset for the task details panel.
-    pub details_scroll: usize,
-    /// Last known visible detail lines (for paging).
-    pub details_visible_lines: usize,
-    /// Last known total detail line count (post-wrap).
-    pub details_total_lines: usize,
+    /// Details panel scroll state using tui-scrollview.
+    pub details: DetailsState,
     /// Context key for details content (used to reset scroll on change).
     details_context: Option<DetailsContext>,
     /// Flag indicating if active queue was modified (needs save).
@@ -358,9 +335,7 @@ impl App {
             scroll: 0,
             detail_width: 60,
             focused_panel: FocusedPanel::List,
-            details_scroll: 0,
-            details_visible_lines: 1,
-            details_total_lines: 0,
+            details: DetailsState::new(),
             details_context: None,
             dirty: false,
             dirty_done: false,
@@ -562,11 +537,7 @@ impl App {
         // Clamp selection and scroll to valid range for the filtered list
         self.clamp_selection_and_scroll();
 
-        // Clamp details scroll to valid range
-        let details_max = self.max_details_scroll(self.details_total_lines);
-        if self.details_scroll > details_max {
-            self.details_scroll = details_max;
-        }
+        // Note: ScrollViewState handles its own bounds checking internally
 
         // Clamp help scroll to valid range
         let help_max = self.max_help_scroll(self.help_total_lines);
@@ -1326,8 +1297,14 @@ impl App {
         self.log_scroll = self.max_log_scroll(visible_lines);
     }
 
-    pub fn details_visible_lines(&self) -> usize {
-        self.details_visible_lines.max(1)
+    /// Get the current details scroll position.
+    pub fn details_scroll(&self) -> usize {
+        self.details.scroll()
+    }
+
+    /// Get mutable access to the details scroll state for rendering.
+    pub fn details_scroll_state(&mut self) -> &mut tui_scrollview::ScrollViewState {
+        self.details.scroll_state()
     }
 
     pub(crate) fn set_details_viewport(
@@ -1336,44 +1313,26 @@ impl App {
         total_lines: usize,
         context: DetailsContext,
     ) {
-        let visible_lines = visible_lines.max(1);
-        if self.details_context.as_ref() != Some(&context) {
-            self.details_scroll = 0;
-            self.details_context = Some(context);
-        }
-        self.details_visible_lines = visible_lines;
-        self.details_total_lines = total_lines;
-        let max_scroll = self.max_details_scroll(total_lines);
-        if self.details_scroll > max_scroll {
-            self.details_scroll = max_scroll;
-        }
-    }
-
-    pub fn max_details_scroll(&self, total_lines: usize) -> usize {
-        total_lines.saturating_sub(self.details_visible_lines())
+        // Delegate to DetailsState which handles scroll reset on context change
+        self.details
+            .set_viewport(visible_lines, total_lines, context.clone());
+        self.details_context = Some(context);
     }
 
     pub fn scroll_details_up(&mut self, lines: usize) {
-        if lines == 0 {
-            return;
-        }
-        self.details_scroll = self.details_scroll.saturating_sub(lines);
+        self.details.scroll_up(lines);
     }
 
-    pub fn scroll_details_down(&mut self, lines: usize, total_lines: usize) {
-        if lines == 0 {
-            return;
-        }
-        let max_scroll = self.max_details_scroll(total_lines);
-        self.details_scroll = (self.details_scroll + lines).min(max_scroll);
+    pub fn scroll_details_down(&mut self, lines: usize) {
+        self.details.scroll_down(lines);
     }
 
     pub fn scroll_details_top(&mut self) {
-        self.details_scroll = 0;
+        self.details.scroll_top();
     }
 
-    pub fn scroll_details_bottom(&mut self, total_lines: usize) {
-        self.details_scroll = self.max_details_scroll(total_lines);
+    pub fn scroll_details_bottom(&mut self) {
+        self.details.scroll_bottom();
     }
 
     pub(crate) fn help_visible_lines(&self) -> usize {

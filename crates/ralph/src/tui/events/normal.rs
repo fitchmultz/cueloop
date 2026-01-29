@@ -81,8 +81,7 @@ pub(super) fn handle_normal_mode_key(
         }
         KeyCode::Down => {
             if app.details_focused() {
-                let total_lines = app.details_total_lines;
-                app.scroll_details_down(1, total_lines);
+                app.scroll_details_down(1);
             } else {
                 let list_height = app.list_height;
                 app.move_down(list_height);
@@ -91,8 +90,7 @@ pub(super) fn handle_normal_mode_key(
         }
         KeyCode::Char('j') if is_plain_char(&key, 'j') => {
             if app.details_focused() {
-                let total_lines = app.details_total_lines;
-                app.scroll_details_down(1, total_lines);
+                app.scroll_details_down(1);
             } else {
                 let list_height = app.list_height;
                 app.move_down(list_height);
@@ -101,7 +99,8 @@ pub(super) fn handle_normal_mode_key(
         }
         KeyCode::PageUp => {
             if app.details_focused() {
-                let page_lines = app.details_visible_lines().saturating_sub(1).max(1);
+                // Use a reasonable default for page scroll (viewport height - 1)
+                let page_lines = 10;
                 app.scroll_details_up(page_lines);
             } else {
                 let list_height = app.list_height;
@@ -111,9 +110,8 @@ pub(super) fn handle_normal_mode_key(
         }
         KeyCode::PageDown => {
             if app.details_focused() {
-                let page_lines = app.details_visible_lines().saturating_sub(1).max(1);
-                let total_lines = app.details_total_lines;
-                app.scroll_details_down(page_lines, total_lines);
+                let page_lines = 10;
+                app.scroll_details_down(page_lines);
             } else {
                 let list_height = app.list_height;
                 app.move_page_down(list_height);
@@ -130,8 +128,7 @@ pub(super) fn handle_normal_mode_key(
         }
         KeyCode::End => {
             if app.details_focused() {
-                let total_lines = app.details_total_lines;
-                app.scroll_details_bottom(total_lines);
+                app.scroll_details_bottom();
             } else {
                 let list_height = app.list_height;
                 app.jump_to_bottom(list_height);

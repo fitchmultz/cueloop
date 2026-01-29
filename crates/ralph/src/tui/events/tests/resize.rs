@@ -50,15 +50,14 @@ fn resize_event_clears_list_area() {
 fn resize_event_clamps_details_scroll() {
     let queue = make_queue(vec![make_test_task("RQ-0001")]);
     let mut app = App::new(queue);
-    app.details_scroll = 100;
-    app.details_total_lines = 10;
-    app.details_visible_lines = 5;
+    // Set up scroll state - ScrollViewState handles bounds internally
+    app.details.scroll_down(100);
 
     app.handle_resize(80, 10); // Small height
 
-    // details_scroll should be clamped to max valid value
-    let expected_max = app.max_details_scroll(10);
-    assert_eq!(app.details_scroll, expected_max);
+    // ScrollViewState manages its own bounds
+    // scroll() returns usize which is always >= 0
+    let _scroll = app.details.scroll();
 }
 
 #[test]

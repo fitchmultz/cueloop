@@ -1273,6 +1273,7 @@ dependencies = [
  "textwrap",
  "thiserror 2.0.18",
  "time",
+ "tui-scrollview",
  "tui-term",
  "tui-textarea",
  "unicode-width 0.2.0",
@@ -1794,6 +1795,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "tui-scrollview"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cea93a4789dc04a89aa6aeda29dd581b18f88cbbcf19702baf8325814b4af394"
+dependencies = [
+ "indoc",
+ "ratatui",
 ]
 
 [[package]]

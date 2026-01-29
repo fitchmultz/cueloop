@@ -139,8 +139,7 @@ pub fn handle_mouse_event(app: &mut App, event: MouseEvent) -> anyhow::Result<Tu
         }
         MouseEventKind::ScrollDown => {
             if app.details_focused() {
-                let total_lines = app.details_total_lines;
-                app.scroll_details_down(1, total_lines);
+                app.scroll_details_down(1);
             } else {
                 let list_height = app.list_height;
                 if list_height > 0 {

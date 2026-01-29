@@ -16,9 +16,11 @@ use super::super::{App, AppMode};
 use super::utils::{priority_color, scroll_indicator, spans_width, status_color, wrap_text};
 use crate::contracts::{TaskPriority, TaskStatus};
 use crate::outpututil::truncate_chars;
-use crate::tui::app::{DetailsContext, DetailsContextMode, ExecutionPhase};
+use crate::tui::app::ExecutionPhase;
+use crate::tui::{DetailsContext, DetailsContextMode};
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Margin, Rect, Size},
+    prelude::StatefulWidget,
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{
@@ -27,6 +29,7 @@ use ratatui::{
     Frame,
 };
 use std::time::Duration;
+use tui_scrollview::{ScrollView, ScrollbarVisibility};
 use tui_term::widget::PseudoTerminal;
 
 /// Draw the execution view (full-screen output during task execution).
@@ -1077,16 +1080,35 @@ fn render_details_panel(
         detail_width: app.detail_width,
     };
     app.set_details_viewport(visible_lines, total_lines, context);
-    let indicator = scroll_indicator(app.details_scroll, app.details_visible_lines(), total_lines);
+
+    // Build scroll indicator from current scroll state
+    let scroll_y = app.details_scroll();
+    let indicator = scroll_indicator(scroll_y, visible_lines, total_lines);
     let title = details_title(content.title_spans, indicator);
 
     let block = Block::default().title(title).borders(Borders::ALL);
     f.render_widget(block, area);
 
-    let paragraph = Paragraph::new(Text::from(content.lines))
-        .wrap(Wrap { trim: false })
-        .scroll((app.details_scroll as u16, 0));
-    f.render_widget(paragraph, inner);
+    // Calculate content size for ScrollView
+    // Width: inner.width, Height: total_lines (as u16, capped)
+    let content_height = total_lines.max(visible_lines) as u16;
+    let content_size = Size::new(inner.width, content_height);
+
+    // Create ScrollView with content size
+    // Disable scrollbars to avoid panics with tiny terminal sizes
+    let mut scroll_view = ScrollView::new(content_size)
+        .vertical_scrollbar_visibility(ScrollbarVisibility::Never)
+        .horizontal_scrollbar_visibility(ScrollbarVisibility::Never);
+
+    // Render the content into the ScrollView at position (0, 0) within the scroll view
+    // The area should cover the full content height
+    let content_area = Rect::new(0, 0, inner.width, content_height);
+    let paragraph = Paragraph::new(Text::from(content.lines)).wrap(Wrap { trim: false });
+    scroll_view.render_widget(paragraph, content_area);
+
+    // Render the ScrollView with the current scroll state
+    // Note: tui-scrollview 0.5 uses render() method, not render_stateful_widget
+    scroll_view.render(inner, f.buffer_mut(), app.details_scroll_state());
 }
 
 fn details_title(mut spans: Vec<Span<'static>>, indicator: Option<String>) -> Line<'static> {
