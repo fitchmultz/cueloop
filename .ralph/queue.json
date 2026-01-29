@@ -2,40 +2,41 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0407",
+      "id": "RQ-0415",
       "status": "todo",
-      "title": "Refactor tui/events/tests.rs: split 3,160 LOC test file into cohesive modules",
-      "priority": "medium",
+      "title": "Fix 'ralph task refactor' and 'ralph task build refactor' shortcuts to trigger large-file refactoring logic",
+      "priority": "high",
       "tags": [
+        "cli",
+        "task-builder",
         "refactor",
-        "tui",
-        "tests",
-        "code-quality",
-        "module-boundaries"
+        "ux",
+        "bug"
       ],
       "scope": [
-        "crates/ralph/src/tui/events/tests.rs",
-        "crates/ralph/src/tui/events/"
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/commands/task.rs"
       ],
       "evidence": [
-        "User request: 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
-        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
-        "File stats: tui/events/tests.rs has 3,160 LOC - more than 3x the 1,000 LOC threshold",
-        "File stats: This is the largest source file in the codebase"
+        "User reports: 'ralph task build refactor' creates generic 'Scan codebase for refactoring opportunities' task instead of executing build_refactor_tasks logic",
+        "User expects: 'ralph task refactor' should be a shortcut for the build-refactor command",
+        "User expects: 'ralph task build refactor' should trigger the same large-file refactoring logic",
+        "Current behavior: 'ralph task build refactor' is parsed as 'ralph task build' with request 'refactor', which invokes task builder agent",
+        "Root cause: 'build-refactor' subcommand uses hyphenated name, but examples show space-separated 'build refactor'",
+        "The build_refactor_tasks function exists and works correctly but is not being invoked via the intended CLI paths"
       ],
       "plan": [
-        "Analyze tui/events/tests.rs to identify logical groupings/cohesion boundaries",
-        "Design module structure: split into focused test modules by functionality (e.g., input_tests.rs, navigation_tests.rs, etc.)",
-        "Ensure each new module has a single cohesive responsibility under ~400 LOC",
-        "Move tests to new modules preserving all test coverage",
-        "Update module declarations and imports",
-        "Run 'make ci' to validate all tests still pass",
-        "Verify no regression in test coverage"
+        "Analyze current CLI parsing for 'ralph task build refactor' vs 'ralph task build-refactor'",
+        "Add 'refactor' as a top-level subcommand alias or new subcommand that invokes build_refactor_tasks logic",
+        "Modify 'ralph task build' to detect when the request is 'refactor' and redirect to build_refactor_tasks",
+        "Update CLI help text to clarify the relationship between 'ralph task refactor', 'ralph task build refactor', and 'ralph task build-refactor'",
+        "Add tests to verify all three command variants trigger the correct behavior",
+        "Run 'make ci' to validate changes"
       ],
       "notes": [],
-      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files.",
-      "created_at": "2026-01-29T15:29:58Z",
-      "updated_at": "2026-01-29T15:29:58Z",
+      "request": "We added 'ralph task build refactor' via task ID RQ-0413 but we also need to add the shortcut 'ralph task refactor' to trigger the same logic. We also need to clear up the difference, if any, between running 'ralph task \"Task contents here\" vs 'ralph task build \"Task contents here\"'. Also, I do not think this is working correctly anyways. The project I tried this in produced the following output via the agent: ralph task build refactor -> I'll read the required context files and then create a task for the refactor request. -> Added task **RQ-0141: \"Scan codebase for refactoring opportunities\"** at the top of the queue. It did not execute like I specified in RQ-0413. Running 'ralph task refactor' or 'ralph task build refactor' should act as if the user had typed in 'ralph task \"Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.\"'. Please fix this.",
+      "created_at": "2026-01-29T16:46:08Z",
+      "updated_at": "2026-01-29T16:46:08Z",
       "depends_on": [],
       "custom_fields": {}
     },
