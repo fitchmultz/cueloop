@@ -2,6 +2,176 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0406",
+      "status": "todo",
+      "title": "Assess migration to OpenTUI framework for TUI components",
+      "priority": "medium",
+      "tags": [
+        "assessment",
+        "tui",
+        "opentui",
+        "architecture",
+        "refactor"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "https://github.com/anomalyco/opentui",
+        "/tmp/opentui-ralph-assessment.md"
+      ],
+      "evidence": [
+        "User request: 'Do an assessment on whether or not we should have built this project on opentui'",
+        "User context: OpenTUI is rapidly gaining adoption in the dev space",
+        "User context: 'We have loads of custom TUI code that could probably be dropped if we migrated'",
+        "User context: 'We have 0 active users besides me, the dev, so i am not worried about confusing users'",
+        "User constraint: Still rely on Rust as the performant safe underlayer",
+        "OpenTUI URL: https://github.com/anomalyco/opentui"
+      ],
+      "plan": [
+        "Research OpenTUI framework capabilities, architecture, and API surface",
+        "Inventory current custom TUI code in Ralph to understand replacement scope",
+        "Analyze OpenTUI feature parity with current TUI implementation",
+        "Assess level of effort for migration (breaking changes, rewrite scope, testing needs)",
+        "Document pros: reduced maintenance burden, community support, standard patterns",
+        "Document cons: migration cost, feature gaps, dependency risk, learning curve",
+        "Provide recommendation: migrate, partial adopt, or stay with custom TUI",
+        "Generate assessment report at /tmp/opentui-ralph-assessment.md"
+      ],
+      "notes": [],
+      "request": "Do an assessment on whether or not we should have built this project on opentui which is rapidly gaining adoption in the dev space. No code changes required, just generate a report in /tmp/opentui-ralph-assessment.md with your findings. We have loads of custom TUI code that could probably be dropped if we migrated to ths opentui framework. We have 0 active users besides me, the dev, so i am not worried about confusing users. Make an assessment, include level of effort, pros and cons, etc. We would still rely on rust as the performant safe under layer. https://github.com/anomalyco/opentui",
+      "created_at": "2026-01-29T15:18:03Z",
+      "updated_at": "2026-01-29T15:18:03Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0403",
+      "status": "todo",
+      "title": "Implement migration system for config and README changes",
+      "priority": "high",
+      "tags": [
+        "config",
+        "migration",
+        "ux",
+        "breaking-changes"
+      ],
+      "scope": [
+        "crates/ralph/src/config/",
+        "crates/ralph/src/init.rs",
+        "crates/ralph/assets/",
+        "docs/configuration.md"
+      ],
+      "evidence": [
+        "User request: 'We need to consider migrations when we implement changes to the config, .ralph/README.md, etc.'",
+        "User concern: Users may modify .ralph/README.md but we need to update it when Ralph changes",
+        "User concern: Config key renames should migrate user values automatically",
+        "User concern: Default file changes (e.g., queue.json to queue.jsonc) need safe migration",
+        "User context: Rapid development means frequent changes that need seamless user experience"
+      ],
+      "plan": [
+        "Design migration tracking system (version metadata for .ralph/ files)",
+        "Add RALPH_README_VERSION header detection and migration logic for .ralph/README.md",
+        "Implement config key migration framework with rename mappings",
+        "Add queue.json to queue.jsonc migration path with safe fallback",
+        "Create 'ralph migrate' command to check and apply pending migrations",
+        "Integrate automatic migration checks into 'ralph init' and startup",
+        "Add migration history tracking to prevent duplicate migrations",
+        "Document migration patterns for future developers",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [],
+      "request": "We need to consider migrations when we implement changes to the config, .ralph/README.md, etc. Users aren't updating .ralph/READEME.md, or at least shouldn't be as it is mainly there for agents, but they might, but when we change content of the READEME.md we need to ensure we are updating .ralph/READEME.md in other projects after they run ralph after updating. Same thing for checking config. If we change the name of a config key to a new value we should be migrating that value for the user and keeping what they set that config param to. If we decide to change the default task queue.json to queue.jsonc (which we just added support for) then we should consider migrating that safely too. These are things that users expect to be seamless.",
+      "created_at": "2026-01-29T19:50:00Z",
+      "updated_at": "2026-01-29T19:50:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0404",
+      "status": "todo",
+      "title": "Verify and document reasoning_effort field support in task queue",
+      "priority": "medium",
+      "tags": [
+        "config",
+        "documentation",
+        "codex",
+        "task-queue"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/task.rs",
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/cli/scan.rs",
+        "docs/cli.md",
+        "docs/queue-and-tasks.md"
+      ],
+      "evidence": [
+        "User request: 'verify we have support for model_effort in the task queue'",
+        "User context: reasoning_effort is primarily beneficial for Codex runner with GPT models",
+        "User context: Acceptable values are low, medium, high, xhigh (xhigh should be used rarely)",
+        "User context: Purpose is to dynamically override model reasoning effort without changing config",
+        "User context: Other models may not support reasoning effort like Codex does"
+      ],
+      "plan": [
+        "Verify reasoning_effort field exists in Task struct and is optional",
+        "Verify task builder supports --effort flag with low/medium/high/xhigh values",
+        "Verify scan command supports --effort flag",
+        "Verify effort value is passed through to Codex runner correctly",
+        "Verify unsupported runners gracefully ignore the field",
+        "Add/update documentation in docs/cli.md for --effort flag",
+        "Add/update documentation in docs/queue-and-tasks.md for reasoning_effort field",
+        "Add warning when xhigh is used (consumes limits extremely fast)",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [],
+      "request": "I believe we added support for model_effort in the task queue. this is primarily only beneficial for the codex runner with GPT models but just wanted to make sure we have support for that and it is documented. If it is added during task creation and an unsupported runner/model is used it is just ignored (intended) but it doesn't hurt to have it added. Acceptable values are (low, medium, high, xhigh). xhigh should only be used very rarely as it consumes usage limits extremely fast. both task builder and scan can utilize this field as long as we clarify its purpose. the purpose is to dynamically override the model reasoning effort via this optional field so users can run loops without having to stop and change their config as varying levels of tasks are in progress.",
+      "created_at": "2026-01-29T19:50:00Z",
+      "updated_at": "2026-01-29T19:50:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0405",
+      "status": "todo",
+      "title": "Add color support to CLI and TUI for enhanced user experience",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "cli",
+        "ux",
+        "colors"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/src/cli/",
+        "crates/ralph/src/output/",
+        "Cargo.toml"
+      ],
+      "evidence": [
+        "User request: 'we should be using colors in the CLI and TUI whenever possible'",
+        "User context: Colors should guide users to important information during long 'ralph run loop' tasks",
+        "User context: Current output can be bland white text in black box",
+        "User suggestion: Color-code agent reasoning/thinking blocks, tool calls, supervisor calls",
+        "User constraint: Don't colorize everything like a preschool art class - find balance"
+      ],
+      "plan": [
+        "Audit current CLI output for opportunities to add semantic coloring",
+        "Audit TUI rendering for color enhancement opportunities",
+        "Design color palette: success (green), error (red), warning (yellow), info (blue), emphasis (cyan/magenta)",
+        "Add color support for agent reasoning/thinking blocks (subtle gray/blue)",
+        "Add color support for tool calls (distinct color like cyan)",
+        "Add color support for supervisor/system messages (distinct color like magenta)",
+        "Add color support for task status indicators (todo/doing/done)",
+        "Add --no-color flag and NO_COLOR env var support for accessibility",
+        "Ensure colors work well on both light and dark terminal backgrounds",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [],
+      "request": "we should be using colors in the CLI and TUI whenever possible to enhance the user experience. Users should be guided by colors, especially but not limited to when long 'ralph run loop' tasks are ongoing, so they can focus on the important information and not get clouded by verbosity. I think the verbosity is good right now but can sometimes be bland when a user runs 'ralph run loop' and sees nothing but white text inside a black box. Maybe we look to color code agent reasoning/thinking blocks, tool calls, supervisor calls, etc? We dont have to colorize everything to make it look like a preschool art class but a nice balance might be beneficial for user expereince.",
+      "created_at": "2026-01-29T19:50:00Z",
+      "updated_at": "2026-01-29T19:50:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0399",
       "status": "todo",
       "title": "Design and implement local release workflow without GitHub Actions",
