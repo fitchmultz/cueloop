@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0410",
-      "status": "todo",
-      "title": "Refactor commands/init.rs: split 1,335 LOC init command into smaller modules",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "commands",
-        "init",
-        "code-quality",
-        "module-boundaries"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/init.rs",
-        "crates/ralph/src/commands/"
-      ],
-      "evidence": [
-        "User request: 'Identify large files with large LOC and create a task to have each file refactored into smaller files'",
-        "CLAUDE.md guideline: Files exceeding ~1,000 LOC are presumed to be mis-scoped and MUST be split",
-        "File stats: commands/init.rs has 1,335 LOC - exceeds 1,000 LOC threshold"
-      ],
-      "plan": [
-        "Analyze commands/init.rs to identify distinct initialization phases (config creation, directory setup, prompt installation, etc.)",
-        "Design module structure: extract submodules for each phase (init/config.rs, init/dirs.rs, init/prompts.rs, etc.)",
-        "Ensure each new module has a single cohesive responsibility under ~400 LOC",
-        "Refactor init.rs to orchestrate the initialization flow",
-        "Update all imports across the codebase",
-        "Run 'make ci' to validate changes",
-        "Verify init command functionality remains intact"
-      ],
-      "notes": [],
-      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files.",
-      "created_at": "2026-01-29T15:29:58Z",
-      "updated_at": "2026-01-29T15:29:58Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0411",
       "status": "todo",
       "title": "Refactor tui/render/overlays.rs: split 1,276 LOC render module",
