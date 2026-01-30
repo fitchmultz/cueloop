@@ -21,3 +21,4 @@ ralph_tui/ralph
 .ralph/README.md
 .ralph/cache/prompt_versions.json
 .vscode/settings.json
+.ralph/cache/session.json
