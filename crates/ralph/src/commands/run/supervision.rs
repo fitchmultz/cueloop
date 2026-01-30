@@ -159,6 +159,10 @@ pub(crate) fn post_run_supervise(
             )
             .context("Queue archiving failed")?;
 
+            // Trigger celebration and record productivity stats BEFORE git commit
+            // so productivity.json gets committed along with other changes
+            trigger_celebration(resolved, task_id, &task_title, no_progress);
+
             finalize_git_state(resolved, task_id, &task_title, git_commit_push_enabled)
                 .context("Git finalization failed")?;
 
@@ -166,9 +170,6 @@ pub(crate) fn post_run_supervise(
             let notify_config =
                 build_notification_config(resolved, notify_on_complete, notify_sound);
             notification::notify_task_complete(task_id, &task_title, &notify_config);
-
-            // Trigger celebration and record productivity stats
-            trigger_celebration(resolved, task_id, &task_title, no_progress);
 
             return Ok(());
         }
@@ -217,15 +218,16 @@ pub(crate) fn post_run_supervise(
             return Ok(());
         }
 
+        // Trigger celebration and record productivity stats BEFORE git commit
+        // so productivity.json gets committed along with other changes
+        trigger_celebration(resolved, task_id, &task_title, no_progress);
+
         finalize_git_state(resolved, task_id, &task_title, git_commit_push_enabled)
             .context("Git finalization failed")?;
 
         // Trigger completion notification on successful completion
         let notify_config = build_notification_config(resolved, notify_on_complete, notify_sound);
         notification::notify_task_complete(task_id, &task_title, &notify_config);
-
-        // Trigger celebration and record productivity stats
-        trigger_celebration(resolved, task_id, &task_title, no_progress);
 
         Ok(())
     })
@@ -978,6 +980,59 @@ mod tests {
             false,
             false,
         )?;
+        Ok(())
+    }
+
+    #[test]
+    fn post_run_supervise_allows_productivity_json_dirty() -> Result<()> {
+        // Regression test: ensure productivity.json doesn't block task completion
+        // See: supervisor triggering revert prompt due to productivity.json being dirty
+        let temp = TempDir::new()?;
+        git_test::init_repo(temp.path())?;
+        write_queue(temp.path(), TaskStatus::Done)?;
+        git_test::commit_all(temp.path(), "init")?;
+
+        // Create the cache directory and productivity.json file (simulating what
+        // trigger_celebration does when recording stats)
+        let cache_dir = temp.path().join(".ralph").join("cache");
+        std::fs::create_dir_all(&cache_dir)?;
+        std::fs::write(
+            cache_dir.join("productivity.json"),
+            r#"{"version":1,"total_completed":1}"#,
+        )?;
+
+        // Also create a real work file that should be committed
+        std::fs::write(temp.path().join("work.txt"), "change")?;
+
+        let resolved = resolved_for_repo(temp.path());
+        // This should succeed even though productivity.json is untracked
+        post_run_supervise(
+            &resolved,
+            "RQ-0001",
+            GitRevertMode::Disabled,
+            true, // git_commit_push_enabled = true
+            None,
+            None,
+            None,
+            false,
+            false,
+        )?;
+
+        // Verify the task is in done
+        let done_file = queue::load_queue_or_default(&resolved.done_path)?;
+        anyhow::ensure!(
+            done_file.tasks.iter().any(|t| t.id == "RQ-0001"),
+            "expected task in done archive"
+        );
+
+        // Verify the repo is clean (productivity.json was committed along with other changes)
+        let status = git_test::git_output(temp.path(), &["status", "--porcelain"])?;
+        anyhow::ensure!(
+            status.trim().is_empty(),
+            "expected clean repo after commit, but found: {}",
+            status
+        );
+
         Ok(())
     }
 }

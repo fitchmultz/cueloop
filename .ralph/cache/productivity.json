@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
+  "last_updated_at": "2026-01-30T12:31:17.161200000Z",
+  "daily": {
+    "2026-01-30": {
+      "date": "2026-01-30",
+      "completed_count": 1,
+      "tasks": [
+        {
+          "id": "RQ-0434",
+          "title": "Add task cloning/duplication command to enable task templating from existing tasks",
+          "completed_at": "2026-01-30T12:31:17.161199000Z"
+        }
+      ]
+    }
+  },
+  "streak": {
+    "current_streak": 1,
+    "longest_streak": 1,
+    "last_completed_date": "2026-01-30"
+  },
+  "total_completed": 1,
+  "milestones": []
+}

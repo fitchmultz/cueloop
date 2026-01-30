@@ -26,6 +26,7 @@ pub const RALPH_RUN_CLEAN_ALLOWED_PATHS: &[&str] = &[
     ".ralph/queue.json",
     ".ralph/done.json",
     ".ralph/config.json",
+    ".ralph/cache/productivity.json",
 ];
 
 /// Require a clean repository, ignoring allowed paths.
