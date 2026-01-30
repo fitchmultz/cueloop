@@ -30,6 +30,7 @@ pub mod scan;
 pub mod task;
 pub mod tui;
 pub mod version;
+pub mod watch;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -112,6 +113,11 @@ pub enum Command {
     /// Display version information.
     #[command(after_long_help = "Examples:\n  ralph version\n  ralph version --verbose")]
     Version(version::VersionArgs),
+    /// Watch files for changes and auto-detect tasks from TODO/FIXME/HACK/XXX comments.
+    #[command(
+        after_long_help = "Examples:\n  ralph watch\n  ralph watch src/\n  ralph watch --patterns \"*.rs,*.toml\"\n  ralph watch --auto-queue\n  ralph watch --notify\n  ralph watch --comments todo,fixme\n  ralph watch --debounce-ms 1000\n  ralph watch --ignore-patterns \"vendor/,target/,node_modules/\""
+    )]
+    Watch(watch::WatchArgs),
 }
 
 pub(crate) fn load_and_validate_queues(

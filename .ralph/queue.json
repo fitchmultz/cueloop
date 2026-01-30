@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0427",
-      "status": "todo",
-      "title": "Implement watch mode for automatic task detection and creation",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "feature",
-        "watch",
-        "automation"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/",
-        "crates/ralph/src/fsutil.rs",
-        "crates/ralph/Cargo.toml"
-      ],
-      "evidence": [
-        "Developers often leave TODO/FIXME comments that get forgotten",
-        "Test failures should automatically suggest fix tasks",
-        "File changes can indicate areas needing attention",
-        "No current mechanism for proactive task suggestions",
-        "Watch mode is common in modern dev tools (cargo watch, jest --watch)"
-      ],
-      "plan": [
-        "Add notify or similar file watching dependency",
-        "Implement ralph watch command with configurable watch patterns",
-        "Detect TODO/FIXME/HACK comments in changed files and offer to create tasks",
-        "Monitor test output and suggest tasks for failing tests",
-        "Watch for compiler errors and offer fix tasks",
-        "Add --auto-queue flag to automatically create tasks without prompting",
-        "Add --watch-patterns flag for custom file patterns",
-        "Implement debouncing to avoid task spam during active editing",
-        "Add notification when new tasks are auto-created",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [
-        "Watch mode should be efficient - use git ignore patterns",
-        "Consider integration with existing scan functionality",
-        "Should not interfere with normal development workflow"
-      ],
-      "request": "Implement ralph watch command that monitors the codebase and automatically suggests or creates tasks. Detect TODO/FIXME comments in modified files, suggest tasks for failing tests, and monitor for patterns that indicate work needed. Similar to cargo watch or jest --watch but focused on task creation. Helps capture work items that would otherwise be forgotten during development.",
-      "created_at": "2026-01-30T00:00:00Z",
-      "updated_at": "2026-01-30T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0428",
       "status": "todo",
       "title": "Add fuzzy search for tasks with improved discovery",

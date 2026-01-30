@@ -41,6 +41,7 @@ atty = "0.2"
 notify-rust = { version = "4", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 indicatif = { version = "0.17", features = ["rayon"] }
+notify = "6.1"
 
 # libc is only used on Unix platforms for process group control and PID liveness detection
 [target.'cfg(unix)'.dependencies]

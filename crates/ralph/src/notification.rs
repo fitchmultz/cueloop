@@ -230,6 +230,58 @@ pub fn notify_loop_complete(
     }
 }
 
+/// Send watch mode notification for newly detected tasks.
+/// Silently logs errors but never fails the calling operation.
+pub fn notify_watch_new_task(count: usize, config: &NotificationConfig) {
+    if !config.enabled {
+        log::debug!("Notifications disabled; skipping");
+        return;
+    }
+
+    if config.should_suppress(false) {
+        log::debug!("Notifications suppressed (globally disabled)");
+        return;
+    }
+
+    // Build and show notification
+    if let Err(e) = show_notification_watch(count, config.timeout_ms) {
+        log::debug!("Failed to show watch notification: {}", e);
+    }
+
+    // Play sound if enabled
+    if config.sound_enabled {
+        if let Err(e) = play_completion_sound(config.sound_path.as_deref()) {
+            log::debug!("Failed to play sound: {}", e);
+        }
+    }
+}
+
+#[cfg(feature = "notifications")]
+fn show_notification_watch(count: usize, timeout_ms: u32) -> anyhow::Result<()> {
+    use notify_rust::{Notification, Timeout};
+
+    let body = if count == 1 {
+        "1 new task detected from code comments".to_string()
+    } else {
+        format!("{} new tasks detected from code comments", count)
+    };
+
+    Notification::new()
+        .summary("Ralph: Watch Mode")
+        .body(&body)
+        .timeout(Timeout::Milliseconds(timeout_ms))
+        .show()
+        .map_err(|e| anyhow::anyhow!("Failed to show notification: {}", e))?;
+
+    Ok(())
+}
+
+#[cfg(not(feature = "notifications"))]
+fn show_notification_watch(_count: usize, _timeout_ms: u32) -> anyhow::Result<()> {
+    log::debug!("Notifications feature not compiled in; skipping notification display");
+    Ok(())
+}
+
 #[cfg(feature = "notifications")]
 fn show_notification_typed(
     notification_type: NotificationType,
