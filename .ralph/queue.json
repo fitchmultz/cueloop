@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0428",
-      "status": "todo",
-      "title": "Add fuzzy search for tasks with improved discovery",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "ux",
-        "search",
-        "fuzzy"
-      ],
-      "scope": [
-        "crates/ralph/src/queue.rs",
-        "crates/ralph/src/cli/",
-        "crates/ralph/src/main.rs"
-      ],
-      "evidence": [
-        "Current ralph queue search requires exact substring match",
-        "Users often forget exact task IDs or wording",
-        "Fuzzy search improves discoverability significantly",
-        "Modern tools (fzf, VS Code quick open) use fuzzy matching",
-        "Helps when task list grows large (100+ tasks)"
-      ],
-      "plan": [
-        "Research fuzzy matching libraries (nucleo, skim, or custom implementation)",
-        "Add --fuzzy flag to ralph queue search command",
-        "Implement fuzzy matching across: title, tags, scope, evidence, request fields",
-        "Add relevance scoring and sort results by match quality",
-        "Add ralph task find command as shorthand for fuzzy search",
-        "Integrate fuzzy search into TUI with '/' keybinding (enhance existing search)",
-        "Highlight matching characters in results",
-        "Support combined filters: fuzzy search + status + tag filters",
-        "Maintain backward compatibility with exact search as default",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [
-        "Fuzzy search should be fast even with large task lists",
-        "Consider using existing nucleo matcher if already in dependency tree",
-        "TUI integration should feel natural and responsive"
-      ],
-      "request": "Add fuzzy search capability to ralph queue search for better task discovery. Current search requires exact substring matches, making it hard to find tasks when you don't remember exact wording. Fuzzy search should match across title, tags, scope, and description fields with relevance scoring. Add --fuzzy flag to search command and integrate into TUI search (enhance the '/' keybinding). This is essential for large task lists where exact matching becomes cumbersome.",
-      "created_at": "2026-01-30T00:01:00Z",
-      "updated_at": "2026-01-30T00:01:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0429",
       "status": "todo",
       "title": "Add session recovery and crash resilience for long-running loops",

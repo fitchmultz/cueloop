@@ -121,7 +121,7 @@ pub enum QueueCommand {
 
     /// Search tasks by content (title, evidence, plan, notes, request, tags, scope, custom fields).
     #[command(
-        after_long_help = "Examples:\n ralph queue search \"authentication\"\n ralph queue search \"RQ-\\d{4}\" --regex\n ralph queue search \"TODO\" --match-case\n ralph queue search \"fix\" --status todo --tag rust\n ralph queue search \"refactor\" --scope crates/ralph --tag rust"
+        after_long_help = "Examples:\n ralph queue search \"authentication\"\n ralph queue search \"RQ-\\d{4}\" --regex\n ralph queue search \"TODO\" --match-case\n ralph queue search \"fix\" --status todo --tag rust\n ralph queue search \"refactor\" --scope crates/ralph --tag rust\n ralph queue search \"auth bug\" --fuzzy\n ralph queue search \"fuzzy search\" --fuzzy --match-case"
     )]
     Search(QueueSearchArgs),
 

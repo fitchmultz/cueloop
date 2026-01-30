@@ -800,12 +800,32 @@ impl App {
     /// Toggle regex search.
     pub fn toggle_regex(&mut self) {
         self.filters.search_options.use_regex = !self.filters.search_options.use_regex;
+        // Regex and fuzzy are mutually exclusive
+        if self.filters.search_options.use_regex && self.filters.search_options.use_fuzzy {
+            self.filters.search_options.use_fuzzy = false;
+        }
         let state = if self.filters.search_options.use_regex {
-            "enabled"
+            "enabled (fuzzy disabled)"
         } else {
             "disabled"
         };
         self.set_status_message(format!("Regex search {}", state));
+        self.rebuild_filtered_view();
+    }
+
+    /// Toggle fuzzy search.
+    pub fn toggle_fuzzy(&mut self) {
+        self.filters.search_options.use_fuzzy = !self.filters.search_options.use_fuzzy;
+        // Fuzzy and regex are mutually exclusive
+        if self.filters.search_options.use_fuzzy && self.filters.search_options.use_regex {
+            self.filters.search_options.use_regex = false;
+        }
+        let state = if self.filters.search_options.use_fuzzy {
+            "enabled (regex disabled)"
+        } else {
+            "disabled"
+        };
+        self.set_status_message(format!("Fuzzy search {}", state));
         self.rebuild_filtered_view();
     }
 
@@ -1574,6 +1594,10 @@ impl App {
                 title: "Toggle regex search".to_string(),
             },
             PaletteEntry {
+                cmd: PaletteCommand::ToggleFuzzy,
+                title: "Toggle fuzzy search".to_string(),
+            },
+            PaletteEntry {
                 cmd: PaletteCommand::ReloadQueue,
                 title: "Reload queue from disk".to_string(),
             },
@@ -1818,6 +1842,10 @@ impl App {
             }
             PaletteCommand::ToggleRegex => {
                 self.toggle_regex();
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::ToggleFuzzy => {
+                self.toggle_fuzzy();
                 Ok(TuiAction::Continue)
             }
             PaletteCommand::ReloadQueue => {

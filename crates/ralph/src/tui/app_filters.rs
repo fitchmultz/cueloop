@@ -4,7 +4,7 @@
 //! - Store active filter state (query, tags, statuses, scopes, search options).
 //! - Maintain a cache of filtered task indices for efficient rendering.
 //! - Provide methods for rebuilding the filtered view and managing filter snapshots.
-//! - Handle filter toggles (case-sensitive, regex) and input modes.
+//! - Handle filter toggles (case-sensitive, regex, fuzzy) and input modes.
 //!
 //! Not handled here:
 //! - Queue mutation operations (handled by queue module).
@@ -48,6 +48,7 @@ struct FilterKey {
     scopes: Vec<String>,
     use_regex: bool,
     case_sensitive: bool,
+    use_fuzzy: bool,
 }
 
 impl FilterKey {
@@ -79,6 +80,7 @@ impl FilterKey {
             scopes,
             use_regex: filters.search_options.use_regex,
             case_sensitive: filters.search_options.case_sensitive,
+            use_fuzzy: filters.search_options.use_fuzzy,
         }
     }
 }
@@ -161,11 +163,10 @@ impl FilterManager {
             );
 
             if !self.filters.query.trim().is_empty() {
-                match queue::search_tasks(
+                match queue::search_tasks_with_options(
                     filtered,
                     &self.filters.query,
-                    self.filters.search_options.use_regex,
-                    self.filters.search_options.case_sensitive,
+                    &self.filters.search_options,
                 ) {
                     Ok(results) => {
                         filtered = results;
@@ -203,6 +204,7 @@ impl FilterManager {
             || !self.filters.search_options.scopes.is_empty()
             || self.filters.search_options.use_regex
             || self.filters.search_options.case_sensitive
+            || self.filters.search_options.use_fuzzy
     }
 
     /// Create a human-readable summary of active filters.
@@ -227,6 +229,9 @@ impl FilterManager {
         if self.filters.search_options.use_regex {
             parts.push("regex".to_string());
         }
+        if self.filters.search_options.use_fuzzy {
+            parts.push("fuzzy".to_string());
+        }
         if self.filters.search_options.case_sensitive {
             parts.push("case-sensitive".to_string());
         }
@@ -246,8 +251,26 @@ impl FilterManager {
     /// Toggle regex search.
     pub fn toggle_regex(&mut self) -> &str {
         self.filters.search_options.use_regex = !self.filters.search_options.use_regex;
+        // Regex and fuzzy are mutually exclusive
+        if self.filters.search_options.use_regex && self.filters.search_options.use_fuzzy {
+            self.filters.search_options.use_fuzzy = false;
+        }
         if self.filters.search_options.use_regex {
-            "enabled"
+            "enabled (fuzzy disabled)"
+        } else {
+            "disabled"
+        }
+    }
+
+    /// Toggle fuzzy search.
+    pub fn toggle_fuzzy(&mut self) -> &str {
+        self.filters.search_options.use_fuzzy = !self.filters.search_options.use_fuzzy;
+        // Fuzzy and regex are mutually exclusive
+        if self.filters.search_options.use_fuzzy && self.filters.search_options.use_regex {
+            self.filters.search_options.use_regex = false;
+        }
+        if self.filters.search_options.use_fuzzy {
+            "enabled (regex disabled)"
         } else {
             "disabled"
         }

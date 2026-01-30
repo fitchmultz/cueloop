@@ -88,6 +88,7 @@ fn base_search_args() -> QueueSearchArgs {
         query: "test".to_string(),
         regex: false,
         match_case: false,
+        fuzzy: false,
         status: vec![],
         tag: vec![],
         scope: vec![],

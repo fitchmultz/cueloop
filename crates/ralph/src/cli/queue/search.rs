@@ -14,7 +14,7 @@ use super::{QueueListFormat, StatusArg};
 #[derive(Args)]
 /// Search tasks by content (title, evidence, plan, notes, request, tags, scope, custom fields).
 #[command(
-    after_long_help = "Examples:\n  ralph queue search \"authentication\"\n  ralph queue search \"RQ-\\d{4}\" --regex\n  ralph queue search \"TODO\" --match-case\n  ralph queue search \"fix\" --status todo --tag rust\n  ralph queue search \"refactor\" --scope crates/ralph --tag rust"
+    after_long_help = "Examples:\n  ralph queue search \"authentication\"\n  ralph queue search \"RQ-\\d{4}\" --regex\n  ralph queue search \"TODO\" --match-case\n  ralph queue search \"fix\" --status todo --tag rust\n  ralph queue search \"refactor\" --scope crates/ralph --tag rust\n  ralph queue search \"auth bug\" --fuzzy\n  ralph queue search \"fuzzy search\" --fuzzy --match-case"
 )]
 pub struct QueueSearchArgs {
     /// Search query (substring or regex pattern).
@@ -28,6 +28,10 @@ pub struct QueueSearchArgs {
     /// Case-sensitive search (default: case-insensitive).
     #[arg(long)]
     pub match_case: bool,
+
+    /// Use fuzzy matching for search (default: substring).
+    #[arg(long)]
+    pub fuzzy: bool,
 
     /// Filter by status (repeatable).
     #[arg(long, value_enum)]
@@ -67,6 +71,10 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueSearchArgs) -> Result<()> {
         bail!("Conflicting flags: --include-done and --only-done are mutually exclusive. Choose either to include done tasks or to only search done tasks.");
     }
 
+    if args.fuzzy && args.regex {
+        bail!("Conflicting flags: --fuzzy and --regex are mutually exclusive. Choose either fuzzy matching or regex matching.");
+    }
+
     let (queue_file, done_file) =
         load_and_validate_queues(resolved, args.include_done || args.only_done)?;
     let done_ref = done_file
@@ -98,13 +106,17 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueSearchArgs) -> Result<()> {
         }
     }
 
+    // Build search options
+    let search_options = queue::SearchOptions {
+        use_regex: args.regex,
+        case_sensitive: args.match_case,
+        use_fuzzy: args.fuzzy,
+        scopes: args.scope.clone(),
+    };
+
     // Apply content search
-    let results = queue::search_tasks(
-        prefiltered.into_iter(),
-        &args.query,
-        args.regex,
-        args.match_case,
-    )?;
+    let results =
+        queue::search_tasks_with_options(prefiltered.into_iter(), &args.query, &search_options)?;
 
     let limit = resolve_list_limit(args.limit, args.all);
     let max = limit.unwrap_or(usize::MAX);

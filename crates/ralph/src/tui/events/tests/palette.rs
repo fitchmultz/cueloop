@@ -172,7 +172,10 @@ fn palette_toggle_regex_command() {
         .expect("execute command");
 
     assert!(app.filters.search_options.use_regex);
-    assert_eq!(app.status_message.as_deref(), Some("Regex search enabled"));
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some("Regex search enabled (fuzzy disabled)")
+    );
 }
 
 #[test]

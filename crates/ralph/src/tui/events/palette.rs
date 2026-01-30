@@ -45,6 +45,7 @@ pub enum PaletteCommand {
     SetPriorityLow,
     ToggleCaseSensitive,
     ToggleRegex,
+    ToggleFuzzy,
     ReloadQueue,
     MoveTaskUp,
     MoveTaskDown,

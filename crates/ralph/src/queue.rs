@@ -32,7 +32,9 @@ pub use graph::*;
 pub use operations::*;
 pub use prune::{prune_done_tasks, PruneOptions, PruneReport};
 pub use repair::*;
-pub use search::{filter_tasks, search_tasks, SearchOptions};
+pub use search::{
+    filter_tasks, fuzzy_search_tasks, search_tasks, search_tasks_with_options, SearchOptions,
+};
 pub use size_check::{
     check_queue_size, count_threshold_or_default, print_size_warning_if_needed,
     size_threshold_or_default, SizeCheckResult,

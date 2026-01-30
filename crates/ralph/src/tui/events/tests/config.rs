@@ -261,7 +261,10 @@ fn uppercase_r_toggles_regex() {
 
     assert_eq!(action, TuiAction::Continue);
     assert!(app.filters.search_options.use_regex);
-    assert_eq!(app.status_message.as_deref(), Some("Regex search enabled"));
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some("Regex search enabled (fuzzy disabled)")
+    );
 }
 
 #[test]
