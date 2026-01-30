@@ -59,13 +59,15 @@ fn run() -> Result<()> {
     match cli.command {
         cli::Command::Queue(args) => cli::queue::handle_queue(args.command, cli.force),
         cli::Command::Config(args) => cli::config::handle_config(args.command),
-        cli::Command::Run(args) => cli::run::handle_run(args.command, cli.force),
+        cli::Command::Run(args) => cli::run::handle_run(args.command, cli.force, cli.no_progress),
         cli::Command::Task(args) => cli::task::handle_task(*args, cli.force),
         cli::Command::Scan(args) => cli::scan::handle_scan(args, cli.force),
         cli::Command::Init(args) => cli::init::handle_init(args, cli.force),
         cli::Command::Prompt(args) => cli::prompt::handle_prompt(args),
         cli::Command::Doctor => cli::doctor::handle_doctor(),
-        cli::Command::Tui(args) => cli::tui::handle_tui(args, cli.color, cli.force),
+        cli::Command::Tui(args) => {
+            cli::tui::handle_tui(args, cli.color, cli.force, cli.no_progress)
+        }
         cli::Command::Context(args) => cli::context::handle_context(args),
         cli::Command::Prd(args) => cli::prd::handle_prd(args, cli.force),
         cli::Command::Completions(args) => cli::completions::handle_completions(args),

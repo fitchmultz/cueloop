@@ -64,6 +64,11 @@ pub struct Cli {
     /// Also respects the NO_COLOR environment variable.
     #[arg(long, global = true)]
     pub no_color: bool,
+
+    /// Disable progress indicators and spinners.
+    /// Useful for CI/scripting environments or when piping output.
+    #[arg(long, global = true)]
+    pub no_progress: bool,
 }
 
 #[derive(Subcommand)]

@@ -41,6 +41,7 @@ pub mod lock;
 pub mod notification;
 pub mod output;
 pub mod outpututil;
+pub mod progress;
 pub mod promptflow;
 pub mod prompts;
 pub mod redaction;

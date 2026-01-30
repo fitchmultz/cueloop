@@ -5,19 +5,23 @@
 //! - Manage execution phases (Planning, Implementation, Review, Complete).
 //! - Track phase timing and completion status.
 //! - Parse log lines for phase detection.
+//! - Manage spinner animation state for progress indication.
 //!
 //! Not handled here:
 //! - Actual runner execution (handled by runner module).
 //! - Log storage and scrolling (handled by app_logs module).
 //! - Task queue management (handled by queue module).
+//! - Actual rendering of progress indicators (handled by render/panels module).
 //!
 //! Invariants/assumptions:
 //! - Phase tracking starts when a task execution begins.
 //! - Phase transitions are triggered by log line markers or explicit calls.
 //! - Completion times are recorded when transitioning to the next phase.
+//! - Spinner animation updates at 80ms intervals.
 
 #![allow(dead_code)]
 
+use crate::progress::{ExecutionPhase, SpinnerState, SPINNER_UPDATE_INTERVAL_MS};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -32,43 +36,7 @@ pub enum RunningKind {
     TaskBuilder,
 }
 
-/// Execution phase for multi-phase task workflows.
-///
-/// Tracks which phase of a 1-3 phase workflow is currently active.
-/// Used for progress visualization in the TUI execution view.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ExecutionPhase {
-    /// Phase 1: Planning and analysis
-    Planning,
-    /// Phase 2: Implementation and CI
-    Implementation,
-    /// Phase 3: Review and completion
-    Review,
-    /// Execution completed
-    Complete,
-}
-
-impl ExecutionPhase {
-    /// Returns the human-readable name for this phase.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ExecutionPhase::Planning => "Planning",
-            ExecutionPhase::Implementation => "Implementation",
-            ExecutionPhase::Review => "Review",
-            ExecutionPhase::Complete => "Complete",
-        }
-    }
-
-    /// Returns the phase number (1-3) or 0 for Complete.
-    pub fn phase_number(&self) -> u8 {
-        match self {
-            ExecutionPhase::Planning => 1,
-            ExecutionPhase::Implementation => 2,
-            ExecutionPhase::Review => 3,
-            ExecutionPhase::Complete => 0,
-        }
-    }
-}
+// ExecutionPhase is now imported from crate::progress
 
 /// Tracks the state of task execution including phases and timing.
 #[derive(Debug)]
@@ -91,6 +59,14 @@ pub struct ExecutionState {
     pub show_progress_panel: bool,
     /// Number of configured phases (1, 2, or 3) for the current workflow.
     pub configured_phases: u8,
+    /// Spinner state for animated progress indication.
+    pub spinner: SpinnerState,
+    /// Current operation description (e.g., "Running CI gate...").
+    pub current_operation: String,
+    /// Last time the spinner was updated.
+    spinner_last_update: Instant,
+    /// Spinner update interval.
+    spinner_update_interval: Duration,
 }
 
 impl Default for ExecutionState {
@@ -105,6 +81,10 @@ impl Default for ExecutionState {
             total_execution_start: None,
             show_progress_panel: true,
             configured_phases: 3,
+            spinner: SpinnerState::default(),
+            current_operation: "Initializing...".to_string(),
+            spinner_last_update: Instant::now(),
+            spinner_update_interval: Duration::from_millis(SPINNER_UPDATE_INTERVAL_MS),
         }
     }
 }
@@ -282,6 +262,42 @@ impl ExecutionState {
         self.total_execution_start = None;
         self.show_progress_panel = true;
         self.configured_phases = 3;
+        self.spinner.reset();
+        self.current_operation = "Idle".to_string();
+    }
+
+    /// Update the spinner animation if enough time has passed.
+    /// Returns true if the spinner frame was advanced.
+    pub fn tick_spinner(&mut self) -> bool {
+        let now = Instant::now();
+        if now.duration_since(self.spinner_last_update) >= self.spinner_update_interval {
+            self.spinner.tick();
+            self.spinner_last_update = now;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Get the current spinner frame.
+    pub fn spinner_frame(&self) -> &str {
+        self.spinner.current_frame()
+    }
+
+    /// Set the current operation description.
+    pub fn set_operation(&mut self, operation: &str) {
+        self.current_operation = operation.to_string();
+    }
+
+    /// Get the current operation description.
+    pub fn operation(&self) -> &str {
+        &self.current_operation
+    }
+
+    /// Reset the spinner animation state.
+    pub fn reset_spinner(&mut self) {
+        self.spinner.reset();
+        self.spinner_last_update = Instant::now();
     }
 }
 

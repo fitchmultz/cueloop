@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0422",
-      "status": "todo",
-      "title": "Add progress indicators and spinners for long-running operations",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "cli",
-        "ux",
-        "progress"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/app_execution.rs",
-        "crates/ralph/src/outpututil.rs",
-        "crates/ralph/src/cli/"
-      ],
-      "evidence": [
-        "User reports: 'verbosity is good but can be bland when running ralph run loop and sees nothing but white text in black box'",
-        "Current state: No visual feedback during runner execution phases",
-        "Current state: No spinner/progress indication when agent is 'thinking' or processing",
-        "UX gap: Users don't know if the system is stuck or working during long operations",
-        "Modern CLI expectation: Tools like cargo, npm, docker all show progress indicators"
-      ],
-      "plan": [
-        "Design progress indicator system: spinners for indeterminate work, progress bars for determinate work",
-        "Add phase-aware progress indicators (Planning: ▶, Implementation: ⚙, Review: 👁)",
-        "Implement animated spinners for runner thinking/processing states",
-        "Add elapsed time display for each phase and total execution",
-        "Show current operation description (e.g., 'Running CI gate...', 'Generating plan...')",
-        "Ensure progress indicators work in both TUI and CLI modes",
-        "Add --no-progress flag for CI/scripting environments",
-        "Respect NO_COLOR environment variable for progress indicators",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [
-        "Consider using indicatif crate for progress bars if not already used",
-        "Progress indicators should not interfere with log output streaming",
-        "TUI mode can use richer visuals than CLI mode"
-      ],
-      "request": "Add progress indicators and spinners to make long-running 'ralph run loop' operations feel more responsive and modern. Users should see visual feedback when the agent is thinking, when CI is running, and what phase is currently active. This addresses the 'white text in black box' problem where users can't tell if progress is being made.",
-      "created_at": "2026-01-29T23:55:00Z",
-      "updated_at": "2026-01-29T23:55:00Z",
-      "depends_on": [
-        "RQ-0405"
-      ],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0423",
       "status": "todo",
       "title": "Add Kanban board view to TUI for modern task visualization",

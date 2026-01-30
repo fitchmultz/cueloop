@@ -17,6 +17,7 @@ use super::app_palette::scan_label;
 use super::config_edit::*;
 use super::events::{AppMode, PaletteCommand};
 use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use crate::progress::ExecutionPhase;
 use crate::queue::{self, TaskEditKey};
 use crate::timeutil;
 use anyhow::Result;

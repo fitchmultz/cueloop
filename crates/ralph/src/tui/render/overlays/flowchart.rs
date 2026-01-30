@@ -14,7 +14,7 @@
 //! - App tracks phase configuration and execution state.
 
 use super::super::App;
-use crate::tui::app::ExecutionPhase;
+use crate::progress::ExecutionPhase;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},

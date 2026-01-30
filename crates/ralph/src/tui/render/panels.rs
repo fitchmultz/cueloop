@@ -16,7 +16,7 @@ use super::super::{App, AppMode};
 use super::utils::{priority_color, scroll_indicator, spans_width, status_color, wrap_text};
 use crate::contracts::{TaskPriority, TaskStatus};
 use crate::outpututil::truncate_chars;
-use crate::tui::app::ExecutionPhase;
+use crate::progress::ExecutionPhase;
 use crate::tui::{DetailsContext, DetailsContextMode};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect, Size},
@@ -186,7 +186,7 @@ pub(super) fn draw_execution_view(f: &mut Frame<'_>, app: &mut App, area: Rect) 
     f.render_widget(status_paragraph, status_area);
 }
 
-/// Draw the progress panel showing phase indicators and timing.
+/// Draw the progress panel showing phase indicators, timing, and operation description.
 fn draw_progress_panel(f: &mut Frame<'_>, app: &App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
@@ -195,6 +195,12 @@ fn draw_progress_panel(f: &mut Frame<'_>, app: &App, area: Rect) {
 
     let inner = block.inner(area);
     f.render_widget(block, area);
+
+    // Split inner area vertically for phases and operation description
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Length(1)])
+        .split(inner);
 
     // Create phase indicators based on configured phases
     let phases: Vec<(&str, ExecutionPhase)> = match app.configured_phases {
@@ -214,9 +220,10 @@ fn draw_progress_panel(f: &mut Frame<'_>, app: &App, area: Rect) {
 
     for (i, (name, phase)) in phases.iter().enumerate() {
         let (icon, style) = if app.is_phase_active(*phase) {
-            // Active phase: yellow with play indicator
+            // Active phase: animated spinner with yellow styling
+            let spinner_frame = app.spinner_frame();
             (
-                "▶",
+                spinner_frame,
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
@@ -258,7 +265,23 @@ fn draw_progress_panel(f: &mut Frame<'_>, app: &App, area: Rect) {
 
     let line = Line::from(spans);
     let paragraph = Paragraph::new(line).alignment(Alignment::Center);
-    f.render_widget(paragraph, inner);
+    f.render_widget(paragraph, chunks[0]);
+
+    // Show current operation description on the second line
+    let operation = app.operation();
+    if !operation.is_empty() && app.runner_active {
+        let operation_line = Line::from(vec![
+            Span::styled("Operation: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                operation.to_string(),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]);
+        let operation_paragraph = Paragraph::new(operation_line).alignment(Alignment::Center);
+        f.render_widget(operation_paragraph, chunks[1]);
+    }
 }
 
 /// Draw the task list panel.

@@ -19,7 +19,7 @@ use clap::{Args, Subcommand};
 use crate::cli::interactive;
 use crate::{agent, commands::run as run_cmd, config, debuglog, tui};
 
-pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
+pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     match cmd {
         RunCommand::One(args) => {
@@ -45,6 +45,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     no_mouse: false,
                     color: crate::tui::terminal::ColorOption::Auto,
                     ascii_borders: false,
+                    no_progress,
                 };
                 let _ = tui::run_tui(
                     &resolved,
@@ -92,6 +93,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     no_mouse: false,
                     color: crate::tui::terminal::ColorOption::Auto,
                     ascii_borders: false,
+                    no_progress,
                 };
 
                 let _ = tui::run_tui(

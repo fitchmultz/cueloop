@@ -22,6 +22,7 @@
 
 use crate::config::ConfigLayer;
 use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use crate::progress::{ExecutionPhase, SpinnerState, SPINNER_UPDATE_INTERVAL_MS};
 use crate::queue::TaskEditKey;
 use crate::{config as crate_config, lock, queue, runutil, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
@@ -65,6 +66,8 @@ pub struct TuiOptions {
     pub color: ColorOption,
     /// If true, use ASCII borders instead of Unicode.
     pub ascii_borders: bool,
+    /// If true, disable progress indicators and spinners.
+    pub no_progress: bool,
 }
 
 #[cfg(test)]
@@ -143,43 +146,7 @@ pub enum RunningKind {
     TaskBuilder,
 }
 
-/// Execution phase for multi-phase task workflows.
-///
-/// Tracks which phase of a 1-3 phase workflow is currently active.
-/// Used for progress visualization in the TUI execution view.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ExecutionPhase {
-    /// Phase 1: Planning and analysis
-    Planning,
-    /// Phase 2: Implementation and CI
-    Implementation,
-    /// Phase 3: Review and completion
-    Review,
-    /// Execution completed
-    Complete,
-}
-
-impl ExecutionPhase {
-    /// Returns the human-readable name for this phase.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ExecutionPhase::Planning => "Planning",
-            ExecutionPhase::Implementation => "Implementation",
-            ExecutionPhase::Review => "Review",
-            ExecutionPhase::Complete => "Complete",
-        }
-    }
-
-    /// Returns the phase number (1-3) or 0 for Complete.
-    pub fn phase_number(&self) -> u8 {
-        match self {
-            ExecutionPhase::Planning => 1,
-            ExecutionPhase::Implementation => 2,
-            ExecutionPhase::Review => 3,
-            ExecutionPhase::Complete => 0,
-        }
-    }
-}
+// ExecutionPhase is now imported from crate::progress
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FocusedPanel {
@@ -274,6 +241,14 @@ pub struct App {
     pub show_progress_panel: bool,
     /// Number of configured phases (1, 2, or 3) for the current workflow.
     pub configured_phases: u8,
+    /// Spinner state for animated progress indication.
+    pub spinner: SpinnerState,
+    /// Current operation description (e.g., "Running CI gate...").
+    pub current_operation: String,
+    /// Last time the spinner was updated.
+    spinner_last_update: std::time::Instant,
+    /// Spinner update interval.
+    spinner_update_interval: std::time::Duration,
     /// Whether loop mode is active.
     pub loop_active: bool,
     /// When loop is enabled while a task is already running, do not count that finishing task.
@@ -367,6 +342,10 @@ impl App {
             total_execution_start: None,
             show_progress_panel: true,
             configured_phases: 3,
+            spinner: SpinnerState::default(),
+            current_operation: "Initializing...".to_string(),
+            spinner_last_update: std::time::Instant::now(),
+            spinner_update_interval: std::time::Duration::from_millis(SPINNER_UPDATE_INTERVAL_MS),
             loop_active: false,
             loop_arm_after_current: false,
             loop_ran: 0,
@@ -495,6 +474,42 @@ impl App {
         } else if line.contains("# CODE REVIEW MODE") {
             self.transition_to_phase(ExecutionPhase::Review);
         }
+    }
+
+    // Spinner and operation methods
+
+    /// Update the spinner animation if enough time has passed.
+    /// Returns true if the spinner frame was advanced.
+    pub fn tick_spinner(&mut self) -> bool {
+        let now = std::time::Instant::now();
+        if now.duration_since(self.spinner_last_update) >= self.spinner_update_interval {
+            self.spinner.tick();
+            self.spinner_last_update = now;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Get the current spinner frame.
+    pub fn spinner_frame(&self) -> &str {
+        self.spinner.current_frame()
+    }
+
+    /// Set the current operation description.
+    pub fn set_operation(&mut self, operation: &str) {
+        self.current_operation = operation.to_string();
+    }
+
+    /// Get the current operation description.
+    pub fn operation(&self) -> &str {
+        &self.current_operation
+    }
+
+    /// Reset the spinner animation state.
+    pub fn reset_spinner(&mut self) {
+        self.spinner.reset();
+        self.spinner_last_update = std::time::Instant::now();
     }
 
     pub(crate) fn focus_next_panel(&mut self) {
@@ -2600,6 +2615,14 @@ where
 
             if let Some(id) = next_to_start {
                 spawn_task(id, tx.clone());
+            }
+
+            // Update spinner animation for progress indication.
+            {
+                let mut app_ref = app.borrow_mut();
+                if app_ref.runner_active {
+                    app_ref.tick_spinner();
+                }
             }
 
             // Auto-save if dirty.

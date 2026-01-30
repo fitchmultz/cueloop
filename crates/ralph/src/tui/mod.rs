@@ -37,9 +37,8 @@ mod textarea_input;
 #[cfg(test)]
 mod tests;
 
-pub use app::{
-    prepare_tui_session, run_tui, App, ExecutionPhase, FilterState, RunningKind, TuiOptions,
-};
+pub use crate::progress::ExecutionPhase;
+pub use app::{prepare_tui_session, run_tui, App, FilterState, RunningKind, TuiOptions};
 pub use app_details::{DetailsContext, DetailsContextMode, DetailsState};
 pub use app_execution::ExecutionState;
 pub use app_filters::FilterManager;

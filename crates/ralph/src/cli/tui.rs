@@ -67,7 +67,12 @@ pub struct TuiArgs {
     pub agent: crate::agent::RunAgentArgs,
 }
 
-pub fn handle_tui(args: TuiArgs, color: ColorArg, force_lock: bool) -> Result<()> {
+pub fn handle_tui(
+    args: TuiArgs,
+    color: ColorArg,
+    force_lock: bool,
+    no_progress: bool,
+) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
 
     // Build TUI options from CLI arguments.
@@ -75,6 +80,7 @@ pub fn handle_tui(args: TuiArgs, color: ColorArg, force_lock: bool) -> Result<()
         no_mouse: args.no_mouse,
         color: color.into(),
         ascii_borders: args.ascii_borders,
+        no_progress,
         ..tui::TuiOptions::default()
     };
 
