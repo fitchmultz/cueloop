@@ -120,6 +120,7 @@ fn suppress_terminal_logs(command: &cli::Command) -> bool {
         cli::Command::Run(args) => match &args.command {
             cli::run::RunCommand::One(run_args) => run_args.interactive,
             cli::run::RunCommand::Loop(run_args) => run_args.interactive,
+            cli::run::RunCommand::Resume(_) => false,
         },
         _ => false,
     }
@@ -162,6 +163,7 @@ mod tests {
                 interactive: true,
                 debug: false,
                 visualize: false,
+                resume: false,
                 agent: ralph::agent::RunAgentArgs::default(),
             }),
         });

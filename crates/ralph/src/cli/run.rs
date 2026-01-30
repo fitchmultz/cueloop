@@ -22,6 +22,24 @@ use crate::{agent, commands::run as run_cmd, config, debuglog, tui};
 pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     match cmd {
+        RunCommand::Resume(args) => {
+            if args.debug {
+                debuglog::enable(&resolved.repo_root)?;
+            }
+            let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
+
+            // Resume is essentially a loop with auto_resume=true
+            run_cmd::run_loop(
+                &resolved,
+                run_cmd::RunLoopOptions {
+                    max_tasks: 0, // No limit when resuming
+                    agent_overrides: overrides,
+                    force: args.force || force,
+                    auto_resume: true,
+                    starting_completed: 0,
+                },
+            )
+        }
         RunCommand::One(args) => {
             if args.debug {
                 debuglog::enable(&resolved.repo_root)?;
@@ -111,6 +129,8 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
                         max_tasks: args.max_tasks,
                         agent_overrides: overrides,
                         force,
+                        auto_resume: args.resume,
+                        starting_completed: 0,
                     },
                 )
             }
@@ -164,6 +184,9 @@ Examples:\n\
  ralph run loop --git-revert-mode ask --max-tasks 1\n\
  ralph run loop --git-commit-push-on --max-tasks 1\n\
  ralph run loop --lfs-check --max-tasks 1\n\
+ ralph run resume\n\
+ ralph run resume --force\n\
+ ralph run loop --resume --max-tasks 5\n\
  ralph tui\n\
  ralph tui --read-only\n\
  ralph run one -i\n\
@@ -176,6 +199,14 @@ pub struct RunArgs {
 
 #[derive(Subcommand)]
 pub enum RunCommand {
+    /// Resume an interrupted session from where it left off.
+    #[command(
+        about = "Resume an interrupted session from where it left off",
+        after_long_help = "Examples:
+ ralph run resume
+ ralph run resume --force"
+    )]
+    Resume(ResumeArgs),
     #[command(
         about = "Run exactly one task (the first todo in .ralph/queue.json)",
         after_long_help = "Runner selection (precedence):\n\
@@ -231,6 +262,20 @@ Examples:\n\
 }
 
 #[derive(Args)]
+pub struct ResumeArgs {
+    /// Skip the confirmation prompt for stale sessions.
+    #[arg(long)]
+    pub force: bool,
+
+    /// Capture raw supervisor + runner output to .ralph/logs/debug.log.
+    #[arg(long)]
+    pub debug: bool,
+
+    #[command(flatten)]
+    pub agent: crate::agent::RunAgentArgs,
+}
+
+#[derive(Args)]
 pub struct RunOneArgs {
     /// Launch interactive TUI mode for task selection and management.
     #[arg(short = 'i', long)]
@@ -269,6 +314,10 @@ pub struct RunLoopArgs {
     /// Show workflow flowchart visualization on start (interactive only).
     #[arg(long, default_value_t = false)]
     pub visualize: bool,
+
+    /// Automatically resume an interrupted session without prompting.
+    #[arg(long)]
+    pub resume: bool,
 
     #[command(flatten)]
     pub agent: crate::agent::RunAgentArgs,

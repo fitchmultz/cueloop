@@ -16,6 +16,7 @@
 
 mod config;
 mod queue;
+mod session;
 mod task;
 
 pub use config::{
@@ -25,4 +26,5 @@ pub use config::{
     RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity, TuiConfig, UnsupportedOptionPolicy,
 };
 pub use queue::QueueFile;
+pub use session::{SessionState, SESSION_STATE_VERSION};
 pub use task::{Task, TaskAgent, TaskPriority, TaskStatus};

@@ -21,6 +21,7 @@ use crate::contracts::{
     AgentConfig, GitRevertMode, ProjectType, ReasoningEffort, RunnerCliOptionsPatch, TaskStatus,
 };
 use crate::promptflow;
+use crate::session::{self, SessionValidationResult};
 use crate::{git, prompts, queue, runner, runutil, timeutil};
 use anyhow::{bail, Context, Result};
 
@@ -63,10 +64,53 @@ pub struct RunLoopOptions {
     pub max_tasks: u32,
     pub agent_overrides: AgentOverrides,
     pub force: bool,
+    /// Auto-resume without prompting (for --resume flag)
+    pub auto_resume: bool,
+    /// Starting completed count (for resumed sessions)
+    pub starting_completed: u32,
 }
 
 pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()> {
+    let cache_dir = resolved.repo_root.join(".ralph/cache");
     let queue_file = queue::load_queue(&resolved.queue_path)?;
+
+    // Handle session recovery
+    let (resume_task_id, completed_count) = match session::check_session(
+        &cache_dir,
+        &queue_file,
+        Some(session::DEFAULT_SESSION_TIMEOUT_HOURS),
+    )? {
+        SessionValidationResult::NoSession => (None, opts.starting_completed),
+        SessionValidationResult::Valid(session) => {
+            if opts.auto_resume {
+                log::info!("Auto-resuming session for task {}", session.task_id);
+                (Some(session.task_id), session.tasks_completed_in_loop)
+            } else {
+                match session::prompt_session_recovery(&session)? {
+                    true => (Some(session.task_id), session.tasks_completed_in_loop),
+                    false => {
+                        session::clear_session(&cache_dir)?;
+                        (None, opts.starting_completed)
+                    }
+                }
+            }
+        }
+        SessionValidationResult::Stale { reason } => {
+            log::info!("Stale session cleared: {}", reason);
+            session::clear_session(&cache_dir)?;
+            (None, opts.starting_completed)
+        }
+        SessionValidationResult::Timeout { hours } => {
+            let session = session::load_session(&cache_dir)?.unwrap();
+            match session::prompt_session_recovery_timeout(&session, hours)? {
+                true => (Some(session.task_id), session.tasks_completed_in_loop),
+                false => {
+                    session::clear_session(&cache_dir)?;
+                    (None, opts.starting_completed)
+                }
+            }
+        }
+    };
 
     let include_draft = opts.agent_overrides.include_draft.unwrap_or(false);
     let initial_todo_count = queue_file
@@ -77,7 +121,7 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
         })
         .count() as u32;
 
-    if initial_todo_count == 0 {
+    if initial_todo_count == 0 && resume_task_id.is_none() {
         // Keep this phrase stable; some tests look for it.
         if include_draft {
             log::info!("No todo or draft tasks found.");
@@ -97,9 +141,10 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
     let mut tasks_succeeded: usize = 0;
     let mut tasks_failed: usize = 0;
 
-    let result = logging::with_scope(&label, || {
-        let mut completed = 0u32;
+    // Use a mutable reference to allow modification inside the closure
+    let mut completed = completed_count;
 
+    let result = logging::with_scope(&label, || {
         loop {
             if opts.max_tasks != 0 && completed >= opts.max_tasks {
                 log::info!("RunLoop: end (reached max task limit: {completed})");
@@ -177,6 +222,13 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
             tasks_failed,
             &notify_config,
         );
+    }
+
+    // Clear session on successful completion
+    if result.is_ok() {
+        if let Err(e) = session::clear_session(&cache_dir) {
+            log::warn!("Failed to clear session on loop completion: {}", e);
+        }
     }
 
     result
@@ -420,6 +472,18 @@ fn run_one_impl(
 
     // Mark the task as doing before running the agent.
     mark_task_doing(resolved, &task_id)?;
+
+    // Save session state for crash recovery (before task execution)
+    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let session = create_session_for_task(
+        &task_id,
+        resolved,
+        agent_overrides,
+        iteration_settings.count,
+    );
+    if let Err(e) = session::save_session(&cache_dir, &session) {
+        log::warn!("Failed to save session state: {}", e);
+    }
 
     let bins = runner::resolve_binaries(&resolved.config.agent);
 
@@ -687,6 +751,52 @@ fn mark_task_doing(resolved: &config::Resolved, task_id: &str) -> Result<()> {
     queue::set_status(&mut queue_file, task_id, TaskStatus::Doing, &now, None)?;
     queue::save_queue(&resolved.queue_path, &queue_file)?;
     Ok(())
+}
+
+/// Create a session state for the current task.
+fn create_session_for_task(
+    task_id: &str,
+    resolved: &config::Resolved,
+    agent_overrides: &AgentOverrides,
+    iterations_planned: u8,
+) -> crate::contracts::SessionState {
+    let now = timeutil::now_utc_rfc3339_or_fallback();
+    let git_commit = session::get_git_head_commit(&resolved.repo_root);
+
+    // Resolve runner from overrides or config
+    let runner = agent_overrides
+        .runner
+        .or(resolved.config.agent.runner)
+        .unwrap_or(crate::contracts::Runner::Claude);
+
+    // Resolve model string from overrides or config
+    let model = agent_overrides
+        .model
+        .as_ref()
+        .map(|m| m.as_str().to_string())
+        .or_else(|| {
+            resolved
+                .config
+                .agent
+                .model
+                .as_ref()
+                .map(|m| m.as_str().to_string())
+        })
+        .unwrap_or_else(|| "sonnet".to_string());
+
+    // Generate a simple session ID using timestamp and task ID
+    let session_id = format!("{}-{}", now.replace([':', '.', '-'], ""), task_id);
+
+    crate::contracts::SessionState::new(
+        session_id,
+        task_id.to_string(),
+        now,
+        iterations_planned,
+        runner,
+        model,
+        0, // max_tasks - not tracked at this level
+        git_commit,
+    )
 }
 
 #[cfg(test)]

@@ -49,6 +49,7 @@ pub mod prompts;
 pub mod redaction;
 pub mod runner;
 pub mod runutil;
+pub mod session;
 pub mod template;
 pub mod timeutil;
 
