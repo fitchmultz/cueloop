@@ -114,6 +114,48 @@ Set `queue.max_dependency_depth` in `.ralph/config.json` to adjust the depth war
 
 Validation warnings are logged during queue operations. Review them with `ralph queue validate` or by checking the queue after operations.
 
+## Task ID Validation
+
+Ralph enforces unique task IDs across both `.ralph/queue.json` and `.ralph/done.json`. Duplicate IDs will cause validation errors.
+
+### Duplicate Task ID Errors
+
+**Error:** `Duplicate task ID detected across queue and done: RQ-XXXX`
+
+This error occurs when the same task ID exists in both the active queue and the done archive. This typically happens when:
+
+1. A new task was added to the queue without incrementing the ID properly
+2. A task was manually copied/edited and the ID wasn't updated
+3. Task files were edited directly and IDs became misaligned
+
+### Fixing ID Collisions
+
+**Important:** Do not delete tasks to resolve collisions. Instead, update the ID of the task in `queue.json` to the next available unique ID.
+
+**Steps to fix:**
+
+1. Identify the colliding ID (e.g., `RQ-0452` exists in both files)
+2. Check if the tasks are different (different titles, descriptions, or content)
+3. Find the next available ID using:
+   ```bash
+   ralph queue next-id
+   ```
+4. Update the task ID in `queue.json` to the next available ID
+5. Re-run validation to confirm:
+   ```bash
+   ralph queue validate
+   ```
+
+**Example:**
+
+If `RQ-0452` exists in both `done.json` (completed task about "Fix Kimi runner") and `queue.json` (new task about "Add feature X"), the fix is to change the queue task's ID to `RQ-0453` (or whatever `next-id` returns).
+
+### Prevention
+
+- Use `ralph task` commands to create tasks (handles ID generation automatically)
+- Use `ralph queue next-id` to get the next ID when manually editing files
+- Always run `ralph queue validate` after manual edits to catch issues early
+
 ## Dependency Visualization
 
 Ralph provides multiple ways to visualize task dependencies:

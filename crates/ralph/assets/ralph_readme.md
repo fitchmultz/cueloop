@@ -1,4 +1,4 @@
-<!-- RALPH_README_VERSION: 3 -->
+<!-- RALPH_README_VERSION: 4 -->
 # Ralph runtime files
 
 This repo is using Ralph. The `.ralph/` directory holds repo-local state.
@@ -9,6 +9,18 @@ This repo is using Ralph. The `.ralph/` directory holds repo-local state.
 - `.ralph/done.json` — JSON archive of completed tasks (same schema as queue); only `done`/`rejected` statuses are valid.
 - `.ralph/prompts/` — optional prompt overrides (defaults are embedded in the Ralph binary).
 - `.ralph/cache/` — runtime cache for plans, completions, and temporary state.
+
+## Troubleshooting
+
+### Duplicate Task ID Error
+
+If `ralph queue validate` reports a duplicate task ID (e.g., `RQ-XXXX exists in both queue.json and done.json`), this usually means a new task was added without incrementing the ID. **Do not delete tasks.** Instead:
+
+1. Run `ralph queue next-id` to get the next available ID
+2. Edit `.ralph/queue.json` and change the colliding task ID to the next available one
+3. Re-run `ralph queue validate` to confirm
+
+Task IDs must be unique across both `queue.json` (active tasks) and `done.json` (completed tasks).
 
 ## Core Commands
 

@@ -186,7 +186,7 @@ mod tests {
         assert_eq!(report.config_status, FileInitStatus::Created);
         assert!(matches!(
             report.readme_status,
-            Some((FileInitStatus::Created, Some(3)))
+            Some((FileInitStatus::Created, Some(4)))
         ));
         let queue = crate::queue::load_queue(&resolved.queue_path)?;
         assert_eq!(queue.version, 1);
@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(report.config_status, FileInitStatus::Valid);
         assert!(matches!(
             report.readme_status,
-            Some((FileInitStatus::Created, Some(3)))
+            Some((FileInitStatus::Created, Some(4)))
         ));
         let raw = std::fs::read_to_string(&resolved.queue_path)?;
         assert!(raw.contains("Keep"));
@@ -327,7 +327,7 @@ mod tests {
         assert_eq!(report.config_status, FileInitStatus::Created);
         assert!(matches!(
             report.readme_status,
-            Some((FileInitStatus::Created, Some(3)))
+            Some((FileInitStatus::Created, Some(4)))
         ));
         let cfg_raw = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
         let cfg: Config = serde_json::from_str(&cfg_raw)?;
@@ -610,7 +610,7 @@ mod tests {
         // README should be updated
         assert!(matches!(
             report.readme_status,
-            Some((FileInitStatus::Updated, Some(3)))
+            Some((FileInitStatus::Updated, Some(4)))
         ));
 
         // Content should be new

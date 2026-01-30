@@ -654,6 +654,8 @@ ralph queue validate
 ralph --verbose queue validate
 ```
 
+See `docs/queue-and-tasks.md` for details on resolving validation errors, including duplicate task ID collisions.
+
 ### `ralph queue prune`
 
 Prune removes old tasks from `.ralph/done.json` while preserving recent history.

@@ -28,7 +28,7 @@ const DEFAULT_RALPH_README: &str = include_str!(concat!(
 
 /// Current version of the embedded README template.
 /// Increment this when updating the template to trigger update detection.
-pub const README_VERSION: u32 = 3;
+pub const README_VERSION: u32 = 4;
 
 /// Result of checking if README is current.
 #[derive(Debug, Clone, PartialEq, Eq)]
