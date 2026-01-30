@@ -127,9 +127,9 @@ Ralph embeds default prompts in the Rust binary. To override them for a repo, ad
 If a file is missing, Ralph falls back to the embedded default. Any override must keep required
 placeholders (for example `{{USER_REQUEST}}` in the task builder prompt).
 
-## Runners (Codex + OpenCode + Gemini + Claude + Cursor + Kimi)
+## Runners (Codex + OpenCode + Gemini + Claude + Cursor + Kimi + Pi)
 
-Ralph supports Codex, OpenCode, Gemini, Claude, Cursor, and Kimi CLIs as runners.
+Ralph supports Codex, OpenCode, Gemini, Claude, Cursor, Kimi, and Pi CLIs as runners.
 
 Quick usage:
 - Ensure runner binaries are installed and on `PATH`.
@@ -165,12 +165,24 @@ Defaults and config:
 }
 ```
 
+```json
+{
+  "version": 1,
+  "agent": {
+    "runner": "pi",
+    "model": "gpt-5.2",
+    "phases": 3
+  }
+}
+```
+
 **Allowed models by runner:**
 - **Codex**: `gpt-5.2-codex`, `gpt-5.2` (only these two)
 - **OpenCode**: arbitrary model IDs (e.g., `zai-coding-plan/glm-4.7`)
 - **Gemini**: `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs
 - **Claude**: `sonnet` (default), `opus`, or arbitrary model IDs
 - **Kimi**: `kimi-for-coding` (default, Kimi 2.5 coding model), or arbitrary model IDs
+- **Pi**: `gpt-5.2` (default), or arbitrary model IDs
 
 ### RepoPrompt Integration
 Ralph can independently require RepoPrompt planning and tooling reminders. Configure `repoprompt_plan_required` to inject the Phase 1 planning instructions, and `repoprompt_tool_injection` to inject RepoPrompt tooling reminders in prompts. CLI `--repo-prompt <tools|plan|off>` (alias: `-rp`) controls both flags together. Breaking change: `--rp-on/--rp-off` were removed in favor of `--repo-prompt`.

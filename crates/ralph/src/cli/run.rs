@@ -118,7 +118,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
 
 #[derive(Args)]
 #[command(
-    about = "Run Ralph supervisor (executes queued tasks via codex/opencode/gemini/claude/cursor/kimi)",
+    about = "Run Ralph supervisor (executes queued tasks via codex/opencode/gemini/claude/cursor/kimi/pi)",
     after_long_help = "Runner selection:\n\
   - `ralph run` selects runner/model/effort with this precedence:\n\
   1) CLI overrides (flags on `run one` / `run loop`)\n\
@@ -126,8 +126,8 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
   3) otherwise: resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\
  \n\
  Notes:\n\
-  - Allowed runners: codex, opencode, gemini, claude, cursor, kimi\n\
-  - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi accept arbitrary model ids)\n\
+  - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
+  - Allowed models: gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
   - `--effort` is codex-only and is ignored for other runners.\n\
   - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
   - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
@@ -149,6 +149,7 @@ Examples:\n\
  ralph run one --runner opencode --model gpt-5.2\n\
  ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
+ ralph run one --runner pi --model gpt-5.2\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode disabled\n\
  ralph run one --git-commit-push-off\n\
@@ -191,6 +192,7 @@ Examples:\n\
  ralph run one --quick (single-pass, same as --phases 1)\n\
  ralph run one --runner opencode --model gpt-5.2\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
+ ralph run one --runner pi --model gpt-5.2\n\
  ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode enabled\n\

@@ -295,8 +295,10 @@ pub fn parse_runner(value: &str) -> Result<Runner> {
         "gemini" => Ok(Runner::Gemini),
         "claude" => Ok(Runner::Claude),
         "cursor" => Ok(Runner::Cursor),
+        "kimi" => Ok(Runner::Kimi),
+        "pi" => Ok(Runner::Pi),
         _ => bail!(
-            "Invalid runner: --runner must be 'codex', 'opencode', 'gemini', 'claude', or 'cursor' (got: {}). Set a supported runner in .ralph/config.json or via the --runner flag.",
+            "Invalid runner: --runner must be 'codex', 'opencode', 'gemini', 'claude', 'cursor', 'kimi', or 'pi' (got: {}). Set a supported runner in .ralph/config.json or via the --runner flag.",
             value.trim()
         ),
     }
@@ -546,6 +548,9 @@ mod tests {
         assert!(matches!(parse_runner("opencode"), Ok(Runner::Opencode)));
         assert!(matches!(parse_runner("gemini"), Ok(Runner::Gemini)));
         assert!(matches!(parse_runner("claude"), Ok(Runner::Claude)));
+        assert!(matches!(parse_runner("cursor"), Ok(Runner::Cursor)));
+        assert!(matches!(parse_runner("kimi"), Ok(Runner::Kimi)));
+        assert!(matches!(parse_runner("pi"), Ok(Runner::Pi)));
         assert!(matches!(parse_runner("CODEX"), Ok(Runner::Codex)));
     }
 

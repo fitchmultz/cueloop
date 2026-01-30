@@ -120,9 +120,10 @@ pub(super) fn apply_pi_options(
     builder: RunnerCommandBuilder,
     opts: ResolvedRunnerCliOptions,
 ) -> RunnerCommandBuilder {
+    // Pi uses --print (-p) for non-interactive/auto-approve mode, not --approval-mode
     let builder = match opts.approval_mode {
-        RunnerApprovalMode::Yolo => builder.args(["--approval-mode", "yolo"]),
-        RunnerApprovalMode::AutoEdits => builder.args(["--approval-mode", "auto_edit"]),
+        RunnerApprovalMode::Yolo => builder.arg("--print"),
+        RunnerApprovalMode::AutoEdits => builder.arg("--print"), // Pi doesn't have auto-edits mode, use print
         RunnerApprovalMode::Default | RunnerApprovalMode::Safe => builder,
     };
 

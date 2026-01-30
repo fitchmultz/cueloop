@@ -284,7 +284,7 @@ pub(crate) fn default_model_for_runner(runner: Runner) -> Model {
         Runner::Cursor => Model::Custom(DEFAULT_CURSOR_MODEL.to_string()),
         Runner::Claude => Model::Custom(DEFAULT_CLAUDE_MODEL.to_string()),
         Runner::Kimi => Model::Custom("kimi-for-coding".to_string()),
-        Runner::Pi => Model::Custom("pi-default".to_string()),
+        Runner::Pi => Model::Custom("gpt-5.2".to_string()),
     }
 }
 
@@ -717,6 +717,12 @@ mod tests {
     fn resolve_model_for_runner_defaults_for_kimi() {
         let model = resolve_model_for_runner(Runner::Kimi, None, None, None, false);
         assert_eq!(model.as_str(), "kimi-for-coding");
+    }
+
+    #[test]
+    fn resolve_model_for_runner_defaults_for_pi() {
+        let model = resolve_model_for_runner(Runner::Pi, None, None, None, false);
+        assert_eq!(model.as_str(), "gpt-5.2");
     }
 
     #[test]
