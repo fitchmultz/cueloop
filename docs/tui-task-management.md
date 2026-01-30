@@ -83,7 +83,7 @@ In **Execution view** (while a task is running):
 3. Press `Enter` to continue to advanced options
 4. Configure optional overrides (or leave as defaults):
    - **Tags hint**: Comma-separated tags to suggest for the new task
-   - **Scope hint**: Comma-separated scope paths to suggest
+   - **Scope hint**: Scope is a starting point, not a restriction; comma-separated scope paths to suggest
    - **Runner**: Override the agent runner (claude, codex, opencode, gemini, cursor)
    - **Model**: Override the model (e.g., "sonnet", "gpt-5.2-codex")
    - **Reasoning effort**: Override effort level (low, medium, high, xhigh)

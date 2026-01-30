@@ -24,7 +24,7 @@ Fields to refresh:
 
 ## UPDATE RULES
 For the specified task:
-1. **Scope**: Verify each path in `scope` still exists. Remove non-existent paths. Add any new relevant paths/commands based on current repo state.
+1. **Scope**: Verify each path in `scope` still exists. Remove non-existent paths. Add any new relevant paths/commands based on current repo state. Scope is a starting point, not a restriction. Expand it with newly relevant paths/commands discovered in the repo.
 2. **Evidence**: Update evidence to reflect current code reality. Remove outdated evidence that no longer applies. Add evidence of actual current state.
 3. **Plan**: Adjust plan steps if needed based on current repo structure. Keep plan executable and sequential.
 4. **Notes**: Add notes about significant changes or observations if appropriate.

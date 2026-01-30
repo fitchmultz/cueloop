@@ -134,6 +134,30 @@ fn registry_maps_prompt_metadata() {
 }
 
 #[test]
+fn worker_prompt_mentions_scope_is_starting_point() {
+    let template = prompt_template(PromptTemplateId::Worker).embedded_default;
+    assert!(template.contains("Scope is a starting point, not a restriction."));
+}
+
+#[test]
+fn task_builder_prompt_mentions_scope_is_starting_point() {
+    let template = prompt_template(PromptTemplateId::TaskBuilder).embedded_default;
+    assert!(template.contains("Scope is a starting point, not a restriction."));
+}
+
+#[test]
+fn scan_prompt_mentions_scope_is_starting_point() {
+    let template = prompt_template(PromptTemplateId::Scan).embedded_default;
+    assert!(template.contains("Scope is a starting point, not a restriction."));
+}
+
+#[test]
+fn task_updater_prompt_mentions_scope_is_starting_point() {
+    let template = prompt_template(PromptTemplateId::TaskUpdater).embedded_default;
+    assert!(template.contains("Scope is a starting point, not a restriction."));
+}
+
+#[test]
 fn required_placeholders_fail_when_missing() {
     let template = "no placeholders here";
     let meta = prompt_template(PromptTemplateId::Scan);

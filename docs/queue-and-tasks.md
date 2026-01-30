@@ -24,7 +24,7 @@ Required:
 
 Common optional fields:
 - `tags` (list of strings, defaults to empty).
-- `scope` (list of strings, defaults to empty).
+- `scope` (list of strings, defaults to empty): Scope is a starting point, not a restriction. Use it for relevant paths/commands and expand as needed.
 - `evidence` (list of strings, defaults to empty).
 - `plan` (list of strings, defaults to empty).
 - `notes` (list of strings, defaults to empty).

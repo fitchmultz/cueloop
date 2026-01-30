@@ -57,6 +57,7 @@ Optional hint scope (may be empty):
 - Create the smallest number of tasks that makes the request executable.
 - If the request is clearly multiple independent deliverables, split into multiple tasks in priority order.
 - Do not invent evidence. If you cannot cite repo specifics, use evidence from the user request as evidence.
+- Scope is a starting point, not a restriction. Include other relevant paths/commands when needed to ensure correct task execution.
 - Use `ralph queue next-id` for each new task ID (note: `ralph queue next` returns the next queued task, not a new ID).
 - Smart insertion positioning:
   - If the queue is empty: insert new task(s) at position 0.

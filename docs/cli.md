@@ -1321,7 +1321,7 @@ Common use cases:
 - Clean up dependencies after tasks are completed/archived
 
 Fields that can be updated (all refreshed by default):
-- `scope` - file paths and/or commands relevant to the task
+- `scope` - Scope is a starting point, not a restriction; list relevant paths/commands and expand as needed
 - `evidence` - observations about task context
 - `plan` - sequential implementation steps
 - `notes` - additional notes or observations

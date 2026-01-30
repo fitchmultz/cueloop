@@ -17,6 +17,7 @@ Only open `.ralph/queue.json` or `.ralph/done.json` when you must edit them.
 ## OPERATING RULES
 - Do not ask for permission, preferences, or trivial clarifications.
 - Fix root causes. If you fix a bug, search for the same bug pattern across the repo and fix all occurrences in the same iteration.
+- Scope is a starting point, not a restriction. Expand beyond it when needed to complete the task correctly.
 - Never claim "done" unless the task is actually complete and the repo checks pass.
 
 ## PRE-FLIGHT SAFETY (DIRTY REPO)

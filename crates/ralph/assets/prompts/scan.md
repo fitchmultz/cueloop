@@ -25,6 +25,7 @@ Convert findings into executable JSON tasks and insert them into `.ralph/queue.j
 - Batch related findings into outcome-sized tasks (each task should be executable by a single worker run).
 - Prioritize highest leverage and highest risk items first.
 - Do not invent evidence. Evidence must cite concrete file paths and what you observed (function/module/pattern), or a concrete workflow gap (command, Make target, config mismatch).
+- Scope is a starting point, not a restriction. Include other relevant paths/commands when needed to describe the work accurately.
 
 ## QUEUE INSERTION RULES
 - Insert new tasks near the TOP of the queue in priority order (top = highest priority).
