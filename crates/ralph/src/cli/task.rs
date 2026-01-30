@@ -652,10 +652,14 @@ fn complete_task_or_signal(
     status: TaskStatus,
     notes: &[String],
     force: bool,
-    lock_label: &str,
+    _lock_label: &str,
 ) -> Result<()> {
     let lock_dir = lock::queue_lock_dir(&resolved.repo_root);
-    if lock::is_supervising_process(&lock_dir)? {
+    // Only use completion signal mode if the current process is actually being supervised
+    // (i.e., running as a descendant of the supervisor process). This distinguishes between:
+    // - An agent running inside a supervised session (should use completion signals)
+    // - A user manually running commands while a supervisor is active (should complete directly)
+    if lock::is_current_process_supervised(&lock_dir)? {
         let signal = completions::CompletionSignal {
             task_id: task_id.to_string(),
             status,
@@ -669,7 +673,10 @@ fn complete_task_or_signal(
         return Ok(());
     }
 
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, lock_label, force)?;
+    // Use "task" label to enable shared lock mode, allowing this command to work
+    // concurrently with a supervising process (like `ralph run loop`).
+    // This matches the behavior of `ralph task build`.
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task", force)?;
     let now = timeutil::now_utc_rfc3339()?;
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
     queue::complete_task(
