@@ -279,6 +279,81 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
 
         Some(TaskCommand::Show(args)) => show_task(&resolved, &args.task_id, args.format),
 
+        Some(TaskCommand::Clone(args)) => {
+            let status: TaskStatus = args.status.unwrap_or(TaskStatusArg::Draft).into();
+
+            // Load both queue and done files
+            let queue_file = queue::load_queue(&resolved.queue_path)?;
+            let done_file = queue::load_queue_or_default(&resolved.done_path)?;
+            let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
+                None
+            } else {
+                Some(&done_file)
+            };
+
+            let now = timeutil::now_utc_rfc3339()?;
+            let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+
+            // Build clone options
+            let clone_opts = queue::operations::CloneTaskOptions::new(
+                &args.task_id,
+                status,
+                &now,
+                &resolved.id_prefix,
+                resolved.id_width,
+            )
+            .with_title_prefix(args.title_prefix.as_deref())
+            .with_max_depth(max_depth);
+
+            // Perform the clone operation
+            let (new_id, cloned_task) = queue::operations::clone_task(
+                &mut queue_file.clone(), // Clone for dry run check
+                done_ref,
+                &clone_opts,
+            )?;
+
+            if args.dry_run {
+                println!(
+                    "Dry run - would clone task {} to new task {}:",
+                    args.task_id, new_id
+                );
+                println!("  Title: {}", cloned_task.title);
+                println!("  Status: {}", cloned_task.status);
+                println!("  Priority: {}", cloned_task.priority);
+                if !cloned_task.tags.is_empty() {
+                    println!("  Tags: {}", cloned_task.tags.join(", "));
+                }
+                if !cloned_task.scope.is_empty() {
+                    println!("  Scope: {}", cloned_task.scope.join(", "));
+                }
+                return Ok(());
+            }
+
+            // Acquire lock and perform actual clone
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task clone", force)?;
+            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+
+            let (new_id, cloned_task) =
+                queue::operations::clone_task(&mut queue_file, done_ref, &clone_opts)?;
+
+            // Insert at appropriate position
+            let insert_at = queue::operations::suggest_new_task_insert_index(&queue_file);
+            queue_file.tasks.insert(insert_at, cloned_task);
+
+            // Save queue
+            queue::save_queue(&resolved.queue_path, &queue_file)?;
+
+            log::info!(
+                "Cloned task {} to new task {} (status: {})",
+                args.task_id,
+                new_id,
+                status
+            );
+            println!("Created new task {} from clone of {}", new_id, args.task_id);
+
+            Ok(())
+        }
+
         None => {
             let args = args.build;
             let request = task_cmd::read_request_from_args_or_stdin(&args.request)?;
@@ -455,7 +530,7 @@ fn complete_task_or_signal(
 #[command(
     about = "Create and build tasks from freeform requests",
     subcommand_required = false,
-    after_long_help = "Examples:\n ralph task \"Add tests for the new queue logic\"\n ralph task --runner opencode --model gpt-5.2 \"Fix CLI help strings\"\n ralph task --runner kimi --model kimi-for-coding \"Add tests for X\"\n ralph task --runner pi --model gpt-5.2 \"Add tests for X\"\n ralph task --template add-tests src/cli/task.rs \"Add unit tests for task module\"\n ralph task --template refactor-performance src/bottleneck.rs \"Optimize hot path\"\n ralph task --template fix-error-handling src/api.rs \"Fix error handling\"\n ralph task template list\n ralph task template show add-tests\n ralph task template build add-tests src/module.rs \"Add tests\"\n ralph task show RQ-0001\n ralph task show RQ-0001 --format compact\n ralph task ready RQ-0005\n ralph task status doing --note \"Starting work\" RQ-0001\n ralph task update\n ralph task update RQ-0001\n ralph task update --fields scope,evidence RQ-0001\n ralph task edit title \"Refine queue edit\" RQ-0001\n ralph task field severity high RQ-0003\n ralph task done --note \"Finished work\" RQ-0001\n ralph task reject --note \"No longer needed\" RQ-0002\n ralph task build \"(explicit build subcommand still works)\""
+    after_long_help = "Examples:\n ralph task \"Add tests for the new queue logic\"\n ralph task --runner opencode --model gpt-5.2 \"Fix CLI help strings\"\n ralph task --runner kimi --model kimi-for-coding \"Add tests for X\"\n ralph task --runner pi --model gpt-5.2 \"Add tests for X\"\n ralph task --template add-tests src/cli/task.rs \"Add unit tests for task module\"\n ralph task --template refactor-performance src/bottleneck.rs \"Optimize hot path\"\n ralph task --template fix-error-handling src/api.rs \"Fix error handling\"\n ralph task template list\n ralph task template show add-tests\n ralph task template build add-tests src/module.rs \"Add tests\"\n ralph task show RQ-0001\n ralph task show RQ-0001 --format compact\n ralph task ready RQ-0005\n ralph task status doing --note \"Starting work\" RQ-0001\n ralph task update\n ralph task update RQ-0001\n ralph task update --fields scope,evidence RQ-0001\n ralph task edit title \"Refine queue edit\" RQ-0001\n ralph task field severity high RQ-0003\n ralph task done --note \"Finished work\" RQ-0001\n ralph task reject --note \"No longer needed\" RQ-0002\n ralph task clone RQ-0001\n ralph task clone RQ-0001 --status todo\n ralph task clone RQ-0001 --title-prefix \"[Follow-up] \"\n ralph task duplicate RQ-0001 --dry-run\n ralph task build \"(explicit build subcommand still works)\""
 )]
 pub struct TaskArgs {
     #[command(subcommand)]
@@ -544,6 +619,13 @@ pub enum TaskCommand {
         after_long_help = "Examples:\n ralph task template list\n ralph task template show bug\n ralph task template show add-tests\n ralph task template build bug \"Fix login timeout\"\n ralph task template build add-tests src/module.rs \"Add tests for module\"\n ralph task template build refactor-performance src/bottleneck.rs \"Optimize performance\"\n\nAvailable templates:\n - bug: Bug fix with reproduction steps and regression tests\n - feature: New feature with design, implementation, and documentation\n - refactor: Code refactoring with behavior preservation\n - test: Test addition or improvement\n - docs: Documentation update or creation\n - add-tests: Add tests for existing code with coverage verification\n - refactor-performance: Optimize performance with profiling and benchmarking\n - fix-error-handling: Fix error handling with proper types and context\n - add-docs: Add documentation for a specific file or module\n - security-audit: Security audit with vulnerability checks"
     )]
     Template(TaskTemplateArgs),
+
+    /// Clone an existing task to create a new task from it.
+    #[command(
+        alias = "duplicate",
+        after_long_help = "Examples:\n ralph task clone RQ-0001\n ralph task clone RQ-0001 --status todo\n ralph task clone RQ-0001 --title-prefix \"[Follow-up] \"\n ralph task clone RQ-0001 --dry-run\n ralph task duplicate RQ-0001"
+    )]
+    Clone(TaskCloneArgs),
 }
 
 #[derive(Args)]
@@ -683,7 +765,7 @@ pub struct TaskReadyArgs {
     pub task_id: String,
 }
 
-#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+#[derive(clap::ValueEnum, Clone, Copy, Debug, PartialEq)]
 #[clap(rename_all = "snake_case")]
 pub enum TaskStatusArg {
     /// Task is a draft and not ready to run.
@@ -758,6 +840,25 @@ pub struct TaskFieldArgs {
     /// Task ID to update.
     #[arg(value_name = "TASK_ID")]
     pub task_id: String,
+}
+
+#[derive(Args)]
+pub struct TaskCloneArgs {
+    /// Source task ID to clone.
+    #[arg(value_name = "TASK_ID")]
+    pub task_id: String,
+
+    /// Status for the cloned task (default: draft).
+    #[arg(long, value_enum)]
+    pub status: Option<TaskStatusArg>,
+
+    /// Prefix to add to the cloned task title.
+    #[arg(long)]
+    pub title_prefix: Option<String>,
+
+    /// Preview the clone without modifying the queue.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Args)]
@@ -1049,6 +1150,7 @@ mod tests {
     use clap::{CommandFactory, Parser};
 
     use crate::cli::queue::QueueShowFormat;
+    use crate::cli::task::TaskStatusArg;
     use crate::cli::Cli;
 
     #[test]
@@ -1331,5 +1433,116 @@ mod tests {
             },
             _ => panic!("expected task command"),
         }
+    }
+
+    #[test]
+    fn task_clone_parses() {
+        let cli = Cli::try_parse_from(["ralph", "task", "clone", "RQ-0001"]).expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Clone(args)) => {
+                    assert_eq!(args.task_id, "RQ-0001");
+                    assert!(!args.dry_run);
+                }
+                _ => panic!("expected task clone command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_duplicate_alias_parses() {
+        let cli = Cli::try_parse_from(["ralph", "task", "duplicate", "RQ-0001"]).expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Clone(args)) => {
+                    assert_eq!(args.task_id, "RQ-0001");
+                }
+                _ => panic!("expected task clone command via duplicate alias"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_clone_parses_status_flag() {
+        let cli = Cli::try_parse_from(["ralph", "task", "clone", "--status", "todo", "RQ-0001"])
+            .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Clone(args)) => {
+                    assert_eq!(args.task_id, "RQ-0001");
+                    assert_eq!(args.status, Some(TaskStatusArg::Todo));
+                }
+                _ => panic!("expected task clone command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_clone_parses_title_prefix() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "task",
+            "clone",
+            "--title-prefix",
+            "[Follow-up] ",
+            "RQ-0001",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Clone(args)) => {
+                    assert_eq!(args.task_id, "RQ-0001");
+                    assert_eq!(args.title_prefix, Some("[Follow-up] ".to_string()));
+                }
+                _ => panic!("expected task clone command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_clone_parses_dry_run_flag() {
+        let cli =
+            Cli::try_parse_from(["ralph", "task", "clone", "--dry-run", "RQ-0001"]).expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Clone(args)) => {
+                    assert_eq!(args.task_id, "RQ-0001");
+                    assert!(args.dry_run);
+                }
+                _ => panic!("expected task clone command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_clone_help_mentions_examples() {
+        let mut cmd = Cli::command();
+        let task = cmd.find_subcommand_mut("task").expect("task subcommand");
+        let clone = task
+            .find_subcommand_mut("clone")
+            .expect("task clone subcommand");
+        let help = clone.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph task clone RQ-0001"),
+            "missing clone example: {help}"
+        );
+        assert!(
+            help.contains("--status"),
+            "missing --status example: {help}"
+        );
+        assert!(
+            help.contains("--title-prefix"),
+            "missing --title-prefix example: {help}"
+        );
+        assert!(
+            help.contains("ralph task duplicate"),
+            "missing duplicate alias example: {help}"
+        );
     }
 }

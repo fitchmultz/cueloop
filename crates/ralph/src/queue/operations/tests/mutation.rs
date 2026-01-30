@@ -513,3 +513,143 @@ fn reposition_new_tasks_handles_empty_queue() {
 
     assert_eq!(queue.tasks.len(), 0);
 }
+
+#[test]
+fn clone_task_creates_copy_with_new_id() {
+    use crate::queue::operations::CloneTaskOptions;
+
+    let mut source = task_with("RQ-0001", TaskStatus::Todo, vec!["code".to_string()]);
+    source.title = "Source Task".to_string();
+    source.priority = TaskPriority::High;
+    source.scope = vec!["crates/ralph".to_string()];
+    source.evidence = vec!["evidence".to_string()];
+    source.plan = vec!["step 1".to_string()];
+    source.notes = vec!["note".to_string()];
+    source.request = Some("original request".to_string());
+    // Note: depends_on is cleared during clone, so we don't set it here
+    source
+        .custom_fields
+        .insert("key".to_string(), "value".to_string());
+
+    let mut queue = QueueFile {
+        version: 1,
+        tasks: vec![source],
+    };
+
+    let now = "2026-01-20T12:00:00Z";
+    let opts = CloneTaskOptions::new("RQ-0001", TaskStatus::Draft, now, "RQ", 4);
+    let (new_id, cloned) = clone_task(&mut queue, None, &opts).unwrap();
+
+    assert_eq!(new_id, "RQ-0002");
+    assert_eq!(cloned.id, "RQ-0002");
+    assert_eq!(cloned.title, "Source Task");
+    assert_eq!(cloned.status, TaskStatus::Draft);
+    assert_eq!(cloned.priority, TaskPriority::High);
+    assert_eq!(cloned.tags, vec!["code".to_string()]);
+    assert_eq!(cloned.scope, vec!["crates/ralph".to_string()]);
+    assert_eq!(cloned.evidence, vec!["evidence".to_string()]);
+    assert_eq!(cloned.plan, vec!["step 1".to_string()]);
+    assert_eq!(cloned.notes, vec!["note".to_string()]);
+    assert_eq!(cloned.request, Some("original request".to_string()));
+    assert!(cloned.depends_on.is_empty()); // Dependencies cleared
+    assert_eq!(cloned.custom_fields.get("key"), Some(&"value".to_string()));
+    assert_eq!(cloned.created_at, Some(now.to_string()));
+    assert_eq!(cloned.updated_at, Some(now.to_string()));
+    assert_eq!(cloned.completed_at, None);
+}
+
+#[test]
+fn clone_task_applies_title_prefix() {
+    use crate::queue::operations::CloneTaskOptions;
+
+    let source = task_with("RQ-0001", TaskStatus::Todo, vec![]);
+    let mut queue = QueueFile {
+        version: 1,
+        tasks: vec![source],
+    };
+
+    let opts = CloneTaskOptions::new(
+        "RQ-0001",
+        TaskStatus::Draft,
+        "2026-01-20T12:00:00Z",
+        "RQ",
+        4,
+    )
+    .with_title_prefix(Some("[Clone] "));
+    let (new_id, cloned) = clone_task(&mut queue, None, &opts).unwrap();
+
+    assert_eq!(new_id, "RQ-0002");
+    assert_eq!(cloned.title, "[Clone] Test task");
+}
+
+#[test]
+fn clone_task_uses_custom_status() {
+    use crate::queue::operations::CloneTaskOptions;
+
+    // Use Todo status for source to avoid validation issues with Done tasks
+    let source = task_with("RQ-0001", TaskStatus::Todo, vec![]);
+    let mut queue = QueueFile {
+        version: 1,
+        tasks: vec![source],
+    };
+
+    // Clone with Todo status instead of default Draft
+    let opts = CloneTaskOptions::new("RQ-0001", TaskStatus::Todo, "2026-01-20T12:00:00Z", "RQ", 4);
+    let (_, cloned) = clone_task(&mut queue, None, &opts).unwrap();
+
+    assert_eq!(cloned.status, TaskStatus::Todo);
+}
+
+#[test]
+fn clone_task_finds_source_in_done_file() {
+    use crate::queue::operations::CloneTaskOptions;
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![],
+    };
+
+    // Use Done status with completed_at for done.json (required by validation)
+    let mut done_task = task_with("RQ-0001", TaskStatus::Done, vec![]);
+    done_task.title = "Done Task".to_string();
+    done_task.completed_at = Some("2026-01-19T12:00:00Z".to_string());
+    let done = QueueFile {
+        version: 1,
+        tasks: vec![done_task],
+    };
+
+    let opts = CloneTaskOptions::new(
+        "RQ-0001",
+        TaskStatus::Draft,
+        "2026-01-20T12:00:00Z",
+        "RQ",
+        4,
+    );
+    let (new_id, cloned) = clone_task(&mut queue.clone(), Some(&done), &opts).unwrap();
+
+    assert_eq!(new_id, "RQ-0002");
+    assert_eq!(cloned.title, "Done Task");
+}
+
+#[test]
+fn clone_task_errors_when_source_not_found() {
+    use crate::queue::operations::CloneTaskOptions;
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![],
+    };
+
+    let opts = CloneTaskOptions::new(
+        "RQ-9999",
+        TaskStatus::Draft,
+        "2026-01-20T12:00:00Z",
+        "RQ",
+        4,
+    );
+    let result = clone_task(&mut queue.clone(), None, &opts);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("not found"));
+}

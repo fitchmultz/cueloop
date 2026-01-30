@@ -1,6 +1,7 @@
 //! Collection/mutation helpers for queue tasks.
 
-use crate::contracts::{QueueFile, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskStatus};
+use anyhow::{anyhow, Result};
 use std::collections::HashSet;
 
 /// Suggests the insertion index for new tasks based on the first task's status.
@@ -153,4 +154,135 @@ pub fn task_id_set(queue: &QueueFile) -> HashSet<String> {
         set.insert(id.to_string());
     }
     set
+}
+
+/// Options for cloning a task.
+#[derive(Debug, Clone)]
+pub struct CloneTaskOptions<'a> {
+    /// ID of the task to clone.
+    pub source_id: &'a str,
+    /// Status for the cloned task.
+    pub status: TaskStatus,
+    /// Optional prefix to prepend to the cloned task's title.
+    pub title_prefix: Option<&'a str>,
+    /// Current timestamp (RFC3339) for created_at/updated_at.
+    pub now_utc: &'a str,
+    /// Prefix for new task ID (e.g., "RQ").
+    pub id_prefix: &'a str,
+    /// Width of the numeric portion of the ID.
+    pub id_width: usize,
+    /// Max dependency depth for validation.
+    pub max_depth: u8,
+}
+
+impl<'a> CloneTaskOptions<'a> {
+    /// Create new clone options with required fields.
+    pub fn new(
+        source_id: &'a str,
+        status: TaskStatus,
+        now_utc: &'a str,
+        id_prefix: &'a str,
+        id_width: usize,
+    ) -> Self {
+        Self {
+            source_id,
+            status,
+            title_prefix: None,
+            now_utc,
+            id_prefix,
+            id_width,
+            max_depth: 10,
+        }
+    }
+
+    /// Set the title prefix.
+    pub fn with_title_prefix(mut self, prefix: Option<&'a str>) -> Self {
+        self.title_prefix = prefix;
+        self
+    }
+
+    /// Set the max dependency depth.
+    pub fn with_max_depth(mut self, depth: u8) -> Self {
+        self.max_depth = depth;
+        self
+    }
+}
+
+/// Clone an existing task to create a new task with the same fields.
+///
+/// The cloned task will have:
+/// - A new task ID (generated using the provided prefix/width)
+/// - Fresh timestamps (created_at, updated_at = now)
+/// - Cleared completed_at
+/// - Status set to the provided value (default: Draft)
+/// - Cleared depends_on (to avoid unintended dependencies)
+/// - Optional title prefix applied
+///
+/// # Arguments
+/// * `queue` - The active queue to insert the cloned task into
+/// * `done` - Optional done queue to search for source task
+/// * `opts` - Clone options (source_id, status, title_prefix, now_utc, id_prefix, id_width, max_depth)
+///
+/// # Returns
+/// A tuple of (new_task_id, cloned_task)
+pub fn clone_task(
+    queue: &mut QueueFile,
+    done: Option<&QueueFile>,
+    opts: &CloneTaskOptions<'_>,
+) -> Result<(String, Task)> {
+    use crate::queue::{next_id_across, validation::validate_queue_set};
+
+    // Validate queues first
+    let warnings = validate_queue_set(queue, done, opts.id_prefix, opts.id_width, opts.max_depth)?;
+    if !warnings.is_empty() {
+        for warning in &warnings {
+            log::warn!("Queue validation warning: {}", warning.message);
+        }
+    }
+
+    // Find source task in queue or done
+    let source_task = queue
+        .tasks
+        .iter()
+        .find(|t| t.id.trim() == opts.source_id.trim())
+        .or_else(|| {
+            done.and_then(|d| {
+                d.tasks
+                    .iter()
+                    .find(|t| t.id.trim() == opts.source_id.trim())
+            })
+        })
+        .ok_or_else(|| {
+            anyhow!(
+                "Source task '{}' not found in queue or done archive",
+                opts.source_id
+            )
+        })?;
+
+    // Generate new task ID
+    let new_id = next_id_across(queue, done, opts.id_prefix, opts.id_width, opts.max_depth)?;
+
+    // Clone the task
+    let mut cloned = source_task.clone();
+    cloned.id = new_id.clone();
+
+    // Apply title prefix if provided
+    if let Some(prefix) = opts.title_prefix {
+        if !prefix.is_empty() {
+            cloned.title = format!("{}{}", prefix, cloned.title);
+        }
+    }
+
+    // Set status
+    cloned.status = opts.status;
+
+    // Set fresh timestamps
+    cloned.created_at = Some(opts.now_utc.to_string());
+    cloned.updated_at = Some(opts.now_utc.to_string());
+    cloned.completed_at = None;
+
+    // Clear dependencies to avoid unintended dependencies
+    cloned.depends_on.clear();
+
+    Ok((new_id, cloned))
 }

@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0434",
-      "status": "todo",
-      "title": "Add task cloning/duplication command to enable task templating from existing tasks",
-      "priority": "high",
-      "tags": [
-        "cli",
-        "queue",
-        "ux",
-        "task-management"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/task.rs",
-        "crates/ralph/src/queue/operations/mutation.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "No `ralph task clone` or `ralph task duplicate` command exists in cli/task.rs",
-        "Task creation always requires building from scratch or from templates; no way to copy existing task",
-        "docs/cli.md shows no examples of duplicating tasks for similar work items"
-      ],
-      "plan": [
-        "Add `ralph task clone <TASK_ID>` command that creates a copy of an existing task",
-        "Generate new task ID for the clone, clear timestamps, set status to draft or todo",
-        "Optionally allow `--edit` flag to immediately edit fields after cloning",
-        "Add tests for clone functionality including edge cases (non-existent task, done task)",
-        "Update docs/cli.md with clone command examples"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T00:00:00Z",
-      "updated_at": "2026-01-30T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0435",
       "status": "todo",
       "title": "Implement batch task operations for efficient multi-task updates",

@@ -954,6 +954,47 @@ ralph queue export --only-archive --format csv --created-after 2026-01-01
 ralph queue export --id-pattern RQ-01
 ```
 
+### ralph task clone
+
+Clone an existing task to create a new task with the same fields. This is useful for creating task templates from well-structured existing tasks or for creating follow-up work items.
+
+The cloned task will have:
+- A new task ID (auto-generated)
+- Same title (with optional prefix), priority, tags, scope, evidence, plan, notes, request, and custom fields
+- Status set to `draft` by default (or specified via `--status`)
+- Fresh timestamps (created_at, updated_at)
+- Cleared completed_at
+- Cleared depends_on (to avoid unintended dependencies)
+
+Flags:
+
+- `--status <draft|todo|doing>` - Status for the cloned task (default: `draft`).
+- `--title-prefix <PREFIX>` - Prefix to add to the cloned task title.
+- `--dry-run` - Preview the clone without modifying the queue.
+
+Alias:
+
+- `ralph task duplicate` (same flags and behavior).
+
+Examples:
+
+```bash
+# Basic clone (creates draft copy)
+ralph task clone RQ-0001
+
+# Clone with specific status
+ralph task clone RQ-0001 --status todo
+
+# Clone with title prefix for visibility
+ralph task clone RQ-0001 --title-prefix "[Follow-up] "
+
+# Preview clone without creating
+ralph task clone RQ-0001 --dry-run
+
+# Using alias
+ralph task duplicate RQ-0001
+```
+
 ## `ralph task`
 
 Create tasks and edit task fields from CLI.
@@ -969,6 +1010,7 @@ Common subcommands:
 - `ralph task template list`: list available templates.
 - `ralph task template show <name>`: show template details.
 - `ralph task template build <name> [target] <request>`: build a task from a template.
+- `ralph task clone <TASK_ID>`: clone an existing task to create a new task from it. Alias: `duplicate`.
 
 Field formats (for `ralph task edit`):
 - Lists (`tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`): comma/newline-separated.
