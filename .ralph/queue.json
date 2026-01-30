@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0396",
-      "status": "todo",
-      "title": "Unify CLI argument patterns: make 'ralph scan' accept positional prompt like 'ralph task'",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "ux",
-        "consistency"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/scan.rs",
-        "crates/ralph/src/cli/task.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User reports: 'ralph task' works by appending prompt without a flag, but 'ralph scan' requires '--focus' flag",
-        "This creates inconsistent UX between two similar commands",
-        "Both commands support '--runner' and '--effort' flags, so the prompt syntax should align"
-      ],
-      "plan": [
-        "Review current 'ralph task' argument parsing to understand how it accepts positional prompt",
-        "Review current 'ralph scan' argument parsing and '--focus' flag implementation",
-        "Modify 'ralph scan' to accept an optional positional prompt argument (in addition to --focus for backward compatibility)",
-        "Update help text and examples for 'ralph scan' to show both usage patterns",
-        "Update docs/cli.md to reflect the unified syntax",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [],
-      "request": "'ralph task' works by just appending the prompt to the 'ralph task' command without a flag. 'ralph scan' requires the prompt to follow after '--focus'. this seems like an inconsistent user experience. i do use both with different '--runner' and '--effort' flags but it seems odd to have to specify '--focus' for the 'scan' command.",
-      "created_at": "2026-01-29T14:26:40Z",
-      "updated_at": "2026-01-29T14:26:40Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0397",
       "status": "todo",
       "title": "Add scan mode for feature discovery/innovation vs code hygiene",

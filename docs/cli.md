@@ -567,7 +567,8 @@ Generate new tasks by scanning the repository.
 
 Key flags:
 
-* `--focus <TEXT>`: Optional focus prompt to guide the scan.
+* `[PROMPT]`: Optional focus prompt as a positional argument (alternative to `--focus`).
+* `--focus <TEXT>`: Optional focus prompt to guide the scan (backward compatible).
 * `--runner <codex|opencode|gemini|claude|cursor|kimi|pi>`, `--model <model-id>`, `--effort <low|medium|high|xhigh>` (alias: `-e`): Override runner/model/effort for this invocation.
 * `--repo-prompt <tools|plan|off>` (alias: `-rp`): `tools` = tooling reminders only, `plan` = planning requirement + tooling reminders, `off` = disable both.
 * Runner CLI overrides: `--approval-mode <default|auto-edits|yolo|safe>`, `--sandbox <default|enabled|disabled>`, `--verbosity <quiet|normal|verbose>`, `--plan-mode <default|enabled|disabled>`, `--output-format <stream-json|json|text>`, `--unsupported-option-policy <ignore|warn|error>`.
@@ -580,13 +581,14 @@ Examples:
 
 ```bash
 ralph scan
-ralph scan --focus "production readiness gaps"
-ralph scan --runner opencode --model gpt-5.2 --focus "CI and safety gaps"
-ralph scan --force --focus "scan even with uncommitted changes"
-ralph scan --approval-mode auto-edits --runner claude --focus "auto edits review"
-ralph scan --sandbox disabled --runner codex --focus "sandbox audit"
-ralph scan --repo-prompt plan --focus "Deep codebase analysis"
-ralph scan --repo-prompt off --focus "Quick surface scan"
+ralph scan "production readiness gaps"                              # Positional prompt
+ralph scan --focus "production readiness gaps"                        # Flag-based prompt
+ralph scan --runner opencode --model gpt-5.2 "CI and safety gaps"     # With runner overrides
+ralph scan --force "scan even with uncommitted changes"
+ralph scan --approval-mode auto-edits --runner claude "auto edits review"
+ralph scan --sandbox disabled --runner codex "sandbox audit"
+ralph scan --repo-prompt plan "Deep codebase analysis"
+ralph scan --repo-prompt off "Quick surface scan"
 ```
 
 ## `ralph queue`

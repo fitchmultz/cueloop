@@ -28,10 +28,17 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
         runner_cli: args.runner_cli.clone(),
     })?;
 
+    // Merge positional prompt and --focus flag: positional takes precedence
+    let focus = if !args.prompt.is_empty() {
+        args.prompt.join(" ")
+    } else {
+        args.focus.clone()
+    };
+
     scan_cmd::run_scan(
         &resolved,
         scan_cmd::ScanOptions {
-            focus: args.focus,
+            focus,
             runner_override: overrides.runner,
             model_override: overrides.model,
             reasoning_effort_override: overrides.reasoning_effort,
@@ -53,9 +60,13 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Scan repository for new tasks and focus areas",
-    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nRunner CLI options:\n  - Override approval/sandbox/verbosity/plan-mode via flags.\n  - Unsupported options follow --unsupported-option-policy.\n\nSafety:\n  - Clean-repo checks allow changes to `.ralph/queue.json` and `.ralph/done.json` only (not `.ralph/config.json`).\n  - Use `--force` to bypass the clean-repo check (and stale queue locks) entirely if needed.\n\nExamples:\n  ralph scan --focus \"production readiness gaps\"\n  ralph scan --runner opencode --model gpt-5.2 --focus \"CI and safety gaps\"\n  ralph scan --runner gemini --model gemini-3-flash-preview --focus \"risk audit\"\n  ralph scan --runner codex --model gpt-5.2-codex --effort high --focus \"queue correctness\"\n  ralph scan --approval-mode auto-edits --runner claude --focus \"auto edits review\"\n  ralph scan --sandbox disabled --runner codex --focus \"sandbox audit\"\n  ralph scan --repo-prompt plan --focus \"Deep codebase analysis\"\n  ralph scan --repo-prompt off --focus \"Quick surface scan\"\n  ralph scan --runner kimi --focus \"risk audit\"\n  ralph scan --runner pi --focus \"risk audit\""
+    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n\nRunner CLI options:\n  - Override approval/sandbox/verbosity/plan-mode via flags.\n  - Unsupported options follow --unsupported-option-policy.\n\nSafety:\n  - Clean-repo checks allow changes to `.ralph/queue.json` and `.ralph/done.json` only (not `.ralph/config.json`).\n  - Use `--force` to bypass the clean-repo check (and stale queue locks) entirely if needed.\n\nExamples:\n  ralph scan\n  ralph scan \"production readiness gaps\"                              # Positional prompt\n  ralph scan --focus \"production readiness gaps\"                     # Flag-based prompt (backward compatible)\n  ralph scan --runner opencode --model gpt-5.2 \"CI and safety gaps\"  # With runner overrides\n  ralph scan --runner gemini --model gemini-3-flash-preview \"risk audit\"\n  ralph scan --runner codex --model gpt-5.2-codex --effort high \"queue correctness\"\n  ralph scan --approval-mode auto-edits --runner claude \"auto edits review\"\n  ralph scan --sandbox disabled --runner codex \"sandbox audit\"\n  ralph scan --repo-prompt plan \"Deep codebase analysis\"\n  ralph scan --repo-prompt off \"Quick surface scan\"\n  ralph scan --runner kimi \"risk audit\"\n  ralph scan --runner pi \"risk audit\""
 )]
 pub struct ScanArgs {
+    /// Optional focus prompt as positional argument (alternative to --focus).
+    #[arg(value_name = "PROMPT")]
+    pub prompt: Vec<String>,
+
     /// Optional focus prompt to guide the scan.
     #[arg(long, default_value = "")]
     pub focus: String,
@@ -94,12 +105,32 @@ mod tests {
         let help = scan.render_long_help().to_string();
 
         assert!(
-            help.contains("--repo-prompt plan --focus \"Deep codebase analysis\""),
+            help.contains("--repo-prompt plan \"Deep codebase analysis\""),
             "missing repo-prompt plan example: {help}"
         );
         assert!(
-            help.contains("--repo-prompt off --focus \"Quick surface scan\""),
+            help.contains("--repo-prompt off \"Quick surface scan\""),
             "missing repo-prompt off example: {help}"
+        );
+    }
+
+    #[test]
+    fn scan_help_examples_include_positional_prompt() {
+        let mut cmd = Cli::command();
+        let scan = cmd.find_subcommand_mut("scan").expect("scan subcommand");
+        let help = scan.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph scan \"production readiness gaps\""),
+            "missing positional prompt example: {help}"
+        );
+        assert!(
+            help.contains("# Positional prompt"),
+            "missing positional prompt comment: {help}"
+        );
+        assert!(
+            help.contains("# Flag-based prompt"),
+            "missing flag-based prompt comment: {help}"
         );
     }
 
@@ -149,6 +180,75 @@ mod tests {
             crate::cli::Command::Scan(args) => {
                 assert_eq!(args.runner_cli.approval_mode.as_deref(), Some("auto-edits"));
                 assert_eq!(args.runner_cli.sandbox.as_deref(), Some("disabled"));
+            }
+            _ => panic!("expected scan command"),
+        }
+    }
+
+    #[test]
+    fn scan_parses_positional_prompt() {
+        let cli = Cli::try_parse_from(["ralph", "scan", "production", "readiness", "gaps"])
+            .expect("parse");
+
+        match cli.command {
+            crate::cli::Command::Scan(args) => {
+                assert_eq!(args.prompt, vec!["production", "readiness", "gaps"]);
+                assert!(args.focus.is_empty());
+            }
+            _ => panic!("expected scan command"),
+        }
+    }
+
+    #[test]
+    fn scan_parses_positional_prompt_with_flags() {
+        let cli = Cli::try_parse_from([
+            "ralph", "scan", "--runner", "opencode", "--model", "gpt-5.2", "CI", "and", "safety",
+            "gaps",
+        ])
+        .expect("parse");
+
+        match cli.command {
+            crate::cli::Command::Scan(args) => {
+                assert_eq!(args.runner.as_deref(), Some("opencode"));
+                assert_eq!(args.model.as_deref(), Some("gpt-5.2"));
+                assert_eq!(args.prompt, vec!["CI", "and", "safety", "gaps"]);
+            }
+            _ => panic!("expected scan command"),
+        }
+    }
+
+    #[test]
+    fn scan_backward_compatible_with_focus_flag() {
+        let cli = Cli::try_parse_from(["ralph", "scan", "--focus", "production readiness gaps"])
+            .expect("parse");
+
+        match cli.command {
+            crate::cli::Command::Scan(args) => {
+                assert_eq!(args.focus, "production readiness gaps");
+                assert!(args.prompt.is_empty());
+            }
+            _ => panic!("expected scan command"),
+        }
+    }
+
+    #[test]
+    fn scan_positional_takes_precedence_over_focus_flag() {
+        // When both positional and --focus are provided, positional takes precedence
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "scan",
+            "--focus",
+            "flag-based focus",
+            "positional",
+            "focus",
+        ])
+        .expect("parse");
+
+        match cli.command {
+            crate::cli::Command::Scan(args) => {
+                // Both should be parsed correctly
+                assert_eq!(args.focus, "flag-based focus");
+                assert_eq!(args.prompt, vec!["positional", "focus"]);
             }
             _ => panic!("expected scan command"),
         }
