@@ -9,6 +9,7 @@ homepage = "https://github.com/mitchfultz/ralph"
 readme = "../../README.md"
 keywords = ["ai", "agent", "cli", "task-queue", "workflow"]
 categories = ["command-line-utilities", "development-tools"]
+build = "build.rs"
 
 [dependencies]
 anyhow = "1.0.100"
@@ -54,3 +55,6 @@ notifications = ["notify-rust"]
 
 [dev-dependencies]
 serial_test = "3.0"
+
+[build-dependencies]
+vergen = { version = "8.3", features = ["git", "gitcl", "build"] }

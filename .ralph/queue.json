@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0400",
-      "status": "todo",
-      "title": "Add version command and runtime version reporting to CLI",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "version",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/mod.rs",
-        "crates/ralph/src/main.rs",
-        "crates/ralph/Cargo.toml"
-      ],
-      "evidence": [
-        "User request: 'proper versioning' implies version should be visible to users",
-        "Current state: No explicit 'version' subcommand exists (only --version via clap)",
-        "Best practice: CLI tools should report their version clearly"
-      ],
-      "plan": [
-        "Verify 'ralph --version' works via clap derive",
-        "Add 'ralph version' subcommand that prints version, build info, and git commit hash",
-        "Consider adding version to TUI header if not already present",
-        "Ensure version is embedded at compile time via CARGO_PKG_VERSION",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [],
-      "request": "We require proper versioning and changelog generation. Figure out a way to properly bump versions. Project is still synced with a private git repo. user has hesitancy to go public due to missing mechanisms to build and publish releases to his github with proper version control, changelogs, etc. no github actions are enabled or allowed on this project.",
-      "created_at": "2026-01-29T14:36:08Z",
-      "updated_at": "2026-01-29T14:36:08Z",
-      "depends_on": [
-        "RQ-0399"
-      ],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0401",
       "status": "todo",
       "title": "Create automated changelog generation from conventional commits",
@@ -234,6 +198,379 @@
       "request": "we must review the TUI resizing to ensure that when a user resizes their terminal that the screen is redrawn. currently i see a whole lot of formatting break and look like crap until the next update is sent to the screen, and in some cases it still is busted. this is a tough problem to solve, tuis are hard. but we must make sure we have a tui that is performant and without visual glitches. logs need to stream and be displayed properly. user flows and experience need to be polished otherwise it looks like amateur work and users wont want to use it. personally, i have had GREAT success with the CLI and barely touch the TUI due to poor user experience. The CLI version of the 'ralph task', 'ralph scan', and 'ralph run' commands have been excellent.",
       "created_at": "2026-01-29T14:26:40Z",
       "updated_at": "2026-01-29T14:26:40Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0422",
+      "status": "todo",
+      "title": "Add progress indicators and spinners for long-running operations",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "cli",
+        "ux",
+        "progress"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app_execution.rs",
+        "crates/ralph/src/outpututil.rs",
+        "crates/ralph/src/cli/"
+      ],
+      "evidence": [
+        "User reports: 'verbosity is good but can be bland when running ralph run loop and sees nothing but white text in black box'",
+        "Current state: No visual feedback during runner execution phases",
+        "Current state: No spinner/progress indication when agent is 'thinking' or processing",
+        "UX gap: Users don't know if the system is stuck or working during long operations",
+        "Modern CLI expectation: Tools like cargo, npm, docker all show progress indicators"
+      ],
+      "plan": [
+        "Design progress indicator system: spinners for indeterminate work, progress bars for determinate work",
+        "Add phase-aware progress indicators (Planning: ▶, Implementation: ⚙, Review: 👁)",
+        "Implement animated spinners for runner thinking/processing states",
+        "Add elapsed time display for each phase and total execution",
+        "Show current operation description (e.g., 'Running CI gate...', 'Generating plan...')",
+        "Ensure progress indicators work in both TUI and CLI modes",
+        "Add --no-progress flag for CI/scripting environments",
+        "Respect NO_COLOR environment variable for progress indicators",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Consider using indicatif crate for progress bars if not already used",
+        "Progress indicators should not interfere with log output streaming",
+        "TUI mode can use richer visuals than CLI mode"
+      ],
+      "request": "Add progress indicators and spinners to make long-running 'ralph run loop' operations feel more responsive and modern. Users should see visual feedback when the agent is thinking, when CI is running, and what phase is currently active. This addresses the 'white text in black box' problem where users can't tell if progress is being made.",
+      "created_at": "2026-01-29T23:55:00Z",
+      "updated_at": "2026-01-29T23:55:00Z",
+      "depends_on": [
+        "RQ-0405"
+      ],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0423",
+      "status": "todo",
+      "title": "Add Kanban board view to TUI for modern task visualization",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ux",
+        "kanban",
+        "visualization"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/render/",
+        "crates/ralph/src/tui/events/"
+      ],
+      "evidence": [
+        "Current TUI is list-only which feels dated compared to modern tools",
+        "User feedback: TUI has poor user experience compared to CLI commands",
+        "Modern expectation: Tools like Linear, GitHub Projects, Jira use Kanban boards",
+        "Visual columns provide better task status overview than lists",
+        "Blocker: RQ-0398 (TUI resize handling) should be fixed first for good Kanban experience"
+      ],
+      "plan": [
+        "Design Kanban board layout with columns: Backlog (draft/todo), In Progress (doing), Review (optional), Done",
+        "Add view toggle: 'l' for list view (current), 'b' for board view (new)",
+        "Implement horizontal column layout with vertical task lists",
+        "Add keyboard navigation: Left/Right to switch columns, Up/Down to navigate tasks within column",
+        "Show task count badge on each column header",
+        "Implement drag-and-drop preparation (visual feedback for move operations)",
+        "Ensure board view handles terminal resize gracefully (depends on RQ-0398)",
+        "Add color-coded cards based on priority (critical=red, high=orange, medium=yellow, low=green)",
+        "Show task ID and truncated title on cards",
+        "Update help overlay with board view shortcuts",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Board view should respect terminal width - fall back to list on narrow terminals",
+        "Consider async loading if many tasks affect rendering performance",
+        "Future enhancement: Custom column configuration"
+      ],
+      "request": "Add a modern Kanban board view to the TUI alongside the current list view. Users should be able to toggle between list view ('l') and board view ('b'). The board should show columns for different task statuses (Backlog, In Progress, Done) with color-coded cards by priority. This brings Ralph in line with modern project management tools like Linear, GitHub Projects, and Jira, making task visualization much more intuitive.",
+      "created_at": "2026-01-29T23:56:00Z",
+      "updated_at": "2026-01-29T23:56:00Z",
+      "depends_on": [
+        "RQ-0398",
+        "RQ-0405"
+      ],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0424",
+      "status": "todo",
+      "title": "Add desktop notifications for task completion and failures",
+      "priority": "high",
+      "tags": [
+        "notifications",
+        "ux",
+        "desktop",
+        "async"
+      ],
+      "scope": [
+        "crates/ralph/src/notification.rs",
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/contracts.rs"
+      ],
+      "evidence": [
+        "Long-running 'ralph run loop' tasks can take minutes or hours",
+        "Users switch contexts during long operations and miss completion",
+        "No current mechanism to alert user when work is done",
+        "Modern developer tools (Slack, Discord, Docker Desktop) use native notifications",
+        "macOS: Notification Center, Windows: Action Center, Linux: D-Bus notifications"
+      ],
+      "plan": [
+        "Research cross-platform notification libraries (notify-rust for Linux, mac-notification-sys for macOS, windows-notification for Windows)",
+        "Add notification configuration to AgentConfig: notifications_enabled, notify_on_complete, notify_on_fail",
+        "Implement notification dispatcher with platform detection",
+        "Send notification on: task completion (success), task failure, loop completion",
+        "Include task ID, title, and status in notification",
+        "Add notification grouping to prevent spam during loop mode",
+        "Add --notify flag and --no-notify flag for CLI control",
+        "Respect system Do Not Disturb settings where possible",
+        "Add notification permission handling (graceful degradation if denied)",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Notification should only trigger when user is not actively viewing the TUI",
+        "Consider adding sound notifications as optional enhancement",
+        "Batch notifications for multiple task completions in loop mode"
+      ],
+      "request": "Add cross-platform desktop notifications that alert users when tasks complete or fail. This is essential for long-running 'ralph run loop' operations where users may switch to other work. Notifications should work on macOS (Notification Center), Windows (Action Center), and Linux (D-Bus). Include task ID, title, and completion status. Add configuration options to enable/disable notifications and control when they fire.",
+      "created_at": "2026-01-29T23:57:00Z",
+      "updated_at": "2026-01-29T23:57:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0425",
+      "status": "todo",
+      "title": "Implement smart task templates for common development patterns",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "ux",
+        "templates",
+        "productivity"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/template/",
+        "crates/ralph/src/contracts.rs"
+      ],
+      "evidence": [
+        "Common patterns recur: 'Add tests for X', 'Refactor Y for performance', 'Fix error handling in Z'",
+        "Current workflow requires typing full request every time",
+        "No way to quickly create tasks with pre-filled scope, tags, and plan structure",
+        "Templates would speed up task creation significantly",
+        "Similar to GitHub issue templates or IDE snippets"
+      ],
+      "plan": [
+        "Define built-in template library: add-tests, refactor-performance, fix-error-handling, add-docs, security-audit",
+        "Add TaskTemplate struct with title pattern, default tags, default scope patterns, plan template",
+        "Create templates.json or embed templates in binary",
+        "Add ralph task --template <name> <target> command",
+        "Support template variables: {{target}}, {{module}}, {{file}}",
+        "Add ralph task list-templates command to show available templates",
+        "Allow custom templates in .ralph/templates/ directory",
+        "Auto-detect context (current file, git branch) to pre-fill template variables",
+        "Update task builder prompts to understand template context",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Templates should integrate with existing ralph task command seamlessly",
+        "Consider interactive template selection when --template not specified but templates available",
+        "Template system should be extensible for user-defined templates"
+      ],
+      "request": "Implement a smart task template system for common development patterns. Built-in templates like 'add-tests', 'refactor-performance', 'fix-error-handling' should pre-fill task fields (tags, scope, plan structure). Users can run 'ralph task --template add-tests src/module.rs' to quickly create well-structured tasks. This dramatically speeds up task creation and ensures consistency in task structure.",
+      "created_at": "2026-01-29T23:58:00Z",
+      "updated_at": "2026-01-29T23:58:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0426",
+      "status": "todo",
+      "title": "Add task completion celebration and productivity stats",
+      "priority": "medium",
+      "tags": [
+        "ux",
+        "gamification",
+        "tui",
+        "stats"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/reports.rs",
+        "crates/ralph/src/run_cmd.rs"
+      ],
+      "evidence": [
+        "Task completion is anticlimactic - no feedback or celebration",
+        "Dopamine feedback loops increase tool engagement (see: GitHub contributions graph, Todoist karma)",
+        "Users don't have visibility into their productivity trends",
+        "No session summary after completing multiple tasks",
+        "Small celebrations make CLI tools feel more polished and human"
+      ],
+      "plan": [
+        "Add celebration animation for task completion (optional, can be disabled)",
+        "Implement session stats: tasks completed this session, time saved, streak counter",
+        "Add daily/weekly productivity dashboard in TUI (press 's' for stats view)",
+        "Show milestone celebrations (10 tasks, 50 tasks, 100 tasks completed)",
+        "Add 'completion summary' after run loop finishes with task list and stats",
+        "Implement velocity tracking: tasks per day/week trend",
+        "Store productivity metrics in .ralph/cache/stats.json",
+        "Add ralph stats command to view productivity reports",
+        "Ensure celebrations don't interfere with scripting/CI use cases",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Celebrations should be subtle and professional, not overly flashy",
+        "Stats should respect privacy - local only, no external reporting",
+        "Consider ASCII art celebrations for terminal compatibility"
+      ],
+      "request": "Add task completion celebrations and productivity stats to make Ralph more engaging. Small dopamine hits on task completion (subtle animation, confetti in TUI), session summaries showing tasks completed and time spent, streak counters, and velocity tracking. This gamification makes the tool more enjoyable to use while giving users visibility into their productivity patterns. Include ralph stats command for detailed productivity reports.",
+      "created_at": "2026-01-29T23:59:00Z",
+      "updated_at": "2026-01-29T23:59:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0427",
+      "status": "todo",
+      "title": "Implement watch mode for automatic task detection and creation",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "feature",
+        "watch",
+        "automation"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/",
+        "crates/ralph/src/fsutil.rs",
+        "crates/ralph/Cargo.toml"
+      ],
+      "evidence": [
+        "Developers often leave TODO/FIXME comments that get forgotten",
+        "Test failures should automatically suggest fix tasks",
+        "File changes can indicate areas needing attention",
+        "No current mechanism for proactive task suggestions",
+        "Watch mode is common in modern dev tools (cargo watch, jest --watch)"
+      ],
+      "plan": [
+        "Add notify or similar file watching dependency",
+        "Implement ralph watch command with configurable watch patterns",
+        "Detect TODO/FIXME/HACK comments in changed files and offer to create tasks",
+        "Monitor test output and suggest tasks for failing tests",
+        "Watch for compiler errors and offer fix tasks",
+        "Add --auto-queue flag to automatically create tasks without prompting",
+        "Add --watch-patterns flag for custom file patterns",
+        "Implement debouncing to avoid task spam during active editing",
+        "Add notification when new tasks are auto-created",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Watch mode should be efficient - use git ignore patterns",
+        "Consider integration with existing scan functionality",
+        "Should not interfere with normal development workflow"
+      ],
+      "request": "Implement ralph watch command that monitors the codebase and automatically suggests or creates tasks. Detect TODO/FIXME comments in modified files, suggest tasks for failing tests, and monitor for patterns that indicate work needed. Similar to cargo watch or jest --watch but focused on task creation. Helps capture work items that would otherwise be forgotten during development.",
+      "created_at": "2026-01-30T00:00:00Z",
+      "updated_at": "2026-01-30T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0428",
+      "status": "todo",
+      "title": "Add fuzzy search for tasks with improved discovery",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "ux",
+        "search",
+        "fuzzy"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/cli/",
+        "crates/ralph/src/main.rs"
+      ],
+      "evidence": [
+        "Current ralph queue search requires exact substring match",
+        "Users often forget exact task IDs or wording",
+        "Fuzzy search improves discoverability significantly",
+        "Modern tools (fzf, VS Code quick open) use fuzzy matching",
+        "Helps when task list grows large (100+ tasks)"
+      ],
+      "plan": [
+        "Research fuzzy matching libraries (nucleo, skim, or custom implementation)",
+        "Add --fuzzy flag to ralph queue search command",
+        "Implement fuzzy matching across: title, tags, scope, evidence, request fields",
+        "Add relevance scoring and sort results by match quality",
+        "Add ralph task find command as shorthand for fuzzy search",
+        "Integrate fuzzy search into TUI with '/' keybinding (enhance existing search)",
+        "Highlight matching characters in results",
+        "Support combined filters: fuzzy search + status + tag filters",
+        "Maintain backward compatibility with exact search as default",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Fuzzy search should be fast even with large task lists",
+        "Consider using existing nucleo matcher if already in dependency tree",
+        "TUI integration should feel natural and responsive"
+      ],
+      "request": "Add fuzzy search capability to ralph queue search for better task discovery. Current search requires exact substring matches, making it hard to find tasks when you don't remember exact wording. Fuzzy search should match across title, tags, scope, and description fields with relevance scoring. Add --fuzzy flag to search command and integrate into TUI search (enhance the '/' keybinding). This is essential for large task lists where exact matching becomes cumbersome.",
+      "created_at": "2026-01-30T00:01:00Z",
+      "updated_at": "2026-01-30T00:01:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0429",
+      "status": "todo",
+      "title": "Add session recovery and crash resilience for long-running loops",
+      "priority": "high",
+      "tags": [
+        "reliability",
+        "safety",
+        "state",
+        "crash-recovery"
+      ],
+      "scope": [
+        "crates/ralph/src/run_cmd.rs",
+        "crates/ralph/src/contracts.rs",
+        "crates/ralph/src/fsutil.rs"
+      ],
+      "evidence": [
+        "If Ralph crashes during a run loop, progress is lost",
+        "No way to resume interrupted multi-task sessions",
+        "User must manually track which tasks completed before crash",
+        "Critical for long-running loops (hours of work)",
+        "Modern expectation: Tools auto-save and recover state"
+      ],
+      "plan": [
+        "Add session state tracking: current_task_id, phase, completed_tasks, remaining_tasks",
+        "Write session state to .ralph/cache/session.json before each task",
+        "Update session state after each task completion",
+        "Add ralph run resume command to continue interrupted session",
+        "On startup, detect incomplete session and prompt to resume",
+        "Implement session timeout (sessions older than N hours require confirmation)",
+        "Add --resume flag to ralph run loop for explicit resume",
+        "Handle edge cases: task no longer exists, queue changed since crash",
+        "Clear session file on clean completion",
+        "Run 'make ci' to validate changes"
+      ],
+      "notes": [
+        "Session recovery should be resilient to queue modifications",
+        "Consider git state snapshot for advanced recovery",
+        "Should work with --max-tasks limit (count remaining from crash point)"
+      ],
+      "request": "Implement session recovery and crash resilience for ralph run loop. Currently, if Ralph crashes during a long-running loop, all progress is lost and the user must manually track which tasks completed. Add session state tracking that writes to .ralph/cache/session.json before each task, enabling ralph run resume command to continue from where the crash occurred. Prompt on startup if an incomplete session is detected. Critical for production use where loops may run for hours.",
+      "created_at": "2026-01-30T00:02:00Z",
+      "updated_at": "2026-01-30T00:02:00Z",
       "depends_on": [],
       "custom_fields": {}
     }

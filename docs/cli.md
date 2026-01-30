@@ -39,6 +39,7 @@ ralph --force queue archive
 * `ralph scan`: generate new tasks via scanning.
 * `ralph doctor`: verify environment readiness.
 * `ralph completions <shell>`: generate shell completion scripts.
+* `ralph version`: display version information.
 
 ## `ralph completions`
 
@@ -123,6 +124,24 @@ ralph completions zsh
 ralph completions fish
 ralph completions powershell
 ralph completions elvish
+```
+
+## `ralph version`
+
+Display the Ralph CLI version information.
+
+### Flags
+
+* `--verbose` (`-v`): Show extended build information including git commit and build date.
+
+### Examples
+
+```bash
+# Show version
+ralph version
+
+# Show extended version info
+ralph version --verbose
 ```
 
 ## `ralph init`

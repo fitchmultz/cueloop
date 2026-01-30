@@ -67,6 +67,7 @@ fn run() -> Result<()> {
         cli::Command::Prd(args) => cli::prd::handle_prd(args, cli.force),
         cli::Command::Completions(args) => cli::completions::handle_completions(args),
         cli::Command::Migrate(args) => cli::migrate::handle_migrate(args),
+        cli::Command::Version(args) => cli::version::handle_version(args),
     }
 }
 

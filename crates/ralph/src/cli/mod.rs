@@ -28,6 +28,7 @@ pub mod run;
 pub mod scan;
 pub mod task;
 pub mod tui;
+pub mod version;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -91,6 +92,9 @@ pub enum Command {
         after_long_help = "Examples:\n  ralph migrate              # Check for pending migrations\n  ralph migrate --check      # Exit with error code if migrations pending (CI)\n  ralph migrate --apply      # Apply all pending migrations\n  ralph migrate --list       # List all migrations and their status\n  ralph migrate status       # Show detailed migration status"
     )]
     Migrate(migrate::MigrateArgs),
+    /// Display version information.
+    #[command(after_long_help = "Examples:\n  ralph version\n  ralph version --verbose")]
+    Version(version::VersionArgs),
 }
 
 pub(crate) fn load_and_validate_queues(
