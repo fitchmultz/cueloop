@@ -45,7 +45,7 @@
         "runners.rs defines resume functions for all runners but CLI flags may not be correct for all (kimi confirmed broken)"
       ],
       "plan": [
-        "INVESTIGATE: Use debug commands to capture actual runner outputs and compare against parsing logic:",
+        "DO NOT REMOVE THIS. YOU ARE TO ACTUALLY CHECK THE OUTPUT OF EACH OF THE RUNNERS TO VALIDATE EVERYTHING RUNNER RELATED, INCLUDING COLOR: INVESTIGATE: Use debug commands to capture actual runner outputs and compare against parsing logic:",
         "  - kimi: kimi --print --output-format stream-json --verbose --prompt 'Say hello. Then connect to repo prompt and get the file tree. Then run a bash command to list files in this repo. then send I'm done now and exit' 2>&1 | tee /tmp/kimi-exec-verbose.log",
         "  - codex: codex exec --json 'Say hello. Then connect to repo prompt and get the file tree. Then run a bash command to list files in this repo. then send I'm done now and exit' 2>&1 | tee ./tmp/codex-exec.log",
         "  - Run equivalent commands for opencode, gemini, claude, cursor, pi to understand their output formats",
