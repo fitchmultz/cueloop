@@ -29,11 +29,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::debuglog::{self, DebugStream};
+use crate::outpututil;
 
 use super::super::{OutputHandler, OutputStream};
 use super::json::{extract_session_id_from_json, parse_json_line};
 
-const CODEX_REASONING_PREFIX: &str = "[Reasoning] ";
 const TOOL_VALUE_MAX_LEN: usize = 160;
 
 /// Maximum line length before truncation (10MB)
@@ -298,21 +298,18 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                                 "thinking" | "analysis" | "reasoning" => {
                                     if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
                                         if !text.is_empty() {
-                                            lines.push(format!(
-                                                "{}{}",
-                                                CODEX_REASONING_PREFIX, text
-                                            ));
+                                            lines.push(outpututil::format_reasoning(text));
                                         }
                                     }
                                 }
                                 "tool_use" => {
                                     if let Some(name) = item.get("name").and_then(|n| n.as_str()) {
-                                        let suffix = item
-                                            .get("input")
-                                            .and_then(format_tool_details)
-                                            .map(|details| format!(" {}", details))
-                                            .unwrap_or_default();
-                                        lines.push(format!("[Tool] {}{}", name, suffix));
+                                        let details =
+                                            item.get("input").and_then(format_tool_details);
+                                        lines.push(outpututil::format_tool_call(
+                                            name,
+                                            details.as_deref(),
+                                        ));
                                     }
                                 }
                                 _ => {}
@@ -338,7 +335,7 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                         "reasoning" => {
                             if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
                                 if !text.is_empty() {
-                                    lines.push(format!("{}{}", CODEX_REASONING_PREFIX, text));
+                                    lines.push(outpututil::format_reasoning(text));
                                 }
                             }
                         }
@@ -379,9 +376,7 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                     .and_then(|p| p.get("state"))
                     .and_then(|s| s.get("status"))
                     .and_then(|s| s.as_str());
-                let suffix = status
-                    .map(|value| format!(" ({value})"))
-                    .unwrap_or_default();
+                let status_suffix = status.map(|value| format!("({value})"));
                 let details = json
                     .get("part")
                     .and_then(|p| {
@@ -389,10 +384,14 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                             .and_then(|s| s.get("input"))
                             .or_else(|| p.get("input"))
                     })
-                    .and_then(format_tool_details)
-                    .map(|details| format!(" {}", details))
-                    .unwrap_or_default();
-                lines.push(format!("[Tool] {tool}{suffix}{details}"));
+                    .and_then(format_tool_details);
+                let full_details = match (status_suffix.as_deref(), details.as_deref()) {
+                    (None, None) => None,
+                    (None, Some(d)) => Some(d.to_string()),
+                    (Some(s), None) => Some(s.to_string()),
+                    (Some(s), Some(d)) => Some(format!("{} {}", s, d)),
+                };
+                lines.push(outpututil::format_tool_call(tool, full_details.as_deref()));
             }
         }
 
@@ -423,12 +422,8 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
 
         if event_type == "tool_use" {
             if let Some(tool) = json.get("tool_name").and_then(|t| t.as_str()) {
-                let details = json
-                    .get("parameters")
-                    .and_then(format_tool_details)
-                    .map(|details| format!(" {}", details))
-                    .unwrap_or_default();
-                lines.push(format!("[Tool] {tool}{details}"));
+                let details = json.get("parameters").and_then(format_tool_details);
+                lines.push(outpututil::format_tool_call(tool, details.as_deref()));
             }
         }
 
@@ -438,7 +433,10 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                     .get("status")
                     .and_then(|s| s.as_str())
                     .unwrap_or("completed");
-                lines.push(format!("[Tool] {tool} ({status})"));
+                lines.push(outpututil::format_tool_call(
+                    tool,
+                    Some(&format!("({status})")),
+                ));
             }
         }
     }
@@ -446,7 +444,7 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
     if let Some(denials) = json.get("permission_denials").and_then(|d| d.as_array()) {
         for denial in denials {
             if let Some(tool_name) = denial.get("tool_name").and_then(|t| t.as_str()) {
-                lines.push(format!("[Permission denied: {}]", tool_name));
+                lines.push(outpututil::format_permission_denied(tool_name));
             }
         }
     }
@@ -464,30 +462,35 @@ fn format_codex_tool_line(item: &JsonValue) -> Option<String> {
         (None, None) => return None,
     };
 
+    let status = item.get("status").and_then(|s| s.as_str());
+    let status_part = status.map(|s| format!("({})", s));
+
     let details = item
         .get("arguments")
         .or_else(|| item.get("args"))
         .or_else(|| item.get("input"))
-        .and_then(format_tool_details)
-        .map(|details| format!(" {}", details))
-        .unwrap_or_default();
-    Some(format!("[Tool] {}{}{}", name, status_suffix(item), details))
+        .and_then(format_tool_details);
+
+    let full_details = match (status_part, details) {
+        (None, None) => None,
+        (Some(s), None) => Some(s),
+        (None, Some(d)) => Some(d),
+        (Some(s), Some(d)) => Some(format!("{} {}", s, d)),
+    };
+
+    Some(outpututil::format_tool_call(&name, full_details.as_deref()))
 }
 
 fn format_codex_command_line(item: &JsonValue) -> Option<String> {
     let command = item.get("command").and_then(|c| c.as_str())?;
-    let mut suffix = status_suffix(item);
-    if let Some(exit_code) = item.get("exit_code").and_then(|code| code.as_i64()) {
-        suffix = format!("{} (exit {})", suffix.trim_end(), exit_code);
-    }
-    Some(format!("[Command] {}{}", command, suffix))
-}
-
-fn status_suffix(item: &JsonValue) -> String {
-    item.get("status")
-        .and_then(|s| s.as_str())
-        .map(|status| format!(" ({})", status))
-        .unwrap_or_default()
+    let status = item.get("status").and_then(|s| s.as_str());
+    let status_part = match (status, item.get("exit_code").and_then(|code| code.as_i64())) {
+        (Some(s), Some(exit)) => Some(format!("{} (exit {})", s, exit)),
+        (Some(s), None) => Some(s.to_string()),
+        (None, Some(exit)) => Some(format!("exit {}", exit)),
+        (None, None) => None,
+    };
+    Some(outpututil::format_command(command, status_part.as_deref()))
 }
 
 fn format_tool_details(input: &JsonValue) -> Option<String> {

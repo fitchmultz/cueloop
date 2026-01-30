@@ -32,6 +32,9 @@ fn run() -> Result<()> {
     let args = normalize_repo_prompt_args(std::env::args_os());
     let cli = cli::Cli::parse_from(args);
 
+    // Initialize color output settings early, before any colored output
+    cli::color::init_color(cli.color, cli.no_color);
+
     let mut builder = env_logger::Builder::from_default_env();
     if suppress_terminal_logs(&cli.command) {
         builder.target(env_logger::Target::Pipe(Box::new(std::io::sink())));
@@ -62,7 +65,7 @@ fn run() -> Result<()> {
         cli::Command::Init(args) => cli::init::handle_init(args, cli.force),
         cli::Command::Prompt(args) => cli::prompt::handle_prompt(args),
         cli::Command::Doctor => cli::doctor::handle_doctor(),
-        cli::Command::Tui(args) => cli::tui::handle_tui(args, cli.force),
+        cli::Command::Tui(args) => cli::tui::handle_tui(args, cli.color, cli.force),
         cli::Command::Context(args) => cli::context::handle_context(args),
         cli::Command::Prd(args) => cli::prd::handle_prd(args, cli.force),
         cli::Command::Completions(args) => cli::completions::handle_completions(args),
@@ -128,7 +131,6 @@ mod tests {
         let cmd = cli::Command::Tui(cli::tui::TuiArgs {
             read_only: false,
             no_mouse: false,
-            color: cli::tui::ColorArg::Auto,
             ascii_borders: false,
             agent: ralph::agent::RunAgentArgs::default(),
         });

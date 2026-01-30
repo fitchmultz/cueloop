@@ -12,6 +12,7 @@
 //! - Callers clamp input widths before rendering to avoid zero-width layouts.
 
 use crate::contracts::{TaskPriority, TaskStatus};
+use crate::output::theme::tui as theme_colors;
 use crate::outpututil::truncate_chars;
 use ratatui::{style::Color, text::Span};
 
@@ -120,4 +121,43 @@ pub(super) fn span_width(span: &Span<'static>) -> usize {
 fn truncate_span(span: &Span<'static>, max_width: usize) -> Span<'static> {
     let truncated = truncate_chars(span.content.as_ref(), max_width);
     Span::styled(truncated, span.style)
+}
+
+// Runner output colors for TUI
+// These are available for future TUI enhancements to colorize runner output
+
+/// Get the color for agent reasoning/thinking blocks
+#[allow(dead_code)]
+pub(super) fn reasoning_color() -> Color {
+    theme_colors::reasoning()
+}
+
+/// Get the color for tool calls
+#[allow(dead_code)]
+pub(super) fn tool_call_color() -> Color {
+    theme_colors::tool_call()
+}
+
+/// Get the color for successful tool results
+#[allow(dead_code)]
+pub(super) fn tool_result_success_color() -> Color {
+    theme_colors::tool_result_success()
+}
+
+/// Get the color for failed tool results
+#[allow(dead_code)]
+pub(super) fn tool_result_error_color() -> Color {
+    theme_colors::tool_result_error()
+}
+
+/// Get the color for command execution
+#[allow(dead_code)]
+pub(super) fn command_color() -> Color {
+    theme_colors::command()
+}
+
+/// Get the color for supervisor/system messages
+#[allow(dead_code)]
+pub(super) fn supervisor_color() -> Color {
+    theme_colors::supervisor()
 }

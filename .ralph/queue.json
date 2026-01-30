@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0405",
-      "status": "todo",
-      "title": "Add color support to CLI and TUI for enhanced user experience",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "cli",
-        "ux",
-        "colors"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/",
-        "crates/ralph/src/cli/",
-        "crates/ralph/src/output/",
-        "Cargo.toml"
-      ],
-      "evidence": [
-        "User request: 'we should be using colors in the CLI and TUI whenever possible'",
-        "User context: Colors should guide users to important information during long 'ralph run loop' tasks",
-        "User context: Current output can be bland white text in black box",
-        "User suggestion: Color-code agent reasoning/thinking blocks, tool calls, supervisor calls",
-        "User constraint: Don't colorize everything like a preschool art class - find balance"
-      ],
-      "plan": [
-        "Audit current CLI output for opportunities to add semantic coloring",
-        "Audit TUI rendering for color enhancement opportunities",
-        "Design color palette: success (green), error (red), warning (yellow), info (blue), emphasis (cyan/magenta)",
-        "Add color support for agent reasoning/thinking blocks (subtle gray/blue)",
-        "Add color support for tool calls (distinct color like cyan)",
-        "Add color support for supervisor/system messages (distinct color like magenta)",
-        "Add color support for task status indicators (todo/doing/done)",
-        "Add --no-color flag and NO_COLOR env var support for accessibility",
-        "Ensure colors work well on both light and dark terminal backgrounds",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [],
-      "request": "we should be using colors in the CLI and TUI whenever possible to enhance the user experience. Users should be guided by colors, especially but not limited to when long 'ralph run loop' tasks are ongoing, so they can focus on the important information and not get clouded by verbosity. I think the verbosity is good right now but can sometimes be bland when a user runs 'ralph run loop' and sees nothing but white text inside a black box. Maybe we look to color code agent reasoning/thinking blocks, tool calls, supervisor calls, etc? We dont have to colorize everything to make it look like a preschool art class but a nice balance might be beneficial for user expereince.",
-      "created_at": "2026-01-29T19:50:00Z",
-      "updated_at": "2026-01-29T19:50:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0396",
       "status": "todo",
       "title": "Unify CLI argument patterns: make 'ralph scan' accept positional prompt like 'ralph task'",

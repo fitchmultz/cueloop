@@ -39,6 +39,7 @@ pub mod gitutil;
 pub mod jsonc;
 pub mod lock;
 pub mod notification;
+pub mod output;
 pub mod outpututil;
 pub mod promptflow;
 pub mod prompts;

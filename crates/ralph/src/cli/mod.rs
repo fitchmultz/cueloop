@@ -14,6 +14,7 @@
 //! - Subcommands validate their own inputs and config dependencies.
 //! - CLI parsing happens after argument normalization in `main`.
 
+pub mod color;
 pub mod completions;
 pub mod config;
 pub mod context;
@@ -35,6 +36,8 @@ use clap::{Parser, Subcommand};
 
 use crate::contracts::QueueFile;
 
+pub use color::ColorArg;
+
 #[derive(Parser)]
 #[command(name = "ralph")]
 #[command(about = "Ralph")]
@@ -52,6 +55,15 @@ pub struct Cli {
     /// Increase output verbosity (sets log level to info).
     #[arg(short, long, global = true)]
     pub verbose: bool,
+
+    /// Color output control.
+    #[arg(long, value_enum, default_value = "auto", global = true)]
+    pub color: ColorArg,
+
+    /// Disable colored output (alias for `--color never`).
+    /// Also respects the NO_COLOR environment variable.
+    #[arg(long, global = true)]
+    pub no_color: bool,
 }
 
 #[derive(Subcommand)]

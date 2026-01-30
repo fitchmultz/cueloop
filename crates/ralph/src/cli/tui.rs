@@ -12,25 +12,15 @@
 //! Invariants/assumptions:
 //! - Configuration is resolved from the current working directory.
 //! - RepoPrompt mode selection (if any) is already normalized.
+//! - Color option is passed from the global CLI flag.
 
 use anyhow::{anyhow, Result};
-use clap::{Args, ValueEnum};
+use clap::Args;
 
+use crate::cli::color::ColorArg;
 use crate::cli::interactive;
 use crate::tui::terminal::ColorOption;
 use crate::{agent, config, runner, runutil, tui};
-
-/// Color output control options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
-pub enum ColorArg {
-    /// Auto-detect based on terminal capabilities.
-    #[default]
-    Auto,
-    /// Always use colors.
-    Always,
-    /// Never use colors.
-    Never,
-}
 
 impl From<ColorArg> for ColorOption {
     fn from(arg: ColorArg) -> Self {
@@ -58,7 +48,6 @@ Examples:\n\
  ralph tui --runner claude --model opus\n\
  ralph tui --runner opencode --model gpt-5.2\n\
  ralph tui --no-mouse\n\
- ralph tui --color never\n\
  ralph tui --ascii-borders\n"
 )]
 pub struct TuiArgs {
@@ -70,10 +59,6 @@ pub struct TuiArgs {
     #[arg(long)]
     pub no_mouse: bool,
 
-    /// Color output control.
-    #[arg(long, value_enum, default_value = "auto")]
-    pub color: ColorArg,
-
     /// Use ASCII borders instead of Unicode box-drawing.
     #[arg(long)]
     pub ascii_borders: bool,
@@ -82,13 +67,13 @@ pub struct TuiArgs {
     pub agent: crate::agent::RunAgentArgs,
 }
 
-pub fn handle_tui(args: TuiArgs, force_lock: bool) -> Result<()> {
+pub fn handle_tui(args: TuiArgs, color: ColorArg, force_lock: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
 
     // Build TUI options from CLI arguments.
     let options = tui::TuiOptions {
         no_mouse: args.no_mouse,
-        color: args.color.into(),
+        color: color.into(),
         ascii_borders: args.ascii_borders,
         ..tui::TuiOptions::default()
     };

@@ -19,11 +19,18 @@ For Windows users, we recommend using WSL2 for full functionality.
 ## Global Flags
 - `--force`: force operations (bypass stale queue locks; bypass clean-repo safety checks for commands that enforce them, e.g. `run one`, `run loop`, and `scan`).
 - `-v`, `--verbose`: increase output verbosity.
+- `--color <auto|always|never>`: control color output (default: `auto`).
+- `--no-color`: disable colored output (alias for `--color never`).
+
+Color output is automatically enabled when stdout is a TTY and disabled when piped or redirected. The `NO_COLOR` environment variable is also respected.
 
 Examples:
 ```bash
 ralph --verbose queue list
 ralph --force queue archive
+ralph --color never queue list
+ralph --no-color queue list
+NO_COLOR=1 ralph queue list
 ```
 
 ## Core Commands
