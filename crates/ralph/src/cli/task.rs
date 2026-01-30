@@ -47,36 +47,119 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             let status: TaskStatus = args.status.into();
 
             match status {
-                TaskStatus::Done => complete_task_or_signal(
-                    &resolved,
-                    &args.task_id,
-                    TaskStatus::Done,
-                    &[],
-                    force,
-                    "task done",
-                ),
-                TaskStatus::Rejected => complete_task_or_signal(
-                    &resolved,
-                    &args.task_id,
-                    TaskStatus::Rejected,
-                    &[],
-                    force,
-                    "task reject",
-                ),
+                TaskStatus::Done | TaskStatus::Rejected => {
+                    // For terminal statuses, we need to handle each task individually
+                    // because complete_task involves moving tasks to done.json
+                    let _queue_lock =
+                        queue::acquire_queue_lock(&resolved.repo_root, "task status", force)?;
+                    let queue_file = queue::load_queue(&resolved.queue_path)?;
+                    let now = timeutil::now_utc_rfc3339()?;
+                    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+
+                    // Resolve task IDs from explicit list or tag filter
+                    let task_ids = queue::operations::resolve_task_ids(
+                        &queue_file,
+                        &args.task_ids,
+                        &args.tag_filter,
+                    )?;
+
+                    if task_ids.is_empty() {
+                        bail!("No tasks specified. Provide task IDs or use --tag-filter.");
+                    }
+
+                    let mut results = Vec::new();
+                    let mut succeeded = 0;
+                    let mut failed = 0;
+
+                    for task_id in &task_ids {
+                        match queue::complete_task(
+                            &resolved.queue_path,
+                            &resolved.done_path,
+                            task_id,
+                            status,
+                            &now,
+                            args.note
+                                .as_deref()
+                                .map(|n| vec![n.to_string()])
+                                .as_deref()
+                                .unwrap_or(&[]),
+                            &resolved.id_prefix,
+                            resolved.id_width,
+                            max_depth,
+                        ) {
+                            Ok(()) => {
+                                results.push((task_id.clone(), true, None));
+                                succeeded += 1;
+                            }
+                            Err(e) => {
+                                results.push((task_id.clone(), false, Some(e.to_string())));
+                                failed += 1;
+                            }
+                        }
+                    }
+
+                    // Print results
+                    if failed > 0 {
+                        println!("Completed with errors:");
+                        for (task_id, success, error) in &results {
+                            if *success {
+                                println!("  ✓ {}: {} and archived", task_id, status);
+                            } else {
+                                println!(
+                                    "  ✗ {}: failed - {}",
+                                    task_id,
+                                    error.as_deref().unwrap_or("unknown error")
+                                );
+                            }
+                        }
+                        println!(
+                            "Completed: {}/{} tasks {} successfully.",
+                            succeeded,
+                            task_ids.len(),
+                            status
+                        );
+                    } else {
+                        println!("Successfully marked {} tasks as {}:", succeeded, status);
+                        for (task_id, _, _) in &results {
+                            println!("  ✓ {}", task_id);
+                        }
+                    }
+
+                    Ok(())
+                }
                 TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing => {
                     let _queue_lock =
                         queue::acquire_queue_lock(&resolved.repo_root, "task status", force)?;
                     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
                     let now = timeutil::now_utc_rfc3339()?;
-                    queue::set_status(
+
+                    // Resolve task IDs from explicit list or tag filter
+                    let task_ids = queue::operations::resolve_task_ids(
+                        &queue_file,
+                        &args.task_ids,
+                        &args.tag_filter,
+                    )?;
+
+                    if task_ids.is_empty() {
+                        bail!("No tasks specified. Provide task IDs or use --tag-filter.");
+                    }
+
+                    let result = queue::operations::batch_set_status(
                         &mut queue_file,
-                        &args.task_id,
+                        &task_ids,
                         status,
                         &now,
                         args.note.as_deref(),
+                        false, // continue_on_error - default to atomic for CLI
                     )?;
+
                     queue::save_queue(&resolved.queue_path, &queue_file)?;
-                    log::info!("Updated task {} to status {}.", args.task_id, status);
+                    queue::operations::print_batch_results(
+                        &result,
+                        &format!("Status update to {}", status),
+                        false,
+                    );
+
                     Ok(())
                 }
             }
@@ -104,9 +187,31 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task field", force)?;
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
             let now = timeutil::now_utc_rfc3339()?;
-            queue::set_field(&mut queue_file, &args.task_id, &args.key, &args.value, &now)?;
+
+            // Resolve task IDs from explicit list or tag filter
+            let task_ids =
+                queue::operations::resolve_task_ids(&queue_file, &args.task_ids, &args.tag_filter)?;
+
+            if task_ids.is_empty() {
+                bail!("No tasks specified. Provide task IDs or use --tag-filter.");
+            }
+
+            let result = queue::operations::batch_set_field(
+                &mut queue_file,
+                &task_ids,
+                &args.key,
+                &args.value,
+                &now,
+                false, // continue_on_error - default to atomic for CLI
+            )?;
+
             queue::save_queue(&resolved.queue_path, &queue_file)?;
-            log::info!("Set field '{}' on task {}.", args.key, args.task_id);
+            queue::operations::print_batch_results(
+                &result,
+                &format!("Field set '{}' = '{}'", args.key, args.value),
+                false,
+            );
+
             Ok(())
         }
 
@@ -121,52 +226,68 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             let now = timeutil::now_utc_rfc3339()?;
             let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
 
+            // Resolve task IDs from explicit list or tag filter
+            let task_ids =
+                queue::operations::resolve_task_ids(&queue_file, &args.task_ids, &args.tag_filter)?;
+
+            if task_ids.is_empty() {
+                bail!("No tasks specified. Provide task IDs or use --tag-filter.");
+            }
+
             if args.dry_run {
                 // Preview mode: show diff without saving
-                let preview = queue::preview_task_edit(
-                    &queue_file,
-                    done_ref,
-                    &args.task_id,
-                    args.field.into(),
-                    &args.value,
-                    &now,
-                    &resolved.id_prefix,
-                    resolved.id_width,
-                    max_depth,
-                )?;
-                println!("Dry run - would update task {}:", preview.task_id);
-                println!("  Field: {}", preview.field);
-                println!("  Old: {}", preview.old_value);
-                println!("  New: {}", preview.new_value);
-                if !preview.warnings.is_empty() {
-                    println!("  Warnings:");
-                    for warning in &preview.warnings {
-                        println!("    - [{}] {}", warning.task_id, warning.message);
+                println!("Dry run - would update {} tasks:", task_ids.len());
+                for task_id in &task_ids {
+                    let preview = queue::preview_task_edit(
+                        &queue_file,
+                        done_ref,
+                        task_id,
+                        args.field.into(),
+                        &args.value,
+                        &now,
+                        &resolved.id_prefix,
+                        resolved.id_width,
+                        max_depth,
+                    )?;
+                    println!("  {}:", preview.task_id);
+                    println!("    Field: {}", preview.field);
+                    println!("    Old: {}", preview.old_value);
+                    println!("    New: {}", preview.new_value);
+                    if !preview.warnings.is_empty() {
+                        println!("    Warnings:");
+                        for warning in &preview.warnings {
+                            println!("      - [{}] {}", warning.task_id, warning.message);
+                        }
                     }
                 }
+                println!("\nDry run complete. No changes made.");
                 return Ok(());
             }
 
             // Normal mode: acquire lock and apply
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task edit", force)?;
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-            queue::apply_task_edit(
+
+            let result = queue::operations::batch_apply_edit(
                 &mut queue_file,
                 done_ref,
-                &args.task_id,
+                &task_ids,
                 args.field.into(),
                 &args.value,
                 &now,
                 &resolved.id_prefix,
                 resolved.id_width,
                 max_depth,
+                false, // continue_on_error - default to atomic for CLI
             )?;
+
             queue::save_queue(&resolved.queue_path, &queue_file)?;
-            log::info!(
-                "Updated task {} field {}.",
-                args.task_id,
-                args.field.as_str()
+            queue::operations::print_batch_results(
+                &result,
+                &format!("Edit field '{}'", args.field.as_str()),
+                false,
             );
+
             Ok(())
         }
 
@@ -354,6 +475,8 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
             Ok(())
         }
 
+        Some(TaskCommand::Batch(args)) => handle_batch_command(&resolved, args, force),
+
         None => {
             let args = args.build;
             let request = task_cmd::read_request_from_args_or_stdin(&args.request)?;
@@ -526,6 +649,277 @@ fn complete_task_or_signal(
     Ok(())
 }
 
+/// Handle batch task operations.
+fn handle_batch_command(
+    resolved: &config::Resolved,
+    args: TaskBatchArgs,
+    force: bool,
+) -> Result<()> {
+    let queue_file = queue::load_queue(&resolved.queue_path)?;
+    let done_file = queue::load_queue_or_default(&resolved.done_path)?;
+    let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
+        None
+    } else {
+        Some(&done_file)
+    };
+    let now = timeutil::now_utc_rfc3339()?;
+    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+
+    match args.operation {
+        BatchOperation::Status(status_args) => {
+            let status: TaskStatus = status_args.status.into();
+
+            // Resolve task IDs from explicit list or tag filter
+            let task_ids = queue::operations::resolve_task_ids(
+                &queue_file,
+                &status_args.task_ids,
+                &status_args.tag_filter,
+            )?;
+
+            if task_ids.is_empty() {
+                bail!("No tasks specified. Provide task IDs or use --tag-filter.");
+            }
+
+            // For terminal statuses, use complete_task for each task
+            match status {
+                TaskStatus::Done | TaskStatus::Rejected => {
+                    if args.dry_run {
+                        println!(
+                            "Dry run - would mark {} tasks as {} and archive them:",
+                            task_ids.len(),
+                            status
+                        );
+                        for task_id in &task_ids {
+                            println!("  - {}", task_id);
+                        }
+                        println!("\nDry run complete. No changes made.");
+                        return Ok(());
+                    }
+
+                    let _queue_lock =
+                        queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+                    let mut results = Vec::new();
+                    let mut succeeded = 0;
+                    let mut failed = 0;
+
+                    for task_id in &task_ids {
+                        match queue::complete_task(
+                            &resolved.queue_path,
+                            &resolved.done_path,
+                            task_id,
+                            status,
+                            &now,
+                            status_args
+                                .note
+                                .as_deref()
+                                .map(|n| vec![n.to_string()])
+                                .as_deref()
+                                .unwrap_or(&[]),
+                            &resolved.id_prefix,
+                            resolved.id_width,
+                            max_depth,
+                        ) {
+                            Ok(()) => {
+                                results.push((task_id.clone(), true, None));
+                                succeeded += 1;
+                            }
+                            Err(e) => {
+                                let err_msg = e.to_string();
+                                results.push((task_id.clone(), false, Some(err_msg.clone())));
+                                failed += 1;
+
+                                if !args.continue_on_error {
+                                    bail!(
+                                        "Batch operation failed at task {}: {}. Use --continue-on-error to process remaining tasks.",
+                                        task_id,
+                                        err_msg
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // Print results
+                    if failed > 0 {
+                        println!("Completed with errors:");
+                        for (task_id, success, error) in &results {
+                            if *success {
+                                println!("  ✓ {}: {} and archived", task_id, status);
+                            } else {
+                                println!(
+                                    "  ✗ {}: failed - {}",
+                                    task_id,
+                                    error.as_deref().unwrap_or("unknown error")
+                                );
+                            }
+                        }
+                        println!(
+                            "Completed: {}/{} tasks {} successfully.",
+                            succeeded,
+                            task_ids.len(),
+                            status
+                        );
+                    } else {
+                        println!("Successfully marked {} tasks as {}:", succeeded, status);
+                        for (task_id, _, _) in &results {
+                            println!("  ✓ {}", task_id);
+                        }
+                    }
+
+                    Ok(())
+                }
+                TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing => {
+                    if args.dry_run {
+                        println!(
+                            "Dry run - would update {} tasks to status '{}':",
+                            task_ids.len(),
+                            status
+                        );
+                        for task_id in &task_ids {
+                            println!("  - {}", task_id);
+                        }
+                        println!("\nDry run complete. No changes made.");
+                        return Ok(());
+                    }
+
+                    let _queue_lock =
+                        queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+                    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+
+                    let result = queue::operations::batch_set_status(
+                        &mut queue_file,
+                        &task_ids,
+                        status,
+                        &now,
+                        status_args.note.as_deref(),
+                        args.continue_on_error,
+                    )?;
+
+                    queue::save_queue(&resolved.queue_path, &queue_file)?;
+                    queue::operations::print_batch_results(
+                        &result,
+                        &format!("Status update to {}", status),
+                        false,
+                    );
+
+                    Ok(())
+                }
+            }
+        }
+        BatchOperation::Field(field_args) => {
+            // Resolve task IDs from explicit list or tag filter
+            let task_ids = queue::operations::resolve_task_ids(
+                &queue_file,
+                &field_args.task_ids,
+                &field_args.tag_filter,
+            )?;
+
+            if task_ids.is_empty() {
+                bail!("No tasks specified. Provide task IDs or use --tag-filter.");
+            }
+
+            if args.dry_run {
+                println!(
+                    "Dry run - would set field '{}' = '{}' on {} tasks:",
+                    field_args.key,
+                    field_args.value,
+                    task_ids.len()
+                );
+                for task_id in &task_ids {
+                    println!("  - {}", task_id);
+                }
+                println!("\nDry run complete. No changes made.");
+                return Ok(());
+            }
+
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+
+            let result = queue::operations::batch_set_field(
+                &mut queue_file,
+                &task_ids,
+                &field_args.key,
+                &field_args.value,
+                &now,
+                args.continue_on_error,
+            )?;
+
+            queue::save_queue(&resolved.queue_path, &queue_file)?;
+            queue::operations::print_batch_results(
+                &result,
+                &format!("Field set '{}' = '{}'", field_args.key, field_args.value),
+                false,
+            );
+
+            Ok(())
+        }
+        BatchOperation::Edit(edit_args) => {
+            // Resolve task IDs from explicit list or tag filter
+            let task_ids = queue::operations::resolve_task_ids(
+                &queue_file,
+                &edit_args.task_ids,
+                &edit_args.tag_filter,
+            )?;
+
+            if task_ids.is_empty() {
+                bail!("No tasks specified. Provide task IDs or use --tag-filter.");
+            }
+
+            if args.dry_run {
+                println!(
+                    "Dry run - would edit field '{}' to '{}' on {} tasks:",
+                    edit_args.field.as_str(),
+                    edit_args.value,
+                    task_ids.len()
+                );
+                for task_id in &task_ids {
+                    let preview = queue::preview_task_edit(
+                        &queue_file,
+                        done_ref,
+                        task_id,
+                        edit_args.field.into(),
+                        &edit_args.value,
+                        &now,
+                        &resolved.id_prefix,
+                        resolved.id_width,
+                        max_depth,
+                    )?;
+                    println!("  {}:", preview.task_id);
+                    println!("    Old: {}", preview.old_value);
+                    println!("    New: {}", preview.new_value);
+                }
+                println!("\nDry run complete. No changes made.");
+                return Ok(());
+            }
+
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+
+            let result = queue::operations::batch_apply_edit(
+                &mut queue_file,
+                done_ref,
+                &task_ids,
+                edit_args.field.into(),
+                &edit_args.value,
+                &now,
+                &resolved.id_prefix,
+                resolved.id_width,
+                max_depth,
+                args.continue_on_error,
+            )?;
+
+            queue::save_queue(&resolved.queue_path, &queue_file)?;
+            queue::operations::print_batch_results(
+                &result,
+                &format!("Edit field '{}'", edit_args.field.as_str()),
+                false,
+            );
+
+            Ok(())
+        }
+    }
+}
+
 #[derive(Args)]
 #[command(
     about = "Create and build tasks from freeform requests",
@@ -626,6 +1020,12 @@ pub enum TaskCommand {
         after_long_help = "Examples:\n ralph task clone RQ-0001\n ralph task clone RQ-0001 --status todo\n ralph task clone RQ-0001 --title-prefix \"[Follow-up] \"\n ralph task clone RQ-0001 --dry-run\n ralph task duplicate RQ-0001"
     )]
     Clone(TaskCloneArgs),
+
+    /// Perform batch operations on multiple tasks efficiently.
+    #[command(
+        after_long_help = "Examples:\n ralph task batch status doing RQ-0001 RQ-0002 RQ-0003\n ralph task batch status done --tag-filter ready\n ralph task batch field priority high --tag-filter urgent\n ralph task batch edit tags \"reviewed\" --tag-filter rust\n ralph task batch --dry-run status doing --tag-filter cli\n ralph task batch --continue-on-error status doing RQ-0001 RQ-0002 RQ-9999"
+    )]
+    Batch(TaskBatchArgs),
 }
 
 #[derive(Args)]
@@ -802,9 +1202,13 @@ pub struct TaskStatusArgs {
     #[arg(value_enum)]
     pub status: TaskStatusArg,
 
-    /// Task ID to update.
-    #[arg(value_name = "TASK_ID")]
-    pub task_id: String,
+    /// Task ID(s) to update.
+    #[arg(value_name = "TASK_ID...")]
+    pub task_ids: Vec<String>,
+
+    /// Filter tasks by tag for batch operation (alternative to explicit IDs).
+    #[arg(long, value_name = "TAG")]
+    pub tag_filter: Vec<String>,
 }
 
 #[derive(Args)]
@@ -837,9 +1241,13 @@ pub struct TaskFieldArgs {
     /// Custom field value.
     pub value: String,
 
-    /// Task ID to update.
-    #[arg(value_name = "TASK_ID")]
-    pub task_id: String,
+    /// Task ID(s) to update.
+    #[arg(value_name = "TASK_ID...")]
+    pub task_ids: Vec<String>,
+
+    /// Filter tasks by tag for batch operation (alternative to explicit IDs).
+    #[arg(long, value_name = "TAG")]
+    pub tag_filter: Vec<String>,
 }
 
 #[derive(Args)]
@@ -861,6 +1269,90 @@ pub struct TaskCloneArgs {
     pub dry_run: bool,
 }
 
+/// Batch operation type.
+#[derive(Subcommand)]
+pub enum BatchOperation {
+    /// Update status for multiple tasks.
+    Status(BatchStatusArgs),
+    /// Set a custom field on multiple tasks.
+    Field(BatchFieldArgs),
+    /// Edit any field on multiple tasks.
+    Edit(BatchEditArgs),
+}
+
+/// Arguments for batch status operation.
+#[derive(Args)]
+pub struct BatchStatusArgs {
+    /// New status.
+    #[arg(value_enum)]
+    pub status: TaskStatusArg,
+
+    /// Optional note to append to all affected tasks.
+    #[arg(long)]
+    pub note: Option<String>,
+
+    /// Task IDs to update (mutually exclusive with --tag-filter).
+    #[arg(value_name = "TASK_ID...")]
+    pub task_ids: Vec<String>,
+
+    /// Filter tasks by tag (case-insensitive, repeatable).
+    #[arg(long, value_name = "TAG")]
+    pub tag_filter: Vec<String>,
+}
+
+/// Arguments for batch field operation.
+#[derive(Args)]
+pub struct BatchFieldArgs {
+    /// Custom field key.
+    pub key: String,
+
+    /// Custom field value.
+    pub value: String,
+
+    /// Task IDs to update (mutually exclusive with --tag-filter).
+    #[arg(value_name = "TASK_ID...")]
+    pub task_ids: Vec<String>,
+
+    /// Filter tasks by tag (case-insensitive, repeatable).
+    #[arg(long, value_name = "TAG")]
+    pub tag_filter: Vec<String>,
+}
+
+/// Arguments for batch edit operation.
+#[derive(Args)]
+pub struct BatchEditArgs {
+    /// Task field to update.
+    #[arg(value_enum)]
+    pub field: TaskEditFieldArg,
+
+    /// New field value.
+    pub value: String,
+
+    /// Task IDs to update (mutually exclusive with --tag-filter).
+    #[arg(value_name = "TASK_ID...")]
+    pub task_ids: Vec<String>,
+
+    /// Filter tasks by tag (case-insensitive, repeatable).
+    #[arg(long, value_name = "TAG")]
+    pub tag_filter: Vec<String>,
+}
+
+/// Arguments for the batch command.
+#[derive(Args)]
+pub struct TaskBatchArgs {
+    /// Batch operation type.
+    #[command(subcommand)]
+    pub operation: BatchOperation,
+
+    /// Preview changes without modifying the queue.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Continue on individual task failures (default: atomic/all-or-nothing).
+    #[arg(long)]
+    pub continue_on_error: bool,
+}
+
 #[derive(Args)]
 pub struct TaskEditArgs {
     /// Task field to update.
@@ -870,9 +1362,13 @@ pub struct TaskEditArgs {
     /// New field value (empty string clears optional fields).
     pub value: String,
 
-    /// Task ID to update.
-    #[arg(value_name = "TASK_ID")]
-    pub task_id: String,
+    /// Task ID(s) to update.
+    #[arg(value_name = "TASK_ID...")]
+    pub task_ids: Vec<String>,
+
+    /// Filter tasks by tag for batch operation (alternative to explicit IDs).
+    #[arg(long, value_name = "TAG")]
+    pub tag_filter: Vec<String>,
 
     /// Preview changes without modifying the queue.
     #[arg(long)]
@@ -919,7 +1415,7 @@ pub struct TaskUpdateArgs {
     pub dry_run: bool,
 }
 
-#[derive(ValueEnum, Clone, Copy, Debug)]
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq)]
 #[clap(rename_all = "snake_case")]
 pub enum TaskEditFieldArg {
     Title,
@@ -1150,7 +1646,7 @@ mod tests {
     use clap::{CommandFactory, Parser};
 
     use crate::cli::queue::QueueShowFormat;
-    use crate::cli::task::TaskStatusArg;
+    use crate::cli::task::{TaskEditFieldArg, TaskStatusArg};
     use crate::cli::Cli;
 
     #[test]
@@ -1336,7 +1832,7 @@ mod tests {
             crate::cli::Command::Task(args) => match args.command {
                 Some(crate::cli::task::TaskCommand::Edit(args)) => {
                     assert!(args.dry_run);
-                    assert_eq!(args.task_id, "RQ-0001");
+                    assert_eq!(args.task_ids, vec!["RQ-0001"]);
                     assert_eq!(args.value, "New title");
                 }
                 _ => panic!("expected task edit command"),
@@ -1544,5 +2040,254 @@ mod tests {
             help.contains("ralph task duplicate"),
             "missing duplicate alias example: {help}"
         );
+    }
+
+    #[test]
+    fn task_batch_status_parses_multiple_ids() {
+        let cli = Cli::try_parse_from([
+            "ralph", "task", "batch", "status", "doing", "RQ-0001", "RQ-0002", "RQ-0003",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Batch(args)) => match args.operation {
+                    crate::cli::task::BatchOperation::Status(status_args) => {
+                        assert_eq!(status_args.status, TaskStatusArg::Doing);
+                        assert_eq!(status_args.task_ids, vec!["RQ-0001", "RQ-0002", "RQ-0003"]);
+                        assert!(!args.dry_run);
+                        assert!(!args.continue_on_error);
+                    }
+                    _ => panic!("expected batch status operation"),
+                },
+                _ => panic!("expected task batch command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_batch_status_parses_tag_filter() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "task",
+            "batch",
+            "status",
+            "doing",
+            "--tag-filter",
+            "rust",
+            "--tag-filter",
+            "cli",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Batch(args)) => match args.operation {
+                    crate::cli::task::BatchOperation::Status(status_args) => {
+                        assert_eq!(status_args.status, TaskStatusArg::Doing);
+                        assert!(status_args.task_ids.is_empty());
+                        assert_eq!(status_args.tag_filter, vec!["rust", "cli"]);
+                    }
+                    _ => panic!("expected batch status operation"),
+                },
+                _ => panic!("expected task batch command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_batch_field_parses_multiple_ids() {
+        let cli = Cli::try_parse_from([
+            "ralph", "task", "batch", "field", "severity", "high", "RQ-0001", "RQ-0002",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Batch(args)) => match args.operation {
+                    crate::cli::task::BatchOperation::Field(field_args) => {
+                        assert_eq!(field_args.key, "severity");
+                        assert_eq!(field_args.value, "high");
+                        assert_eq!(field_args.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                    }
+                    _ => panic!("expected batch field operation"),
+                },
+                _ => panic!("expected task batch command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_batch_edit_parses_dry_run() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "task",
+            "batch",
+            "--dry-run",
+            "edit",
+            "priority",
+            "high",
+            "RQ-0001",
+            "RQ-0002",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Batch(args)) => {
+                    assert!(args.dry_run);
+                    assert!(!args.continue_on_error);
+                    match args.operation {
+                        crate::cli::task::BatchOperation::Edit(edit_args) => {
+                            assert_eq!(edit_args.field, TaskEditFieldArg::Priority);
+                            assert_eq!(edit_args.value, "high");
+                            assert_eq!(edit_args.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                        }
+                        _ => panic!("expected batch edit operation"),
+                    }
+                }
+                _ => panic!("expected task batch command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_batch_parses_continue_on_error() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "task",
+            "batch",
+            "--continue-on-error",
+            "status",
+            "doing",
+            "RQ-0001",
+            "RQ-0002",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Batch(args)) => {
+                    assert!(!args.dry_run);
+                    assert!(args.continue_on_error);
+                    match args.operation {
+                        crate::cli::task::BatchOperation::Status(status_args) => {
+                            assert_eq!(status_args.status, TaskStatusArg::Doing);
+                        }
+                        _ => panic!("expected batch status operation"),
+                    }
+                }
+                _ => panic!("expected task batch command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_batch_help_mentions_examples() {
+        let mut cmd = Cli::command();
+        let task = cmd.find_subcommand_mut("task").expect("task subcommand");
+        let batch = task
+            .find_subcommand_mut("batch")
+            .expect("task batch subcommand");
+        let help = batch.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph task batch status doing"),
+            "missing batch status example: {help}"
+        );
+        assert!(
+            help.contains("--tag-filter"),
+            "missing --tag-filter example: {help}"
+        );
+        assert!(
+            help.contains("--dry-run"),
+            "missing --dry-run example: {help}"
+        );
+        assert!(
+            help.contains("--continue-on-error"),
+            "missing --continue-on-error example: {help}"
+        );
+    }
+
+    #[test]
+    fn task_status_parses_multiple_ids() {
+        let cli = Cli::try_parse_from([
+            "ralph", "task", "status", "doing", "RQ-0001", "RQ-0002", "RQ-0003",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Status(args)) => {
+                    assert_eq!(args.status, TaskStatusArg::Doing);
+                    assert_eq!(args.task_ids, vec!["RQ-0001", "RQ-0002", "RQ-0003"]);
+                }
+                _ => panic!("expected task status command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_status_parses_tag_filter() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "task",
+            "status",
+            "doing",
+            "--tag-filter",
+            "rust",
+            "--tag-filter",
+            "cli",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Status(args)) => {
+                    assert_eq!(args.status, TaskStatusArg::Doing);
+                    assert!(args.task_ids.is_empty());
+                    assert_eq!(args.tag_filter, vec!["rust", "cli"]);
+                }
+                _ => panic!("expected task status command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_field_parses_multiple_ids() {
+        let cli = Cli::try_parse_from([
+            "ralph", "task", "field", "severity", "high", "RQ-0001", "RQ-0002",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Field(args)) => {
+                    assert_eq!(args.key, "severity");
+                    assert_eq!(args.value, "high");
+                    assert_eq!(args.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                }
+                _ => panic!("expected task field command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_edit_parses_multiple_ids() {
+        let cli = Cli::try_parse_from([
+            "ralph", "task", "edit", "priority", "high", "RQ-0001", "RQ-0002",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Edit(args)) => {
+                    assert_eq!(args.field, TaskEditFieldArg::Priority);
+                    assert_eq!(args.value, "high");
+                    assert_eq!(args.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                }
+                _ => panic!("expected task edit command"),
+            },
+            _ => panic!("expected task command"),
+        }
     }
 }

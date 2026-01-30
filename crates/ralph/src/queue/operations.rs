@@ -6,6 +6,7 @@
 //! in `crate::queue` and are called from here when needed.
 
 mod archive;
+mod batch;
 mod edit;
 mod fields;
 mod mutation;
@@ -14,6 +15,7 @@ mod status;
 mod validate;
 
 pub use archive::*;
+pub use batch::*;
 pub use edit::*;
 pub use fields::*;
 pub use mutation::*;

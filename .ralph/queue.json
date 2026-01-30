@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0435",
-      "status": "todo",
-      "title": "Implement batch task operations for efficient multi-task updates",
-      "priority": "high",
-      "tags": [
-        "cli",
-        "queue",
-        "ux",
-        "task-management"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/task.rs",
-        "crates/ralph/src/queue/operations/",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "Task operations (edit, status, field) only accept single task ID",
-        "No way to update multiple tasks simultaneously - must iterate one-by-one",
-        "Common workflow: marking multiple tasks as done or updating tags across related tasks"
-      ],
-      "plan": [
-        "Add support for multiple task IDs to `ralph task edit`, `ralph task status`, `ralph task field`",
-        "Add `ralph task batch` subcommand for complex multi-task operations",
-        "Support batch operations by tag filter (e.g., update all tasks with tag 'rust')",
-        "Implement atomic batch updates - all succeed or all fail",
-        "Add progress output for batch operations showing success/failure per task",
-        "Add tests for batch operations including partial failure handling"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T00:00:00Z",
-      "updated_at": "2026-01-30T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0436",
       "status": "todo",
       "title": "Add task scheduling with 'start after' date/time support",

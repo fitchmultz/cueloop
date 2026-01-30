@@ -1003,9 +1003,10 @@ Common subcommands:
 - `ralph task <request>`: create a task from a freeform request.
 - `ralph task --template <name> [target] <request>`: create a task from a template with optional target.
 - `ralph task show <TASK_ID>`: show task details (queue + done). Alias: `details`.
-- `ralph task status <draft|todo|doing|done|rejected> <TASK_ID>`: update status.
-- `ralph task edit <FIELD> <VALUE> <TASK_ID>`: edit any task field (default + custom).
-- `ralph task field <KEY> <VALUE> <TASK_ID>`: set one custom field.
+- `ralph task status <draft|todo|doing|done|rejected> <TASK_ID>...`: update status for one or more tasks.
+- `ralph task edit <FIELD> <VALUE> <TASK_ID>...`: edit any task field (default + custom) for one or more tasks.
+- `ralph task field <KEY> <VALUE> <TASK_ID>...`: set one custom field on one or more tasks.
+- `ralph task batch <operation>`: perform batch operations on multiple tasks efficiently.
 - `ralph task update [TASK_ID]`: refresh task fields based on current repo state (omit `TASK_ID` to update all tasks).
 - `ralph task template list`: list available templates.
 - `ralph task template show <name>`: show template details.
@@ -1023,10 +1024,19 @@ Examples:
 ```bash
 ralph task "Add CLI task edit command"
 ralph task status doing RQ-0001
+ralph task status doing RQ-0001 RQ-0002 RQ-0003
+ralph task status done --tag-filter ready
 ralph task edit title "Update queue edit docs" RQ-0001
-ralph task edit tags "cli, rust" RQ-0001
+ralph task edit tags "cli, rust" RQ-0001 RQ-0002
+ralph task field severity high RQ-0001 RQ-0002
 ralph task edit custom_fields "severity=high, owner=ralph" RQ-0001
 ralph task edit request "" RQ-0001
+
+# Batch operations
+ralph task batch status doing RQ-0001 RQ-0002 RQ-0003
+ralph task batch field priority high --tag-filter urgent
+ralph task batch edit tags "reviewed" --tag-filter rust
+ralph task batch --dry-run status done --tag-filter ready
 ```
 
 **TUI Parity**: The TUI also supports building tasks with agent overrides. Press `N` in the TUI, enter a description, then configure optional overrides (runner, model, effort, tags, scope, repo-prompt mode) before building. See `docs/tui-task-management.md` for details.
@@ -1049,9 +1059,63 @@ ralph task show RQ-0001 --format compact
 ralph task details RQ-0001 --format compact
 ```
 
+### ralph task status
+
+Update a task's status (draft, todo, doing, done, rejected). Accepts multiple task IDs for batch updates.
+
+Note: terminal statuses (done, rejected) complete and archive the task(s).
+
+**Arguments:**
+- `STATUS` - New status: draft, todo, doing, done, or rejected
+- `TASK_ID...` - One or more task IDs to update
+
+**Flags:**
+- `--note <NOTE>` - Optional note to append to all affected tasks
+- `--tag-filter <TAG>` - Filter tasks by tag for batch operation (alternative to explicit IDs)
+
+**Examples:**
+```bash
+# Update single task status
+ralph task status doing RQ-0001
+ralph task status done RQ-0001
+
+# Update multiple tasks at once
+ralph task status doing RQ-0001 RQ-0002 RQ-0003
+
+# Update all tasks with a specific tag
+ralph task status doing --tag-filter rust
+
+# Update with a note
+ralph task status doing --note "Starting work" RQ-0001
+```
+
+### ralph task field
+
+Set a custom field on one or more tasks.
+
+**Arguments:**
+- `KEY` - Custom field key (must not contain whitespace)
+- `VALUE` - Custom field value
+- `TASK_ID...` - One or more task IDs to update
+
+**Flags:**
+- `--tag-filter <TAG>` - Filter tasks by tag for batch operation (alternative to explicit IDs)
+
+**Examples:**
+```bash
+# Set custom field on single task
+ralph task field severity high RQ-0001
+
+# Set custom field on multiple tasks
+ralph task field priority high RQ-0001 RQ-0002 RQ-0003
+
+# Set custom field on all tasks with a specific tag
+ralph task field sprint "Sprint 5" --tag-filter backend
+```
+
 ### ralph task edit
 
-Edit any task field directly. Supports all task fields including custom fields.
+Edit any task field directly. Supports all task fields including custom fields. Accepts multiple task IDs for batch updates.
 
 Fields that can be edited:
 - `title` - task title (cannot be empty)
@@ -1064,6 +1128,7 @@ Fields that can be edited:
 
 Flags:
 - `--dry-run` - preview changes without modifying the queue
+- `--tag-filter <TAG>` - filter tasks by tag for batch operation (alternative to explicit IDs)
 
 Examples:
 ```bash
@@ -1075,8 +1140,75 @@ ralph task edit tags "cli, rust" RQ-0001
 ralph task edit custom_fields "severity=high, owner=ralph" RQ-0001
 ralph task edit request "" RQ-0001
 
+# Edit multiple tasks at once
+ralph task edit priority high RQ-0001 RQ-0002 RQ-0003
+
+# Edit all tasks with a specific tag
+ralph task edit tags "urgent, reviewed" --tag-filter rust
+
 # Preview changes without applying
 ralph task edit --dry-run title "Preview title" RQ-0001
+```
+
+### ralph task batch
+
+Perform batch operations on multiple tasks efficiently.
+
+The `batch` subcommand provides a unified interface for updating multiple tasks at once. It supports three operation types: `status`, `field`, and `edit`. By default, batch operations are atomic (all-or-nothing). Use `--continue-on-error` to allow partial success.
+
+**Subcommands:**
+
+- `ralph task batch status <STATUS> [TASK_ID]...` - Update status for multiple tasks
+- `ralph task batch field <KEY> <VALUE> [TASK_ID]...` - Set custom field on multiple tasks
+- `ralph task batch edit <FIELD> <VALUE> [TASK_ID]...` - Edit any field on multiple tasks
+
+**Flags:**
+
+- `--tag-filter <TAG>` - Filter tasks by tag (repeatable, case-insensitive, OR logic)
+- `--dry-run` - Preview changes without modifying the queue
+- `--continue-on-error` - Continue processing on individual failures (default: atomic)
+
+**Task Selection:**
+
+Tasks can be selected either by explicit task IDs or by tag filter:
+- Explicit IDs: `ralph task batch status doing RQ-0001 RQ-0002 RQ-0003`
+- Tag filter: `ralph task batch status doing --tag-filter rust`
+- Multiple tags: `ralph task batch status doing --tag-filter rust --tag-filter cli`
+
+When using tag filters, tasks are selected from the active queue only (not done archive). Tag matching is case-insensitive and uses OR logic (any tag matches).
+
+**Atomic vs. Partial Success:**
+
+By default, batch operations are atomic - either all tasks are updated or none are. Validation errors for any task prevent all updates. Use `--continue-on-error` to allow partial success:
+
+```bash
+# Atomic mode (default) - fails if any task doesn't exist
+ralph task batch status doing RQ-0001 RQ-0002 RQ-0003
+
+# Continue on error - updates valid tasks, reports failures
+ralph task batch --continue-on-error status doing RQ-0001 RQ-0002 RQ-9999
+```
+
+**Examples:**
+
+```bash
+# Update status for multiple tasks by ID
+ralph task batch status doing RQ-0001 RQ-0002 RQ-0003
+
+# Update status for all tasks with a specific tag
+ralph task batch status doing --tag-filter rust
+
+# Set custom field on multiple tasks
+ralph task batch field priority high RQ-0001 RQ-0002
+
+# Edit priority for all urgent tasks
+ralph task batch edit priority high --tag-filter urgent
+
+# Preview changes without applying
+ralph task batch --dry-run status done --tag-filter ready
+
+# Continue on error (partial success allowed)
+ralph task batch --continue-on-error status doing RQ-0001 RQ-0002 RQ-9999
 ```
 
 ### ralph task update
