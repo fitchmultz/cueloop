@@ -2,7 +2,7 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0452",
+      "id": "RQ-0453",
       "status": "todo",
       "title": "Fix Kimi runner integration - CLI command structure is incorrect",
       "priority": "high",
