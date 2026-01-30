@@ -254,6 +254,7 @@ echo '{{"sessionID":"sess-123"}}'
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
+        no_progress: false,
     };
 
     let plan_text = execute_phase1_planning(&invocation, 2)?;
@@ -336,6 +337,7 @@ echo '{{"sessionID":"sess-123"}}'
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
+        no_progress: false,
     };
 
     let plan_text = execute_phase1_planning(&invocation, 2)?;
@@ -416,6 +418,7 @@ echo '{{"sessionID":"sess-123"}}'
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
+        no_progress: false,
     };
 
     let err = execute_phase1_planning(&invocation, 2).expect_err("expected baseline violation");
@@ -559,6 +562,7 @@ echo '{"sessionID":"sess-123"}'
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
+        no_progress: false,
     };
 
     execute_phase3_review(&invocation)?;
@@ -622,6 +626,7 @@ echo '{"sessionID":"sess-123"}'
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
+        no_progress: false,
     };
 
     execute_phase3_review(&invocation)?;
@@ -705,6 +710,7 @@ echo '{{"sessionID":"sess-123"}}'
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
+        no_progress: false,
     };
 
     let continue_session = ContinueSession {

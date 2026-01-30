@@ -178,7 +178,7 @@ pub fn git_init(dir: &Path) -> Result<()> {
     anyhow::ensure!(status.success(), "git init failed");
 
     let gitignore_path = dir.join(".gitignore");
-    std::fs::write(&gitignore_path, ".ralph/lock\n")?;
+    std::fs::write(&gitignore_path, ".ralph/lock\n.ralph/cache/\n")?;
     Command::new("git")
         .current_dir(dir)
         .args(["add", ".gitignore"])

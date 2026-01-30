@@ -575,12 +575,22 @@ impl std::str::FromStr for AutoArchiveBehavior {
 pub struct TuiConfig {
     /// Auto-archive behavior for terminal tasks (Done/Rejected) when set via TUI.
     pub auto_archive_terminal: Option<AutoArchiveBehavior>,
+    /// Enable celebration animations on task completion (default: true).
+    pub celebrations_enabled: Option<bool>,
+    /// Enable productivity stats tracking (default: true).
+    pub stats_enabled: Option<bool>,
 }
 
 impl TuiConfig {
     pub fn merge_from(&mut self, other: Self) {
         if other.auto_archive_terminal.is_some() {
             self.auto_archive_terminal = other.auto_archive_terminal;
+        }
+        if other.celebrations_enabled.is_some() {
+            self.celebrations_enabled = other.celebrations_enabled;
+        }
+        if other.stats_enabled.is_some() {
+            self.stats_enabled = other.stats_enabled;
         }
     }
 }

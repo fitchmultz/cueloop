@@ -33,6 +33,7 @@ pub mod tui;
 
 // --- Utils -------------------------------------------------------------------
 
+pub mod celebrations;
 pub mod fsutil;
 pub mod git;
 pub mod gitutil;
@@ -41,6 +42,7 @@ pub mod lock;
 pub mod notification;
 pub mod output;
 pub mod outpututil;
+pub mod productivity;
 pub mod progress;
 pub mod promptflow;
 pub mod prompts;

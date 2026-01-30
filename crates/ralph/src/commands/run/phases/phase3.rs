@@ -149,6 +149,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                     ctx.notify_on_complete,
                     ctx.notify_sound,
                     ctx.lfs_check,
+                    ctx.no_progress,
                 )?
             {
                 finalized = true;
@@ -232,6 +233,7 @@ pub(crate) fn finalize_phase3_if_done(
     notify_on_complete: Option<bool>,
     notify_sound: Option<bool>,
     lfs_check: bool,
+    no_progress: bool,
 ) -> Result<bool> {
     let should_finalize = if matches!(applied_status, Some(TaskStatus::Done)) {
         true
@@ -254,6 +256,7 @@ pub(crate) fn finalize_phase3_if_done(
         notify_on_complete,
         notify_sound,
         lfs_check,
+        no_progress,
     )?;
     Ok(true)
 }

@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0426",
-      "status": "todo",
-      "title": "Add task completion celebration and productivity stats",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "gamification",
-        "tui",
-        "stats"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/app.rs",
-        "crates/ralph/src/reports.rs",
-        "crates/ralph/src/run_cmd.rs"
-      ],
-      "evidence": [
-        "Task completion is anticlimactic - no feedback or celebration",
-        "Dopamine feedback loops increase tool engagement (see: GitHub contributions graph, Todoist karma)",
-        "Users don't have visibility into their productivity trends",
-        "No session summary after completing multiple tasks",
-        "Small celebrations make CLI tools feel more polished and human"
-      ],
-      "plan": [
-        "Add celebration animation for task completion (optional, can be disabled)",
-        "Implement session stats: tasks completed this session, time saved, streak counter",
-        "Add daily/weekly productivity dashboard in TUI (press 's' for stats view)",
-        "Show milestone celebrations (10 tasks, 50 tasks, 100 tasks completed)",
-        "Add 'completion summary' after run loop finishes with task list and stats",
-        "Implement velocity tracking: tasks per day/week trend",
-        "Store productivity metrics in .ralph/cache/stats.json",
-        "Add ralph stats command to view productivity reports",
-        "Ensure celebrations don't interfere with scripting/CI use cases",
-        "Run 'make ci' to validate changes"
-      ],
-      "notes": [
-        "Celebrations should be subtle and professional, not overly flashy",
-        "Stats should respect privacy - local only, no external reporting",
-        "Consider ASCII art celebrations for terminal compatibility"
-      ],
-      "request": "Add task completion celebrations and productivity stats to make Ralph more engaging. Small dopamine hits on task completion (subtle animation, confetti in TUI), session summaries showing tasks completed and time spent, streak counters, and velocity tracking. This gamification makes the tool more enjoyable to use while giving users visibility into their productivity patterns. Include ralph stats command for detailed productivity reports.",
-      "created_at": "2026-01-29T23:59:00Z",
-      "updated_at": "2026-01-29T23:59:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0427",
       "status": "todo",
       "title": "Implement watch mode for automatic task detection and creation",

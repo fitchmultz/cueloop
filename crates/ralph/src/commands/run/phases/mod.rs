@@ -69,4 +69,6 @@ pub struct PhaseInvocation<'a> {
     pub notify_sound: Option<bool>,
     /// Enable strict LFS validation before commit.
     pub lfs_check: bool,
+    /// Disable progress indicators and celebrations (--no-progress).
+    pub no_progress: bool,
 }

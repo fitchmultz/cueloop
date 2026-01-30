@@ -4,9 +4,11 @@
 
 use super::logging;
 use super::PhaseType;
+use crate::celebrations;
 use crate::contracts::{GitRevertMode, QueueFile, TaskStatus};
 use crate::git::GitError;
 use crate::notification;
+use crate::productivity;
 use crate::{git, outpututil, queue, runutil, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
 use std::path::Path;
@@ -82,6 +84,7 @@ pub(crate) fn post_run_supervise(
     notify_on_complete: Option<bool>,
     notify_sound: Option<bool>,
     lfs_check: bool,
+    no_progress: bool,
 ) -> Result<()> {
     let label = format!("PostRunSupervise for {}", task_id.trim());
     logging::with_scope(&label, || {
@@ -164,6 +167,9 @@ pub(crate) fn post_run_supervise(
                 build_notification_config(resolved, notify_on_complete, notify_sound);
             notification::notify_task_complete(task_id, &task_title, &notify_config);
 
+            // Trigger celebration and record productivity stats
+            trigger_celebration(resolved, task_id, &task_title, no_progress);
+
             return Ok(());
         }
 
@@ -178,6 +184,9 @@ pub(crate) fn post_run_supervise(
             let notify_config =
                 build_notification_config(resolved, notify_on_complete, notify_sound);
             notification::notify_task_complete(task_id, &task_title, &notify_config);
+
+            // Trigger celebration and record productivity stats
+            trigger_celebration(resolved, task_id, &task_title, no_progress);
 
             return Ok(());
         }
@@ -215,8 +224,52 @@ pub(crate) fn post_run_supervise(
         let notify_config = build_notification_config(resolved, notify_on_complete, notify_sound);
         notification::notify_task_complete(task_id, &task_title, &notify_config);
 
+        // Trigger celebration and record productivity stats
+        trigger_celebration(resolved, task_id, &task_title, no_progress);
+
         Ok(())
     })
+}
+
+/// Trigger celebration and record productivity stats for task completion.
+fn trigger_celebration(
+    resolved: &crate::config::Resolved,
+    task_id: &str,
+    task_title: &str,
+    no_progress: bool,
+) {
+    // Check if stats tracking is enabled (default: true)
+    let stats_enabled = resolved.config.tui.stats_enabled.unwrap_or(true);
+
+    if stats_enabled {
+        // Record the completion in productivity stats
+        let cache_dir = resolved.repo_root.join(".ralph").join("cache");
+        match productivity::record_task_completion_by_id(task_id, task_title, &cache_dir) {
+            Ok(result) => {
+                // Check if celebrations are enabled and we're in a terminal
+                if celebrations::should_celebrate(Some(&resolved.config), no_progress) {
+                    let celebration =
+                        celebrations::celebrate_task_completion(task_id, task_title, &result);
+                    println!("{}", celebration);
+                }
+
+                // Mark milestone as celebrated if one was achieved
+                if let Some(threshold) = result.milestone_achieved {
+                    if let Err(err) = productivity::mark_milestone_celebrated(&cache_dir, threshold)
+                    {
+                        log::debug!("Failed to mark milestone as celebrated: {}", err);
+                    }
+                }
+            }
+            Err(err) => {
+                log::debug!("Failed to record productivity stats: {}", err);
+            }
+        }
+    } else if celebrations::should_celebrate(Some(&resolved.config), no_progress) {
+        // Stats disabled but celebrations still enabled - show simple celebration
+        let celebration = celebrations::celebrate_standard(task_id, task_title);
+        println!("{}", celebration);
+    }
 }
 
 /// Build notification configuration from resolved config and CLI overrides.
@@ -695,6 +748,11 @@ mod tests {
                 task_count_warning_threshold: Some(500),
                 max_dependency_depth: Some(10),
             },
+            tui: crate::contracts::TuiConfig {
+                auto_archive_terminal: None,
+                celebrations_enabled: Some(false),
+                stats_enabled: Some(false),
+            },
             ..Config::default()
         };
 
@@ -758,6 +816,7 @@ mod tests {
             None,
             None,
             false,
+            false,
         )?;
 
         let status = git_test::git_output(temp.path(), &["status", "--porcelain"])?;
@@ -790,6 +849,7 @@ mod tests {
             None,
             None,
             false,
+            false,
         )?;
 
         let status = git_test::git_output(temp.path(), &["status", "--porcelain"])?;
@@ -813,6 +873,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             false,
         )?;
 
@@ -870,6 +931,7 @@ mod tests {
             None,
             None,
             false,
+            false,
         )
         .expect_err("expected push failure");
         assert!(format!("{err:#}").contains("Git push failed"));
@@ -913,6 +975,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             false,
         )?;
         Ok(())

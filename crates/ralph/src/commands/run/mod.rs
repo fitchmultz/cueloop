@@ -505,6 +505,7 @@ fn run_one_impl(
                 notify_on_complete: agent_overrides.notify_on_complete,
                 notify_sound: agent_overrides.notify_sound,
                 lfs_check: agent_overrides.lfs_check.unwrap_or(false),
+                no_progress: agent_overrides.no_progress.unwrap_or(false),
             };
 
             match phases {

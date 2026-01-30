@@ -61,6 +61,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 ctx.notify_on_complete,
                 ctx.notify_sound,
                 ctx.lfs_check,
+                ctx.no_progress,
             )?;
         } else {
             let continue_session = supervision::ContinueSession {

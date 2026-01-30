@@ -122,7 +122,9 @@
     "tui": {
       "description": "TUI-specific configuration.",
       "default": {
-        "auto_archive_terminal": null
+        "auto_archive_terminal": null,
+        "celebrations_enabled": null,
+        "stats_enabled": null
       },
       "allOf": [
         {
@@ -814,6 +816,22 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "celebrations_enabled": {
+          "description": "Enable celebration animations on task completion (default: true).",
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "stats_enabled": {
+          "description": "Enable productivity stats tracking (default: true).",
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
           ]
         }
       },

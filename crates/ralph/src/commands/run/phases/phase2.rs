@@ -131,6 +131,7 @@ pub fn execute_phase2_implementation(
                 ctx.notify_on_complete,
                 ctx.notify_sound,
                 ctx.lfs_check,
+                ctx.no_progress,
             )?;
         } else {
             let continue_session = supervision::ContinueSession {
