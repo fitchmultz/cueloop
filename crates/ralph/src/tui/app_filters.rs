@@ -41,7 +41,7 @@ pub struct FilterSnapshot {
 
 /// Cache key for filtered indices to detect when rebuild is needed.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct FilterKey {
+pub struct FilterKey {
     query: String,
     statuses: Vec<TaskStatus>,
     tags: Vec<String>,
@@ -52,7 +52,8 @@ struct FilterKey {
 }
 
 impl FilterKey {
-    fn from_filters(filters: &FilterState) -> Self {
+    /// Create a filter key from the current filter state.
+    pub fn from_filters(filters: &FilterState) -> Self {
         let mut statuses = filters.statuses.clone();
         statuses.sort_by_key(|status| status.as_str());
 

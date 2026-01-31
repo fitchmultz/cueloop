@@ -13,6 +13,7 @@
 //! - File IO uses temporary directories for isolation.
 
 use super::app::*;
+use super::app_execution::RunningKind;
 use super::app_palette::scan_label;
 use super::config_edit::*;
 use super::events::{AppMode, PaletteCommand};

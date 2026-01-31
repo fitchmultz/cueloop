@@ -21,6 +21,7 @@ mod app_id_index;
 mod app_logs;
 mod app_loop;
 mod app_navigation;
+mod app_options;
 mod app_palette;
 mod app_session;
 mod app_tasks;
@@ -38,11 +39,14 @@ mod textarea_input;
 mod tests;
 
 pub use crate::progress::ExecutionPhase;
-pub use app::{prepare_tui_session, run_tui, App, FilterState, RunningKind, TuiOptions};
+pub use app::{prepare_tui_session, run_tui, App};
 pub use app_details::{DetailsContext, DetailsContextMode, DetailsState};
-pub use app_execution::ExecutionState;
-pub use app_filters::FilterManager;
+pub use app_execution::{ExecutionState, RunningKind};
+pub use app_filters::{FilterKey, FilterManager, FilterSnapshot, FilterState};
 pub use app_navigation::{AppNavigation, NavigationState};
+#[cfg(test)]
+pub use app_options::FilterCacheStats;
+pub use app_options::TuiOptions;
 pub use app_session::{SessionManager, SessionState};
 pub use app_tasks::{AppTasks, AutoArchiveAction, MoveResult, TaskOperations};
 pub use config_edit::{ConfigEntry, ConfigFieldKind, ConfigKey};

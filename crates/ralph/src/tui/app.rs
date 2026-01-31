@@ -43,111 +43,16 @@ use super::events::{
     PaletteEntry, ScoredPaletteEntry, TaskBuilderState, TaskBuilderStep, TuiAction, ViewMode,
 };
 use super::render::draw_ui;
-use super::terminal::{BorderStyle, ColorOption, ColorSupport, TerminalCapabilities};
+use super::terminal::{BorderStyle, ColorSupport, TerminalCapabilities};
 use super::TextInput;
 use super::{DetailsContext, DetailsState};
-use crate::tui::app_filters::normalize_filter_token;
+use crate::tui::app_execution::RunningKind;
+use crate::tui::app_filters::{FilterKey, FilterSnapshot, FilterState};
 use crate::tui::app_navigation::BoardNavigationState;
-use crate::tui::app_palette::{scan_label, score_palette_entry};
-
-/// Options that control how the TUI boots.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct TuiOptions {
-    /// If true, start loop mode immediately after launch.
-    pub start_loop: bool,
-    /// Optional max tasks for loop mode (None = unlimited).
-    pub loop_max_tasks: Option<u32>,
-    /// If true, draft tasks are eligible for loop selection.
-    pub loop_include_draft: bool,
-    /// If true, show flowchart visualization on start.
-    pub show_flowchart: bool,
-    /// If true, disable mouse capture.
-    pub no_mouse: bool,
-    /// Color output control.
-    pub color: ColorOption,
-    /// If true, use ASCII borders instead of Unicode.
-    pub ascii_borders: bool,
-    /// If true, disable progress indicators and spinners.
-    pub no_progress: bool,
-}
-
 #[cfg(test)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FilterCacheStats {
-    pub id_index_rebuilds: usize,
-    pub filtered_rebuilds: usize,
-}
-
-/// Active filters applied to the task list.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct FilterState {
-    /// Free-text search query (substring match across task fields).
-    pub query: String,
-    /// Status filters (empty means all statuses).
-    pub statuses: Vec<TaskStatus>,
-    /// Tag filters (empty means all tags).
-    pub tags: Vec<String>,
-    /// Search options (regex mode, case sensitivity).
-    pub search_options: queue::SearchOptions,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct FilterSnapshot {
-    filters: FilterState,
-    selected_task_id: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct FilterKey {
-    query: String,
-    statuses: Vec<TaskStatus>,
-    tags: Vec<String>,
-    scopes: Vec<String>,
-    use_regex: bool,
-    case_sensitive: bool,
-}
-
-impl FilterKey {
-    fn from_filters(filters: &FilterState) -> Self {
-        let mut statuses = filters.statuses.clone();
-        statuses.sort_by_key(|status| status.as_str());
-
-        let mut tags: Vec<String> = filters
-            .tags
-            .iter()
-            .map(|tag| normalize_filter_token(tag))
-            .filter(|tag| !tag.is_empty())
-            .collect();
-        tags.sort();
-
-        let mut scopes: Vec<String> = filters
-            .search_options
-            .scopes
-            .iter()
-            .map(|scope| normalize_filter_token(scope))
-            .filter(|scope| !scope.is_empty())
-            .collect();
-        scopes.sort();
-
-        Self {
-            query: filters.query.trim().to_string(),
-            statuses,
-            tags,
-            scopes,
-            use_regex: filters.search_options.use_regex,
-            case_sensitive: filters.search_options.case_sensitive,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RunningKind {
-    Task,
-    Scan { focus: String },
-    TaskBuilder,
-}
-
-// ExecutionPhase is now imported from crate::progress
+use crate::tui::app_options::FilterCacheStats;
+use crate::tui::app_options::TuiOptions;
+use crate::tui::app_palette::{scan_label, score_palette_entry};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FocusedPanel {
