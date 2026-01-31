@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0479",
-      "status": "todo",
-      "title": "Allow watch mode to reprocess changed files",
-      "priority": "high",
-      "tags": [
-        "watch",
-        "cli",
-        "bug",
-        "performance"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/watch.rs",
-        "crates/ralph/src/cli/watch.rs",
-        "crates/ralph/src/commands/watch.rs tests"
-      ],
-      "evidence": [
-        "commands/watch.rs process_pending_files skips files already in processed_files and inserts every processed file",
-        "processed_files is never cleared, so files are only scanned once and the set grows unbounded"
-      ],
-      "plan": [
-        "Replace processed_files with a time-based or per-batch de-duplication strategy",
-        "Ensure repeated edits to the same file are detected after the debounce window",
-        "Add tests covering multiple edits to the same file in a single watch session",
-        "Run make ci"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:22:24Z",
-      "updated_at": "2026-01-31T02:22:24Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0459",
       "status": "todo",
       "title": "Split tui/app.rs (2856 lines) into cohesive submodules",

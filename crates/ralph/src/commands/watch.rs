@@ -7,6 +7,7 @@
 //! - Integrate with notification system for desktop alerts.
 //! - Create or suggest tasks based on detected comments.
 //! - Respect gitignore patterns for file exclusion.
+//! - Allow reprocessing of files after the debounce window has passed.
 //!
 //! Not handled here:
 //! - CLI argument parsing (see crate::cli::watch).
@@ -17,6 +18,7 @@
 //! - File watcher uses debouncing to batch rapid file changes.
 //! - Comment detection uses regex patterns for common markers.
 //! - Task deduplication prevents duplicate entries for same file/line.
+//! - Files can be reprocessed after `debounce_duration` has elapsed since last processing.
 
 use crate::config::Resolved;
 use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
@@ -31,6 +33,30 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+/// Check if a file can be reprocessed based on when it was last processed.
+///
+/// A file can be reprocessed if:
+/// - It has never been processed before, OR
+/// - The time since last processing is >= the debounce duration
+fn can_reprocess(
+    path: &Path,
+    last_processed: &HashMap<PathBuf, Instant>,
+    debounce: Duration,
+) -> bool {
+    match last_processed.get(path) {
+        Some(last_time) => Instant::now().duration_since(*last_time) >= debounce,
+        None => true,
+    }
+}
+
+/// Clean up old entries from the last_processed map to prevent unbounded growth.
+///
+/// Removes entries older than 10x the debounce duration.
+fn cleanup_old_entries(last_processed: &mut HashMap<PathBuf, Instant>, debounce: Duration) {
+    let cutoff = Instant::now() - debounce * 10;
+    last_processed.retain(|_, timestamp| *timestamp >= cutoff);
+}
 
 /// Types of comments to detect in watched files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,18 +178,24 @@ pub fn run_watch(resolved: &Resolved, opts: WatchOptions) -> Result<()> {
 
     // Main event loop
     let comment_regex = build_comment_regex(&opts.comment_types)?;
-    let mut processed_files: HashSet<PathBuf> = HashSet::new();
+    let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
 
     while *running.lock().unwrap() {
         // Check for events with timeout
         match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(Ok(event)) => {
                 if let Some(paths) = get_relevant_paths(&event, &opts) {
+                    let debounce = opts.debounce_ms;
                     let mut should_process = false;
                     {
                         let mut state = state.lock().unwrap();
                         for path in paths {
-                            if !processed_files.contains(&path) && state.add_file(path.clone()) {
+                            if can_reprocess(
+                                &path,
+                                &last_processed,
+                                Duration::from_millis(debounce),
+                            ) && state.add_file(path.clone())
+                            {
                                 should_process = true;
                             }
                         }
@@ -174,7 +206,7 @@ pub fn run_watch(resolved: &Resolved, opts: WatchOptions) -> Result<()> {
                             &state,
                             &comment_regex,
                             &opts,
-                            &mut processed_files,
+                            &mut last_processed,
                         )?;
                     }
                 }
@@ -196,7 +228,7 @@ pub fn run_watch(resolved: &Resolved, opts: WatchOptions) -> Result<()> {
                         &state,
                         &comment_regex,
                         &opts,
-                        &mut processed_files,
+                        &mut last_processed,
                     )?;
                 }
             }
@@ -204,13 +236,7 @@ pub fn run_watch(resolved: &Resolved, opts: WatchOptions) -> Result<()> {
     }
 
     // Process any remaining files before exit
-    process_pending_files(
-        resolved,
-        &state,
-        &comment_regex,
-        &opts,
-        &mut processed_files,
-    )?;
+    process_pending_files(resolved, &state, &comment_regex, &opts, &mut last_processed)?;
 
     log::info!("Watch mode stopped.");
     Ok(())
@@ -319,7 +345,7 @@ fn process_pending_files(
     state: &Arc<Mutex<WatchState>>,
     comment_regex: &Regex,
     opts: &WatchOptions,
-    processed_files: &mut HashSet<PathBuf>,
+    last_processed: &mut HashMap<PathBuf, Instant>,
 ) -> Result<()> {
     let files: Vec<PathBuf> = {
         let mut state = state.lock().unwrap();
@@ -330,10 +356,12 @@ fn process_pending_files(
         return Ok(());
     }
 
+    let debounce = Duration::from_millis(opts.debounce_ms);
     let mut all_comments: Vec<DetectedComment> = Vec::new();
 
     for file_path in files {
-        if processed_files.contains(&file_path) {
+        // Skip if file was recently processed (within debounce window)
+        if !can_reprocess(&file_path, last_processed, debounce) {
             continue;
         }
 
@@ -347,13 +375,17 @@ fn process_pending_files(
                     );
                     all_comments.extend(comments);
                 }
-                processed_files.insert(file_path);
+                // Record when this file was processed
+                last_processed.insert(file_path, Instant::now());
             }
             Err(e) => {
                 log::warn!("Failed to process file {}: {}", file_path.display(), e);
             }
         }
     }
+
+    // Periodically clean up old entries to prevent unbounded growth
+    cleanup_old_entries(last_processed, debounce);
 
     if !all_comments.is_empty() {
         handle_detected_comments(resolved, &all_comments, opts)?;
@@ -655,5 +687,94 @@ mod tests {
         assert!(ctx.contains("file.rs"));
         assert!(ctx.contains("42"));
         assert!(ctx.contains("test content"));
+    }
+
+    #[test]
+    fn can_reprocess_new_file() {
+        let last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+        let path = Path::new("/test/file.rs");
+
+        // New file should be reprocessable
+        assert!(can_reprocess(
+            path,
+            &last_processed,
+            Duration::from_millis(100)
+        ));
+    }
+
+    #[test]
+    fn can_reprocess_after_debounce() {
+        let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+        let path = PathBuf::from("/test/file.rs");
+
+        // Insert a timestamp from the past (older than debounce)
+        last_processed.insert(path.clone(), Instant::now() - Duration::from_millis(200));
+
+        // Should be reprocessable after debounce period
+        assert!(can_reprocess(
+            &path,
+            &last_processed,
+            Duration::from_millis(100)
+        ));
+    }
+
+    #[test]
+    fn cannot_reprocess_within_debounce() {
+        let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+        let path = PathBuf::from("/test/file.rs");
+
+        // Insert current timestamp
+        last_processed.insert(path.clone(), Instant::now());
+
+        // Should NOT be reprocessable within debounce period
+        assert!(!can_reprocess(
+            &path,
+            &last_processed,
+            Duration::from_millis(100)
+        ));
+    }
+
+    #[test]
+    fn cleanup_old_entries_removes_stale_entries() {
+        let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+        let old_path = PathBuf::from("/test/old.rs");
+        let recent_path = PathBuf::from("/test/recent.rs");
+
+        // Insert an old entry (older than 10x debounce)
+        last_processed.insert(
+            old_path.clone(),
+            Instant::now() - Duration::from_millis(1500),
+        );
+        // Insert a recent entry
+        last_processed.insert(
+            recent_path.clone(),
+            Instant::now() - Duration::from_millis(50),
+        );
+
+        let debounce = Duration::from_millis(100);
+        cleanup_old_entries(&mut last_processed, debounce);
+
+        // Old entry should be removed
+        assert!(!last_processed.contains_key(&old_path));
+        // Recent entry should remain
+        assert!(last_processed.contains_key(&recent_path));
+    }
+
+    #[test]
+    fn cleanup_old_entries_preserves_recent_entries() {
+        let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+        let path1 = PathBuf::from("/test/file1.rs");
+        let path2 = PathBuf::from("/test/file2.rs");
+
+        // Insert entries within the cleanup window
+        last_processed.insert(path1.clone(), Instant::now() - Duration::from_millis(500));
+        last_processed.insert(path2.clone(), Instant::now() - Duration::from_millis(300));
+
+        let debounce = Duration::from_millis(100);
+        cleanup_old_entries(&mut last_processed, debounce);
+
+        // Both entries should remain (both within 10x debounce = 1000ms)
+        assert!(last_processed.contains_key(&path1));
+        assert!(last_processed.contains_key(&path2));
     }
 }
