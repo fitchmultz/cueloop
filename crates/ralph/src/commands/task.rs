@@ -606,18 +606,47 @@ fn update_task_impl(
     )
     .context("validate queue set after task update")?;
 
-    let after_task = after.tasks.iter().find(|t| t.id.trim() == task_id).unwrap();
-    let after_json = serde_json::to_string(after_task)?;
+    // Look up the task after update - it may have been moved to done.json or removed
+    match after.tasks.iter().find(|t| t.id.trim() == task_id) {
+        Some(after_task) => {
+            let after_json = serde_json::to_string(after_task)?;
 
-    if before_json == after_json {
-        log::info!("Task {} updated. No changes detected.", task_id);
-    } else {
-        let changed_fields = compare_task_fields(&before_json, &after_json)?;
-        log::info!(
-            "Task {} updated. Changed fields: {}",
-            task_id,
-            changed_fields.join(", ")
-        );
+            if before_json == after_json {
+                log::info!("Task {} updated. No changes detected.", task_id);
+            } else {
+                let changed_fields = compare_task_fields(&before_json, &after_json)?;
+                log::info!(
+                    "Task {} updated. Changed fields: {}",
+                    task_id,
+                    changed_fields.join(", ")
+                );
+            }
+        }
+        None => {
+            // Task not in queue after update - check if it was moved to done.json
+            match done_after.tasks.iter().find(|t| t.id.trim() == task_id) {
+                Some(done_task) => {
+                    let after_json = serde_json::to_string(done_task)?;
+
+                    if before_json == after_json {
+                        log::info!("Task {} moved to done.json. No changes detected.", task_id);
+                    } else {
+                        let changed_fields = compare_task_fields(&before_json, &after_json)?;
+                        log::info!(
+                            "Task {} moved to done.json. Changed fields: {}",
+                            task_id,
+                            changed_fields.join(", ")
+                        );
+                    }
+                }
+                None => {
+                    log::warn!(
+                        "Task {} was removed during update and not found in done.json.",
+                        task_id
+                    );
+                }
+            }
+        }
     }
 
     queue::save_queue(&resolved.queue_path, &after).context("save queue after task update")?;

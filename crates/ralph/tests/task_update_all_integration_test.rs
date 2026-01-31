@@ -243,3 +243,225 @@ fn task_update_without_id_fails_on_empty_queue() -> Result<()> {
 
     Ok(())
 }
+
+fn write_queue_with_one_task(dir: &Path) -> Result<()> {
+    let ralph_dir = dir.join(".ralph");
+    std::fs::create_dir_all(&ralph_dir).context("create .ralph dir")?;
+    let queue_path = ralph_dir.join("queue.json");
+    let done_path = ralph_dir.join("done.json");
+
+    let queue = r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "title": "First task",
+      "tags": ["test"],
+      "scope": ["crates/ralph"],
+      "evidence": ["integration test"],
+      "plan": ["step one"],
+      "notes": [],
+      "request": "first request",
+      "created_at": "2026-01-18T00:00:00Z",
+      "updated_at": "2026-01-18T00:00:00Z"
+    }
+  ]
+}"#;
+
+    let done = r#"{
+  "version": 1,
+  "tasks": []
+}"#;
+
+    std::fs::write(&queue_path, queue).context("write queue.json")?;
+    std::fs::write(&done_path, done).context("write done.json")?;
+    Ok(())
+}
+
+#[test]
+fn task_update_single_task_moved_to_done_during_update() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    write_queue_with_one_task(dir.path())?;
+
+    // Create a fake runner that moves the task to done.json during the update
+    let script = r#"#!/bin/sh
+cat >/dev/null
+# Move task from queue.json to done.json
+mv .ralph/queue.json .ralph/queue.json.bak
+cat > .ralph/queue.json << 'QUEUEEOF'
+{
+  "version": 1,
+  "tasks": []
+}
+QUEUEEOF
+cat > .ralph/done.json << 'DONEEOF'
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "done",
+      "title": "First task - completed",
+      "tags": ["test", "completed"],
+      "scope": ["crates/ralph"],
+      "evidence": ["integration test"],
+      "plan": ["step one"],
+      "notes": [],
+      "request": "first request",
+      "created_at": "2026-01-18T00:00:00Z",
+      "updated_at": "2026-01-18T12:00:00Z",
+      "completed_at": "2026-01-18T12:00:00Z"
+    }
+  ]
+}
+DONEEOF
+rm .ralph/queue.json.bak
+exit 0
+"#;
+    let runner_path = create_fake_runner(dir.path(), "codex", script)?;
+    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["task", "update", "RQ-0001"]);
+    anyhow::ensure!(
+        status.success(),
+        "expected task update to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Verify the warning about task being moved is logged
+    anyhow::ensure!(
+        stderr.contains("moved to done.json") || stdout.contains("moved to done.json"),
+        "expected 'moved to done.json' message, got stdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Verify the changed fields are reported
+    anyhow::ensure!(
+        stderr.contains("Changed fields") || stdout.contains("Changed fields"),
+        "expected 'Changed fields' message, got stdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn task_update_single_task_removed_during_update() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    write_queue_with_one_task(dir.path())?;
+
+    // Create a fake runner that removes the task entirely during the update
+    let script = r#"#!/bin/sh
+cat >/dev/null
+# Remove task from queue.json (empty queue)
+cat > .ralph/queue.json << 'QUEUEEOF'
+{
+  "version": 1,
+  "tasks": []
+}
+QUEUEEOF
+exit 0
+"#;
+    let runner_path = create_fake_runner(dir.path(), "codex", script)?;
+    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["task", "update", "RQ-0001"]);
+    anyhow::ensure!(
+        status.success(),
+        "expected task update to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Verify the warning about task being removed is logged
+    anyhow::ensure!(
+        stderr.contains("removed during update") || stdout.contains("removed during update"),
+        "expected 'removed during update' warning, got stdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn task_update_single_task_moved_to_done_no_changes() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+
+    let (status, stdout, stderr) =
+        run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    write_queue_with_one_task(dir.path())?;
+
+    // Create a fake runner that moves the task to done.json without changes
+    let script = r#"#!/bin/sh
+cat >/dev/null
+# Move task from queue.json to done.json without changes
+mv .ralph/queue.json .ralph/queue.json.bak
+cat > .ralph/queue.json << 'QUEUEEOF'
+{
+  "version": 1,
+  "tasks": []
+}
+QUEUEEOF
+cat > .ralph/done.json << 'DONEEOF'
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "done",
+      "title": "First task",
+      "tags": ["test"],
+      "scope": ["crates/ralph"],
+      "evidence": ["integration test"],
+      "plan": ["step one"],
+      "notes": [],
+      "request": "first request",
+      "created_at": "2026-01-18T00:00:00Z",
+      "updated_at": "2026-01-18T00:00:00Z",
+      "completed_at": "2026-01-18T12:00:00Z"
+    }
+  ]
+}
+DONEEOF
+rm .ralph/queue.json.bak
+exit 0
+"#;
+    let runner_path = create_fake_runner(dir.path(), "codex", script)?;
+    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["task", "update", "RQ-0001"]);
+    anyhow::ensure!(
+        status.success(),
+        "expected task update to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Verify the message about task being moved with changed fields
+    // (status changed from todo->done and completed_at was added)
+    anyhow::ensure!(
+        stderr.contains("moved to done.json") || stdout.contains("moved to done.json"),
+        "expected 'moved to done.json' message, got stdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        stderr.contains("Changed fields") || stdout.contains("Changed fields"),
+        "expected 'Changed fields' message, got stdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    Ok(())
+}
