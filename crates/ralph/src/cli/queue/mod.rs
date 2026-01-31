@@ -29,6 +29,7 @@ mod shared;
 mod show;
 mod sort;
 mod stats;
+mod stop;
 mod unlock;
 mod validate;
 
@@ -76,6 +77,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Prune(args) => prune::handle(&resolved, force, args),
         QueueCommand::Graph(args) => graph::handle(&resolved, args),
         QueueCommand::Export(args) => export::handle(&resolved, args),
+        QueueCommand::Stop => stop::handle(&resolved),
     }
 }
 
@@ -174,6 +176,12 @@ pub enum QueueCommand {
         after_long_help = "Examples:\n ralph queue export\n ralph queue export --format csv --output tasks.csv\n ralph queue export --format json --status done\n ralph queue export --format tsv --tag rust --tag cli\n ralph queue export --include-archive --format csv\n ralph queue export --format csv --created-after 2026-01-01"
     )]
     Export(QueueExportArgs),
+
+    /// Request graceful stop of a running loop after current task completes.
+    #[command(
+        after_long_help = "Examples:\n ralph queue stop\n\nNotes:\n - This creates a stop signal file that the run loop checks between tasks.\n - The current in-flight task will complete normally.\n - To force immediate termination, use Ctrl+C in the running loop."
+    )]
+    Stop,
 }
 
 #[cfg(test)]

@@ -22,6 +22,7 @@ use crate::contracts::{
 };
 use crate::promptflow;
 use crate::session::{self, SessionValidationResult};
+use crate::signal;
 use crate::{git, prompts, queue, runner, runutil, timeutil};
 use anyhow::{bail, Context, Result};
 
@@ -150,6 +151,9 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
     // Use a mutable reference to allow modification inside the closure
     let mut completed = completed_count;
 
+    // Clear any stale stop signal from previous runs to ensure clean state
+    signal::clear_stop_signal_at_loop_start(&cache_dir);
+
     let result = logging::with_scope(&label, || {
         loop {
             if opts.max_tasks != 0 && completed >= opts.max_tasks {
@@ -173,6 +177,15 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                     tasks_succeeded += 1;
                     consecutive_failures = 0; // Reset on success
                     log::info!("RunLoop: task-complete ({completed}/{initial_todo_count})");
+
+                    // Check for graceful stop signal after task completion
+                    if signal::stop_signal_exists(&cache_dir) {
+                        log::info!("Stop signal detected, completing loop after current task");
+                        if let Err(e) = signal::clear_stop_signal(&cache_dir) {
+                            log::warn!("Failed to clear stop signal: {}", e);
+                        }
+                        return Ok(());
+                    }
                 }
                 Err(err) => {
                     if let Some(reason) = runutil::abort_reason(&err) {

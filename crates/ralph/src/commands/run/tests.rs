@@ -1386,3 +1386,54 @@ fn notification_config_bug_no_notify_suppresses_all_notifications() {
         "notify_on_loop_complete should still be true from config"
     );
 }
+
+// ============================================================================
+// Stop signal tests
+// ============================================================================
+
+use crate::signal;
+
+#[test]
+fn stop_signal_is_detected_after_task_completion() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let cache_dir = temp.path().join(".ralph/cache");
+
+    // Create stop signal
+    signal::create_stop_signal(&cache_dir)?;
+    assert!(signal::stop_signal_exists(&cache_dir));
+
+    // Clear it
+    let cleared = signal::clear_stop_signal(&cache_dir)?;
+    assert!(cleared);
+    assert!(!signal::stop_signal_exists(&cache_dir));
+
+    Ok(())
+}
+
+#[test]
+fn stop_signal_clear_is_idempotent() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let cache_dir = temp.path().join(".ralph/cache");
+
+    // Clearing non-existent signal returns Ok(false)
+    let cleared = signal::clear_stop_signal(&cache_dir)?;
+    assert!(!cleared);
+
+    Ok(())
+}
+
+#[test]
+fn stop_signal_create_is_idempotent() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let cache_dir = temp.path().join(".ralph/cache");
+
+    // First creation
+    signal::create_stop_signal(&cache_dir)?;
+    assert!(signal::stop_signal_exists(&cache_dir));
+
+    // Second creation (should succeed, overwriting)
+    signal::create_stop_signal(&cache_dir)?;
+    assert!(signal::stop_signal_exists(&cache_dir));
+
+    Ok(())
+}

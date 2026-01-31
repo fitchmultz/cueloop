@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0490",
-      "status": "todo",
-      "title": "Add graceful stop signal for ralph run loop",
-      "priority": "medium",
-      "tags": [
-        "feature",
-        "enhancement",
-        "cli",
-        "runner"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/mod.rs",
-        "crates/ralph/src/commands/run/loop.rs",
-        "crates/ralph/src/runner.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User request: Users often start loops via 'ralph run loop --max-tasks 0' but may want to stop before all tasks are completed",
-        "Need ability to signal STOP after the active in-flight task is complete and pushed",
-        "All phases must complete, but next task loop should not begin"
-      ],
-      "plan": [
-        "Design signal mechanism (e.g., touch file, signal handler, or flag file in .ralph/cache/)",
-        "Add check in run loop between tasks for stop signal",
-        "Ensure stop signal is checked after task completion but before starting next task",
-        "Add CLI flag --stop-on-signal or use existing pattern",
-        "Document the graceful stop mechanism in docs/cli.md",
-        "Add tests for stop signal behavior",
-        "Run make ci"
-      ],
-      "notes": [],
-      "request": "Users often start loops via 'ralph run loop --max-tasks 0' but may want to stop before all tasks are completed. New feature: Ability to signal to STOP after the active in-flight task is complete and pushed (all phases completed, the next task loop just doesn't begin).",
-      "created_at": "2026-01-31T17:40:00Z",
-      "updated_at": "2026-01-31T17:40:00Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0466",
       "status": "todo",
       "title": "Review and justify files exceeding 700 LOC limit",

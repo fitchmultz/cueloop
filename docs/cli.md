@@ -665,6 +665,7 @@ Inspect and manage the task queue (`.ralph/queue.json`) and done archive (`.ralp
 * `burndown`: show burndown chart of remaining tasks over time.
 * `schema`: print the JSON schema for the queue file.
 * `export`: export task data to CSV, TSV, or JSON format.
+* `stop`: request graceful stop of a running loop after current task completes.
 
 ### Queue Flags
 
@@ -1000,6 +1001,30 @@ ralph queue export --only-archive --format csv --created-after 2026-01-01
 
 # Export tasks matching ID pattern
 ralph queue export --id-pattern RQ-01
+```
+
+### `ralph queue stop`
+
+Request graceful stop of a running `ralph run loop` after the current task completes.
+
+This command creates a stop signal file that the run loop checks between tasks. When detected:
+- The current in-flight task completes normally (all phases finish)
+- The loop exits cleanly without starting the next task
+- The stop signal is automatically cleared
+
+This is useful when you start a long-running loop with `--max-tasks 0` but want to stop after the current work finishes, without interrupting active task execution.
+
+Notes:
+- The stop signal does NOT interrupt an active task - it only prevents the next task from starting
+- To force immediate termination, press Ctrl+C in the running loop
+- Multiple `ralph queue stop` commands are idempotent (subsequent calls are no-ops)
+
+```bash
+# Terminal 1: Start a long-running loop
+ralph run loop --max-tasks 0
+
+# Terminal 2: Request graceful stop after current task
+ralph queue stop
 ```
 
 ### ralph task clone
