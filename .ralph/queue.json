@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0464",
-      "status": "todo",
-      "title": "Split commands/run/supervision.rs (1042 lines) into focused modules",
-      "priority": "medium",
-      "tags": [
-        "refactoring",
-        "code-quality",
-        "file-size",
-        "commands"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/supervision.rs",
-        "crates/ralph/src/commands/run/supervision/queue.rs (new)",
-        "crates/ralph/src/commands/run/supervision/git.rs (new)",
-        "crates/ralph/src/commands/run/supervision/ci.rs (new)",
-        "crates/ralph/src/commands/run/supervision/mod.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/commands/run/supervision.rs has 1042 lines, exceeding AGENTS.md limit",
-        "Mixes queue maintenance, git operations, CI gate, and completion celebrations",
-        "post_run_supervise function is too long with multiple responsibilities",
-        "LFS checking and git finalization are separate concerns"
-      ],
-      "plan": [
-        "Create commands/run/supervision/ subdirectory",
-        "Extract queue maintenance functions to supervision/queue.rs",
-        "Extract git operations (finalize_git_state, push_if_ahead) to supervision/git.rs",
-        "Extract CI gate logic to supervision/ci.rs",
-        "Keep main post_run_supervise orchestration in mod.rs",
-        "Update run/mod.rs to use new module structure",
-        "Run make ci to verify no regressions"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0465",
       "status": "todo",
       "title": "Fix config.rs module documentation completeness",

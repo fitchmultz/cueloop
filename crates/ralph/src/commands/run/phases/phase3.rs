@@ -217,7 +217,7 @@ fn load_phase3_task_snapshot(
         max_depth,
     )?;
     Ok(
-        crate::commands::run::find_task_status(&queue_file, &done_file, task_id)
+        supervision::find_task_status(&queue_file, &done_file, task_id)
             .map(|(status, _title, in_done)| Phase3TaskSnapshot { status, in_done }),
     )
 }
@@ -343,9 +343,8 @@ pub fn ensure_phase3_completion(
         max_depth,
     )?;
 
-    let (status, _title, in_done) =
-        crate::commands::run::find_task_status(&queue_file, &done_file, task_id)
-            .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
+    let (status, _title, in_done) = supervision::find_task_status(&queue_file, &done_file, task_id)
+        .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))?;
 
     if !in_done || !(status == TaskStatus::Done || status == TaskStatus::Rejected) {
         bail!(

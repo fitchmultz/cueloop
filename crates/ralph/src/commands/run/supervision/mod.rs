@@ -1,19 +1,47 @@
-//! Post-run supervision helpers.
+//! Post-run supervision orchestration.
 //!
-//! Handles post-run CI gating, queue/done updates, and git push/commit logic.
+//! Responsibilities:
+//! - Orchestrate post-run workflow: CI gate, queue updates, git operations, notifications.
+//! - Manage ContinueSession for session resumption.
+//! - Coordinate celebration triggers and productivity stats.
+//!
+//! Not handled here:
+//! - Individual concern implementations (see queue_ops.rs, git_ops.rs, ci.rs, notify.rs).
+//! - Runner process execution (handled by phases module).
+//!
+//! Invariants/assumptions:
+//! - post_run_supervise is called after task execution completes.
+//! - Queue files are valid and accessible.
+//! - Git repo state reflects task changes when is_dirty is true.
+
+use crate::celebrations;
+use crate::contracts::GitRevertMode;
+use crate::git;
+use crate::notification;
+use crate::productivity;
+use crate::queue;
+use crate::runutil;
+use anyhow::{anyhow, Context, Result};
+
+mod ci;
+mod git_ops;
+mod notify;
+mod queue_ops;
+
+// Re-export items needed by run/mod.rs and other modules
+pub(crate) use ci::{ci_gate_command_label, run_ci_gate};
+use git_ops::{finalize_git_state, push_if_ahead, warn_if_modified_lfs};
+use notify::build_notification_config;
+pub(crate) use queue_ops::find_task_status;
+use queue_ops::{
+    ensure_task_done_clean_or_bail, ensure_task_done_dirty_or_revert, maintain_and_validate_queues,
+    require_task_status, QueueMaintenanceSaveMode,
+};
 
 use super::logging;
 use super::PhaseType;
-use crate::celebrations;
-use crate::contracts::{GitRevertMode, QueueFile, TaskStatus};
-use crate::git::GitError;
-use crate::notification;
-use crate::productivity;
-use crate::{git, outpututil, queue, runutil, timeutil};
-use anyhow::{anyhow, bail, Context, Result};
-use std::path::Path;
-use std::process::Stdio;
 
+/// Session state for continuing an interrupted task.
 #[derive(Clone)]
 pub(crate) struct ContinueSession {
     pub runner: crate::contracts::Runner,
@@ -27,6 +55,7 @@ pub(crate) struct ContinueSession {
     pub ci_failure_retry_count: u8,
 }
 
+/// Resume a continue session with a message.
 pub(crate) fn resume_continue_session(
     resolved: &crate::config::Resolved,
     session: &mut ContinueSession,
@@ -38,7 +67,7 @@ pub(crate) fn resume_continue_session(
             if session.runner == crate::contracts::Runner::Kimi {
                 ""
             } else {
-                bail!("Catastrophic: no session id captured; cannot Continue.");
+                anyhow::bail!("Catastrophic: no session id captured; cannot Continue.");
             }
         }
     };
@@ -73,14 +102,14 @@ pub(crate) fn resume_continue_session(
     Ok(output)
 }
 
-#[derive(Debug, Clone, Copy)]
-enum QueueMaintenanceSaveMode {
-    /// Save both queue and done files if any terminal task was repaired (backfilled).
-    SaveBothIfAnyRepaired,
-    /// Save each file independently if it specifically was repaired.
-    SaveEachIfRepaired,
-}
-
+/// Main post-run supervision entry point.
+///
+/// Orchestrates the post-run workflow:
+/// 1. Check git status (dirty vs clean)
+/// 2. Run CI gate if dirty
+/// 3. Update queue/done files
+/// 4. Commit and push if enabled
+/// 5. Trigger notifications and celebrations
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn post_run_supervise(
     resolved: &crate::config::Resolved,
@@ -119,7 +148,7 @@ pub(crate) fn post_run_supervise(
                     "CI gate failure",
                     revert_prompt.as_ref(),
                 )?;
-                bail!(
+                anyhow::bail!(
                     "{} Error: {:#}",
                     runutil::format_revert_failure_message(
                         &format!(
@@ -181,7 +210,7 @@ pub(crate) fn post_run_supervise(
             return Ok(());
         }
 
-        if task_status == TaskStatus::Done && in_done {
+        if task_status == crate::contracts::TaskStatus::Done && in_done {
             if git_commit_push_enabled {
                 push_if_ahead(&resolved.repo_root).context("Git push failed")?;
             } else {
@@ -279,396 +308,6 @@ fn trigger_celebration(
         let celebration = celebrations::celebrate_standard(task_id, task_title);
         println!("{}", celebration);
     }
-}
-
-/// Build notification configuration from resolved config and CLI overrides.
-fn build_notification_config(
-    resolved: &crate::config::Resolved,
-    notify_on_complete: Option<bool>,
-    notify_sound: Option<bool>,
-) -> notification::NotificationConfig {
-    // CLI overrides take precedence over config
-    let enabled = notify_on_complete
-        .or(resolved.config.agent.notification.enabled)
-        .unwrap_or(true);
-    let notify_on_complete = notify_on_complete
-        .or(resolved.config.agent.notification.notify_on_complete)
-        .unwrap_or(true);
-    let notify_on_fail = resolved
-        .config
-        .agent
-        .notification
-        .notify_on_fail
-        .unwrap_or(true);
-    let notify_on_loop_complete = resolved
-        .config
-        .agent
-        .notification
-        .notify_on_loop_complete
-        .unwrap_or(true);
-    let suppress_when_active = resolved
-        .config
-        .agent
-        .notification
-        .suppress_when_active
-        .unwrap_or(true);
-    let sound_enabled = notify_sound
-        .or(resolved.config.agent.notification.sound_enabled)
-        .unwrap_or(false);
-    notification::NotificationConfig {
-        enabled,
-        notify_on_complete,
-        notify_on_fail,
-        notify_on_loop_complete,
-        suppress_when_active,
-        sound_enabled,
-        sound_path: resolved.config.agent.notification.sound_path.clone(),
-        timeout_ms: resolved
-            .config
-            .agent
-            .notification
-            .timeout_ms
-            .unwrap_or(8000),
-    }
-}
-
-/// Loads, repairs (backfills completed_at), and validates the queue and done files.
-fn maintain_and_validate_queues(
-    resolved: &crate::config::Resolved,
-    save_mode: QueueMaintenanceSaveMode,
-) -> Result<(QueueFile, QueueFile)> {
-    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-    let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
-    let repair_now = timeutil::now_utc_rfc3339()?;
-
-    match save_mode {
-        QueueMaintenanceSaveMode::SaveBothIfAnyRepaired => {
-            let mut repaired = false;
-            if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
-                repaired = true;
-            }
-            if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
-                repaired = true;
-            }
-            if repaired {
-                queue::save_queue(&resolved.queue_path, &queue_file)?;
-                if !done_file.tasks.is_empty() || resolved.done_path.exists() {
-                    queue::save_queue(&resolved.done_path, &done_file)?;
-                }
-            }
-        }
-        QueueMaintenanceSaveMode::SaveEachIfRepaired => {
-            if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
-                queue::save_queue(&resolved.queue_path, &queue_file)?;
-            }
-            if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
-                queue::save_queue(&resolved.done_path, &done_file)?;
-            }
-        }
-    }
-
-    let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
-        None
-    } else {
-        Some(&done_file)
-    };
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
-    queue::validate_queue_set(
-        &queue_file,
-        done_ref,
-        &resolved.id_prefix,
-        resolved.id_width,
-        max_depth,
-    )?;
-
-    Ok((queue_file, done_file))
-}
-
-/// Returns the status and title of a task, or an error if not found.
-fn require_task_status(
-    queue_file: &QueueFile,
-    done_file: &QueueFile,
-    task_id: &str,
-) -> Result<(TaskStatus, String, bool)> {
-    find_task_status(queue_file, done_file, task_id)
-        .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))
-}
-
-/// Ensures a task is marked as Done when the repo is dirty, handling revert-mode on inconsistency.
-fn ensure_task_done_dirty_or_revert(
-    resolved: &crate::config::Resolved,
-    queue_file: &mut QueueFile,
-    task_id: &str,
-    task_status: TaskStatus,
-    in_done: bool,
-    git_revert_mode: GitRevertMode,
-    revert_prompt: Option<&runutil::RevertPromptHandler>,
-) -> Result<()> {
-    if task_status != TaskStatus::Done {
-        if in_done {
-            let outcome = runutil::apply_git_revert_mode(
-                &resolved.repo_root,
-                git_revert_mode,
-                "Task inconsistency detected",
-                revert_prompt,
-            )?;
-            bail!(
-                "{}",
-                runutil::format_revert_failure_message(
-                    &format!(
-                        "Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json."
-                    ),
-                    outcome,
-                )
-            );
-        }
-        let now = timeutil::now_utc_rfc3339()?;
-        queue::set_status(queue_file, task_id, TaskStatus::Done, &now, None)?;
-        queue::save_queue(&resolved.queue_path, queue_file)?;
-    }
-    Ok(())
-}
-
-/// Ensures a task is marked as Done when the repo is clean, bailing on inconsistency.
-fn ensure_task_done_clean_or_bail(
-    resolved: &crate::config::Resolved,
-    queue_file: &mut QueueFile,
-    task_id: &str,
-    task_status: TaskStatus,
-    in_done: bool,
-) -> Result<bool> {
-    if task_status != TaskStatus::Done {
-        if in_done {
-            bail!("Task inconsistency: task {task_id} is archived in .ralph/done.json but its status is not 'done'. Review the task state in .ralph/done.json.");
-        }
-        let now = timeutil::now_utc_rfc3339()?;
-        queue::set_status(queue_file, task_id, TaskStatus::Done, &now, None)?;
-        queue::save_queue(&resolved.queue_path, queue_file)?;
-        Ok(true)
-    } else {
-        Ok(false)
-    }
-}
-
-/// Handles the final git commit and push if enabled, and verifies the repo is clean.
-fn finalize_git_state(
-    resolved: &crate::config::Resolved,
-    task_id: &str,
-    task_title: &str,
-    git_commit_push_enabled: bool,
-) -> Result<()> {
-    if git_commit_push_enabled {
-        let commit_message = outpututil::format_task_commit_message(task_id, task_title);
-        git::commit_all(&resolved.repo_root, &commit_message)?;
-        push_if_ahead(&resolved.repo_root)?;
-        git::require_clean_repo_ignoring_paths(
-            &resolved.repo_root,
-            false,
-            git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
-        )?;
-    } else {
-        log::info!("Auto git commit/push disabled; leaving repo dirty after queue updates.");
-    }
-    Ok(())
-}
-
-/// Validates LFS configuration and warns about potential issues.
-///
-/// When `strict` is true, returns an error if LFS filters are misconfigured
-/// or if there are files that should be LFS but aren't tracked properly.
-fn warn_if_modified_lfs(repo_root: &Path, strict: bool) -> Result<()> {
-    match git::has_lfs(repo_root) {
-        Ok(true) => {}
-        Ok(false) => return Ok(()),
-        Err(err) => {
-            log::warn!("Git LFS detection failed: {:#}", err);
-            return Ok(());
-        }
-    }
-
-    // Perform comprehensive LFS health check
-    let health_report = match git::check_lfs_health(repo_root) {
-        Ok(report) => report,
-        Err(err) => {
-            log::warn!("Git LFS health check failed: {:#}", err);
-            return Ok(());
-        }
-    };
-
-    if !health_report.lfs_initialized {
-        return Ok(());
-    }
-
-    // Check filter configuration
-    if let Some(ref filter_status) = health_report.filter_status {
-        if !filter_status.is_healthy() {
-            let issues = filter_status.issues();
-            if strict {
-                return Err(anyhow!(
-                    "Git LFS filters misconfigured: {}. Run 'git lfs install' to fix.",
-                    issues.join("; ")
-                ));
-            } else {
-                log::error!(
-                    "Git LFS filters misconfigured: {}. Run 'git lfs install' to fix. This may cause data loss if LFS files are committed as pointers!",
-                    issues.join("; ")
-                );
-            }
-        }
-    }
-
-    // Check LFS status for untracked files
-    if let Some(ref status_summary) = health_report.status_summary {
-        if !status_summary.is_clean() {
-            let issues = status_summary.issue_descriptions();
-            if strict {
-                return Err(anyhow!("Git LFS issues detected: {}", issues.join("; ")));
-            } else {
-                for issue in issues {
-                    log::warn!("LFS issue: {}", issue);
-                }
-            }
-        }
-    }
-
-    // Check for pointer file issues
-    if !health_report.pointer_issues.is_empty() {
-        for issue in &health_report.pointer_issues {
-            if strict {
-                return Err(anyhow!("LFS pointer issue: {}", issue.description()));
-            } else {
-                log::warn!("LFS pointer issue: {}", issue.description());
-            }
-        }
-    }
-
-    // Original modified files check
-    let status_paths = match git::status_paths(repo_root) {
-        Ok(paths) => paths,
-        Err(err) => {
-            log::warn!("Unable to read git status for LFS warning: {:#}", err);
-            return Ok(());
-        }
-    };
-
-    if status_paths.is_empty() {
-        return Ok(());
-    }
-
-    let lfs_files = match git::list_lfs_files(repo_root) {
-        Ok(files) => files,
-        Err(err) => {
-            log::warn!("Unable to list LFS files: {:#}", err);
-            return Ok(());
-        }
-    };
-
-    if lfs_files.is_empty() {
-        log::warn!(
-            "Git LFS detected but no tracked files were listed; review LFS changes manually."
-        );
-        return Ok(());
-    }
-
-    let modified = git::filter_modified_lfs_files(&status_paths, &lfs_files);
-    if !modified.is_empty() {
-        log::warn!("Modified Git LFS files detected: {}", modified.join(", "));
-    }
-
-    Ok(())
-}
-
-fn push_if_ahead(repo_root: &Path) -> Result<()> {
-    match git::is_ahead_of_upstream(repo_root) {
-        Ok(ahead) => {
-            if !ahead {
-                return Ok(());
-            }
-        }
-        Err(GitError::NoUpstream) | Err(GitError::NoUpstreamConfigured) => {
-            log::warn!("skipping push (no upstream configured)");
-            return Ok(());
-        }
-        Err(err) => {
-            return Err(anyhow!("upstream check failed: {:#}", err));
-        }
-    }
-    if let Err(err) = git::push_upstream(repo_root) {
-        bail!("Git push failed: the repository has unpushed commits but the push operation failed. Push manually to sync with upstream. Error: {:#}", err);
-    }
-    Ok(())
-}
-
-pub(super) fn find_task_status(
-    queue_file: &QueueFile,
-    done_file: &QueueFile,
-    task_id: &str,
-) -> Option<(TaskStatus, String, bool)> {
-    let needle = task_id.trim();
-    if let Some(task) = queue_file.tasks.iter().find(|t| t.id.trim() == needle) {
-        return Some((task.status, task.title.clone(), false));
-    }
-    if let Some(task) = done_file.tasks.iter().find(|t| t.id.trim() == needle) {
-        return Some((task.status, task.title.clone(), true));
-    }
-    None
-}
-
-pub(super) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<()> {
-    let enabled = resolved.config.agent.ci_gate_enabled.unwrap_or(true);
-    let command = resolved
-        .config
-        .agent
-        .ci_gate_command
-        .as_deref()
-        .unwrap_or("make ci")
-        .trim();
-
-    if !enabled {
-        log::info!("CI gate disabled; skipping configured command '{command}'.");
-        return Ok(());
-    }
-
-    if command.is_empty() {
-        bail!("CI gate command is empty but CI gate is enabled. Set agent.ci_gate_command or disable the gate with agent.ci_gate_enabled=false.");
-    }
-
-    logging::with_scope(&format!("CI gate ({command})"), || {
-        let status = runutil::shell_command(command)
-            .current_dir(&resolved.repo_root)
-            .stdin(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status()
-            .with_context(|| {
-                format!(
-                    "run CI gate command '{}' in {}",
-                    command,
-                    resolved.repo_root.display()
-                )
-            })?;
-
-        if status.success() {
-            return Ok(());
-        }
-
-        bail!(
-            "CI failed: '{}' exited with code {:?}. Fix the linting, type-checking, or test failures before proceeding.",
-            command,
-            status.code()
-        )
-    })
-}
-
-pub(super) fn ci_gate_command_label(resolved: &crate::config::Resolved) -> String {
-    resolved
-        .config
-        .agent
-        .ci_gate_command
-        .as_deref()
-        .unwrap_or("make ci")
-        .trim()
-        .to_string()
 }
 
 #[cfg(test)]
