@@ -1,12 +1,19 @@
 # Repository Guidelines (Ralph)
 
 Ralph is a Rust CLI for running AI agent loops against a structured JSON task queue.
-This file is the fast path for contributors/agents; for deeper detail start at `docs/index.md`.
+This file is a fast path for contributors/agents; for deeper detail start at `docs/index.md` and `CONTRIBUTING.md`.
+
+## TL;DR
+
+- Run `make ci` before claiming completion, committing, or merging.
+- `make ci` is the source of truth for the gate; it currently runs:
+  `check-env-safety → check-backup-artifacts → generate → format → type-check → lint → build → test → install`
+- Keep secrets out of git/logs; `.env` is for local use only and MUST remain untracked (CI enforces this).
 
 ## Non-Negotiables
 
 - CI gate: `make ci` MUST pass before claiming completion, committing, or merging.
-- Source docs: every new/changed source file MUST start with a module doc comment/docstring that states:
+- Source docs: every new/changed source file MUST start with module docs that state:
   - what the file is responsible for
   - what it explicitly does NOT handle
   - any invariants/assumptions callers must respect
@@ -23,6 +30,7 @@ This file is the fast path for contributors/agents; for deeper detail start at `
   - `crates/ralph/assets/prompts/`: embedded prompt templates (worker/task builder/scan)
 - `docs/`: CLI + workflow + configuration docs (`docs/index.md` is the entry point)
 - `schemas/`: generated JSON schemas (committed)
+- `scripts/`: maintenance + release helper scripts
 - `.ralph/`: repo-local runtime state (partially committed; queue.json is tracked)
   - `.ralph/queue.json`: active tasks (source of truth)
   - `.ralph/done.json`: archived tasks
@@ -33,13 +41,14 @@ This file is the fast path for contributors/agents; for deeper detail start at `
 
 The Makefile is the contract; keep these targets working:
 
-- `make ci`: local CI gate (generate -> format -> type-check -> lint -> build -> test -> install). Do not remove `install`.
+- `make ci`: local CI gate (see the `ci:` target in `Makefile` for exact ordering). Do not remove `install`.
 - `make install`: install `ralph` to `~/.local/bin/ralph` (or a writable fallback) and sanity-check `ralph --help`.
-- `make test`: runs workspace tests + doc tests and builds a release binary in an isolated temp dir.
+- `make test`: runs workspace unit + doc tests in isolated temp dirs (under `target/tmp/ralph-ci-tmp/`).
 - `make lint`: `cargo clippy --workspace --all-targets -- -D warnings`
 - `make format`: `cargo fmt --all`
 - `make type-check`: `cargo check --workspace --all-targets`
 - `make generate`: regenerates JSON schemas into `schemas/`
+- `make update`: updates Cargo dependencies (`cargo update`)
 - `make clean`: removes build artifacts, logs, and most `.ralph/cache` entries
 
 Useful iteration commands (not a substitute for `make ci`):
@@ -106,25 +115,7 @@ When making breaking changes to config keys or file formats, use the migration s
 - History tracking: `.ralph/cache/migrations.json` (auto-generated)
 - CLI command: `ralph migrate` (check/list/apply)
 
-### Adding a New Migration
-
-1. Define the migration in `registry.rs`:
-   ```rust
-   Migration {
-       id: "config_key_rename_2026_02",
-       description: "Rename agent.runner_cli to agent.runner_options",
-       migration_type: MigrationType::ConfigKeyRename {
-           old_key: "agent.runner_cli",
-           new_key: "agent.runner_options",
-       },
-   }
-   ```
-
-2. Migrations are applied automatically when users run `ralph migrate --apply`
-
-3. Config key renames preserve JSONC comments via text-based replacement
-
-4. File migrations keep backups (original file is not deleted)
+See `crates/ralph/src/migration/mod.rs` for invariants/assumptions (idempotency, JSONC comment preservation, backups).
 
 ## Documentation Maintenance
 
@@ -135,6 +126,8 @@ When making breaking changes to config keys or file formats, use the migration s
 
 ## Troubleshooting
 
-- CI failing: run `make ci`; common checks are `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace`.
+- CI failing: run `make ci`; the first failing step is printed (common: formatting, Clippy warnings, tests).
+- `.env tracked` error: run `git rm --cached .env` and ensure `.env` is in `.gitignore`.
+- `Backup artifacts` error: remove any `*.bak` files under `crates/ralph/src/`.
 - Queue lock: investigate `.ralph/lock`; use `--force` only when you understand why the lock is stale.
 - Runner issues: verify the runner binary is on `PATH` (e.g., `codex --help`) and check runner/model settings in config.

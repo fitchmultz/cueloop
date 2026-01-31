@@ -52,7 +52,7 @@ cargo run -p ralph -- queue list
 The CI gate runs the full validation pipeline:
 
 ```
-generate → format → type-check → lint → build → test → install
+check-env-safety → check-backup-artifacts → generate → format → type-check → lint → build → test → install
 ```
 
 Run it with:

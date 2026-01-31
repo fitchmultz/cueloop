@@ -23,13 +23,14 @@
 
 The Makefile is the contract; keep these targets working:
 
-- `make ci`: local CI gate (generate → format → type-check → lint → build → test → install). Do not remove `install`.
+- `make ci`: local CI gate (see the `ci:` target in your `Makefile` for exact ordering; must include generate → format → type-check → lint → build → test → install). Do not remove `install`.
 - `make install`: install binary to `~/.local/bin/` (or a writable fallback).
 - `make test`: runs workspace tests + doc tests and builds a release binary in an isolated temp dir.
 - `make lint`: `cargo clippy --workspace --all-targets -- -D warnings`
 - `make format`: `cargo fmt --all`
 - `make type-check`: `cargo check --workspace --all-targets`
 - `make generate`: regenerates any generated artifacts (schemas, etc.).
+- `make update`: updates Rust dependencies (e.g., `cargo update`).
 - `make clean`: removes build artifacts, logs, and cache entries.
 
 Useful iteration commands (not a substitute for `make ci`):
