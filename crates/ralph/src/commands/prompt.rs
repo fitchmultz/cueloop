@@ -1,16 +1,27 @@
 //! Prompt inspection/preview commands.
 //!
-//! This module exists to make prompt compilation observable and auditable.
-//! It renders the exact final prompt that would be sent to a runner for:
+//! Responsibilities:
+//! - Render preview of final prompts that would be sent to runners
+//! - Provide prompt management commands (list, show, export, sync, diff)
+//! - Make prompt compilation observable and auditable
+//!
+//! Not handled here:
+//! - Actual prompt execution or runner invocation
+//! - Prompt template editing (use filesystem or editor)
+//! - Prompt versioning or rollback
+//!
+//! Invariants/assumptions:
+//! - Prompt templates exist in `crates/ralph/assets/prompts/` or `.ralph/prompts/`
+//! - Override paths follow the pattern `.ralph/prompts/<name>.md`
+//! - Preview rendering re-uses production prompt rendering for accuracy
+//!
+//! Renders the exact final prompt that would be sent to a runner for:
 //! - worker (single-phase / phase1 / phase2)
 //! - scan
 //! - task builder
 //!
 //! The logic intentionally re-uses existing prompt rendering + wrappers so that
 //! previews stay accurate as runtime behavior evolves.
-//!
-//! Also provides prompt management commands (list, show, export, sync, diff) for
-//! viewing and managing embedded prompt templates.
 
 use crate::config;
 use crate::contracts::ProjectType;

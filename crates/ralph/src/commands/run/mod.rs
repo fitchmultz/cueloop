@@ -14,6 +14,17 @@
 //! - Queue ordering is authoritative for task selection.
 //! - Pre-run updates and CI gates honor config defaults unless overridden.
 //! - Phase runners expect stream-json output for execution.
+//!
+//! Size justification (1002 LOC):
+//! This module coordinates the entire run workflow and requires:
+//! - Multiple run modes (loop, one, force) with shared orchestration logic
+//! - Queue locking, session validation, and signal handling integration
+//! - Pre-run CI gate execution and result handling
+//! - Post-run supervision with task status transitions
+//! - Submodules for phases, selection, logging, and supervision (see mod declarations)
+//!
+//! While large, all logic is tightly coupled to the single responsibility of
+//! run orchestration. Further splitting would fragment the workflow coordination.
 
 use crate::commands::task as task_cmd;
 use crate::config;

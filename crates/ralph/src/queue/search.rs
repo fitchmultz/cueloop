@@ -1,8 +1,18 @@
 //! Task queue search and filtering.
 //!
-//! This module contains logic for:
-//! - filtering tasks by status/tag/scope
-//! - searching across task text fields (substring, regex, or fuzzy matching)
+//! Responsibilities:
+//! - Filtering tasks by status/tag/scope
+//! - Searching across task text fields (substring, regex, or fuzzy matching)
+//!
+//! Not handled here:
+//! - Queue persistence, repair, or validation (see `crate::queue`)
+//! - Task mutation or state changes
+//! - Search result ordering beyond basic filtering
+//!
+//! Invariants/assumptions:
+//! - Search patterns are normalized (lowercase, trimmed) before comparison
+//! - Regex compilation failures are propagated to callers
+//! - Empty filter sets match all tasks (no filtering applied)
 //!
 //! It is split out from `queue.rs` to keep that parent module focused on
 //! persistence/repair/validation while keeping a stable public API via

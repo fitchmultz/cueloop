@@ -2,54 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0466",
-      "status": "todo",
-      "title": "Review and justify files exceeding 700 LOC limit",
-      "priority": "medium",
-      "tags": [
-        "code-quality",
-        "documentation",
-        "file-size"
-      ],
-      "scope": [
-        "crates/ralph/src/queue/search.rs (979 lines)",
-        "crates/ralph/src/tui/config_edit.rs (968 lines)",
-        "crates/ralph/src/contracts/config.rs (953 lines)",
-        "crates/ralph/src/sanity/mod.rs (918 lines)",
-        "crates/ralph/src/agent.rs (917 lines)",
-        "crates/ralph/src/queue/graph.rs (916 lines)",
-        "crates/ralph/src/runner.rs (901 lines)",
-        "crates/ralph/src/commands/run/mod.rs (899 lines)",
-        "crates/ralph/src/queue/operations/edit.rs (898 lines)",
-        "crates/ralph/src/git/lfs.rs (842 lines)",
-        "crates/ralph/src/commands/prompt.rs (829 lines)",
-        "crates/ralph/src/commands/prd.rs (826 lines)",
-        "crates/ralph/src/commands/context.rs (804 lines)"
-      ],
-      "evidence": [
-        "AGENTS.md: Files exceeding ~700 LOC REQUIRE explicit justification",
-        "Found 12 files between 700-1000 LOC without documented justification",
-        "queue/search.rs: 979 lines - complex search algorithm with scoring",
-        "sanity/mod.rs: 918 lines - health checks, migrations, unknown key handling",
-        "runner.rs: 901 lines - runner orchestration for 7 different CLIs"
-      ],
-      "plan": [
-        "Review each file for cohesion - does it represent a single responsibility?",
-        "For files that should stay as-is, add module doc comment explaining why",
-        "Identify files that could benefit from splitting (create follow-up tasks)",
-        "Document justification inline for each file kept at >700 LOC",
-        "Focus on high-impact files: runner.rs, sanity/mod.rs, queue/search.rs"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0462",
       "status": "todo",
       "title": "Split tui/render/panels.rs (1209 lines) into panel modules",
