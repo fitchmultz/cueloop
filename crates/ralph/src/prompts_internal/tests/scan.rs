@@ -9,7 +9,7 @@ use super::*;
 
 #[test]
 fn render_scan_prompt_replaces_focus_placeholder() -> Result<()> {
-    let template = "FOCUS:\n{{USER_FOCUS}}\nMODE:\n{{MODE_GUIDANCE}}\n";
+    let template = "{{MODE_GUIDANCE}}";
     let config = default_config();
     let rendered = render_scan_prompt(
         template,
@@ -26,7 +26,7 @@ fn render_scan_prompt_replaces_focus_placeholder() -> Result<()> {
 
 #[test]
 fn render_scan_prompt_allows_placeholder_like_focus() -> Result<()> {
-    let template = "FOCUS:\n{{USER_FOCUS}}\nMODE:\n{{MODE_GUIDANCE}}\n";
+    let template = "{{MODE_GUIDANCE}}";
     let config = default_config();
     let focus = "see {{config.agent.model}} here";
     let rendered = render_scan_prompt(
@@ -42,7 +42,7 @@ fn render_scan_prompt_allows_placeholder_like_focus() -> Result<()> {
 
 #[test]
 fn render_scan_prompt_innovation_mode_includes_innovation_guidance() -> Result<()> {
-    let template = "FOCUS:\n{{USER_FOCUS}}\nMODE:\n{{MODE_GUIDANCE}}\n";
+    let template = "{{MODE_GUIDANCE}}";
     let config = default_config();
     let rendered = render_scan_prompt(
         template,
@@ -59,7 +59,7 @@ fn render_scan_prompt_innovation_mode_includes_innovation_guidance() -> Result<(
 
 #[test]
 fn render_scan_prompt_maintenance_mode_includes_maintenance_guidance() -> Result<()> {
-    let template = "FOCUS:\n{{USER_FOCUS}}\nMODE:\n{{MODE_GUIDANCE}}\n";
+    let template = "{{MODE_GUIDANCE}}";
     let config = default_config();
     let rendered = render_scan_prompt(
         template,
@@ -69,7 +69,7 @@ fn render_scan_prompt_maintenance_mode_includes_maintenance_guidance() -> Result
         &config,
     )?;
     assert!(rendered.contains("code review"));
-    assert!(rendered.contains("code hygiene"));
+    assert!(rendered.contains("MAINTENANCE TASK FILTER"));
     assert!(!rendered.contains("{{MODE_GUIDANCE}}"));
     Ok(())
 }
@@ -77,8 +77,47 @@ fn render_scan_prompt_maintenance_mode_includes_maintenance_guidance() -> Result
 #[test]
 fn default_scan_prompt_mentions_next_id_command() -> Result<()> {
     let dir = TempDir::new()?;
-    let prompt = load_scan_prompt(dir.path())?;
-    assert!(prompt.contains("ralph queue next-id"));
-    assert!(!prompt.contains("ralph queue next` for each new task ID"));
+    let template = load_scan_prompt(dir.path())?;
+    let config = default_config();
+    let rendered = render_scan_prompt(
+        &template,
+        "",
+        ScanMode::Innovation,
+        ProjectType::Code,
+        &config,
+    )?;
+    assert!(rendered.contains("ralph queue next-id"));
+    assert!(rendered.contains("ralph queue next is NOT an ID generator"));
+    Ok(())
+}
+
+#[test]
+fn render_scan_prompt_empty_focus_defaults_to_none() -> Result<()> {
+    let template = "{{MODE_GUIDANCE}}";
+    let config = default_config();
+    let rendered = render_scan_prompt(
+        template,
+        "   ",
+        ScanMode::Maintenance,
+        ProjectType::Code,
+        &config,
+    )?;
+    assert!(rendered.contains("# FOCUS\n(none)"));
+    Ok(())
+}
+
+#[test]
+fn render_scan_prompt_replaces_project_type_guidance_placeholder() -> Result<()> {
+    let template = "{{MODE_GUIDANCE}}";
+    let config = default_config();
+    let rendered = render_scan_prompt(
+        template,
+        "",
+        ScanMode::Maintenance,
+        ProjectType::Code,
+        &config,
+    )?;
+    assert!(!rendered.contains("{{PROJECT_TYPE_GUIDANCE}}"));
+    assert!(rendered.contains("## PROJECT TYPE: CODE"));
     Ok(())
 }

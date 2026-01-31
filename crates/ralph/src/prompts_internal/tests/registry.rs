@@ -78,7 +78,7 @@ fn registry_maps_prompt_metadata() {
             id: PromptTemplateId::Scan,
             rel_path: ".ralph/prompts/scan.md",
             label: "scan",
-            embedded_marker: "ralph queue next-id",
+            embedded_marker: "{{MODE_GUIDANCE}}",
             project_guidance: true,
         },
         Expectation {
@@ -135,9 +135,9 @@ fn task_builder_prompt_mentions_scope_is_starting_point() {
 }
 
 #[test]
-fn scan_prompt_mentions_scope_is_starting_point() {
+fn scan_prompt_template_is_mode_guidance_only() {
     let template = prompt_template(PromptTemplateId::Scan).embedded_default;
-    assert!(template.contains("Scope is a starting point, not a restriction."));
+    assert_eq!(template.trim(), "{{MODE_GUIDANCE}}");
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn required_placeholders_fail_when_missing() {
 
 #[test]
 fn required_placeholders_pass_when_present() -> Result<()> {
-    let template = "FOCUS={{USER_FOCUS}}\nMODE={{MODE_GUIDANCE}}";
+    let template = "{{MODE_GUIDANCE}}";
     let meta = prompt_template(PromptTemplateId::Scan);
     ensure_required_placeholders(template, meta.required_placeholders)?;
     Ok(())
