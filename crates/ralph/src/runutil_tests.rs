@@ -556,7 +556,7 @@ fn timeout_applies_git_revert_mode_and_saves_safeguard_dump_when_stdout_is_avail
 
     assert!(msg.contains("timed out"));
     assert!(msg.contains("Uncommitted changes were reverted."));
-    assert!(msg.contains("redacted stdout saved to"));
+    assert!(msg.contains("redacted output saved to"));
 
     // Verify repo clean + file reverted.
     let reverted = fs::read_to_string(&file_path).expect("read file after revert");
@@ -569,7 +569,7 @@ fn timeout_applies_git_revert_mode_and_saves_safeguard_dump_when_stdout_is_avail
     );
 
     // Verify safeguard file exists and contains our emitted output.
-    let marker = "redacted stdout saved to ";
+    let marker = "redacted output saved to ";
     let start = msg
         .find(marker)
         .map(|idx| idx + marker.len())

@@ -359,10 +359,12 @@ where
                     if let Some(capture) = timeout_stdout_capture.as_ref() {
                         let captured = capture.lock().map(|buf| buf.clone()).unwrap_or_default();
                         if !captured.trim().is_empty() {
+                            // Note: This capture includes both stdout and stderr interleaved,
+                            // as both streams flow through the output handler.
                             match fsutil::safeguard_text_dump_redacted("runner_error", &captured) {
                                 Ok(path) => {
                                     safeguard_msg =
-                                        format!("\n(redacted stdout saved to {})", path.display());
+                                        format!("\n(redacted output saved to {})", path.display());
                                 }
                                 Err(err) => {
                                     log::warn!("failed to save safeguard dump: {}", err);
@@ -407,7 +409,7 @@ where
                 if revert_on_error {
                     if !stdout.0.is_empty() {
                         match fsutil::safeguard_text_dump_redacted(
-                            "runner_error",
+                            "runner_error_stdout",
                             &stdout.to_string(),
                         ) {
                             Ok(path) => {
@@ -415,7 +417,23 @@ where
                                     format!("\n(redacted stdout saved to {})", path.display());
                             }
                             Err(err) => {
-                                log::warn!("failed to save safeguard dump: {}", err);
+                                log::warn!("failed to save stdout safeguard dump: {}", err);
+                            }
+                        }
+                    }
+                    if !stderr.0.is_empty() {
+                        match fsutil::safeguard_text_dump_redacted(
+                            "runner_error_stderr",
+                            &stderr.to_string(),
+                        ) {
+                            Ok(path) => {
+                                safeguard_msg.push_str(&format!(
+                                    "\n(redacted stderr saved to {})",
+                                    path.display()
+                                ));
+                            }
+                            Err(err) => {
+                                log::warn!("failed to save stderr safeguard dump: {}", err);
                             }
                         }
                     }
@@ -481,7 +499,7 @@ where
                 if revert_on_error {
                     if !stdout.0.is_empty() {
                         match fsutil::safeguard_text_dump_redacted(
-                            "runner_error",
+                            "runner_error_stdout",
                             &stdout.to_string(),
                         ) {
                             Ok(path) => {
@@ -489,7 +507,23 @@ where
                                     format!("\n(redacted stdout saved to {})", path.display());
                             }
                             Err(err) => {
-                                log::warn!("failed to save safeguard dump: {}", err);
+                                log::warn!("failed to save stdout safeguard dump: {}", err);
+                            }
+                        }
+                    }
+                    if !stderr.0.is_empty() {
+                        match fsutil::safeguard_text_dump_redacted(
+                            "runner_error_stderr",
+                            &stderr.to_string(),
+                        ) {
+                            Ok(path) => {
+                                safeguard_msg.push_str(&format!(
+                                    "\n(redacted stderr saved to {})",
+                                    path.display()
+                                ));
+                            }
+                            Err(err) => {
+                                log::warn!("failed to save stderr safeguard dump: {}", err);
                             }
                         }
                     }
@@ -865,5 +899,369 @@ mod tests {
         let redacted = crate::redaction::redact_text(input);
         assert!(!redacted.contains("secret123"));
         assert!(redacted.contains("[REDACTED]"));
+    }
+
+    /// Test that safeguard dumps are created for stderr on NonZeroExit errors.
+    /// This verifies that when a runner exits with a non-zero code and produces
+    /// stderr output, both stdout and stderr are persisted separately.
+    #[test]
+    fn safeguard_dump_created_for_stderr_on_nonzero_exit() {
+        use crate::redaction::RedactedString;
+
+        // Create a mock runner backend that returns NonZeroExit with stderr
+        struct MockNonZeroExitBackend;
+        impl RunnerBackend for MockNonZeroExitBackend {
+            fn run_prompt<'a>(
+                &mut self,
+                _runner_kind: super::Runner,
+                _work_dir: &std::path::Path,
+                _bins: runner::RunnerBinaries<'a>,
+                _model: super::Model,
+                _reasoning_effort: Option<super::ReasoningEffort>,
+                _runner_cli: runner::ResolvedRunnerCliOptions,
+                _prompt: &str,
+                _timeout: Option<std::time::Duration>,
+                _permission_mode: Option<super::ClaudePermissionMode>,
+                _output_handler: Option<runner::OutputHandler>,
+                _output_stream: runner::OutputStream,
+                _phase_type: crate::commands::run::PhaseType,
+            ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+                Err(runner::RunnerError::NonZeroExit {
+                    code: 1,
+                    stdout: RedactedString::from("stdout content"),
+                    stderr: RedactedString::from("stderr content with API_KEY=secret123"),
+                    session_id: None,
+                })
+            }
+
+            fn resume_session<'a>(
+                &mut self,
+                _runner_kind: super::Runner,
+                _work_dir: &std::path::Path,
+                _bins: runner::RunnerBinaries<'a>,
+                _model: super::Model,
+                _reasoning_effort: Option<super::ReasoningEffort>,
+                _runner_cli: runner::ResolvedRunnerCliOptions,
+                _session_id: &str,
+                _message: &str,
+                _permission_mode: Option<super::ClaudePermissionMode>,
+                _timeout: Option<std::time::Duration>,
+                _output_handler: Option<runner::OutputHandler>,
+                _output_stream: runner::OutputStream,
+                _phase_type: crate::commands::run::PhaseType,
+            ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+                unreachable!("resume_session should not be called")
+            }
+        }
+
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let invocation = RunnerInvocation {
+            repo_root: temp_dir.path(),
+            runner_kind: super::Runner::Codex,
+            bins: runner::RunnerBinaries {
+                codex: "codex",
+                opencode: "opencode",
+                gemini: "gemini",
+                claude: "claude",
+                cursor: "cursor",
+                kimi: "kimi",
+                pi: "pi",
+            },
+            model: super::Model::Gpt52Codex,
+            reasoning_effort: None,
+            runner_cli: runner::ResolvedRunnerCliOptions::default(),
+            prompt: "test prompt",
+            timeout: None,
+            permission_mode: None,
+            revert_on_error: true,
+            git_revert_mode: super::GitRevertMode::Disabled,
+            output_handler: None,
+            output_stream: runner::OutputStream::HandlerOnly,
+            revert_prompt: None,
+            phase_type: crate::commands::run::PhaseType::Implementation,
+        };
+
+        let messages = RunnerErrorMessages {
+            log_label: "test",
+            interrupted_msg: "interrupted",
+            timeout_msg: "timeout",
+            terminated_msg: "terminated",
+            non_zero_msg: |code| format!("non-zero exit: {}", code),
+            other_msg: |err| format!("other error: {}", err),
+        };
+
+        let mut backend = MockNonZeroExitBackend;
+        let result = run_prompt_with_handling_backend(invocation, messages, &mut backend);
+
+        // Should fail with the non-zero exit error
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        // Error message should mention both stdout and stderr dump paths
+        assert!(
+            err_msg.contains("stdout saved"),
+            "Error should mention stdout dump path: {}",
+            err_msg
+        );
+        assert!(
+            err_msg.contains("stderr saved"),
+            "Error should mention stderr dump path: {}",
+            err_msg
+        );
+    }
+
+    /// Test that safeguard dumps are created for stderr on TerminatedBySignal errors.
+    /// This verifies that when a runner is terminated by a signal and produces
+    /// stderr output, both stdout and stderr are persisted separately.
+    #[test]
+    fn safeguard_dump_created_for_stderr_on_terminated_by_signal() {
+        use crate::redaction::RedactedString;
+
+        // Create a mock runner backend that returns TerminatedBySignal with stderr
+        struct MockTerminatedBySignalBackend;
+        impl RunnerBackend for MockTerminatedBySignalBackend {
+            fn run_prompt<'a>(
+                &mut self,
+                _runner_kind: super::Runner,
+                _work_dir: &std::path::Path,
+                _bins: runner::RunnerBinaries<'a>,
+                _model: super::Model,
+                _reasoning_effort: Option<super::ReasoningEffort>,
+                _runner_cli: runner::ResolvedRunnerCliOptions,
+                _prompt: &str,
+                _timeout: Option<std::time::Duration>,
+                _permission_mode: Option<super::ClaudePermissionMode>,
+                _output_handler: Option<runner::OutputHandler>,
+                _output_stream: runner::OutputStream,
+                _phase_type: crate::commands::run::PhaseType,
+            ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+                Err(runner::RunnerError::TerminatedBySignal {
+                    stdout: RedactedString::from("stdout content"),
+                    stderr: RedactedString::from("stderr content with API_KEY=secret123"),
+                    session_id: None,
+                })
+            }
+
+            fn resume_session<'a>(
+                &mut self,
+                _runner_kind: super::Runner,
+                _work_dir: &std::path::Path,
+                _bins: runner::RunnerBinaries<'a>,
+                _model: super::Model,
+                _reasoning_effort: Option<super::ReasoningEffort>,
+                _runner_cli: runner::ResolvedRunnerCliOptions,
+                _session_id: &str,
+                _message: &str,
+                _permission_mode: Option<super::ClaudePermissionMode>,
+                _timeout: Option<std::time::Duration>,
+                _output_handler: Option<runner::OutputHandler>,
+                _output_stream: runner::OutputStream,
+                _phase_type: crate::commands::run::PhaseType,
+            ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+                unreachable!("resume_session should not be called")
+            }
+        }
+
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let invocation = RunnerInvocation {
+            repo_root: temp_dir.path(),
+            runner_kind: super::Runner::Codex,
+            bins: runner::RunnerBinaries {
+                codex: "codex",
+                opencode: "opencode",
+                gemini: "gemini",
+                claude: "claude",
+                cursor: "cursor",
+                kimi: "kimi",
+                pi: "pi",
+            },
+            model: super::Model::Gpt52Codex,
+            reasoning_effort: None,
+            runner_cli: runner::ResolvedRunnerCliOptions::default(),
+            prompt: "test prompt",
+            timeout: None,
+            permission_mode: None,
+            revert_on_error: true,
+            git_revert_mode: super::GitRevertMode::Disabled,
+            output_handler: None,
+            output_stream: runner::OutputStream::HandlerOnly,
+            revert_prompt: None,
+            phase_type: crate::commands::run::PhaseType::Implementation,
+        };
+
+        let messages = RunnerErrorMessages {
+            log_label: "test",
+            interrupted_msg: "interrupted",
+            timeout_msg: "timeout",
+            terminated_msg: "terminated",
+            non_zero_msg: |code| format!("non-zero exit: {}", code),
+            other_msg: |err| format!("other error: {}", err),
+        };
+
+        let mut backend = MockTerminatedBySignalBackend;
+        let result = run_prompt_with_handling_backend(invocation, messages, &mut backend);
+
+        // Should fail with the terminated by signal error
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        // Error message should mention both stdout and stderr dump paths
+        assert!(
+            err_msg.contains("stdout saved"),
+            "Error should mention stdout dump path: {}",
+            err_msg
+        );
+        assert!(
+            err_msg.contains("stderr saved"),
+            "Error should mention stderr dump path: {}",
+            err_msg
+        );
+    }
+
+    /// Test that redaction is applied to stderr content in safeguard dumps.
+    /// This verifies that sensitive information like API keys in stderr
+    /// is properly redacted before being written to disk.
+    #[test]
+    fn safeguard_dump_redacts_secrets_in_stderr() {
+        use crate::redaction::RedactedString;
+
+        let stderr_content = "Error: API_KEY=sk-abc123xyz789\nAuthorization: Bearer secret_token";
+        let stdout = RedactedString::from("stdout content");
+        let stderr = RedactedString::from(stderr_content);
+
+        // Convert to strings (which applies redaction via Display trait)
+        let stdout_str = stdout.to_string();
+        let stderr_str = stderr.to_string();
+
+        // Verify secrets are redacted in stderr
+        assert!(
+            !stderr_str.contains("sk-abc123xyz789"),
+            "API key should be redacted in stderr: {}",
+            stderr_str
+        );
+        assert!(
+            !stderr_str.contains("secret_token"),
+            "Bearer token should be redacted in stderr: {}",
+            stderr_str
+        );
+        assert!(
+            stderr_str.contains("[REDACTED]"),
+            "Redacted marker should be present: {}",
+            stderr_str
+        );
+
+        // Verify normal content is preserved
+        assert!(
+            stdout_str.contains("stdout content"),
+            "Normal stdout should be preserved: {}",
+            stdout_str
+        );
+    }
+
+    /// Test that safeguard dumps are not created for empty stderr.
+    /// This verifies that we don't create unnecessary dump files when
+    /// there's no stderr content to persist.
+    #[test]
+    fn no_safeguard_dump_for_empty_stderr() {
+        use crate::redaction::RedactedString;
+
+        // Create a mock runner backend that returns NonZeroExit with empty stderr
+        struct MockEmptyStderrBackend;
+        impl RunnerBackend for MockEmptyStderrBackend {
+            fn run_prompt<'a>(
+                &mut self,
+                _runner_kind: super::Runner,
+                _work_dir: &std::path::Path,
+                _bins: runner::RunnerBinaries<'a>,
+                _model: super::Model,
+                _reasoning_effort: Option<super::ReasoningEffort>,
+                _runner_cli: runner::ResolvedRunnerCliOptions,
+                _prompt: &str,
+                _timeout: Option<std::time::Duration>,
+                _permission_mode: Option<super::ClaudePermissionMode>,
+                _output_handler: Option<runner::OutputHandler>,
+                _output_stream: runner::OutputStream,
+                _phase_type: crate::commands::run::PhaseType,
+            ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+                Err(runner::RunnerError::NonZeroExit {
+                    code: 1,
+                    stdout: RedactedString::from("stdout content"),
+                    stderr: RedactedString::from(""), // Empty stderr
+                    session_id: None,
+                })
+            }
+
+            fn resume_session<'a>(
+                &mut self,
+                _runner_kind: super::Runner,
+                _work_dir: &std::path::Path,
+                _bins: runner::RunnerBinaries<'a>,
+                _model: super::Model,
+                _reasoning_effort: Option<super::ReasoningEffort>,
+                _runner_cli: runner::ResolvedRunnerCliOptions,
+                _session_id: &str,
+                _message: &str,
+                _permission_mode: Option<super::ClaudePermissionMode>,
+                _timeout: Option<std::time::Duration>,
+                _output_handler: Option<runner::OutputHandler>,
+                _output_stream: runner::OutputStream,
+                _phase_type: crate::commands::run::PhaseType,
+            ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+                unreachable!("resume_session should not be called")
+            }
+        }
+
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let invocation = RunnerInvocation {
+            repo_root: temp_dir.path(),
+            runner_kind: super::Runner::Codex,
+            bins: runner::RunnerBinaries {
+                codex: "codex",
+                opencode: "opencode",
+                gemini: "gemini",
+                claude: "claude",
+                cursor: "cursor",
+                kimi: "kimi",
+                pi: "pi",
+            },
+            model: super::Model::Gpt52Codex,
+            reasoning_effort: None,
+            runner_cli: runner::ResolvedRunnerCliOptions::default(),
+            prompt: "test prompt",
+            timeout: None,
+            permission_mode: None,
+            revert_on_error: true,
+            git_revert_mode: super::GitRevertMode::Disabled,
+            output_handler: None,
+            output_stream: runner::OutputStream::HandlerOnly,
+            revert_prompt: None,
+            phase_type: crate::commands::run::PhaseType::Implementation,
+        };
+
+        let messages = RunnerErrorMessages {
+            log_label: "test",
+            interrupted_msg: "interrupted",
+            timeout_msg: "timeout",
+            terminated_msg: "terminated",
+            non_zero_msg: |code| format!("non-zero exit: {}", code),
+            other_msg: |err| format!("other error: {}", err),
+        };
+
+        let mut backend = MockEmptyStderrBackend;
+        let result = run_prompt_with_handling_backend(invocation, messages, &mut backend);
+
+        // Should fail with the non-zero exit error
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        // Error message should mention stdout dump path
+        assert!(
+            err_msg.contains("stdout saved"),
+            "Error should mention stdout dump path: {}",
+            err_msg
+        );
+        // Error message should NOT mention stderr dump path since stderr is empty
+        assert!(
+            !err_msg.contains("stderr saved"),
+            "Error should NOT mention stderr dump path when stderr is empty: {}",
+            err_msg
+        );
     }
 }

@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0480",
-      "status": "todo",
-      "title": "Persist redacted stderr safeguards for runner failures",
-      "priority": "medium",
-      "tags": [
-        "diagnostics",
-        "logging",
-        "runner",
-        "redaction"
-      ],
-      "scope": [
-        "crates/ralph/src/runutil.rs",
-        "crates/ralph/src/fsutil.rs",
-        "crates/ralph/src/outpututil.rs"
-      ],
-      "evidence": [
-        "runutil.rs writes redacted safeguard dumps for stdout on runner errors but never persists stderr",
-        "Timeout handling captures stdout only (timeout_stdout_capture) and drops stderr diagnostics"
-      ],
-      "plan": [
-        "Capture stderr (bounded) alongside stdout for non-zero exits and timeouts",
-        "Persist redacted stderr dumps via fsutil::safeguard_text_dump_redacted",
-        "Include stderr dump paths in error messages to aid debugging",
-        "Add tests to confirm stderr dumps are created and redacted",
-        "Run make ci"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:22:24Z",
-      "updated_at": "2026-01-31T02:22:24Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0484",
       "status": "todo",
       "title": "Replace run phase unreachable with a user-facing error",
