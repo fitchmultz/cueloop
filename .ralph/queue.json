@@ -2,6 +2,180 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0475",
+      "status": "todo",
+      "title": "Redact runner stderr tail logs",
+      "priority": "high",
+      "tags": [
+        "security",
+        "logging",
+        "runner",
+        "redaction"
+      ],
+      "scope": [
+        "crates/ralph/src/runutil.rs",
+        "crates/ralph/src/redaction.rs",
+        "crates/ralph/src/outpututil.rs"
+      ],
+      "evidence": [
+        "crates/ralph/src/runutil.rs log_stderr_tail logs raw stderr lines via log::info without any redaction",
+        "runutil.rs calls log_stderr_tail when handling RunnerError::NonZeroExit, so secrets in stderr are currently logged verbatim"
+      ],
+      "plan": [
+        "Redact stderr tails in log_stderr_tail using the existing redaction utilities",
+        "Keep the tail length/line limits but ensure log output is masked consistently with stdout handling",
+        "Add/extend tests to assert redaction is applied to stderr tails",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0476",
+      "status": "todo",
+      "title": "Use resume task ID when auto-resuming sessions",
+      "priority": "high",
+      "tags": [
+        "run",
+        "session",
+        "bug",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/run/selection.rs",
+        "crates/ralph/src/session/mod.rs",
+        "crates/ralph/src/commands/run/tests.rs"
+      ],
+      "evidence": [
+        "commands/run/mod.rs computes resume_task_id from session::check_session and logs 'Auto-resuming session for task ...'",
+        "resume_task_id is only used to bypass the empty-queue check; task selection calls select_run_one_task_index with target_task_id only"
+      ],
+      "plan": [
+        "Thread resume_task_id into run one task selection (treat as a target when present)",
+        "If the resumed task no longer exists or is terminal, clear the session and fall back to normal selection",
+        "Add tests covering auto-resume for valid sessions and missing/terminal tasks",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0477",
+      "status": "todo",
+      "title": "Handle missing session file on timeout without panicking",
+      "priority": "high",
+      "tags": [
+        "run",
+        "session",
+        "bug"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/session/mod.rs",
+        "crates/ralph/src/commands/run/tests.rs"
+      ],
+      "evidence": [
+        "commands/run/mod.rs timeout branch calls session::load_session(&cache_dir)?.unwrap(), which panics if the session file is missing",
+        "Session files can be cleared or removed between validation and timeout handling"
+      ],
+      "plan": [
+        "Replace the unwrap with graceful handling when load_session returns None",
+        "Clear any stale session state and return to normal selection when the session is missing",
+        "Add a regression test where the session file is deleted before timeout recovery",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0478",
+      "status": "todo",
+      "title": "Avoid panic when task updater removes or moves the target task",
+      "priority": "high",
+      "tags": [
+        "task",
+        "queue",
+        "bug"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/task.rs",
+        "crates/ralph/src/queue/operations/",
+        "crates/ralph/tests/task_update_all_integration_test.rs"
+      ],
+      "evidence": [
+        "commands/task.rs uses after.tasks.iter().find(...).unwrap() after task update to compute diff",
+        "If the updater moves the task to done.json or removes it, this unwrap will panic"
+      ],
+      "plan": [
+        "Replace the unwrap with a graceful error when the updated task is not in the queue",
+        "If the task moved to done.json, load it from done and compute/log the diff there",
+        "Add tests for update flows that remove or move the task",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0479",
+      "status": "todo",
+      "title": "Allow watch mode to reprocess changed files",
+      "priority": "high",
+      "tags": [
+        "watch",
+        "cli",
+        "bug",
+        "performance"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/watch.rs",
+        "crates/ralph/src/cli/watch.rs",
+        "crates/ralph/src/commands/watch.rs tests"
+      ],
+      "evidence": [
+        "commands/watch.rs process_pending_files skips files already in processed_files and inserts every processed file",
+        "processed_files is never cleared, so files are only scanned once and the set grows unbounded"
+      ],
+      "plan": [
+        "Replace processed_files with a time-based or per-batch de-duplication strategy",
+        "Ensure repeated edits to the same file are detected after the debounce window",
+        "Add tests covering multiple edits to the same file in a single watch session",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0459",
       "status": "todo",
       "title": "Split tui/app.rs (2856 lines) into cohesive submodules",
@@ -119,6 +293,361 @@
         "Keep public exports in mod.rs",
         "Update callers to use new module paths",
         "Run make ci to verify no regressions"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-30T17:40:48Z",
+      "updated_at": "2026-01-30T17:40:48Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0480",
+      "status": "todo",
+      "title": "Persist redacted stderr safeguards for runner failures",
+      "priority": "medium",
+      "tags": [
+        "diagnostics",
+        "logging",
+        "runner",
+        "redaction"
+      ],
+      "scope": [
+        "crates/ralph/src/runutil.rs",
+        "crates/ralph/src/fsutil.rs",
+        "crates/ralph/src/outpututil.rs"
+      ],
+      "evidence": [
+        "runutil.rs writes redacted safeguard dumps for stdout on runner errors but never persists stderr",
+        "Timeout handling captures stdout only (timeout_stdout_capture) and drops stderr diagnostics"
+      ],
+      "plan": [
+        "Capture stderr (bounded) alongside stdout for non-zero exits and timeouts",
+        "Persist redacted stderr dumps via fsutil::safeguard_text_dump_redacted",
+        "Include stderr dump paths in error messages to aid debugging",
+        "Add tests to confirm stderr dumps are created and redacted",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0484",
+      "status": "todo",
+      "title": "Replace run phase unreachable with a user-facing error",
+      "priority": "medium",
+      "tags": [
+        "run",
+        "validation",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/run/tests.rs"
+      ],
+      "evidence": [
+        "commands/run/mod.rs falls through to unreachable!(\"phases must be validated to 1..=3\")",
+        "Invalid config or future changes could trigger a panic instead of a recoverable error"
+      ],
+      "plan": [
+        "Replace the unreachable! with an explicit error path and validation",
+        "Add a test asserting invalid phases yields a clear error message",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0486",
+      "status": "todo",
+      "title": "Make session recovery prompts safe for non-interactive runs",
+      "priority": "medium",
+      "tags": [
+        "session",
+        "cli",
+        "ux",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/session/mod.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "session/mod.rs prompt_session_recovery and prompt_session_recovery_timeout read from stdin with no non-interactive guard",
+        "Non-interactive/CI runs can block or behave unpredictably when a stale session is detected"
+      ],
+      "plan": [
+        "Detect non-interactive stdin and choose a safe default (e.g., do not resume unless --resume/auto flag is set)",
+        "Thread a non-interactive/auto-resume flag through run options to bypass prompts",
+        "Add tests for EOF/non-tty behavior and documented defaults",
+        "Update docs/cli.md if behavior changes",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0485",
+      "status": "todo",
+      "title": "Fix notification enabled semantics across CLI overrides",
+      "priority": "medium",
+      "tags": [
+        "notifications",
+        "config",
+        "bug"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/agent.rs",
+        "crates/ralph/src/contracts/config.rs",
+        "docs/configuration.md",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "contracts/config.rs documents notification.enabled as a legacy completion field while notify_on_complete/notify_on_fail are distinct",
+        "commands/run/mod.rs sets NotificationConfig.enabled from notify_on_complete or config.enabled, so --no-notify suppresses failure notifications even if --notify-fail is set"
+      ],
+      "plan": [
+        "Define the intended semantics for notification.enabled vs per-type flags (document if needed)",
+        "Update run/mod.rs to compute enabled based on explicit overrides or any enabled notification type",
+        "Add tests for --no-notify + --notify-fail and config combinations",
+        "Update docs/configuration.md and docs/cli.md if semantics change",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0487",
+      "status": "todo",
+      "title": "Add --help output with examples to release.sh",
+      "priority": "medium",
+      "tags": [
+        "release",
+        "scripts",
+        "documentation"
+      ],
+      "scope": [
+        "scripts/release.sh",
+        "docs/releasing.md"
+      ],
+      "evidence": [
+        "scripts/release.sh has usage comments but no --help flag handling or usage function",
+        "Repo guidelines require executable scripts to provide a useful --help menu with examples"
+      ],
+      "plan": [
+        "Add a usage function and --help/-h flag handling to scripts/release.sh",
+        "Include examples and mention RELEASE_DRY_RUN in help output",
+        "Add a lightweight test or check that scripts/release.sh --help exits 0 and contains examples",
+        "Update docs/releasing.md if needed",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0481",
+      "status": "todo",
+      "title": "Exit watch loop cleanly on channel disconnect",
+      "priority": "medium",
+      "tags": [
+        "watch",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/watch.rs",
+        "crates/ralph/src/commands/watch.rs tests"
+      ],
+      "evidence": [
+        "commands/watch.rs treats rx.recv_timeout Err(_) as a timeout and keeps looping",
+        "RecvTimeoutError::Disconnected is not handled, so a closed channel can spin forever"
+      ],
+      "plan": [
+        "Handle RecvTimeoutError::Disconnected explicitly and break the loop",
+        "Add a test that closes the channel and asserts the watch loop exits",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0482",
+      "status": "todo",
+      "title": "Handle watch mutex poisoning without panicking",
+      "priority": "medium",
+      "tags": [
+        "watch",
+        "concurrency",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/watch.rs",
+        "crates/ralph/src/commands/watch.rs tests"
+      ],
+      "evidence": [
+        "commands/watch.rs uses lock().unwrap() on running/state in both the Ctrl+C handler and main loop",
+        "A poisoned mutex will panic and crash watch mode"
+      ],
+      "plan": [
+        "Replace lock().unwrap() with graceful handling (log + recover or exit) for poisoned mutexes",
+        "Add a test or simulation to verify watch exits cleanly when the mutex is poisoned",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0483",
+      "status": "todo",
+      "title": "Use proper glob matching for watch patterns",
+      "priority": "medium",
+      "tags": [
+        "watch",
+        "patterns",
+        "bug"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/watch.rs",
+        "crates/ralph/src/commands/watch.rs tests"
+      ],
+      "evidence": [
+        "commands/watch.rs matches_pattern escapes only '.' then replaces '*' and '?' with regex wildcards",
+        "Other regex metacharacters are not escaped, so patterns like [a-z] or + are treated as regex or fail"
+      ],
+      "plan": [
+        "Replace ad-hoc regex conversion with globset or regex::escape to correctly handle literals",
+        "Add tests for patterns containing regex metacharacters and expected wildcard behavior",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0489",
+      "status": "todo",
+      "title": "Restore CLI/TUI parity for queue repair/unlock or document divergence",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "cli",
+        "parity",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue/mod.rs",
+        "crates/ralph/src/tui/",
+        "docs/tui-task-management.md",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "cli/queue/mod.rs defines QueueCommand::Repair and QueueCommand::Unlock",
+        "Search in crates/ralph/src/tui has no references to repair/unlock actions, indicating missing TUI parity"
+      ],
+      "plan": [
+        "Audit TUI command palette/keymap for queue maintenance actions",
+        "Add TUI actions for queue repair/unlock or document the intentional divergence",
+        "Update docs/tui-task-management.md and docs/cli.md accordingly",
+        "Add TUI tests if new actions are added",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0466",
+      "status": "todo",
+      "title": "Review and justify files exceeding 700 LOC limit",
+      "priority": "medium",
+      "tags": [
+        "code-quality",
+        "documentation",
+        "file-size"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/search.rs (979 lines)",
+        "crates/ralph/src/tui/config_edit.rs (968 lines)",
+        "crates/ralph/src/contracts/config.rs (953 lines)",
+        "crates/ralph/src/sanity/mod.rs (918 lines)",
+        "crates/ralph/src/agent.rs (917 lines)",
+        "crates/ralph/src/queue/graph.rs (916 lines)",
+        "crates/ralph/src/runner.rs (901 lines)",
+        "crates/ralph/src/commands/run/mod.rs (899 lines)",
+        "crates/ralph/src/queue/operations/edit.rs (898 lines)",
+        "crates/ralph/src/git/lfs.rs (842 lines)",
+        "crates/ralph/src/commands/prompt.rs (829 lines)",
+        "crates/ralph/src/commands/prd.rs (826 lines)",
+        "crates/ralph/src/commands/context.rs (804 lines)"
+      ],
+      "evidence": [
+        "AGENTS.md: Files exceeding ~700 LOC REQUIRE explicit justification",
+        "Found 12 files between 700-1000 LOC without documented justification",
+        "queue/search.rs: 979 lines - complex search algorithm with scoring",
+        "sanity/mod.rs: 918 lines - health checks, migrations, unknown key handling",
+        "runner.rs: 901 lines - runner orchestration for 7 different CLIs"
+      ],
+      "plan": [
+        "Review each file for cohesion - does it represent a single responsibility?",
+        "For files that should stay as-is, add module doc comment explaining why",
+        "Identify files that could benefit from splitting (create follow-up tasks)",
+        "Document justification inline for each file kept at >700 LOC",
+        "Focus on high-impact files: runner.rs, sanity/mod.rs, queue/search.rs"
       ],
       "notes": [],
       "request": "scan finding",
@@ -292,54 +821,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0466",
-      "status": "todo",
-      "title": "Review and justify files exceeding 700 LOC limit",
-      "priority": "medium",
-      "tags": [
-        "code-quality",
-        "documentation",
-        "file-size"
-      ],
-      "scope": [
-        "crates/ralph/src/queue/search.rs (979 lines)",
-        "crates/ralph/src/tui/config_edit.rs (968 lines)",
-        "crates/ralph/src/contracts/config.rs (953 lines)",
-        "crates/ralph/src/sanity/mod.rs (918 lines)",
-        "crates/ralph/src/agent.rs (917 lines)",
-        "crates/ralph/src/queue/graph.rs (916 lines)",
-        "crates/ralph/src/runner.rs (901 lines)",
-        "crates/ralph/src/commands/run/mod.rs (899 lines)",
-        "crates/ralph/src/queue/operations/edit.rs (898 lines)",
-        "crates/ralph/src/git/lfs.rs (842 lines)",
-        "crates/ralph/src/commands/prompt.rs (829 lines)",
-        "crates/ralph/src/commands/prd.rs (826 lines)",
-        "crates/ralph/src/commands/context.rs (804 lines)"
-      ],
-      "evidence": [
-        "AGENTS.md: Files exceeding ~700 LOC REQUIRE explicit justification",
-        "Found 12 files between 700-1000 LOC without documented justification",
-        "queue/search.rs: 979 lines - complex search algorithm with scoring",
-        "sanity/mod.rs: 918 lines - health checks, migrations, unknown key handling",
-        "runner.rs: 901 lines - runner orchestration for 7 different CLIs"
-      ],
-      "plan": [
-        "Review each file for cohesion - does it represent a single responsibility?",
-        "For files that should stay as-is, add module doc comment explaining why",
-        "Identify files that could benefit from splitting (create follow-up tasks)",
-        "Document justification inline for each file kept at >700 LOC",
-        "Focus on high-impact files: runner.rs, sanity/mod.rs, queue/search.rs"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0467",
       "status": "todo",
       "title": "Add comprehensive module documentation to runner.rs",
@@ -475,152 +956,6 @@
         "Check if lib.rs exports are minimal and intentional",
         "Create task list for visibility reductions",
         "Ensure no breaking changes to legitimate external consumers"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0471",
-      "status": "todo",
-      "title": "Centralize magic numbers and constants",
-      "priority": "low",
-      "tags": [
-        "code-quality",
-        "maintainability",
-        "constants"
-      ],
-      "scope": [
-        "crates/ralph/src/"
-      ],
-      "evidence": [
-        "Hardcoded values found: 10MB ANSI buffer (app.rs:682)",
-        "10k log line limit (app.rs:696)",
-        "4-digit task ID width default",
-        "Retry count of 2 for CI failures",
-        "No centralized constants module for shared values"
-      ],
-      "plan": [
-        "Search for hardcoded numeric literals with grep",
-        "Identify magic numbers that appear multiple times",
-        "Create constants module or add to existing config/contracts",
-        "Document what each constant controls",
-        "Refactor to use named constants",
-        "Run make ci to verify no regressions"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0472",
-      "status": "todo",
-      "title": "Add completion tracking for long-running operations",
-      "priority": "low",
-      "tags": [
-        "ux",
-        "feature",
-        "tui"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/",
-        "crates/ralph/src/progress.rs"
-      ],
-      "evidence": [
-        "TUI has spinner but no progress percentage for long operations",
-        "No ETA calculation for multi-step workflows",
-        "Phase tracking exists but no overall completion percentage",
-        "Users cannot estimate remaining time for task execution"
-      ],
-      "plan": [
-        "Add progress percentage to ExecutionPhase tracking",
-        "Calculate ETA based on historical phase durations",
-        "Show progress bar in TUI when phases are configured",
-        "Update spinner to include percentage when available",
-        "Add tests for progress calculation accuracy"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0473",
-      "status": "todo",
-      "title": "Improve test coverage for edge cases in queue operations",
-      "priority": "low",
-      "tags": [
-        "testing",
-        "coverage",
-        "queue"
-      ],
-      "scope": [
-        "crates/ralph/src/queue/operations/tests/"
-      ],
-      "evidence": [
-        "Batch operations have tests but edge cases may be missing",
-        "No tests for concurrent queue modifications",
-        "Limited tests for validation edge cases (circular deps, max depth)",
-        "Archive operations need more failure mode coverage"
-      ],
-      "plan": [
-        "Review current test coverage for queue operations",
-        "Add tests for: circular dependency detection, max depth exceeded",
-        "Add tests for: concurrent modification scenarios",
-        "Add tests for: invalid UTF-8 in task fields",
-        "Add tests for: queue file corruption handling",
-        "Ensure all failure modes have test coverage"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0474",
-      "status": "todo",
-      "title": "Document security considerations for runner execution",
-      "priority": "low",
-      "tags": [
-        "documentation",
-        "security",
-        "runner"
-      ],
-      "scope": [
-        "docs/security.md (new)",
-        "crates/ralph/src/runner/"
-      ],
-      "evidence": [
-        "No centralized security documentation for runner execution",
-        "Redaction exists but not documented for developers",
-        "Safeguard dumps behavior described in README but not in dev docs",
-        "No guidance on handling secrets in runner output"
-      ],
-      "plan": [
-        "Create docs/security.md with runner security considerations",
-        "Document redaction behavior and patterns",
-        "Document safeguard dumps and when they are created",
-        "Add security section to runner module docs",
-        "Document best practices for handling sensitive data",
-        "Review AGENTS.md security section for completeness"
       ],
       "notes": [],
       "request": "scan finding",
@@ -868,6 +1203,185 @@
       "request": "scan finding",
       "created_at": "2026-01-30T00:00:00Z",
       "updated_at": "2026-01-30T00:00:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0488",
+      "status": "todo",
+      "title": "Cache prompt expansion regexes",
+      "priority": "low",
+      "tags": [
+        "prompts",
+        "performance",
+        "regex"
+      ],
+      "scope": [
+        "crates/ralph/src/prompts_internal/util.rs",
+        "crates/ralph/src/prompts_internal/tests.rs"
+      ],
+      "evidence": [
+        "prompts_internal/util.rs expand_variables constructs Regex::new three times per call",
+        "These regexes are static and could be cached to avoid repeated compilation"
+      ],
+      "plan": [
+        "Move regex construction to static LazyLock/OnceCell values",
+        "Update expand_variables to reuse the cached regexes",
+        "Add/adjust tests to ensure behavior is unchanged",
+        "Run make ci"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:22:24Z",
+      "updated_at": "2026-01-31T02:22:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0471",
+      "status": "todo",
+      "title": "Centralize magic numbers and constants",
+      "priority": "low",
+      "tags": [
+        "code-quality",
+        "maintainability",
+        "constants"
+      ],
+      "scope": [
+        "crates/ralph/src/"
+      ],
+      "evidence": [
+        "Hardcoded values found: 10MB ANSI buffer (app.rs:682)",
+        "10k log line limit (app.rs:696)",
+        "4-digit task ID width default",
+        "Retry count of 2 for CI failures",
+        "No centralized constants module for shared values"
+      ],
+      "plan": [
+        "Search for hardcoded numeric literals with grep",
+        "Identify magic numbers that appear multiple times",
+        "Create constants module or add to existing config/contracts",
+        "Document what each constant controls",
+        "Refactor to use named constants",
+        "Run make ci to verify no regressions"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-30T17:40:48Z",
+      "updated_at": "2026-01-30T17:40:48Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0472",
+      "status": "todo",
+      "title": "Add completion tracking for long-running operations",
+      "priority": "low",
+      "tags": [
+        "ux",
+        "feature",
+        "tui"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/src/progress.rs"
+      ],
+      "evidence": [
+        "TUI has spinner but no progress percentage for long operations",
+        "No ETA calculation for multi-step workflows",
+        "Phase tracking exists but no overall completion percentage",
+        "Users cannot estimate remaining time for task execution"
+      ],
+      "plan": [
+        "Add progress percentage to ExecutionPhase tracking",
+        "Calculate ETA based on historical phase durations",
+        "Show progress bar in TUI when phases are configured",
+        "Update spinner to include percentage when available",
+        "Add tests for progress calculation accuracy"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-30T17:40:48Z",
+      "updated_at": "2026-01-30T17:40:48Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0473",
+      "status": "todo",
+      "title": "Improve test coverage for edge cases in queue operations",
+      "priority": "low",
+      "tags": [
+        "testing",
+        "coverage",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations/tests/"
+      ],
+      "evidence": [
+        "Batch operations have tests but edge cases may be missing",
+        "No tests for concurrent queue modifications",
+        "Limited tests for validation edge cases (circular deps, max depth)",
+        "Archive operations need more failure mode coverage"
+      ],
+      "plan": [
+        "Review current test coverage for queue operations",
+        "Add tests for: circular dependency detection, max depth exceeded",
+        "Add tests for: concurrent modification scenarios",
+        "Add tests for: invalid UTF-8 in task fields",
+        "Add tests for: queue file corruption handling",
+        "Ensure all failure modes have test coverage"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-30T17:40:48Z",
+      "updated_at": "2026-01-30T17:40:48Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0474",
+      "status": "todo",
+      "title": "Document security considerations for runner execution",
+      "priority": "low",
+      "tags": [
+        "documentation",
+        "security",
+        "runner"
+      ],
+      "scope": [
+        "docs/security.md (new)",
+        "crates/ralph/src/runner/"
+      ],
+      "evidence": [
+        "No centralized security documentation for runner execution",
+        "Redaction exists but not documented for developers",
+        "Safeguard dumps behavior described in README but not in dev docs",
+        "No guidance on handling secrets in runner output"
+      ],
+      "plan": [
+        "Create docs/security.md with runner security considerations",
+        "Document redaction behavior and patterns",
+        "Document safeguard dumps and when they are created",
+        "Add security section to runner module docs",
+        "Document best practices for handling sensitive data",
+        "Review AGENTS.md security section for completeness"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-30T17:40:48Z",
+      "updated_at": "2026-01-30T17:40:48Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
