@@ -260,6 +260,23 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
     log::info!("Checking instruction file injection...");
     let instruction_warnings =
         prompts::instruction_file_warnings(&resolved.repo_root, &resolved.config);
+
+    // Check if repo AGENTS.md is explicitly configured
+    let repo_agents_configured = resolved
+        .config
+        .agent
+        .instruction_files
+        .as_ref()
+        .map(|files| {
+            files.iter().any(|p| {
+                let resolved = resolved.repo_root.join(p);
+                resolved.ends_with("AGENTS.md")
+            })
+        })
+        .unwrap_or(false);
+    let repo_agents_path = resolved.repo_root.join("AGENTS.md");
+    let repo_agents_exists = repo_agents_path.exists();
+
     if instruction_warnings.is_empty() {
         if let Some(files) = resolved.config.agent.instruction_files.as_ref() {
             if !files.is_empty() {
@@ -269,9 +286,14 @@ pub fn run_doctor(resolved: &config::Resolved) -> Result<()> {
                 ));
             }
         }
-        let repo_agents = resolved.repo_root.join("AGENTS.md");
-        if repo_agents.exists() {
-            outpututil::log_success("AGENTS.md found and injectable");
+        // Report status of repo AGENTS.md based on configuration
+        if repo_agents_configured && repo_agents_exists {
+            outpututil::log_success("AGENTS.md configured and readable");
+        } else if repo_agents_exists && !repo_agents_configured {
+            outpututil::log_warn(
+                "AGENTS.md exists at repo root but is not configured for injection. \
+                 To enable, add 'AGENTS.md' to agent.instruction_files in your config.",
+            );
         }
     } else {
         for warning in instruction_warnings {

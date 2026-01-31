@@ -159,9 +159,7 @@ pub struct AgentConfig {
     /// Additional instruction files to inject at the top of every prompt sent to runner CLIs.
     ///
     /// Paths may be absolute, `~/`-prefixed, or repo-root relative. Missing files are treated as
-    /// configuration errors.
-    ///
-    /// NOTE: `AGENTS.md` at the repo root is injected automatically when present.
+    /// configuration errors. To include repo-local AGENTS.md, add `"AGENTS.md"` to this list.
     pub instruction_files: Option<Vec<PathBuf>>,
 
     /// Require RepoPrompt usage during planning (inject context_builder instructions).

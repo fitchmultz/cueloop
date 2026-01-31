@@ -87,7 +87,7 @@ pub(crate) fn wrap_with_instruction_files(
 ) -> Result<String> {
     let mut sources: Vec<(String, String)> = Vec::new();
 
-    // Global/user-specified instruction files.
+    // Instruction files from configuration (user-specified, not auto-injected).
     if let Some(paths) = config.agent.instruction_files.as_ref() {
         for raw in paths {
             let resolved = resolve_instruction_path(repo_root, raw);
@@ -95,14 +95,6 @@ pub(crate) fn wrap_with_instruction_files(
                 .with_context(|| format!("read instruction file at {}", resolved.display()))?;
             sources.push((resolved.display().to_string(), content));
         }
-    }
-
-    // Repo-local AGENTS.md is auto-injected when present.
-    let repo_agents = repo_root.join("AGENTS.md");
-    if repo_agents.exists() {
-        let content = read_instruction_file(&repo_agents, MAX_INSTRUCTION_BYTES)
-            .with_context(|| format!("read repo instruction file at {}", repo_agents.display()))?;
-        sources.push((repo_agents.display().to_string(), content));
     }
 
     if sources.is_empty() {
@@ -132,6 +124,7 @@ The following instruction files are authoritative for this run. Follow them exac
 pub(crate) fn instruction_file_warnings(repo_root: &Path, config: &Config) -> Vec<String> {
     let mut warnings = Vec::new();
 
+    // Only check configured instruction files (no auto-injection).
     if let Some(paths) = config.agent.instruction_files.as_ref() {
         for raw in paths {
             let resolved = resolve_instruction_path(repo_root, raw);
@@ -143,17 +136,6 @@ pub(crate) fn instruction_file_warnings(repo_root: &Path, config: &Config) -> Ve
                     err
                 ));
             }
-        }
-    }
-
-    let repo_agents = repo_root.join("AGENTS.md");
-    if repo_agents.exists() {
-        if let Err(err) = read_instruction_file(&repo_agents, MAX_INSTRUCTION_BYTES) {
-            warnings.push(format!(
-                "repo AGENTS.md (path: {}) is not readable as an instruction file: {}",
-                repo_agents.display(),
-                err
-            ));
         }
     }
 
@@ -479,23 +461,41 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn wrap_with_instruction_files_is_noop_when_none_configured_and_missing_agents() {
+    fn wrap_with_instruction_files_is_noop_when_none_configured() {
         let dir = TempDir::new().expect("tempdir");
+        // Even if AGENTS.md exists, it should NOT be injected without explicit configuration
+        std::fs::write(dir.path().join("AGENTS.md"), "Repo instructions").expect("write");
         let cfg = Config::default();
         let out = wrap_with_instruction_files(dir.path(), "hello", &cfg).expect("wrap");
         assert_eq!(out, "hello");
     }
 
     #[test]
-    fn wrap_with_instruction_files_includes_repo_agents_md_when_present() {
+    fn wrap_with_instruction_files_includes_agents_md_when_explicitly_configured() {
         let dir = TempDir::new().expect("tempdir");
         std::fs::write(dir.path().join("AGENTS.md"), "Repo instructions").expect("write");
-        let cfg = Config::default();
+        let mut cfg = Config::default();
+        // Explicitly configure AGENTS.md for injection
+        cfg.agent.instruction_files = Some(vec![Path::new("AGENTS.md").to_path_buf()]);
 
         let out = wrap_with_instruction_files(dir.path(), "hello", &cfg).expect("wrap");
         assert!(out.contains("AGENTS / GLOBAL INSTRUCTIONS"));
         assert!(out.contains("Repo instructions"));
         assert!(out.ends_with("\n\n---\n\nhello"));
+    }
+
+    #[test]
+    fn wrap_with_instruction_files_does_not_include_repo_agents_md_when_not_configured() {
+        let dir = TempDir::new().expect("tempdir");
+        std::fs::write(dir.path().join("AGENTS.md"), "Repo instructions").expect("write");
+        // Config with no instruction_files - AGENTS.md should NOT be auto-injected
+        let cfg = Config::default();
+
+        let out = wrap_with_instruction_files(dir.path(), "hello", &cfg).expect("wrap");
+        // Should be exactly the original prompt with no preamble
+        assert_eq!(out, "hello");
+        assert!(!out.contains("AGENTS / GLOBAL INSTRUCTIONS"));
+        assert!(!out.contains("Repo instructions"));
     }
 
     #[test]
@@ -518,5 +518,20 @@ mod tests {
         assert_eq!(warnings.len(), 1);
         assert!(warnings[0].contains("instruction_files"));
         assert!(warnings[0].contains("missing.md"));
+    }
+
+    #[test]
+    fn instruction_file_warnings_does_not_warn_about_unconfigured_repo_agents_md() {
+        let dir = TempDir::new().expect("tempdir");
+        // Create AGENTS.md but do NOT configure it
+        std::fs::write(dir.path().join("AGENTS.md"), "Repo instructions").expect("write");
+        let cfg = Config::default();
+
+        let warnings = instruction_file_warnings(dir.path(), &cfg);
+        // Should have no warnings since AGENTS.md is not configured
+        assert!(
+            warnings.is_empty(),
+            "Expected no warnings for unconfigured AGENTS.md"
+        );
     }
 }

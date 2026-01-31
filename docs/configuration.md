@@ -25,6 +25,7 @@ Ralph supports JSONC (JSON with Comments) for configuration and queue files. Thi
 Ralph can read both `.json` and `.jsonc` files regardless of extension. When writing files, Ralph always outputs standard JSON format (comments are not preserved on rewrite).
 
 ### Example JSONC Config
+
 ```jsonc
 {
   // Schema version - must be 1
@@ -73,6 +74,16 @@ Supported fields:
 - `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.
 - `instruction_files`: optional list of additional instruction file paths to inject at the top of every prompt sent to runner CLIs (repo-root relative, absolute, or `~/`).
 
+  To inject both global and repo-local AGENTS.md:
+
+  ```json
+  {
+    "agent": {
+      "instruction_files": ["~/.codex/AGENTS.md", "AGENTS.md"]
+    }
+  }
+  ```
+
 Notes:
 - `followup_reasoning_effort` is ignored for non-Codex runners.
 - Breaking change: `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
@@ -99,9 +110,8 @@ Supported normalized fields:
 Notes:
 - Unsupported options are dropped by default with a warning (policy `warn`).
 - `agent.claude_permission_mode` remains supported; when `runner_cli.approval_mode` is set, it takes precedence for Claude mapping.
-- `AGENTS.md` at the repo root is injected automatically when present.
-
 Example:
+
 ```json
 {
   "version": 1,
@@ -135,6 +145,7 @@ Example:
 ```
 
 To disable CI gating entirely (skip running any command), set:
+
 ```json
 {
   "agent": {
@@ -153,6 +164,7 @@ Supported fields:
 - `id_width`: zero padding width (default: `4`, e.g. `RQ-0001`).
 
 Example:
+
 ```json
 {
   "version": 1,
@@ -215,6 +227,7 @@ Supported fields:
 - `retry_backoff_ms`: retry backoff base in milliseconds (default: `1000`, max: `30000`).
 
 Example:
+
 ```json
 {
   "version": 1,
@@ -259,6 +272,7 @@ X-Ralph-Signature: sha256=abc123...
 The signature is computed as HMAC-SHA256 of the request body using the configured secret.
 
 To verify in Python:
+
 ```python
 import hmac
 import hashlib
@@ -291,9 +305,11 @@ ralph webhook test --event task_completed
 # Test with custom URL
 ralph webhook test --url https://example.com/webhook
 ```
+
 - **Windows**: Uses toast notifications; custom sounds play via `winmm.dll` PlaySound for `.wav` files, PowerShell MediaPlayer fallback for other formats.
 
 Example:
+
 ```json
 {
   "version": 1,
