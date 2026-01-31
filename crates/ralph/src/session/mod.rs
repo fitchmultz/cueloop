@@ -14,7 +14,7 @@
 //! - Session is considered stale if task no longer exists or is not Doing.
 //! - Session timeout is checked before allowing resume.
 
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -152,7 +152,18 @@ pub fn check_session(
 }
 
 /// Prompt the user for session recovery confirmation.
-pub fn prompt_session_recovery(session: &SessionState) -> Result<bool> {
+///
+/// When `non_interactive` is true or stdin is not a TTY, returns `Ok(false)`
+/// without prompting, choosing the safe default of not resuming.
+pub fn prompt_session_recovery(session: &SessionState, non_interactive: bool) -> Result<bool> {
+    if non_interactive || !std::io::stdin().is_terminal() {
+        log::info!(
+            "Non-interactive environment detected; skipping session resume for {}",
+            session.task_id
+        );
+        return Ok(false); // Safe default: don't resume
+    }
+
     println!();
     println!("╔══════════════════════════════════════════════════════════════╗");
     println!("║  Incomplete session detected                                 ║");
@@ -180,7 +191,22 @@ pub fn prompt_session_recovery(session: &SessionState) -> Result<bool> {
 }
 
 /// Prompt the user for session recovery with timeout warning.
-pub fn prompt_session_recovery_timeout(session: &SessionState, hours: u64) -> Result<bool> {
+///
+/// When `non_interactive` is true or stdin is not a TTY, returns `Ok(false)`
+/// without prompting, choosing the safe default of not resuming.
+pub fn prompt_session_recovery_timeout(
+    session: &SessionState,
+    hours: u64,
+    non_interactive: bool,
+) -> Result<bool> {
+    if non_interactive || !std::io::stdin().is_terminal() {
+        log::info!(
+            "Non-interactive environment detected; skipping stale session resume for {} ({} hours old)",
+            session.task_id, hours
+        );
+        return Ok(false); // Safe default: don't resume
+    }
+
     println!();
     println!("╔══════════════════════════════════════════════════════════════╗");
     println!(
@@ -358,5 +384,27 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let path = session_path(temp_dir.path());
         assert_eq!(path, temp_dir.path().join("session.json"));
+    }
+
+    #[test]
+    fn prompt_session_recovery_returns_false_when_non_interactive() {
+        let session = test_session("RQ-0001");
+        // When non_interactive=true, should return false without prompting
+        let result = prompt_session_recovery(&session, true).unwrap();
+        assert!(
+            !result,
+            "non_interactive=true should return false (do not resume)"
+        );
+    }
+
+    #[test]
+    fn prompt_session_recovery_timeout_returns_false_when_non_interactive() {
+        let session = test_session("RQ-0001");
+        // When non_interactive=true, should return false without prompting
+        let result = prompt_session_recovery_timeout(&session, 48, true).unwrap();
+        assert!(
+            !result,
+            "non_interactive=true should return false (do not resume)"
+        );
     }
 }

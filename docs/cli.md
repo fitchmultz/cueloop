@@ -540,6 +540,26 @@ By default, draft tasks (`status: draft`) are skipped during task selection (so 
 
 * `--include-draft`: Include draft tasks (`status: draft`) when selecting what to run.
 
+### Session recovery
+
+When a previous run was interrupted, Ralph detects the stale session on the next run and prompts whether to resume. In non-interactive environments (CI, scripts), these prompts can block indefinitely.
+
+* `--resume`: Automatically resume an interrupted session without prompting (for `run loop`).
+* `--non-interactive`: Skip interactive prompts for session recovery (for `run loop` and `run resume`). When a stale session is detected in non-interactive mode, it is cleared and execution continues with the next task instead of blocking.
+
+Examples:
+
+```bash
+# Non-interactive loop (safe for CI)
+ralph run loop --non-interactive --max-tasks 5
+
+# Non-interactive resume
+ralph run resume --non-interactive
+
+# Auto-resume without prompting (interactive environments)
+ralph run loop --resume --max-tasks 5
+```
+
 ### Pre-run task update
 
 * `--update-task`: Automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution. This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. This runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via config: `agent.update_task_before_run: true`.

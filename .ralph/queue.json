@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0486",
-      "status": "todo",
-      "title": "Make session recovery prompts safe for non-interactive runs",
-      "priority": "medium",
-      "tags": [
-        "session",
-        "cli",
-        "ux",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/session/mod.rs",
-        "crates/ralph/src/commands/run/mod.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "session/mod.rs prompt_session_recovery and prompt_session_recovery_timeout read from stdin with no non-interactive guard",
-        "Non-interactive/CI runs can block or behave unpredictably when a stale session is detected"
-      ],
-      "plan": [
-        "Detect non-interactive stdin and choose a safe default (e.g., do not resume unless --resume/auto flag is set)",
-        "Thread a non-interactive/auto-resume flag through run options to bypass prompts",
-        "Add tests for EOF/non-tty behavior and documented defaults",
-        "Update docs/cli.md if behavior changes",
-        "Run make ci"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:22:24Z",
-      "updated_at": "2026-01-31T02:22:24Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0485",
       "status": "todo",
       "title": "Fix notification enabled semantics across CLI overrides",

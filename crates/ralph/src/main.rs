@@ -184,6 +184,7 @@ mod tests {
                 debug: false,
                 visualize: false,
                 resume: false,
+                non_interactive: false,
                 agent: ralph::agent::RunAgentArgs::default(),
             }),
         });

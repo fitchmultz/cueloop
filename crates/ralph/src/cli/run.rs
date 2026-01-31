@@ -37,6 +37,7 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
                     force: args.force || force,
                     auto_resume: true,
                     starting_completed: 0,
+                    non_interactive: args.non_interactive,
                 },
             )
         }
@@ -131,6 +132,7 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
                         force,
                         auto_resume: args.resume,
                         starting_completed: 0,
+                        non_interactive: args.non_interactive,
                     },
                 )
             }
@@ -271,6 +273,10 @@ pub struct ResumeArgs {
     #[arg(long)]
     pub debug: bool,
 
+    /// Skip interactive prompts (for CI/non-interactive environments).
+    #[arg(long)]
+    pub non_interactive: bool,
+
     #[command(flatten)]
     pub agent: crate::agent::RunAgentArgs,
 }
@@ -318,6 +324,10 @@ pub struct RunLoopArgs {
     /// Automatically resume an interrupted session without prompting.
     #[arg(long)]
     pub resume: bool,
+
+    /// Skip interactive prompts (for CI/non-interactive environments).
+    #[arg(long)]
+    pub non_interactive: bool,
 
     #[command(flatten)]
     pub agent: crate::agent::RunAgentArgs,

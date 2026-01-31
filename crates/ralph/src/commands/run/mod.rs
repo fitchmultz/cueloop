@@ -68,6 +68,8 @@ pub struct RunLoopOptions {
     pub auto_resume: bool,
     /// Starting completed count (for resumed sessions)
     pub starting_completed: u32,
+    /// Skip interactive prompts (for CI/non-interactive runs)
+    pub non_interactive: bool,
 }
 
 pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()> {
@@ -86,7 +88,7 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                 log::info!("Auto-resuming session for task {}", session.task_id);
                 (Some(session.task_id), session.tasks_completed_in_loop)
             } else {
-                match session::prompt_session_recovery(&session)? {
+                match session::prompt_session_recovery(&session, opts.non_interactive)? {
                     true => (Some(session.task_id), session.tasks_completed_in_loop),
                     false => {
                         session::clear_session(&cache_dir)?;
@@ -102,7 +104,7 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
         }
         SessionValidationResult::Timeout { hours } => {
             let session = session::load_session(&cache_dir)?.unwrap();
-            match session::prompt_session_recovery_timeout(&session, hours)? {
+            match session::prompt_session_recovery_timeout(&session, hours, opts.non_interactive)? {
                 true => (Some(session.task_id), session.tasks_completed_in_loop),
                 false => {
                     session::clear_session(&cache_dir)?;
