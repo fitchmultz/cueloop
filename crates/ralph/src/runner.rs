@@ -496,7 +496,7 @@ pub(crate) fn resume_session(
         ))
     })?;
     let session_id = session_id.trim();
-    if session_id.is_empty() {
+    if runner_requires_session_id(runner) && session_id.is_empty() {
         return Err(RunnerError::Other(anyhow!(
             "Runner input error (operation=resume_session, runner={}, bin={}): session_id is required (non-empty). Example: --resume <SESSION_ID>.",
             runner_label(runner),
@@ -613,6 +613,10 @@ pub(crate) fn resume_session(
     }
 
     Ok(output)
+}
+
+fn runner_requires_session_id(runner: Runner) -> bool {
+    runner != Runner::Kimi
 }
 
 pub(crate) fn parse_model(value: &str) -> Result<Model> {
@@ -862,6 +866,12 @@ mod tests {
         assert!(msg.contains("runner=opencode"));
         assert!(msg.contains("bin=opencode"));
         assert!(msg.to_lowercase().contains("session_id"));
+    }
+
+    #[test]
+    fn runner_requires_session_id_allows_kimi_continue() {
+        assert!(!runner_requires_session_id(Runner::Kimi));
+        assert!(runner_requires_session_id(Runner::Codex));
     }
 
     #[test]

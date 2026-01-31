@@ -17,9 +17,10 @@ use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffo
 use crate::git;
 use crate::runner;
 use crate::runutil::{
-    apply_git_revert_mode, apply_git_revert_mode_with_context, parse_revert_response,
+    abort_reason, apply_git_revert_mode, apply_git_revert_mode_with_context, parse_revert_response,
     prompt_revert_choice_with_io, run_prompt_with_handling_backend, RevertDecision, RevertOutcome,
-    RevertPromptContext, RevertPromptHandler, RunnerBackend, RunnerErrorMessages, RunnerInvocation,
+    RevertPromptContext, RevertPromptHandler, RevertSource, RunAbortReason, RunnerBackend,
+    RunnerErrorMessages, RunnerInvocation,
 };
 use std::fs;
 use std::path::Path;
@@ -203,7 +204,12 @@ fn apply_git_revert_mode_uses_prompt_handler_revert() {
     )
     .expect("apply revert mode");
 
-    assert_eq!(outcome, RevertOutcome::Reverted);
+    assert_eq!(
+        outcome,
+        RevertOutcome::Reverted {
+            source: RevertSource::User
+        }
+    );
     let contents = fs::read_to_string(&file_path).expect("read file");
     assert_eq!(contents, "original");
 }
@@ -310,6 +316,191 @@ impl RunnerBackend for TimeoutBackend {
     ) -> Result<runner::RunnerOutput, runner::RunnerError> {
         unreachable!("resume_session should not be called for a timeout-only test backend");
     }
+}
+
+struct InterruptBackend;
+
+impl RunnerBackend for InterruptBackend {
+    fn run_prompt<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _runner_cli: runner::ResolvedRunnerCliOptions,
+        _prompt: &str,
+        _timeout: Option<Duration>,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+        _phase_type: PhaseType,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        Err(runner::RunnerError::Interrupted)
+    }
+
+    fn resume_session<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _runner_cli: runner::ResolvedRunnerCliOptions,
+        _session_id: &str,
+        _message: &str,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _timeout: Option<Duration>,
+        _output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+        _phase_type: PhaseType,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        unreachable!("resume_session should not be called for interrupt test");
+    }
+}
+
+struct NonZeroBackend;
+
+impl RunnerBackend for NonZeroBackend {
+    fn run_prompt<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _runner_cli: runner::ResolvedRunnerCliOptions,
+        _prompt: &str,
+        _timeout: Option<Duration>,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+        _phase_type: PhaseType,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        Err(runner::RunnerError::NonZeroExit {
+            code: 1,
+            stdout: "stdout".into(),
+            stderr: "stderr".into(),
+            session_id: None,
+        })
+    }
+
+    fn resume_session<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _runner_cli: runner::ResolvedRunnerCliOptions,
+        _session_id: &str,
+        _message: &str,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _timeout: Option<Duration>,
+        _output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+        _phase_type: PhaseType,
+    ) -> Result<runner::RunnerOutput, runner::RunnerError> {
+        unreachable!("resume_session should not be called for non-zero test");
+    }
+}
+
+#[test]
+fn run_prompt_interrupt_returns_abort_reason() {
+    let dir = TempDir::new().expect("temp dir");
+    init_git_repo(&dir);
+    commit_file(&dir, "file.txt", "original", "initial");
+
+    let invocation = RunnerInvocation {
+        repo_root: dir.path(),
+        runner_kind: Runner::Codex,
+        bins: runner::RunnerBinaries {
+            codex: "codex",
+            opencode: "opencode",
+            gemini: "gemini",
+            claude: "claude",
+            cursor: "agent",
+            kimi: "kimi",
+            pi: "pi",
+        },
+        model: Model::Gpt52Codex,
+        reasoning_effort: None,
+        runner_cli: runner::ResolvedRunnerCliOptions::default(),
+        prompt: "test prompt",
+        timeout: None,
+        permission_mode: None,
+        revert_on_error: true,
+        git_revert_mode: GitRevertMode::Ask,
+        output_handler: None,
+        output_stream: runner::OutputStream::Terminal,
+        revert_prompt: Some(Arc::new(|_context| RevertDecision::Keep)),
+        phase_type: PhaseType::Implementation,
+    };
+
+    let messages = RunnerErrorMessages {
+        log_label: "interrupt_test",
+        interrupted_msg: "interrupted",
+        timeout_msg: "timed out",
+        terminated_msg: "terminated",
+        non_zero_msg: |_| "non-zero".to_string(),
+        other_msg: |_| "other".to_string(),
+    };
+
+    let mut backend = InterruptBackend;
+    let err = run_prompt_with_handling_backend(invocation, messages, &mut backend).unwrap_err();
+    assert_eq!(abort_reason(&err), Some(RunAbortReason::Interrupted));
+}
+
+#[test]
+fn run_prompt_user_revert_returns_abort_reason() {
+    let dir = TempDir::new().expect("temp dir");
+    init_git_repo(&dir);
+    commit_file(&dir, "file.txt", "original", "initial");
+
+    let file_path = dir.path().join("file.txt");
+    fs::write(&file_path, "modified").expect("modify file");
+
+    let invocation = RunnerInvocation {
+        repo_root: dir.path(),
+        runner_kind: Runner::Codex,
+        bins: runner::RunnerBinaries {
+            codex: "codex",
+            opencode: "opencode",
+            gemini: "gemini",
+            claude: "claude",
+            cursor: "agent",
+            kimi: "kimi",
+            pi: "pi",
+        },
+        model: Model::Gpt52Codex,
+        reasoning_effort: None,
+        runner_cli: runner::ResolvedRunnerCliOptions::default(),
+        prompt: "test prompt",
+        timeout: None,
+        permission_mode: None,
+        revert_on_error: true,
+        git_revert_mode: GitRevertMode::Ask,
+        output_handler: None,
+        output_stream: runner::OutputStream::Terminal,
+        revert_prompt: Some(Arc::new(|_context| RevertDecision::Revert)),
+        phase_type: PhaseType::Implementation,
+    };
+
+    let messages = RunnerErrorMessages {
+        log_label: "non_zero_test",
+        interrupted_msg: "interrupted",
+        timeout_msg: "timed out",
+        terminated_msg: "terminated",
+        non_zero_msg: |_| "non-zero".to_string(),
+        other_msg: |_| "other".to_string(),
+    };
+
+    let mut backend = NonZeroBackend;
+    let err = run_prompt_with_handling_backend(invocation, messages, &mut backend).unwrap_err();
+    assert_eq!(abort_reason(&err), Some(RunAbortReason::UserRevert));
+
+    let reverted = fs::read_to_string(&file_path).expect("read file after revert");
+    assert_eq!(reverted, "original");
 }
 
 #[test]

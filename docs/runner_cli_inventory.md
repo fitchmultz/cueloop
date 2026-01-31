@@ -41,6 +41,7 @@ For each runner, record the version (from `version.txt` and/or help headers) and
 | gemini | `/opt/homebrew/bin/gemini` | `0.25.2` | Positional `query..` (stdin may also be read) | `gemini --model <MODEL> --output-format stream-json --approval-mode yolo <QUERY>` | `gemini --resume <ID> --model <MODEL> --output-format stream-json --approval-mode yolo <QUERY>` | `--output-format stream-json` | `text`, `json`, `stream-json` | `--prompt` is deprecated (positional preferred) |
 | claude | `/Users/mitchfultz/.local/bin/claude` | `2.1.19 (Claude Code)` | Positional `prompt` (verify stdin behavior separately) | `claude -p --model <MODEL> --output-format stream-json --verbose <PROMPT>` | `claude -p --resume <ID> --model <MODEL> --output-format stream-json --verbose <MESSAGE>` | `--output-format stream-json` (requires `-p`) | `text`, `json`, `stream-json` | Permission modes are a Claude-specific enum |
 | cursor (agent) | `/Users/mitchfultz/.local/bin/agent` | `2026.01.23-916f423` | Positional `prompt...` | `agent --print --output-format stream-json --model <MODEL> --sandbox <enabled|disabled> [--plan] "<PROMPT>"` | `agent --print --output-format stream-json --resume <CHAT_ID> --model <MODEL> --sandbox <enabled|disabled> [--plan] "<MESSAGE>"` | `--output-format stream-json` | `text`, `json`, `stream-json` | `--plan`/`--mode=plan` is read-only (no edits) |
+| kimi | `/opt/homebrew/bin/kimi` | `kimi-cli` | `--prompt <TEXT>` | `kimi --print --output-format stream-json --model <MODEL> --prompt "<PROMPT>"` | `kimi --continue --print --output-format stream-json --model <MODEL> --prompt "<MESSAGE>"` | `--output-format stream-json` | `text`, `stream-json` | Session ids not emitted in stream-json; rely on `--continue` |
 
 Definitions:
 - **Prompt input style**: stdin vs temp file vs positional argument.
@@ -158,7 +159,37 @@ Key observations (from `claude --help`):
 
 ---
 
-### 2.5 cursor (agent)
+### 2.5 kimi
+
+**Raw sources**:
+- `target/tmp/runner_cli_inventory/kimi/help.base.txt`
+- `target/tmp/runner_cli_inventory/kimi/version.txt`
+
+**Observed start command shape**:
+- `kimi --print --output-format stream-json --model <MODEL> --prompt "<PROMPT>"`
+
+**Observed resume command shape**:
+- `kimi --continue --print --output-format stream-json --model <MODEL> --prompt "<MESSAGE>"`
+
+**Approval / permission / safety mode**
+- `--yolo/--yes` auto-approves; `--print` implies `--yolo`.
+
+**Verbosity**
+- `--verbose` and `--debug`.
+
+**Output format**
+- `--output-format stream-json` for JSONL events; default is text.
+
+**Streaming behavior**
+- JSONL events on stdout; no documented session id field in stream-json output.
+
+**Sandbox**
+- No sandbox flag; relies on system environment + work dir.
+
+**Plan mode**
+- No explicit plan flag.
+
+### 2.6 cursor (agent)
 
 **Raw sources**:
 - `target/tmp/runner_cli_inventory/agent/help.base.txt`

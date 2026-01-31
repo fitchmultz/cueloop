@@ -8,6 +8,7 @@ use crate::commands::run::PhaseType;
 use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffort, Runner};
 use crate::{fsutil, git, outpututil, runner};
 use anyhow::{bail, Result};
+use std::fmt;
 use std::io::{BufRead, BufReader, IsTerminal, Write};
 use std::path::Path;
 use std::process::Command;
@@ -52,12 +53,56 @@ where
     pub other_msg: FOther,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RevertSource {
+    Auto,
+    User,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RevertOutcome {
-    Reverted,
+    Reverted { source: RevertSource },
     Skipped { reason: String },
     Continue { message: String },
     Proceed { reason: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RunAbortReason {
+    Interrupted,
+    UserRevert,
+}
+
+#[derive(Debug)]
+pub(crate) struct RunAbort {
+    reason: RunAbortReason,
+    message: String,
+}
+
+impl RunAbort {
+    pub(crate) fn new(reason: RunAbortReason, message: impl Into<String>) -> Self {
+        Self {
+            reason,
+            message: message.into(),
+        }
+    }
+
+    pub(crate) fn reason(&self) -> RunAbortReason {
+        self.reason
+    }
+}
+
+impl fmt::Display for RunAbort {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for RunAbort {}
+
+pub(crate) fn abort_reason(err: &anyhow::Error) -> Option<RunAbortReason> {
+    err.chain()
+        .find_map(|cause| cause.downcast_ref::<RunAbort>().map(RunAbort::reason))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,7 +348,10 @@ where
                 } else {
                     interrupted_msg.to_string()
                 };
-                bail!("{message}");
+                return Err(anyhow::Error::new(RunAbort::new(
+                    RunAbortReason::Interrupted,
+                    message,
+                )));
             }
             Err(runner::RunnerError::Timeout) => {
                 let mut safeguard_msg = String::new();
@@ -329,6 +377,18 @@ where
                         log_label,
                         revert_prompt.as_ref(),
                     )?;
+                    if matches!(
+                        outcome,
+                        RevertOutcome::Reverted {
+                            source: RevertSource::User,
+                        }
+                    ) {
+                        let message = format_revert_failure_message(timeout_msg, outcome);
+                        return Err(anyhow::Error::new(RunAbort::new(
+                            RunAbortReason::UserRevert,
+                            format!("{}{}", message, safeguard_msg),
+                        )));
+                    }
                     format_revert_failure_message(timeout_msg, outcome)
                 } else {
                     timeout_msg.to_string()
@@ -391,6 +451,16 @@ where
                                 phase_type,
                             );
                             continue;
+                        }
+                        RevertOutcome::Reverted {
+                            source: RevertSource::User,
+                        } => {
+                            let message =
+                                format_revert_failure_message(&non_zero_msg(code), outcome);
+                            return Err(anyhow::Error::new(RunAbort::new(
+                                RunAbortReason::UserRevert,
+                                format!("{}{}", message, safeguard_msg),
+                            )));
                         }
                         _ => {
                             let message =
@@ -456,6 +526,15 @@ where
                             );
                             continue;
                         }
+                        RevertOutcome::Reverted {
+                            source: RevertSource::User,
+                        } => {
+                            let message = format_revert_failure_message(terminated_msg, outcome);
+                            return Err(anyhow::Error::new(RunAbort::new(
+                                RunAbortReason::UserRevert,
+                                format!("{}{}", message, safeguard_msg),
+                            )));
+                        }
                         _ => {
                             let message = format_revert_failure_message(terminated_msg, outcome);
                             bail!("{}{}", message, safeguard_msg);
@@ -472,6 +551,18 @@ where
                         log_label,
                         revert_prompt.as_ref(),
                     )?;
+                    if matches!(
+                        outcome,
+                        RevertOutcome::Reverted {
+                            source: RevertSource::User,
+                        }
+                    ) {
+                        let message = format_revert_failure_message(&other_msg(err), outcome);
+                        return Err(anyhow::Error::new(RunAbort::new(
+                            RunAbortReason::UserRevert,
+                            message,
+                        )));
+                    }
                     format_revert_failure_message(&other_msg(err), outcome)
                 } else {
                     other_msg(err)
@@ -517,7 +608,9 @@ pub fn apply_git_revert_mode_with_context(
     match mode {
         GitRevertMode::Enabled => {
             git::revert_uncommitted(repo_root)?;
-            Ok(RevertOutcome::Reverted)
+            Ok(RevertOutcome::Reverted {
+                source: RevertSource::Auto,
+            })
         }
         GitRevertMode::Disabled => Ok(RevertOutcome::Skipped {
             reason: "git_revert_mode=disabled".to_string(),
@@ -550,7 +643,9 @@ fn apply_revert_decision(
     match decision {
         RevertDecision::Revert => {
             git::revert_uncommitted(repo_root)?;
-            Ok(RevertOutcome::Reverted)
+            Ok(RevertOutcome::Reverted {
+                source: RevertSource::User,
+            })
         }
         RevertDecision::Keep => Ok(RevertOutcome::Skipped {
             reason: "user chose to keep changes".to_string(),
@@ -574,7 +669,9 @@ fn apply_revert_decision(
 
 pub fn format_revert_failure_message(base: &str, outcome: RevertOutcome) -> String {
     match outcome {
-        RevertOutcome::Reverted => format!("{base} Uncommitted changes were reverted."),
+        RevertOutcome::Reverted { .. } => {
+            format!("{base} Uncommitted changes were reverted.")
+        }
         RevertOutcome::Skipped { reason } => format!("{base} Revert skipped ({reason})."),
         RevertOutcome::Continue { .. } => {
             format!("{base} Continue requested. No changes were reverted.")

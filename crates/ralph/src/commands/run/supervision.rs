@@ -32,8 +32,15 @@ pub(crate) fn resume_continue_session(
     session: &mut ContinueSession,
     message: &str,
 ) -> Result<crate::runner::RunnerOutput> {
-    let Some(session_id) = session.session_id.as_deref() else {
-        bail!("Catastrophic: no session id captured; cannot Continue.");
+    let session_id = match session.session_id.as_deref() {
+        Some(session_id) => session_id,
+        None => {
+            if session.runner == crate::contracts::Runner::Kimi {
+                ""
+            } else {
+                bail!("Catastrophic: no session id captured; cannot Continue.");
+            }
+        }
     };
     let bins = crate::runner::resolve_binaries(&resolved.config.agent);
     let runner_cli = crate::runner::resolve_agent_settings(

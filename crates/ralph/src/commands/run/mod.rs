@@ -168,6 +168,17 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                     log::info!("RunLoop: task-complete ({completed}/{initial_todo_count})");
                 }
                 Err(err) => {
+                    if let Some(reason) = runutil::abort_reason(&err) {
+                        match reason {
+                            runutil::RunAbortReason::Interrupted => {
+                                log::info!("RunLoop: aborting after interrupt");
+                            }
+                            runutil::RunAbortReason::UserRevert => {
+                                log::info!("RunLoop: aborting after user-requested revert");
+                            }
+                        }
+                        return Err(err);
+                    }
                     completed += 1;
                     tasks_attempted += 1;
                     tasks_failed += 1;
@@ -466,6 +477,9 @@ fn run_one_impl(
                 log::info!("Task {task_id}: pre-run update completed successfully");
             }
             Err(err) => {
+                if runutil::abort_reason(&err).is_some() {
+                    return Err(err);
+                }
                 if fail_on_prerun_update_error {
                     return Err(anyhow::anyhow!(
                         "Pre-run task update failed for {}: {}\n\n\
