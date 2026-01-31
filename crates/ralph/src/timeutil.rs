@@ -12,13 +12,14 @@
 //! - Callers provide RFC3339 strings when parsing.
 //! - Formatted timestamps are always UTC with 9-digit subseconds.
 
+// Re-export for backward compatibility
+pub use crate::constants::defaults::FALLBACK_RFC3339;
+
 use anyhow::{bail, Context, Result};
 use std::sync::OnceLock;
 use time::format_description::well_known::Rfc3339;
 use time::format_description::FormatItem;
 use time::{OffsetDateTime, UtcOffset};
-
-pub const FALLBACK_RFC3339: &str = "2026-01-18T00:00:00.000000000Z";
 
 fn fixed_rfc3339_format() -> &'static [FormatItem<'static>] {
     static FORMAT: OnceLock<Vec<FormatItem<'static>>> = OnceLock::new();

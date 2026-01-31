@@ -23,6 +23,7 @@
 //! - Config merging follows precedence: global → project → defaults.
 //! - `save_layer` creates parent directories automatically if needed.
 
+use crate::constants::defaults::DEFAULT_ID_WIDTH;
 use crate::contracts::{AgentConfig, Config, ProjectType, QueueConfig, TuiConfig};
 use crate::fsutil;
 use crate::prompts_internal::util::validate_instruction_file_paths;
@@ -253,7 +254,7 @@ pub fn resolve_id_prefix(cfg: &Config) -> Result<String> {
 }
 
 pub fn resolve_id_width(cfg: &Config) -> Result<usize> {
-    let width = cfg.queue.id_width.unwrap_or(4) as usize;
+    let width = cfg.queue.id_width.unwrap_or(DEFAULT_ID_WIDTH as u8) as usize;
     if width == 0 {
         bail!("Invalid_queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .ralph/config.json or via --id-width.");
     }

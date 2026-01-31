@@ -53,6 +53,10 @@ mod execution;
 pub(crate) use execution::{ctrlc_state, ResolvedRunnerCliOptions};
 
 use crate::commands::run::PhaseType;
+use crate::constants::defaults::{
+    DEFAULT_CLAUDE_MODEL, DEFAULT_CURSOR_MODEL, DEFAULT_GEMINI_MODEL, OPENCODE_PROMPT_FILE_MESSAGE,
+};
+use crate::constants::timeouts::TEMP_RETENTION;
 use crate::contracts::{
     AgentConfig, ClaudePermissionMode, Model, ReasoningEffort, Runner, RunnerCliOptionsPatch,
     TaskAgent,
@@ -164,12 +168,6 @@ pub(crate) fn runner_execution_error_with_source(
         source
     ))
 }
-
-const OPENCODE_PROMPT_FILE_MESSAGE: &str = "Follow the attached prompt file verbatim.";
-const DEFAULT_GEMINI_MODEL: &str = "gemini-3-flash-preview";
-const DEFAULT_CLAUDE_MODEL: &str = "sonnet";
-const DEFAULT_CURSOR_MODEL: &str = "auto";
-const TEMP_RETENTION: Duration = Duration::from_secs(60 * 60 * 24 * 7);
 
 pub(crate) struct RunnerOutput {
     pub status: ExitStatus,

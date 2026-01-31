@@ -15,6 +15,7 @@
 //! - Legacy files without markers are treated as version 1.
 
 use crate::config;
+use crate::constants::versions::README_VERSION;
 use crate::fsutil;
 use crate::prompts;
 use anyhow::{Context, Result};
@@ -25,10 +26,6 @@ const DEFAULT_RALPH_README: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/ralph_readme.md"
 ));
-
-/// Current version of the embedded README template.
-/// Increment this when updating the template to trigger update detection.
-pub const README_VERSION: u32 = 4;
 
 /// Result of checking if README is current.
 #[derive(Debug, Clone, PartialEq, Eq)]

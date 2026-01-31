@@ -28,6 +28,7 @@
 
 use crate::commands::task as task_cmd;
 use crate::config;
+use crate::constants::limits::MAX_CONSECUTIVE_FAILURES;
 use crate::contracts::{
     AgentConfig, GitRevertMode, ProjectType, ReasoningEffort, RunnerCliOptionsPatch, TaskStatus,
 };
@@ -93,7 +94,7 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
     let (resume_task_id, completed_count) = match session::check_session(
         &cache_dir,
         &queue_file,
-        Some(session::DEFAULT_SESSION_TIMEOUT_HOURS),
+        Some(crate::constants::timeouts::DEFAULT_SESSION_TIMEOUT_HOURS),
     )? {
         SessionValidationResult::NoSession => (None, opts.starting_completed),
         SessionValidationResult::Valid(session) => {
@@ -158,7 +159,6 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
 
     // Track consecutive failures to prevent infinite loops
     let mut consecutive_failures: u32 = 0;
-    const MAX_CONSECUTIVE_FAILURES: u32 = 50;
 
     // Use a mutable reference to allow modification inside the closure
     let mut completed = completed_count;

@@ -17,6 +17,8 @@
 //! - The "task" label is reserved for shared lock semantics.
 //! - Labels are informational and should be trimmed before evaluation.
 
+use crate::constants::limits::MAX_RETRIES;
+use crate::constants::timeouts::DELAYS_MS;
 use crate::fsutil::sync_dir_best_effort;
 use crate::timeutil;
 use anyhow::{anyhow, Context, Result};
@@ -58,9 +60,6 @@ impl Drop for DirLock {
 /// * `Ok(())` if cleanup succeeded
 /// * `Err` if cleanup failed after all retries
 fn cleanup_lock_dir(lock_dir: &Path, owner_path: &Path, force: bool) -> Result<()> {
-    const MAX_RETRIES: u32 = 3;
-    const DELAYS_MS: [u64; 3] = [10, 50, 100]; // Exponential backoff delays
-
     // First, remove the owner file
     if let Err(e) = fs::remove_file(owner_path) {
         // If the file doesn't exist, that's fine - continue to try cleaning the directory

@@ -17,6 +17,7 @@
 
 pub mod agent;
 pub mod config;
+pub mod constants;
 pub mod contracts;
 pub mod queue;
 pub(crate) mod reports;

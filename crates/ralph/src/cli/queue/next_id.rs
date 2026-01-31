@@ -18,10 +18,8 @@ use clap::Args;
 
 use crate::cli::load_and_validate_queues;
 use crate::config::Resolved;
+use crate::constants::limits::MAX_COUNT;
 use crate::queue;
-
-/// Maximum number of IDs that can be generated in a single invocation.
-const MAX_COUNT: usize = 100;
 
 #[derive(Args)]
 pub struct QueueNextIdArgs {

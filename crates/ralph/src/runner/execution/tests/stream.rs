@@ -1,8 +1,7 @@
 //! Stream filtering tests for runner execution output.
 
-use super::super::stream::{
-    display_filtered_json, extract_display_lines, StreamSink, MAX_BUFFER_SIZE, MAX_LINE_LENGTH,
-};
+use super::super::stream::{display_filtered_json, extract_display_lines, StreamSink};
+use crate::constants::buffers::{MAX_BUFFER_SIZE, MAX_LINE_LENGTH};
 use crate::runner::{OutputHandler, OutputStream};
 use serde_json::json;
 use std::io::Cursor;

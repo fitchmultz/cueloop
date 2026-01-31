@@ -28,17 +28,12 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+use crate::constants::buffers::{MAX_BUFFER_SIZE, MAX_LINE_LENGTH, TOOL_VALUE_MAX_LEN};
 use crate::debuglog::{self, DebugStream};
 use crate::outpututil;
 
 use super::super::{OutputHandler, OutputStream};
 use super::json::{extract_session_id_from_json, parse_json_line};
-
-const TOOL_VALUE_MAX_LEN: usize = 160;
-
-/// Maximum line length before truncation (10MB)
-/// Prevents unbounded buffer growth from malicious or buggy runners
-pub(crate) const MAX_LINE_LENGTH: usize = 10 * 1024 * 1024;
 
 pub(super) enum StreamSink {
     Stdout,
@@ -68,10 +63,6 @@ impl StreamSink {
         }
     }
 }
-
-/// Maximum buffer size for spawn_reader before truncation (10MB)
-/// Prevents unbounded memory growth from malicious or buggy runners
-pub(crate) const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
 /// Append text to buffer, truncating older content if MAX_BUFFER_SIZE would be exceeded.
 /// Returns true if truncation occurred (and it was the first time), false otherwise.

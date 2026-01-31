@@ -13,15 +13,14 @@
 //! - Rendering operates on the current `App` state without mutating it.
 //! - Layout components remain consistent with TUI styling conventions.
 
+use crate::constants::ui::NARROW_LAYOUT_WIDTH;
+
 use super::events::types::{ConfirmDiscardAction, ViewMode};
 use super::{App, AppMode};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     Frame,
 };
-
-/// Width threshold (in terminal cells) below which the main layout stacks vertically.
-const NARROW_LAYOUT_WIDTH: u16 = 90;
 
 mod board;
 mod footer;

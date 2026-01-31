@@ -19,11 +19,7 @@
 
 #![allow(dead_code)]
 
-/// Maximum number of log lines to keep in memory.
-const MAX_LOG_LINES: usize = 10_000;
-
-/// Maximum size of ANSI buffer in bytes (10MB limit to prevent unbounded growth).
-const MAX_ANSI_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+use crate::constants::buffers::{MAX_ANSI_BUFFER_SIZE, MAX_LOG_LINES};
 
 /// State for execution log management.
 #[derive(Debug)]

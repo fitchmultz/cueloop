@@ -12,6 +12,8 @@
 //! - Regular git operations (see git/status.rs, git/commit.rs)
 //! - Repository cleanliness checks (see git/clean.rs)
 
+use crate::constants::defaults::LFS_POINTER_PREFIX;
+use crate::constants::limits::MAX_POINTER_SIZE;
 use crate::git::error::{git_base_command, GitError};
 use anyhow::{Context, Result};
 use std::fs;
@@ -463,9 +465,6 @@ pub fn check_lfs_status(repo_root: &Path) -> Result<LfsStatusSummary, GitError> 
 /// }
 /// ```
 pub fn validate_lfs_pointers(repo_root: &Path, files: &[String]) -> Result<Vec<LfsPointerIssue>> {
-    const LFS_POINTER_PREFIX: &str = "version https://git-lfs.github.com/spec/v1";
-    const MAX_POINTER_SIZE: u64 = 1024; // LFS pointers are small text files
-
     let mut issues = Vec::new();
 
     for file_path in files {

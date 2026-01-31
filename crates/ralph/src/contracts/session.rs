@@ -12,13 +12,11 @@
 //! - Session state is written atomically to prevent corruption.
 //! - Timestamps are RFC3339 UTC format.
 
+use crate::constants::versions::SESSION_STATE_VERSION;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::Runner;
-
-/// Version of the session state schema for forward compatibility.
-pub const SESSION_STATE_VERSION: u32 = 1;
 
 /// Session state persisted to enable crash recovery.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

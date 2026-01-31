@@ -23,14 +23,11 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
+use crate::constants::milestones::MILESTONE_THRESHOLDS;
+use crate::constants::paths::STATS_FILENAME;
+use crate::constants::versions::STATS_SCHEMA_VERSION;
 use crate::contracts::Task;
 use crate::timeutil;
-
-const STATS_FILENAME: &str = "productivity.json";
-const STATS_SCHEMA_VERSION: u32 = 1;
-
-/// Milestone thresholds for celebration
-pub const MILESTONE_THRESHOLDS: &[u64] = &[10, 50, 100, 250, 500, 1000, 2500, 5000];
 
 /// Root productivity data structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

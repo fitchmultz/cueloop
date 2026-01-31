@@ -16,13 +16,9 @@
 //! - Spinner animation frames update at a fixed interval (80ms).
 //! - NO_COLOR environment variable is respected for colored output.
 
+use crate::constants::spinners::DEFAULT_SPINNER_FRAMES;
+use crate::constants::timeouts::SPINNER_UPDATE_INTERVAL_MS;
 use std::time::{Duration, Instant};
-
-/// Braille pattern spinner frames for smooth animation.
-pub const DEFAULT_SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-/// Interval between spinner frame updates.
-pub const SPINNER_UPDATE_INTERVAL_MS: u64 = 80;
 
 /// Trait for progress indication across TUI and CLI modes.
 ///

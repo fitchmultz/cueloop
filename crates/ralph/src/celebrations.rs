@@ -150,17 +150,7 @@ pub fn celebrate_session_summary(tasks_completed: usize, duration_seconds: i64) 
 
 /// ASCII art celebrations
 pub mod art {
-    /// Sparkles for standard completion
-    pub const SPARKLES: &str = "✨";
-
-    /// Fire emoji for streaks
-    pub const FIRE: &str = "🔥";
-
-    /// Star for achievements
-    pub const STAR: &str = "⭐";
-
-    /// Checkmark for completion
-    pub const CHECKMARK: &str = "✓";
+    pub use crate::constants::symbols::{CHECKMARK, FIRE, SPARKLES, STAR};
 
     /// Session end banner
     pub const SESSION_END: &str = r#"

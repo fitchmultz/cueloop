@@ -19,14 +19,10 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 
+use crate::constants::paths::SESSION_FILENAME;
 use crate::contracts::{QueueFile, SessionState, TaskStatus};
 use crate::fsutil;
 use crate::timeutil;
-
-pub const SESSION_FILENAME: &str = "session.json";
-
-/// Default session timeout in hours (sessions older than this require explicit confirmation).
-pub const DEFAULT_SESSION_TIMEOUT_HOURS: u64 = 24;
 
 /// Get the path to the session file.
 pub fn session_path(cache_dir: &Path) -> PathBuf {

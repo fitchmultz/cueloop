@@ -3,10 +3,9 @@
 use super::{PhaseInvocation, PhaseType};
 use crate::commands::run::supervision;
 use crate::config;
+use crate::constants::limits::CI_GATE_AUTO_RETRY_LIMIT;
 use crate::{runner, runutil};
 use anyhow::{bail, Result};
-
-const CI_GATE_AUTO_RETRY_LIMIT: u8 = 2;
 
 fn strict_ci_gate_compliance_message(
     resolved: &config::Resolved,

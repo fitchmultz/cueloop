@@ -5,6 +5,8 @@
 //! Invariants/assumptions: caller supplies validated runner settings and respects revert policies.
 
 use crate::commands::run::PhaseType;
+use crate::constants::buffers::TIMEOUT_STDOUT_CAPTURE_MAX_BYTES;
+use crate::constants::buffers::{OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS};
 use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffort, Runner};
 use crate::{fsutil, git, outpututil, runner};
 use anyhow::{bail, Result};
@@ -140,8 +142,6 @@ impl RevertPromptContext {
 }
 
 pub type RevertPromptHandler = Arc<dyn Fn(&RevertPromptContext) -> RevertDecision + Send + Sync>;
-
-const TIMEOUT_STDOUT_CAPTURE_MAX_BYTES: usize = 128 * 1024;
 
 pub(crate) trait RunnerBackend {
     #[allow(clippy::too_many_arguments)]
@@ -809,11 +809,7 @@ pub(crate) fn parse_revert_response(input: &str, allow_proceed: bool) -> RevertD
 }
 
 fn log_stderr_tail(label: &str, stderr: &str) {
-    let tail = outpututil::tail_lines(
-        stderr,
-        outpututil::OUTPUT_TAIL_LINES,
-        outpututil::OUTPUT_TAIL_LINE_MAX_CHARS,
-    );
+    let tail = outpututil::tail_lines(stderr, OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS);
     if tail.is_empty() {
         return;
     }
@@ -827,6 +823,7 @@ fn log_stderr_tail(label: &str, stderr: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::buffers::{OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS};
 
     /// Test that redaction is applied to stderr content by verifying the
     /// redact_text function works correctly on typical stderr patterns.
@@ -869,22 +866,14 @@ mod tests {
 
     #[test]
     fn log_stderr_tail_handles_empty_stderr() {
-        let tail = outpututil::tail_lines(
-            "",
-            outpututil::OUTPUT_TAIL_LINES,
-            outpututil::OUTPUT_TAIL_LINE_MAX_CHARS,
-        );
+        let tail = outpututil::tail_lines("", OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS);
         assert!(tail.is_empty());
     }
 
     #[test]
     fn log_stderr_tail_presents_normal_content_via_tail_lines() {
         let stderr = "Normal error message\nAnother line";
-        let tail = outpututil::tail_lines(
-            stderr,
-            outpututil::OUTPUT_TAIL_LINES,
-            outpututil::OUTPUT_TAIL_LINE_MAX_CHARS,
-        );
+        let tail = outpututil::tail_lines(stderr, OUTPUT_TAIL_LINES, OUTPUT_TAIL_LINE_MAX_CHARS);
 
         assert_eq!(tail.len(), 2);
         assert_eq!(tail[0], "Normal error message");

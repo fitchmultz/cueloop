@@ -15,12 +15,10 @@
 //! - Creating a signal when one exists is a no-op (overwrites with same content).
 //! - Clearing a non-existent signal is a no-op.
 
+use crate::constants::paths::STOP_SIGNAL_FILE;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
-
-/// Name of the stop signal file in the cache directory.
-const STOP_SIGNAL_FILE: &str = "stop_requested";
 
 /// Content written to the stop signal file (human-readable timestamp).
 fn signal_content() -> String {

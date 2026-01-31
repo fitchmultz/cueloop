@@ -1,11 +1,7 @@
 //! Output formatting helpers for Ralph CLI and TUI surfaces.
 
-use colored::Colorize;
-
 use crate::contracts::{Task, TaskPriority, TaskStatus};
-
-pub const OUTPUT_TAIL_LINES: usize = 20;
-pub const OUTPUT_TAIL_LINE_MAX_CHARS: usize = 200;
+use colored::Colorize;
 
 pub fn truncate_chars(value: &str, max_chars: usize) -> String {
     if max_chars == 0 {

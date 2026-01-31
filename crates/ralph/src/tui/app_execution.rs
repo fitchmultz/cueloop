@@ -21,7 +21,8 @@
 
 #![allow(dead_code)]
 
-use crate::progress::{ExecutionPhase, SpinnerState, SPINNER_UPDATE_INTERVAL_MS};
+use crate::constants::timeouts::SPINNER_UPDATE_INTERVAL_MS;
+use crate::progress::{ExecutionPhase, SpinnerState};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

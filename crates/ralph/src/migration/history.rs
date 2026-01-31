@@ -12,17 +12,13 @@
 //! - History file is stored in `.ralph/cache/migrations.json`.
 //! - History format is versioned for future compatibility.
 
+use crate::constants::paths::MIGRATION_HISTORY_PATH;
+use crate::constants::versions::HISTORY_VERSION;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-
-/// Current version of the migration history schema.
-const HISTORY_VERSION: u32 = 1;
-
-/// Path to migration history file relative to repo root.
-const MIGRATION_HISTORY_PATH: &str = ".ralph/cache/migrations.json";
 
 /// Migration history tracking all applied migrations.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -18,15 +18,15 @@
 //! - `safeguard_text_dump` requires explicit opt-in (env var or debug mode) to write raw content.
 //! - `safeguard_text_dump_redacted` is the default and safe choice for error dumps.
 
+use crate::constants::paths::{LEGACY_PROMPT_PREFIX, RALPH_TEMP_DIR_NAME};
+
+// Re-export for tests and external use
+pub use crate::constants::paths::RALPH_TEMP_PREFIX;
 use anyhow::{Context, Result};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
-
-const RALPH_TEMP_DIR_NAME: &str = "ralph";
-const LEGACY_PROMPT_PREFIX: &str = "ralph_prompt_";
-pub const RALPH_TEMP_PREFIX: &str = "ralph_";
 
 pub fn ralph_temp_root() -> PathBuf {
     std::env::temp_dir().join(RALPH_TEMP_DIR_NAME)
@@ -130,8 +130,7 @@ pub fn create_ralph_temp_dir(label: &str) -> Result<tempfile::TempDir> {
     Ok(dir)
 }
 
-/// Environment variable to opt-in to raw (non-redacted) safeguard dumps.
-const ENV_RAW_DUMP: &str = "RALPH_RAW_DUMP";
+use crate::constants::paths::ENV_RAW_DUMP;
 
 /// Writes a safeguard dump with redaction applied to sensitive content.
 ///

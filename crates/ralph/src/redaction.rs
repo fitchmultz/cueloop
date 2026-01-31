@@ -11,12 +11,11 @@
 //!   after first redaction call will not be detected
 //! - All redaction functions are pure (no side effects except cache initialization)
 
+use crate::constants::defaults::REDACTED;
+use crate::constants::limits::MIN_ENV_VALUE_LEN;
 use std::collections::HashSet;
 use std::fmt;
 use std::sync::RwLock;
-
-const REDACTED: &str = "[REDACTED]";
-const MIN_ENV_VALUE_LEN: usize = 6;
 
 /// Cache for sensitive environment variable values.
 /// Uses RwLock to allow cache clearing in tests while maintaining

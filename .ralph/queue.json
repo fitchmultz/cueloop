@@ -44,43 +44,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0471",
-      "status": "todo",
-      "title": "Centralize magic numbers and constants",
-      "priority": "low",
-      "tags": [
-        "code-quality",
-        "maintainability",
-        "constants"
-      ],
-      "scope": [
-        "crates/ralph/src/"
-      ],
-      "evidence": [
-        "Hardcoded values found: 10MB ANSI buffer (app.rs:682)",
-        "10k log line limit (app.rs:696)",
-        "4-digit task ID width default",
-        "Retry count of 2 for CI failures",
-        "No centralized constants module for shared values"
-      ],
-      "plan": [
-        "Search for hardcoded numeric literals with grep",
-        "Identify magic numbers that appear multiple times",
-        "Create constants module or add to existing config/contracts",
-        "Document what each constant controls",
-        "Refactor to use named constants",
-        "Run make ci to verify no regressions"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0472",
       "status": "todo",
       "title": "Add completion tracking for long-running operations",

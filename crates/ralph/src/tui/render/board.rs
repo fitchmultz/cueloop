@@ -18,6 +18,7 @@
 use super::super::events::types::ViewMode;
 use super::super::App;
 use super::utils::{priority_color, status_color};
+use crate::constants::ui::{BOARD_MIN_WIDTH, COLUMN_GUTTER};
 use crate::contracts::TaskStatus;
 use crate::outpututil::truncate_chars;
 use crate::tui::app_navigation::BoardNavigationState;
@@ -28,11 +29,6 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
 };
-
-/// Width threshold below which the board view falls back to list view.
-const BOARD_MIN_WIDTH: u16 = 100;
-/// Gutter between columns.
-const COLUMN_GUTTER: u16 = 1;
 
 /// Draw the Kanban board view.
 ///

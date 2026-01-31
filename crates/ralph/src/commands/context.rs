@@ -16,6 +16,8 @@
 
 use crate::cli::context::ProjectTypeHint;
 use crate::config;
+use crate::constants::agents_md::{RECOMMENDED_SECTIONS, REQUIRED_SECTIONS};
+use crate::constants::versions::TEMPLATE_VERSION;
 use crate::fsutil;
 use anyhow::{Context, Result};
 use std::collections::HashSet;
@@ -42,24 +44,6 @@ const TEMPLATE_GO: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/agents_templates/go.md"
 ));
-
-const TEMPLATE_VERSION: &str = "1.0.0";
-
-/// Required sections that should be present in AGENTS.md
-const REQUIRED_SECTIONS: &[&str] = &["Non-Negotiables", "Repository Map", "Build, Test, and CI"];
-
-/// Recommended sections for a complete AGENTS.md
-const RECOMMENDED_SECTIONS: &[&str] = &[
-    "Non-Negotiables",
-    "Repository Map",
-    "Build, Test, and CI",
-    "Testing",
-    "Workflow Contracts",
-    "Configuration",
-    "Git Hygiene",
-    "Documentation Maintenance",
-    "Troubleshooting",
-];
 
 /// Detected project type
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

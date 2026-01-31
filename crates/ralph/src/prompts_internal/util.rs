@@ -6,6 +6,7 @@
 //! Invariants/assumptions: templates are UTF-8 strings using `{{...}}` placeholders and required
 //! placeholders include braces (e.g., `{{TASK_ID}}`).
 
+use crate::constants::buffers::MAX_INSTRUCTION_BYTES;
 use crate::contracts::{Config, ProjectType};
 use anyhow::{bail, Context, Result};
 use regex::Regex;
@@ -84,8 +85,6 @@ pub(crate) fn wrap_with_instruction_files(
     prompt: &str,
     config: &Config,
 ) -> Result<String> {
-    const MAX_INSTRUCTION_BYTES: usize = 128 * 1024;
-
     let mut sources: Vec<(String, String)> = Vec::new();
 
     // Global/user-specified instruction files.
@@ -131,7 +130,6 @@ The following instruction files are authoritative for this run. Follow them exac
 }
 
 pub(crate) fn instruction_file_warnings(repo_root: &Path, config: &Config) -> Vec<String> {
-    const MAX_INSTRUCTION_BYTES: usize = 128 * 1024;
     let mut warnings = Vec::new();
 
     if let Some(paths) = config.agent.instruction_files.as_ref() {
@@ -165,8 +163,6 @@ pub(crate) fn instruction_file_warnings(repo_root: &Path, config: &Config) -> Ve
 /// Validates all instruction files in config and returns first error encountered.
 /// Used for early config validation (fails fast) during config resolution.
 pub(crate) fn validate_instruction_file_paths(repo_root: &Path, config: &Config) -> Result<()> {
-    const MAX_INSTRUCTION_BYTES: usize = 128 * 1024;
-
     if let Some(paths) = config.agent.instruction_files.as_ref() {
         for raw in paths {
             let resolved = resolve_instruction_path(repo_root, raw);

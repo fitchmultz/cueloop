@@ -27,5 +27,8 @@ pub use config::{
     WebhookConfig,
 };
 pub use queue::QueueFile;
-pub use session::{SessionState, SESSION_STATE_VERSION};
+pub use session::SessionState;
+
+// Re-export SESSION_STATE_VERSION from constants for backward compatibility
+pub use crate::constants::versions::SESSION_STATE_VERSION;
 pub use task::{Task, TaskAgent, TaskPriority, TaskStatus};

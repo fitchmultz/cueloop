@@ -24,6 +24,9 @@
 //! previews stay accurate as runtime behavior evolves.
 
 use crate::config;
+use crate::constants::paths::{
+    SCAN_OVERRIDE_PATH, TASK_BUILDER_OVERRIDE_PATH, WORKER_OVERRIDE_PATH,
+};
 use crate::contracts::ProjectType;
 use crate::promptflow::{self, PromptPolicy};
 use crate::prompts_internal::management as prompt_mgmt;
@@ -260,10 +263,6 @@ pub fn diff_prompt(repo_root: &Path, name: &str) -> Result<()> {
 
     Ok(())
 }
-
-const WORKER_OVERRIDE_PATH: &str = ".ralph/prompts/worker.md";
-const SCAN_OVERRIDE_PATH: &str = ".ralph/prompts/scan.md";
-const TASK_BUILDER_OVERRIDE_PATH: &str = ".ralph/prompts/task_builder.md";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkerMode {

@@ -19,6 +19,7 @@ use super::super::{App, AppMode, TextInput};
 use super::types::{TaskBuilderOptions, TaskBuilderState, TaskBuilderStep, TuiAction};
 use super::{is_plain_char, text_char};
 use crate::agent::RepoPromptMode;
+use crate::constants::ui::TASK_BUILDER_FIELD_COUNT;
 use crate::contracts::{Model, ReasoningEffort, Runner};
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
@@ -36,7 +37,7 @@ enum TaskBuilderField {
 }
 
 impl TaskBuilderField {
-    const COUNT: usize = 7;
+    const COUNT: usize = TASK_BUILDER_FIELD_COUNT;
 
     fn from_index(idx: usize) -> Self {
         match idx {

@@ -12,6 +12,10 @@
 //! - Config merge is leaf-wise: `Some` values override, `None` does not.
 //! - Serde/schemars attributes define the config contract.
 
+use crate::constants::defaults::DEFAULT_ID_WIDTH;
+use crate::constants::limits::{
+    DEFAULT_SIZE_WARNING_THRESHOLD_KB, DEFAULT_TASK_COUNT_WARNING_THRESHOLD,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -847,9 +851,9 @@ impl Default for Config {
                 file: Some(PathBuf::from(".ralph/queue.json")),
                 done_file: Some(PathBuf::from(".ralph/done.json")),
                 id_prefix: Some("RQ".to_string()),
-                id_width: Some(4),
-                size_warning_threshold_kb: Some(500),
-                task_count_warning_threshold: Some(500),
+                id_width: Some(DEFAULT_ID_WIDTH as u8),
+                size_warning_threshold_kb: Some(DEFAULT_SIZE_WARNING_THRESHOLD_KB),
+                task_count_warning_threshold: Some(DEFAULT_TASK_COUNT_WARNING_THRESHOLD),
                 max_dependency_depth: Some(10),
             },
             agent: AgentConfig {

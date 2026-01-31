@@ -21,8 +21,10 @@
 //! - TUI runs in a terminal with raw mode support.
 
 use crate::config::ConfigLayer;
+use crate::constants::buffers::MAX_ANSI_BUFFER_SIZE;
+use crate::constants::timeouts::SPINNER_UPDATE_INTERVAL_MS;
 use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
-use crate::progress::{ExecutionPhase, SpinnerState, SPINNER_UPDATE_INTERVAL_MS};
+use crate::progress::{ExecutionPhase, SpinnerState};
 use crate::queue::TaskEditKey;
 use crate::{config as crate_config, lock, queue, runutil, timeutil};
 use anyhow::{anyhow, bail, Context, Result};
@@ -634,9 +636,6 @@ impl App {
         }
     }
 
-    /// Maximum size of ANSI buffer in bytes (10MB limit).
-    const MAX_ANSI_BUFFER_SIZE: usize = 10 * 1024 * 1024;
-
     pub(crate) fn append_log_lines<I>(&mut self, lines: I)
     where
         I: IntoIterator<Item = String>,
@@ -655,8 +654,8 @@ impl App {
             self.log_scroll = self.log_scroll.saturating_sub(excess);
         }
         // Trim ANSI buffer if it exceeds the maximum size
-        if self.log_ansi_buffer.len() > Self::MAX_ANSI_BUFFER_SIZE {
-            let excess = self.log_ansi_buffer.len() - Self::MAX_ANSI_BUFFER_SIZE;
+        if self.log_ansi_buffer.len() > MAX_ANSI_BUFFER_SIZE {
+            let excess = self.log_ansi_buffer.len() - MAX_ANSI_BUFFER_SIZE;
             self.log_ansi_buffer.drain(0..excess);
         }
         if self.autoscroll {

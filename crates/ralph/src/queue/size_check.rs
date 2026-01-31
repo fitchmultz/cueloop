@@ -8,6 +8,9 @@
 //! - Configuration loading (passed in by caller).
 //! - Actual queue operations (archive/prune) - only suggestions.
 
+use crate::constants::limits::{
+    DEFAULT_SIZE_WARNING_THRESHOLD_KB, DEFAULT_TASK_COUNT_WARNING_THRESHOLD,
+};
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -35,12 +38,6 @@ pub struct SizeCheckResult {
     /// The task count threshold that was used for the check.
     pub count_threshold: u32,
 }
-
-/// Default warning threshold for queue file size in KB.
-pub const DEFAULT_SIZE_WARNING_THRESHOLD_KB: u32 = 500;
-
-/// Default warning threshold for number of tasks in queue.
-pub const DEFAULT_TASK_COUNT_WARNING_THRESHOLD: u32 = 500;
 
 /// Check if queue exceeds configured thresholds.
 ///

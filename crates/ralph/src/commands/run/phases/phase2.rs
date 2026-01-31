@@ -3,11 +3,10 @@
 use super::shared::{execute_runner_pass, run_ci_gate_with_continue};
 use super::{PhaseInvocation, PhaseType};
 use crate::commands::run::{logging, supervision};
+use crate::constants::defaults::PHASE2_FINAL_RESPONSE_FALLBACK;
 use crate::{promptflow, prompts, runner};
 use anyhow::Result;
 use std::path::Path;
-
-pub(super) const PHASE2_FINAL_RESPONSE_FALLBACK: &str = "(Phase 2 final response unavailable.)";
 
 pub(super) fn cache_phase2_final_response(
     repo_root: &Path,
