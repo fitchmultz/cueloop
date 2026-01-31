@@ -44,46 +44,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0442",
-      "status": "todo",
-      "title": "Add multi-select support to TUI for batch operations",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "ux",
-        "feature",
-        "task-management"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/app.rs",
-        "crates/ralph/src/tui/events/",
-        "crates/ralph/src/tui/render/"
-      ],
-      "evidence": [
-        "TUI only supports single task selection with arrow keys",
-        "No way to select multiple tasks for batch archive or status change",
-        "Command palette has no multi-select actions"
-      ],
-      "plan": [
-        "Add Space key to toggle task selection in list view",
-        "Add visual indicator for selected tasks (checkmark or highlight)",
-        "Add `a` key for batch archive of selected tasks",
-        "Add `s` key for batch status change with submenu",
-        "Add `d` key for batch delete with confirmation",
-        "Show selection count in footer when tasks are selected",
-        "Add Esc key to clear selection",
-        "Update help overlay with multi-select keybindings"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T00:00:00Z",
-      "updated_at": "2026-01-30T00:00:00Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0488",
       "status": "todo",
       "title": "Cache prompt expansion regexes",

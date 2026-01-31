@@ -99,6 +99,10 @@ pub enum AppMode {
     ConfirmUnlock,
     /// Confirming auto-archive of a single terminal task
     ConfirmAutoArchive(String),
+    /// Confirm batch delete with count of affected tasks
+    ConfirmBatchDelete { count: usize },
+    /// Confirm batch archive with count of affected tasks
+    ConfirmBatchArchive { count: usize },
     /// Confirming quit while a task is running
     ConfirmQuit,
     /// Confirming discard of unsaved changes before reload/quit.
@@ -244,6 +248,12 @@ impl PartialEq for AppMode {
             (ConfirmRepair { dry_run: left }, ConfirmRepair { dry_run: right }) => left == right,
             (ConfirmUnlock, ConfirmUnlock) => true,
             (ConfirmAutoArchive(left), ConfirmAutoArchive(right)) => left == right,
+            (ConfirmBatchDelete { count: left }, ConfirmBatchDelete { count: right }) => {
+                left == right
+            }
+            (ConfirmBatchArchive { count: left }, ConfirmBatchArchive { count: right }) => {
+                left == right
+            }
             (ConfirmQuit, ConfirmQuit) => true,
             (ConfirmDiscard { action: left }, ConfirmDiscard { action: right }) => left == right,
             (

@@ -88,6 +88,12 @@ pub fn handle_key_event(
         AppMode::ConfirmAutoArchive(task_id) => {
             confirm::handle_confirm_auto_archive_key(app, key, &task_id, now_rfc3339)
         }
+        AppMode::ConfirmBatchDelete { count } => {
+            confirm::handle_confirm_batch_delete_key(app, key, count)
+        }
+        AppMode::ConfirmBatchArchive { count } => {
+            confirm::handle_confirm_batch_archive_key(app, key, count, now_rfc3339)
+        }
         AppMode::ConfirmQuit => confirm::handle_confirm_quit_key(app, key),
         AppMode::ConfirmDiscard { action } => confirm::handle_confirm_discard_key(app, key, action),
         AppMode::ConfirmRevert {

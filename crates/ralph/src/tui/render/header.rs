@@ -151,6 +151,14 @@ fn mode_span(mode: &AppMode, running_task_id: Option<&String>) -> Span<'static> 
         AppMode::ConfirmAutoArchive(_) => {
             Span::styled("[Confirm Archive]", Style::default().fg(Color::Yellow))
         }
+        AppMode::ConfirmBatchDelete { count } => Span::styled(
+            format!("[Confirm Delete {} Tasks]", count),
+            Style::default().fg(Color::Red),
+        ),
+        AppMode::ConfirmBatchArchive { count } => Span::styled(
+            format!("[Confirm Archive {} Tasks]", count),
+            Style::default().fg(Color::Yellow),
+        ),
         AppMode::ConfirmQuit => Span::styled("[Confirm Quit]", Style::default().fg(Color::Yellow)),
         AppMode::ConfirmDiscard { .. } => {
             Span::styled("[Confirm Discard]", Style::default().fg(Color::Red))

@@ -155,6 +155,22 @@ pub(super) fn help_footer_spans(app: &App, max_width: usize) -> Vec<Span<'static
             Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":cancel"),
         ],
+        AppMode::ConfirmBatchDelete { count } => vec![
+            Span::styled("y", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(format!(":delete {} tasks ", count)),
+            Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
+        AppMode::ConfirmBatchArchive { count } => vec![
+            Span::styled("y", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(format!(":archive {} tasks ", count)),
+            Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel "),
+            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(":cancel"),
+        ],
         AppMode::ConfirmQuit => vec![
             Span::styled("y", Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(":quit "),

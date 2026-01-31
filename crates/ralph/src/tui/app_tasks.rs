@@ -117,6 +117,51 @@ pub trait AppTasks {
 
     /// Cycle the priority of a task to the next value.
     fn cycle_priority(&mut self, task_id: &str, now_rfc3339: &str) -> Result<TaskPriority>;
+
+    /// Delete multiple tasks by their filtered indices.
+    ///
+    /// # Arguments
+    /// * `indices` - Slice of filtered indices to delete
+    ///
+    /// # Returns
+    /// * `Result<usize>` - Number of tasks actually deleted
+    ///
+    /// # Invariants
+    /// - Deletes in reverse order to maintain index validity
+    /// - Marks queue as dirty after deletions
+    /// - Clears selection after successful deletion
+    fn batch_delete_tasks(&mut self, indices: &[usize]) -> Result<usize>;
+
+    /// Archive multiple tasks by their filtered indices.
+    ///
+    /// # Arguments
+    /// * `indices` - Slice of filtered indices to archive
+    /// * `now_rfc3339` - Current timestamp for archive metadata
+    ///
+    /// # Returns
+    /// * `Result<usize>` - Number of tasks actually archived
+    ///
+    /// # Invariants
+    /// - Archives in reverse order to maintain index validity
+    /// - Marks both queue and done as dirty after operations
+    /// - Clears selection after successful archive
+    fn batch_archive_tasks(&mut self, indices: &[usize], now_rfc3339: &str) -> Result<usize>;
+
+    /// Set status on multiple tasks by their filtered indices.
+    ///
+    /// # Arguments
+    /// * `indices` - Slice of filtered indices to update
+    /// * `status` - The new status to set
+    /// * `now_rfc3339` - Current timestamp for updated_at
+    ///
+    /// # Returns
+    /// * `Result<usize>` - Number of tasks actually updated
+    fn batch_set_status(
+        &mut self,
+        indices: &[usize],
+        status: TaskStatus,
+        now_rfc3339: &str,
+    ) -> Result<usize>;
 }
 
 /// Action to take for auto-archive.
@@ -446,6 +491,95 @@ impl TaskOperations {
 
         self.set_task_priority(task_id, next_priority, now_rfc3339)?;
         Ok(next_priority)
+    }
+
+    /// Delete multiple tasks by their filtered indices.
+    ///
+    /// Deletes in reverse order to maintain index validity.
+    pub fn batch_delete_tasks(&mut self, indices: &[usize]) -> Result<usize> {
+        if indices.is_empty() {
+            return Ok(0);
+        }
+
+        // Sort indices in descending order to delete from end first
+        let mut sorted_indices: Vec<usize> = indices.to_vec();
+        sorted_indices.sort_unstable_by(|a, b| b.cmp(a));
+        sorted_indices.dedup();
+
+        let mut deleted_count = 0;
+        for &idx in &sorted_indices {
+            if idx < self.queue.tasks.len() {
+                self.queue.tasks.remove(idx);
+                deleted_count += 1;
+            }
+        }
+
+        if deleted_count > 0 {
+            self.dirty = true;
+            self.bump_queue_rev();
+        }
+
+        Ok(deleted_count)
+    }
+
+    /// Archive multiple tasks by their filtered indices.
+    ///
+    /// Archives in reverse order to maintain index validity.
+    pub fn batch_archive_tasks(&mut self, indices: &[usize], now_rfc3339: &str) -> Result<usize> {
+        if indices.is_empty() {
+            return Ok(0);
+        }
+
+        // Sort indices in descending order to archive from end first
+        let mut sorted_indices: Vec<usize> = indices.to_vec();
+        sorted_indices.sort_unstable_by(|a, b| b.cmp(a));
+        sorted_indices.dedup();
+
+        let mut archived_count = 0;
+        for &idx in &sorted_indices {
+            if idx < self.queue.tasks.len() {
+                let mut task = self.queue.tasks.remove(idx);
+                task.updated_at = Some(now_rfc3339.to_string());
+                self.done.tasks.push(task);
+                archived_count += 1;
+            }
+        }
+
+        if archived_count > 0 {
+            self.dirty = true;
+            self.dirty_done = true;
+            self.bump_queue_rev();
+        }
+
+        Ok(archived_count)
+    }
+
+    /// Set status on multiple tasks by their filtered indices.
+    pub fn batch_set_status(
+        &mut self,
+        indices: &[usize],
+        status: TaskStatus,
+        now_rfc3339: &str,
+    ) -> Result<usize> {
+        if indices.is_empty() {
+            return Ok(0);
+        }
+
+        let mut updated_count = 0;
+        for &idx in indices {
+            if let Some(task) = self.queue.tasks.get_mut(idx) {
+                task.status = status;
+                task.updated_at = Some(now_rfc3339.to_string());
+                updated_count += 1;
+            }
+        }
+
+        if updated_count > 0 {
+            self.dirty = true;
+            self.bump_queue_rev();
+        }
+
+        Ok(updated_count)
     }
 }
 

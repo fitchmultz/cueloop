@@ -32,7 +32,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, layout::Rect, Terminal};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc};
 use std::thread;
@@ -212,6 +212,10 @@ pub struct App {
     pub view_mode: ViewMode,
     /// Board-specific navigation state (only meaningful when view_mode == Board).
     pub board_nav: BoardNavigationState,
+    /// Multi-select mode flag - when true, navigation keeps selections.
+    pub multi_select_mode: bool,
+    /// Set of selected task indices (positions in filtered_indices, not queue indices).
+    pub selected_indices: HashSet<usize>,
 }
 
 impl App {
@@ -288,6 +292,8 @@ impl App {
             resized: false,
             view_mode: ViewMode::default(),
             board_nav: BoardNavigationState::new(),
+            multi_select_mode: false,
+            selected_indices: HashSet::new(),
         };
         app.rebuild_filtered_view();
         app
@@ -295,6 +301,48 @@ impl App {
 
     pub fn set_status_message(&mut self, message: impl Into<String>) {
         self.status_message = Some(message.into());
+    }
+
+    // Multi-select methods
+
+    /// Toggle multi-select mode on/off.
+    ///
+    /// When exiting multi-select mode, clears all selections.
+    pub fn toggle_multi_select_mode(&mut self) {
+        self.multi_select_mode = !self.multi_select_mode;
+        if !self.multi_select_mode {
+            self.selected_indices.clear();
+        }
+    }
+
+    /// Toggle selection of the current task.
+    ///
+    /// Only has effect when in multi-select mode.
+    pub fn toggle_current_selection(&mut self) {
+        if self.multi_select_mode {
+            let idx = self.selected;
+            if self.selected_indices.contains(&idx) {
+                self.selected_indices.remove(&idx);
+            } else {
+                self.selected_indices.insert(idx);
+            }
+        }
+    }
+
+    /// Clear all selections and exit multi-select mode.
+    pub fn clear_selection(&mut self) {
+        self.selected_indices.clear();
+        self.multi_select_mode = false;
+    }
+
+    /// Get the count of selected tasks.
+    pub fn selection_count(&self) -> usize {
+        self.selected_indices.len()
+    }
+
+    /// Check if a filtered position is selected.
+    pub fn is_selected(&self, filtered_idx: usize) -> bool {
+        self.selected_indices.contains(&filtered_idx)
     }
 
     // Phase tracking methods
@@ -968,6 +1016,107 @@ impl App {
         self.set_status_message(format!("Deleted {}", task.id));
         self.rebuild_filtered_view_with_preferred(preferred_id.as_deref());
         Ok(task)
+    }
+
+    /// Batch delete tasks by their filtered indices.
+    ///
+    /// Converts filtered indices to queue indices, deletes in reverse order,
+    /// and rebuilds the filtered view.
+    pub fn batch_delete_by_filtered_indices(
+        &mut self,
+        filtered_indices: &[usize],
+    ) -> Result<usize> {
+        if filtered_indices.is_empty() {
+            return Ok(0);
+        }
+
+        // Convert filtered indices to queue indices
+        let mut queue_indices: Vec<usize> = filtered_indices
+            .iter()
+            .filter_map(|&filtered_idx| self.filtered_indices.get(filtered_idx).copied())
+            .collect();
+
+        if queue_indices.is_empty() {
+            return Ok(0);
+        }
+
+        // Sort in descending order to delete from end first (maintains index validity)
+        queue_indices.sort_unstable_by(|a, b| b.cmp(a));
+        queue_indices.dedup();
+
+        let mut deleted_count = 0;
+        for idx in queue_indices {
+            if idx < self.queue.tasks.len() {
+                self.queue.tasks.remove(idx);
+                deleted_count += 1;
+            }
+        }
+
+        if deleted_count > 0 {
+            self.dirty = true;
+            self.bump_queue_rev();
+            self.selected_indices.clear();
+            self.rebuild_filtered_view();
+            // Adjust selection to stay valid
+            if self.selected >= self.filtered_len() {
+                self.selected = self.filtered_len().saturating_sub(1);
+            }
+        }
+
+        Ok(deleted_count)
+    }
+
+    /// Batch archive tasks by their filtered indices.
+    ///
+    /// Converts filtered indices to queue indices, archives in reverse order,
+    /// and rebuilds the filtered view.
+    pub fn batch_archive_by_filtered_indices(
+        &mut self,
+        filtered_indices: &[usize],
+        now_rfc3339: &str,
+    ) -> Result<usize> {
+        if filtered_indices.is_empty() {
+            return Ok(0);
+        }
+
+        // Convert filtered indices to queue indices
+        let mut queue_indices: Vec<usize> = filtered_indices
+            .iter()
+            .filter_map(|&filtered_idx| self.filtered_indices.get(filtered_idx).copied())
+            .collect();
+
+        if queue_indices.is_empty() {
+            return Ok(0);
+        }
+
+        // Sort in descending order to archive from end first (maintains index validity)
+        queue_indices.sort_unstable_by(|a, b| b.cmp(a));
+        queue_indices.dedup();
+
+        let mut archived_count = 0;
+        for idx in queue_indices {
+            if idx < self.queue.tasks.len() {
+                let mut task = self.queue.tasks.remove(idx);
+                task.updated_at = Some(now_rfc3339.to_string());
+                self.done.tasks.push(task);
+                archived_count += 1;
+            }
+        }
+
+        if archived_count > 0 {
+            self.dirty = true;
+            self.dirty_done = true;
+            self.bump_queue_rev();
+            self.selected_indices.clear();
+            self.multi_select_mode = false;
+            self.rebuild_filtered_view();
+            // Adjust selection to stay valid
+            if self.selected >= self.filtered_len() {
+                self.selected = self.filtered_len().saturating_sub(1);
+            }
+        }
+
+        Ok(archived_count)
     }
 
     /// Create a new task with default fields and the provided title.
@@ -1893,6 +2042,74 @@ impl App {
                 } else {
                     Ok(TuiAction::Quit)
                 }
+            }
+            PaletteCommand::ToggleMultiSelectMode => {
+                self.toggle_multi_select_mode();
+                if self.multi_select_mode {
+                    self.set_status_message(
+                        "Multi-select mode ON. Space: toggle, m: exit, a: archive, d: delete",
+                    );
+                } else {
+                    self.set_status_message("Multi-select mode OFF");
+                }
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::ToggleTaskSelection => {
+                self.toggle_current_selection();
+                let count = self.selection_count();
+                self.set_status_message(format!("{} tasks selected", count));
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::BatchDelete => {
+                let count = self.selection_count();
+                if count == 0 {
+                    self.set_status_message("No tasks selected");
+                } else {
+                    self.mode = AppMode::ConfirmBatchDelete { count };
+                }
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::BatchArchive => {
+                let count = self.selection_count();
+                if count == 0 {
+                    self.set_status_message("No tasks selected");
+                } else {
+                    self.mode = AppMode::ConfirmBatchArchive { count };
+                }
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::BatchSetStatus(status) => {
+                let indices: Vec<usize> = self.selected_indices.iter().copied().collect();
+                let count = indices.len();
+                if count == 0 {
+                    self.set_status_message("No tasks selected");
+                } else {
+                    // Convert filtered indices to queue indices and set status
+                    let queue_indices: Vec<usize> = indices
+                        .iter()
+                        .filter_map(|&filtered_idx| {
+                            self.filtered_indices.get(filtered_idx).copied()
+                        })
+                        .collect();
+                    for idx in queue_indices {
+                        if let Some(task) = self.queue.tasks.get_mut(idx) {
+                            task.status = status;
+                            task.updated_at = Some(now_rfc3339.to_string());
+                        }
+                    }
+                    self.dirty = true;
+                    self.bump_queue_rev();
+                    self.set_status_message(format!(
+                        "Set status to {:?} for {} tasks",
+                        status, count
+                    ));
+                }
+                Ok(TuiAction::Continue)
+            }
+            PaletteCommand::ClearSelection => {
+                self.clear_selection();
+                self.set_status_message("Selection cleared");
+                Ok(TuiAction::Continue)
             }
         }
     }
@@ -2857,4 +3074,199 @@ pub fn prepare_tui_session(
         .and_then(|m| m.modified().ok());
 
     Ok((app, lock))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+
+    fn create_test_task(id: &str, status: TaskStatus) -> Task {
+        Task {
+            id: id.to_string(),
+            title: format!("Task {}", id),
+            status,
+            priority: TaskPriority::Medium,
+            tags: vec![],
+            scope: vec![],
+            evidence: vec![],
+            plan: vec![],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: None,
+            updated_at: None,
+            completed_at: None,
+            scheduled_start: None,
+            depends_on: vec![],
+            blocks: vec![],
+            relates_to: vec![],
+            duplicates: None,
+            custom_fields: HashMap::new(),
+        }
+    }
+
+    fn create_test_app_with_tasks() -> App {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![
+                create_test_task("RQ-0001", TaskStatus::Todo),
+                create_test_task("RQ-0002", TaskStatus::Doing),
+                create_test_task("RQ-0003", TaskStatus::Done),
+                create_test_task("RQ-0004", TaskStatus::Todo),
+                create_test_task("RQ-0005", TaskStatus::Rejected),
+            ],
+        };
+        App::new(queue)
+    }
+
+    #[test]
+    fn test_multi_select_mode_toggle() {
+        let mut app = create_test_app_with_tasks();
+
+        // Initially off
+        assert!(!app.multi_select_mode);
+        assert!(app.selected_indices.is_empty());
+
+        // Toggle on
+        app.toggle_multi_select_mode();
+        assert!(app.multi_select_mode);
+
+        // Toggle off clears selection
+        app.selected_indices.insert(0);
+        app.selected_indices.insert(2);
+        app.toggle_multi_select_mode();
+        assert!(!app.multi_select_mode);
+        assert!(app.selected_indices.is_empty());
+    }
+
+    #[test]
+    fn test_toggle_current_selection() {
+        let mut app = create_test_app_with_tasks();
+
+        // Enable multi-select mode
+        app.toggle_multi_select_mode();
+        app.selected = 1; // Select second task
+
+        // Toggle selection on
+        app.toggle_current_selection();
+        assert!(app.is_selected(1));
+        assert_eq!(app.selection_count(), 1);
+
+        // Toggle selection off
+        app.toggle_current_selection();
+        assert!(!app.is_selected(1));
+        assert_eq!(app.selection_count(), 0);
+    }
+
+    #[test]
+    fn test_toggle_current_selection_no_op_when_not_in_multi_select() {
+        let mut app = create_test_app_with_tasks();
+
+        // Not in multi-select mode
+        assert!(!app.multi_select_mode);
+        app.selected = 1;
+
+        // Should be no-op
+        app.toggle_current_selection();
+        assert!(!app.is_selected(1));
+        assert_eq!(app.selection_count(), 0);
+    }
+
+    #[test]
+    fn test_clear_selection() {
+        let mut app = create_test_app_with_tasks();
+
+        app.toggle_multi_select_mode();
+        app.selected_indices.insert(0);
+        app.selected_indices.insert(2);
+        app.selected_indices.insert(4);
+
+        assert_eq!(app.selection_count(), 3);
+        assert!(app.multi_select_mode);
+
+        app.clear_selection();
+
+        assert!(app.selected_indices.is_empty());
+        assert!(!app.multi_select_mode);
+    }
+
+    #[test]
+    fn test_batch_delete_by_filtered_indices() {
+        let mut app = create_test_app_with_tasks();
+        let initial_count = app.queue.tasks.len();
+
+        // Select tasks at filtered positions 0 and 2
+        let deleted = app.batch_delete_by_filtered_indices(&[0, 2]).unwrap();
+
+        assert_eq!(deleted, 2);
+        assert_eq!(app.queue.tasks.len(), initial_count - 2);
+        assert!(app.dirty);
+    }
+
+    #[test]
+    fn test_batch_delete_empty_selection() {
+        let mut app = create_test_app_with_tasks();
+        let initial_count = app.queue.tasks.len();
+
+        let deleted = app.batch_delete_by_filtered_indices(&[]).unwrap();
+
+        assert_eq!(deleted, 0);
+        assert_eq!(app.queue.tasks.len(), initial_count);
+    }
+
+    #[test]
+    fn test_batch_archive_by_filtered_indices() {
+        let mut app = create_test_app_with_tasks();
+        let initial_queue_count = app.queue.tasks.len();
+        let initial_done_count = app.done.tasks.len();
+
+        // Select tasks at filtered positions 1 and 3
+        let archived = app
+            .batch_archive_by_filtered_indices(&[1, 3], "2024-01-01T00:00:00Z")
+            .unwrap();
+
+        assert_eq!(archived, 2);
+        assert_eq!(app.queue.tasks.len(), initial_queue_count - 2);
+        assert_eq!(app.done.tasks.len(), initial_done_count + 2);
+        assert!(app.dirty);
+        assert!(app.dirty_done);
+        // Selection should be cleared after archive
+        assert!(app.selected_indices.is_empty());
+        assert!(!app.multi_select_mode);
+    }
+
+    #[test]
+    fn test_batch_archive_empty_selection() {
+        let mut app = create_test_app_with_tasks();
+        let initial_queue_count = app.queue.tasks.len();
+
+        let archived = app
+            .batch_archive_by_filtered_indices(&[], "2024-01-01T00:00:00Z")
+            .unwrap();
+
+        assert_eq!(archived, 0);
+        assert_eq!(app.queue.tasks.len(), initial_queue_count);
+    }
+
+    #[test]
+    fn test_selection_persists_across_filter_changes() {
+        let mut app = create_test_app_with_tasks();
+
+        app.toggle_multi_select_mode();
+        app.selected = 1;
+        app.toggle_current_selection();
+        app.selected = 3;
+        app.toggle_current_selection();
+
+        assert_eq!(app.selection_count(), 2);
+        assert!(app.is_selected(1));
+        assert!(app.is_selected(3));
+
+        // Change filters (this rebuilds filtered view)
+        app.clear_filters();
+
+        // Selection indices are preserved (they refer to filtered positions)
+        assert_eq!(app.selection_count(), 2);
+    }
 }

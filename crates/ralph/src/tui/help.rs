@@ -80,6 +80,11 @@ fn build_help_overlay_lines() -> Vec<HelpLine> {
         push_section_lines(&mut lines, section);
     }
 
+    // Add multi-select section
+    for section in keymap::multi_select_sections() {
+        push_section_lines(&mut lines, section);
+    }
+
     for section in keymap::executing_sections() {
         push_section_lines(&mut lines, section);
     }

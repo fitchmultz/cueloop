@@ -366,6 +366,115 @@ pub(super) fn handle_confirm_risky_config_key(
     }
 }
 
+/// Handle key events in ConfirmBatchDelete mode.
+pub(super) fn handle_confirm_batch_delete_key(
+    app: &mut App,
+    key: KeyEvent,
+    _count: usize,
+) -> Result<TuiAction> {
+    use super::{is_plain_char, AppMode};
+
+    match key.code {
+        KeyCode::Char('y') if is_plain_char(&key, 'y') => {
+            let indices: Vec<usize> = app.selected_indices.iter().copied().collect();
+            match app.batch_delete_by_filtered_indices(&indices) {
+                Ok(deleted) => {
+                    app.set_status_message(format!("Deleted {} tasks", deleted));
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error: {}", e));
+                }
+            }
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('Y') if is_plain_char(&key, 'Y') => {
+            let indices: Vec<usize> = app.selected_indices.iter().copied().collect();
+            match app.batch_delete_by_filtered_indices(&indices) {
+                Ok(deleted) => {
+                    app.set_status_message(format!("Deleted {} tasks", deleted));
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error: {}", e));
+                }
+            }
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('n') if is_plain_char(&key, 'n') => {
+            app.mode = AppMode::Normal;
+            app.set_status_message("Batch delete cancelled".to_string());
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('N') if is_plain_char(&key, 'N') => {
+            app.mode = AppMode::Normal;
+            app.set_status_message("Batch delete cancelled".to_string());
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Esc => {
+            app.mode = AppMode::Normal;
+            app.set_status_message("Batch delete cancelled".to_string());
+            Ok(TuiAction::Continue)
+        }
+        _ => Ok(TuiAction::Continue),
+    }
+}
+
+/// Handle key events in ConfirmBatchArchive mode.
+pub(super) fn handle_confirm_batch_archive_key(
+    app: &mut App,
+    key: KeyEvent,
+    _count: usize,
+    now_rfc3339: &str,
+) -> Result<TuiAction> {
+    use super::{is_plain_char, AppMode};
+
+    match key.code {
+        KeyCode::Char('y') if is_plain_char(&key, 'y') => {
+            let indices: Vec<usize> = app.selected_indices.iter().copied().collect();
+            match app.batch_archive_by_filtered_indices(&indices, now_rfc3339) {
+                Ok(archived) => {
+                    app.set_status_message(format!("Archived {} tasks", archived));
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error: {}", e));
+                }
+            }
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('Y') if is_plain_char(&key, 'Y') => {
+            let indices: Vec<usize> = app.selected_indices.iter().copied().collect();
+            match app.batch_archive_by_filtered_indices(&indices, now_rfc3339) {
+                Ok(archived) => {
+                    app.set_status_message(format!("Archived {} tasks", archived));
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error: {}", e));
+                }
+            }
+            app.mode = AppMode::Normal;
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('n') if is_plain_char(&key, 'n') => {
+            app.mode = AppMode::Normal;
+            app.set_status_message("Batch archive cancelled".to_string());
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('N') if is_plain_char(&key, 'N') => {
+            app.mode = AppMode::Normal;
+            app.set_status_message("Batch archive cancelled".to_string());
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Esc => {
+            app.mode = AppMode::Normal;
+            app.set_status_message("Batch archive cancelled".to_string());
+            Ok(TuiAction::Continue)
+        }
+        _ => Ok(TuiAction::Continue),
+    }
+}
+
 /// Handle key events in ConfirmRevert mode.
 pub(super) fn handle_confirm_revert_key(
     app: &mut App,

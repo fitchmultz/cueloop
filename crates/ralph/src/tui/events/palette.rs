@@ -53,6 +53,18 @@ pub enum PaletteCommand {
     RepairQueue,
     RepairQueueDryRun,
     UnlockQueue,
+    /// Toggle multi-select mode
+    ToggleMultiSelectMode,
+    /// Toggle selection of current task (Space in multi-select mode)
+    ToggleTaskSelection,
+    /// Batch delete selected tasks
+    BatchDelete,
+    /// Batch archive selected tasks
+    BatchArchive,
+    /// Batch set status on selected tasks
+    BatchSetStatus(crate::contracts::TaskStatus),
+    /// Clear all selections
+    ClearSelection,
     Quit,
 }
 

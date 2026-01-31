@@ -479,6 +479,59 @@ const HELP_SECTIONS: &[KeymapSection] = &[KeymapSection {
     bindings: HELP_BINDINGS,
 }];
 
+const MULTI_SELECT_BINDINGS: &[KeyBinding] = &[
+    KeyBinding {
+        keys: &["m"],
+        keys_display: "m",
+        description: "toggle multi-select mode",
+        footer_hint: Some(FooterHint {
+            keys: "m",
+            label: "multi-sel",
+        }),
+    },
+    KeyBinding {
+        keys: &["Space"],
+        keys_display: "Space",
+        description: "toggle selection of current task (in multi-select mode)",
+        footer_hint: Some(FooterHint {
+            keys: "Space",
+            label: "toggle",
+        }),
+    },
+    KeyBinding {
+        keys: &["d"],
+        keys_display: "d",
+        description: "batch delete selected tasks (in multi-select mode)",
+        footer_hint: Some(FooterHint {
+            keys: "d",
+            label: "batch-del",
+        }),
+    },
+    KeyBinding {
+        keys: &["a"],
+        keys_display: "a",
+        description: "batch archive selected tasks (in multi-select mode)",
+        footer_hint: Some(FooterHint {
+            keys: "a",
+            label: "batch-arch",
+        }),
+    },
+    KeyBinding {
+        keys: &["Esc"],
+        keys_display: "Esc",
+        description: "clear selection and exit multi-select mode",
+        footer_hint: Some(FooterHint {
+            keys: "Esc",
+            label: "clear",
+        }),
+    },
+];
+
+const MULTI_SELECT_SECTIONS: &[KeymapSection] = &[KeymapSection {
+    title: "Multi-Select Mode",
+    bindings: MULTI_SELECT_BINDINGS,
+}];
+
 pub(crate) fn normal_sections() -> &'static [KeymapSection] {
     NORMAL_SECTIONS
 }
@@ -493,6 +546,10 @@ pub(crate) fn help_sections() -> &'static [KeymapSection] {
 
 pub(crate) fn board_sections() -> &'static [KeymapSection] {
     BOARD_SECTIONS
+}
+
+pub(crate) fn multi_select_sections() -> &'static [KeymapSection] {
+    MULTI_SELECT_SECTIONS
 }
 
 pub(crate) fn help_close_keys() -> &'static [&'static str] {

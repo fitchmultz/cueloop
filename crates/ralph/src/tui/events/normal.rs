@@ -51,7 +51,6 @@ pub(super) fn handle_normal_mode_key(
         KeyCode::Char('q') if is_plain_char(&key, 'q') => {
             app.execute_palette_command(PaletteCommand::Quit, now_rfc3339)
         }
-        KeyCode::Esc => app.execute_palette_command(PaletteCommand::Quit, now_rfc3339),
         KeyCode::Tab => {
             app.focus_next_panel();
             Ok(TuiAction::Continue)
@@ -178,17 +177,6 @@ pub(super) fn handle_normal_mode_key(
         KeyCode::Char('L') if is_plain_char(&key, 'L') => {
             app.execute_palette_command(PaletteCommand::ToggleLoop, now_rfc3339)
         }
-        KeyCode::Char('a') if is_plain_char(&key, 'a') => {
-            app.execute_palette_command(PaletteCommand::ArchiveTerminal, now_rfc3339)
-        }
-        KeyCode::Char('d') if is_plain_char(&key, 'd') => {
-            if app.selected_task().is_some() {
-                app.mode = AppMode::ConfirmDelete;
-            } else {
-                app.set_status_message("No task selected");
-            }
-            Ok(TuiAction::Continue)
-        }
         KeyCode::Char('e') if is_plain_char(&key, 'e') => {
             if app.selected_task().is_some() {
                 app.mode = AppMode::EditingTask {
@@ -272,6 +260,57 @@ pub(super) fn handle_normal_mode_key(
         }
         KeyCode::Char('v') if is_plain_char(&key, 'v') => {
             app.enter_dependency_graph_mode();
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char(' ') if is_plain_char(&key, ' ') => {
+            if app.multi_select_mode {
+                app.toggle_current_selection();
+                let count = app.selection_count();
+                app.set_status_message(format!("{} tasks selected", count));
+            }
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('m') if is_plain_char(&key, 'm') => {
+            app.toggle_multi_select_mode();
+            if app.multi_select_mode {
+                app.set_status_message(
+                    "Multi-select mode ON. Space: toggle, m: exit, a: archive, d: delete"
+                        .to_string(),
+                );
+            } else {
+                app.set_status_message("Multi-select mode OFF".to_string());
+            }
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('d') if is_plain_char(&key, 'd') => {
+            if app.multi_select_mode && !app.selected_indices.is_empty() {
+                app.mode = AppMode::ConfirmBatchDelete {
+                    count: app.selection_count(),
+                };
+            } else if app.selected_task().is_some() {
+                app.mode = AppMode::ConfirmDelete;
+            } else {
+                app.set_status_message("No task selected");
+            }
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Char('a') if is_plain_char(&key, 'a') => {
+            if app.multi_select_mode && !app.selected_indices.is_empty() {
+                app.mode = AppMode::ConfirmBatchArchive {
+                    count: app.selection_count(),
+                };
+            } else {
+                app.execute_palette_command(PaletteCommand::ArchiveTerminal, now_rfc3339)?;
+            }
+            Ok(TuiAction::Continue)
+        }
+        KeyCode::Esc => {
+            if app.multi_select_mode {
+                app.clear_selection();
+                app.set_status_message("Selection cleared".to_string());
+            } else {
+                return app.execute_palette_command(PaletteCommand::Quit, now_rfc3339);
+            }
             Ok(TuiAction::Continue)
         }
         _ => Ok(TuiAction::Continue),

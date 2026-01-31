@@ -76,7 +76,8 @@ pub fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         .take(list_height)
         .filter_map(|(i, &task_index)| {
             let task = app.queue.tasks.get(task_index)?;
-            let is_selected = i == app.selected;
+            let is_cursor = i == app.selected;
+            let is_multi_selected = app.multi_select_mode && app.is_selected(i);
             let status_style = Style::default().fg(status_color(task.status));
 
             // Check if task is scheduled for future and build clock indicator
@@ -98,18 +99,38 @@ pub fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                     })
             });
 
-            let line = if is_selected {
-                let mut spans = vec![
-                    Span::styled(&task.id, Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" "),
-                    Span::styled(
-                        task.status.as_str(),
-                        status_style.add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" "),
-                    Span::styled(task.priority.as_str(), Style::default().fg(Color::DarkGray)),
-                    Span::raw(" "),
-                ];
+            // Build the line with optional multi-select checkbox
+            let mut spans = Vec::new();
+
+            // Add checkbox indicator when in multi-select mode
+            if app.multi_select_mode {
+                let checkbox = if is_multi_selected { "[x] " } else { "[ ] " };
+                let checkbox_style = if is_multi_selected {
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(Color::DarkGray)
+                };
+                spans.push(Span::styled(checkbox, checkbox_style));
+            }
+
+            if is_cursor {
+                spans.push(Span::styled(
+                    &task.id,
+                    Style::default().add_modifier(Modifier::BOLD),
+                ));
+                spans.push(Span::raw(" "));
+                spans.push(Span::styled(
+                    task.status.as_str(),
+                    status_style.add_modifier(Modifier::BOLD),
+                ));
+                spans.push(Span::raw(" "));
+                spans.push(Span::styled(
+                    task.priority.as_str(),
+                    Style::default().fg(Color::DarkGray),
+                ));
+                spans.push(Span::raw(" "));
                 // Add clock indicator if scheduled
                 if let Some(ref indicator) = scheduled_indicator {
                     if !indicator.is_empty() {
@@ -123,16 +144,16 @@ pub fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                     &task.title,
                     Style::default().add_modifier(Modifier::BOLD),
                 ));
-                Line::from(spans)
             } else {
-                let mut spans = vec![
-                    Span::styled(&task.id, Style::default().fg(Color::DarkGray)),
-                    Span::raw(" "),
-                    Span::styled(task.status.as_str(), status_style),
-                    Span::raw(" "),
-                    Span::styled(task.priority.as_str(), Style::default().fg(Color::DarkGray)),
-                    Span::raw(" "),
-                ];
+                spans.push(Span::styled(&task.id, Style::default().fg(Color::DarkGray)));
+                spans.push(Span::raw(" "));
+                spans.push(Span::styled(task.status.as_str(), status_style));
+                spans.push(Span::raw(" "));
+                spans.push(Span::styled(
+                    task.priority.as_str(),
+                    Style::default().fg(Color::DarkGray),
+                ));
+                spans.push(Span::raw(" "));
                 // Add clock indicator if scheduled
                 if let Some(ref indicator) = scheduled_indicator {
                     if !indicator.is_empty() {
@@ -143,9 +164,9 @@ pub fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                     }
                 }
                 spans.push(Span::styled(&task.title, Style::default()));
-                Line::from(spans)
-            };
+            }
 
+            let line = Line::from(spans);
             Some(ListItem::new(line))
         })
         .collect();
