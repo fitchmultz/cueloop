@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0461",
-      "status": "todo",
-      "title": "Split commands/task.rs (1229 lines) into focused submodules",
-      "priority": "high",
-      "tags": [
-        "refactoring",
-        "code-quality",
-        "file-size",
-        "commands"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/task.rs",
-        "crates/ralph/src/commands/task/build.rs (new)",
-        "crates/ralph/src/commands/task/update.rs (new)",
-        "crates/ralph/src/commands/task/refactor.rs (new)",
-        "crates/ralph/src/commands/task/mod.rs (new)"
-      ],
-      "evidence": [
-        "crates/ralph/src/commands/task.rs has 1229 lines, exceeding AGENTS.md 1000 LOC limit",
-        "Contains TaskBuilder, TaskUpdater, build_task, update_task, build_refactor_tasks",
-        "Task building and task updating are separate responsibilities",
-        "Refactor task generation is distinct from standard task building"
-      ],
-      "plan": [
-        "Create commands/task/ subdirectory",
-        "Move TaskBuilder and build_task logic to task/build.rs",
-        "Move TaskUpdater and update_task logic to task/update.rs",
-        "Move build_refactor_tasks to task/refactor.rs",
-        "Keep public exports in mod.rs",
-        "Update callers to use new module paths",
-        "Run make ci to verify no regressions"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T17:40:48Z",
-      "updated_at": "2026-01-30T17:40:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0480",
       "status": "todo",
       "title": "Persist redacted stderr safeguards for runner failures",
