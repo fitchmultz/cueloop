@@ -291,6 +291,7 @@ impl RunnerBackend for TimeoutBackend {
         output_handler: Option<runner::OutputHandler>,
         _output_stream: runner::OutputStream,
         _phase_type: PhaseType,
+        _session_id: Option<String>,
     ) -> Result<runner::RunnerOutput, runner::RunnerError> {
         if let Some(handler) = output_handler {
             (handler)(&self.emitted);
@@ -335,6 +336,7 @@ impl RunnerBackend for InterruptBackend {
         _output_handler: Option<runner::OutputHandler>,
         _output_stream: runner::OutputStream,
         _phase_type: PhaseType,
+        _session_id: Option<String>,
     ) -> Result<runner::RunnerOutput, runner::RunnerError> {
         Err(runner::RunnerError::Interrupted)
     }
@@ -376,6 +378,7 @@ impl RunnerBackend for NonZeroBackend {
         _output_handler: Option<runner::OutputHandler>,
         _output_stream: runner::OutputStream,
         _phase_type: PhaseType,
+        _session_id: Option<String>,
     ) -> Result<runner::RunnerOutput, runner::RunnerError> {
         Err(runner::RunnerError::NonZeroExit {
             code: 1,
@@ -435,6 +438,7 @@ fn run_prompt_interrupt_returns_abort_reason() {
         output_stream: runner::OutputStream::Terminal,
         revert_prompt: Some(Arc::new(|_context| RevertDecision::Keep)),
         phase_type: PhaseType::Implementation,
+        session_id: None,
     };
 
     let messages = RunnerErrorMessages {
@@ -484,6 +488,7 @@ fn run_prompt_user_revert_returns_abort_reason() {
         output_stream: runner::OutputStream::Terminal,
         revert_prompt: Some(Arc::new(|_context| RevertDecision::Revert)),
         phase_type: PhaseType::Implementation,
+        session_id: None,
     };
 
     let messages = RunnerErrorMessages {
@@ -536,6 +541,7 @@ fn timeout_applies_git_revert_mode_and_saves_safeguard_dump_when_stdout_is_avail
         output_stream: runner::OutputStream::Terminal,
         revert_prompt: None,
         phase_type: PhaseType::Implementation,
+        session_id: None,
     };
 
     let messages = RunnerErrorMessages {
@@ -606,6 +612,7 @@ impl RunnerBackend for CaptureBackend {
         _output_handler: Option<runner::OutputHandler>,
         output_stream: runner::OutputStream,
         _phase_type: PhaseType,
+        _session_id: Option<String>,
     ) -> Result<runner::RunnerOutput, runner::RunnerError> {
         self.seen_output_stream = Some(output_stream);
         Err(runner::RunnerError::Interrupted)
@@ -658,6 +665,7 @@ fn run_prompt_passes_output_stream_to_backend() {
         output_stream: runner::OutputStream::HandlerOnly,
         revert_prompt: None,
         phase_type: PhaseType::Implementation,
+        session_id: None,
     };
 
     let messages = RunnerErrorMessages {

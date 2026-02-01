@@ -147,6 +147,7 @@ fn build_task_impl(
             output_stream: runner::OutputStream::Terminal,
             revert_prompt: None,
             phase_type: PhaseType::SinglePhase,
+            session_id: None,
         },
         runutil::RunnerErrorMessages {
             log_label: "task builder",

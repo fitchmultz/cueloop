@@ -1,7 +1,7 @@
 //! Single-phase execution.
 
 use super::shared::{execute_runner_pass, run_ci_gate_with_continue};
-use super::{PhaseInvocation, PhaseType};
+use super::{PhaseInvocation, PhaseType, generate_phase_session_id};
 use crate::commands::run::{logging, supervision};
 use crate::{promptflow, prompts};
 use anyhow::Result;
@@ -37,7 +37,10 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
             &ctx.resolved.config,
         )?;
 
-        let output = execute_runner_pass(
+        // Generate a unique session ID for this phase (use phase 0 for single-phase)
+        let phase_session_id = generate_phase_session_id(ctx.task_id, 0);
+
+        let _output = execute_runner_pass(
             ctx.resolved,
             ctx.settings,
             ctx.bins,
@@ -49,6 +52,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
             ctx.revert_prompt.clone(),
             "Execution",
             PhaseType::SinglePhase,
+            Some(phase_session_id.clone()),
         )?;
 
         if ctx.is_final_iteration {
@@ -70,7 +74,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 reasoning_effort: ctx.settings.reasoning_effort,
                 runner_cli: ctx.settings.runner_cli,
                 phase_type: super::PhaseType::SinglePhase,
-                session_id: output.session_id.clone(),
+                session_id: Some(phase_session_id),
                 output_handler: ctx.output_handler.clone(),
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,

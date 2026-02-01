@@ -64,3 +64,36 @@ Session state is persisted to `.ralph/cache/session.json` for crash recovery. It
 - **Per-phase runner/model settings** (for display in recovery prompts)
 
 Note: Per-phase settings are informational only. Crash recovery recomputes settings from CLI flags, config, and task overrides to ensure consistency.
+
+### Runner Session Handling (Kimi)
+
+Ralph uses explicit session management for runners that support it (notably **Kimi**):
+
+**Session ID Generation**
+- Format: `ralph-{task_id}-p{phase}-{timestamp}-{pid}`
+- Example: `ralph-RQ-0001-p2-1704153600-12345`
+- Each phase (1, 2, 3) gets its own unique session ID
+
+**Why Explicit Sessions?**
+- **Deterministic**: Same ID always resumes the same session
+- **Reliable**: No dependency on parsing JSON output or runner-specific `last_session_id` tracking
+- **Debuggable**: Human-readable IDs make it easy to trace session lifecycle
+- **Isolated**: Each phase has its own session, preventing context leakage between planning, implementation, and review
+
+**Command Examples**
+```bash
+# Phase 2 initial invocation
+kimi --print --output-format stream-json --model kimi-for-coding \
+  --session ralph-RQ-0001-p2-1704153600-12345 \
+  --prompt "Implement the plan..."
+
+# Phase 2 continue (CI failure retry)
+kimi --print --output-format stream-json --model kimi-for-coding \
+  --session ralph-RQ-0001-p2-1704153600-12345 \
+  --prompt "Fix the CI errors..."
+```
+
+**Implementation Notes**
+- Ralph generates the session ID at phase start and reuses it for all continue operations within that phase
+- The session ID is stored in `ContinueSession` for CI gate retry loops
+- If Kimi crashes and the session becomes corrupted, Ralph will attempt to resume with the same ID (user accepts this risk)

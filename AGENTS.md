@@ -95,6 +95,32 @@ See `docs/error-handling.md` for full guidelines.
 
 See `docs/workflow.md` and `docs/queue-and-tasks.md` for the full contract and schema details.
 
+## Runner Session Handling
+
+Ralph manages runner sessions explicitly for reliable crash recovery and CI gate retry loops:
+
+**Session ID Format**: `ralph-{task_id}-p{phase}-{timestamp}-{pid}`  
+**Example**: `ralph-RQ-0001-p2-1704153600-12345`
+
+**Key Behaviors**:
+- Each phase (1, 2, 3) generates its own unique session ID at phase start
+- Session IDs are passed to runners via `--session` flag (not `--continue`)
+- The same session ID is reused for all continue/resume operations within a phase
+- This provides deterministic session management vs. runner-specific `last_session_id` tracking
+
+**Implementation Location**: `crates/ralph/src/commands/run/phases/mod.rs` (`generate_phase_session_id`)
+
+**Affected Runners**:
+- **Kimi**: Uses explicit `--session` flag; no longer relies on `--continue` or JSON extraction
+
+**Why This Approach?**
+- Deterministic: Same ID = same session, no guessing
+- Reliable: No dependency on parsing JSON output or reading runner state files
+- Debuggable: Human-readable IDs for tracing session lifecycle
+- Isolated: Each phase is independent, preventing context leakage
+
+See `docs/workflow.md` for more details on session handling.
+
 ## Configuration
 
 Config precedence (highest to lowest):

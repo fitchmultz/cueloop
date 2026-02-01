@@ -188,6 +188,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
             },
             revert_prompt: opts.revert_prompt.clone(),
             phase_type: PhaseType::SinglePhase,
+            session_id: None,
         },
         runutil::RunnerErrorMessages {
             log_label: "scan runner",

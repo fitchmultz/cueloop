@@ -1,7 +1,7 @@
 //! Phase 3 (review) execution and completion checks.
 
 use super::shared::run_ci_gate_with_continue;
-use super::{PhaseInvocation, PhaseType};
+use super::{PhaseInvocation, PhaseType, generate_phase_session_id};
 use crate::commands::run::{logging, supervision};
 use crate::completions;
 use crate::config;
@@ -66,7 +66,10 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             &ctx.resolved.config,
         )?;
 
-        let output = runutil::run_prompt_with_handling(
+        // Generate a unique session ID for this phase
+        let phase_session_id = generate_phase_session_id(ctx.task_id, 3);
+
+        let _output = runutil::run_prompt_with_handling(
             runutil::RunnerInvocation {
                 repo_root: &ctx.resolved.repo_root,
                 runner_kind: ctx.settings.runner,
@@ -83,6 +86,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 output_stream: ctx.output_stream,
                 revert_prompt: ctx.revert_prompt.clone(),
                 phase_type: PhaseType::Review,
+                session_id: Some(phase_session_id.clone()),
             },
             runutil::RunnerErrorMessages {
                 log_label: "Code review",
@@ -110,7 +114,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 reasoning_effort: ctx.settings.reasoning_effort,
                 runner_cli: ctx.settings.runner_cli,
                 phase_type: super::PhaseType::Review,
-                session_id: output.session_id.clone(),
+                session_id: Some(phase_session_id.clone()),
                 output_handler: ctx.output_handler.clone(),
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
@@ -132,7 +136,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             reasoning_effort: ctx.settings.reasoning_effort,
             runner_cli: ctx.settings.runner_cli,
             phase_type: super::PhaseType::Review,
-            session_id: output.session_id.clone(),
+            session_id: Some(phase_session_id),
             output_handler: ctx.output_handler.clone(),
             output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,

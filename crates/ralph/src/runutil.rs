@@ -40,6 +40,9 @@ pub(crate) struct RunnerInvocation<'a> {
     pub revert_prompt: Option<RevertPromptHandler>,
     /// The type of phase being executed (for runner-specific behavior).
     pub phase_type: PhaseType,
+    /// Optional session ID for runners that support session resumption (e.g., Kimi).
+    /// When provided, the runner will use this ID for the session.
+    pub session_id: Option<String>,
 }
 
 pub struct RunnerErrorMessages<'a, FNonZero, FOther>
@@ -159,6 +162,7 @@ pub(crate) trait RunnerBackend {
         output_handler: Option<runner::OutputHandler>,
         output_stream: runner::OutputStream,
         phase_type: PhaseType,
+        session_id: Option<String>,
     ) -> Result<runner::RunnerOutput, runner::RunnerError>;
 
     #[allow(clippy::too_many_arguments)]
@@ -197,6 +201,7 @@ impl RunnerBackend for RealRunnerBackend {
         output_handler: Option<runner::OutputHandler>,
         output_stream: runner::OutputStream,
         phase_type: PhaseType,
+        session_id: Option<String>,
     ) -> Result<runner::RunnerOutput, runner::RunnerError> {
         runner::run_prompt(
             runner_kind,
@@ -211,6 +216,7 @@ impl RunnerBackend for RealRunnerBackend {
             output_handler,
             output_stream,
             phase_type,
+            session_id,
         )
     }
 
@@ -297,6 +303,7 @@ where
         output_stream,
         revert_prompt,
         phase_type,
+        session_id,
     } = invocation;
     let RunnerErrorMessages {
         log_label,
@@ -331,6 +338,7 @@ where
         effective_output_handler.clone(),
         output_stream,
         phase_type,
+        session_id.clone(),
     );
 
     loop {
@@ -914,6 +922,7 @@ mod tests {
                 _output_handler: Option<runner::OutputHandler>,
                 _output_stream: runner::OutputStream,
                 _phase_type: crate::commands::run::PhaseType,
+                _session_id: Option<String>,
             ) -> Result<runner::RunnerOutput, runner::RunnerError> {
                 Err(runner::RunnerError::NonZeroExit {
                     code: 1,
@@ -968,6 +977,7 @@ mod tests {
             output_stream: runner::OutputStream::HandlerOnly,
             revert_prompt: None,
             phase_type: crate::commands::run::PhaseType::Implementation,
+            session_id: None,
         };
 
         let messages = RunnerErrorMessages {
@@ -1022,6 +1032,7 @@ mod tests {
                 _output_handler: Option<runner::OutputHandler>,
                 _output_stream: runner::OutputStream,
                 _phase_type: crate::commands::run::PhaseType,
+                _session_id: Option<String>,
             ) -> Result<runner::RunnerOutput, runner::RunnerError> {
                 Err(runner::RunnerError::TerminatedBySignal {
                     stdout: RedactedString::from("stdout content"),
@@ -1075,6 +1086,7 @@ mod tests {
             output_stream: runner::OutputStream::HandlerOnly,
             revert_prompt: None,
             phase_type: crate::commands::run::PhaseType::Implementation,
+            session_id: None,
         };
 
         let messages = RunnerErrorMessages {
@@ -1169,6 +1181,7 @@ mod tests {
                 _output_handler: Option<runner::OutputHandler>,
                 _output_stream: runner::OutputStream,
                 _phase_type: crate::commands::run::PhaseType,
+                _session_id: Option<String>,
             ) -> Result<runner::RunnerOutput, runner::RunnerError> {
                 Err(runner::RunnerError::NonZeroExit {
                     code: 1,
@@ -1223,6 +1236,7 @@ mod tests {
             output_stream: runner::OutputStream::HandlerOnly,
             revert_prompt: None,
             phase_type: crate::commands::run::PhaseType::Implementation,
+            session_id: None,
         };
 
         let messages = RunnerErrorMessages {

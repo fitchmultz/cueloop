@@ -699,6 +699,7 @@ pub(crate) fn run_prompt(
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
     phase_type: PhaseType,
+    session_id: Option<String>,
 ) -> Result<RunnerOutput, RunnerError> {
     let bin = match runner {
         Runner::Codex => bins.codex,
@@ -780,6 +781,7 @@ pub(crate) fn run_prompt(
             timeout,
             output_handler.clone(),
             output_stream,
+            session_id.as_deref(),
         )?,
         Runner::Pi => execution::run_pi(
             work_dir,
@@ -1265,6 +1267,7 @@ mod tests {
             None,
             OutputStream::HandlerOnly,
             PhaseType::Implementation,
+            None,
         )
         .unwrap_err();
 

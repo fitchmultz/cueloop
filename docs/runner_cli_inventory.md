@@ -41,7 +41,7 @@ For each runner, record the version (from `version.txt` and/or help headers) and
 | gemini | `/opt/homebrew/bin/gemini` | `0.25.2` | Positional `query..` (stdin may also be read) | `gemini --model <MODEL> --output-format stream-json --approval-mode yolo <QUERY>` | `gemini --resume <ID> --model <MODEL> --output-format stream-json --approval-mode yolo <QUERY>` | `--output-format stream-json` | `text`, `json`, `stream-json` | `--prompt` is deprecated (positional preferred) |
 | claude | `/Users/mitchfultz/.local/bin/claude` | `2.1.19 (Claude Code)` | Positional `prompt` (verify stdin behavior separately) | `claude -p --model <MODEL> --output-format stream-json --verbose <PROMPT>` | `claude -p --resume <ID> --model <MODEL> --output-format stream-json --verbose <MESSAGE>` | `--output-format stream-json` (requires `-p`) | `text`, `json`, `stream-json` | Permission modes are a Claude-specific enum |
 | cursor (agent) | `/Users/mitchfultz/.local/bin/agent` | `2026.01.23-916f423` | Positional `prompt...` | `agent --print --output-format stream-json --model <MODEL> --sandbox <enabled|disabled> [--plan] "<PROMPT>"` | `agent --print --output-format stream-json --resume <CHAT_ID> --model <MODEL> --sandbox <enabled|disabled> [--plan] "<MESSAGE>"` | `--output-format stream-json` | `text`, `json`, `stream-json` | `--plan`/`--mode=plan` is read-only (no edits) |
-| kimi | `/opt/homebrew/bin/kimi` | `kimi-cli` | `--prompt <TEXT>` | `kimi --print --output-format stream-json --model <MODEL> --prompt "<PROMPT>"` | `kimi --continue --print --output-format stream-json --model <MODEL> --prompt "<MESSAGE>"` | `--output-format stream-json` | `text`, `stream-json` | Session ids not emitted in stream-json; rely on `--continue` |
+| kimi | `/opt/homebrew/bin/kimi` | `kimi-cli` | `--prompt <TEXT>` | `kimi --print --output-format stream-json --model <MODEL> --session <ID> --prompt "<PROMPT>"` | `kimi --print --output-format stream-json --model <MODEL> --session <ID> --prompt "<MESSAGE>"` | `--output-format stream-json` | `text`, `stream-json` | Uses explicit `--session` for reliable resumption |
 
 Definitions:
 - **Prompt input style**: stdin vs temp file vs positional argument.
@@ -86,6 +86,7 @@ For each runner below, fill:
 - Supported values (approval policy): `untrusted`, `on-failure`, `on-request`, `never`
 - Notes:
   - `--full-auto` is a convenience alias for `-a on-request` and `--sandbox workspace-write`.
+  - **Ralph behavior**: Ralph intentionally does NOT pass any approval flags (`-a`, `--ask-for-approval`) to Codex. This allows Codex to use the user's global config file (`~/.codex/config.json`) settings. If you want to control approval mode, set it in your Codex config, not in Ralph's config. The only exception is when `sandbox: disabled` is set, in which case `--dangerously-bypass-approvals-and-sandbox` is passed.
 
 **Verbosity**
 - No dedicated verbosity flag in `codex exec --help` output; verbosity is config-driven.
@@ -169,7 +170,8 @@ Key observations (from `claude --help`):
 - `kimi --print --output-format stream-json --model <MODEL> --prompt "<PROMPT>"`
 
 **Observed resume command shape**:
-- `kimi --continue --print --output-format stream-json --model <MODEL> --prompt "<MESSAGE>"`
+- `kimi --print --output-format stream-json --model <MODEL> --session <SESSION_ID> --prompt "<MESSAGE>"`
+- Note: Ralph generates unique session IDs per phase (format: `ralph-{task_id}-p{phase}-{timestamp}-{pid}`) rather than using `--continue` for deterministic session management.
 
 **Approval / permission / safety mode**
 - `--yolo/--yes` auto-approves; `--print` implies `--yolo`.
@@ -180,8 +182,11 @@ Key observations (from `claude --help`):
 **Output format**
 - `--output-format stream-json` for JSONL events; default is text.
 
-**Streaming behavior**
-- JSONL events on stdout; no documented session id field in stream-json output.
+**Session handling**
+- Ralph generates explicit session IDs (format: `ralph-{task_id}-p{phase}-{timestamp}-{pid}`) and passes them via `--session`.
+- This approach is more reliable than `--continue` which depends on Kimi's internal `last_session_id` tracking.
+- Each phase gets its own session ID, ensuring isolation between planning, implementation, and review phases.
+- Session IDs are deterministic and traceable for debugging purposes.
 
 **Sandbox**
 - No sandbox flag; relies on system environment + work dir.

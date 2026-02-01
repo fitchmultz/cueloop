@@ -11,6 +11,12 @@
 //! Invariants/assumptions:
 //! - Output format is validated upstream to be newline-delimited JSON (`stream_json`).
 //! - Unsupported options are validated upstream; mapping generally performs no-op for them.
+//!
+//! IMPORTANT - Codex Approval Mode Behavior:
+//! Ralph intentionally does NOT pass any approval flags (`-a`, `--ask-for-approval`) to Codex.
+//! This allows Codex to use the user's global config file (`~/.codex/config.json`) settings.
+//! If you are tempted to add approval flag support for Codex here, DON'T. This is by design.
+//! The only exception is when sandbox is disabled, which passes `--dangerously-bypass-approvals-and-sandbox`.
 
 use crate::commands::run::PhaseType;
 use crate::contracts::{RunnerApprovalMode, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity};
@@ -26,12 +32,10 @@ pub(super) fn apply_codex_global_options(
         return builder.arg("--dangerously-bypass-approvals-and-sandbox");
     }
 
-    let builder = match opts.approval_mode {
-        RunnerApprovalMode::Yolo => builder.args(["-a", "never"]),
-        RunnerApprovalMode::Default | RunnerApprovalMode::AutoEdits | RunnerApprovalMode::Safe => {
-            builder
-        }
-    };
+    // NOTE: We intentionally do NOT pass any approval flags to codex.
+    // This allows codex to use the user's global config file settings.
+    // Users can set their preferred approval mode in ~/.codex/config.json
+    // and ralph will honor it without overriding via CLI flags.
 
     let sandbox_value = match opts.sandbox {
         RunnerSandboxMode::Enabled => Some("workspace-write"),
@@ -162,7 +166,8 @@ mod tests {
     }
 
     #[test]
-    fn codex_yolo_sets_ask_for_approval_never() {
+    fn codex_yolo_sets_no_approval_flags() {
+        // Yolo mode should NOT pass -a never to codex; we defer to user's global codex config
         let opts = ResolvedRunnerCliOptions {
             approval_mode: RunnerApprovalMode::Yolo,
             sandbox: RunnerSandboxMode::Default,
@@ -178,7 +183,7 @@ mod tests {
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
 
-        assert_eq!(args, vec!["-a", "never"]);
+        assert!(args.is_empty());
     }
 
     #[test]
@@ -198,6 +203,7 @@ mod tests {
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
 
-        assert_eq!(args, vec!["-a", "never", "--sandbox", "workspace-write"]);
+        // No -a never flag passed; we defer to user's global codex config
+        assert_eq!(args, vec!["--sandbox", "workspace-write"]);
     }
 }

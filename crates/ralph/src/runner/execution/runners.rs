@@ -12,10 +12,8 @@
 //! - Caller supplies validated model/runner inputs and a writable work dir.
 //! - Command builder guards are kept alive for the duration of execution.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
-
-use serde_json::Value as JsonValue;
 
 use super::super::{
     ClaudePermissionMode, Model, OutputHandler, OutputStream, ReasoningEffort, RunnerError,
@@ -318,11 +316,12 @@ pub(crate) fn run_kimi(
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
+    session_id: Option<&str>,
 ) -> Result<RunnerOutput, RunnerError> {
     let (cmd, payload, _guards) =
-        build_kimi_command(work_dir, bin, runner_cli, model, prompt, None);
+        build_kimi_command(work_dir, bin, runner_cli, model, prompt, session_id);
 
-    let mut output = run_with_streaming_json(
+    let output = run_with_streaming_json(
         cmd,
         payload.as_deref(),
         Runner::Kimi,
@@ -332,17 +331,13 @@ pub(crate) fn run_kimi(
         output_stream,
     )?;
 
-    if output
-        .session_id
-        .as_deref()
-        .map(|id| id.starts_with("tool_"))
-        .unwrap_or(true)
-        && let Some(session_id) = resolve_kimi_session_id(work_dir)
-    {
-        output.session_id = Some(session_id);
-    }
-
-    Ok(output)
+    // Return the explicit session_id we used (Kimi doesn't output it in JSON)
+    Ok(RunnerOutput {
+        status: output.status,
+        stdout: output.stdout,
+        stderr: output.stderr,
+        session_id: session_id.map(|s| s.to_string()),
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -532,11 +527,8 @@ fn build_kimi_continue_command(
 ) -> RunnerCommandParts {
     let builder = RunnerCommandBuilder::new(bin, work_dir);
     let builder = cli_spec::apply_kimi_options(builder, runner_cli);
-    let builder = if session_id.is_empty() {
-        builder.arg("--continue")
-    } else {
-        builder.arg("--session").arg(session_id)
-    };
+    // Always use --session for explicit session resumption (more reliable than --continue)
+    let builder = builder.arg("--session").arg(session_id);
     builder
         .model(&model)
         .arg("--print")
@@ -641,35 +633,6 @@ fn pi_session_dir_name(work_dir: &Path) -> String {
     format!("--{}--", normalized)
 }
 
-fn resolve_kimi_session_id(work_dir: &Path) -> Option<String> {
-    let config_path = kimi_config_path()?;
-    resolve_kimi_session_id_from_file(work_dir, &config_path)
-}
-
-fn resolve_kimi_session_id_from_file(work_dir: &Path, path: &Path) -> Option<String> {
-    let contents = std::fs::read_to_string(path).ok()?;
-    let json: JsonValue = serde_json::from_str(&contents).ok()?;
-    let work_dirs = json.get("work_dirs")?.as_array()?;
-    let work_dir = work_dir.to_string_lossy();
-
-    for entry in work_dirs {
-        let entry_path = entry.get("path").and_then(|v| v.as_str())?;
-        if entry_path == work_dir {
-            return entry
-                .get("last_session_id")
-                .and_then(|v| v.as_str())
-                .map(|value| value.to_string());
-        }
-    }
-
-    None
-}
-
-fn kimi_config_path() -> Option<PathBuf> {
-    let home = std::env::var_os("HOME")?;
-    Some(PathBuf::from(home).join(".kimi").join("kimi.json"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -716,23 +679,7 @@ mod tests {
     }
 
     #[test]
-    fn build_kimi_continue_command_uses_continue_when_no_session() {
-        let opts = ResolvedRunnerCliOptions::default();
-        let (cmd, payload, _guards) =
-            build_kimi_continue_command(Path::new("."), "kimi", opts, Model::Glm47, "hello", "");
-        let args = cmd
-            .get_args()
-            .map(|arg| arg.to_string_lossy().to_string())
-            .collect::<Vec<_>>();
-        assert!(args.contains(&"--continue".to_string()));
-        assert!(!args.contains(&"--session".to_string()));
-        assert!(args.contains(&"--prompt".to_string()));
-        assert!(args.contains(&"hello".to_string()));
-        assert!(payload.is_none());
-    }
-
-    #[test]
-    fn build_kimi_continue_command_uses_session_when_provided() {
+    fn build_kimi_continue_command_uses_session() {
         let opts = ResolvedRunnerCliOptions::default();
         let (cmd, payload, _guards) = build_kimi_continue_command(
             Path::new("."),
@@ -776,43 +723,5 @@ mod tests {
     fn pi_session_dir_name_normalizes_path() {
         let name = pi_session_dir_name(Path::new("/Users/mitchfultz/Projects/AI/ralph"));
         assert_eq!(name, "--Users-mitchfultz-Projects-AI-ralph--");
-    }
-
-    #[test]
-    fn resolve_kimi_session_id_from_file_matches_path() {
-        let temp_dir = tempfile::tempdir().expect("temp dir");
-        let config_path = temp_dir.path().join("kimi.json");
-        let contents = r#"
-{
-  "work_dirs": [
-    {"path": "/tmp/alpha", "last_session_id": "sess-alpha"},
-    {"path": "/tmp/beta", "last_session_id": "sess-beta"}
-  ]
-}
-"#;
-        fs::write(&config_path, contents).expect("write kimi.json");
-
-        let resolved = resolve_kimi_session_id_from_file(Path::new("/tmp/beta"), &config_path)
-            .expect("session id");
-        assert_eq!(resolved, "sess-beta");
-    }
-
-    #[test]
-    fn resolve_kimi_session_id_from_file_skips_null_session() {
-        let temp_dir = tempfile::tempdir().expect("temp dir");
-        let config_path = temp_dir.path().join("kimi.json");
-        let contents = r#"
-{
-  "work_dirs": [
-    {"path": "/tmp/alpha", "last_session_id": null}
-  ]
-}
-"#;
-        fs::write(&config_path, contents).expect("write kimi.json");
-
-        assert_eq!(
-            resolve_kimi_session_id_from_file(Path::new("/tmp/alpha"), &config_path),
-            None
-        );
     }
 }

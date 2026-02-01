@@ -101,6 +101,7 @@ pub(super) fn execute_runner_pass(
     revert_prompt: Option<runutil::RevertPromptHandler>,
     log_label: &str,
     phase_type: PhaseType,
+    session_id: Option<String>,
 ) -> Result<runner::RunnerOutput> {
     let permission_mode = resolved.config.agent.claude_permission_mode;
 
@@ -121,6 +122,7 @@ pub(super) fn execute_runner_pass(
             output_stream,
             revert_prompt,
             phase_type,
+            session_id,
         },
         runutil::RunnerErrorMessages {
             log_label,

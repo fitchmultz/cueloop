@@ -66,16 +66,10 @@ pub(crate) fn resume_continue_session(
     session: &mut ContinueSession,
     message: &str,
 ) -> Result<crate::runner::RunnerOutput> {
-    let session_id = match session.session_id.as_deref() {
-        Some(session_id) => session_id,
-        None => {
-            if session.runner == crate::contracts::Runner::Kimi {
-                ""
-            } else {
-                anyhow::bail!("Catastrophic: no session id captured; cannot Continue.");
-            }
-        }
-    };
+    let session_id = session
+        .session_id
+        .as_deref()
+        .ok_or_else(|| anyhow::anyhow!("Catastrophic: no session id captured; cannot Continue."))?;
     let bins = crate::runner::resolve_binaries(&resolved.config.agent);
     // Use the stored runner_cli and phase_type from the session to preserve
     // CLI overrides and ensure phase-correct behavior for phase-aware runners.

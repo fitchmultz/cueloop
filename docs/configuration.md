@@ -89,6 +89,7 @@ Notes:
 - Breaking change: `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
 - CI gate auto-retry: When enabled, Ralph automatically sends a strict compliance message and retries up to 2 times on CI failure during Phase 2, Phase 3, or single-phase execution. This behavior is not configurable; after 2 automatic retries, the user is prompted via the configured `git_revert_mode`. Post-run supervision prompts immediately on CI failure.
 - Phase 1 plan-only violations: when `git_revert_mode=ask`, the prompt includes a keep+continue override to proceed to the next phase without reverting changes.
+- **Runner session handling**: For runners that support session resumption (e.g., Kimi), Ralph generates unique session IDs per phase (format: `ralph-{task_id}-p{phase}-{timestamp}-{pid}`) and uses explicit `--session` flags rather than runner-specific continue mechanisms. This provides deterministic session management and reliable crash recovery.
 
 ### `agent.runner_cli`
 
@@ -103,6 +104,8 @@ Supported normalized fields:
 - `verbosity`: `quiet`, `normal`, `verbose`
 - `approval_mode`: `default`, `auto_edits`, `yolo`, `safe`
   **Safety warning:** `yolo` mode bypasses all approval prompts, allowing the runner to make changes without confirmation. Use with extreme caution.
+  
+  **Codex exception**: Ralph does NOT pass approval flags to Codex, regardless of this setting. Codex will use whatever approval mode is configured in your global Codex config file (`~/.codex/config.json`). If you want YOLO behavior with Codex, configure it there, not in Ralph.
 - `sandbox`: `default`, `enabled`, `disabled`
 - `plan_mode`: `default`, `enabled`, `disabled`
 - `unsupported_option_policy`: `ignore`, `warn`, `error`
