@@ -2,6 +2,429 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0508",
+      "status": "todo",
+      "title": "Fix Kimi runner conversation resumption bug",
+      "priority": "critical",
+      "tags": [
+        "bug",
+        "runner",
+        "kimi",
+        "ci-gate",
+        "conversation"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/runners.rs",
+        "crates/ralph/src/runner/execution/cli_spec.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/runner/execution/runners.rs :: fn run_kimi_resume :: ignores _session_id parameter and uses --continue flag instead",
+        "path: crates/ralph/src/runner/execution/runners.rs :: lines 349-372 :: build_kimi_continue_command does not pass session_id to command",
+        "path: crates/ralph/src/runner/execution/runners.rs :: lines 525-542 :: build_kimi_continue_command only adds --continue flag, no --session",
+        "user: Major bug when trying to send the message to the kimi runner to fix the CI gate. 'kimi' supports resuming conversations.",
+        "error: CI gate failed after Phase 2 completion when attempting Phase 3 resume with Kimi runner"
+      ],
+      "plan": [
+        "Investigate how Kimi CLI handles session resumption (compare --continue vs --session <id>)",
+        "Modify build_kimi_continue_command to accept and use session_id parameter",
+        "Add --session flag to resume command instead of or alongside --continue",
+        "Test Kimi runner conversation resumption across Phase 1 -> Phase 2 -> Phase 3",
+        "Verify CI gate passes after multi-phase Kimi execution"
+      ],
+      "notes": [],
+      "request": "Major bug when trying to send the message to the kimi runner to fix the CI gate. 'kimi' supports resuming conversations. FIGURE IT OUT.",
+      "created_at": "2026-02-01T05:39:16Z",
+      "updated_at": "2026-02-01T05:39:16Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0498",
+      "status": "todo",
+      "title": "Fix race condition in shared lock mode for task labels",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "reliability",
+        "concurrency",
+        "lock"
+      ],
+      "scope": [
+        "crates/ralph/src/lock.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/lock.rs :: fn acquire_dir_lock :: sidecar owner file written after shared lock check but not atomically with directory creation",
+        "path: crates/ralph/src/lock.rs :: lines 277-286 :: shared lock mode proceeds without ensuring sidecar file creation is atomic",
+        "repro: Run concurrent 'ralph task' commands with shared lock mode :: expected atomic sidecar file creation :: actual potential race between lock check and sidecar write"
+      ],
+      "plan": [
+        "Add atomic directory creation + sidecar file write for task label shared locks",
+        "Use a temp directory with sidecar file, then rename atomically to lock directory",
+        "Add unit test for concurrent shared lock acquisition",
+        "Verify by running stress test with concurrent queue operations"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0499",
+      "status": "todo",
+      "title": "Fix non-interactive mode handling in sanity checks and init",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "ux",
+        "reliability",
+        "sanity"
+      ],
+      "scope": [
+        "crates/ralph/src/sanity/mod.rs",
+        "crates/ralph/src/commands/init.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/sanity/mod.rs :: fn is_tty :: atty check returns false in non-interactive environments causing issues",
+        "path: crates/ralph/src/sanity/mod.rs :: lines 758-760 :: is_tty() only checks stdin, not appropriate for all commands",
+        "workflow: ralph init --non-interactive :: documented as required in AGENTS.md tests but UX is inconsistent",
+        "repro: Run ralph init in non-interactive shell without --non-interactive flag :: expected graceful fallback or clear error :: actual may hang or fail unexpectedly"
+      ],
+      "plan": [
+        "Review all interactive prompts in sanity/ and init/ modules",
+        "Add consistent --non-interactive flag support to all commands that may prompt",
+        "Improve error messages when TTY is required but not available",
+        "Add tests for non-interactive mode behavior",
+        "Verify by running commands in subshell with stdin redirected from /dev/null"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0500",
+      "status": "todo",
+      "title": "Harden Ctrl+C handling in runner execution to prevent stuck processes",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "reliability",
+        "runner",
+        "signal-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/process.rs",
+        "crates/ralph/src/commands/run/mod.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/runner/execution/process.rs :: fn wait_for_child :: Ctrl-C handling relies on external flag state",
+        "path: crates/ralph/src/runner/execution/process.rs :: lines 387-389 :: interrupted flag checked but may miss rapid signals",
+        "path: crates/ralph/src/commands/run/mod.rs :: lines 383-386 :: Ctrl+C state reset but not validated",
+        "repro: Send multiple rapid Ctrl+C during runner execution :: expected clean termination :: actual may leave orphan processes or hang"
+      ],
+      "plan": [
+        "Add timeout to Ctrl+C grace period to prevent infinite waits",
+        "Ensure process group is killed even if individual process detach",
+        "Add validation that Ctrl+C state was properly initialized before use",
+        "Add integration test for signal handling during runner execution",
+        "Verify by running runner and sending signals with kill command"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0501",
+      "status": "todo",
+      "title": "Document error handling strategy and patterns for contributors",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "documentation",
+        "error-handling"
+      ],
+      "scope": [
+        "docs/error-handling.md",
+        "crates/ralph/src/run/mod.rs",
+        "crates/ralph/src/runutil.rs"
+      ],
+      "evidence": [
+        "path: AGENTS.md :: Error handling section exists but lacks concrete examples",
+        "path: crates/ralph/src/run/mod.rs :: Uses RunnerError, anyhow, and custom errors inconsistently",
+        "path: crates/ralph/src/runutil.rs :: abort_reason() pattern not documented for new contributors",
+        "config: docs/ :: No error-handling.md file exists despite being referenced"
+      ],
+      "plan": [
+        "Create docs/error-handling.md with comprehensive error handling guide",
+        "Document when to use anyhow vs thiserror vs custom enums",
+        "Add examples for each error handling pattern used in codebase",
+        "Document the abort_reason() pattern for run loop error classification",
+        "Add section on runner error redaction and safeguarding",
+        "Verify by reviewing new doc with make ci and ensuring clarity"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0502",
+      "status": "todo",
+      "title": "Add validation step after JSON repair in queue loading",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "data-integrity",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/queue.rs :: fn load_queue_with_repair :: repairs JSON but doesn't validate result",
+        "path: crates/ralph/src/queue.rs :: lines 78-101 :: repair attempt made but success only checks parsing, not semantic validity",
+        "path: crates/ralph/src/queue.rs :: lines 106-201 :: attempt_json_repair may produce invalid queue structure",
+        "repro: Create queue.json with single-quoted strings and unescaped newlines :: expected repaired valid queue :: actual may parse but have incorrect structure"
+      ],
+      "plan": [
+        "Add QueueFile schema validation after successful JSON repair parsing",
+        "Validate required fields (version, tasks array) are present and correct",
+        "Add warning when repair changes queue semantics (e.g., lost fields)",
+        "Add test for repair producing semantically valid but incorrect queue",
+        "Verify by testing with malformed queue files and checking output"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0503",
+      "status": "todo",
+      "title": "Improve TUI dependency graph handling for large task sets",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "performance",
+        "tui"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/events/dependency_graph.rs",
+        "crates/ralph/src/tui/app.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/tui/events/dependency_graph.rs :: No caching of computed graph",
+        "path: crates/ralph/src/tui/events/dependency_graph.rs :: Graph recomputed on every render",
+        "path: crates/ralph/src/tui/app.rs :: Dependency visualization may block UI with 100+ tasks",
+        "repro: Open TUI with 200+ tasks having dependencies :: expected responsive UI :: actual UI may lag or freeze during graph updates"
+      ],
+      "plan": [
+        "Add caching layer for computed dependency graph",
+        "Invalidate cache only when queue is modified",
+        "Add lazy/deferred rendering for large graphs",
+        "Consider limiting graph depth for very large task sets",
+        "Add performance test with large queue",
+        "Verify by profiling TUI with 200+ task queue"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0504",
+      "status": "todo",
+      "title": "Fix runner timeout handling for graceful shutdown edge cases",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "reliability",
+        "runner"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/process.rs",
+        "crates/ralph/src/runner/execution/runners.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/runner/execution/process.rs :: fn wait_for_child :: SIGINT sent but no tracking of response",
+        "path: crates/ralph/src/runner/execution/process.rs :: lines 144-155 :: timeout interrupt sends signal but doesn't verify delivery",
+        "path: crates/ralph/src/runner/execution/runners.rs :: Runner-specific timeout handling inconsistent (some don't respect grace period)",
+        "repro: Set 1s timeout on long-running runner :: expected graceful shutdown after 1s + 2s grace :: actual may hang indefinitely if SIGINT ignored"
+      ],
+      "plan": [
+        "Verify SIGINT delivery by checking process exit within grace period",
+        "Ensure SIGKILL is always sent after grace period expires, regardless of process state",
+        "Add consistent timeout handling across all 7 runners",
+        "Add test for runner ignoring SIGINT (should still terminate via SIGKILL)",
+        "Verify by running runner that ignores SIGINT with short timeout"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0505",
+      "status": "todo",
+      "title": "Add module-level documentation for complex TUI components",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "documentation",
+        "tui"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/mod.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/tui/app.rs :: Lines 1-59 :: Missing module-level doc explaining App state machine",
+        "path: crates/ralph/src/tui/events/mod.rs :: No documentation for event routing architecture",
+        "path: crates/ralph/src/tui/events/dependency_graph.rs :: Complex graph rendering lacks high-level overview"
+      ],
+      "plan": [
+        "Add //! module docs to tui/app.rs explaining App struct responsibilities",
+        "Document the event routing pattern (handle_key_event -> mode dispatch)",
+        "Add architecture overview for TUI state management",
+        "Document the filter/sort/search state interactions",
+        "Verify by reading docs and confirming understanding of TUI architecture"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0506",
+      "status": "todo",
+      "title": "Unify and document session timeout configuration",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "configuration",
+        "session"
+      ],
+      "scope": [
+        "crates/ralph/src/session/mod.rs",
+        "crates/ralph/src/contracts/session.rs",
+        "schemas/config.schema.json"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/session/mod.rs :: lines 121-134 :: session timeout hardcoded via parameter, not configurable",
+        "path: crates/ralph/src/constants/timeouts.rs :: DEFAULT_SESSION_TIMEOUT_HOURS exists but not exposed in config",
+        "path: schemas/config.schema.json :: No session.timeout_hours or similar configuration option",
+        "config: crates/ralph/src/config.rs :: Session timeout not part of Resolved config"
+      ],
+      "plan": [
+        "Add session.timeout_hours to Config contract",
+        "Update session validation to use config value instead of hardcoded parameter",
+        "Add session configuration section to docs/configuration.md",
+        "Ensure default matches current behavior (24 hours)",
+        "Add test for custom session timeout configuration",
+        "Verify by setting custom timeout and checking session behavior"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0507",
+      "status": "todo",
+      "title": "Improve template variable error reporting and validation",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "ux",
+        "template"
+      ],
+      "scope": [
+        "crates/ralph/src/template/variables.rs",
+        "crates/ralph/src/commands/task/build.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/template/variables.rs :: fn substitute_variables :: unknown variables silently left as-is",
+        "path: crates/ralph/src/template/variables.rs :: lines 155-175 :: No warning when {{variable}} not found in context",
+        "path: crates/ralph/src/template/variables.rs :: fn detect_git_branch :: silently returns None on git errors",
+        "repro: Create task with {{nonexistent}} variable :: expected warning about unknown variable :: actual silently preserved in output"
+      ],
+      "plan": [
+        "Add warnings for unknown template variables",
+        "Add --strict-templates flag to fail on unknown variables",
+        "Improve error reporting when git branch detection fails",
+        "Add validation of template variables at task creation time",
+        "Add test for unknown variable detection",
+        "Verify by creating task with unknown variable and checking output"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T05:14:31Z",
+      "updated_at": "2026-02-01T05:14:31Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
       "id": "RQ-0439",
       "status": "draft",
       "title": "Implement subtask support for hierarchical task breakdown",
