@@ -269,7 +269,6 @@ pub(crate) fn resolve_agent_settings(
 /// This struct holds the final resolved runner, model, reasoning effort, and CLI options
 /// for a specific phase of execution.
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 pub(crate) struct ResolvedPhaseSettings {
     pub runner: Runner,
     pub model: Model,
@@ -277,11 +276,22 @@ pub(crate) struct ResolvedPhaseSettings {
     pub runner_cli: execution::ResolvedRunnerCliOptions,
 }
 
+impl ResolvedPhaseSettings {
+    /// Convert to AgentSettings for use with existing runner APIs.
+    pub fn to_agent_settings(&self) -> AgentSettings {
+        AgentSettings {
+            runner: self.runner,
+            model: self.model.clone(),
+            reasoning_effort: self.reasoning_effort,
+            runner_cli: self.runner_cli,
+        }
+    }
+}
+
 /// Resolved settings for all phases (1-3).
 ///
 /// Contains per-phase resolved settings for multi-phase task execution.
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 pub(crate) struct PhaseSettingsMatrix {
     pub phase1: ResolvedPhaseSettings,
     pub phase2: ResolvedPhaseSettings,
@@ -292,7 +302,6 @@ pub(crate) struct PhaseSettingsMatrix {
 ///
 /// Tracks unused phase overrides and effort warnings for user feedback.
 #[derive(Debug, Default, PartialEq)]
-#[allow(dead_code)]
 pub(crate) struct ResolutionWarnings {
     /// Phase 1 overrides were specified but will not be used
     pub unused_phase1: bool,
@@ -329,7 +338,6 @@ pub(crate) struct ResolutionWarnings {
 /// # Returns
 /// * `Ok((PhaseSettingsMatrix, ResolutionWarnings))` - Resolved settings and any warnings
 /// * `Err(...)` - Validation errors (e.g., invalid model for runner in a specific phase)
-#[allow(dead_code)]
 pub(crate) fn resolve_phase_settings_matrix(
     overrides: &crate::agent::AgentOverrides,
     config_agent: &AgentConfig,
@@ -427,7 +435,6 @@ pub(crate) fn resolve_phase_settings_matrix(
 /// 4. Task override
 /// 5. Config default
 /// 6. Code default
-#[allow(dead_code)]
 fn resolve_single_phase(
     phase: u8,
     cli_phase_override: Option<&crate::contracts::PhaseOverrideConfig>,
@@ -511,7 +518,6 @@ fn resolve_single_phase(
 ///
 /// When runner is overridden at phase level or globally, and no model is explicitly
 /// set at an equal-or-higher precedence, the model becomes the runner's default.
-#[allow(dead_code)]
 fn resolve_model_for_phase(
     runner: Runner,
     cli_phase_model: Option<Model>,
@@ -548,7 +554,6 @@ fn resolve_model_for_phase(
 }
 
 /// Normalize a model for a specific runner.
-#[allow(dead_code)]
 fn normalize_model_for_runner(runner: Runner, model: Model) -> Model {
     if runner == Runner::Codex {
         match model {
@@ -567,7 +572,6 @@ fn normalize_model_for_runner(runner: Runner, model: Model) -> Model {
 /// Returns Some(effort) for Codex runners, None for others.
 /// Records warnings when effort is specified but ignored.
 #[allow(clippy::too_many_arguments)]
-#[allow(dead_code)]
 fn resolve_phase_reasoning_effort(
     phase: u8,
     runner: Runner,

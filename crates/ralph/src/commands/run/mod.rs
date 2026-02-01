@@ -482,8 +482,55 @@ fn run_one_impl(
         iteration_settings.count
     );
 
-    // Resolve runner settings early so the pre-run task update uses the same settings as execution.
-    let base_settings = resolve_run_agent_settings(resolved, &task, agent_overrides)?;
+    // Resolve per-phase settings matrix for the execution.
+    let (phase_matrix, phase_warnings) = runner::resolve_phase_settings_matrix(
+        agent_overrides,
+        &resolved.config.agent,
+        task.agent.as_ref(),
+        phases,
+    )?;
+
+    // Log resolution warnings if any phase overrides won't be used.
+    if phase_warnings.unused_phase1 {
+        log::warn!("Task {task_id}: Phase 1 overrides specified but will not be used (phases < 2)");
+    }
+    if phase_warnings.unused_phase2 {
+        log::warn!(
+            "Task {task_id}: Phase 2 overrides specified but will not be used (phases < 2 or single-phase mode)"
+        );
+    }
+    if phase_warnings.unused_phase3 {
+        log::warn!("Task {task_id}: Phase 3 overrides specified but will not be used (phases < 3)");
+    }
+    if !phase_warnings.effort_ignored_non_codex.is_empty() {
+        for phase in &phase_warnings.effort_ignored_non_codex {
+            log::warn!(
+                "Task {task_id}: Phase {phase} reasoning effort specified but ignored for non-Codex runner"
+            );
+        }
+    }
+
+    // Log resolved per-phase matrix for visibility.
+    log::info!("Task {task_id}: Resolved phase settings:");
+    if phases >= 2 {
+        log::info!(
+            "  Phase 1 (Planning): runner={:?}, model={}",
+            phase_matrix.phase1.runner,
+            phase_matrix.phase1.model.as_str()
+        );
+    }
+    log::info!(
+        "  Phase 2 (Implementation): runner={:?}, model={}",
+        phase_matrix.phase2.runner,
+        phase_matrix.phase2.model.as_str()
+    );
+    if phases >= 3 {
+        log::info!(
+            "  Phase 3 (Review): runner={:?}, model={}",
+            phase_matrix.phase3.runner,
+            phase_matrix.phase3.model.as_str()
+        );
+    }
 
     // Require clean repo before the first iteration starts.
     let preexisting_dirty_allowed = git::repo_dirty_only_allowed_paths(
@@ -509,19 +556,29 @@ fn run_one_impl(
 
     if update_task_before_run {
         log::info!("Task {task_id}: pre-run update enabled; running task updater");
+        // Determine which phase settings to use for pre-run update:
+        // - Multi-phase (phases >= 2): use Phase 1 (planning) settings
+        // - Single-phase (phases = 1): use Phase 2 (implementation) settings
+        let update_phase_settings = if phases >= 2 {
+            &phase_matrix.phase1
+        } else {
+            &phase_matrix.phase2
+        };
         let runner_cli_overrides = RunnerCliOptionsPatch {
-            output_format: Some(base_settings.runner_cli.output_format),
-            verbosity: Some(base_settings.runner_cli.verbosity),
-            approval_mode: Some(base_settings.runner_cli.approval_mode),
-            sandbox: Some(base_settings.runner_cli.sandbox),
-            plan_mode: Some(base_settings.runner_cli.plan_mode),
-            unsupported_option_policy: Some(base_settings.runner_cli.unsupported_option_policy),
+            output_format: Some(update_phase_settings.runner_cli.output_format),
+            verbosity: Some(update_phase_settings.runner_cli.verbosity),
+            approval_mode: Some(update_phase_settings.runner_cli.approval_mode),
+            sandbox: Some(update_phase_settings.runner_cli.sandbox),
+            plan_mode: Some(update_phase_settings.runner_cli.plan_mode),
+            unsupported_option_policy: Some(
+                update_phase_settings.runner_cli.unsupported_option_policy,
+            ),
         };
         let update_settings = task_cmd::TaskUpdateSettings {
             fields: "scope,evidence,plan,notes,tags,depends_on".to_string(),
-            runner_override: Some(base_settings.runner),
-            model_override: Some(base_settings.model.clone()),
-            reasoning_effort_override: base_settings.reasoning_effort,
+            runner_override: Some(update_phase_settings.runner),
+            model_override: Some(update_phase_settings.model.clone()),
+            reasoning_effort_override: update_phase_settings.reasoning_effort,
             runner_cli_overrides,
             force,
             repoprompt_tool_injection: policy.repoprompt_tool_injection,
@@ -585,11 +642,7 @@ fn run_one_impl(
 
     let bins = runner::resolve_binaries(&resolved.config.agent);
 
-    log::info!(
-        "Task {task_id}: start (runner={runner:?}, model={model})",
-        runner = base_settings.runner,
-        model = base_settings.model.as_str()
-    );
+    log::info!("Task {task_id}: start");
 
     let exec_result: Result<()> = (|| {
         // --- Prompt Construction ---
@@ -624,8 +677,10 @@ fn run_one_impl(
                 iteration_settings.count
             );
 
-            let settings = apply_followup_reasoning_effort(
-                &base_settings,
+            // Apply follow-up reasoning effort to Phase 2 settings (implementation phase).
+            // Phase 1 and Phase 3 use their original settings.
+            let phase2_settings = apply_followup_reasoning_effort(
+                &phase_matrix.phase2.to_agent_settings(),
                 iteration_settings.followup_reasoning_effort,
                 is_followup,
             );
@@ -646,42 +701,165 @@ fn run_one_impl(
                 prompts::PHASE3_COMPLETION_GUIDANCE_NONFINAL
             };
 
-            let invocation = phases::PhaseInvocation {
-                resolved,
-                settings: &settings,
-                bins,
-                task_id: &task_id,
-                base_prompt: &base_prompt,
-                policy: &policy,
-                output_handler: output_handler.clone(),
-                output_stream,
-                project_type,
-                git_revert_mode,
-                git_commit_push_enabled,
-                revert_prompt: revert_prompt.clone(),
-                iteration_context,
-                iteration_completion_block,
-                phase3_completion_guidance,
-                is_final_iteration,
-                allow_dirty_repo: is_followup || preexisting_dirty_allowed,
-                notify_on_complete: agent_overrides.notify_on_complete,
-                notify_sound: agent_overrides.notify_sound,
-                lfs_check: agent_overrides.lfs_check.unwrap_or(false),
-                no_progress: agent_overrides.no_progress.unwrap_or(false),
-            };
-
             match phases {
                 2 => {
-                    let plan_text = phases::execute_phase1_planning(&invocation, 2)?;
-                    phases::execute_phase2_implementation(&invocation, 2, &plan_text)?;
+                    // Phase 1: Planning - use phase1 settings
+                    let phase1_invocation = phases::PhaseInvocation {
+                        resolved,
+                        settings: &phase_matrix.phase1.to_agent_settings(),
+                        bins,
+                        task_id: &task_id,
+                        base_prompt: &base_prompt,
+                        policy: &policy,
+                        output_handler: output_handler.clone(),
+                        output_stream,
+                        project_type,
+                        git_revert_mode,
+                        git_commit_push_enabled,
+                        revert_prompt: revert_prompt.clone(),
+                        iteration_context,
+                        iteration_completion_block,
+                        phase3_completion_guidance,
+                        is_final_iteration,
+                        allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        notify_on_complete: agent_overrides.notify_on_complete,
+                        notify_sound: agent_overrides.notify_sound,
+                        lfs_check: agent_overrides.lfs_check.unwrap_or(false),
+                        no_progress: agent_overrides.no_progress.unwrap_or(false),
+                    };
+                    let plan_text = phases::execute_phase1_planning(&phase1_invocation, 2)?;
+
+                    // Phase 2: Implementation - use phase2 settings (with follow-up effort applied)
+                    let phase2_invocation = phases::PhaseInvocation {
+                        resolved,
+                        settings: &phase2_settings,
+                        bins,
+                        task_id: &task_id,
+                        base_prompt: &base_prompt,
+                        policy: &policy,
+                        output_handler: output_handler.clone(),
+                        output_stream,
+                        project_type,
+                        git_revert_mode,
+                        git_commit_push_enabled,
+                        revert_prompt: revert_prompt.clone(),
+                        iteration_context,
+                        iteration_completion_block,
+                        phase3_completion_guidance,
+                        is_final_iteration,
+                        allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        notify_on_complete: agent_overrides.notify_on_complete,
+                        notify_sound: agent_overrides.notify_sound,
+                        lfs_check: agent_overrides.lfs_check.unwrap_or(false),
+                        no_progress: agent_overrides.no_progress.unwrap_or(false),
+                    };
+                    phases::execute_phase2_implementation(&phase2_invocation, 2, &plan_text)?;
                 }
                 3 => {
-                    let plan_text = phases::execute_phase1_planning(&invocation, 3)?;
-                    phases::execute_phase2_implementation(&invocation, 3, &plan_text)?;
-                    phases::execute_phase3_review(&invocation)?;
+                    // Phase 1: Planning - use phase1 settings
+                    let phase1_invocation = phases::PhaseInvocation {
+                        resolved,
+                        settings: &phase_matrix.phase1.to_agent_settings(),
+                        bins,
+                        task_id: &task_id,
+                        base_prompt: &base_prompt,
+                        policy: &policy,
+                        output_handler: output_handler.clone(),
+                        output_stream,
+                        project_type,
+                        git_revert_mode,
+                        git_commit_push_enabled,
+                        revert_prompt: revert_prompt.clone(),
+                        iteration_context,
+                        iteration_completion_block,
+                        phase3_completion_guidance,
+                        is_final_iteration,
+                        allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        notify_on_complete: agent_overrides.notify_on_complete,
+                        notify_sound: agent_overrides.notify_sound,
+                        lfs_check: agent_overrides.lfs_check.unwrap_or(false),
+                        no_progress: agent_overrides.no_progress.unwrap_or(false),
+                    };
+                    let plan_text = phases::execute_phase1_planning(&phase1_invocation, 3)?;
+
+                    // Phase 2: Implementation - use phase2 settings (with follow-up effort applied)
+                    let phase2_invocation = phases::PhaseInvocation {
+                        resolved,
+                        settings: &phase2_settings,
+                        bins,
+                        task_id: &task_id,
+                        base_prompt: &base_prompt,
+                        policy: &policy,
+                        output_handler: output_handler.clone(),
+                        output_stream,
+                        project_type,
+                        git_revert_mode,
+                        git_commit_push_enabled,
+                        revert_prompt: revert_prompt.clone(),
+                        iteration_context,
+                        iteration_completion_block,
+                        phase3_completion_guidance,
+                        is_final_iteration,
+                        allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        notify_on_complete: agent_overrides.notify_on_complete,
+                        notify_sound: agent_overrides.notify_sound,
+                        lfs_check: agent_overrides.lfs_check.unwrap_or(false),
+                        no_progress: agent_overrides.no_progress.unwrap_or(false),
+                    };
+                    phases::execute_phase2_implementation(&phase2_invocation, 3, &plan_text)?;
+
+                    // Phase 3: Review - use phase3 settings
+                    let phase3_invocation = phases::PhaseInvocation {
+                        resolved,
+                        settings: &phase_matrix.phase3.to_agent_settings(),
+                        bins,
+                        task_id: &task_id,
+                        base_prompt: &base_prompt,
+                        policy: &policy,
+                        output_handler: output_handler.clone(),
+                        output_stream,
+                        project_type,
+                        git_revert_mode,
+                        git_commit_push_enabled,
+                        revert_prompt: revert_prompt.clone(),
+                        iteration_context,
+                        iteration_completion_block,
+                        phase3_completion_guidance,
+                        is_final_iteration,
+                        allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        notify_on_complete: agent_overrides.notify_on_complete,
+                        notify_sound: agent_overrides.notify_sound,
+                        lfs_check: agent_overrides.lfs_check.unwrap_or(false),
+                        no_progress: agent_overrides.no_progress.unwrap_or(false),
+                    };
+                    phases::execute_phase3_review(&phase3_invocation)?;
                 }
                 1 => {
-                    phases::execute_single_phase(&invocation)?;
+                    // Single-phase: use Phase 2 settings (with follow-up effort applied)
+                    let single_invocation = phases::PhaseInvocation {
+                        resolved,
+                        settings: &phase2_settings,
+                        bins,
+                        task_id: &task_id,
+                        base_prompt: &base_prompt,
+                        policy: &policy,
+                        output_handler: output_handler.clone(),
+                        output_stream,
+                        project_type,
+                        git_revert_mode,
+                        git_commit_push_enabled,
+                        revert_prompt: revert_prompt.clone(),
+                        iteration_context,
+                        iteration_completion_block,
+                        phase3_completion_guidance,
+                        is_final_iteration,
+                        allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        notify_on_complete: agent_overrides.notify_on_complete,
+                        notify_sound: agent_overrides.notify_sound,
+                        lfs_check: agent_overrides.lfs_check.unwrap_or(false),
+                        no_progress: agent_overrides.no_progress.unwrap_or(false),
+                    };
+                    phases::execute_single_phase(&single_invocation)?;
                 }
                 _ => {
                     bail!(
@@ -759,6 +937,7 @@ fn run_one_impl(
     }
 }
 
+#[cfg(test)]
 fn resolve_run_agent_settings(
     resolved: &config::Resolved,
     task: &crate::contracts::Task,

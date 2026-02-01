@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0496",
-      "status": "todo",
-      "title": "Wire per-phase settings into run orchestration (phases + pre-run update + logging)",
-      "priority": "high",
-      "tags": [
-        "run",
-        "orchestration",
-        "ci",
-        "testing"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/mod.rs",
-        "crates/ralph/src/commands/run/phases/",
-        "crates/ralph/src/commands/run/tests.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "Spec changes behavior: each phase can run with different runner/model/effort",
-        "Spec changes pre-run task update runner selection: phases>=2 uses Phase 1 settings; phases=1 uses single-pass settings",
-        "Spec recommends logging the resolved per-phase matrix once per task iteration"
-      ],
-      "plan": [
-        "Replace the single shared AgentSettings with a resolved-per-phase settings matrix per task iteration",
-        "Update phase execution so each phase runs with its own resolved settings",
-        "Update pre-run task update selection per spec (Phase 1 settings for phases>=2; single-pass settings for phases=1)",
-        "Implement warnings surfaced by the resolution helper (unused overrides; effort ignored) exactly once per run invocation",
-        "Add/extend tests for end-to-end selection across phases and for updater runner selection",
-        "Run `make ci`"
-      ],
-      "notes": [
-        "Overall spec: /private/tmp/ralph-phase-specific-runner-model-spec.md (see: Behavioral Interactions; Continue/CI retry; Optional logging UX)"
-      ],
-      "request": "Apply per-phase settings in actual run execution",
-      "created_at": "2026-01-31T12:04:00Z",
-      "updated_at": "2026-01-31T12:04:00Z",
-      "depends_on": [
-        "RQ-0478"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0492",
       "status": "todo",
       "title": "TUI parity: expose phase overrides or explicitly document the divergence",
