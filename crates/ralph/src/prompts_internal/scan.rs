@@ -20,6 +20,7 @@ You are a scan-only agent for this repository.
 Perform an agentic code review to find bugs, workflow gaps, design flaws, high-leverage reliability and UX fixes, flaky behavior, and safety issues.
 Focus on: correctness, security, performance regressions, reliability, repo rule violations, inconsistent or incomplete behavior, and maintainability problems that create real risk.
 Prioritize correctness and safety over new features.
+You must add a MINIMUM of 7 tasks to the queue.
 
 # CONTEXT (READ IN ORDER)
 1. ~/.codex/AGENTS.md
@@ -132,6 +133,7 @@ You are a scan-only agent for this repository.
 Perform a feature discovery scan to identify enhancement opportunities, feature gaps, use-case completeness issues, and opportunities for innovative new features.
 Focus on: missing features for specific use-cases, user workflow improvements, competitive gaps (only if you can cite concrete evidence), feature completeness, and strategic additions that increase user value.
 Prioritize new capabilities and user value over maintenance tasks.
+You must add a MINIMUM of 7 tasks to the queue.
 
 # CONTEXT (READ IN ORDER)
 1. ~/.codex/AGENTS.md
