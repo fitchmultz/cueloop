@@ -20,7 +20,7 @@ update:
 
 lint:
 	@echo "→ Running linter..."
-	@cargo clippy --workspace --all-targets --quiet -- -D warnings
+	@cargo clippy --workspace --all-targets --quiet -- -D warnings --fix
 	@echo "  ✓ Linting passed"
 
 type-check:
