@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0513",
-      "status": "todo",
-      "title": "Reconcile AGENTS.md make ci order with Makefile implementation",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "docs",
-        "ci"
-      ],
-      "scope": [
-        "AGENTS.md",
-        "Makefile"
-      ],
-      "evidence": [
-        "AGENTS.md states make ci order: `check-env-safety → check-backup-artifacts → generate → format → type-check → lint → build → test → install` (AGENTS.md lines 9-10).",
-        "Makefile `ci` currently runs: check-env-safety → check-backup-artifacts → deps → format → lint → test → build → generate → install (Makefile lines 121-131)."
-      ],
-      "plan": [
-        "Decide the canonical CI ordering (Makefile vs AGENTS.md) with minimal disruption.",
-        "Update AGENTS.md or Makefile to match the chosen order.",
-        "If Makefile changes, update any CI contract tests that assert ordering.",
-        "Verify by re-reading AGENTS.md and Makefile and ensuring they match, then run `make ci`."
-      ],
-      "notes": [
-        "Principles: Least astonishment, Operational hygiene.",
-        "Why it matters: conflicting documentation vs implementation leads to incorrect local workflows and failed expectations for contributors.",
-        "Minimal fix: change either the doc or the Makefile so the two sources of truth are consistent.",
-        "Acceptance: AGENTS.md and Makefile show identical CI ordering and `make ci` passes."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-01T17:19:30Z",
-      "updated_at": "2026-02-01T17:19:30Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0514",
       "status": "todo",
       "title": "Split crates/ralph/src/tui/app.rs into cohesive modules",

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-01T18:53:16.713065000Z",
+  "last_updated_at": "2026-02-01T19:09:32.385277000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -207,7 +207,7 @@
     },
     "2026-02-01": {
       "date": "2026-02-01",
-      "completed_count": 24,
+      "completed_count": 25,
       "tasks": [
         {
           "id": "RQ-0494",
@@ -328,6 +328,11 @@
           "id": "RQ-0512",
           "title": "Add make type-check target and run it in make ci",
           "completed_at": "2026-02-01T18:53:16.713063000Z"
+        },
+        {
+          "id": "RQ-0513",
+          "title": "Reconcile AGENTS.md make ci order with Makefile implementation",
+          "completed_at": "2026-02-01T19:09:32.385277000Z"
         }
       ]
     }
@@ -337,7 +342,7 @@
     "longest_streak": 3,
     "last_completed_date": "2026-02-01"
   },
-  "total_completed": 62,
+  "total_completed": 63,
   "milestones": [
     {
       "threshold": 10,
