@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0511",
-      "status": "todo",
-      "title": "Enhance queue list command with filtering and formatting options",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "queue",
-        "enhancement"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/queue.rs",
-        "crates/ralph/src/queue/operations/",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "User request: 'list' - indicating need for improved queue listing capabilities",
-        "Current `ralph queue list` provides basic output without filtering options",
-        "No support for filtering by status, priority, or tags in list command"
-      ],
-      "plan": [
-        "Add `--status` filter flag to show only tasks with specific status",
-        "Add `--priority` filter flag for priority-based filtering",
-        "Add `--tags` filter flag for tag-based filtering",
-        "Add `--format` flag for output format selection (table, json, compact)",
-        "Add `--limit` flag to restrict number of results",
-        "Update CLI help text with examples",
-        "Add tests for new filtering and formatting options",
-        "Update docs/cli.md with new list command options"
-      ],
-      "notes": [],
-      "request": "list",
-      "created_at": "2026-02-01T16:43:38Z",
-      "updated_at": "2026-02-01T16:43:38Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0439",
       "status": "draft",
       "title": "Implement subtask support for hierarchical task breakdown",
