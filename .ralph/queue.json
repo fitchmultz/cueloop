@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0503",
-      "status": "todo",
-      "title": "Improve TUI dependency graph handling for large task sets",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "performance",
-        "tui"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/events/dependency_graph.rs",
-        "crates/ralph/src/tui/app.rs"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/tui/events/dependency_graph.rs :: No caching of computed graph",
-        "path: crates/ralph/src/tui/events/dependency_graph.rs :: Graph recomputed on every render",
-        "path: crates/ralph/src/tui/app.rs :: Dependency visualization may block UI with 100+ tasks",
-        "repro: Open TUI with 200+ tasks having dependencies :: expected responsive UI :: actual UI may lag or freeze during graph updates"
-      ],
-      "plan": [
-        "Add caching layer for computed dependency graph",
-        "Invalidate cache only when queue is modified",
-        "Add lazy/deferred rendering for large graphs",
-        "Consider limiting graph depth for very large task sets",
-        "Add performance test with large queue",
-        "Verify by profiling TUI with 200+ task queue"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-01T05:14:31Z",
-      "updated_at": "2026-02-01T05:14:31Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0504",
       "status": "todo",
       "title": "Fix runner timeout handling for graceful shutdown edge cases",

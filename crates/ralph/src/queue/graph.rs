@@ -81,6 +81,53 @@ pub enum GraphFormat {
     List,
 }
 
+/// Result of a bounded chain traversal.
+///
+/// Contains the collected task IDs up to the limit, plus a flag indicating
+/// if additional tasks were available beyond the limit.
+#[derive(Debug, Clone)]
+pub struct BoundedChainResult {
+    /// Task IDs collected during traversal (at most `limit` items).
+    pub task_ids: Vec<String>,
+    /// True if there were more tasks available beyond the limit.
+    pub truncated: bool,
+}
+
+impl BoundedChainResult {
+    /// Create an empty result with truncated=false.
+    fn empty() -> Self {
+        Self {
+            task_ids: Vec::new(),
+            truncated: false,
+        }
+    }
+
+    /// Create a result from a full chain, truncating to the limit.
+    ///
+    /// This helper is used for testing and for cases where we already
+    /// have the full chain but want to convert to bounded form.
+    pub fn from_full_chain(chain: Vec<String>, limit: usize) -> Self {
+        if limit == 0 {
+            return Self {
+                task_ids: Vec::new(),
+                truncated: !chain.is_empty(),
+            };
+        }
+
+        if chain.len() <= limit {
+            Self {
+                task_ids: chain,
+                truncated: false,
+            }
+        } else {
+            Self {
+                task_ids: chain.into_iter().take(limit).collect(),
+                truncated: true,
+            }
+        }
+    }
+}
+
 impl DependencyGraph {
     /// Get a node by task ID.
     pub fn get(&self, task_id: &str) -> Option<&TaskNode> {
@@ -176,6 +223,159 @@ impl DependencyGraph {
         }
 
         chain
+    }
+
+    /// Get tasks that block this task, stopping after `limit` items.
+    ///
+    /// This is a performance-optimized version for UI rendering where we
+    /// only display a fixed number of items. It avoids traversing the full
+    /// chain when only a subset is needed.
+    ///
+    /// # Arguments
+    /// * `task_id` - The task to find blockers for
+    /// * `limit` - Maximum number of tasks to collect (0 returns empty)
+    ///
+    /// # Returns
+    /// A `BoundedChainResult` containing up to `limit` task IDs and a flag
+    /// indicating if more tasks were available.
+    ///
+    /// # Example
+    /// ```
+    /// # use ralph::queue::graph::{DependencyGraph, build_graph};
+    /// # use ralph::contracts::QueueFile;
+    /// # let queue = QueueFile { version: 1, tasks: vec![] };
+    /// # let graph = build_graph(&queue, None);
+    /// let result = graph.get_blocking_chain_bounded("RQ-0005", 10);
+    /// if result.truncated {
+    ///     println!("Showing first 10 of more available tasks");
+    /// }
+    /// ```
+    pub fn get_blocking_chain_bounded(&self, task_id: &str, limit: usize) -> BoundedChainResult {
+        if limit == 0 {
+            // Still need to check if there would be any tasks
+            let mut visited = HashSet::new();
+            let mut stack = vec![task_id.to_string()];
+            let mut has_any = false;
+
+            while let Some(current_id) = stack.pop() {
+                if visited.contains(&current_id) {
+                    continue;
+                }
+                visited.insert(current_id.clone());
+
+                if let Some(node) = self.get(&current_id) {
+                    for dep_id in &node.dependencies {
+                        if !visited.contains(dep_id) {
+                            has_any = true;
+                            stack.push(dep_id.clone());
+                        }
+                    }
+                }
+            }
+
+            return BoundedChainResult {
+                task_ids: Vec::new(),
+                truncated: has_any,
+            };
+        }
+
+        let mut result = BoundedChainResult::empty();
+        let mut visited = HashSet::new();
+        let mut stack = vec![task_id.to_string()];
+
+        while let Some(current_id) = stack.pop() {
+            if visited.contains(&current_id) {
+                continue;
+            }
+            visited.insert(current_id.clone());
+
+            if let Some(node) = self.get(&current_id) {
+                for dep_id in &node.dependencies {
+                    if !visited.contains(dep_id) {
+                        if result.task_ids.len() < limit {
+                            result.task_ids.push(dep_id.clone());
+                        } else {
+                            result.truncated = true;
+                            // Continue to check if there are more reachable tasks
+                            // but don't collect them
+                        }
+                        stack.push(dep_id.clone());
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Get tasks blocked by this task, stopping after `limit` items.
+    ///
+    /// This is a performance-optimized version for UI rendering where we
+    /// only display a fixed number of items. It avoids traversing the full
+    /// chain when only a subset is needed.
+    ///
+    /// # Arguments
+    /// * `task_id` - The task to find blocked tasks for
+    /// * `limit` - Maximum number of tasks to collect (0 returns empty)
+    ///
+    /// # Returns
+    /// A `BoundedChainResult` containing up to `limit` task IDs and a flag
+    /// indicating if more tasks were available.
+    pub fn get_blocked_chain_bounded(&self, task_id: &str, limit: usize) -> BoundedChainResult {
+        if limit == 0 {
+            // Still need to check if there would be any tasks
+            let mut visited = HashSet::new();
+            let mut stack = vec![task_id.to_string()];
+            let mut has_any = false;
+
+            while let Some(current_id) = stack.pop() {
+                if visited.contains(&current_id) {
+                    continue;
+                }
+                visited.insert(current_id.clone());
+
+                if let Some(node) = self.get(&current_id) {
+                    for dep_id in &node.dependents {
+                        if !visited.contains(dep_id) {
+                            has_any = true;
+                            stack.push(dep_id.clone());
+                        }
+                    }
+                }
+            }
+
+            return BoundedChainResult {
+                task_ids: Vec::new(),
+                truncated: has_any,
+            };
+        }
+
+        let mut result = BoundedChainResult::empty();
+        let mut visited = HashSet::new();
+        let mut stack = vec![task_id.to_string()];
+
+        while let Some(current_id) = stack.pop() {
+            if visited.contains(&current_id) {
+                continue;
+            }
+            visited.insert(current_id.clone());
+
+            if let Some(node) = self.get(&current_id) {
+                for dep_id in &node.dependents {
+                    if !visited.contains(dep_id) {
+                        if result.task_ids.len() < limit {
+                            result.task_ids.push(dep_id.clone());
+                        } else {
+                            result.truncated = true;
+                            // Continue to check if there are more reachable tasks
+                        }
+                        stack.push(dep_id.clone());
+                    }
+                }
+            }
+        }
+
+        result
     }
 
     /// Get immediate dependencies of a task.
@@ -911,5 +1111,176 @@ mod tests {
         assert!(graph.is_task_completed("RQ-0001"));
         assert!(graph.is_task_completed("RQ-0002"));
         assert!(!graph.is_task_completed("RQ-0003"));
+    }
+
+    // Tests for bounded chain traversal methods
+
+    #[test]
+    fn get_blocking_chain_bounded_returns_all_when_under_limit() {
+        // Chain: RQ-0003 depends on RQ-0002 depends on RQ-0001
+        let active = queue_file(vec![
+            task("RQ-0001", vec![], TaskStatus::Done),
+            task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+            task("RQ-0003", vec!["RQ-0002"], TaskStatus::Todo),
+        ]);
+
+        let graph = build_graph(&active, None);
+        let result = graph.get_blocking_chain_bounded("RQ-0003", 10);
+
+        assert_eq!(result.task_ids.len(), 2);
+        assert!(!result.truncated);
+        assert!(result.task_ids.contains(&"RQ-0001".to_string()));
+        assert!(result.task_ids.contains(&"RQ-0002".to_string()));
+    }
+
+    #[test]
+    fn get_blocking_chain_bounded_truncates_when_over_limit() {
+        // Chain: RQ-0003 depends on RQ-0002 depends on RQ-0001
+        let active = queue_file(vec![
+            task("RQ-0001", vec![], TaskStatus::Done),
+            task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+            task("RQ-0003", vec!["RQ-0002"], TaskStatus::Todo),
+        ]);
+
+        let graph = build_graph(&active, None);
+        let result = graph.get_blocking_chain_bounded("RQ-0003", 1);
+
+        assert_eq!(result.task_ids.len(), 1);
+        assert!(result.truncated);
+    }
+
+    #[test]
+    fn get_blocking_chain_bounded_limit_zero_returns_empty_with_truncated() {
+        let active = queue_file(vec![
+            task("RQ-0001", vec![], TaskStatus::Done),
+            task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+        ]);
+
+        let graph = build_graph(&active, None);
+        let result = graph.get_blocking_chain_bounded("RQ-0002", 0);
+
+        assert!(result.task_ids.is_empty());
+        assert!(result.truncated); // There would be tasks, but limit prevented collection
+    }
+
+    #[test]
+    fn get_blocking_chain_bounded_limit_zero_no_deps_not_truncated() {
+        let active = queue_file(vec![task("RQ-0001", vec![], TaskStatus::Todo)]);
+
+        let graph = build_graph(&active, None);
+        let result = graph.get_blocking_chain_bounded("RQ-0001", 0);
+
+        assert!(result.task_ids.is_empty());
+        assert!(!result.truncated); // No tasks to collect
+    }
+
+    #[test]
+    fn get_blocked_chain_bounded_returns_all_when_under_limit() {
+        // Chain: RQ-0001 blocks RQ-0002 blocks RQ-0003
+        let active = queue_file(vec![
+            task("RQ-0001", vec![], TaskStatus::Done),
+            task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+            task("RQ-0003", vec!["RQ-0002"], TaskStatus::Todo),
+        ]);
+
+        let graph = build_graph(&active, None);
+        let result = graph.get_blocked_chain_bounded("RQ-0001", 10);
+
+        assert_eq!(result.task_ids.len(), 2);
+        assert!(!result.truncated);
+        assert!(result.task_ids.contains(&"RQ-0002".to_string()));
+        assert!(result.task_ids.contains(&"RQ-0003".to_string()));
+    }
+
+    #[test]
+    fn get_blocked_chain_bounded_truncates_when_over_limit() {
+        let active = queue_file(vec![
+            task("RQ-0001", vec![], TaskStatus::Done),
+            task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+            task("RQ-0003", vec!["RQ-0002"], TaskStatus::Todo),
+        ]);
+
+        let graph = build_graph(&active, None);
+        let result = graph.get_blocked_chain_bounded("RQ-0001", 1);
+
+        assert_eq!(result.task_ids.len(), 1);
+        assert!(result.truncated);
+    }
+
+    #[test]
+    fn get_blocked_chain_bounded_limit_zero_returns_empty_with_truncated() {
+        let active = queue_file(vec![
+            task("RQ-0001", vec![], TaskStatus::Done),
+            task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+        ]);
+
+        let graph = build_graph(&active, None);
+        let result = graph.get_blocked_chain_bounded("RQ-0001", 0);
+
+        assert!(result.task_ids.is_empty());
+        assert!(result.truncated);
+    }
+
+    #[test]
+    fn bounded_chain_handles_large_graph() {
+        // Create a chain of 100 tasks: RQ-0001 <- RQ-0002 <- ... <- RQ-0100
+        let mut tasks = Vec::new();
+        for i in 1..=100 {
+            let id = format!("RQ-{:04}", i);
+            let deps = if i > 1 {
+                vec![format!("RQ-{:04}", i - 1)]
+            } else {
+                vec![]
+            };
+            tasks.push(task(
+                &id,
+                deps.iter().map(|s| s.as_str()).collect(),
+                TaskStatus::Todo,
+            ));
+        }
+
+        let active = queue_file(tasks);
+        let graph = build_graph(&active, None);
+
+        // Test blocking chain (follows dependencies)
+        let result = graph.get_blocking_chain_bounded("RQ-0100", 10);
+        assert_eq!(result.task_ids.len(), 10);
+        assert!(result.truncated);
+
+        // Test blocked chain (follows dependents)
+        let result = graph.get_blocked_chain_bounded("RQ-0001", 10);
+        assert_eq!(result.task_ids.len(), 10);
+        assert!(result.truncated);
+    }
+
+    #[test]
+    fn bounded_chain_from_full_chain_helper_works() {
+        let chain = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+
+        // Under limit
+        let result = BoundedChainResult::from_full_chain(chain.clone(), 5);
+        assert_eq!(result.task_ids.len(), 3);
+        assert!(!result.truncated);
+
+        // At limit
+        let result = BoundedChainResult::from_full_chain(chain.clone(), 3);
+        assert_eq!(result.task_ids.len(), 3);
+        assert!(!result.truncated);
+
+        // Over limit
+        let result = BoundedChainResult::from_full_chain(chain.clone(), 2);
+        assert_eq!(result.task_ids.len(), 2);
+        assert!(result.truncated);
+
+        // Zero limit
+        let result = BoundedChainResult::from_full_chain(chain.clone(), 0);
+        assert!(result.task_ids.is_empty());
+        assert!(result.truncated);
+
+        // Empty chain
+        let empty: Vec<String> = vec![];
+        let result = BoundedChainResult::from_full_chain(empty, 10);
+        assert!(result.task_ids.is_empty());
+        assert!(!result.truncated);
     }
 }

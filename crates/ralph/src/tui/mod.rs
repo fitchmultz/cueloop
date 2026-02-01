@@ -26,6 +26,7 @@ mod app_palette;
 mod app_session;
 mod app_tasks;
 mod config_edit;
+mod dependency_graph_cache;
 mod events;
 mod help;
 mod input;
@@ -50,6 +51,7 @@ pub use app_options::TuiOptions;
 pub use app_session::{SessionManager, SessionState};
 pub use app_tasks::{AppTasks, AutoArchiveAction, MoveResult, TaskOperations};
 pub use config_edit::{ConfigEntry, ConfigFieldKind, ConfigKey};
+pub use dependency_graph_cache::DependencyGraphCache;
 pub use events::{
     AppMode, ConfirmDiscardAction, PaletteCommand, PaletteEntry, TuiAction, handle_key_event,
 };

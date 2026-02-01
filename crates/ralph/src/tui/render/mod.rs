@@ -10,7 +10,8 @@
 //! - Queue mutations or runner execution side effects.
 //!
 //! Invariants/assumptions:
-//! - Rendering operates on the current `App` state without mutating it.
+//! - Rendering operates on the current `App` state; some overlays may update
+//!   internal caches (e.g., dependency graph cache) for performance.
 //! - Layout components remain consistent with TUI styling conventions.
 
 use crate::constants::ui::NARROW_LAYOUT_WIDTH;

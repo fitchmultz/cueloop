@@ -185,6 +185,8 @@ pub struct App {
     pub filtered_indices: Vec<usize>,
     /// Queue revision that changes whenever tasks are reordered or mutated.
     queue_rev: u64,
+    /// Done archive revision that changes whenever done tasks are modified.
+    done_rev: u64,
     /// Cached task-id to queue index mapping.
     id_to_index: HashMap<String, usize>,
     /// Revision that the cached id->index map was built from.
@@ -220,6 +222,8 @@ pub struct App {
     pub selected_indices: HashSet<usize>,
     /// Current ETA estimate for the running task.
     pub current_eta: Option<crate::eta_calculator::EtaEstimate>,
+    /// Cached dependency graph and critical paths for overlay rendering.
+    pub dependency_graph_cache: crate::tui::DependencyGraphCache,
 }
 
 impl App {
@@ -280,6 +284,7 @@ impl App {
             filter_snapshot: None,
             filtered_indices: Vec::new(),
             queue_rev: 0,
+            done_rev: 0,
             id_to_index: HashMap::new(),
             id_to_index_rev: u64::MAX,
             filtered_indices_rev: u64::MAX,
@@ -299,6 +304,7 @@ impl App {
             multi_select_mode: false,
             selected_indices: HashSet::new(),
             current_eta: None,
+            dependency_graph_cache: crate::tui::DependencyGraphCache::new(),
         };
         app.rebuild_filtered_view();
         app
@@ -715,6 +721,20 @@ impl App {
 
     pub(crate) fn queue_rev(&self) -> u64 {
         self.queue_rev
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn bump_done_rev(&mut self) {
+        self.done_rev = self.done_rev.wrapping_add(1);
+    }
+
+    pub(crate) fn bump_queue_and_done_rev(&mut self) {
+        self.queue_rev = self.queue_rev.wrapping_add(1);
+        self.done_rev = self.done_rev.wrapping_add(1);
+    }
+
+    pub(crate) fn done_rev(&self) -> u64 {
+        self.done_rev
     }
 
     fn ensure_id_index_map(&mut self) {
@@ -1254,7 +1274,7 @@ impl App {
         if archived_count > 0 {
             self.dirty = true;
             self.dirty_done = true;
-            self.bump_queue_rev();
+            self.bump_queue_and_done_rev();
             self.selected_indices.clear();
             self.multi_select_mode = false;
             self.rebuild_filtered_view();
@@ -1345,7 +1365,7 @@ impl App {
         self.dirty = true;
         self.dirty_done = true;
 
-        self.bump_queue_rev();
+        self.bump_queue_and_done_rev();
         self.rebuild_filtered_view();
         self.set_status_message(format!("Archived {} task(s)", moved_count));
         Ok(moved_count)
@@ -1374,7 +1394,7 @@ impl App {
 
         self.dirty = true;
         self.dirty_done = true;
-        self.bump_queue_rev();
+        self.bump_queue_and_done_rev();
         self.rebuild_filtered_view();
 
         Ok(())
