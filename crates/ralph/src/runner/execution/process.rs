@@ -14,9 +14,14 @@
 //! - Callers provide a fully constructed `Command` and validated runner/bin.
 //! - Streaming threads must be joined to avoid output loss.
 //! - Timeout handling uses a 2-second grace period after SIGINT before SIGKILL.
+//!   On non-unix platforms, the grace period is also 2 seconds for consistency,
+//!   though the mechanism differs (process.kill() vs signals).
 //! - Process state transitions are: Running → TimeoutInterrupt/CtrlCInterrupt → (Exited | Killed).
 //! - Ctrl-C interrupts are handled separately from timeout interrupts to ensure
 //!   proper error propagation (Interrupted vs Timeout errors).
+//! - Timeout errors take precedence over Interrupted errors when both occur:
+//!   if a timeout triggers and then Ctrl-C is pressed during the grace period,
+//!   the Timeout error is returned to ensure safeguard dumps/revert are triggered.
 
 use std::io::Write;
 use std::process::{Command, ExitStatus, Stdio};
@@ -229,9 +234,11 @@ enum ProcessState {
 /// # Timeout Handling
 ///
 /// When a timeout is specified and the process exceeds it:
-/// 1. SIGINT is sent to the process group (graceful shutdown request)
-/// 2. A 2-second grace period allows the process to exit cleanly
-/// 3. If still running after grace period, SIGKILL is sent (forceful termination)
+/// 1. SIGINT is sent to the process group (graceful shutdown request) on unix,
+///    or `child.kill()` is called on non-unix.
+/// 2. A 2-second grace period allows the process to exit cleanly.
+/// 3. If still running after grace period, SIGKILL is sent (forceful termination) on unix,
+///    or a second `child.kill()` is issued on non-unix.
 ///
 /// # Race Condition Fix
 ///
@@ -251,6 +258,8 @@ pub(crate) fn wait_for_child(
 ) -> Result<ExitStatus, RunnerError> {
     let mut state = ProcessState::Running;
     let start = Instant::now();
+    #[cfg(not(unix))]
+    let mut kill_requested = false;
 
     loop {
         let now = Instant::now();
@@ -273,7 +282,9 @@ pub(crate) fn wait_for_child(
             }
             #[cfg(not(unix))]
             {
+                // On non-unix, request kill but allow grace period before forcing
                 let _ = child.kill();
+                kill_requested = true;
             }
         }
 
@@ -292,7 +303,9 @@ pub(crate) fn wait_for_child(
             }
             #[cfg(not(unix))]
             {
+                // On non-unix, request kill but allow grace period before forcing
                 let _ = child.kill();
+                kill_requested = true;
             }
         }
 
@@ -317,7 +330,14 @@ pub(crate) fn wait_for_child(
                         }
                     }
                 }
-                let _ = child.kill();
+                // On non-unix, the first kill() was already called; we call it again
+                // to ensure the process is terminated after the grace period.
+                // Process may already be gone, so we ignore errors.
+                #[cfg(not(unix))]
+                {
+                    let _ = child.kill();
+                    kill_requested = true;
+                }
             }
         }
 
@@ -375,6 +395,17 @@ pub(crate) fn wait_for_child(
             }
             Ok(None) => {
                 // Process still running, continue loop
+                // On non-unix, if we requested kill but haven't escalated to Killed state yet,
+                // keep waiting for the grace period to expire.
+                #[cfg(not(unix))]
+                if kill_requested
+                    && matches!(
+                        state,
+                        ProcessState::TimeoutInterrupt(_) | ProcessState::CtrlCInterrupt(_)
+                    )
+                {
+                    // Process is still running after kill request, wait for grace period
+                }
             }
             Err(e) => return Err(RunnerError::Io(e)),
         }
@@ -522,12 +553,27 @@ fn run_with_streaming_json_inner(
         std::mem::take(&mut *guard)
     };
 
-    // Check if we were interrupted (after cleanup is done)
-    if ctrlc.interrupted.load(Ordering::SeqCst) {
-        return Err(RunnerError::Interrupted);
+    // Error precedence: Timeout takes priority over Interrupted.
+    //
+    // If a timeout occurred, we must return Timeout error so callers can trigger
+    // safeguard dumps and git revert. This ensures that even if the user presses
+    // Ctrl-C during the timeout grace period, the timeout handling is preserved.
+    //
+    // Only check for Interrupted if there was no timeout error.
+    match &status_result {
+        Err(RunnerError::Timeout) => {
+            // Timeout occurred - return it regardless of Ctrl-C state
+            return Err(RunnerError::Timeout);
+        }
+        _ => {
+            // No timeout error - check if we were interrupted
+            if ctrlc.interrupted.load(Ordering::SeqCst) {
+                return Err(RunnerError::Interrupted);
+            }
+        }
     }
 
-    // Now handle the wait_for_child result
+    // Now handle the wait_for_child result (either Ok or non-Timeout Err)
     let status = status_result?;
 
     let session_id = session_id_buf

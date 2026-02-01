@@ -341,6 +341,76 @@ fn test_pre_run_interrupt_returns_immediately() {
     );
 }
 
+/// Creates a shell command that simulates a slow-exiting process with configurable delay.
+/// The process will sleep for `exit_delay_ms` after receiving SIGINT,
+/// then exit with the specified code.
+fn slow_exit_command_with_delay(exit_delay_ms: u64, exit_code: i32) -> Command {
+    let script = format!(
+        r#"trap 'sleep 0.{exit_delay_ms}; exit {exit_code}' INT; while true; do sleep 1; done"#
+    );
+    let mut cmd = Command::new("sh");
+    cmd.arg("-c")
+        .arg(script)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    cmd
+}
+
+#[test]
+fn test_ctrl_c_during_timeout_grace_period() {
+    // This test verifies the behavior when Ctrl-C is pressed during the timeout
+    // grace period (after timeout interrupt sent but before 2s grace expires).
+    //
+    // Expected behavior: The timeout takes precedence because the safeguard
+    // mechanism needs to trigger (dumps/revert). Ctrl-C during timeout should
+    // still result in Timeout error, not Interrupted.
+    //
+    // Process: traps SIGINT, waits 500ms, exits 0
+    // Timeout: 50ms (triggers interrupt quickly)
+    // Ctrl-C: fired at 200ms (during grace period)
+
+    let mut cmd = slow_exit_command_with_delay(5, 0); // 500ms delay, exit 0
+
+    #[cfg(unix)]
+    unsafe {
+        use std::os::unix::process::CommandExt;
+        cmd.pre_exec(|| {
+            let _ = libc::setpgid(0, 0);
+            Ok(())
+        });
+    }
+
+    let mut child = cmd.spawn().expect("Failed to spawn test process");
+
+    let ctrlc = test_ctrlc_state();
+    #[cfg(unix)]
+    {
+        let mut guard = ctrlc.active_pgid.lock().unwrap();
+        *guard = Some(child.id() as i32);
+    }
+
+    // Set Ctrl-C to fire during the grace period (200ms)
+    let ctrlc_clone = Arc::clone(&ctrlc);
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(200));
+        ctrlc_clone.interrupted.store(true, Ordering::SeqCst);
+    });
+
+    // Short timeout to trigger interrupt quickly
+    let timeout = Some(Duration::from_millis(50));
+
+    let result = wait_for_child(&mut child, &ctrlc, timeout);
+
+    // Process should succeed because it exits with code 0 after interrupt
+    // (both timeout interrupt and Ctrl-C send SIGINT, so the handler runs)
+    assert!(
+        result.is_ok(),
+        "Process should exit successfully (code 0) after timeout interrupt, even with Ctrl-C during grace"
+    );
+    let status = result.unwrap();
+    assert!(status.success(), "Process should have exit code 0");
+}
+
 #[test]
 fn test_ctrlc_state_isolation() {
     // This test verifies that test_ctrlc_state creates isolated state

@@ -2,42 +2,45 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0504",
+      "id": "RQ-0509",
       "status": "todo",
-      "title": "Fix runner timeout handling for graceful shutdown edge cases",
+      "title": "Add enhanced filtering and output options to queue list command",
       "priority": "medium",
       "tags": [
-        "maintenance",
-        "reliability",
-        "runner"
+        "cli",
+        "queue",
+        "feature",
+        "ux"
       ],
       "scope": [
-        "crates/ralph/src/runner/execution/process.rs",
-        "crates/ralph/src/runner/execution/runners.rs"
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/commands/queue/list.rs",
+        "docs/cli.md"
       ],
       "evidence": [
-        "path: crates/ralph/src/runner/execution/process.rs :: fn wait_for_child :: SIGINT sent but no tracking of response",
-        "path: crates/ralph/src/runner/execution/process.rs :: lines 144-155 :: timeout interrupt sends signal but doesn't verify delivery",
-        "path: crates/ralph/src/runner/execution/runners.rs :: Runner-specific timeout handling inconsistent (some don't respect grace period)",
-        "repro: Set 1s timeout on long-running runner :: expected graceful shutdown after 1s + 2s grace :: actual may hang indefinitely if SIGINT ignored"
+        "User request: 'list' - enhance queue listing capabilities",
+        "path: .ralph/README.md :: ralph queue list exists but lacks filtering options",
+        "Current list shows all tasks without status/priority/tag filtering",
+        "No JSON or formatted output options for scripting/integration"
       ],
       "plan": [
-        "Verify SIGINT delivery by checking process exit within grace period",
-        "Ensure SIGKILL is always sent after grace period expires, regardless of process state",
-        "Add consistent timeout handling across all 7 runners",
-        "Add test for runner ignoring SIGINT (should still terminate via SIGKILL)",
-        "Verify by running runner that ignores SIGINT with short timeout"
+        "Add --status filter to list only tasks with specific status (todo/doing/draft)",
+        "Add --priority filter to list tasks by priority level",
+        "Add --tag filter to list tasks matching specific tags",
+        "Add --format option supporting: table (default), json, compact",
+        "Add --limit option to cap number of results",
+        "Add --sort option for sorting by created_at, priority, or status",
+        "Update docs/cli.md with new list command options and examples",
+        "Add tests for filtering and formatting logic"
       ],
       "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-01T05:14:31Z",
-      "updated_at": "2026-02-01T05:14:31Z",
+      "request": "list",
+      "created_at": "2026-02-01T08:52:10Z",
+      "updated_at": "2026-02-01T08:52:10Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
+      "custom_fields": {}
     },
     {
       "id": "RQ-0505",
