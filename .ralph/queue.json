@@ -83,46 +83,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0449",
-      "status": "todo",
-      "title": "Add interactive context init and update wizards",
-      "priority": "low",
-      "tags": [
-        "cli",
-        "context",
-        "ux",
-        "interactive"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/context.rs",
-        "crates/ralph/src/commands/context.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "docs/cli.md shows `--interactive` flag for context init/update as 'not yet implemented'",
-        "Context creation requires manual editing of AGENTS.md",
-        "No guided wizard for updating specific sections"
-      ],
-      "plan": [
-        "Implement `ralph context init --interactive` wizard",
-        "Guide user through project type selection with descriptions",
-        "Prompt for key configuration values (runner, model, CI command)",
-        "Preview generated AGENTS.md before writing",
-        "Implement `ralph context update --interactive`",
-        "Show list of sections that can be updated",
-        "Allow interactive input for new learnings per section",
-        "Add tests for interactive prompts and output validation"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-30T00:00:00Z",
-      "updated_at": "2026-01-30T00:00:00Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0450",
       "status": "todo",
       "title": "Add task splitting command to break down large tasks",

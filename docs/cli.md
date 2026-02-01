@@ -235,7 +235,7 @@ Flags:
 * `--force`: Overwrite existing AGENTS.md if it already exists.
 * `--project-type <rust|python|typescript|go|generic>`: Override auto-detection with a specific project type.
 * `--output <PATH>`: Output path for AGENTS.md (default: `AGENTS.md` in repo root).
-* `--interactive`: Interactive mode to guide through context creation (not yet implemented).
+* `--interactive`: Interactive mode to guide through context creation with prompts for project type, output path, build/test commands, and project description.
 
 Examples:
 
@@ -244,6 +244,9 @@ ralph context init
 ralph context init --force
 ralph context init --project-type rust
 ralph context init --project-type python --output docs/AGENTS.md
+
+# Interactive mode with guided prompts
+ralph context init --interactive
 ```
 
 ### `ralph context update`
@@ -254,7 +257,7 @@ Flags:
 
 * `--section <NAME>`: Section to update (can be specified multiple times).
 * `--file <PATH>`: File containing new learnings to append.
-* `--interactive`: Interactive mode to select sections and input learnings (not yet implemented).
+* `--interactive`: Interactive mode to select sections and input learnings. Presents a multi-select menu of existing sections, then prompts for new content via editor or single-line input.
 * `--dry-run`: Preview changes without writing to disk.
 * `--output <PATH>`: Output path (default: existing AGENTS.md location).
 
@@ -265,6 +268,9 @@ ralph context update --section troubleshooting
 ralph context update --section troubleshooting --section git-hygiene
 ralph context update --file new_learnings.md
 ralph context update --section troubleshooting --dry-run
+
+# Interactive mode to select sections and add content
+ralph context update --interactive
 ```
 
 ### `ralph context validate`

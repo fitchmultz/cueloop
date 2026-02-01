@@ -19,10 +19,16 @@ use crate::config;
 use crate::constants::agents_md::{RECOMMENDED_SECTIONS, REQUIRED_SECTIONS};
 use crate::constants::versions::TEMPLATE_VERSION;
 use crate::fsutil;
+
+pub mod merge;
+pub mod wizard;
+
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 use std::fs;
+use std::io::IsTerminal;
 use std::path::Path;
+use wizard::ContextPrompter;
 
 const TEMPLATE_GENERIC: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -137,8 +143,9 @@ pub fn run_context_init(
     resolved: &config::Resolved,
     opts: ContextInitOptions,
 ) -> Result<InitReport> {
-    // Check if file exists and we're not forcing
-    if opts.output_path.exists() && !opts.force {
+    // Check if file exists and we're not forcing (only in non-interactive mode)
+    // In interactive mode, we let the user decide
+    if !opts.interactive && opts.output_path.exists() && !opts.force {
         let detected = opts
             .project_type_hint
             .map(hint_to_detected)
@@ -150,27 +157,77 @@ pub fn run_context_init(
         });
     }
 
-    // Determine project type
-    let project_type = opts
+    // Determine project type (for non-interactive or as default for interactive)
+    let detected_type = opts
         .project_type_hint
         .map(hint_to_detected)
         .unwrap_or_else(|| detect_project_type(&resolved.repo_root));
 
-    // Generate content
-    let content = generate_agents_md(resolved, project_type)?;
+    // Interactive mode: run wizard
+    let (project_type, output_path, content) = if opts.interactive {
+        if !is_tty() {
+            anyhow::bail!("Interactive mode requires a TTY terminal");
+        }
+
+        let prompter = wizard::DialoguerPrompter;
+        let wizard_result = wizard::run_init_wizard(
+            &prompter,
+            detected_type_to_hint(detected_type),
+            &opts.output_path,
+        )
+        .context("interactive wizard failed")?;
+
+        let project_type = hint_to_detected(wizard_result.project_type);
+        let output_path = wizard_result
+            .output_path
+            .unwrap_or_else(|| opts.output_path.clone());
+
+        // Generate content with hints
+        let content = generate_agents_md_with_hints(
+            resolved,
+            project_type,
+            Some(&wizard_result.config_hints),
+        )?;
+
+        // Preview and confirm if requested
+        if wizard_result.confirm_write {
+            println!("\n{}", "─".repeat(60));
+            println!(
+                "{}",
+                colored::Colorize::bold("Preview of generated AGENTS.md:")
+            );
+            println!("{}", "─".repeat(60));
+            println!("{}", content);
+            println!("{}", "─".repeat(60));
+
+            let proceed = prompter
+                .confirm("Write this AGENTS.md?", true)
+                .context("failed to get confirmation")?;
+
+            if !proceed {
+                anyhow::bail!("AGENTS.md creation cancelled by user");
+            }
+        }
+
+        (project_type, output_path, content)
+    } else {
+        // Non-interactive mode
+        let content = generate_agents_md(resolved, detected_type)?;
+        (detected_type, opts.output_path.clone(), content)
+    };
 
     // Write file
-    if let Some(parent) = opts.output_path.parent() {
+    if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("create directory {}", parent.display()))?;
     }
-    fsutil::write_atomic(&opts.output_path, content.as_bytes())
-        .with_context(|| format!("write AGENTS.md {}", opts.output_path.display()))?;
+    fsutil::write_atomic(&output_path, content.as_bytes())
+        .with_context(|| format!("write AGENTS.md {}", output_path.display()))?;
 
     Ok(InitReport {
         status: FileInitStatus::Created,
         detected_project_type: project_type,
-        output_path: opts.output_path,
+        output_path,
     })
 }
 
@@ -188,46 +245,80 @@ pub fn run_context_update(
     }
 
     // Read existing content
-    let _existing_content =
+    let existing_content =
         fs::read_to_string(&opts.output_path).context("read existing AGENTS.md")?;
 
-    let mut sections_updated = Vec::new();
+    // Parse existing document
+    let existing_doc = merge::parse_markdown_document(&existing_content);
+    let existing_sections = existing_doc
+        .section_titles()
+        .into_iter()
+        .map(String::from)
+        .collect::<Vec<_>>();
 
+    let mut updates: Vec<(String, String)> = Vec::new();
+
+    // Handle interactive mode
+    if opts.interactive {
+        if !is_tty() {
+            anyhow::bail!("Interactive mode requires a TTY terminal");
+        }
+
+        let prompter = wizard::DialoguerPrompter;
+        updates = wizard::run_update_wizard(&prompter, &existing_sections, &existing_content)
+            .context("interactive wizard failed")?;
+    }
     // Handle file-based update
-    if let Some(file_path) = &opts.file {
+    else if let Some(file_path) = &opts.file {
         let new_content = fs::read_to_string(file_path).context("read update file")?;
         let parsed = parse_markdown_sections(&new_content);
 
-        for (section_name, _section_content) in parsed {
+        for (section_name, section_content) in parsed {
             if opts.sections.is_empty() || opts.sections.contains(&section_name) {
-                sections_updated.push(section_name.clone());
-                // In a real implementation, we'd merge sections here
-                // For now, we just track which sections would be updated
+                updates.push((section_name, section_content));
             }
         }
     }
-
-    // Handle section-specific updates
-    for section in &opts.sections {
-        if !sections_updated.contains(section) {
-            sections_updated.push(section.clone());
-        }
+    // Handle section-specific updates (non-interactive, no file)
+    else {
+        anyhow::bail!(
+            "No update source specified. Use --interactive, --file, or specify sections with content."
+        );
     }
 
-    // If dry run, don't actually write
+    // If no updates, return early
+    if updates.is_empty() {
+        return Ok(UpdateReport {
+            sections_updated: Vec::new(),
+            dry_run: opts.dry_run,
+        });
+    }
+
+    // Merge updates into existing document
+    let (merged_doc, sections_updated) = merge::merge_section_updates(&existing_doc, &updates);
+
+    // If dry run, preview changes without writing
     if opts.dry_run {
+        println!("\n{}", "─".repeat(60));
+        println!(
+            "{}",
+            colored::Colorize::bold("Dry run - changes that would be made:")
+        );
+        println!("{}", "─".repeat(60));
+        for section in &sections_updated {
+            println!("  • Update section: {}", section);
+        }
+        println!("{}", "─".repeat(60));
         return Ok(UpdateReport {
             sections_updated,
             dry_run: true,
         });
     }
 
-    // In a full implementation, we would:
-    // 1. Parse the existing AGENTS.md into sections
-    // 2. Merge in new content
-    // 3. Write back the merged result
-    //
-    // For now, we just return success with the sections that would be updated
+    // Write merged content back
+    let merged_content = merged_doc.to_content();
+    fsutil::write_atomic(&opts.output_path, merged_content.as_bytes())
+        .with_context(|| format!("write AGENTS.md {}", opts.output_path.display()))?;
 
     Ok(UpdateReport {
         sections_updated,
@@ -301,6 +392,22 @@ fn hint_to_detected(hint: ProjectTypeHint) -> DetectedProjectType {
     }
 }
 
+/// Convert detected type to CLI hint
+fn detected_type_to_hint(detected: DetectedProjectType) -> ProjectTypeHint {
+    match detected {
+        DetectedProjectType::Rust => ProjectTypeHint::Rust,
+        DetectedProjectType::Python => ProjectTypeHint::Python,
+        DetectedProjectType::TypeScript => ProjectTypeHint::TypeScript,
+        DetectedProjectType::Go => ProjectTypeHint::Go,
+        DetectedProjectType::Generic => ProjectTypeHint::Generic,
+    }
+}
+
+/// Check if stdin and stdout are both TTYs
+fn is_tty() -> bool {
+    std::io::stdin().is_terminal() && std::io::stdout().is_terminal()
+}
+
 /// Detect project type based on files in repo root
 fn detect_project_type(repo_root: &Path) -> DetectedProjectType {
     // Check for Rust
@@ -330,6 +437,15 @@ fn generate_agents_md(
     resolved: &config::Resolved,
     project_type: DetectedProjectType,
 ) -> Result<String> {
+    generate_agents_md_with_hints(resolved, project_type, None)
+}
+
+/// Generate AGENTS.md content with optional config hints
+fn generate_agents_md_with_hints(
+    resolved: &config::Resolved,
+    project_type: DetectedProjectType,
+    hints: Option<&wizard::ConfigHints>,
+) -> Result<String> {
     let template = match project_type {
         DetectedProjectType::Rust => TEMPLATE_RUST,
         DetectedProjectType::Python => TEMPLATE_PYTHON,
@@ -352,19 +468,34 @@ fn generate_agents_md(
     // Get id_prefix from config
     let id_prefix = resolved.id_prefix.clone();
 
+    // Use hints if provided, otherwise defaults
+    let project_description = hints
+        .and_then(|h| h.project_description.as_deref())
+        .unwrap_or("Add a brief description of your project here.");
+    let ci_command = hints.map(|h| h.ci_command.as_str()).unwrap_or("make ci");
+    let build_command = hints
+        .map(|h| h.build_command.as_str())
+        .unwrap_or("make build");
+    let test_command = hints
+        .map(|h| h.test_command.as_str())
+        .unwrap_or("make test");
+    let lint_command = hints
+        .map(|h| h.lint_command.as_str())
+        .unwrap_or("make lint");
+    let format_command = hints
+        .map(|h| h.format_command.as_str())
+        .unwrap_or("make format");
+
     // Replace placeholders
     let content = template
         .replace("{project_name}", &project_name)
-        .replace(
-            "{project_description}",
-            "Add a brief description of your project here.",
-        )
+        .replace("{project_description}", project_description)
         .replace("{repository_map}", &repo_map)
-        .replace("{ci_command}", "make ci")
-        .replace("{build_command}", "make build")
-        .replace("{test_command}", "make test")
-        .replace("{lint_command}", "make lint")
-        .replace("{format_command}", "make format")
+        .replace("{ci_command}", ci_command)
+        .replace("{build_command}", build_command)
+        .replace("{test_command}", test_command)
+        .replace("{lint_command}", lint_command)
+        .replace("{format_command}", format_command)
         .replace(
             "{package_name}",
             &project_name.to_lowercase().replace(" ", "-"),
@@ -761,17 +892,23 @@ Content two.
         let dir = TempDir::new()?;
         let resolved = create_test_resolved(&dir);
 
-        // Create initial AGENTS.md
+        // Create initial AGENTS.md with a section to update
         fs::write(
             resolved.repo_root.join("AGENTS.md"),
             "# Repository Guidelines\n\n## Non-Negotiables\n\nRules.\n",
         )?;
 
+        // Create an update file to use for the test
+        fs::write(
+            resolved.repo_root.join("update.md"),
+            "## Non-Negotiables\n\nAdditional rules.\n",
+        )?;
+
         let report = run_context_update(
             &resolved,
             ContextUpdateOptions {
-                sections: vec!["troubleshooting".to_string()],
-                file: None,
+                sections: vec!["Non-Negotiables".to_string()],
+                file: Some(resolved.repo_root.join("update.md")),
                 interactive: false,
                 dry_run: true,
                 output_path: resolved.repo_root.join("AGENTS.md"),
@@ -782,7 +919,7 @@ Content two.
         assert!(
             report
                 .sections_updated
-                .contains(&"troubleshooting".to_string())
+                .contains(&"Non-Negotiables".to_string())
         );
 
         Ok(())
