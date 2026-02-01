@@ -175,23 +175,22 @@ Each phase config can specify:
 {
   "agent": {
     "runner": "codex",
-    "model": "o3-mini",
+    "model": "gpt-5.2-codex,
     "reasoning_effort": "medium",
     "phase_overrides": {
       "defaults": {
-        "runner": "codex"
+        "runner": "kimi"
       },
       "phase1": {
-        "model": "o3-mini",
+        "model": "gpt-5.2",
         "reasoning_effort": "high"
       },
       "phase2": {
-        "model": "gpt-4o",
-        "reasoning_effort": "medium"
+        "model": "kimi"
       },
       "phase3": {
-        "runner": "claude",
-        "model": "claude-opus-4",
+        "runner": "codex",
+        "model": "gpt-5.2",
         "reasoning_effort": "high"
       }
     }
