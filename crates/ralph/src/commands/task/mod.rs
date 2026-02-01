@@ -82,6 +82,8 @@ pub struct TaskBuildOptions {
     pub template_hint: Option<String>,
     /// Optional target path for template variable substitution
     pub template_target: Option<String>,
+    /// Fail on unknown template variables (default: false, warns only)
+    pub strict_templates: bool,
 }
 
 // TaskUpdateSettings controls runner-driven task updates via .ralph/prompts/task_updater.md.
@@ -289,6 +291,7 @@ mod tests {
             repoprompt_tool_injection: false,
             template_hint: None,
             template_target: None,
+            strict_templates: false,
         }
     }
 

@@ -1484,6 +1484,22 @@ Templates support variable substitution using `{{variable}}` syntax:
 - `{{file}}` - Filename only (e.g., `task.rs`)
 - `{{branch}}` - Current git branch name
 
+**Template Validation:**
+
+By default, unknown template variables are left as-is with a warning. Use `--strict-templates` to fail on unknown variables (useful in CI to catch typos).
+
+* `--strict-templates`: Fail if the template contains unknown `{{variables}}`. When disabled (default), unknown variables are left as-is with a warning.
+
+Unknown variables produce warnings like:
+```
+Warning: Template 'custom': Unknown template variable: {{unknown_var}}
+```
+
+Git branch detection failures also produce warnings when `{{branch}}` is used:
+```
+Warning: Template 'custom': Git branch detection failed: not a git repository
+```
+
 **Subcommands:**
 
 - `ralph task template list` - List all available templates

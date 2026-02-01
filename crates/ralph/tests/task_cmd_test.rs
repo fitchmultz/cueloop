@@ -96,6 +96,7 @@ fn test_task_build_options_default_values() {
         repoprompt_tool_injection: false,
         template_hint: None,
         template_target: None,
+        strict_templates: false,
     };
 
     assert_eq!(opts.request, "test request");
@@ -121,6 +122,7 @@ fn test_task_build_options_with_values() {
         repoprompt_tool_injection: false,
         template_hint: None,
         template_target: None,
+        strict_templates: false,
     };
 
     assert_eq!(opts.request, "implement feature");
@@ -147,6 +149,7 @@ fn test_task_build_options_empty_request_validation() {
         repoprompt_tool_injection: false,
         template_hint: None,
         template_target: None,
+        strict_templates: false,
     };
 
     assert!(opts.request.trim().is_empty());
@@ -166,6 +169,7 @@ fn test_task_build_options_whitespace_request_validation() {
         repoprompt_tool_injection: false,
         template_hint: None,
         template_target: None,
+        strict_templates: false,
     };
 
     assert!(opts.request.trim().is_empty());
@@ -196,6 +200,7 @@ fn test_task_build_options_all_runners() {
             repoprompt_tool_injection: false,
             template_hint: None,
             template_target: None,
+            strict_templates: false,
         };
         assert_eq!(opts.request, "test");
     }
@@ -223,6 +228,7 @@ fn test_task_build_options_all_models() {
             repoprompt_tool_injection: false,
             template_hint: None,
             template_target: None,
+            strict_templates: false,
         };
         assert_eq!(opts.request, "test");
     }
@@ -251,6 +257,7 @@ fn test_task_build_options_all_reasoning_efforts() {
             repoprompt_tool_injection: false,
             template_hint: None,
             template_target: None,
+            strict_templates: false,
         };
         // Just verify we can create options with each effort level
         assert_eq!(opts.request, "test");

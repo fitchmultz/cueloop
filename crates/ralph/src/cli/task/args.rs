@@ -175,6 +175,12 @@ pub struct TaskBuildArgs {
     /// Used with --template to auto-fill template variables.
     #[arg(long, value_name = "PATH")]
     pub target: Option<String>,
+
+    /// Fail on unknown template variables (default: warn only).
+    /// When enabled, template loading fails if the template contains unknown {{variables}}.
+    /// When disabled (default), unknown variables are left as-is with a warning.
+    #[arg(long)]
+    pub strict_templates: bool,
 }
 
 #[derive(Args)]
@@ -229,6 +235,12 @@ pub struct TaskBuildRefactorArgs {
 
     #[command(flatten)]
     pub runner_cli: agent::RunnerCliArgs,
+
+    /// Fail on unknown template variables (default: warn only).
+    /// When enabled, template loading fails if the template contains unknown {{variables}}.
+    /// When disabled (default), unknown variables are left as-is with a warning.
+    #[arg(long)]
+    pub strict_templates: bool,
 }
 
 #[derive(Args)]
@@ -617,6 +629,12 @@ pub struct TaskTemplateBuildArgs {
 
     #[command(flatten)]
     pub runner_cli: agent::RunnerCliArgs,
+
+    /// Fail on unknown template variables (default: warn only).
+    /// When enabled, template loading fails if the template contains unknown {{variables}}.
+    /// When disabled (default), unknown variables are left as-is with a warning.
+    #[arg(long)]
+    pub strict_templates: bool,
 }
 
 #[derive(Subcommand)]

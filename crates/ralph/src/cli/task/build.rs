@@ -59,6 +59,7 @@ pub fn handle(args: &TaskBuildArgs, force: bool, resolved: &config::Resolved) ->
             repoprompt_tool_injection: agent::resolve_rp_required(args.repo_prompt, resolved),
             template_hint,
             template_target,
+            strict_templates: args.strict_templates,
         },
     )
 }

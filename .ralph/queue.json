@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0507",
-      "status": "todo",
-      "title": "Improve template variable error reporting and validation",
-      "priority": "low",
-      "tags": [
-        "maintenance",
-        "ux",
-        "template"
-      ],
-      "scope": [
-        "crates/ralph/src/template/variables.rs",
-        "crates/ralph/src/commands/task/build.rs"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/template/variables.rs :: fn substitute_variables :: unknown variables silently left as-is",
-        "path: crates/ralph/src/template/variables.rs :: lines 155-175 :: No warning when {{variable}} not found in context",
-        "path: crates/ralph/src/template/variables.rs :: fn detect_git_branch :: silently returns None on git errors",
-        "repro: Create task with {{nonexistent}} variable :: expected warning about unknown variable :: actual silently preserved in output"
-      ],
-      "plan": [
-        "Add warnings for unknown template variables",
-        "Add --strict-templates flag to fail on unknown variables",
-        "Improve error reporting when git branch detection fails",
-        "Add validation of template variables at task creation time",
-        "Add test for unknown variable detection",
-        "Verify by creating task with unknown variable and checking output"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-01T05:14:31Z",
-      "updated_at": "2026-02-01T05:14:31Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0439",
       "status": "draft",
       "title": "Implement subtask support for hierarchical task breakdown",

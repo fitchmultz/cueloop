@@ -4,6 +4,7 @@
 //! - Load templates from `.ralph/templates/{name}.json` first.
 //! - Fall back to built-in templates if no custom template exists.
 //! - List all available templates (built-in + custom).
+//! - Validate templates and return warnings for unknown variables.
 //!
 //! Not handled here:
 //! - Template content validation beyond JSON parsing.
@@ -13,14 +14,18 @@
 //! - Custom templates override built-ins with the same name.
 //! - Template files must have `.json` extension.
 //! - Template names are case-sensitive.
+//! - Variable validation is performed (unknowns produce warnings; strict mode fails).
 
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 
 use crate::contracts::Task;
 use crate::template::builtin::{get_builtin_template, get_template_description};
-use crate::template::variables::{TemplateContext, detect_context, substitute_variables_in_task};
+use crate::template::variables::{
+    TemplateContext, TemplateWarning, detect_context_with_warnings, substitute_variables_in_task,
+    validate_task_template,
+};
 
 /// Source of a loaded template
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,6 +53,8 @@ pub enum TemplateError {
     ReadError(String),
     #[error("Invalid template JSON: {0}")]
     InvalidJson(String),
+    #[error("Template validation failed: {0}")]
+    ValidationError(String),
 }
 
 /// Load a template by name
@@ -143,30 +150,80 @@ pub fn template_exists(name: &str, project_root: &Path) -> bool {
     custom_path.exists() || get_builtin_template(name).is_some()
 }
 
+/// Result of loading a template with context
+#[derive(Debug, Clone)]
+pub struct LoadedTemplate {
+    /// The task with variables substituted
+    pub task: Task,
+    /// The source of the template
+    pub source: TemplateSource,
+    /// Warnings collected during validation and context detection
+    pub warnings: Vec<TemplateWarning>,
+}
+
 /// Load a template by name with variable substitution
 ///
 /// Checks `.ralph/templates/{name}.json` first, then falls back to built-in templates.
 /// Substitutes template variables ({{target}}, {{module}}, {{file}}, {{branch}}) with
 /// context-aware values.
+///
+/// If `strict` is true and unknown variables are present, returns an error.
 pub fn load_template_with_context(
     name: &str,
     project_root: &Path,
     target: Option<&str>,
-) -> Result<(Task, TemplateSource)> {
-    let context = detect_context(target, project_root);
-
+    strict: bool,
+) -> Result<LoadedTemplate> {
     // Load the base template
     let (mut task, source) = load_template(name, project_root)?;
+
+    // Validate the template before substitution
+    let validation = validate_task_template(&task);
+
+    // In strict mode, fail on unknown variables
+    if strict && validation.has_unknown_variables() {
+        let unknowns = validation.unknown_variable_names();
+        bail!(TemplateError::ValidationError(format!(
+            "Template '{}' contains unknown variables: {}",
+            name,
+            unknowns.join(", ")
+        )));
+    }
+
+    // Detect context, only requesting branch if needed
+    let (context, mut warnings) =
+        detect_context_with_warnings(target, project_root, validation.uses_branch);
+
+    // Add validation warnings to context warnings
+    warnings.extend(validation.warnings);
 
     // Substitute variables in all string fields
     substitute_variables_in_task(&mut task, &context);
 
-    Ok((task, source))
+    Ok(LoadedTemplate {
+        task,
+        source,
+        warnings,
+    })
+}
+
+/// Load a template by name with variable substitution (legacy, non-strict)
+///
+/// This is a convenience function for backward compatibility.
+/// Use `load_template_with_context` for full control.
+pub fn load_template_with_context_legacy(
+    name: &str,
+    project_root: &Path,
+    target: Option<&str>,
+) -> Result<(Task, TemplateSource)> {
+    let loaded = load_template_with_context(name, project_root, target, false)?;
+    Ok((loaded.task, loaded.source))
 }
 
 /// Get the template context for inspection
 pub fn get_template_context(target: Option<&str>, project_root: &Path) -> TemplateContext {
-    detect_context(target, project_root)
+    let (context, _) = detect_context_with_warnings(target, project_root, true);
+    context
 }
 
 #[cfg(test)]
@@ -317,17 +374,20 @@ mod tests {
         let mut file = std::fs::File::create(templates_dir.join("bug.json")).unwrap();
         file.write_all(custom_template.as_bytes()).unwrap();
 
-        let result = load_template_with_context("bug", temp_dir.path(), Some("src/cli/task.rs"));
+        let result =
+            load_template_with_context("bug", temp_dir.path(), Some("src/cli/task.rs"), false);
         assert!(result.is_ok());
 
-        let (task, _) = result.unwrap();
-        assert_eq!(task.title, "Fix src/cli/task.rs");
-        assert!(task.tags.contains(&"bug".to_string()));
-        assert!(task.tags.contains(&"cli::task".to_string()));
-        assert!(task.scope.contains(&"src/cli/task.rs".to_string()));
-        assert!(task.plan.contains(&"Analyze task.rs".to_string()));
+        let loaded = result.unwrap();
+        assert_eq!(loaded.task.title, "Fix src/cli/task.rs");
+        assert!(loaded.task.tags.contains(&"bug".to_string()));
+        assert!(loaded.task.tags.contains(&"cli::task".to_string()));
+        assert!(loaded.task.scope.contains(&"src/cli/task.rs".to_string()));
+        assert!(loaded.task.plan.contains(&"Analyze task.rs".to_string()));
         assert!(
-            task.evidence
+            loaded
+                .task
+                .evidence
                 .contains(&"Issue in src/cli/task.rs".to_string())
         );
     }
@@ -336,11 +396,155 @@ mod tests {
     fn test_load_template_with_context_no_target() {
         let temp_dir = create_test_project();
 
-        let result = load_template_with_context("bug", temp_dir.path(), None);
+        let result = load_template_with_context("bug", temp_dir.path(), None, false);
         assert!(result.is_ok());
 
-        let (task, _) = result.unwrap();
+        let loaded = result.unwrap();
         // Variables should be left as-is when no target is provided
-        assert!(task.title.contains("{{target}}") || task.title.is_empty());
+        assert!(loaded.task.title.contains("{{target}}") || loaded.task.title.is_empty());
+    }
+
+    #[test]
+    fn test_load_template_with_context_returns_warnings() {
+        let temp_dir = create_test_project();
+
+        // Create a custom template with unknown variables
+        let templates_dir = temp_dir.path().join(".ralph/templates");
+        std::fs::create_dir_all(&templates_dir).unwrap();
+
+        let custom_template = r#"{
+            "id": "",
+            "title": "Fix {{target}} with {{unknown_var}}",
+            "status": "todo",
+            "priority": "high",
+            "tags": ["bug"]
+        }"#;
+
+        let mut file = std::fs::File::create(templates_dir.join("custom.json")).unwrap();
+        file.write_all(custom_template.as_bytes()).unwrap();
+
+        let result =
+            load_template_with_context("custom", temp_dir.path(), Some("src/main.rs"), false);
+        assert!(result.is_ok());
+
+        let loaded = result.unwrap();
+        // Should have warnings for unknown variables
+        assert!(!loaded.warnings.is_empty());
+        assert!(loaded.warnings.iter().any(|w| matches!(
+            w,
+            TemplateWarning::UnknownVariable { name, .. } if name == "unknown_var"
+        )));
+    }
+
+    #[test]
+    fn test_load_template_strict_mode_fails_on_unknown() {
+        let temp_dir = create_test_project();
+
+        // Create a custom template with unknown variables
+        let templates_dir = temp_dir.path().join(".ralph/templates");
+        std::fs::create_dir_all(&templates_dir).unwrap();
+
+        let custom_template = r#"{
+            "id": "",
+            "title": "Fix {{unknown_var}}",
+            "status": "todo",
+            "priority": "high",
+            "tags": ["bug"]
+        }"#;
+
+        let mut file = std::fs::File::create(templates_dir.join("custom.json")).unwrap();
+        file.write_all(custom_template.as_bytes()).unwrap();
+
+        // In strict mode, should fail
+        let result =
+            load_template_with_context("custom", temp_dir.path(), Some("src/main.rs"), true);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("unknown_var"));
+    }
+
+    #[test]
+    fn test_load_template_strict_mode_succeeds_when_no_unknown() {
+        let temp_dir = create_test_project();
+
+        // Use built-in bug template which shouldn't have unknown variables
+        let result = load_template_with_context("bug", temp_dir.path(), Some("src/main.rs"), true);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_load_template_with_context_git_warning() {
+        let temp_dir = create_test_project();
+
+        // Create a template that uses {{branch}}
+        let templates_dir = temp_dir.path().join(".ralph/templates");
+        std::fs::create_dir_all(&templates_dir).unwrap();
+
+        let custom_template = r#"{
+            "id": "",
+            "title": "Fix on branch {{branch}}",
+            "status": "todo",
+            "priority": "high",
+            "tags": ["bug"]
+        }"#;
+
+        let mut file = std::fs::File::create(templates_dir.join("custom.json")).unwrap();
+        file.write_all(custom_template.as_bytes()).unwrap();
+
+        // Create a .git directory with an invalid HEAD to force git detection to fail
+        // This simulates a corrupted/broken git repo
+        std::fs::create_dir_all(temp_dir.path().join(".git")).unwrap();
+        std::fs::write(
+            temp_dir.path().join(".git/HEAD"),
+            "invalid: refs/heads/nonexistent",
+        )
+        .unwrap();
+
+        // Git detection should fail with invalid HEAD, producing a warning
+        let result = load_template_with_context("custom", temp_dir.path(), None, false);
+        assert!(result.is_ok());
+
+        let loaded = result.unwrap();
+        // Should have warnings for git branch detection failure
+        assert!(
+            loaded
+                .warnings
+                .iter()
+                .any(|w| matches!(w, TemplateWarning::GitBranchDetectionFailed { .. }))
+        );
+    }
+
+    #[test]
+    fn test_load_template_with_context_no_git_warning_when_no_branch_var() {
+        let temp_dir = create_test_project();
+
+        // Create a template that does NOT use {{branch}}
+        let templates_dir = temp_dir.path().join(".ralph/templates");
+        std::fs::create_dir_all(&templates_dir).unwrap();
+
+        let custom_template = r#"{
+            "id": "",
+            "title": "Fix {{target}}",
+            "status": "todo",
+            "priority": "high",
+            "tags": ["bug"]
+        }"#;
+
+        let mut file = std::fs::File::create(templates_dir.join("custom.json")).unwrap();
+        file.write_all(custom_template.as_bytes()).unwrap();
+
+        // Not a git repo, but shouldn't get git warning since we don't use {{branch}}
+        let result =
+            load_template_with_context("custom", temp_dir.path(), Some("src/main.rs"), false);
+        assert!(result.is_ok());
+
+        let loaded = result.unwrap();
+        // Should NOT have git branch detection warnings
+        assert!(
+            !loaded
+                .warnings
+                .iter()
+                .any(|w| matches!(w, TemplateWarning::GitBranchDetectionFailed { .. }))
+        );
     }
 }

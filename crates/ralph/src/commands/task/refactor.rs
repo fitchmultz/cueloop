@@ -113,6 +113,7 @@ pub fn build_refactor_tasks(
                 repoprompt_tool_injection: opts.repoprompt_tool_injection,
                 template_hint: Some("refactor".to_string()),
                 template_target: None,
+                strict_templates: false,
             },
         )?;
         created_count += 1;
