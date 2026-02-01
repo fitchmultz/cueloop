@@ -159,6 +159,18 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
   - Clean-repo checks allow changes to `.ralph/config.json` (plus `.ralph/queue.json` and `.ralph/done.json`); use `--force` to bypass entirely.\n\
   - TUI entrypoints: `ralph tui`, `ralph run one -i`, `ralph run loop -i`.\n\
  \n\
+Phase-specific overrides:\n\
+  Use --runner-phaseN, --model-phaseN, --effort-phaseN to override settings for a specific phase.\n\
+  Phase-specific flags take precedence over global flags for that phase.\n\
+  Single-pass (--phases 1) uses Phase 2 overrides.\n\
+ \n\
+  Precedence per phase (highest to lowest):\n\
+    1) CLI phase override (--runner-phaseN, --model-phaseN, --effort-phaseN)\n\
+    2) Config phase override (agent.phase_overrides.phaseN.*)\n\
+    3) CLI global override (--runner, --model, --effort)\n\
+    4) Task override (task.agent.*)\n\
+    5) Config defaults (agent.*)\n\
+ \n\
  To change defaults for this repo, edit .ralph/config.json:\n\
   version: 1\n\
   agent:\n\
@@ -172,6 +184,8 @@ Examples:\n\
  ralph run one --phases 1\n\
  ralph run one --runner opencode --model gpt-5.2\n\
  ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
+ ralph run one --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high\n\
+ ralph run one --runner-phase2 claude --model-phase2 opus\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
  ralph run one --runner pi --model gpt-5.2\n\
  ralph run one --include-draft\n\
@@ -229,6 +243,8 @@ Examples:\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
  ralph run one --runner pi --model gpt-5.2\n\
  ralph run one --runner codex --model gpt-5.2-codex --effort high\n\
+ ralph run one --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high\n\
+ ralph run one --runner-phase2 claude --model-phase2 opus\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode enabled\n\
  ralph run one --git-commit-push-off\n\
@@ -250,6 +266,8 @@ Examples:\n\
  ralph run loop --max-tasks 3\n\
  ralph run loop --max-tasks 1 --debug\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
+ ralph run loop --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high --max-tasks 1\n\
+ ralph run loop --runner-phase2 claude --model-phase2 opus --max-tasks 1\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode disabled --max-tasks 1\n\
  ralph run loop --git-commit-push-off --max-tasks 1\n\

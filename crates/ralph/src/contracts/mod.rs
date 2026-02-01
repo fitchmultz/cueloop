@@ -21,10 +21,10 @@ mod task;
 
 pub use config::{
     AgentConfig, AutoArchiveBehavior, ClaudePermissionMode, Config, GitRevertMode, Model,
-    ModelEffort, NotificationConfig, ProjectType, QueueConfig, ReasoningEffort, Runner,
-    RunnerApprovalMode, RunnerCliConfigRoot, RunnerCliOptionsPatch, RunnerOutputFormat,
-    RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity, TuiConfig, UnsupportedOptionPolicy,
-    WebhookConfig,
+    ModelEffort, NotificationConfig, PhaseOverrideConfig, PhaseOverrides, ProjectType, QueueConfig,
+    ReasoningEffort, Runner, RunnerApprovalMode, RunnerCliConfigRoot, RunnerCliOptionsPatch,
+    RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity, TuiConfig,
+    UnsupportedOptionPolicy, WebhookConfig,
 };
 pub use queue::QueueFile;
 pub use session::SessionState;

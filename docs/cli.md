@@ -576,6 +576,37 @@ These flags configure a normalized runner CLI behavior surface across Codex/Open
 * `--output-format <stream-json|json|text>`: execution requires `stream-json`.
 * `--unsupported-option-policy <ignore|warn|error>`: handling for unsupported options (default: `warn`).
 
+### Phase-Specific Overrides
+
+Use phase-specific flags to select different runners/models/effort for each execution phase:
+
+* `--runner-phase1`, `--model-phase1`, `--effort-phase1`: Phase 1 (planning) overrides
+* `--runner-phase2`, `--model-phase2`, `--effort-phase2`: Phase 2 (implementation) overrides
+* `--runner-phase3`, `--model-phase3`, `--effort-phase3`: Phase 3 (review) overrides
+
+Precedence per phase (highest to lowest):
+1. CLI phase override (`--runner-phaseN`, `--model-phaseN`, `--effort-phaseN`)
+2. Config phase override (`agent.phase_overrides.phaseN.*`)
+3. CLI global override (`--runner`, `--model`, `--effort`)
+4. Task override (`task.agent.*`)
+5. Config defaults (`agent.*`)
+
+Single-pass execution (`--phases 1`) uses Phase 2 overrides (behaviorally closest to implementation).
+
+Examples:
+
+```bash
+# Use Codex for planning, Claude for implementation
+ralph run one --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high \
+              --runner-phase2 claude --model-phase2 opus
+
+# Full 3-phase with different settings per phase
+ralph run one --phases 3 \
+              --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high \
+              --runner-phase2 claude --model-phase2 opus \
+              --runner-phase3 codex --model-phase3 gpt-5.2-codex --effort-phase3 high
+```
+
 Examples:
 
 ```bash

@@ -16,9 +16,9 @@
 
 use crate::config;
 use crate::contracts::{
-    AgentConfig, GitRevertMode, Model, ReasoningEffort, Runner, RunnerApprovalMode,
-    RunnerCliOptionsPatch, RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity,
-    UnsupportedOptionPolicy,
+    AgentConfig, GitRevertMode, Model, PhaseOverrideConfig, PhaseOverrides, ReasoningEffort,
+    Runner, RunnerApprovalMode, RunnerCliOptionsPatch, RunnerOutputFormat, RunnerPlanMode,
+    RunnerSandboxMode, RunnerVerbosity, UnsupportedOptionPolicy,
 };
 use anyhow::{anyhow, bail, Result};
 use clap::{Args, ValueEnum};
@@ -184,6 +184,45 @@ pub struct RunAgentArgs {
     /// Disable progress indicators and celebrations.
     #[arg(long)]
     pub no_progress: bool,
+
+    // Phase 1 overrides
+    /// Runner override for Phase 1 (planning).
+    #[arg(long, value_name = "RUNNER")]
+    pub runner_phase1: Option<String>,
+
+    /// Model override for Phase 1 (planning).
+    #[arg(long, value_name = "MODEL")]
+    pub model_phase1: Option<String>,
+
+    /// Reasoning effort override for Phase 1 (planning).
+    #[arg(long, value_name = "EFFORT")]
+    pub effort_phase1: Option<String>,
+
+    // Phase 2 overrides
+    /// Runner override for Phase 2 (implementation).
+    #[arg(long, value_name = "RUNNER")]
+    pub runner_phase2: Option<String>,
+
+    /// Model override for Phase 2 (implementation).
+    #[arg(long, value_name = "MODEL")]
+    pub model_phase2: Option<String>,
+
+    /// Reasoning effort override for Phase 2 (implementation).
+    #[arg(long, value_name = "EFFORT")]
+    pub effort_phase2: Option<String>,
+
+    // Phase 3 overrides
+    /// Runner override for Phase 3 (review).
+    #[arg(long, value_name = "RUNNER")]
+    pub runner_phase3: Option<String>,
+
+    /// Model override for Phase 3 (review).
+    #[arg(long, value_name = "MODEL")]
+    pub model_phase3: Option<String>,
+
+    /// Reasoning effort override for Phase 3 (review).
+    #[arg(long, value_name = "EFFORT")]
+    pub effort_phase3: Option<String>,
 }
 
 /// Agent overrides from CLI arguments.
@@ -219,6 +258,8 @@ pub struct AgentOverrides {
     pub lfs_check: Option<bool>,
     /// Disable progress indicators and celebrations.
     pub no_progress: Option<bool>,
+    /// Per-phase overrides from CLI (phase1, phase2, phase3).
+    pub phase_overrides: Option<PhaseOverrides>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -402,6 +443,82 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
     let lfs_check = if args.lfs_check { Some(true) } else { None };
     let no_progress = if args.no_progress { Some(true) } else { None };
 
+    // Parse phase-specific overrides
+    let mut phase_overrides = PhaseOverrides::default();
+
+    // Phase 1
+    if args.runner_phase1.is_some() || args.model_phase1.is_some() || args.effort_phase1.is_some() {
+        phase_overrides.phase1 = Some(PhaseOverrideConfig {
+            runner: args
+                .runner_phase1
+                .as_deref()
+                .map(parse_runner)
+                .transpose()?,
+            model: args
+                .model_phase1
+                .as_deref()
+                .map(runner::parse_model)
+                .transpose()?,
+            reasoning_effort: args
+                .effort_phase1
+                .as_deref()
+                .map(runner::parse_reasoning_effort)
+                .transpose()?,
+        });
+    }
+
+    // Phase 2
+    if args.runner_phase2.is_some() || args.model_phase2.is_some() || args.effort_phase2.is_some() {
+        phase_overrides.phase2 = Some(PhaseOverrideConfig {
+            runner: args
+                .runner_phase2
+                .as_deref()
+                .map(parse_runner)
+                .transpose()?,
+            model: args
+                .model_phase2
+                .as_deref()
+                .map(runner::parse_model)
+                .transpose()?,
+            reasoning_effort: args
+                .effort_phase2
+                .as_deref()
+                .map(runner::parse_reasoning_effort)
+                .transpose()?,
+        });
+    }
+
+    // Phase 3
+    if args.runner_phase3.is_some() || args.model_phase3.is_some() || args.effort_phase3.is_some() {
+        phase_overrides.phase3 = Some(PhaseOverrideConfig {
+            runner: args
+                .runner_phase3
+                .as_deref()
+                .map(parse_runner)
+                .transpose()?,
+            model: args
+                .model_phase3
+                .as_deref()
+                .map(runner::parse_model)
+                .transpose()?,
+            reasoning_effort: args
+                .effort_phase3
+                .as_deref()
+                .map(runner::parse_reasoning_effort)
+                .transpose()?,
+        });
+    }
+
+    // Only set phase_overrides if any phase has overrides
+    let phase_overrides = if phase_overrides.phase1.is_some()
+        || phase_overrides.phase2.is_some()
+        || phase_overrides.phase3.is_some()
+    {
+        Some(phase_overrides)
+    } else {
+        None
+    };
+
     Ok(AgentOverrides {
         runner,
         model,
@@ -421,6 +538,7 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         notify_sound,
         lfs_check,
         no_progress,
+        phase_overrides,
     })
 }
 
@@ -471,6 +589,7 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
         notify_sound: None,
         lfs_check: None,
         no_progress: None,
+        phase_overrides: None,
     })
 }
 
@@ -658,6 +777,7 @@ mod tests {
             notify_sound: None,
             lfs_check: None,
             no_progress: None,
+            phase_overrides: None,
         };
 
         let flags = resolve_repoprompt_flags_from_overrides(&overrides, &resolved);
@@ -777,6 +897,15 @@ mod tests {
             notify_sound: false,
             lfs_check: false,
             no_progress: false,
+            runner_phase1: None,
+            model_phase1: None,
+            effort_phase1: None,
+            runner_phase2: None,
+            model_phase2: None,
+            effort_phase2: None,
+            runner_phase3: None,
+            model_phase3: None,
+            effort_phase3: None,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -817,6 +946,15 @@ mod tests {
             notify_sound: false,
             lfs_check: false,
             no_progress: false,
+            runner_phase1: None,
+            model_phase1: None,
+            effort_phase1: None,
+            runner_phase2: None,
+            model_phase2: None,
+            effort_phase2: None,
+            runner_phase3: None,
+            model_phase3: None,
+            effort_phase3: None,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -853,6 +991,15 @@ mod tests {
             no_progress: false,
             notify_sound: false,
             lfs_check: false,
+            runner_phase1: None,
+            model_phase1: None,
+            effort_phase1: None,
+            runner_phase2: None,
+            model_phase2: None,
+            effort_phase2: None,
+            runner_phase3: None,
+            model_phase3: None,
+            effort_phase3: None,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -882,6 +1029,15 @@ mod tests {
             notify_sound: false,
             lfs_check: false,
             no_progress: false,
+            runner_phase1: None,
+            model_phase1: None,
+            effort_phase1: None,
+            runner_phase2: None,
+            model_phase2: None,
+            effort_phase2: None,
+            runner_phase3: None,
+            model_phase3: None,
+            effort_phase3: None,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
@@ -911,9 +1067,214 @@ mod tests {
             notify_sound: false,
             lfs_check: false,
             no_progress: false,
+            runner_phase1: None,
+            model_phase1: None,
+            effort_phase1: None,
+            runner_phase2: None,
+            model_phase2: None,
+            effort_phase2: None,
+            runner_phase3: None,
+            model_phase3: None,
+            effort_phase3: None,
         };
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
         assert_eq!(overrides.phases, Some(3));
+    }
+
+    #[test]
+    fn resolve_run_agent_overrides_phase_flags_parsed_correctly() {
+        let args = RunAgentArgs {
+            runner: Some("claude".to_string()),
+            model: Some("sonnet".to_string()),
+            effort: None,
+            runner_cli: RunnerCliArgs::default(),
+            phases: Some(3),
+            quick: false,
+            repo_prompt: None,
+            git_revert_mode: None,
+            git_commit_push_on: false,
+            git_commit_push_off: false,
+            include_draft: false,
+            update_task: false,
+            no_update_task: false,
+            notify: false,
+            no_notify: false,
+            notify_fail: false,
+            no_notify_fail: false,
+            notify_sound: false,
+            lfs_check: false,
+            no_progress: false,
+            runner_phase1: Some("codex".to_string()),
+            model_phase1: Some("gpt-5.2-codex".to_string()),
+            effort_phase1: Some("high".to_string()),
+            runner_phase2: Some("claude".to_string()),
+            model_phase2: Some("opus".to_string()),
+            effort_phase2: None,
+            runner_phase3: Some("codex".to_string()),
+            model_phase3: Some("gpt-5.2-codex".to_string()),
+            effort_phase3: Some("medium".to_string()),
+        };
+
+        let overrides = resolve_run_agent_overrides(&args).unwrap();
+
+        // Global overrides should still be set
+        assert_eq!(overrides.runner, Some(Runner::Claude));
+        assert_eq!(overrides.model, Some(Model::Custom("sonnet".to_string())));
+
+        // Phase overrides should be populated
+        let phase_overrides = overrides
+            .phase_overrides
+            .expect("phase_overrides should be set");
+
+        // Phase 1
+        let phase1 = phase_overrides.phase1.expect("phase1 should be set");
+        assert_eq!(phase1.runner, Some(Runner::Codex));
+        assert_eq!(phase1.model, Some(Model::Gpt52Codex));
+        assert_eq!(phase1.reasoning_effort, Some(ReasoningEffort::High));
+
+        // Phase 2
+        let phase2 = phase_overrides.phase2.expect("phase2 should be set");
+        assert_eq!(phase2.runner, Some(Runner::Claude));
+        assert_eq!(phase2.model, Some(Model::Custom("opus".to_string())));
+        assert_eq!(phase2.reasoning_effort, None);
+
+        // Phase 3
+        let phase3 = phase_overrides.phase3.expect("phase3 should be set");
+        assert_eq!(phase3.runner, Some(Runner::Codex));
+        assert_eq!(phase3.model, Some(Model::Gpt52Codex));
+        assert_eq!(phase3.reasoning_effort, Some(ReasoningEffort::Medium));
+    }
+
+    #[test]
+    fn resolve_run_agent_overrides_phase_flags_partial() {
+        // Test that partial phase overrides work (e.g., only --runner-phase1)
+        let args = RunAgentArgs {
+            runner: None,
+            model: None,
+            effort: None,
+            runner_cli: RunnerCliArgs::default(),
+            phases: None,
+            quick: false,
+            repo_prompt: None,
+            git_revert_mode: None,
+            git_commit_push_on: false,
+            git_commit_push_off: false,
+            include_draft: false,
+            update_task: false,
+            no_update_task: false,
+            notify: false,
+            no_notify: false,
+            notify_fail: false,
+            no_notify_fail: false,
+            notify_sound: false,
+            lfs_check: false,
+            no_progress: false,
+            runner_phase1: Some("codex".to_string()),
+            model_phase1: None,
+            effort_phase1: None,
+            runner_phase2: None,
+            model_phase2: None,
+            effort_phase2: None,
+            runner_phase3: None,
+            model_phase3: None,
+            effort_phase3: None,
+        };
+
+        let overrides = resolve_run_agent_overrides(&args).unwrap();
+
+        let phase_overrides = overrides
+            .phase_overrides
+            .expect("phase_overrides should be set");
+
+        // Only phase1 should be set
+        let phase1 = phase_overrides.phase1.expect("phase1 should be set");
+        assert_eq!(phase1.runner, Some(Runner::Codex));
+        assert_eq!(phase1.model, None);
+        assert_eq!(phase1.reasoning_effort, None);
+
+        // Phase 2 and 3 should be None
+        assert!(phase_overrides.phase2.is_none());
+        assert!(phase_overrides.phase3.is_none());
+    }
+
+    #[test]
+    fn resolve_run_agent_overrides_empty_phase_flags_returns_none() {
+        // Test that no phase flags results in phase_overrides: None
+        let args = RunAgentArgs {
+            runner: None,
+            model: None,
+            effort: None,
+            runner_cli: RunnerCliArgs::default(),
+            phases: None,
+            quick: false,
+            repo_prompt: None,
+            git_revert_mode: None,
+            git_commit_push_on: false,
+            git_commit_push_off: false,
+            include_draft: false,
+            update_task: false,
+            no_update_task: false,
+            notify: false,
+            no_notify: false,
+            notify_fail: false,
+            no_notify_fail: false,
+            notify_sound: false,
+            lfs_check: false,
+            no_progress: false,
+            runner_phase1: None,
+            model_phase1: None,
+            effort_phase1: None,
+            runner_phase2: None,
+            model_phase2: None,
+            effort_phase2: None,
+            runner_phase3: None,
+            model_phase3: None,
+            effort_phase3: None,
+        };
+
+        let overrides = resolve_run_agent_overrides(&args).unwrap();
+        assert!(overrides.phase_overrides.is_none());
+    }
+
+    #[test]
+    fn resolve_run_agent_overrides_invalid_runner_phase_includes_phase_in_error() {
+        // Test that invalid runner for a phase produces error
+        let args = RunAgentArgs {
+            runner: None,
+            model: None,
+            effort: None,
+            runner_cli: RunnerCliArgs::default(),
+            phases: None,
+            quick: false,
+            repo_prompt: None,
+            git_revert_mode: None,
+            git_commit_push_on: false,
+            git_commit_push_off: false,
+            include_draft: false,
+            update_task: false,
+            no_update_task: false,
+            notify: false,
+            no_notify: false,
+            notify_fail: false,
+            no_notify_fail: false,
+            notify_sound: false,
+            lfs_check: false,
+            no_progress: false,
+            runner_phase1: Some("invalid_runner".to_string()),
+            model_phase1: None,
+            effort_phase1: None,
+            runner_phase2: None,
+            model_phase2: None,
+            effort_phase2: None,
+            runner_phase3: None,
+            model_phase3: None,
+            effort_phase3: None,
+        };
+
+        let result = resolve_run_agent_overrides(&args);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Invalid runner"));
     }
 }

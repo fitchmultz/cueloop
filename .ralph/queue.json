@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0495",
-      "status": "todo",
-      "title": "Add CLI surface: --runner-phaseN/--model-phaseN/--effort-phaseN for ralph run",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "run",
-        "runner",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/agent.rs",
-        "crates/ralph/src/cli/run.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "Spec introduces phase-specific run flags with per-field precedence over global flags",
-        "Single-pass (`--phases 1`) maps to Phase 2 overrides (phase2 flags/config)",
-        "Spec requires warnings for unused phase overrides and for effort specified on non-Codex phases",
-        "CLI help must include examples and precedence explanation"
-      ],
-      "plan": [
-        "Extend RunAgentArgs with phase-specific runner/model/effort flags for phase1/phase2/phase3",
-        "Extend override parsing to capture per-phase overrides without changing run behavior yet (wiring happens later)",
-        "Update `ralph run ... --help` text and examples to include at least one per-phase example",
-        "Update `docs/cli.md` to document the new flags and precedence",
-        "Add tests for clap parsing and the phases=1 mapping rule",
-        "Run `make ci`"
-      ],
-      "notes": [
-        "Overall spec: /private/tmp/ralph-phase-specific-runner-model-spec.md (see: User-Facing Interface → CLI flags; Warnings & Errors)"
-      ],
-      "request": "Expose per-phase runner/model flags in CLI",
-      "created_at": "2026-01-31T12:02:00Z",
-      "updated_at": "2026-01-31T12:02:00Z",
-      "depends_on": [
-        "RQ-0476"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0491",
       "status": "todo",
       "title": "Implement per-phase runner/model/effort resolution matrix (pure helper + tests)",
@@ -79,13 +36,15 @@
       ],
       "request": "Centralize phase-specific settings resolution",
       "created_at": "2026-01-31T12:03:00Z",
-      "updated_at": "2026-01-31T12:03:00Z",
+      "updated_at": "2026-02-01T00:29:14.603910000Z",
       "depends_on": [
         "RQ-0477"
       ],
       "blocks": [],
       "relates_to": [],
-      "custom_fields": {}
+      "custom_fields": {
+        "notes": "Overall spec: /private/tmp/ralph-phase-specific-runner-model-spec.md (see: Resolution & Precedence; Warnings & Errors; Tests). CLI surface (--runner-phaseN, etc.) implemented in RQ-0495."
+      }
     },
     {
       "id": "RQ-0496",

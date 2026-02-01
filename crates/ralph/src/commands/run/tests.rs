@@ -358,6 +358,7 @@ fn resolve_run_agent_settings_cli_overrides_task_agent_and_config() -> anyhow::R
         notify_sound: None,
         lfs_check: None,
         no_progress: None,
+        phase_overrides: None,
     };
 
     let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -396,6 +397,7 @@ fn resolve_run_agent_settings_defaults_to_glm47_for_opencode_runner() -> anyhow:
         notify_sound: None,
         lfs_check: None,
         no_progress: None,
+        phase_overrides: None,
     };
 
     let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -434,6 +436,7 @@ fn resolve_run_agent_settings_defaults_to_gemini_flash_for_gemini_runner() -> an
         notify_sound: None,
         lfs_check: None,
         no_progress: None,
+        phase_overrides: None,
     };
 
     let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -542,6 +545,7 @@ fn resolve_run_agent_settings_effort_is_ignored_for_opencode() -> anyhow::Result
         notify_sound: None,
         lfs_check: None,
         no_progress: None,
+        phase_overrides: None,
     };
 
     let settings = resolve_run_agent_settings(&resolved, &task, &overrides)?;
@@ -1103,6 +1107,7 @@ fn overrides_with_notifications(
         notify_sound: None,
         lfs_check: None,
         no_progress: None,
+        phase_overrides: None,
     }
 }
 

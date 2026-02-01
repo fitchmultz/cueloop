@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-01T00:04:22.838891000Z",
+  "last_updated_at": "2026-02-01T00:30:05.039325000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -207,12 +207,17 @@
     },
     "2026-02-01": {
       "date": "2026-02-01",
-      "completed_count": 1,
+      "completed_count": 2,
       "tasks": [
         {
           "id": "RQ-0494",
           "title": "Add config contract: agent.phase_overrides (phase1/phase2/phase3 runner/model/reasoning_effort)",
           "completed_at": "2026-02-01T00:04:22.838888000Z"
+        },
+        {
+          "id": "RQ-0495",
+          "title": "Add CLI surface: --runner-phaseN/--model-phaseN/--effort-phaseN for ralph run",
+          "completed_at": "2026-02-01T00:30:05.039324000Z"
         }
       ]
     }
@@ -222,7 +227,7 @@
     "longest_streak": 3,
     "last_completed_date": "2026-02-01"
   },
-  "total_completed": 39,
+  "total_completed": 40,
   "milestones": [
     {
       "threshold": 10,
