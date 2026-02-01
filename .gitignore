@@ -24,3 +24,4 @@ ralph_tui/ralph
 .ralph/cache/session.json
 .ralph/cache/stop_requested
 .learnings
+debug/
