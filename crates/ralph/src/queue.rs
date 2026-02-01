@@ -103,6 +103,34 @@ pub fn load_queue_with_repair(path: &Path) -> Result<QueueFile> {
     }
 }
 
+/// Load queue with repair and semantic validation.
+///
+/// JSON repair is followed by semantic validation via `validate_queue_set`. Callers
+/// should log warnings if needed. This ensures repaired-but-invalid queues fail
+/// early with descriptive errors.
+///
+/// Returns the queue file and any validation warnings (non-blocking issues).
+pub fn load_queue_with_repair_and_validate(
+    path: &Path,
+    done: Option<&crate::contracts::QueueFile>,
+    id_prefix: &str,
+    id_width: usize,
+    max_dependency_depth: u8,
+) -> Result<(QueueFile, Vec<ValidationWarning>)> {
+    let queue = load_queue_with_repair(path)?;
+
+    let warnings = if let Some(d) = done {
+        validate_queue_set(&queue, Some(d), id_prefix, id_width, max_dependency_depth)
+            .with_context(|| format!("validate repaired queue {}", path.display()))?
+    } else {
+        validate_queue(&queue, id_prefix, id_width)
+            .with_context(|| format!("validate repaired queue {}", path.display()))?;
+        Vec::new()
+    };
+
+    Ok((queue, warnings))
+}
+
 /// Attempt to repair common JSON errors induced by agents.
 /// Returns Some(repaired_json) if repairs were made, None if no repairs possible.
 pub fn attempt_json_repair(raw: &str) -> Option<String> {
@@ -388,6 +416,37 @@ mod tests {
             agent: None,
             created_at: Some("2026-01-18T00:00:00Z".to_string()),
             updated_at: Some("2026-01-18T00:00:00Z".to_string()),
+            completed_at: None,
+            scheduled_start: None,
+            depends_on: vec![],
+            blocks: vec![],
+            relates_to: vec![],
+            duplicates: None,
+            custom_fields: HashMap::new(),
+        }
+    }
+
+    fn task_with_timestamps(
+        id: &str,
+        status: TaskStatus,
+        tags: Vec<String>,
+        created_at: Option<&str>,
+        updated_at: Option<&str>,
+    ) -> Task {
+        Task {
+            id: id.to_string(),
+            status,
+            title: "Test task".to_string(),
+            priority: Default::default(),
+            tags,
+            scope: vec!["crates/ralph".to_string()],
+            evidence: vec!["observed".to_string()],
+            plan: vec!["do thing".to_string()],
+            notes: vec![],
+            request: Some("test request".to_string()),
+            agent: None,
+            created_at: created_at.map(|s| s.to_string()),
+            updated_at: updated_at.map(|s| s.to_string()),
             completed_at: None,
             scheduled_start: None,
             depends_on: vec![],
@@ -738,6 +797,96 @@ mod tests {
             serde_json::from_str(&std::fs::read_to_string(&backup_path)?)?;
         assert_eq!(backup_queue.tasks.len(), 1);
         assert_eq!(backup_queue.tasks[0].id, "RQ-0001");
+
+        Ok(())
+    }
+
+    // Tests for load_queue_with_repair_and_validate (RQ-0502)
+
+    #[test]
+    fn load_queue_with_repair_and_validate_rejects_missing_timestamps() -> Result<()> {
+        let temp = TempDir::new()?;
+        let queue_path = temp.path().join("queue.json");
+
+        // Write malformed JSON with trailing comma but missing required timestamps
+        let malformed = r#"{'version': 1, tasks: [{'id': 'RQ-0001', 'title': 'Test task', 'status': 'todo', 'tags': ['bug',], 'scope': ['file',], 'evidence': [], 'plan': [],}]}"#;
+        std::fs::write(&queue_path, malformed)?;
+
+        // Should fail validation due to missing created_at/updated_at
+        let result = load_queue_with_repair_and_validate(&queue_path, None, "RQ", 4, 10);
+
+        let err = result.expect_err("should fail validation due to missing timestamps");
+        // Traverse the error chain to find the root cause
+        let err_msg = err
+            .chain()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join(" | ");
+        assert!(
+            err_msg.contains("created_at") || err_msg.contains("updated_at"),
+            "Error should mention missing timestamp: {}",
+            err_msg
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn load_queue_with_repair_and_validate_accepts_valid_repair() -> Result<()> {
+        let temp = TempDir::new()?;
+        let queue_path = temp.path().join("queue.json");
+
+        // Write malformed JSON with trailing commas but all required fields present
+        let malformed = r#"{'version': 1, tasks: [{'id': 'RQ-0001', 'title': 'Test task', 'status': 'todo', 'tags': ['bug',], 'scope': ['file',], 'evidence': ['observed',], 'plan': ['do thing',], 'created_at': '2026-01-18T00:00:00Z', 'updated_at': '2026-01-18T00:00:00Z',}]}"#;
+        std::fs::write(&queue_path, malformed)?;
+
+        // Should load with repair and pass validation
+        let (queue, warnings) =
+            load_queue_with_repair_and_validate(&queue_path, None, "RQ", 4, 10)?;
+
+        assert_eq!(queue.tasks.len(), 1);
+        assert_eq!(queue.tasks[0].id, "RQ-0001");
+        assert_eq!(queue.tasks[0].title, "Test task");
+        assert_eq!(queue.tasks[0].tags, vec!["bug"]);
+        assert!(warnings.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn load_queue_with_repair_and_validate_detects_done_queue_issues() -> Result<()> {
+        let temp = TempDir::new()?;
+        let queue_path = temp.path().join("queue.json");
+        let done_path = temp.path().join("done.json");
+
+        // Active queue: valid but with dependency on done task
+        let active_malformed = r#"{'version': 1, tasks: [{'id': 'RQ-0002', 'title': 'Second task', 'status': 'todo', 'tags': ['bug',], 'scope': ['file',], 'evidence': [], 'plan': [], 'created_at': '2026-01-18T00:00:00Z', 'updated_at': '2026-01-18T00:00:00Z', 'depends_on': ['RQ-0001',],}]}"#;
+        std::fs::write(&queue_path, active_malformed)?;
+
+        // Done queue: contains the dependency target
+        let done_queue = QueueFile {
+            version: 1,
+            tasks: vec![{
+                let mut t = task_with_timestamps(
+                    "RQ-0001",
+                    TaskStatus::Done,
+                    vec!["done".to_string()],
+                    Some("2026-01-18T00:00:00Z"),
+                    Some("2026-01-18T00:00:00Z"),
+                );
+                t.completed_at = Some("2026-01-18T00:00:00Z".to_string());
+                t
+            }],
+        };
+        save_queue(&done_path, &done_queue)?;
+
+        // Should load with repair and validate successfully
+        let (queue, warnings) =
+            load_queue_with_repair_and_validate(&queue_path, Some(&done_queue), "RQ", 4, 10)?;
+
+        assert_eq!(queue.tasks.len(), 1);
+        assert_eq!(queue.tasks[0].id, "RQ-0002");
+        assert!(warnings.is_empty());
 
         Ok(())
     }

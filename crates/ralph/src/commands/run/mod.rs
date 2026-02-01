@@ -625,7 +625,16 @@ fn run_one_impl(
 
         // Reload the task so the execution prompt includes updated fields.
         // Use repair mechanism in case the update left malformed JSON.
-        let updated_queue_file = queue::load_queue_with_repair(&resolved.queue_path)?;
+        // Validate after repair to catch semantic errors early.
+        let (updated_queue_file, validation_warnings) = queue::load_queue_with_repair_and_validate(
+            &resolved.queue_path,
+            done_ref,
+            &resolved.id_prefix,
+            resolved.id_width,
+            max_depth,
+        )
+        .context("validate repaired queue after pre-run update")?;
+        queue::log_warnings(&validation_warnings);
         task = updated_queue_file
             .tasks
             .into_iter()

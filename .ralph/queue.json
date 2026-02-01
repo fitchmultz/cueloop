@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0502",
-      "status": "todo",
-      "title": "Add validation step after JSON repair in queue loading",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "data-integrity",
-        "queue"
-      ],
-      "scope": [
-        "crates/ralph/src/queue.rs"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/queue.rs :: fn load_queue_with_repair :: repairs JSON but doesn't validate result",
-        "path: crates/ralph/src/queue.rs :: lines 78-101 :: repair attempt made but success only checks parsing, not semantic validity",
-        "path: crates/ralph/src/queue.rs :: lines 106-201 :: attempt_json_repair may produce invalid queue structure",
-        "repro: Create queue.json with single-quoted strings and unescaped newlines :: expected repaired valid queue :: actual may parse but have incorrect structure"
-      ],
-      "plan": [
-        "Add QueueFile schema validation after successful JSON repair parsing",
-        "Validate required fields (version, tasks array) are present and correct",
-        "Add warning when repair changes queue semantics (e.g., lost fields)",
-        "Add test for repair producing semantically valid but incorrect queue",
-        "Verify by testing with malformed queue files and checking output"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-01T05:14:31Z",
-      "updated_at": "2026-02-01T05:14:31Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0503",
       "status": "todo",
       "title": "Improve TUI dependency graph handling for large task sets",
