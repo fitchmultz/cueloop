@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0508",
-      "status": "todo",
-      "title": "Fix Kimi runner conversation resumption bug",
-      "priority": "critical",
-      "tags": [
-        "bug",
-        "runner",
-        "kimi",
-        "ci-gate",
-        "conversation"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/execution/runners.rs",
-        "crates/ralph/src/runner/execution/cli_spec.rs"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/runner/execution/runners.rs :: fn run_kimi_resume :: ignores _session_id parameter and uses --continue flag instead",
-        "path: crates/ralph/src/runner/execution/runners.rs :: lines 349-372 :: build_kimi_continue_command does not pass session_id to command",
-        "path: crates/ralph/src/runner/execution/runners.rs :: lines 525-542 :: build_kimi_continue_command only adds --continue flag, no --session",
-        "user: Major bug when trying to send the message to the kimi runner to fix the CI gate. 'kimi' supports resuming conversations.",
-        "error: CI gate failed after Phase 2 completion when attempting Phase 3 resume with Kimi runner"
-      ],
-      "plan": [
-        "Investigate how Kimi CLI handles session resumption (compare --continue vs --session <id>)",
-        "Modify build_kimi_continue_command to accept and use session_id parameter",
-        "Add --session flag to resume command instead of or alongside --continue",
-        "Test Kimi runner conversation resumption across Phase 1 -> Phase 2 -> Phase 3",
-        "Verify CI gate passes after multi-phase Kimi execution"
-      ],
-      "notes": [],
-      "request": "Major bug when trying to send the message to the kimi runner to fix the CI gate. 'kimi' supports resuming conversations. FIGURE IT OUT.",
-      "created_at": "2026-02-01T05:39:16Z",
-      "updated_at": "2026-02-01T05:39:16Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0498",
       "status": "todo",
       "title": "Fix race condition in shared lock mode for task labels",

@@ -971,8 +971,11 @@ pub(crate) fn resume_session(
     Ok(output)
 }
 
-fn runner_requires_session_id(runner: Runner) -> bool {
-    runner != Runner::Kimi
+fn runner_requires_session_id(_runner: Runner) -> bool {
+    // All runners require session_id for proper resume.
+    // Kimi previously allowed empty session_id with --continue flag,
+    // but now properly passes --session <id> for resumption.
+    true
 }
 
 pub(crate) fn parse_model(value: &str) -> Result<Model> {
@@ -1225,9 +1228,15 @@ mod tests {
     }
 
     #[test]
-    fn runner_requires_session_id_allows_kimi_continue() {
-        assert!(!runner_requires_session_id(Runner::Kimi));
+    fn runner_requires_session_id_requires_for_all_runners() {
+        // All runners including Kimi require session_id for proper resume
+        assert!(runner_requires_session_id(Runner::Kimi));
         assert!(runner_requires_session_id(Runner::Codex));
+        assert!(runner_requires_session_id(Runner::Opencode));
+        assert!(runner_requires_session_id(Runner::Gemini));
+        assert!(runner_requires_session_id(Runner::Cursor));
+        assert!(runner_requires_session_id(Runner::Claude));
+        assert!(runner_requires_session_id(Runner::Pi));
     }
 
     #[test]

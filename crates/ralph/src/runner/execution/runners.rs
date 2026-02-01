@@ -351,14 +351,14 @@ pub(crate) fn run_kimi_resume(
     bin: &str,
     runner_cli: ResolvedRunnerCliOptions,
     model: Model,
-    _session_id: &str,
+    session_id: &str,
     message: &str,
     timeout: Option<Duration>,
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
 ) -> Result<RunnerOutput, RunnerError> {
     let (cmd, payload, _guards) =
-        build_kimi_continue_command(work_dir, bin, runner_cli, model, message);
+        build_kimi_continue_command(work_dir, bin, runner_cli, model, message, session_id);
 
     run_with_streaming_json(
         cmd,
@@ -528,11 +528,16 @@ fn build_kimi_continue_command(
     runner_cli: ResolvedRunnerCliOptions,
     model: Model,
     prompt: &str,
+    session_id: &str,
 ) -> RunnerCommandParts {
     let builder = RunnerCommandBuilder::new(bin, work_dir);
     let builder = cli_spec::apply_kimi_options(builder, runner_cli);
+    let builder = if session_id.is_empty() {
+        builder.arg("--continue")
+    } else {
+        builder.arg("--session").arg(session_id)
+    };
     builder
-        .arg("--continue")
         .model(&model)
         .arg("--print")
         .arg("--prompt")
@@ -711,15 +716,39 @@ mod tests {
     }
 
     #[test]
-    fn build_kimi_continue_command_includes_continue_flag() {
+    fn build_kimi_continue_command_uses_continue_when_no_session() {
         let opts = ResolvedRunnerCliOptions::default();
         let (cmd, payload, _guards) =
-            build_kimi_continue_command(Path::new("."), "kimi", opts, Model::Glm47, "hello");
+            build_kimi_continue_command(Path::new("."), "kimi", opts, Model::Glm47, "hello", "");
         let args = cmd
             .get_args()
             .map(|arg| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
         assert!(args.contains(&"--continue".to_string()));
+        assert!(!args.contains(&"--session".to_string()));
+        assert!(args.contains(&"--prompt".to_string()));
+        assert!(args.contains(&"hello".to_string()));
+        assert!(payload.is_none());
+    }
+
+    #[test]
+    fn build_kimi_continue_command_uses_session_when_provided() {
+        let opts = ResolvedRunnerCliOptions::default();
+        let (cmd, payload, _guards) = build_kimi_continue_command(
+            Path::new("."),
+            "kimi",
+            opts,
+            Model::Glm47,
+            "hello",
+            "sess-123",
+        );
+        let args = cmd
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        assert!(!args.contains(&"--continue".to_string()));
+        assert!(args.contains(&"--session".to_string()));
+        assert!(args.contains(&"sess-123".to_string()));
         assert!(args.contains(&"--prompt".to_string()));
         assert!(args.contains(&"hello".to_string()));
         assert!(payload.is_none());
