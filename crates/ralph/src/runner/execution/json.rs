@@ -35,14 +35,6 @@ pub(super) fn extract_session_id_from_json(json: &JsonValue) -> Option<String> {
     if let Some(id) = json.get("sessionID").and_then(|v| v.as_str()) {
         return Some(id.to_string());
     }
-    // Kimi stream-json lines sometimes include tool_calls[].id; capture as a fallback when no
-    // explicit session id is present in the output.
-    if let Some(tool_calls) = json.get("tool_calls").and_then(|v| v.as_array())
-        && let Some(first_tool) = tool_calls.first()
-        && let Some(id) = first_tool.get("id").and_then(|v| v.as_str())
-    {
-        return Some(id.to_string());
-    }
     None
 }
 
