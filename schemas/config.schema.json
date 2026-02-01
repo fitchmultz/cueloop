@@ -82,6 +82,7 @@
             }
           }
         },
+        "scan_prompt_version": "v2",
         "session_timeout_hours": 24,
         "update_task_before_run": false,
         "webhook": {
@@ -398,6 +399,18 @@
           "anyOf": [
             {
               "$ref": "#/definitions/RunnerCliConfigRoot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scan_prompt_version": {
+          "description": "Scan prompt version to use (v1 or v2, default: v2).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScanPromptVersion"
             },
             {
               "type": "null"
@@ -928,6 +941,25 @@
         "quiet",
         "normal",
         "verbose"
+      ]
+    },
+    "ScanPromptVersion": {
+      "description": "Scan prompt version to use for scan operations.",
+      "oneOf": [
+        {
+          "description": "Version 1: Original rule-based scan prompts with fixed minimum task counts.",
+          "type": "string",
+          "enum": [
+            "v1"
+          ]
+        },
+        {
+          "description": "Version 2: Rubric-based scan prompts with quality-focused STOP CONDITION (default).",
+          "type": "string",
+          "enum": [
+            "v2"
+          ]
+        }
       ]
     },
     "TuiConfig": {

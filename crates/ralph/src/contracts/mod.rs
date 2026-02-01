@@ -23,8 +23,8 @@ pub use config::{
     AgentConfig, AutoArchiveBehavior, ClaudePermissionMode, Config, GitRevertMode, Model,
     ModelEffort, NotificationConfig, PhaseOverrideConfig, PhaseOverrides, ProjectType, QueueConfig,
     ReasoningEffort, Runner, RunnerApprovalMode, RunnerCliConfigRoot, RunnerCliOptionsPatch,
-    RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity, TuiConfig,
-    UnsupportedOptionPolicy, WebhookConfig,
+    RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity, ScanPromptVersion,
+    TuiConfig, UnsupportedOptionPolicy, WebhookConfig,
 };
 pub use queue::QueueFile;
 pub use session::{PhaseSettingsSnapshot, SessionState};

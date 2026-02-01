@@ -6,15 +6,17 @@
 //! feature discovery guidance.
 
 use super::*;
+use crate::contracts::ScanPromptVersion;
 
 #[test]
 fn render_scan_prompt_replaces_focus_placeholder() -> Result<()> {
-    let template = "{{MODE_GUIDANCE}}";
+    let template = "{{PROJECT_TYPE_GUIDANCE}} {{USER_FOCUS}}";
     let config = default_config();
     let rendered = render_scan_prompt(
         template,
         "hello world",
         ScanMode::Maintenance,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;
@@ -26,13 +28,14 @@ fn render_scan_prompt_replaces_focus_placeholder() -> Result<()> {
 
 #[test]
 fn render_scan_prompt_allows_placeholder_like_focus() -> Result<()> {
-    let template = "{{MODE_GUIDANCE}}";
+    let template = "{{PROJECT_TYPE_GUIDANCE}} {{USER_FOCUS}}";
     let config = default_config();
     let focus = "see {{config.agent.model}} here";
     let rendered = render_scan_prompt(
         template,
         focus,
         ScanMode::Maintenance,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;
@@ -42,12 +45,16 @@ fn render_scan_prompt_allows_placeholder_like_focus() -> Result<()> {
 
 #[test]
 fn render_scan_prompt_innovation_mode_includes_innovation_guidance() -> Result<()> {
-    let template = "{{MODE_GUIDANCE}}";
+    let template = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/assets/prompts/scan_innovation_v1.md"
+    ));
     let config = default_config();
     let rendered = render_scan_prompt(
         template,
         "",
         ScanMode::Innovation,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;
@@ -55,18 +62,21 @@ fn render_scan_prompt_innovation_mode_includes_innovation_guidance() -> Result<(
     assert!(rendered.contains("enhancement opportunities"));
     assert!(rendered.contains(r#"custom_fields: {"scan_agent": "scan-innovation"}"#));
     assert!(!rendered.contains(r#"agent: "scan-innovation""#));
-    assert!(!rendered.contains("{{MODE_GUIDANCE}}"));
     Ok(())
 }
 
 #[test]
 fn render_scan_prompt_maintenance_mode_includes_maintenance_guidance() -> Result<()> {
-    let template = "{{MODE_GUIDANCE}}";
+    let template = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/assets/prompts/scan_maintenance_v1.md"
+    ));
     let config = default_config();
     let rendered = render_scan_prompt(
         template,
         "",
         ScanMode::Maintenance,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;
@@ -74,19 +84,19 @@ fn render_scan_prompt_maintenance_mode_includes_maintenance_guidance() -> Result
     assert!(rendered.contains("MAINTENANCE TASK FILTER"));
     assert!(rendered.contains(r#"custom_fields: {"scan_agent": "scan-maintenance"}"#));
     assert!(!rendered.contains(r#"agent: "scan-maintenance""#));
-    assert!(!rendered.contains("{{MODE_GUIDANCE}}"));
     Ok(())
 }
 
 #[test]
 fn default_scan_prompt_mentions_next_id_command() -> Result<()> {
     let dir = TempDir::new()?;
-    let template = load_scan_prompt(dir.path())?;
+    let template = load_scan_prompt(dir.path(), ScanPromptVersion::V1, ScanMode::Innovation)?;
     let config = default_config();
     let rendered = render_scan_prompt(
         &template,
         "",
         ScanMode::Innovation,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;
@@ -102,12 +112,13 @@ fn default_scan_prompt_mentions_next_id_command() -> Result<()> {
 #[test]
 fn default_scan_prompt_mentions_count_flag_for_multi_task() -> Result<()> {
     let dir = TempDir::new()?;
-    let template = load_scan_prompt(dir.path())?;
+    let template = load_scan_prompt(dir.path(), ScanPromptVersion::V1, ScanMode::Maintenance)?;
     let config = default_config();
     let rendered = render_scan_prompt(
         &template,
         "",
         ScanMode::Maintenance,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;
@@ -127,12 +138,13 @@ fn default_scan_prompt_mentions_count_flag_for_multi_task() -> Result<()> {
 #[test]
 fn default_scan_prompt_innovation_mode_mentions_count_flag() -> Result<()> {
     let dir = TempDir::new()?;
-    let template = load_scan_prompt(dir.path())?;
+    let template = load_scan_prompt(dir.path(), ScanPromptVersion::V1, ScanMode::Innovation)?;
     let config = default_config();
     let rendered = render_scan_prompt(
         &template,
         "",
         ScanMode::Innovation,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;
@@ -150,12 +162,13 @@ fn default_scan_prompt_innovation_mode_mentions_count_flag() -> Result<()> {
 
 #[test]
 fn render_scan_prompt_empty_focus_defaults_to_none() -> Result<()> {
-    let template = "{{MODE_GUIDANCE}}";
+    let template = "{{PROJECT_TYPE_GUIDANCE}}\n# FOCUS\n{{USER_FOCUS}}";
     let config = default_config();
     let rendered = render_scan_prompt(
         template,
         "   ",
         ScanMode::Maintenance,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;
@@ -165,12 +178,13 @@ fn render_scan_prompt_empty_focus_defaults_to_none() -> Result<()> {
 
 #[test]
 fn render_scan_prompt_replaces_project_type_guidance_placeholder() -> Result<()> {
-    let template = "{{MODE_GUIDANCE}}";
+    let template = "{{PROJECT_TYPE_GUIDANCE}} {{USER_FOCUS}}";
     let config = default_config();
     let rendered = render_scan_prompt(
         template,
         "",
         ScanMode::Maintenance,
+        ScanPromptVersion::V1,
         ProjectType::Code,
         &config,
     )?;

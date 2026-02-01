@@ -214,6 +214,9 @@ pub struct AgentConfig {
     /// explicit user confirmation to resume.
     #[schemars(range(min = 1))]
     pub session_timeout_hours: Option<u64>,
+
+    /// Scan prompt version to use (v1 or v2, default: v2).
+    pub scan_prompt_version: Option<ScanPromptVersion>,
 }
 
 impl AgentConfig {
@@ -304,6 +307,9 @@ impl AgentConfig {
         self.webhook.merge_from(other.webhook);
         if other.session_timeout_hours.is_some() {
             self.session_timeout_hours = other.session_timeout_hours;
+        }
+        if other.scan_prompt_version.is_some() {
+            self.scan_prompt_version = other.scan_prompt_version;
         }
     }
 }
@@ -689,6 +695,17 @@ pub enum AutoArchiveBehavior {
     Always,
 }
 
+/// Scan prompt version to use for scan operations.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ScanPromptVersion {
+    /// Version 1: Original rule-based scan prompts with fixed minimum task counts.
+    V1,
+    /// Version 2: Rubric-based scan prompts with quality-focused STOP CONDITION (default).
+    #[default]
+    V2,
+}
+
 impl std::str::FromStr for AutoArchiveBehavior {
     type Err = &'static str;
 
@@ -1058,6 +1075,7 @@ impl Default for Config {
                 },
                 webhook: WebhookConfig::default(),
                 session_timeout_hours: Some(DEFAULT_SESSION_TIMEOUT_HOURS),
+                scan_prompt_version: Some(ScanPromptVersion::V2),
             },
             tui: TuiConfig::default(),
         }
@@ -1258,6 +1276,7 @@ mod tests {
             notification: NotificationConfig::default(),
             webhook: WebhookConfig::default(),
             session_timeout_hours: None,
+            scan_prompt_version: None,
         };
 
         let other = AgentConfig {
@@ -1297,6 +1316,7 @@ mod tests {
             notification: NotificationConfig::default(),
             webhook: WebhookConfig::default(),
             session_timeout_hours: None,
+            scan_prompt_version: None,
         };
 
         base.merge_from(other);

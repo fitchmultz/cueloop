@@ -75,10 +75,31 @@ fn registry_maps_prompt_metadata() {
             project_guidance: true,
         },
         Expectation {
-            id: PromptTemplateId::Scan,
-            rel_path: ".ralph/prompts/scan.md",
-            label: "scan",
-            embedded_marker: "{{MODE_GUIDANCE}}",
+            id: PromptTemplateId::ScanMaintenanceV1,
+            rel_path: ".ralph/prompts/scan_maintenance_v1.md",
+            label: "scan maintenance v1",
+            embedded_marker: "{{USER_FOCUS}}",
+            project_guidance: true,
+        },
+        Expectation {
+            id: PromptTemplateId::ScanMaintenanceV2,
+            rel_path: ".ralph/prompts/scan_maintenance_v2.md",
+            label: "scan maintenance v2",
+            embedded_marker: "{{USER_FOCUS}}",
+            project_guidance: true,
+        },
+        Expectation {
+            id: PromptTemplateId::ScanInnovationV1,
+            rel_path: ".ralph/prompts/scan_innovation_v1.md",
+            label: "scan innovation v1",
+            embedded_marker: "{{USER_FOCUS}}",
+            project_guidance: true,
+        },
+        Expectation {
+            id: PromptTemplateId::ScanInnovationV2,
+            rel_path: ".ralph/prompts/scan_innovation_v2.md",
+            label: "scan innovation v2",
+            embedded_marker: "{{USER_FOCUS}}",
             project_guidance: true,
         },
         Expectation {
@@ -137,9 +158,31 @@ fn task_builder_prompt_mentions_scope_is_starting_point() {
 }
 
 #[test]
-fn scan_prompt_template_is_mode_guidance_only() {
-    let template = prompt_template(PromptTemplateId::Scan).embedded_default;
-    assert_eq!(template.trim(), "{{MODE_GUIDANCE}}");
+fn scan_maintenance_v1_prompt_contains_required_placeholders() {
+    let template = prompt_template(PromptTemplateId::ScanMaintenanceV1).embedded_default;
+    assert!(template.contains("{{USER_FOCUS}}"));
+    assert!(template.contains("{{PROJECT_TYPE_GUIDANCE}}"));
+}
+
+#[test]
+fn scan_maintenance_v2_prompt_contains_required_placeholders() {
+    let template = prompt_template(PromptTemplateId::ScanMaintenanceV2).embedded_default;
+    assert!(template.contains("{{USER_FOCUS}}"));
+    assert!(template.contains("{{PROJECT_TYPE_GUIDANCE}}"));
+}
+
+#[test]
+fn scan_innovation_v1_prompt_contains_required_placeholders() {
+    let template = prompt_template(PromptTemplateId::ScanInnovationV1).embedded_default;
+    assert!(template.contains("{{USER_FOCUS}}"));
+    assert!(template.contains("{{PROJECT_TYPE_GUIDANCE}}"));
+}
+
+#[test]
+fn scan_innovation_v2_prompt_contains_required_placeholders() {
+    let template = prompt_template(PromptTemplateId::ScanInnovationV2).embedded_default;
+    assert!(template.contains("{{USER_FOCUS}}"));
+    assert!(template.contains("{{PROJECT_TYPE_GUIDANCE}}"));
 }
 
 #[test]
@@ -151,18 +194,18 @@ fn task_updater_prompt_mentions_scope_is_starting_point() {
 #[test]
 fn required_placeholders_fail_when_missing() {
     let template = "no placeholders here";
-    let meta = prompt_template(PromptTemplateId::Scan);
+    let meta = prompt_template(PromptTemplateId::ScanMaintenanceV1);
     let err = ensure_required_placeholders(template, meta.required_placeholders).unwrap_err();
     assert!(
         err.to_string()
-            .contains("scan prompt template is missing the required")
+            .contains("scan prompt v1 template is missing the required")
     );
 }
 
 #[test]
 fn required_placeholders_pass_when_present() -> Result<()> {
-    let template = "{{MODE_GUIDANCE}}";
-    let meta = prompt_template(PromptTemplateId::Scan);
+    let template = "{{USER_FOCUS}} {{PROJECT_TYPE_GUIDANCE}}";
+    let meta = prompt_template(PromptTemplateId::ScanMaintenanceV1);
     ensure_required_placeholders(template, meta.required_placeholders)?;
     Ok(())
 }

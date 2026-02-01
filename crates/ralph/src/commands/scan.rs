@@ -150,12 +150,18 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     }
     let before_ids = queue::task_id_set(&before);
 
-    let template = prompts::load_scan_prompt(&resolved.repo_root)?;
+    let scan_version = resolved
+        .config
+        .agent
+        .scan_prompt_version
+        .unwrap_or_default();
+    let template = prompts::load_scan_prompt(&resolved.repo_root, scan_version, opts.mode)?;
     let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
     let mut prompt = prompts::render_scan_prompt(
         &template,
         &opts.focus,
         opts.mode,
+        scan_version,
         project_type,
         &resolved.config,
     )?;

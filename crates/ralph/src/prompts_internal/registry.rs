@@ -21,7 +21,10 @@ pub(crate) enum PromptTemplateId {
     WorkerSinglePhase,
     TaskBuilder,
     TaskUpdater,
-    Scan,
+    ScanMaintenanceV1,
+    ScanMaintenanceV2,
+    ScanInnovationV1,
+    ScanInnovationV2,
     CodeReview,
     CompletionChecklist,
     Phase2HandoffChecklist,
@@ -39,10 +42,27 @@ pub(crate) struct PromptTemplate {
 
 const EMPTY_REQUIRED: &[RequiredPlaceholder] = &[];
 
-const SCAN_REQUIRED: &[RequiredPlaceholder] = &[RequiredPlaceholder {
-    token: "{{MODE_GUIDANCE}}",
-    error_message: "Template error: scan prompt template is missing the required '{{MODE_GUIDANCE}}' placeholder. Ensure the template in .ralph/prompts/scan.md includes this placeholder.",
-}];
+const SCAN_V1_REQUIRED: &[RequiredPlaceholder] = &[
+    RequiredPlaceholder {
+        token: "{{PROJECT_TYPE_GUIDANCE}}",
+        error_message: "Template error: scan prompt v1 template is missing the required '{{PROJECT_TYPE_GUIDANCE}}' placeholder.",
+    },
+    RequiredPlaceholder {
+        token: "{{USER_FOCUS}}",
+        error_message: "Template error: scan prompt v1 template is missing the required '{{USER_FOCUS}}' placeholder.",
+    },
+];
+
+const SCAN_V2_REQUIRED: &[RequiredPlaceholder] = &[
+    RequiredPlaceholder {
+        token: "{{PROJECT_TYPE_GUIDANCE}}",
+        error_message: "Template error: scan prompt v2 template is missing the required '{{PROJECT_TYPE_GUIDANCE}}' placeholder.",
+    },
+    RequiredPlaceholder {
+        token: "{{USER_FOCUS}}",
+        error_message: "Template error: scan prompt v2 template is missing the required '{{USER_FOCUS}}' placeholder.",
+    },
+];
 
 const TASK_BUILDER_REQUIRED: &[RequiredPlaceholder] = &[
     RequiredPlaceholder {
@@ -157,14 +177,44 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             required_placeholders: TASK_UPDATER_REQUIRED,
             project_type_guidance: true,
         },
-        PromptTemplateId::Scan => PromptTemplate {
-            rel_path: ".ralph/prompts/scan.md",
+        PromptTemplateId::ScanMaintenanceV1 => PromptTemplate {
+            rel_path: ".ralph/prompts/scan_maintenance_v1.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/assets/prompts/scan.md"
+                "/assets/prompts/scan_maintenance_v1.md"
             )),
-            label: "scan",
-            required_placeholders: SCAN_REQUIRED,
+            label: "scan maintenance v1",
+            required_placeholders: SCAN_V1_REQUIRED,
+            project_type_guidance: true,
+        },
+        PromptTemplateId::ScanMaintenanceV2 => PromptTemplate {
+            rel_path: ".ralph/prompts/scan_maintenance_v2.md",
+            embedded_default: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/assets/prompts/scan_maintenance_v2.md"
+            )),
+            label: "scan maintenance v2",
+            required_placeholders: SCAN_V2_REQUIRED,
+            project_type_guidance: true,
+        },
+        PromptTemplateId::ScanInnovationV1 => PromptTemplate {
+            rel_path: ".ralph/prompts/scan_innovation_v1.md",
+            embedded_default: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/assets/prompts/scan_innovation_v1.md"
+            )),
+            label: "scan innovation v1",
+            required_placeholders: SCAN_V1_REQUIRED,
+            project_type_guidance: true,
+        },
+        PromptTemplateId::ScanInnovationV2 => PromptTemplate {
+            rel_path: ".ralph/prompts/scan_innovation_v2.md",
+            embedded_default: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/assets/prompts/scan_innovation_v2.md"
+            )),
+            label: "scan innovation v2",
+            required_placeholders: SCAN_V2_REQUIRED,
             project_type_guidance: true,
         },
         PromptTemplateId::CodeReview => PromptTemplate {

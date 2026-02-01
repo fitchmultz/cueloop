@@ -32,6 +32,8 @@ use worker_phases::{
     load_worker_phase3_prompt, load_worker_single_phase_prompt,
 };
 
+use crate::cli::scan::ScanMode;
+use crate::contracts::ScanPromptVersion;
 use std::path::Path;
 
 use anyhow::Result;
@@ -45,7 +47,7 @@ pub(crate) fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
     let worker_single_phase = load_worker_single_phase_prompt(repo_root)?;
     let task_builder = load_task_builder_prompt(repo_root)?;
     let task_updater = load_task_updater_prompt(repo_root)?;
-    let scan = load_scan_prompt(repo_root)?;
+    let scan = load_scan_prompt(repo_root, ScanPromptVersion::V2, ScanMode::Maintenance)?;
     let completion_checklist = load_completion_checklist(repo_root)?;
     let code_review = load_code_review_prompt(repo_root)?;
     let phase2_handoff = load_phase2_handoff_checklist(repo_root)?;

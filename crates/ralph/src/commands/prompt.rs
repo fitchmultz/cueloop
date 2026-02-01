@@ -637,12 +637,18 @@ pub fn build_worker_prompt(
 }
 
 pub fn build_scan_prompt(resolved: &config::Resolved, opts: ScanPromptOptions) -> Result<String> {
-    let template = prompts::load_scan_prompt(&resolved.repo_root)?;
+    let scan_version = resolved
+        .config
+        .agent
+        .scan_prompt_version
+        .unwrap_or_default();
+    let template = prompts::load_scan_prompt(&resolved.repo_root, scan_version, opts.mode)?;
     let project_type = resolved.config.project_type.unwrap_or(ProjectType::Code);
     let rendered = prompts::render_scan_prompt(
         &template,
         &opts.focus,
         opts.mode,
+        scan_version,
         project_type,
         &resolved.config,
     )?;

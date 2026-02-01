@@ -12,7 +12,7 @@
 //! - Public exports here are intentional and minimal.
 
 use crate::cli::scan::ScanMode;
-use crate::contracts::{Config, ProjectType};
+use crate::contracts::{Config, ProjectType, ScanPromptVersion};
 use crate::prompts_internal;
 use anyhow::Result;
 use std::path::Path;
@@ -35,18 +35,23 @@ pub(crate) fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
     prompts_internal::prompts_reference_readme(repo_root)
 }
 
-pub(crate) fn load_scan_prompt(repo_root: &Path) -> Result<String> {
-    prompts_internal::scan::load_scan_prompt(repo_root)
+pub(crate) fn load_scan_prompt(
+    repo_root: &Path,
+    version: ScanPromptVersion,
+    mode: ScanMode,
+) -> Result<String> {
+    prompts_internal::scan::load_scan_prompt(repo_root, version, mode)
 }
 
 pub(crate) fn render_scan_prompt(
     template: &str,
     focus: &str,
     mode: ScanMode,
+    version: ScanPromptVersion,
     project_type: ProjectType,
     config: &Config,
 ) -> Result<String> {
-    prompts_internal::scan::render_scan_prompt(template, focus, mode, project_type, config)
+    prompts_internal::scan::render_scan_prompt(template, focus, mode, version, project_type, config)
 }
 
 pub(crate) fn load_task_builder_prompt(repo_root: &Path) -> Result<String> {

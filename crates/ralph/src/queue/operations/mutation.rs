@@ -408,7 +408,7 @@ pub fn split_task(
         vec![Vec::new(); opts.number]
     };
 
-    for i in 0..opts.number {
+    for (i, plan_items) in plan_distribution.iter().enumerate().take(opts.number) {
         let mut child = source_task.clone();
         child.id = next_id.clone();
         child.parent_id = Some(opts.source_id.to_string());
@@ -435,7 +435,7 @@ pub fn split_task(
 
         // Distribute plan items
         if opts.distribute_plan {
-            child.plan = plan_distribution[i].clone();
+            child.plan = plan_items.clone();
         } else {
             child.plan.clear();
         }

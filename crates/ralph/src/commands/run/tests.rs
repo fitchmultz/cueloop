@@ -104,6 +104,7 @@ fn resolved_with_agent_defaults(
             },
             webhook: crate::contracts::WebhookConfig::default(),
             session_timeout_hours: None,
+            scan_prompt_version: None,
         },
         queue: QueueConfig {
             file: Some(PathBuf::from(".ralph/queue.json")),
@@ -189,6 +190,7 @@ fn resolved_with_repo_root(repo_root: PathBuf) -> crate::config::Resolved {
             },
             webhook: crate::contracts::WebhookConfig::default(),
             session_timeout_hours: None,
+            scan_prompt_version: None,
         },
         queue: QueueConfig {
             file: Some(PathBuf::from(".ralph/queue.json")),
@@ -1067,6 +1069,7 @@ fn resolved_with_notification_config(
             },
             webhook: crate::contracts::WebhookConfig::default(),
             session_timeout_hours: None,
+            scan_prompt_version: None,
         },
         queue: QueueConfig {
             file: Some(PathBuf::from(".ralph/queue.json")),
@@ -1501,6 +1504,7 @@ fn test_config_agent(
         notification: NotificationConfig::default(),
         webhook: crate::contracts::WebhookConfig::default(),
         session_timeout_hours: None,
+        scan_prompt_version: None,
     }
 }
 

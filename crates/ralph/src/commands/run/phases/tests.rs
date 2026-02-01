@@ -642,7 +642,7 @@ echo '{"sessionID":"sess-123"}'
 }
 
 #[test]
-fn ci_gate_auto_retries_twice_then_falls_back_to_prompt() -> Result<()> {
+fn ci_gate_auto_retries_to_limit_then_falls_back_to_prompt() -> Result<()> {
     let temp = TempDir::new()?;
 
     let script = format!(
@@ -736,7 +736,7 @@ echo '{{"sessionID":"sess-123"}}'
 
     let count_path = temp.path().join("resume-count.txt");
     let count = std::fs::read_to_string(&count_path)?;
-    assert_eq!(count.trim(), "2");
+    assert_eq!(count.trim(), "5");
 
     assert_eq!(prompt_calls.load(Ordering::SeqCst), 1);
 
