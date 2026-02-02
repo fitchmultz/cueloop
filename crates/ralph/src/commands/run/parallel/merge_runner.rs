@@ -21,7 +21,8 @@ use crate::contracts::{
 use crate::{git, promptflow, prompts, runner};
 use anyhow::{Context, Result, bail};
 use std::path::Path;
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::Duration;
 
@@ -47,10 +48,14 @@ pub(crate) fn run_merge_runner(
     worktree_root: &Path,
     delete_branch: bool,
     merge_result_tx: mpsc::Sender<MergeResult>,
+    merge_stop: Arc<AtomicBool>,
 ) -> Result<()> {
     match pr_queue {
         MergeQueueSource::AsCreated(rx) => {
             for pr in rx.iter() {
+                if merge_stop.load(Ordering::SeqCst) {
+                    break;
+                }
                 handle_pr(
                     resolved,
                     pr,
@@ -61,11 +66,15 @@ pub(crate) fn run_merge_runner(
                     worktree_root,
                     delete_branch,
                     &merge_result_tx,
+                    &merge_stop,
                 )?;
             }
         }
         MergeQueueSource::AfterAll(prs) => {
             for pr in prs {
+                if merge_stop.load(Ordering::SeqCst) {
+                    break;
+                }
                 handle_pr(
                     resolved,
                     pr,
@@ -76,6 +85,7 @@ pub(crate) fn run_merge_runner(
                     worktree_root,
                     delete_branch,
                     &merge_result_tx,
+                    &merge_stop,
                 )?;
             }
         }
@@ -95,7 +105,12 @@ fn handle_pr(
     worktree_root: &Path,
     delete_branch: bool,
     merge_result_tx: &mpsc::Sender<MergeResult>,
+    merge_stop: &AtomicBool,
 ) -> Result<()> {
+    if merge_stop.load(Ordering::SeqCst) {
+        return Ok(());
+    }
+
     let branch_prefix = resolved
         .config
         .parallel
@@ -114,6 +129,7 @@ fn handle_pr(
         worktree_root,
         &task_id,
         delete_branch,
+        merge_stop,
     )?;
 
     if merged {
@@ -137,12 +153,20 @@ fn merge_pr_with_retries(
     worktree_root: &Path,
     task_id: &str,
     delete_branch: bool,
+    merge_stop: &AtomicBool,
 ) -> Result<bool> {
     let mut attempts = 0u8;
     loop {
+        if merge_stop.load(Ordering::SeqCst) {
+            return Ok(false);
+        }
         attempts += 1;
-        let state = git::pr_merge_state(&resolved.repo_root, pr.number)?;
-        match state {
+        let status = git::pr_merge_status(&resolved.repo_root, pr.number)?;
+        if status.is_draft {
+            log::info!("Skipping draft PR {} (not eligible for merge).", pr.number);
+            return Ok(false);
+        }
+        match status.merge_state {
             git::MergeState::Clean => {
                 if let Err(err) =
                     git::merge_pr(&resolved.repo_root, pr.number, merge_method, delete_branch)

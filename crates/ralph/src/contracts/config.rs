@@ -1226,7 +1226,7 @@ impl Default for Config {
                 draft_on_failure: Some(true),
                 conflict_policy: Some(ConflictPolicy::AutoResolve),
                 merge_retries: Some(5),
-                worktree_root: Some(PathBuf::from(".ralph/worktrees/parallel")),
+                worktree_root: None,
                 branch_prefix: Some("ralph/".to_string()),
                 delete_branch_on_merge: Some(true),
                 merge_runner: None,

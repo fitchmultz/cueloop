@@ -19,12 +19,13 @@ use crate::agent::AgentOverrides;
 use crate::commands::run::selection::select_run_one_task_index_excluding;
 use crate::config;
 use crate::contracts::{ConflictPolicy, MergeRunnerConfig, ParallelMergeMethod, ParallelMergeWhen};
-use crate::{git, promptflow, queue, signal, timeutil};
+use crate::{git, promptflow, queue, runutil, signal, timeutil};
 use anyhow::{Context, Result, bail};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::Duration;
 
@@ -67,6 +68,21 @@ pub(crate) fn run_loop_parallel(
     resolved: &config::Resolved,
     opts: ParallelRunOptions,
 ) -> Result<()> {
+    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let ctrlc = crate::runner::ctrlc_state()
+        .map_err(|e| anyhow::anyhow!("Ctrl-C handler initialization failed: {}", e))?;
+
+    if ctrlc.interrupted.load(Ordering::SeqCst) {
+        return Err(runutil::RunAbort::new(
+            runutil::RunAbortReason::Interrupted,
+            "Ctrl+C was pressed before parallel execution started",
+        )
+        .into());
+    }
+    ctrlc.interrupted.store(false, Ordering::SeqCst);
+
+    signal::clear_stop_signal_at_loop_start(&cache_dir);
+
     let mut settings = resolve_parallel_settings(resolved, &opts)?;
     if settings.workers < 2 {
         bail!(
@@ -116,6 +132,7 @@ pub(crate) fn run_loop_parallel(
 
     let base_branch = state_file.base_branch.clone();
 
+    let merge_stop = Arc::new(AtomicBool::new(false));
     let mut dropped_tasks = Vec::new();
     state_file.tasks_in_flight.retain(|record| {
         let path = Path::new(&record.worktree_path);
@@ -134,7 +151,6 @@ pub(crate) fn run_loop_parallel(
         state::save_state(&state_path, &state_file)?;
     }
 
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
     let (pr_tx, pr_rx) = mpsc::channel::<git::PrInfo>();
     let (merge_result_tx, merge_result_rx) = mpsc::channel::<MergeResult>();
     let mut merge_handle = None;
@@ -157,6 +173,7 @@ pub(crate) fn run_loop_parallel(
         let worktree_root = settings.worktree_root.clone();
         let delete_branch = settings.delete_branch_on_merge;
         let merge_result_tx_for_thread = merge_result_tx.clone();
+        let merge_stop_for_thread = Arc::clone(&merge_stop);
 
         merge_handle = Some(thread::spawn(move || {
             merge_runner::run_merge_runner(
@@ -169,6 +186,7 @@ pub(crate) fn run_loop_parallel(
                 &worktree_root,
                 delete_branch,
                 merge_result_tx_for_thread,
+                merge_stop_for_thread,
             )
         }));
     }
@@ -204,8 +222,15 @@ pub(crate) fn run_loop_parallel(
     let mut tasks_attempted: usize = 0;
     let mut tasks_succeeded: usize = 0;
     let mut tasks_failed: usize = 0;
+    let mut interrupted = false;
 
     loop {
+        if ctrlc.interrupted.load(Ordering::SeqCst) {
+            interrupted = true;
+            log::info!("Ctrl+C detected; stopping parallel run and cleaning up.");
+            break;
+        }
+
         if signal::stop_signal_exists(&cache_dir) {
             log::info!("Stop signal detected; no new tasks will be started.");
         }
@@ -295,8 +320,6 @@ pub(crate) fn run_loop_parallel(
                         worker,
                         &settings,
                         &base_branch,
-                        &mut created_prs,
-                        &pr_tx,
                         &mut state_file,
                         &state_path,
                     )?;
@@ -325,6 +348,34 @@ pub(crate) fn run_loop_parallel(
         thread::sleep(Duration::from_millis(500));
     }
 
+    if interrupted {
+        merge_stop.store(true, Ordering::SeqCst);
+        drop(pr_tx);
+        if let Some(handle) = merge_handle.take()
+            && let Err(err) = handle.join()
+        {
+            log::warn!("Merge runner thread panicked during shutdown: {:?}", err);
+        }
+
+        terminate_workers(&mut in_flight);
+        let cleanup_worktrees =
+            collect_worktrees_for_cleanup(&settings, &in_flight, &completed_worktrees, &state_file);
+        for spec in cleanup_worktrees {
+            if spec.path.exists()
+                && let Err(err) = git::remove_worktree(&resolved.repo_root, &spec, true)
+            {
+                log::warn!("Failed to remove worktree for {}: {:#}", spec.task_id, err);
+            }
+        }
+        state_file.tasks_in_flight.clear();
+        state::save_state(&state_path, &state_file)?;
+        return Err(runutil::RunAbort::new(
+            runutil::RunAbortReason::Interrupted,
+            "Parallel run interrupted by Ctrl+C",
+        )
+        .into());
+    }
+
     drop(pr_tx);
 
     if settings.auto_merge && settings.merge_when == ParallelMergeWhen::AfterAll {
@@ -339,6 +390,7 @@ pub(crate) fn run_loop_parallel(
             &settings.worktree_root,
             settings.delete_branch_on_merge,
             merge_result_tx,
+            Arc::clone(&merge_stop),
         )?;
     }
 
@@ -468,6 +520,64 @@ fn collect_excluded_ids(
     excluded
 }
 
+fn terminate_workers(in_flight: &mut HashMap<String, WorkerState>) {
+    for worker in in_flight.values_mut() {
+        if let Err(err) = worker.child.kill() {
+            log::warn!("Failed to terminate worker {}: {}", worker.task_id, err);
+        }
+    }
+
+    for worker in in_flight.values_mut() {
+        let _ = worker.child.wait();
+    }
+}
+
+fn collect_worktrees_for_cleanup(
+    settings: &ParallelSettings,
+    in_flight: &HashMap<String, WorkerState>,
+    completed_worktrees: &HashMap<String, git::WorktreeSpec>,
+    state_file: &state::ParallelStateFile,
+) -> Vec<git::WorktreeSpec> {
+    let mut seen = HashSet::new();
+    let mut collected = Vec::new();
+
+    let mut push_unique = |spec: git::WorktreeSpec| {
+        if seen.insert(spec.path.clone()) {
+            collected.push(spec);
+        }
+    };
+
+    for worker in in_flight.values() {
+        push_unique(worker.worktree.clone());
+    }
+
+    for spec in completed_worktrees.values() {
+        push_unique(spec.clone());
+    }
+
+    for record in &state_file.tasks_in_flight {
+        push_unique(git::WorktreeSpec {
+            task_id: record.task_id.clone(),
+            path: PathBuf::from(&record.worktree_path),
+            branch: record.branch.clone(),
+        });
+    }
+
+    for record in state_file.prs.iter().filter(|record| !record.merged) {
+        let path = record
+            .worktree_path()
+            .unwrap_or_else(|| settings.worktree_root.join(&record.task_id));
+        let branch = format!("{}{}", settings.branch_prefix, record.task_id);
+        push_unique(git::WorktreeSpec {
+            task_id: record.task_id.clone(),
+            path,
+            branch,
+        });
+    }
+
+    collected
+}
+
 fn spawn_worker(
     _resolved: &config::Resolved,
     worktree_path: &Path,
@@ -549,8 +659,6 @@ fn handle_worker_failure(
     worker: &WorkerState,
     settings: &ParallelSettings,
     base_branch: &str,
-    created_prs: &mut Vec<git::PrInfo>,
-    pr_tx: &mpsc::Sender<git::PrInfo>,
     state_file: &mut state::ParallelStateFile,
     state_path: &Path,
 ) -> Result<()> {
@@ -588,11 +696,11 @@ fn handle_worker_failure(
         Some(&worker.worktree.path),
     ));
     state::save_state(state_path, state_file)?;
-
-    created_prs.push(pr.clone());
-    if settings.auto_merge && settings.merge_when == ParallelMergeWhen::AsCreated {
-        let _ = pr_tx.send(pr);
-    }
+    log::info!(
+        "Draft PR {} created for {}; skipping auto-merge.",
+        pr.number,
+        worker.task_id
+    );
 
     Ok(())
 }
@@ -894,9 +1002,9 @@ fn unsupported_option_policy_arg(mode: crate::contracts::UnsupportedOptionPolicy
 mod tests {
     use super::*;
     use crate::contracts::{
-        PhaseOverrideConfig, PhaseOverrides, ReasoningEffort, Runner, RunnerApprovalMode,
-        RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity,
-        UnsupportedOptionPolicy,
+        ConflictPolicy, MergeRunnerConfig, PhaseOverrideConfig, PhaseOverrides, ReasoningEffort,
+        Runner, RunnerApprovalMode, RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode,
+        RunnerVerbosity, UnsupportedOptionPolicy,
     };
     use std::path::PathBuf;
 
@@ -1072,6 +1180,89 @@ mod tests {
         assert!(excluded.contains("RQ-0002"));
         assert!(excluded.contains("RQ-0003"));
         assert!(excluded.contains("RQ-0004"));
+
+        for worker in in_flight.values_mut() {
+            let _ = worker.child.wait();
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn collect_worktrees_for_cleanup_dedupes_sources() -> Result<()> {
+        let settings = ParallelSettings {
+            workers: 2,
+            merge_when: ParallelMergeWhen::AsCreated,
+            merge_method: ParallelMergeMethod::Squash,
+            auto_pr: true,
+            auto_merge: true,
+            draft_on_failure: true,
+            conflict_policy: ConflictPolicy::AutoResolve,
+            merge_retries: 3,
+            worktree_root: PathBuf::from("/tmp/worktrees"),
+            branch_prefix: "ralph/".to_string(),
+            delete_branch_on_merge: true,
+            merge_runner: MergeRunnerConfig::default(),
+        };
+
+        let mut state_file = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+        state_file.tasks_in_flight.push(state::ParallelTaskRecord {
+            task_id: "RQ-0002".to_string(),
+            worktree_path: "/tmp/worktrees/RQ-0002".to_string(),
+            branch: "ralph/RQ-0002".to_string(),
+            pid: Some(123),
+        });
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0003".to_string(),
+            pr_number: 9,
+            pr_url: "https://example.com/pr/9".to_string(),
+            head: Some("ralph/RQ-0003".to_string()),
+            base: Some("main".to_string()),
+            worktree_path: None,
+            merged: false,
+        });
+
+        let mut in_flight = HashMap::new();
+        let child = std::process::Command::new("true").spawn()?;
+        in_flight.insert(
+            "RQ-0001".to_string(),
+            WorkerState {
+                task_id: "RQ-0001".to_string(),
+                task_title: "title".to_string(),
+                worktree: git::WorktreeSpec {
+                    task_id: "RQ-0001".to_string(),
+                    path: PathBuf::from("/tmp/worktrees/RQ-0001"),
+                    branch: "ralph/RQ-0001".to_string(),
+                },
+                child,
+            },
+        );
+
+        let mut completed_worktrees = HashMap::new();
+        completed_worktrees.insert(
+            "RQ-0001".to_string(),
+            git::WorktreeSpec {
+                task_id: "RQ-0001".to_string(),
+                path: PathBuf::from("/tmp/worktrees/RQ-0001"),
+                branch: "ralph/RQ-0001".to_string(),
+            },
+        );
+
+        let collected =
+            collect_worktrees_for_cleanup(&settings, &in_flight, &completed_worktrees, &state_file);
+        let paths = collected
+            .iter()
+            .map(|spec| spec.path.clone())
+            .collect::<HashSet<_>>();
+        assert_eq!(paths.len(), 3);
+        assert!(paths.contains(&PathBuf::from("/tmp/worktrees/RQ-0001")));
+        assert!(paths.contains(&PathBuf::from("/tmp/worktrees/RQ-0002")));
+        assert!(paths.contains(&PathBuf::from("/tmp/worktrees/RQ-0003")));
 
         for worker in in_flight.values_mut() {
             let _ = worker.child.wait();

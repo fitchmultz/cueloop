@@ -115,7 +115,7 @@
         "merge_runner": null,
         "merge_when": "as_created",
         "workers": null,
-        "worktree_root": ".ralph/worktrees/parallel"
+        "worktree_root": null
       },
       "allOf": [
         {

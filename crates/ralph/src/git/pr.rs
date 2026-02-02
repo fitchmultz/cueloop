@@ -34,6 +34,12 @@ pub(crate) enum MergeState {
     Other(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PrMergeStatus {
+    pub merge_state: MergeState,
+    pub is_draft: bool,
+}
+
 #[derive(Deserialize)]
 struct PrViewJson {
     #[serde(rename = "mergeStateStatus")]
@@ -44,6 +50,8 @@ struct PrViewJson {
     head: Option<String>,
     #[serde(rename = "baseRefName")]
     base: Option<String>,
+    #[serde(rename = "isDraft")]
+    is_draft: Option<bool>,
 }
 
 pub(crate) fn create_pr(
@@ -139,13 +147,9 @@ pub(crate) fn merge_pr(
     Ok(())
 }
 
-pub(crate) fn pr_merge_state(repo_root: &Path, pr_number: u32) -> Result<MergeState> {
+pub(crate) fn pr_merge_status(repo_root: &Path, pr_number: u32) -> Result<PrMergeStatus> {
     let json = pr_view_json(repo_root, &pr_number.to_string())?;
-    Ok(match json.merge_state_status.as_str() {
-        "CLEAN" => MergeState::Clean,
-        "DIRTY" => MergeState::Dirty,
-        other => MergeState::Other(other.to_string()),
-    })
+    Ok(pr_merge_status_from_view(&json))
 }
 
 fn pr_view(repo_root: &Path, selector: &str) -> Result<PrInfo> {
@@ -178,7 +182,7 @@ fn pr_view_json(repo_root: &Path, selector: &str) -> Result<PrViewJson> {
         .arg("view")
         .arg(selector)
         .arg("--json")
-        .arg("mergeStateStatus,number,url,headRefName,baseRefName")
+        .arg("mergeStateStatus,number,url,headRefName,baseRefName,isDraft")
         .output()
         .with_context(|| format!("run gh pr view in {}", repo_root.display()))?;
 
@@ -192,6 +196,18 @@ fn pr_view_json(repo_root: &Path, selector: &str) -> Result<PrViewJson> {
     Ok(json)
 }
 
+fn pr_merge_status_from_view(json: &PrViewJson) -> PrMergeStatus {
+    let merge_state = match json.merge_state_status.as_str() {
+        "CLEAN" => MergeState::Clean,
+        "DIRTY" => MergeState::Dirty,
+        other => MergeState::Other(other.to_string()),
+    };
+    PrMergeStatus {
+        merge_state,
+        is_draft: json.is_draft.unwrap_or(false),
+    }
+}
+
 fn extract_pr_url(output: &str) -> Option<String> {
     output
         .lines()
@@ -202,12 +218,61 @@ fn extract_pr_url(output: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::extract_pr_url;
+    use super::{MergeState, extract_pr_url};
+    use super::{PrViewJson, pr_merge_status_from_view};
 
     #[test]
     fn extract_pr_url_picks_first_url_line() {
         let output = "Creating pull request for feature...\nhttps://github.com/org/repo/pull/5\n";
         let url = extract_pr_url(output).expect("url");
         assert_eq!(url, "https://github.com/org/repo/pull/5");
+    }
+
+    #[test]
+    fn pr_merge_status_from_view_tracks_draft_flag() {
+        let json = PrViewJson {
+            merge_state_status: "CLEAN".to_string(),
+            number: Some(1),
+            url: Some("https://example.com/pr/1".to_string()),
+            head: Some("ralph/RQ-0001".to_string()),
+            base: Some("main".to_string()),
+            is_draft: Some(true),
+        };
+
+        let status = pr_merge_status_from_view(&json);
+        assert_eq!(status.merge_state, MergeState::Clean);
+        assert!(status.is_draft);
+    }
+
+    #[test]
+    fn pr_merge_status_from_view_defaults_draft_false() {
+        let json = PrViewJson {
+            merge_state_status: "DIRTY".to_string(),
+            number: Some(2),
+            url: Some("https://example.com/pr/2".to_string()),
+            head: Some("ralph/RQ-0002".to_string()),
+            base: Some("main".to_string()),
+            is_draft: None,
+        };
+
+        let status = pr_merge_status_from_view(&json);
+        assert_eq!(status.merge_state, MergeState::Dirty);
+        assert!(!status.is_draft);
+    }
+
+    #[test]
+    fn pr_merge_status_from_view_handles_unknown_state() {
+        let json = PrViewJson {
+            merge_state_status: "BLOCKED".to_string(),
+            number: Some(3),
+            url: Some("https://example.com/pr/3".to_string()),
+            head: Some("ralph/RQ-0003".to_string()),
+            base: Some("main".to_string()),
+            is_draft: Some(false),
+        };
+
+        let status = pr_merge_status_from_view(&json);
+        assert_eq!(status.merge_state, MergeState::Other("BLOCKED".to_string()));
+        assert!(!status.is_draft);
     }
 }

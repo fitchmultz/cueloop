@@ -30,12 +30,21 @@ pub(crate) fn worktree_root(repo_root: &Path, cfg: &Config) -> PathBuf {
         .parallel
         .worktree_root
         .clone()
-        .unwrap_or_else(|| PathBuf::from(".ralph/worktrees/parallel"));
+        .unwrap_or_else(|| default_worktree_root(repo_root));
     if root.is_absolute() {
         root
     } else {
         repo_root.join(root)
     }
+}
+
+fn default_worktree_root(repo_root: &Path) -> PathBuf {
+    let repo_name = repo_root
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("repo");
+    let parent = repo_root.parent().unwrap_or(repo_root);
+    parent.join(".worktrees").join(repo_name).join("parallel")
 }
 
 pub(crate) fn create_worktree_at(
@@ -141,6 +150,17 @@ mod tests {
         let repo_root = PathBuf::from("/tmp/ralph-test");
         let root = worktree_root(&repo_root, &cfg);
         assert_eq!(root, PathBuf::from("/tmp/ralph-worktrees"));
+    }
+
+    #[test]
+    fn worktree_root_defaults_outside_repo() {
+        let cfg = Config {
+            parallel: ParallelConfig::default(),
+            ..Config::default()
+        };
+        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let root = worktree_root(&repo_root, &cfg);
+        assert_eq!(root, PathBuf::from("/tmp/.worktrees/ralph-test/parallel"));
     }
 
     #[test]

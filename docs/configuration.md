@@ -228,7 +228,7 @@ Key fields:
 - `draft_on_failure`: create draft PRs when a worker fails (default: `true`).
 - `conflict_policy`: `auto_resolve` (default), `retry_later`, or `reject`.
 - `merge_retries`: number of merge retries before giving up (default: `5`).
-- `worktree_root`: root directory for parallel worktrees (default: `.ralph/worktrees/parallel`).
+- `worktree_root`: root directory for parallel worktrees (default: `<repo-parent>/.worktrees/<repo-name>/parallel`).
 - `branch_prefix`: prefix for worker branches (default: `ralph/`).
 - `delete_branch_on_merge`: delete branches after merge (default: `true`).
 - `merge_runner`: runner overrides for merge conflict resolution (defaults to `agent` settings).

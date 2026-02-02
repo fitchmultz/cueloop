@@ -42,8 +42,8 @@ Parallel execution is available only via the CLI (`ralph run loop --parallel [N]
 not support parallel runs.
 
 High-level behavior:
-- Each task runs in its own git worktree under `.ralph/worktrees/parallel/<TASK_ID>` on a branch
-  named `ralph/<TASK_ID>`.
+- Each task runs in its own git worktree under `<repo-parent>/.worktrees/<repo-name>/parallel/<TASK_ID>`
+  on a branch named `ralph/<TASK_ID>`.
 - The supervisor creates PRs on success (draft PRs on failure when enabled).
 - The merge runner merges PRs as they are created (or after all tasks), and can auto-resolve
   conflicts using the `merge_conflicts` prompt and `parallel.merge_runner` overrides.
