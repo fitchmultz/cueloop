@@ -11,6 +11,12 @@
 //! Invariants/assumptions:
 //! - `git` is available and the repo root is valid.
 //! - Worktree paths are unique per task ID.
+//!
+//! # Deprecated
+//! This module is deprecated in favor of `workspace.rs` (clone-based workspaces).
+//! It is kept for reference but no longer used by the parallel supervisor.
+
+#![allow(dead_code)]
 
 use crate::contracts::Config;
 use crate::git::error::git_base_command;

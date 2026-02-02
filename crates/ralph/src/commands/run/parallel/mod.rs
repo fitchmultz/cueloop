@@ -1,7 +1,7 @@
 //! Parallel run loop supervisor and worker orchestration.
 //!
 //! Responsibilities:
-//! - Select runnable tasks and spawn parallel workers in git worktrees.
+//! - Select runnable tasks and spawn parallel workers in git workspaces (clone-based).
 //! - Create PRs on success/failure and optionally dispatch merge runner work.
 //! - Track in-flight workers and coordinate cleanup after merges.
 //!
@@ -12,7 +12,7 @@
 //!
 //! Invariants/assumptions:
 //! - Queue order is authoritative for task selection.
-//! - Workers run in isolated worktrees with dedicated branches.
+//! - Workers run in isolated workspaces with dedicated branches.
 //! - PR creation relies on authenticated `gh` CLI access.
 
 use crate::agent::AgentOverrides;
@@ -46,7 +46,7 @@ pub(crate) struct ParallelRunOptions {
 struct WorkerState {
     task_id: String,
     task_title: String,
-    worktree: git::WorktreeSpec,
+    workspace: git::WorkspaceSpec,
     child: Child,
 }
 
@@ -193,7 +193,7 @@ pub(crate) fn run_loop_parallel(
     }
 
     let mut in_flight: HashMap<String, WorkerState> = HashMap::new();
-    let mut completed_worktrees: HashMap<String, git::WorktreeSpec> = HashMap::new();
+    let mut completed_workspaces: HashMap<String, git::WorkspaceSpec> = HashMap::new();
     let mut created_prs: Vec<git::PrInfo> = existing_prs.clone();
 
     for record in state_file.prs.iter().filter(|record| !record.merged) {
@@ -201,9 +201,9 @@ pub(crate) fn run_loop_parallel(
             .workspace_path()
             .unwrap_or_else(|| settings.workspace_root.join(&record.task_id));
         if path.exists() {
-            completed_worktrees.insert(
+            completed_workspaces.insert(
                 record.task_id.clone(),
-                git::WorktreeSpec {
+                git::WorkspaceSpec {
                     task_id: record.task_id.clone(),
                     path,
                     branch: format!("{}{}", settings.branch_prefix, record.task_id),
@@ -248,24 +248,24 @@ pub(crate) fn run_loop_parallel(
                     None => break,
                 };
 
-            let worktree = git::create_worktree_at(
+            let workspace = git::create_workspace_at(
                 &resolved.repo_root,
                 &settings.workspace_root,
                 &task_id,
                 &base_branch,
                 &settings.branch_prefix,
             )?;
-            sync_ralph_state(&resolved.repo_root, &worktree.path)?;
+            sync_ralph_state(&resolved.repo_root, &workspace.path)?;
 
             let child = spawn_worker(
                 resolved,
-                &worktree.path,
+                &workspace.path,
                 &task_id,
                 &opts.agent_overrides,
                 opts.force,
             )?;
 
-            let record = state::ParallelTaskRecord::new(&task_id, &worktree, child.id());
+            let record = state::ParallelTaskRecord::new(&task_id, &workspace, child.id());
             state_file.upsert_task(record);
             state::save_state(&state_path, &state_file)?;
 
@@ -274,7 +274,7 @@ pub(crate) fn run_loop_parallel(
                 WorkerState {
                     task_id,
                     task_title,
-                    worktree,
+                    workspace,
                     child,
                 },
             );
@@ -284,11 +284,12 @@ pub(crate) fn run_loop_parallel(
         // Drain merge results for cleanup.
         while let Ok(result) = merge_result_rx.try_recv() {
             if result.merged {
-                if let Some(worktree) = completed_worktrees.remove(&result.task_id)
-                    && let Err(err) = git::remove_worktree(&resolved.repo_root, &worktree, true)
+                if let Some(workspace) = completed_workspaces.remove(&result.task_id)
+                    && let Err(err) =
+                        git::remove_workspace(&settings.workspace_root, &workspace, true)
                 {
                     log::warn!(
-                        "Failed to remove worktree for {}: {:#}",
+                        "Failed to remove workspace for {}: {:#}",
                         result.task_id,
                         err
                     );
@@ -327,7 +328,7 @@ pub(crate) fn run_loop_parallel(
                     )?;
                 }
 
-                completed_worktrees.insert(task_id.clone(), worker.worktree.clone());
+                completed_workspaces.insert(task_id.clone(), worker.workspace.clone());
                 state_file.remove_task(task_id);
                 state::save_state(&state_path, &state_file)?;
                 finished.push(task_id.clone());
@@ -360,13 +361,17 @@ pub(crate) fn run_loop_parallel(
         }
 
         terminate_workers(&mut in_flight);
-        let cleanup_worktrees =
-            collect_worktrees_for_cleanup(&settings, &in_flight, &completed_worktrees, &state_file);
-        for spec in cleanup_worktrees {
+        let cleanup_workspaces = collect_workspaces_for_cleanup(
+            &settings,
+            &in_flight,
+            &completed_workspaces,
+            &state_file,
+        );
+        for spec in cleanup_workspaces {
             if spec.path.exists()
-                && let Err(err) = git::remove_worktree(&resolved.repo_root, &spec, true)
+                && let Err(err) = git::remove_workspace(&settings.workspace_root, &spec, true)
             {
-                log::warn!("Failed to remove worktree for {}: {:#}", spec.task_id, err);
+                log::warn!("Failed to remove workspace for {}: {:#}", spec.task_id, err);
             }
         }
         state_file.tasks_in_flight.clear();
@@ -407,11 +412,11 @@ pub(crate) fn run_loop_parallel(
     // Drain any remaining merge results for cleanup.
     while let Ok(result) = merge_result_rx.try_recv() {
         if result.merged {
-            if let Some(worktree) = completed_worktrees.remove(&result.task_id)
-                && let Err(err) = git::remove_worktree(&resolved.repo_root, &worktree, true)
+            if let Some(workspace) = completed_workspaces.remove(&result.task_id)
+                && let Err(err) = git::remove_workspace(&settings.workspace_root, &workspace, true)
             {
                 log::warn!(
-                    "Failed to remove worktree for {}: {:#}",
+                    "Failed to remove workspace for {}: {:#}",
                     result.task_id,
                     err
                 );
@@ -534,31 +539,31 @@ fn terminate_workers(in_flight: &mut HashMap<String, WorkerState>) {
     }
 }
 
-fn collect_worktrees_for_cleanup(
+fn collect_workspaces_for_cleanup(
     settings: &ParallelSettings,
     in_flight: &HashMap<String, WorkerState>,
-    completed_worktrees: &HashMap<String, git::WorktreeSpec>,
+    completed_workspaces: &HashMap<String, git::WorkspaceSpec>,
     state_file: &state::ParallelStateFile,
-) -> Vec<git::WorktreeSpec> {
+) -> Vec<git::WorkspaceSpec> {
     let mut seen = HashSet::new();
     let mut collected = Vec::new();
 
-    let mut push_unique = |spec: git::WorktreeSpec| {
+    let mut push_unique = |spec: git::WorkspaceSpec| {
         if seen.insert(spec.path.clone()) {
             collected.push(spec);
         }
     };
 
     for worker in in_flight.values() {
-        push_unique(worker.worktree.clone());
+        push_unique(worker.workspace.clone());
     }
 
-    for spec in completed_worktrees.values() {
+    for spec in completed_workspaces.values() {
         push_unique(spec.clone());
     }
 
     for record in &state_file.tasks_in_flight {
-        push_unique(git::WorktreeSpec {
+        push_unique(git::WorkspaceSpec {
             task_id: record.task_id.clone(),
             path: PathBuf::from(&record.workspace_path),
             branch: record.branch.clone(),
@@ -570,7 +575,7 @@ fn collect_worktrees_for_cleanup(
             .workspace_path()
             .unwrap_or_else(|| settings.workspace_root.join(&record.task_id));
         let branch = format!("{}{}", settings.branch_prefix, record.task_id);
-        push_unique(git::WorktreeSpec {
+        push_unique(git::WorkspaceSpec {
             task_id: record.task_id.clone(),
             path,
             branch,
@@ -644,16 +649,17 @@ fn handle_worker_success(
         return Ok(());
     }
 
-    ensure_branch_pushed(&worker.worktree.path)?;
+    ensure_branch_pushed(&worker.workspace.path)?;
 
-    let body = promptflow::read_phase2_final_response_cache(&worker.worktree.path, &worker.task_id)
-        .unwrap_or_default();
+    let body =
+        promptflow::read_phase2_final_response_cache(&worker.workspace.path, &worker.task_id)
+            .unwrap_or_default();
     let title = format!("{}: {}", worker.task_id, worker.task_title);
     let pr = git::create_pr(
         &resolved.repo_root,
         &title,
         &body,
-        &worker.worktree.branch,
+        &worker.workspace.branch,
         base_branch,
         false,
     )?;
@@ -661,7 +667,7 @@ fn handle_worker_success(
     state_file.upsert_pr(state::ParallelPrRecord::new(
         &worker.task_id,
         &pr,
-        Some(&worker.worktree.path),
+        Some(&worker.workspace.path),
     ));
     state::save_state(state_path, state_file)?;
 
@@ -686,7 +692,7 @@ fn handle_worker_failure(
         return Ok(());
     }
 
-    if !commit_failure_changes(&worker.worktree.path, &worker.task_id)? {
+    if !commit_failure_changes(&worker.workspace.path, &worker.task_id)? {
         log::warn!(
             "Worker {} failed with no changes; skipping draft PR.",
             worker.task_id
@@ -694,7 +700,7 @@ fn handle_worker_failure(
         return Ok(());
     }
 
-    ensure_branch_pushed(&worker.worktree.path)?;
+    ensure_branch_pushed(&worker.workspace.path)?;
 
     let body = format!(
         "Failed run for {}. Draft PR generated by Ralph.",
@@ -705,7 +711,7 @@ fn handle_worker_failure(
         &resolved.repo_root,
         &title,
         &body,
-        &worker.worktree.branch,
+        &worker.workspace.branch,
         base_branch,
         true,
     )?;
@@ -713,7 +719,7 @@ fn handle_worker_failure(
     state_file.upsert_pr(state::ParallelPrRecord::new(
         &worker.task_id,
         &pr,
-        Some(&worker.worktree.path),
+        Some(&worker.workspace.path),
     ));
     state::save_state(state_path, state_file)?;
     log::info!(
@@ -822,7 +828,7 @@ fn resolve_parallel_settings(
         draft_on_failure: cfg.draft_on_failure.unwrap_or(true),
         conflict_policy: cfg.conflict_policy.unwrap_or(ConflictPolicy::AutoResolve),
         merge_retries: cfg.merge_retries.unwrap_or(5),
-        workspace_root: git::worktree_root(&resolved.repo_root, &resolved.config),
+        workspace_root: git::workspace_root(&resolved.repo_root, &resolved.config),
         branch_prefix: cfg
             .branch_prefix
             .clone()
@@ -1128,22 +1134,22 @@ mod tests {
     #[test]
     fn build_worker_command_sets_cwd_and_args() -> Result<()> {
         let temp = TempDir::new()?;
-        let worktree_path = temp.path().join("worktree");
-        fs::create_dir_all(&worktree_path)?;
+        let workspace_path = temp.path().join("workspace");
+        fs::create_dir_all(&workspace_path)?;
 
         let overrides = AgentOverrides::default();
-        let (cmd, args) = build_worker_command(&worktree_path, "RQ-1234", &overrides, true)?;
+        let (cmd, args) = build_worker_command(&workspace_path, "RQ-1234", &overrides, true)?;
 
-        assert_eq!(cmd.get_current_dir(), Some(worktree_path.as_path()));
+        assert_eq!(cmd.get_current_dir(), Some(workspace_path.as_path()));
 
         let mut pwd_seen = false;
         for (key, value) in cmd.get_envs() {
             if key == OsStr::new("PWD") {
                 pwd_seen = true;
-                assert_eq!(value, Some(worktree_path.as_os_str()));
+                assert_eq!(value, Some(workspace_path.as_os_str()));
             }
         }
-        assert!(pwd_seen, "PWD env should be set for worktree execution");
+        assert!(pwd_seen, "PWD env should be set for workspace execution");
 
         assert!(args.contains(&"--force".to_string()));
         assert!(args.contains(&"--no-progress".to_string()));
@@ -1272,7 +1278,7 @@ mod tests {
             WorkerState {
                 task_id: "RQ-0004".to_string(),
                 task_title: "title".to_string(),
-                worktree: git::WorktreeSpec {
+                workspace: git::WorkspaceSpec {
                     task_id: "RQ-0004".to_string(),
                     path: PathBuf::from("/tmp/workspaces/RQ-0004"),
                     branch: "ralph/RQ-0004".to_string(),
@@ -1294,7 +1300,7 @@ mod tests {
     }
 
     #[test]
-    fn collect_worktrees_for_cleanup_dedupes_sources() -> Result<()> {
+    fn collect_workspaces_for_cleanup_dedupes_sources() -> Result<()> {
         let settings = ParallelSettings {
             workers: 2,
             merge_when: ParallelMergeWhen::AsCreated,
@@ -1339,7 +1345,7 @@ mod tests {
             WorkerState {
                 task_id: "RQ-0001".to_string(),
                 task_title: "title".to_string(),
-                worktree: git::WorktreeSpec {
+                workspace: git::WorkspaceSpec {
                     task_id: "RQ-0001".to_string(),
                     path: PathBuf::from("/tmp/workspaces/RQ-0001"),
                     branch: "ralph/RQ-0001".to_string(),
@@ -1348,18 +1354,22 @@ mod tests {
             },
         );
 
-        let mut completed_worktrees = HashMap::new();
-        completed_worktrees.insert(
+        let mut completed_workspaces = HashMap::new();
+        completed_workspaces.insert(
             "RQ-0001".to_string(),
-            git::WorktreeSpec {
+            git::WorkspaceSpec {
                 task_id: "RQ-0001".to_string(),
                 path: PathBuf::from("/tmp/workspaces/RQ-0001"),
                 branch: "ralph/RQ-0001".to_string(),
             },
         );
 
-        let collected =
-            collect_worktrees_for_cleanup(&settings, &in_flight, &completed_worktrees, &state_file);
+        let collected = collect_workspaces_for_cleanup(
+            &settings,
+            &in_flight,
+            &completed_workspaces,
+            &state_file,
+        );
         let paths = collected
             .iter()
             .map(|spec| spec.path.clone())

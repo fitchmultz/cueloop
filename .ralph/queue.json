@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0547",
-      "status": "todo",
-      "title": "Swap parallel supervisor to workspace clones (remove worktree paths)",
-      "priority": "high",
-      "tags": [
-        "parallel",
-        "run",
-        "workspace"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/mod.rs"
-      ],
-      "evidence": [
-        "Parallel supervisor currently relies on worktree paths and helpers",
-        "Replacement requires workspace clones with no worktree fallback"
-      ],
-      "plan": [
-        "Replace worktree creation/removal calls with workspace clone helpers",
-        "Update settings/state usage to `workspace_root`/`workspace_path` terminology with no worktree alias",
-        "Adjust tests to expect workspace paths and ensure cleanup removes clones"
-      ],
-      "notes": [
-        "Keep user-facing parallel behavior unchanged",
-        "Breaking change: replace worktree-based parallel isolation; remove legacy worktree_* compatibility."
-      ],
-      "request": "plan: replace parallel worktrees with clone-based workspaces",
-      "created_at": "2026-02-02T14:39:46Z",
-      "updated_at": "2026-02-02T14:39:46Z",
-      "depends_on": [
-        "RQ-0545",
-        "RQ-0546"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "plan_source": "./docs/parallel-plan.md"
-      }
-    },
-    {
       "id": "RQ-0548",
       "status": "todo",
       "title": "Harden merge runner with workspace clones only",

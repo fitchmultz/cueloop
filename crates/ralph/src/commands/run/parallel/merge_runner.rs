@@ -11,7 +11,7 @@
 //!
 //! Invariants/assumptions:
 //! - PRs originate from branches named with the configured prefix.
-//! - Worktrees remain available until merge completion or failure.
+//! - Workspaces remain available until merge completion or failure.
 
 use crate::commands::run::PhaseType;
 use crate::config;

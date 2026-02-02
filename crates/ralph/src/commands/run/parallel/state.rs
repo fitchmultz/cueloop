@@ -14,7 +14,7 @@
 
 use crate::contracts::{ParallelMergeMethod, ParallelMergeWhen};
 use crate::fsutil;
-use crate::git::WorktreeSpec;
+use crate::git::WorkspaceSpec;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -92,11 +92,11 @@ pub(crate) struct ParallelTaskRecord {
 }
 
 impl ParallelTaskRecord {
-    pub fn new(task_id: &str, worktree: &WorktreeSpec, pid: u32) -> Self {
+    pub fn new(task_id: &str, workspace: &WorkspaceSpec, pid: u32) -> Self {
         Self {
             task_id: task_id.to_string(),
-            workspace_path: worktree.path.to_string_lossy().to_string(),
-            branch: worktree.branch.clone(),
+            workspace_path: workspace.path.to_string_lossy().to_string(),
+            branch: workspace.branch.clone(),
             pid: Some(pid),
         }
     }
