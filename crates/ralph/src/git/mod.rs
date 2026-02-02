@@ -25,6 +25,7 @@ pub mod error;
 pub mod lfs;
 pub mod pr;
 pub mod status;
+pub mod workspace;
 pub mod worktree;
 
 // Re-export commonly used items for convenience within the crate.

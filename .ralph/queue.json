@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0545",
-      "status": "todo",
-      "title": "Add clone-based git workspace helpers for parallel runs (no worktree compat)",
-      "priority": "high",
-      "tags": [
-        "parallel",
-        "git",
-        "workspace"
-      ],
-      "scope": [
-        "crates/ralph/src/git/workspace.rs",
-        "crates/ralph/src/git/mod.rs"
-      ],
-      "evidence": [
-        "Parallel isolation is moving from worktrees to per-task clone workspaces",
-        "Legacy worktree helpers are being retired as part of the replacement"
-      ],
-      "plan": [
-        "Add `crates/ralph/src/git/workspace.rs` with module docs, workspace root helpers, clone creation, and cleanup",
-        "Add tests for workspace root resolution and create/remove workspace lifecycle",
-        "Wire the module into `crates/ralph/src/git/mod.rs` and remove parallel dependencies on worktree helpers"
-      ],
-      "notes": [
-        "Requires git origin resolution for pushable clones",
-        "Breaking change: replace worktree-based parallel isolation; remove legacy worktree_* compatibility."
-      ],
-      "request": "plan: replace parallel worktrees with clone-based workspaces",
-      "created_at": "2026-02-02T14:39:46Z",
-      "updated_at": "2026-02-02T14:39:46Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "plan_source": "./docs/parallel-plan.md"
-      }
-    },
-    {
       "id": "RQ-0546",
       "status": "todo",
       "title": "Replace parallel config/state to use workspace_* only (breaking change)",
