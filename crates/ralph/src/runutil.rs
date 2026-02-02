@@ -21,8 +21,6 @@ mod tests;
 
 // --- Public API (unchanged call-site paths) ----------------------------------
 
-pub use execution::{RunnerBackend, RunnerErrorMessages, run_prompt_with_handling_backend};
-
 pub use revert::{
     RevertDecision, RevertOutcome, RevertPromptContext, RevertPromptHandler, RevertSource,
     apply_git_revert_mode, apply_git_revert_mode_with_context, format_revert_failure_message,
@@ -35,4 +33,7 @@ pub use shell::shell_command;
 
 pub(crate) use abort::{RunAbort, RunAbortReason, abort_reason};
 
-pub(crate) use execution::{RunnerInvocation, run_prompt_with_handling};
+pub(crate) use execution::{RunnerErrorMessages, RunnerInvocation, run_prompt_with_handling};
+
+#[cfg(test)]
+pub(crate) use execution::{RunnerBackend, run_prompt_with_handling_backend};

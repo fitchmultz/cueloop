@@ -60,7 +60,7 @@ pub(crate) struct RunnerInvocation<'a> {
     pub session_id: Option<String>,
 }
 
-pub struct RunnerErrorMessages<'a, FNonZero, FOther>
+pub(crate) struct RunnerErrorMessages<'a, FNonZero, FOther>
 where
     FNonZero: FnOnce(i32) -> String,
     FOther: FnOnce(runner::RunnerError) -> String,
@@ -73,7 +73,7 @@ where
     pub other_msg: FOther,
 }
 
-pub trait RunnerBackend {
+pub(crate) trait RunnerBackend {
     #[allow(clippy::too_many_arguments)]
     fn run_prompt<'a>(
         &mut self,
@@ -205,7 +205,7 @@ fn wrap_output_handler_with_capture(
     (capture, Some(handler))
 }
 
-pub fn run_prompt_with_handling_backend<FNonZero, FOther>(
+pub(crate) fn run_prompt_with_handling_backend<FNonZero, FOther>(
     invocation: RunnerInvocation<'_>,
     messages: RunnerErrorMessages<'_, FNonZero, FOther>,
     backend: &mut impl RunnerBackend,

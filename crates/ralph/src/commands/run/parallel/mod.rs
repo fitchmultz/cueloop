@@ -219,6 +219,7 @@ pub(crate) fn run_loop_parallel(
     }
 
     let include_draft = opts.agent_overrides.include_draft.unwrap_or(false);
+    let worker_overrides = overrides_for_parallel_workers(resolved, &opts.agent_overrides);
     let mut tasks_started: u32 = 0;
     let mut tasks_attempted: usize = 0;
     let mut tasks_succeeded: usize = 0;
@@ -261,7 +262,7 @@ pub(crate) fn run_loop_parallel(
                 resolved,
                 &workspace.path,
                 &task_id,
-                &opts.agent_overrides,
+                &worker_overrides,
                 opts.force,
             )?;
 
@@ -623,6 +624,24 @@ fn handle_worker_failure(
     Ok(())
 }
 
+fn overrides_for_parallel_workers(
+    resolved: &config::Resolved,
+    overrides: &AgentOverrides,
+) -> AgentOverrides {
+    let repoprompt_flags =
+        crate::agent::resolve_repoprompt_flags_from_overrides(overrides, resolved);
+    if repoprompt_flags.plan_required || repoprompt_flags.tool_injection {
+        log::warn!(
+            "Parallel workers disable RepoPrompt plan/tooling instructions to keep edits in workspace clones."
+        );
+    }
+
+    let mut worker_overrides = overrides.clone();
+    worker_overrides.repoprompt_plan_required = Some(false);
+    worker_overrides.repoprompt_tool_injection = Some(false);
+    worker_overrides
+}
+
 fn resolve_parallel_settings(
     resolved: &config::Resolved,
     opts: &ParallelRunOptions,
@@ -650,10 +669,11 @@ fn resolve_parallel_settings(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contracts::{ConflictPolicy, MergeRunnerConfig};
+    use crate::contracts::{Config, ConflictPolicy, MergeRunnerConfig};
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::process::Child;
+    use tempfile::TempDir;
 
     #[test]
     fn collect_workspaces_for_cleanup_dedupes_sources() -> Result<()> {
@@ -739,6 +759,40 @@ mod tests {
             let _ = worker.child.wait();
         }
 
+        Ok(())
+    }
+
+    #[test]
+    fn overrides_for_parallel_workers_forces_repoprompt_off() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path().to_path_buf();
+        let mut cfg = Config::default();
+        cfg.agent.repoprompt_plan_required = Some(true);
+        cfg.agent.repoprompt_tool_injection = Some(true);
+
+        let resolved = config::Resolved {
+            config: cfg,
+            repo_root: repo_root.clone(),
+            queue_path: repo_root.join(".ralph/queue.json"),
+            done_path: repo_root.join(".ralph/done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: Some(repo_root.join(".ralph/config.json")),
+        };
+
+        let overrides = AgentOverrides {
+            include_draft: Some(true),
+            repoprompt_plan_required: Some(true),
+            repoprompt_tool_injection: Some(true),
+            ..AgentOverrides::default()
+        };
+
+        let worker_overrides = overrides_for_parallel_workers(&resolved, &overrides);
+
+        assert_eq!(worker_overrides.include_draft, Some(true));
+        assert_eq!(worker_overrides.repoprompt_plan_required, Some(false));
+        assert_eq!(worker_overrides.repoprompt_tool_injection, Some(false));
         Ok(())
     }
 }
