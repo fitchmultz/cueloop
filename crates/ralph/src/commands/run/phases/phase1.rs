@@ -1,7 +1,7 @@
 //! Phase 1 (planning) execution.
 
 use super::shared::execute_runner_pass;
-use super::{PhaseInvocation, PhaseType, generate_phase_session_id};
+use super::{PhaseInvocation, PhaseType, phase_session_id_for_runner};
 use crate::commands::run::{logging, supervision};
 use crate::git::GitError;
 use crate::{git, promptflow, prompts, runutil};
@@ -31,10 +31,8 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             ctx.policy,
             &ctx.resolved.config,
         )?;
-        // Generate a unique session ID for this phase
-        let phase_session_id = generate_phase_session_id(ctx.task_id, 1);
-
-        let _output = execute_runner_pass(
+        let phase_session_id = phase_session_id_for_runner(ctx.settings.runner, ctx.task_id, 1);
+        let output = execute_runner_pass(
             ctx.resolved,
             ctx.settings,
             ctx.bins,
@@ -46,7 +44,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             ctx.revert_prompt.clone(),
             "Planning",
             PhaseType::Planning,
-            Some(phase_session_id.clone()),
+            phase_session_id,
         )?;
 
         let mut continue_session = supervision::ContinueSession {
@@ -55,7 +53,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             reasoning_effort: ctx.settings.reasoning_effort,
             runner_cli: ctx.settings.runner_cli,
             phase_type: super::PhaseType::Planning,
-            session_id: Some(phase_session_id),
+            session_id: output.session_id.clone(),
             output_handler: ctx.output_handler.clone(),
             output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,

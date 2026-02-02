@@ -5,6 +5,7 @@ use super::phase3::ensure_phase3_completion;
 use super::shared::run_ci_gate_with_continue;
 use super::{
     PhaseInvocation, execute_phase1_planning, execute_phase3_review, generate_phase_session_id,
+    phase_session_id_for_runner,
 };
 use crate::commands::run::supervision::ContinueSession;
 use crate::completions;
@@ -103,6 +104,21 @@ fn generate_phase_session_id_uses_task_phase_and_timestamp_format() {
     assert!(
         suffix.chars().all(|c| c.is_ascii_digit()),
         "timestamp suffix should be digits, got {suffix}"
+    );
+}
+
+#[test]
+fn phase_session_id_for_runner_only_returns_for_kimi() {
+    let task_id = "RQ-0009";
+    let kimi_id = phase_session_id_for_runner(Runner::Kimi, task_id, 2);
+    assert!(
+        kimi_id.is_some(),
+        "expected kimi session id to be generated"
+    );
+    let opencode_id = phase_session_id_for_runner(Runner::Opencode, task_id, 2);
+    assert!(
+        opencode_id.is_none(),
+        "expected opencode session id to be extracted from runner output"
     );
 }
 

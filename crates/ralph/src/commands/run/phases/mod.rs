@@ -5,7 +5,7 @@
 
 use crate::commands::run::supervision::PushPolicy;
 use crate::config;
-use crate::contracts::{GitRevertMode, ProjectType};
+use crate::contracts::{GitRevertMode, ProjectType, Runner};
 use crate::{promptflow, runner, runutil};
 
 mod phase1;
@@ -86,4 +86,18 @@ pub(crate) fn generate_phase_session_id(task_id: &str, phase: u8) -> String {
         .unwrap_or_default()
         .as_secs();
     format!("{}-p{}-{}", task_id, phase, timestamp)
+}
+
+/// Build a phase session ID only for runners that require Ralph-managed IDs.
+///
+/// Kimi does not emit session IDs in its JSON output, so Ralph must supply one.
+pub(crate) fn phase_session_id_for_runner(
+    runner: Runner,
+    task_id: &str,
+    phase: u8,
+) -> Option<String> {
+    match runner {
+        Runner::Kimi => Some(generate_phase_session_id(task_id, phase)),
+        _ => None,
+    }
 }
