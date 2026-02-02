@@ -39,7 +39,9 @@ pub use commit::{
 pub use error::GitError;
 pub use lfs::{check_lfs_health, filter_modified_lfs_files, has_lfs, list_lfs_files};
 pub(crate) use pr::{MergeState, PrInfo, create_pr, merge_pr, pr_merge_status};
-pub use status::{ensure_paths_unchanged, snapshot_paths, status_paths, status_porcelain};
+pub use status::{
+    ensure_paths_unchanged, ignored_paths, snapshot_paths, status_paths, status_porcelain,
+};
 // NEW: workspace-based isolation (clone workspaces).
 pub(crate) use workspace::{
     WorkspaceSpec, create_workspace_at, ensure_workspace_exists, remove_workspace, workspace_root,

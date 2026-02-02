@@ -29,6 +29,7 @@ pub(crate) fn sync_ralph_state(repo_root: &Path, workspace_path: &Path) -> Resul
     sync_file_if_exists(&source.join("done.json"), &target.join("done.json"))?;
     sync_file_if_exists(&source.join("config.json"), &target.join("config.json"))?;
     sync_prompts_dir(&source.join("prompts"), &target.join("prompts"))?;
+    sync_gitignored(repo_root, workspace_path)?;
 
     Ok(())
 }
@@ -105,9 +106,76 @@ fn sync_prompts_dir(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
+fn sync_gitignored(repo_root: &Path, workspace_path: &Path) -> Result<()> {
+    let ignored = git::ignored_paths(repo_root)
+        .with_context(|| format!("list ignored paths in {}", repo_root.display()))?;
+    if ignored.is_empty() {
+        return Ok(());
+    }
+
+    let workspace_rel = workspace_path.strip_prefix(repo_root).ok().map(|path| {
+        path.to_string_lossy()
+            .trim_end_matches(std::path::MAIN_SEPARATOR)
+            .trim_end_matches('/')
+            .to_string()
+    });
+
+    for rel in ignored {
+        let rel_trimmed = rel.trim_end_matches('/');
+        if rel_trimmed.is_empty() {
+            continue;
+        }
+        if let Some(prefix) = &workspace_rel
+            && (rel_trimmed == prefix
+                || rel_trimmed.starts_with(&format!("{}/", prefix))
+                || prefix.starts_with(&format!("{}/", rel_trimmed)))
+            {
+                continue;
+            }
+
+        let source = repo_root.join(rel_trimmed);
+        let target = workspace_path.join(rel_trimmed);
+        if !source.exists() {
+            continue;
+        }
+        let metadata = fs::symlink_metadata(&source)
+            .with_context(|| format!("stat ignored path {}", source.display()))?;
+        if metadata.is_dir() {
+            sync_path_recursive(&source, &target)?;
+        } else {
+            sync_file_if_exists(&source, &target)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn sync_path_recursive(source: &Path, target: &Path) -> Result<()> {
+    fs::create_dir_all(target)
+        .with_context(|| format!("create ignored dir {}", target.display()))?;
+    for entry in
+        fs::read_dir(source).with_context(|| format!("read ignored dir {}", source.display()))?
+    {
+        let entry = entry.with_context(|| format!("read ignored entry in {}", source.display()))?;
+        let path = entry.path();
+        let name = entry.file_name();
+        let dest = target.join(name);
+        let metadata = entry
+            .metadata()
+            .with_context(|| format!("stat ignored entry {}", path.display()))?;
+        if metadata.is_dir() {
+            sync_path_recursive(&path, &dest)?;
+        } else {
+            sync_file_if_exists(&path, &dest)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testsupport::git as git_test;
     use tempfile::TempDir;
 
     #[test]
@@ -115,6 +183,8 @@ mod tests {
         let temp = TempDir::new()?;
         let repo_root = temp.path().join("repo");
         let workspace_root = temp.path().join("workspace");
+        fs::create_dir_all(&repo_root)?;
+        git_test::init_repo(&repo_root)?;
         fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
         fs::create_dir_all(&workspace_root)?;
         fs::write(repo_root.join(".ralph/queue.json"), "{queue}")?;
@@ -139,6 +209,62 @@ mod tests {
         assert_eq!(
             fs::read_to_string(workspace_root.join(".ralph/prompts/override.md"))?,
             "prompt"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn sync_ralph_state_copies_ignored_paths() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path().join("repo");
+        let workspace_root = temp.path().join("workspace");
+        fs::create_dir_all(&repo_root)?;
+        git_test::init_repo(&repo_root)?;
+        fs::create_dir_all(&workspace_root)?;
+        fs::write(
+            repo_root.join(".gitignore"),
+            ".env\n.ralph/README.md\nignored_dir/\n",
+        )?;
+        fs::write(repo_root.join(".env"), "secret")?;
+        fs::create_dir_all(repo_root.join(".ralph"))?;
+        fs::write(repo_root.join(".ralph/README.md"), "ralph readme")?;
+        fs::create_dir_all(repo_root.join("ignored_dir"))?;
+        fs::write(repo_root.join("ignored_dir/file.txt"), "ignored content")?;
+
+        sync_ralph_state(&repo_root, &workspace_root)?;
+
+        assert_eq!(fs::read_to_string(workspace_root.join(".env"))?, "secret");
+        assert_eq!(
+            fs::read_to_string(workspace_root.join(".ralph/README.md"))?,
+            "ralph readme"
+        );
+        assert_eq!(
+            fs::read_to_string(workspace_root.join("ignored_dir/file.txt"))?,
+            "ignored content"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn sync_ralph_state_skips_parent_of_workspace() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path().join("repo");
+        let workspace_root = repo_root.join(".ralph/workspaces/RQ-0001");
+        fs::create_dir_all(&repo_root)?;
+        git_test::init_repo(&repo_root)?;
+        fs::write(repo_root.join(".gitignore"), ".ralph/workspaces/\n")?;
+        fs::create_dir_all(repo_root.join(".ralph/workspaces"))?;
+        fs::write(
+            repo_root.join(".ralph/workspaces/shared.txt"),
+            "shared ignored",
+        )?;
+        fs::create_dir_all(&workspace_root)?;
+
+        sync_ralph_state(&repo_root, &workspace_root)?;
+
+        assert!(
+            !workspace_root.join(".ralph/workspaces/shared.txt").exists(),
+            "workspace should not copy ignored parent dir into itself"
         );
         Ok(())
     }
