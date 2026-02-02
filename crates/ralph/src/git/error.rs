@@ -70,6 +70,10 @@ pub fn classify_push_error(stderr: &str) -> GitError {
     if lower.contains("no upstream")
         || lower.contains("set-upstream")
         || lower.contains("set the remote as upstream")
+        || (lower.contains("@{u}")
+            && (lower.contains("ambiguous argument")
+                || lower.contains("unknown revision")
+                || lower.contains("unknown revision or path")))
     {
         return GitError::NoUpstream;
     }
@@ -121,4 +125,17 @@ pub fn git_run(repo_root: &Path, args: &[&str]) -> Result<(), GitError> {
         code: output.status.code(),
         stderr: stderr.trim().to_string(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_push_error_maps_ambiguous_upstream_to_no_upstream() {
+        let stderr =
+            "fatal: ambiguous argument '@{u}': unknown revision or path not in the working tree.";
+        let err = classify_push_error(stderr);
+        assert!(matches!(err, GitError::NoUpstream));
+    }
 }

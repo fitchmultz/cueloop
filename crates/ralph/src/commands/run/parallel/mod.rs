@@ -24,7 +24,7 @@ use anyhow::{Context, Result, bail};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, mpsc};
 use std::thread;
@@ -609,6 +609,7 @@ fn build_worker_command(
     let mut cmd = Command::new(exe);
     cmd.current_dir(worktree_path);
     cmd.env("PWD", worktree_path);
+    cmd.stdin(Stdio::null());
 
     let mut args: Vec<String> = Vec::new();
     if force {
