@@ -97,6 +97,62 @@ pub(crate) fn create_workspace_at(
     })
 }
 
+/// Ensures a workspace exists and is properly configured for the given branch.
+///
+/// If the workspace exists and is a valid git clone (`.git` exists), it is reused.
+/// If the workspace exists but is invalid (not a directory / missing `.git`), it is deleted.
+/// If missing, it is cloned from `repo_root` (local clone).
+///
+/// After ensuring the workspace exists:
+/// - Retarget `origin` fetch/push URLs to match `repo_root`'s origin (pushable required).
+/// - Fetch `origin --prune`.
+/// - Checkout/reset branch to remote: `checkout -B <branch> origin/<branch>`.
+/// - Hard reset + clean to ensure deterministic working tree.
+pub(crate) fn ensure_workspace_exists(
+    repo_root: &Path,
+    workspace_path: &Path,
+    branch: &str,
+) -> Result<()> {
+    // Validate or create workspace
+    if workspace_path.exists() {
+        if !workspace_path.join(".git").exists() {
+            fs::remove_dir_all(workspace_path).with_context(|| {
+                format!(
+                    "remove invalid workspace (missing .git) {}",
+                    workspace_path.display()
+                )
+            })?;
+            clone_repo_from_local(repo_root, workspace_path)?;
+        }
+    } else {
+        fs::create_dir_all(workspace_path.parent().unwrap_or(workspace_path)).with_context(
+            || {
+                format!(
+                    "create workspace parent directory {}",
+                    workspace_path.display()
+                )
+            },
+        )?;
+        clone_repo_from_local(repo_root, workspace_path)?;
+    }
+
+    // Retarget origin to be pushable
+    let (fetch_url, push_url) = origin_urls(repo_root)?;
+    retarget_origin(workspace_path, &fetch_url, &push_url)?;
+
+    // Fetch origin --prune (best-effort)
+    let _ = fetch_origin(workspace_path);
+
+    // Checkout branch from origin
+    let remote_ref = format!("origin/{}", branch);
+    checkout_branch_from_base(workspace_path, branch, &remote_ref)?;
+
+    // Hard reset and clean
+    hard_reset_and_clean(workspace_path, &remote_ref)?;
+
+    Ok(())
+}
+
 pub(crate) fn remove_workspace(
     workspace_root: &Path,
     spec: &WorkspaceSpec,
@@ -454,6 +510,123 @@ mod tests {
         assert!(spec.path.exists());
 
         remove_workspace(&root, &spec, true)?;
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_workspace_exists_creates_missing_workspace() -> Result<()> {
+        let temp = TempDir::new()?;
+        git_test::init_repo(temp.path())?;
+        std::fs::write(temp.path().join("init.txt"), "init")?;
+        git_test::commit_all(temp.path(), "init")?;
+        git_test::git_run(
+            temp.path(),
+            &["remote", "add", "origin", "https://example.com/repo.git"],
+        )?;
+
+        let branch = git_test::git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        let workspace_path = temp.path().join("workspaces/RQ-0001");
+
+        ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
+
+        assert!(workspace_path.exists(), "workspace path should exist");
+        assert!(
+            workspace_path.join(".git").exists(),
+            "workspace should be a git repo"
+        );
+
+        // Verify we're on the correct branch
+        let current_branch =
+            git_test::git_output(&workspace_path, &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        assert_eq!(current_branch, branch);
+
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_workspace_exists_reuses_existing_and_cleans() -> Result<()> {
+        let temp = TempDir::new()?;
+        git_test::init_repo(temp.path())?;
+        std::fs::write(temp.path().join("init.txt"), "init")?;
+        git_test::commit_all(temp.path(), "init")?;
+        git_test::git_run(
+            temp.path(),
+            &["remote", "add", "origin", "https://example.com/repo.git"],
+        )?;
+
+        let branch = git_test::git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        let workspace_path = temp.path().join("workspaces/RQ-0001");
+
+        // First call creates the workspace
+        ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
+
+        // Add some dirty files
+        std::fs::write(workspace_path.join("dirty.txt"), "dirty")?;
+        std::fs::create_dir_all(workspace_path.join("untracked_dir"))?;
+        std::fs::write(workspace_path.join("untracked_dir/file.txt"), "untracked")?;
+
+        // Second call should clean up
+        ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
+
+        assert!(
+            !workspace_path.join("dirty.txt").exists(),
+            "dirty file should be cleaned"
+        );
+        assert!(
+            !workspace_path.join("untracked_dir").exists(),
+            "untracked dir should be cleaned"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_workspace_exists_replaces_invalid_workspace() -> Result<()> {
+        let temp = TempDir::new()?;
+        git_test::init_repo(temp.path())?;
+        std::fs::write(temp.path().join("init.txt"), "init")?;
+        git_test::commit_all(temp.path(), "init")?;
+        git_test::git_run(
+            temp.path(),
+            &["remote", "add", "origin", "https://example.com/repo.git"],
+        )?;
+
+        let branch = git_test::git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        let workspace_path = temp.path().join("workspaces/RQ-0001");
+
+        // Create a non-git directory (invalid workspace)
+        std::fs::create_dir_all(&workspace_path)?;
+        std::fs::write(workspace_path.join("some_file.txt"), "content")?;
+
+        ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
+
+        assert!(
+            workspace_path.join(".git").exists(),
+            "workspace should be a valid git repo"
+        );
+        assert!(
+            !workspace_path.join("some_file.txt").exists(),
+            "old file should be gone"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_workspace_exists_fails_without_origin() -> Result<()> {
+        let temp = TempDir::new()?;
+        git_test::init_repo(temp.path())?;
+        std::fs::write(temp.path().join("init.txt"), "init")?;
+        git_test::commit_all(temp.path(), "init")?;
+        // Note: no origin remote added
+
+        let branch = git_test::git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        let workspace_path = temp.path().join("workspaces/RQ-0001");
+
+        let err = ensure_workspace_exists(temp.path(), &workspace_path, &branch)
+            .expect_err("should fail without origin");
+        assert!(err.to_string().contains("origin"));
+
         Ok(())
     }
 }

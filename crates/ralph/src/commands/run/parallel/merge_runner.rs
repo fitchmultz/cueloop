@@ -218,17 +218,18 @@ fn resolve_conflicts(
     merge_runner: &MergeRunnerConfig,
 ) -> Result<()> {
     let workspace_path = workspace_root.join(task_id);
-    if !workspace_path.exists() {
-        bail!(
-            "Merge conflict resolution failed: workspace not found at {}",
-            workspace_path.display()
-        );
-    }
 
-    git_run(&workspace_path, &["checkout", &pr.head])?;
-    git_run(&workspace_path, &["fetch", "origin"])?;
-    let base_ref = format!("origin/{}", pr.base);
-    git_run(&workspace_path, &["merge", &base_ref])?;
+    // Ensure workspace exists (clone on demand if missing)
+    git::ensure_workspace_exists(&resolved.repo_root, &workspace_path, &pr.head)
+        .with_context(|| format!("ensure workspace exists at {}", workspace_path.display()))?;
+
+    // Fresh-clone-safe checkout/merge flow
+    git_run(&workspace_path, &["fetch", "origin", "--prune"])?;
+    git_run(
+        &workspace_path,
+        &["checkout", "-B", &pr.head, &format!("origin/{}", pr.head)],
+    )?;
+    git_run(&workspace_path, &["merge", &format!("origin/{}", pr.base)])?;
 
     let conflicts = conflict_files(&workspace_path)?;
     if conflicts.is_empty() {

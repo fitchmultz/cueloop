@@ -26,7 +26,6 @@ pub mod lfs;
 pub mod pr;
 pub mod status;
 pub mod workspace;
-pub mod worktree;
 
 // Re-export commonly used items for convenience within the crate.
 pub(crate) use branch::current_branch;
@@ -42,6 +41,6 @@ pub use lfs::{check_lfs_health, filter_modified_lfs_files, has_lfs, list_lfs_fil
 pub(crate) use pr::{MergeState, PrInfo, create_pr, merge_pr, pr_merge_status};
 pub use status::{ensure_paths_unchanged, snapshot_paths, status_paths, status_porcelain};
 // NEW: workspace-based isolation (clone workspaces).
-pub(crate) use workspace::{WorkspaceSpec, create_workspace_at, remove_workspace, workspace_root};
-
-// Legacy worktree helpers remain reachable via `crate::git::worktree::*` if needed.
+pub(crate) use workspace::{
+    WorkspaceSpec, create_workspace_at, ensure_workspace_exists, remove_workspace, workspace_root,
+};

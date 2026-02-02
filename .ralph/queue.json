@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0548",
-      "status": "todo",
-      "title": "Harden merge runner with workspace clones only",
-      "priority": "high",
-      "tags": [
-        "parallel",
-        "merge",
-        "workspace"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/merge_runner.rs"
-      ],
-      "evidence": [
-        "Merge runner assumes worktree paths exist; this must be replaced",
-        "Fresh clone merge behavior must work without any worktree usage"
-      ],
-      "plan": [
-        "Ensure merge runner calls `ensure_workspace_exists` for missing workspaces",
-        "Update checkout/merge flow to fetch origin and checkout `origin/<branch>` in fresh clones",
-        "Add or update tests for missing workspace and fresh clone merge behavior"
-      ],
-      "notes": [
-        "Must preserve conflict resolution and push workflow",
-        "Breaking change: replace worktree-based parallel isolation; remove legacy worktree_* compatibility."
-      ],
-      "request": "plan: replace parallel worktrees with clone-based workspaces",
-      "created_at": "2026-02-02T14:39:46Z",
-      "updated_at": "2026-02-02T14:39:46Z",
-      "depends_on": [
-        "RQ-0545",
-        "RQ-0546"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "plan_source": "./docs/parallel-plan.md"
-      }
-    },
-    {
       "id": "RQ-0549",
       "status": "todo",
       "title": "Update docs/gitignore for workspace clone parallel mode (breaking change)",
