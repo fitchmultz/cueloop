@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0549",
-      "status": "todo",
-      "title": "Update docs/gitignore for workspace clone parallel mode (breaking change)",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "parallel",
-        "config"
-      ],
-      "scope": [
-        "docs/workflow.md",
-        "docs/cli.md",
-        "docs/configuration.md",
-        ".gitignore"
-      ],
-      "evidence": [
-        "Docs currently describe worktrees for parallel mode",
-        "Breaking change must be documented (worktree_* removal)"
-      ],
-      "plan": [
-        "Update docs to describe clone-based workspaces and the default workspace root",
-        "Document that `parallel.worktree_root` / `worktree_path` are removed (breaking change) and note migration",
-        "Add `.ralph/cache/parallel/` to `.gitignore`"
-      ],
-      "notes": [
-        "Keep CLI help and docs aligned",
-        "Breaking change: replace worktree-based parallel isolation; remove legacy worktree_* compatibility."
-      ],
-      "request": "plan: replace parallel worktrees with clone-based workspaces",
-      "created_at": "2026-02-02T14:39:46Z",
-      "updated_at": "2026-02-02T14:39:46Z",
-      "depends_on": [
-        "RQ-0546",
-        "RQ-0547",
-        "RQ-0548"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "plan_source": "./docs/parallel-plan.md"
-      }
-    },
-    {
       "id": "RQ-0550",
       "status": "todo",
       "title": "Regenerate config schema after removing worktree_* keys",

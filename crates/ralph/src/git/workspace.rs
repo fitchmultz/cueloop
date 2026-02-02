@@ -47,7 +47,7 @@ fn default_workspace_root(repo_root: &Path) -> PathBuf {
         .and_then(|value| value.to_str())
         .unwrap_or("repo");
     let parent = repo_root.parent().unwrap_or(repo_root);
-    parent.join(".worktrees").join(repo_name).join("parallel")
+    parent.join(".workspaces").join(repo_name).join("parallel")
 }
 
 pub(crate) fn create_workspace_at(
@@ -396,7 +396,7 @@ mod tests {
         };
         let repo_root = PathBuf::from("/tmp/ralph-test");
         let root = workspace_root(&repo_root, &cfg);
-        assert_eq!(root, PathBuf::from("/tmp/.worktrees/ralph-test/parallel"));
+        assert_eq!(root, PathBuf::from("/tmp/.workspaces/ralph-test/parallel"));
     }
 
     #[test]
@@ -462,7 +462,7 @@ mod tests {
 
         let base_branch =
             git_test::git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
-        let root = temp.path().join(".worktrees");
+        let root = temp.path().join(".ralph/workspaces/parallel");
 
         let spec = create_workspace_at(temp.path(), &root, "RQ-0002", &base_branch, "ralph/")?;
         assert!(spec.path.exists());
@@ -480,7 +480,7 @@ mod tests {
 
         let base_branch =
             git_test::git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
-        let root = temp.path().join(".worktrees");
+        let root = temp.path().join(".ralph/workspaces/parallel");
 
         let err = create_workspace_at(temp.path(), &root, "RQ-0003", &base_branch, "ralph/")
             .expect_err("missing origin should fail");
@@ -501,7 +501,7 @@ mod tests {
 
         let base_branch =
             git_test::git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
-        let root = temp.path().join(".worktrees");
+        let root = temp.path().join(".ralph/workspaces/parallel");
 
         let spec = create_workspace_at(temp.path(), &root, "RQ-0004", &base_branch, "ralph/")?;
         std::fs::write(spec.path.join("dirty.txt"), "dirty")?;
