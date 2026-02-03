@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0579",
-      "status": "todo",
-      "title": "Reject PR heads that do not match the parallel branch prefix",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "parallel",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
-        "cargo test -p ralph"
-      ],
-      "evidence": [
-        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:120-127 (task_id derived from PR head)",
-        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:591-597 (task_id_from_branch returns full head when prefix mismatch)",
-        "Repro: PR head 'feature/RQ-0002' with branch_prefix 'ralph/' yields task_id 'feature/RQ-0002', creating invalid completion signal paths and failing queue lookup"
-      ],
-      "plan": [
-        "Change task_id_from_branch to return Result<String> and validate prefix match + task ID format (no path separators).",
-        "Propagate the error in handle_pr and record a clear warning in state for manual intervention.",
-        "Add unit tests for prefix mismatch and invalid task IDs.",
-        "Verify by running `cargo test -p ralph` and confirming the new tests pass."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-03T20:11:25Z",
-      "updated_at": "2026-02-03T20:11:25Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0580",
       "status": "todo",
       "title": "Enforce clean-repo preflight for parallel run loop",

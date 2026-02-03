@@ -1,7 +1,8 @@
 //! Merge runner for parallel PRs and AI-based conflict resolution.
 //!
 //! Responsibilities:
-//! - Consume PRs and attempt merges based on configured policy.
+//! - Consume PR work items and attempt merges based on configured policy.
+//! - Validate PR head branch names match the expected naming convention.
 //! - Resolve merge conflicts using an AI runner when enabled.
 //! - Apply completion signals on the base branch after merge.
 //! - Emit merge results for downstream cleanup.
@@ -9,10 +10,12 @@
 //! Not handled here:
 //! - Worker orchestration or task selection (see `parallel/mod.rs`).
 //! - PR creation (see `git/pr.rs`).
+//! - Blocker persistence (handled by supervisor in `parallel/mod.rs`).
 //!
 //! Invariants/assumptions:
 //! - PRs originate from branches named with the configured prefix.
 //! - Workspaces remain available until merge completion or failure.
+//! - Each work item carries a trusted task_id (from queue/state, not derived from PR head).
 
 use crate::commands::run::PhaseType;
 use crate::commands::run::parallel::path_map::map_resolved_path_into_workspace;
@@ -28,9 +31,16 @@ use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::Duration;
 
+/// Work item for the merge runner containing trusted task_id and PR info.
+#[derive(Debug, Clone)]
+pub(crate) struct MergeWorkItem {
+    pub task_id: String,
+    pub pr: git::PrInfo,
+}
+
 pub(crate) enum MergeQueueSource {
-    AsCreated(mpsc::Receiver<git::PrInfo>),
-    AfterAll(Vec<git::PrInfo>),
+    AsCreated(mpsc::Receiver<MergeWorkItem>),
+    AfterAll(Vec<MergeWorkItem>),
 }
 
 #[derive(Debug, Clone)]
@@ -57,13 +67,13 @@ pub(crate) fn run_merge_runner(
 ) -> Result<()> {
     match pr_queue {
         MergeQueueSource::AsCreated(rx) => {
-            for pr in rx.iter() {
+            for work_item in rx.iter() {
                 if merge_stop.load(Ordering::SeqCst) {
                     break;
                 }
-                handle_pr(
+                handle_work_item(
                     resolved,
-                    pr,
+                    work_item,
                     merge_method,
                     conflict_policy,
                     merge_runner.clone(),
@@ -75,14 +85,14 @@ pub(crate) fn run_merge_runner(
                 )?;
             }
         }
-        MergeQueueSource::AfterAll(prs) => {
-            for pr in prs {
+        MergeQueueSource::AfterAll(work_items) => {
+            for work_item in work_items {
                 if merge_stop.load(Ordering::SeqCst) {
                     break;
                 }
-                handle_pr(
+                handle_work_item(
                     resolved,
-                    pr,
+                    work_item,
                     merge_method,
                     conflict_policy,
                     merge_runner.clone(),
@@ -99,10 +109,36 @@ pub(crate) fn run_merge_runner(
     Ok(())
 }
 
+/// Validates that the PR head matches the expected branch naming convention.
+///
+/// Expected format: `{branch_prefix}{task_id}`
+/// Returns `Ok(())` if valid, or an error message if invalid.
+fn validate_pr_head(branch_prefix: &str, task_id: &str, head: &str) -> Result<(), String> {
+    let expected = format!("{}{}", branch_prefix, task_id);
+    let trimmed_head = head.trim();
+
+    if trimmed_head != expected {
+        return Err(format!(
+            "head mismatch: expected '{}', got '{}'",
+            expected, trimmed_head
+        ));
+    }
+
+    // Additional safety: reject path separators and parent directory references
+    if task_id.contains('/') || task_id.contains("..") {
+        return Err(format!(
+            "invalid task_id '{}': contains path separators",
+            task_id
+        ));
+    }
+
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
-fn handle_pr(
+fn handle_work_item(
     resolved: &config::Resolved,
-    pr: git::PrInfo,
+    work_item: MergeWorkItem,
     merge_method: ParallelMergeMethod,
     conflict_policy: ConflictPolicy,
     merge_runner: MergeRunnerConfig,
@@ -122,26 +158,41 @@ fn handle_pr(
         .branch_prefix
         .clone()
         .unwrap_or_else(|| "ralph/".to_string());
-    let task_id = task_id_from_branch(&pr.head, &branch_prefix);
+
+    // Validate the PR head matches expected naming convention
+    if let Err(reason) = validate_pr_head(&branch_prefix, &work_item.task_id, &work_item.pr.head) {
+        log::warn!(
+            "Skipping PR {} due to head mismatch for task {}: {}. \
+             This usually means the branch_prefix config changed or the PR head was renamed.",
+            work_item.pr.number,
+            work_item.task_id,
+            reason
+        );
+        return Ok(());
+    }
 
     let merged = merge_pr_with_retries(
         resolved,
-        &pr,
+        &work_item.pr,
         merge_method,
         conflict_policy,
         merge_runner,
         retries,
         workspace_root,
-        &task_id,
+        &work_item.task_id,
         delete_branch,
         merge_stop,
     )?;
 
     if merged {
-        let sync =
-            apply_completion_and_collect_bytes(resolved, workspace_root, &pr.base, &task_id)?;
+        let sync = apply_completion_and_collect_bytes(
+            resolved,
+            workspace_root,
+            &work_item.pr.base,
+            &work_item.task_id,
+        )?;
         let _ = merge_result_tx.send(MergeResult {
-            task_id,
+            task_id: work_item.task_id,
             merged: true,
             queue_bytes: Some(sync.queue_bytes),
             done_bytes: sync.done_bytes,
@@ -602,15 +653,6 @@ fn git_output(repo_root: &Path, args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-fn task_id_from_branch(head: &str, prefix: &str) -> String {
-    let trimmed = head.trim();
-    if let Some(rest) = trimmed.strip_prefix(prefix) {
-        rest.to_string()
-    } else {
-        trimmed.to_string()
-    }
-}
-
 fn sleep_backoff(attempt: u8) {
     let ms = 500_u64.saturating_mul(attempt as u64);
     thread::sleep(Duration::from_millis(ms));
@@ -625,15 +667,30 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn task_id_from_branch_strips_prefix() {
-        let task_id = task_id_from_branch("ralph/RQ-0001", "ralph/");
-        assert_eq!(task_id, "RQ-0001");
+    fn validate_pr_head_accepts_exact_match() {
+        assert!(validate_pr_head("ralph/", "RQ-0001", "ralph/RQ-0001").is_ok());
+        assert!(validate_pr_head("ralph/", "RQ-0001", " ralph/RQ-0001 ").is_ok());
     }
 
     #[test]
-    fn task_id_from_branch_falls_back_to_head() {
-        let task_id = task_id_from_branch("feature/RQ-0002", "ralph/");
-        assert_eq!(task_id, "feature/RQ-0002");
+    fn validate_pr_head_rejects_prefix_mismatch() {
+        let err = validate_pr_head("ralph/", "RQ-0001", "feature/RQ-0001")
+            .expect_err("expected mismatch error");
+        assert!(err.contains("expected 'ralph/RQ-0001'"));
+    }
+
+    #[test]
+    fn validate_pr_head_rejects_task_id_with_path_separators() {
+        let err = validate_pr_head("ralph/", "RQ/0001", "ralph/RQ/0001")
+            .expect_err("expected path separator error");
+        assert!(err.contains("invalid task_id"));
+    }
+
+    #[test]
+    fn validate_pr_head_rejects_task_id_with_parent_reference() {
+        let err = validate_pr_head("ralph/", "RQ-..", "ralph/RQ-..")
+            .expect_err("expected parent reference error");
+        assert!(err.contains("invalid task_id"));
     }
 
     /// Setup a test scenario with a bare remote and two branches that can be merged.

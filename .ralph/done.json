@@ -423,6 +423,58 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0579",
+      "status": "done",
+      "title": "Reject PR heads that do not match the parallel branch prefix",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "parallel",
+        "reliability",
+        "security"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/src/commands/run/parallel/state.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "make ci",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:119-126 (task_id derived from PR head + configured branch_prefix)",
+        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:605-612 (task_id_from_branch strips prefix but falls back to returning the raw head when prefix mismatches)",
+        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:230 (workspace_root.join(task_id) treats task_id as a path segment; a task_id with '/' creates nested paths)",
+        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:634-637 (unit test asserts prefix mismatch returns 'feature/RQ-0002', codifying the problematic behavior)",
+        "Path: crates/ralph/src/commands/run/parallel/state.rs:205-225 (ParallelPrRecord::pr_info prefers stored head; if branch_prefix changes, stored head may no longer match and merge runner currently derives an invalid task_id)"
+      ],
+      "plan": [
+        "Introduce a shared helper to parse task_id from PR head that requires prefix match, strips it, and validates the remaining task ID against resolved id_prefix/id_width (and rejects '/' or '..').",
+        "Update merge_runner to use the helper; on invalid/mismatched heads, log a warning with PR number/head and skip merging that PR without terminating the merge thread.",
+        "Persist a human-readable blocker/warning in the parallel state file so resume runs surface the mismatch and operators can fix config/branches intentionally.",
+        "Update tests: replace the current fallback behavior test with mismatch-is-error, and add coverage for invalid IDs (whitespace, wrong width/prefix, path separators).",
+        "Verify via `cargo test -p ralph`, then run `make ci`."
+      ],
+      "notes": [
+        "merge_runner.rs module docs assume PR heads use the configured prefix, but task_id_from_branch currently accepts mismatches by returning the raw head.",
+        "Because task_id is used in filesystem paths (workspace roots and completion signal locations), allowing arbitrary head strings risks nested paths and broken queue/done lookups.",
+        "Validate parallel PR heads against branch_prefix and carry trusted task_id into merge runner.",
+        "Persist merge_blocker in parallel state and skip blocked PRs.",
+        "Added validation/blocker tests and documented branch_prefix head requirements."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-03T20:11:25Z",
+      "updated_at": "2026-02-03T22:42:17.422602000Z",
+      "completed_at": "2026-02-03T22:42:17.422602000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

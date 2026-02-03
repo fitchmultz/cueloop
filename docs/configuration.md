@@ -231,6 +231,17 @@ Key fields:
 - `merge_retries`: number of merge retries before giving up (default: `5`).
 - `workspace_root`: root directory for parallel workspaces (default: `<repo-parent>/.workspaces/<repo-name>/parallel`).
 - `branch_prefix`: prefix for worker branches (default: `ralph/`).
+
+  **Important:** The auto-merge feature expects PR head branch names to be exactly
+  `{branch_prefix}{task_id}`. If a PR's head branch doesn't match this pattern, the
+  merge runner will skip it and persist a `merge_blocker` warning in the parallel
+  state file (`.ralph/cache/parallel/state.json`). This prevents accidental merges
+  when branch naming conventions change or PRs are created externally.
+
+  Recovery: If you change `branch_prefix`, existing open PRs created under the old
+  prefix will be blocked with a persisted state warning until you either:
+  1. Rename the PR branches to match the new prefix, or
+  2. Manually clear the `merge_blocker` field from the state file.
 - `delete_branch_on_merge`: delete branches after merge (default: `true`).
 - `merge_runner`: runner overrides for merge conflict resolution (defaults to `agent` settings).
 

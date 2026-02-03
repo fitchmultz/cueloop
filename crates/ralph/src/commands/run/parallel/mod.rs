@@ -42,7 +42,7 @@ mod worker;
 
 use crate::queue;
 use cleanup_guard::ParallelCleanupGuard;
-use merge_runner::{MergeQueueSource, MergeResult};
+use merge_runner::{MergeQueueSource, MergeResult, MergeWorkItem};
 use sync::{commit_failure_changes, ensure_branch_pushed, sync_ralph_state};
 use worker::{WorkerState, collect_excluded_ids, select_next_task_locked, spawn_worker};
 
@@ -131,19 +131,36 @@ pub(crate) fn run_loop_parallel(
 
     let merge_stop = Arc::new(AtomicBool::new(false));
 
-    let (pr_tx, pr_rx) = mpsc::channel::<git::PrInfo>();
+    let (pr_tx, pr_rx) = mpsc::channel::<MergeWorkItem>();
     let (merge_result_tx, merge_result_rx) = mpsc::channel::<MergeResult>();
     let mut merge_handle = None;
-    // Only include PRs that are still open and not merged
-    let existing_prs: Vec<git::PrInfo> = state_file
+    // Build merge work items from open/unmerged PRs, filtering out blocked ones
+    let existing_work_items: Vec<MergeWorkItem> = state_file
         .prs
         .iter()
         .filter(|record| {
             matches!(record.lifecycle, state::ParallelPrLifecycle::Open) && !record.merged
         })
+        .filter(|record| {
+            // Skip PRs with merge blockers
+            if let Some(ref blocker) = record.merge_blocker {
+                log::warn!(
+                    "Skipping PR {} for task {} due to merge blocker: {}",
+                    record.pr_number,
+                    record.task_id,
+                    blocker
+                );
+                return false;
+            }
+            true
+        })
         .map(|record| {
             let fallback_head = format!("{}{}", settings.branch_prefix, record.task_id);
-            record.pr_info(&fallback_head, &base_branch)
+            let pr = record.pr_info(&fallback_head, &base_branch);
+            MergeWorkItem {
+                task_id: record.task_id.clone(),
+                pr,
+            }
         })
         .collect();
 
@@ -176,7 +193,7 @@ pub(crate) fn run_loop_parallel(
 
     // Track completed workspaces separately (not owned by guard, cleaned up after merge)
     let mut completed_workspaces: HashMap<String, git::WorkspaceSpec> = HashMap::new();
-    let mut created_prs: Vec<git::PrInfo> = existing_prs.clone();
+    let mut created_work_items: Vec<MergeWorkItem> = existing_work_items.clone();
 
     // Only track workspaces for open/unmerged PRs (closed/merged should not drive merge behavior)
     for record in state_file.prs.iter().filter(|record| {
@@ -197,8 +214,8 @@ pub(crate) fn run_loop_parallel(
     }
 
     if settings.auto_merge && settings.merge_when == ParallelMergeWhen::AsCreated {
-        for pr in &existing_prs {
-            let _ = pr_tx.send(pr.clone());
+        for work_item in &existing_work_items {
+            let _ = pr_tx.send(work_item.clone());
         }
     }
 
@@ -365,12 +382,44 @@ pub(crate) fn run_loop_parallel(
                             Ok(pr)
                         })() {
                             Ok(pr) => {
-                                created_prs.push(pr.clone());
-                                if settings.auto_merge
-                                    && settings.merge_when == ParallelMergeWhen::AsCreated
-                                    && let Some(tx) = guard.pr_tx()
-                                {
-                                    let _ = tx.send(pr);
+                                // Validate PR head matches expected naming before enqueueing
+                                let expected_head =
+                                    format!("{}{}", settings.branch_prefix, task_id);
+                                if pr.head.trim() != expected_head {
+                                    let blocker_msg = format!(
+                                        "PR head '{}' does not match expected '{}'. \
+                                         Branch prefix may have changed.",
+                                        pr.head, expected_head
+                                    );
+                                    log::warn!(
+                                        "PR {} for task {} has mismatched head: {}. \
+                                         Setting merge blocker and skipping auto-merge.",
+                                        pr.number,
+                                        task_id,
+                                        blocker_msg
+                                    );
+                                    // Update the PR record with the blocker
+                                    if let Some(record) = guard
+                                        .state_file_mut()
+                                        .prs
+                                        .iter_mut()
+                                        .find(|r| r.task_id == task_id)
+                                    {
+                                        record.merge_blocker = Some(blocker_msg);
+                                        let _ = state::save_state(&state_path, guard.state_file());
+                                    }
+                                } else {
+                                    let work_item = MergeWorkItem {
+                                        task_id: task_id.clone(),
+                                        pr: pr.clone(),
+                                    };
+                                    created_work_items.push(work_item.clone());
+                                    if settings.auto_merge
+                                        && settings.merge_when == ParallelMergeWhen::AsCreated
+                                        && let Some(tx) = guard.pr_tx()
+                                    {
+                                        let _ = tx.send(work_item);
+                                    }
                                 }
                             }
                             Err(e) => {
@@ -514,7 +563,7 @@ pub(crate) fn run_loop_parallel(
             settings.conflict_policy,
             settings.merge_runner.clone(),
             settings.merge_retries,
-            MergeQueueSource::AfterAll(created_prs.clone()),
+            MergeQueueSource::AfterAll(created_work_items.clone()),
             &settings.workspace_root,
             settings.delete_branch_on_merge,
             merge_result_tx,
@@ -642,6 +691,10 @@ fn load_or_init_parallel_state(
             state::save_state(state_path, &existing)?;
         }
 
+        // Validate PR heads match expected naming convention and persist blockers
+        validate_and_block_mismatched_prs(&mut existing, &settings.branch_prefix);
+        state::save_state(state_path, &existing)?;
+
         let mut normalized = false;
         let trimmed_base = existing.base_branch.trim().to_string();
         if trimmed_base != existing.base_branch {
@@ -757,6 +810,55 @@ fn finished_without_pr_task_ids(state_file: &state::ParallelStateFile) -> Vec<St
         .iter()
         .map(|record| record.task_id.clone())
         .collect()
+}
+
+/// Validates PR heads match expected naming convention and sets merge_blocker for mismatches.
+///
+/// For each open/unmerged PR, checks if the stored head matches `{branch_prefix}{task_id}`.
+/// If not, sets a merge_blocker on the record so the merge runner will skip it.
+/// Also clears stale blockers if the head now matches.
+fn validate_and_block_mismatched_prs(
+    state_file: &mut state::ParallelStateFile,
+    branch_prefix: &str,
+) {
+    for record in state_file.prs.iter_mut() {
+        // Only check open, unmerged PRs
+        if record.merged || !matches!(record.lifecycle, state::ParallelPrLifecycle::Open) {
+            continue;
+        }
+
+        let expected_head = format!("{}{}", branch_prefix, record.task_id);
+
+        if let Some(ref stored_head) = record.head {
+            let trimmed_head = stored_head.trim();
+            if trimmed_head != expected_head {
+                let blocker_msg = format!(
+                    "PR head '{}' does not match expected '{}'. \
+                     Branch prefix or task_id may have changed.",
+                    trimmed_head, expected_head
+                );
+                log::warn!(
+                    "PR {} for task {} has mismatched head: expected '{}', got '{}'. \
+                     Setting merge blocker.",
+                    record.pr_number,
+                    record.task_id,
+                    expected_head,
+                    trimmed_head
+                );
+                record.merge_blocker = Some(blocker_msg);
+            } else if record.merge_blocker.is_some() {
+                // Head matches now, clear any stale blocker
+                log::info!(
+                    "PR {} for task {} head now matches expected '{}'. \
+                     Clearing stale merge blocker.",
+                    record.pr_number,
+                    record.task_id,
+                    expected_head
+                );
+                record.merge_blocker = None;
+            }
+        }
+    }
 }
 
 fn format_base_branch_mismatch_error(
@@ -1431,7 +1533,7 @@ mod tests {
             ParallelMergeWhen::AsCreated,
         );
 
-        let (pr_tx, _pr_rx) = mpsc::channel::<git::PrInfo>();
+        let (pr_tx, _pr_rx) = mpsc::channel::<MergeWorkItem>();
         let merge_stop = Arc::new(AtomicBool::new(false));
 
         ParallelCleanupGuard::new(
@@ -1504,6 +1606,97 @@ mod tests {
     }
 
     #[test]
+    fn validate_and_block_mismatched_prs_sets_blocker() {
+        let mut state_file = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0001".to_string(),
+            pr_number: 42,
+            pr_url: "https://example.com/pr/42".to_string(),
+            head: Some("feature/RQ-0001".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: false,
+            lifecycle: state::ParallelPrLifecycle::Open,
+            merge_blocker: None,
+        });
+
+        validate_and_block_mismatched_prs(&mut state_file, "ralph/");
+
+        let blocker = state_file.prs[0]
+            .merge_blocker
+            .as_ref()
+            .expect("expected merge blocker");
+        assert!(blocker.contains("does not match expected"));
+    }
+
+    #[test]
+    fn validate_and_block_mismatched_prs_clears_stale_blocker() {
+        let mut state_file = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0002".to_string(),
+            pr_number: 43,
+            pr_url: "https://example.com/pr/43".to_string(),
+            head: Some("ralph/RQ-0002".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: false,
+            lifecycle: state::ParallelPrLifecycle::Open,
+            merge_blocker: Some("stale".to_string()),
+        });
+
+        validate_and_block_mismatched_prs(&mut state_file, "ralph/");
+
+        assert!(state_file.prs[0].merge_blocker.is_none());
+    }
+
+    #[test]
+    fn validate_and_block_mismatched_prs_skips_closed_or_merged() {
+        let mut state_file = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0003".to_string(),
+            pr_number: 44,
+            pr_url: "https://example.com/pr/44".to_string(),
+            head: Some("feature/RQ-0003".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: false,
+            lifecycle: state::ParallelPrLifecycle::Closed,
+            merge_blocker: None,
+        });
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0004".to_string(),
+            pr_number: 45,
+            pr_url: "https://example.com/pr/45".to_string(),
+            head: Some("feature/RQ-0004".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: true,
+            lifecycle: state::ParallelPrLifecycle::Merged,
+            merge_blocker: None,
+        });
+
+        validate_and_block_mismatched_prs(&mut state_file, "ralph/");
+
+        assert!(state_file.prs[0].merge_blocker.is_none());
+        assert!(state_file.prs[1].merge_blocker.is_none());
+    }
+
+    #[test]
     fn base_branch_mismatch_prunes_then_auto_heals_when_only_stale_tasks() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
@@ -1559,6 +1752,7 @@ mod tests {
             workspace_path: None,
             merged: false,
             lifecycle: state::ParallelPrLifecycle::Open,
+            merge_blocker: None,
         });
         let state_path = state::state_file_path(repo_root);
         state::save_state(&state_path, &state)?;

@@ -186,6 +186,10 @@ pub(crate) struct ParallelPrRecord {
     pub merged: bool,
     #[serde(default)]
     pub lifecycle: ParallelPrLifecycle,
+    /// Human-readable reason this PR is blocked from auto-merge.
+    /// Set when the PR head doesn't match the expected branch naming convention.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub merge_blocker: Option<String>,
 }
 
 impl ParallelPrRecord {
@@ -199,6 +203,7 @@ impl ParallelPrRecord {
             workspace_path: workspace_path.map(|p| p.to_string_lossy().to_string()),
             merged: false,
             lifecycle: ParallelPrLifecycle::Open,
+            merge_blocker: None,
         }
     }
 
@@ -416,6 +421,7 @@ mod tests {
             workspace_path: Some("/tmp/workspace".to_string()),
             merged: false,
             lifecycle: ParallelPrLifecycle::Open,
+            merge_blocker: None,
         });
 
         save_state(&path, &state)?;
@@ -517,6 +523,7 @@ mod tests {
             workspace_path: None,
             merged: false,
             lifecycle: ParallelPrLifecycle::Open,
+            merge_blocker: None,
         };
         let info = record.pr_info("ralph/RQ-0002", "main");
         assert_eq!(info.head, "ralph/RQ-0002");
@@ -551,6 +558,7 @@ mod tests {
             workspace_path: None,
             merged: true,
             lifecycle: ParallelPrLifecycle::Merged,
+            merge_blocker: None,
         };
         let json = serde_json::to_string(&record).unwrap();
         let parsed: ParallelPrRecord = serde_json::from_str(&json).unwrap();
@@ -658,6 +666,7 @@ exit 1
             workspace_path: None,
             merged: false,
             lifecycle: ParallelPrLifecycle::Open,
+            merge_blocker: None,
         });
         state_file.upsert_pr(ParallelPrRecord {
             task_id: "RQ-0002".to_string(),
@@ -668,6 +677,7 @@ exit 1
             workspace_path: None,
             merged: false,
             lifecycle: ParallelPrLifecycle::Open,
+            merge_blocker: None,
         });
         state_file.upsert_pr(ParallelPrRecord {
             task_id: "RQ-0003".to_string(),
@@ -678,6 +688,7 @@ exit 1
             workspace_path: None,
             merged: false,
             lifecycle: ParallelPrLifecycle::Open,
+            merge_blocker: None,
         });
 
         let summary = reconcile_pr_records(temp.path(), &mut state_file)?;
@@ -762,6 +773,7 @@ exit 1
             workspace_path: None,
             merged: false,
             lifecycle: ParallelPrLifecycle::Open,
+            merge_blocker: None,
         });
         state_file.upsert_pr(ParallelPrRecord {
             task_id: "RQ-0002".to_string(),
@@ -772,6 +784,7 @@ exit 1
             workspace_path: None,
             merged: false,
             lifecycle: ParallelPrLifecycle::Open,
+            merge_blocker: None,
         });
 
         let summary = reconcile_pr_records(temp.path(), &mut state_file)?;

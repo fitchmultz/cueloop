@@ -269,6 +269,7 @@ mod tests {
             workspace_path: None,
             merged: false,
             lifecycle: state::ParallelPrLifecycle::Open,
+            merge_blocker: None,
         });
         // Closed PR should NOT be excluded
         state_file.prs.push(state::ParallelPrRecord {
@@ -280,6 +281,7 @@ mod tests {
             workspace_path: None,
             merged: false,
             lifecycle: state::ParallelPrLifecycle::Closed,
+            merge_blocker: None,
         });
         // Merged PR should NOT be excluded
         state_file.prs.push(state::ParallelPrRecord {
@@ -291,6 +293,7 @@ mod tests {
             workspace_path: None,
             merged: true,
             lifecycle: state::ParallelPrLifecycle::Merged,
+            merge_blocker: None,
         });
         // Finished without PR should be excluded
         state_file

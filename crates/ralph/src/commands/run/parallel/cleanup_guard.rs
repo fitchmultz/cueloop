@@ -15,6 +15,7 @@
 //! - Drop must never panic (no RefCell to avoid panic during unwinding).
 //! - The guard owns resources and releases them during cleanup.
 
+use crate::commands::run::parallel::merge_runner::MergeWorkItem;
 use crate::commands::run::parallel::state;
 use crate::commands::run::parallel::worker::{WorkerState, terminate_workers};
 use crate::git::{self, WorkspaceSpec};
@@ -34,8 +35,8 @@ use std::thread;
 pub(crate) struct ParallelCleanupGuard {
     /// Signal to stop the merge runner thread.
     merge_stop: Arc<AtomicBool>,
-    /// Sender for PRs to the merge runner (dropped to unblock receiver).
-    pr_tx: Option<mpsc::Sender<git::PrInfo>>,
+    /// Sender for PR work items to the merge runner (dropped to unblock receiver).
+    pr_tx: Option<mpsc::Sender<MergeWorkItem>>,
     /// Handle to the merge runner thread (joined during cleanup).
     merge_handle: Option<thread::JoinHandle<anyhow::Result<()>>>,
     /// Path to the parallel state file.
@@ -57,7 +58,7 @@ impl ParallelCleanupGuard {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         merge_stop: Arc<AtomicBool>,
-        pr_tx: mpsc::Sender<git::PrInfo>,
+        pr_tx: mpsc::Sender<MergeWorkItem>,
         merge_handle: Option<thread::JoinHandle<anyhow::Result<()>>>,
         state_path: PathBuf,
         state_file: state::ParallelStateFile,
@@ -84,12 +85,12 @@ impl ParallelCleanupGuard {
     }
 
     /// Get a clone of the PR sender if available.
-    pub fn pr_tx(&self) -> Option<mpsc::Sender<git::PrInfo>> {
+    pub fn pr_tx(&self) -> Option<mpsc::Sender<MergeWorkItem>> {
         self.pr_tx.clone()
     }
 
     /// Take ownership of the PR sender (for explicit dropping).
-    pub fn take_pr_tx(&mut self) -> Option<mpsc::Sender<git::PrInfo>> {
+    pub fn take_pr_tx(&mut self) -> Option<mpsc::Sender<MergeWorkItem>> {
         self.pr_tx.take()
     }
 
@@ -245,7 +246,7 @@ mod tests {
             ParallelMergeWhen::AsCreated,
         );
 
-        let (pr_tx, _pr_rx) = mpsc::channel::<git::PrInfo>();
+        let (pr_tx, _pr_rx) = mpsc::channel::<MergeWorkItem>();
         let merge_stop = Arc::new(AtomicBool::new(false));
 
         ParallelCleanupGuard::new(
@@ -331,7 +332,7 @@ mod tests {
             ParallelMergeWhen::AsCreated,
         );
 
-        let (pr_tx, pr_rx) = mpsc::channel::<git::PrInfo>();
+        let (pr_tx, pr_rx) = mpsc::channel::<MergeWorkItem>();
         let merge_stop = Arc::new(AtomicBool::new(false));
         let thread_exited = Arc::new(AtomicBool::new(false));
         let thread_exited_clone = Arc::clone(&thread_exited);
