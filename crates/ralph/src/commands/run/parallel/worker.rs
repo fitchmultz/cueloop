@@ -68,7 +68,7 @@ pub(crate) fn select_next_task_locked(
     )))
 }
 
-/// Collect IDs that should be excluded from task selection (in-flight, inflight in state, unmerged PRs).
+/// Collect IDs that should be excluded from task selection (in-flight, inflight in state, open PRs).
 pub(crate) fn collect_excluded_ids(
     state_file: &state::ParallelStateFile,
     in_flight: &HashMap<String, WorkerState>,
@@ -80,8 +80,9 @@ pub(crate) fn collect_excluded_ids(
     for record in &state_file.tasks_in_flight {
         excluded.insert(record.task_id.trim().to_string());
     }
+    // Only exclude tasks with PRs that are still open and not merged
     for record in &state_file.prs {
-        if !record.merged {
+        if matches!(record.lifecycle, state::ParallelPrLifecycle::Open) && !record.merged {
             excluded.insert(record.task_id.trim().to_string());
         }
     }
@@ -218,6 +219,7 @@ mod tests {
             branch: "ralph/RQ-0002".to_string(),
             pid: Some(123),
         });
+        // Open PR should be excluded
         state_file.prs.push(state::ParallelPrRecord {
             task_id: "RQ-0003".to_string(),
             pr_number: 7,
@@ -226,6 +228,29 @@ mod tests {
             base: Some("main".to_string()),
             workspace_path: None,
             merged: false,
+            lifecycle: state::ParallelPrLifecycle::Open,
+        });
+        // Closed PR should NOT be excluded
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0005".to_string(),
+            pr_number: 8,
+            pr_url: "https://example.com/pr/8".to_string(),
+            head: Some("ralph/RQ-0005".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: false,
+            lifecycle: state::ParallelPrLifecycle::Closed,
+        });
+        // Merged PR should NOT be excluded
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0006".to_string(),
+            pr_number: 9,
+            pr_url: "https://example.com/pr/9".to_string(),
+            head: Some("ralph/RQ-0006".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: true,
+            lifecycle: state::ParallelPrLifecycle::Merged,
         });
 
         let mut in_flight = HashMap::new();
@@ -245,9 +270,26 @@ mod tests {
         );
 
         let excluded = collect_excluded_ids(&state_file, &in_flight);
-        assert!(excluded.contains("RQ-0002"));
-        assert!(excluded.contains("RQ-0003"));
-        assert!(excluded.contains("RQ-0004"));
+        assert!(
+            excluded.contains("RQ-0002"),
+            "in-flight task should be excluded"
+        );
+        assert!(
+            excluded.contains("RQ-0003"),
+            "open PR task should be excluded"
+        );
+        assert!(
+            excluded.contains("RQ-0004"),
+            "in-flight worker should be excluded"
+        );
+        assert!(
+            !excluded.contains("RQ-0005"),
+            "closed PR task should NOT be excluded"
+        );
+        assert!(
+            !excluded.contains("RQ-0006"),
+            "merged PR task should NOT be excluded"
+        );
 
         for worker in in_flight.values_mut() {
             let _ = worker.child.wait();

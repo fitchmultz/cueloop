@@ -1,42 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0569",
-      "status": "todo",
-      "title": "Reconcile PR status to avoid permanently excluded tasks",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "parallel",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/mod.rs",
-        "crates/ralph/src/commands/run/parallel/worker.rs",
-        "crates/ralph/src/commands/run/parallel/state.rs",
-        "crates/ralph/src/git/pr.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/commands/run/parallel/worker.rs:80-82 excludes any task with a PR record where `merged` is false.",
-        "crates/ralph/src/commands/run/parallel/mod.rs:298 and 425 are the only call sites for `mark_pr_merged`, so manual merges/closures never update state.",
-        "crates/ralph/src/commands/run/parallel/state.rs:78-81 only flips `merged` when invoked; there is no PR status refresh on startup."
-      ],
-      "plan": [
-        "On parallel loop start, refresh PR status for unmerged records (via `gh pr view` or `pr_merge_status`) and mark merged/closed PRs in `state.json`.",
-        "Add tests using a stubbed `gh` CLI to simulate merged/closed PRs and assert tasks are no longer excluded.",
-        "Verify by running `cargo test -p ralph parallel` and confirming PR reconciliation tests pass."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T22:35:14Z",
-      "updated_at": "2026-02-02T22:35:14Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    }
-  ]
+  "tasks": []
 }

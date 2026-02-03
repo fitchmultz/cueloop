@@ -149,13 +149,28 @@ pub(crate) fn run_loop_parallel(
         state::save_state(&state_path, &state_file)?;
     }
 
+    // Reconcile PR records against current GitHub state
+    let summary = state::reconcile_pr_records(&resolved.repo_root, &mut state_file)?;
+    if summary.has_changes() {
+        log::info!(
+            "Reconciled PR records: {} closed, {} merged, {} errors",
+            summary.closed_count,
+            summary.merged_count,
+            summary.error_count
+        );
+        state::save_state(&state_path, &state_file)?;
+    }
+
     let (pr_tx, pr_rx) = mpsc::channel::<git::PrInfo>();
     let (merge_result_tx, merge_result_rx) = mpsc::channel::<MergeResult>();
     let mut merge_handle = None;
+    // Only include PRs that are still open and not merged
     let existing_prs: Vec<git::PrInfo> = state_file
         .prs
         .iter()
-        .filter(|record| !record.merged)
+        .filter(|record| {
+            matches!(record.lifecycle, state::ParallelPrLifecycle::Open) && !record.merged
+        })
         .map(|record| {
             let fallback_head = format!("{}{}", settings.branch_prefix, record.task_id);
             record.pr_info(&fallback_head, &base_branch)
@@ -193,7 +208,10 @@ pub(crate) fn run_loop_parallel(
     let mut completed_workspaces: HashMap<String, git::WorkspaceSpec> = HashMap::new();
     let mut created_prs: Vec<git::PrInfo> = existing_prs.clone();
 
-    for record in state_file.prs.iter().filter(|record| !record.merged) {
+    // Only track workspaces for open/unmerged PRs (closed/merged should not drive merge behavior)
+    for record in state_file.prs.iter().filter(|record| {
+        matches!(record.lifecycle, state::ParallelPrLifecycle::Open) && !record.merged
+    }) {
         let path = record
             .workspace_path()
             .unwrap_or_else(|| settings.workspace_root.join(&record.task_id));

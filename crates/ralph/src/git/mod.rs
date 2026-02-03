@@ -38,7 +38,9 @@ pub use commit::{
 };
 pub use error::GitError;
 pub use lfs::{check_lfs_health, filter_modified_lfs_files, has_lfs, list_lfs_files};
-pub(crate) use pr::{MergeState, PrInfo, create_pr, merge_pr, pr_merge_status};
+pub(crate) use pr::{
+    MergeState, PrInfo, PrLifecycle, create_pr, merge_pr, pr_lifecycle_status, pr_merge_status,
+};
 pub use status::{
     ensure_paths_unchanged, ignored_paths, snapshot_paths, status_paths, status_porcelain,
 };

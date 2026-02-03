@@ -52,6 +52,25 @@ struct PrViewJson {
     base: Option<String>,
     #[serde(rename = "isDraft")]
     is_draft: Option<bool>,
+    state: Option<String>,
+    #[serde(rename = "merged")]
+    is_merged: Option<bool>,
+}
+
+/// PR lifecycle states as returned by GitHub.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum PrLifecycle {
+    Open,
+    Closed,
+    Merged,
+    Unknown(String),
+}
+
+/// PR lifecycle status including lifecycle and merged flag.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PrLifecycleStatus {
+    pub lifecycle: PrLifecycle,
+    pub is_merged: bool,
 }
 
 pub(crate) fn create_pr(
@@ -152,6 +171,37 @@ pub(crate) fn pr_merge_status(repo_root: &Path, pr_number: u32) -> Result<PrMerg
     Ok(pr_merge_status_from_view(&json))
 }
 
+/// Query PR lifecycle status from GitHub.
+pub(crate) fn pr_lifecycle_status(repo_root: &Path, pr_number: u32) -> Result<PrLifecycleStatus> {
+    let json = pr_view_json(repo_root, &pr_number.to_string())?;
+    Ok(pr_lifecycle_status_from_view(&json))
+}
+
+fn pr_lifecycle_status_from_view(json: &PrViewJson) -> PrLifecycleStatus {
+    let state = json.state.as_deref().unwrap_or("UNKNOWN");
+    let is_merged = json.is_merged.unwrap_or(false);
+
+    let lifecycle = match state {
+        "OPEN" => PrLifecycle::Open,
+        "CLOSED" => {
+            if is_merged {
+                PrLifecycle::Merged
+            } else {
+                PrLifecycle::Closed
+            }
+        }
+        "MERGED" => PrLifecycle::Merged,
+        other => PrLifecycle::Unknown(other.to_string()),
+    };
+
+    let is_merged_final = is_merged || matches!(lifecycle, PrLifecycle::Merged);
+
+    PrLifecycleStatus {
+        lifecycle,
+        is_merged: is_merged_final,
+    }
+}
+
 fn pr_view(repo_root: &Path, selector: &str) -> Result<PrInfo> {
     let json = pr_view_json(repo_root, selector)?;
     let number = json
@@ -182,7 +232,7 @@ fn pr_view_json(repo_root: &Path, selector: &str) -> Result<PrViewJson> {
         .arg("view")
         .arg(selector)
         .arg("--json")
-        .arg("mergeStateStatus,number,url,headRefName,baseRefName,isDraft")
+        .arg("mergeStateStatus,number,url,headRefName,baseRefName,isDraft,state,merged")
         .output()
         .with_context(|| format!("run gh pr view in {}", repo_root.display()))?;
 
@@ -218,8 +268,8 @@ fn extract_pr_url(output: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{MergeState, extract_pr_url};
-    use super::{PrViewJson, pr_merge_status_from_view};
+    use super::{MergeState, PrLifecycle, extract_pr_url};
+    use super::{PrViewJson, pr_lifecycle_status_from_view, pr_merge_status_from_view};
 
     #[test]
     fn extract_pr_url_picks_first_url_line() {
@@ -237,6 +287,8 @@ mod tests {
             head: Some("ralph/RQ-0001".to_string()),
             base: Some("main".to_string()),
             is_draft: Some(true),
+            state: Some("OPEN".to_string()),
+            is_merged: Some(false),
         };
 
         let status = pr_merge_status_from_view(&json);
@@ -253,6 +305,8 @@ mod tests {
             head: Some("ralph/RQ-0002".to_string()),
             base: Some("main".to_string()),
             is_draft: None,
+            state: Some("OPEN".to_string()),
+            is_merged: Some(false),
         };
 
         let status = pr_merge_status_from_view(&json);
@@ -269,10 +323,102 @@ mod tests {
             head: Some("ralph/RQ-0003".to_string()),
             base: Some("main".to_string()),
             is_draft: Some(false),
+            state: Some("OPEN".to_string()),
+            is_merged: Some(false),
         };
 
         let status = pr_merge_status_from_view(&json);
         assert_eq!(status.merge_state, MergeState::Other("BLOCKED".to_string()));
         assert!(!status.is_draft);
+    }
+
+    #[test]
+    fn pr_lifecycle_status_from_view_open() {
+        let json = PrViewJson {
+            merge_state_status: "CLEAN".to_string(),
+            number: Some(1),
+            url: Some("https://example.com/pr/1".to_string()),
+            head: Some("ralph/RQ-0001".to_string()),
+            base: Some("main".to_string()),
+            is_draft: Some(false),
+            state: Some("OPEN".to_string()),
+            is_merged: Some(false),
+        };
+
+        let status = pr_lifecycle_status_from_view(&json);
+        assert!(matches!(status.lifecycle, PrLifecycle::Open));
+        assert!(!status.is_merged);
+    }
+
+    #[test]
+    fn pr_lifecycle_status_from_view_closed_not_merged() {
+        let json = PrViewJson {
+            merge_state_status: "CLEAN".to_string(),
+            number: Some(2),
+            url: Some("https://example.com/pr/2".to_string()),
+            head: Some("ralph/RQ-0002".to_string()),
+            base: Some("main".to_string()),
+            is_draft: Some(false),
+            state: Some("CLOSED".to_string()),
+            is_merged: Some(false),
+        };
+
+        let status = pr_lifecycle_status_from_view(&json);
+        assert!(matches!(status.lifecycle, PrLifecycle::Closed));
+        assert!(!status.is_merged);
+    }
+
+    #[test]
+    fn pr_lifecycle_status_from_view_closed_merged() {
+        let json = PrViewJson {
+            merge_state_status: "CLEAN".to_string(),
+            number: Some(3),
+            url: Some("https://example.com/pr/3".to_string()),
+            head: Some("ralph/RQ-0003".to_string()),
+            base: Some("main".to_string()),
+            is_draft: Some(false),
+            state: Some("CLOSED".to_string()),
+            is_merged: Some(true),
+        };
+
+        let status = pr_lifecycle_status_from_view(&json);
+        assert!(matches!(status.lifecycle, PrLifecycle::Merged));
+        assert!(status.is_merged);
+    }
+
+    #[test]
+    fn pr_lifecycle_status_from_view_merged_state() {
+        let json = PrViewJson {
+            merge_state_status: "CLEAN".to_string(),
+            number: Some(4),
+            url: Some("https://example.com/pr/4".to_string()),
+            head: Some("ralph/RQ-0004".to_string()),
+            base: Some("main".to_string()),
+            is_draft: Some(false),
+            state: Some("MERGED".to_string()),
+            is_merged: Some(true),
+        };
+
+        let status = pr_lifecycle_status_from_view(&json);
+        assert!(matches!(status.lifecycle, PrLifecycle::Merged));
+        assert!(status.is_merged);
+    }
+
+    #[test]
+    fn pr_lifecycle_status_from_view_unknown_state() {
+        let json = PrViewJson {
+            merge_state_status: "CLEAN".to_string(),
+            number: Some(5),
+            url: Some("https://example.com/pr/5".to_string()),
+            head: Some("ralph/RQ-0005".to_string()),
+            base: Some("main".to_string()),
+            is_draft: Some(false),
+            state: Some("WEIRD".to_string()),
+            is_merged: Some(false),
+        };
+
+        let status = pr_lifecycle_status_from_view(&json);
+        assert!(matches!(status.lifecycle, PrLifecycle::Unknown(s) if s == "WEIRD"));
+        assert!(!status.is_merged);
     }
 }
