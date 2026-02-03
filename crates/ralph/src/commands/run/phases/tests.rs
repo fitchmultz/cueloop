@@ -4,8 +4,8 @@ use super::phase2::cache_phase2_final_response;
 use super::phase3::ensure_phase3_completion;
 use super::shared::run_ci_gate_with_continue;
 use super::{
-    PhaseInvocation, execute_phase1_planning, execute_phase3_review, generate_phase_session_id,
-    phase_session_id_for_runner,
+    PhaseInvocation, PostRunMode, execute_phase1_planning, execute_phase3_review,
+    generate_phase_session_id, phase_session_id_for_runner,
 };
 use crate::commands::run::supervision::ContinueSession;
 use crate::completions;
@@ -281,6 +281,7 @@ echo '{{"sessionID":"sess-123"}}'
         phase3_completion_guidance: "",
         is_final_iteration: true,
         allow_dirty_repo: true,
+        post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
@@ -365,6 +366,7 @@ echo '{{"sessionID":"sess-123"}}'
         phase3_completion_guidance: "",
         is_final_iteration: true,
         allow_dirty_repo: true,
+        post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
@@ -447,6 +449,7 @@ echo '{{"sessionID":"sess-123"}}'
         phase3_completion_guidance: "",
         is_final_iteration: true,
         allow_dirty_repo: true,
+        post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
@@ -592,6 +595,7 @@ echo '{"sessionID":"sess-123"}'
         phase3_completion_guidance: "guidance",
         is_final_iteration: false,
         allow_dirty_repo: true,
+        post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
@@ -657,6 +661,7 @@ echo '{"sessionID":"sess-123"}'
         phase3_completion_guidance: "guidance",
         is_final_iteration: false,
         allow_dirty_repo: true,
+        post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,
@@ -742,6 +747,7 @@ echo '{{"sessionID":"sess-123"}}'
         phase3_completion_guidance: "",
         is_final_iteration: false,
         allow_dirty_repo: true,
+        post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
         notify_sound: None,
         lfs_check: false,

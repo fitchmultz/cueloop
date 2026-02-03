@@ -21,8 +21,8 @@
 use crate::agent::AgentOverrides;
 use crate::config;
 use crate::contracts::{ConflictPolicy, MergeRunnerConfig, ParallelMergeMethod, ParallelMergeWhen};
-use crate::{git, promptflow, runutil, signal, timeutil};
-use anyhow::{Result, bail};
+use crate::{fsutil, git, promptflow, runutil, signal, timeutil};
+use anyhow::{Context, Result, bail};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -352,6 +352,7 @@ pub(crate) fn run_loop_parallel(
             // Drain merge results for cleanup.
             while let Ok(result) = merge_result_rx.try_recv() {
                 if result.merged {
+                    apply_merge_queue_sync(resolved, &result)?;
                     if let Some(workspace) = completed_workspaces.remove(&result.task_id)
                         && let Err(err) =
                             git::remove_workspace(&settings.workspace_root, &workspace, true)
@@ -534,6 +535,7 @@ pub(crate) fn run_loop_parallel(
     // Drain any remaining merge results for cleanup.
     while let Ok(result) = merge_result_rx.try_recv() {
         if result.merged {
+            apply_merge_queue_sync(resolved, &result)?;
             if let Some(workspace) = completed_workspaces.remove(&result.task_id)
                 && let Err(err) = git::remove_workspace(&settings.workspace_root, &workspace, true)
             {
@@ -607,6 +609,43 @@ pub(crate) fn run_loop_parallel(
             tasks_failed,
             &notify_config,
         );
+    }
+
+    Ok(())
+}
+
+fn apply_merge_queue_sync(resolved: &config::Resolved, result: &MergeResult) -> Result<()> {
+    let Some(queue_bytes) = result.queue_bytes.as_ref() else {
+        bail!(
+            "Merged PR for {} did not return queue bytes; refusing to update local queue.",
+            result.task_id
+        );
+    };
+    fsutil::write_atomic(&resolved.queue_path, queue_bytes)
+        .with_context(|| format!("write queue bytes for {}", result.task_id))?;
+
+    match result.done_bytes.as_ref() {
+        Some(bytes) => {
+            fsutil::write_atomic(&resolved.done_path, bytes)
+                .with_context(|| format!("write done bytes for {}", result.task_id))?;
+        }
+        None => {
+            if let Err(err) = std::fs::remove_file(&resolved.done_path)
+                && err.kind() != std::io::ErrorKind::NotFound
+            {
+                return Err(err.into());
+            }
+        }
+    }
+
+    if let Some(bytes) = result.productivity_bytes.as_ref() {
+        let productivity_path = resolved
+            .repo_root
+            .join(".ralph")
+            .join("cache")
+            .join("productivity.json");
+        fsutil::write_atomic(&productivity_path, bytes)
+            .with_context(|| format!("write productivity bytes for {}", result.task_id))?;
     }
 
     Ok(())

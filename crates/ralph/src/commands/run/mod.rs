@@ -47,7 +47,7 @@ pub(crate) use context::{mark_task_doing, task_context_for_prompt};
 pub(crate) use iteration::{apply_followup_reasoning_effort, resolve_iteration_settings};
 pub(crate) use run_session::{create_session_for_task, validate_resumed_task};
 pub(crate) use selection::select_run_one_task_index;
-pub(crate) use supervision::{PushPolicy, post_run_supervise};
+pub(crate) use supervision::{PushPolicy, post_run_supervise, post_run_supervise_parallel_worker};
 
 // Preserve existing `commands::run` unit tests which call phase 3 helpers directly.
 #[allow(unused_imports)]
@@ -501,6 +501,11 @@ fn run_one_impl(
         QueueLockMode::Acquire | QueueLockMode::Held => PushPolicy::RequireUpstream,
     };
 
+    let post_run_mode = match lock_mode {
+        QueueLockMode::AcquireAllowUpstream => phases::PostRunMode::ParallelWorker,
+        QueueLockMode::Acquire | QueueLockMode::Held => phases::PostRunMode::Normal,
+    };
+
     let policy = promptflow::PromptPolicy {
         repoprompt_plan_required: repoprompt_flags.plan_required,
         repoprompt_tool_injection: repoprompt_flags.tool_injection,
@@ -608,7 +613,7 @@ fn run_one_impl(
     )?;
 
     // Optional pre-run task update: run once per task ID, immediately before we mark the task as doing.
-    let update_task_before_run = agent_overrides
+    let mut update_task_before_run = agent_overrides
         .update_task_before_run
         .or(resolved.config.agent.update_task_before_run)
         .unwrap_or(false);
@@ -617,6 +622,13 @@ fn run_one_impl(
         .fail_on_prerun_update_error
         .or(resolved.config.agent.fail_on_prerun_update_error)
         .unwrap_or(false);
+
+    if matches!(post_run_mode, phases::PostRunMode::ParallelWorker) && update_task_before_run {
+        log::info!(
+            "Task {task_id}: parallel worker mode skips pre-run task update to avoid queue writes"
+        );
+        update_task_before_run = false;
+    }
 
     if update_task_before_run {
         log::info!("Task {task_id}: pre-run update enabled; running task updater");
@@ -698,8 +710,14 @@ fn run_one_impl(
             .context("reload selected task after pre-run update")?;
     }
 
-    // Mark the task as doing before running the agent.
-    mark_task_doing(resolved, &task_id)?;
+    // Mark the task as doing before running the agent (skip in parallel worker mode).
+    if matches!(post_run_mode, phases::PostRunMode::ParallelWorker) {
+        log::info!(
+            "Task {task_id}: parallel worker mode skips mark_task_doing to avoid queue writes"
+        );
+    } else {
+        mark_task_doing(resolved, &task_id)?;
+    }
 
     // Save session state for crash recovery (before task execution)
     let cache_dir = resolved.repo_root.join(".ralph/cache");
@@ -797,6 +815,7 @@ fn run_one_impl(
                         phase3_completion_guidance,
                         is_final_iteration,
                         allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        post_run_mode,
                         notify_on_complete: agent_overrides.notify_on_complete,
                         notify_sound: agent_overrides.notify_sound,
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
@@ -824,6 +843,7 @@ fn run_one_impl(
                         phase3_completion_guidance,
                         is_final_iteration,
                         allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        post_run_mode,
                         notify_on_complete: agent_overrides.notify_on_complete,
                         notify_sound: agent_overrides.notify_sound,
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
@@ -852,6 +872,7 @@ fn run_one_impl(
                         phase3_completion_guidance,
                         is_final_iteration,
                         allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        post_run_mode,
                         notify_on_complete: agent_overrides.notify_on_complete,
                         notify_sound: agent_overrides.notify_sound,
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
@@ -879,6 +900,7 @@ fn run_one_impl(
                         phase3_completion_guidance,
                         is_final_iteration,
                         allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        post_run_mode,
                         notify_on_complete: agent_overrides.notify_on_complete,
                         notify_sound: agent_overrides.notify_sound,
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
@@ -906,6 +928,7 @@ fn run_one_impl(
                         phase3_completion_guidance,
                         is_final_iteration,
                         allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        post_run_mode,
                         notify_on_complete: agent_overrides.notify_on_complete,
                         notify_sound: agent_overrides.notify_sound,
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
@@ -934,6 +957,7 @@ fn run_one_impl(
                         phase3_completion_guidance,
                         is_final_iteration,
                         allow_dirty_repo: is_followup || preexisting_dirty_allowed,
+                        post_run_mode,
                         notify_on_complete: agent_overrides.notify_on_complete,
                         notify_sound: agent_overrides.notify_sound,
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),

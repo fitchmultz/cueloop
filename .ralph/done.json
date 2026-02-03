@@ -109,6 +109,70 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0576",
+      "status": "done",
+      "title": "Make parallel loop avoid queue.json merge conflicts without losing task state",
+      "priority": "critical",
+      "tags": [
+        "bug",
+        "parallel",
+        "queue",
+        "merge-conflict",
+        "reliability",
+        "git"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/run/context.rs",
+        "crates/ralph/src/commands/run/parallel/",
+        "crates/ralph/src/commands/run/parallel/sync.rs",
+        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
+        "crates/ralph/src/commands/run/parallel/state.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/operations/",
+        "crates/ralph/src/queue/validation/",
+        ".ralph/queue.json",
+        ".ralph/done.json",
+        ".ralph/cache/parallel/state.json",
+        "docs/cli.md",
+        "make ci",
+        "ralph queue validate",
+        "ralph run loop --parallel 2 --max-tasks 2"
+      ],
+      "evidence": [
+        "CLI: `ralph run loop --parallel <N>` enables parallel mode (clap wiring in `crates/ralph/src/cli/run.rs`, dispatch in `crates/ralph/src/commands/run/mod.rs`).",
+        "Parallel mode clones workspaces and copies `.ralph/queue.json` and `.ralph/done.json` into each workspace (`sync_ralph_state` in `crates/ralph/src/commands/run/parallel/sync.rs`).",
+        "Parallel workers run `ralph run one --parallel-worker` in the workspace; `mark_task_doing` writes `.ralph/queue.json` via `queue::save_queue` (`crates/ralph/src/commands/run/context.rs`, `crates/ralph/src/queue.rs`).",
+        "Merge runner attempts to merge PRs and can invoke AI conflict resolution (`crates/ralph/src/commands/run/parallel/merge_runner.rs`), so worker-branch edits to `.ralph/queue.json`/`.ralph/done.json` can repeatedly surface as Git merge conflicts.",
+        "Parallel state persists in `.ralph/cache/parallel/state.json` (`crates/ralph/src/commands/run/parallel/state.rs`) and the supervisor holds a queue lock for selection, but Git-level conflicts still occur when multiple branches modify the same queue/done files."
+      ],
+      "plan": [
+        "Reproduce on a clean branch: run `ralph run loop --parallel 2 --max-tasks 2`, then capture which PR/merge step produces conflicts on `.ralph/queue.json` and/or `.ralph/done.json` (include `git status` + conflict file list).",
+        "Inventory all queue/done mutation sites that can run inside a parallel worker (e.g., `mark_task_doing`, task completion transitions, queue save/archive helpers) and map them to the parallel workflow (workspace sync → worker run → PR creation → merge).",
+        "Define the desired parallel invariant: only the coordinator (base branch) mutates `.ralph/queue.json`/`.ralph/done.json`; workers emit a minimal, deterministic per-task \"delta\" (status transitions + timestamps + any task field updates) for the coordinator to apply under the queue lock.",
+        "Implement coordinator-applied deltas in `crates/ralph/src/commands/run/parallel/mod.rs` (or adjacent module) and ensure worker branches do not include tracked changes to `.ralph/queue.json`/`.ralph/done.json` (adjust `sync_ralph_state`/worker setup accordingly).",
+        "Add tests that simulate multiple workers completing in close succession and assert: no queue/done diffs in worker branches, no dropped tasks, no queue wipes, completed tasks reliably move to done, and reruns are idempotent.",
+        "Update `docs/cli.md` and `ralph run loop --help` to document parallel queue semantics (explicitly: coordinator-managed queue/done, how completion is applied, and any behavior changes vs non-parallel).",
+        "Run `make ci` and `ralph queue validate`, then do a manual merge of two worker branches to confirm `.ralph/queue.json`/`.ralph/done.json` are conflict-free."
+      ],
+      "notes": [
+        "`crates/ralph/src/commands/run/loop/` no longer exists; run loop dispatch (including parallel `--parallel`) lives in `crates/ralph/src/commands/run/mod.rs` and clap wiring is in `crates/ralph/src/cli/run.rs`.",
+        "Parallel state is persisted at `.ralph/cache/parallel/state.json`; the current parallel workflow copies queue/done into each workspace and worker runs write to queue, which aligns with the reported persistent merge conflicts.",
+        "Force-add parallel worker completion signals so ignored cache paths don't drop status/notes.",
+        "Added git helper for forced staging and exercised it in supervision tests.",
+        "CI: make ci; ralph queue validate."
+      ],
+      "request": "When using 'ralph run loop --parallel 2' there are ALWAYS merge conflicts due to the queue.json changes. We need to figure out a way to handle this to avoid merge conflicts. We need to make sure we don't wipe out the queue and we properly mark tasks complete and move the tasks to the done.json file too. We need to be able to reliably merge and mimic the currently reliable workflow of 'ralph run loop' when it runs without parallel workers.",
+      "created_at": "2026-02-03T15:53:33Z",
+      "updated_at": "2026-02-03T17:43:22.080274000Z",
+      "completed_at": "2026-02-03T17:43:22.080274000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
     }
   ]
 }

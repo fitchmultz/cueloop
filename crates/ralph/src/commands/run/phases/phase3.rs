@@ -1,7 +1,7 @@
 //! Phase 3 (review) execution and completion checks.
 
 use super::shared::run_ci_gate_with_continue;
-use super::{PhaseInvocation, PhaseType, phase_session_id_for_runner};
+use super::{PhaseInvocation, PhaseType, PostRunMode, phase_session_id_for_runner};
 use crate::commands::run::{logging, supervision};
 use crate::completions;
 use crate::config;
@@ -139,6 +139,24 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,
         };
+
+        if ctx.post_run_mode == PostRunMode::ParallelWorker {
+            let mut on_resume = |_resume_output: &runner::RunnerOutput| Ok(());
+            crate::commands::run::post_run_supervise_parallel_worker(
+                ctx.resolved,
+                ctx.task_id,
+                ctx.git_revert_mode,
+                ctx.git_commit_push_enabled,
+                ctx.push_policy,
+                ctx.revert_prompt.clone(),
+                Some(supervision::CiContinueContext {
+                    continue_session: &mut continue_session,
+                    on_resume: &mut on_resume,
+                }),
+                ctx.lfs_check,
+            )?;
+            return Ok(());
+        }
 
         let mut finalized = false;
         let mut on_resume = |_resume_output: &runner::RunnerOutput| Ok(());

@@ -1,7 +1,7 @@
 //! Phase 2 (implementation) execution.
 
 use super::shared::{execute_runner_pass, run_ci_gate_with_continue};
-use super::{PhaseInvocation, PhaseType, phase_session_id_for_runner};
+use super::{PhaseInvocation, PhaseType, PostRunMode, phase_session_id_for_runner};
 use crate::commands::run::{logging, supervision};
 use crate::constants::defaults::PHASE2_FINAL_RESPONSE_FALLBACK;
 use crate::{promptflow, prompts, runner};
@@ -145,22 +145,39 @@ pub fn execute_phase2_implementation(
                     &resume_output.stdout,
                 )
             };
-            crate::commands::run::post_run_supervise(
-                ctx.resolved,
-                ctx.task_id,
-                ctx.git_revert_mode,
-                ctx.git_commit_push_enabled,
-                ctx.push_policy,
-                ctx.revert_prompt.clone(),
-                Some(supervision::CiContinueContext {
-                    continue_session: &mut continue_session,
-                    on_resume: &mut on_resume,
-                }),
-                ctx.notify_on_complete,
-                ctx.notify_sound,
-                ctx.lfs_check,
-                ctx.no_progress,
-            )?;
+            match ctx.post_run_mode {
+                PostRunMode::Normal => crate::commands::run::post_run_supervise(
+                    ctx.resolved,
+                    ctx.task_id,
+                    ctx.git_revert_mode,
+                    ctx.git_commit_push_enabled,
+                    ctx.push_policy,
+                    ctx.revert_prompt.clone(),
+                    Some(supervision::CiContinueContext {
+                        continue_session: &mut continue_session,
+                        on_resume: &mut on_resume,
+                    }),
+                    ctx.notify_on_complete,
+                    ctx.notify_sound,
+                    ctx.lfs_check,
+                    ctx.no_progress,
+                )?,
+                PostRunMode::ParallelWorker => {
+                    crate::commands::run::post_run_supervise_parallel_worker(
+                        ctx.resolved,
+                        ctx.task_id,
+                        ctx.git_revert_mode,
+                        ctx.git_commit_push_enabled,
+                        ctx.push_policy,
+                        ctx.revert_prompt.clone(),
+                        Some(supervision::CiContinueContext {
+                            continue_session: &mut continue_session,
+                            on_resume: &mut on_resume,
+                        }),
+                        ctx.lfs_check,
+                    )?
+                }
+            }
         } else {
             let continue_session = supervision::ContinueSession {
                 runner: ctx.settings.runner,

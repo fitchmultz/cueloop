@@ -40,6 +40,15 @@ pub enum PhaseType {
     SinglePhase,
 }
 
+/// Defines how post-run supervision should behave.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PostRunMode {
+    /// Standard post-run supervision (queue/done updates + git finalization).
+    Normal,
+    /// Parallel worker supervision (no queue/done mutations; completion signals only).
+    ParallelWorker,
+}
+
 /// Shared inputs for executing a run phase workflow.
 ///
 /// This struct intentionally groups parameters to keep function signatures small and
@@ -65,6 +74,7 @@ pub struct PhaseInvocation<'a> {
     pub phase3_completion_guidance: &'a str,
     pub is_final_iteration: bool,
     pub allow_dirty_repo: bool,
+    pub post_run_mode: PostRunMode,
     /// Notification override from CLI (--notify/--no-notify).
     pub notify_on_complete: Option<bool>,
     /// Sound notification override from CLI (--notify-sound).

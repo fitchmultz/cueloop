@@ -1,7 +1,7 @@
 //! State synchronization and git helpers for parallel workers.
 //!
 //! Responsibilities:
-//! - Sync ralph state (queue, done, config, prompts) to worker workspaces.
+//! - Sync ralph state (config, prompts) to worker workspaces.
 //! - Commit changes on worker failure for draft PR creation.
 //! - Ensure branches are pushed before creating PRs.
 //!
@@ -10,10 +10,9 @@
 //! - PR creation or merge logic (see `super::merge_runner`).
 //!
 //! Invariants/assumptions:
-//! - Queue/done paths are resolved from config and must be mappable under repo root.
+//! - Queue/done are not synchronized to workers (coordinator-only).
 //! - Workspace paths are valid and writable.
 
-use crate::commands::run::parallel::path_map::map_resolved_path_into_workspace;
 use crate::config;
 use crate::git;
 use anyhow::{Context, Result};
@@ -22,64 +21,18 @@ use std::path::Path;
 
 /// Sync ralph state files from repo root to workspace.
 ///
-/// Uses `resolved.queue_path` and `resolved.done_path` to determine which files
-/// to sync, mapping them into the workspace clone at the same repo-relative paths.
-/// Also syncs `.ralph/config.json`, `.ralph/prompts/`, and gitignored paths.
+/// Syncs `.ralph/config.json`, `.ralph/prompts/`, and gitignored allowlisted files.
+/// Queue/done files are intentionally NOT synchronized to prevent merge conflicts
+/// in parallel worker branches.
 ///
 /// # Errors
 /// Returns an error if:
-/// - The resolved queue/done paths cannot be mapped into the workspace
 /// - File operations fail
 pub(crate) fn sync_ralph_state(resolved: &config::Resolved, workspace_path: &Path) -> Result<()> {
     // Create .ralph directory for config/prompts/cache (always needed)
     let target = workspace_path.join(".ralph");
     fs::create_dir_all(&target)
         .with_context(|| format!("create workspace ralph dir {}", target.display()))?;
-
-    // Compute workspace destinations for queue and done using resolved paths
-    let workspace_queue_path = map_resolved_path_into_workspace(
-        &resolved.repo_root,
-        workspace_path,
-        &resolved.queue_path,
-        "queue",
-    )?;
-
-    let workspace_done_path = map_resolved_path_into_workspace(
-        &resolved.repo_root,
-        workspace_path,
-        &resolved.done_path,
-        "done",
-    )?;
-
-    // Copy queue (expected to exist)
-    if resolved.queue_path.exists() {
-        if let Some(parent) = workspace_queue_path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("create workspace queue dir {}", parent.display()))?;
-        }
-        fs::copy(&resolved.queue_path, &workspace_queue_path).with_context(|| {
-            format!(
-                "sync queue from {} to {}",
-                resolved.queue_path.display(),
-                workspace_queue_path.display()
-            )
-        })?;
-    }
-
-    // Copy done only if source exists (missing done is allowed)
-    if resolved.done_path.exists() {
-        if let Some(parent) = workspace_done_path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("create workspace done dir {}", parent.display()))?;
-        }
-        fs::copy(&resolved.done_path, &workspace_done_path).with_context(|| {
-            format!(
-                "sync done from {} to {}",
-                resolved.done_path.display(),
-                workspace_done_path.display()
-            )
-        })?;
-    }
 
     // Sync config and prompts from the standard .ralph location
     let source = resolved.repo_root.join(".ralph");
@@ -296,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn sync_ralph_state_copies_queue_and_prompts() -> Result<()> {
+    fn sync_ralph_state_copies_config_and_prompts_without_queue_done() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path().join("repo");
         let workspace_root = temp.path().join("workspace");
@@ -312,13 +265,13 @@ mod tests {
         let resolved = build_test_resolved(&repo_root, None, None);
         sync_ralph_state(&resolved, &workspace_root)?;
 
-        assert_eq!(
-            fs::read_to_string(workspace_root.join(".ralph/queue.json"))?,
-            "{queue}"
+        assert!(
+            !workspace_root.join(".ralph/queue.json").exists(),
+            "queue.json should not be synchronized to worker workspaces"
         );
-        assert_eq!(
-            fs::read_to_string(workspace_root.join(".ralph/done.json"))?,
-            "{done}"
+        assert!(
+            !workspace_root.join(".ralph/done.json").exists(),
+            "done.json should not be synchronized to worker workspaces"
         );
         assert_eq!(
             fs::read_to_string(workspace_root.join(".ralph/config.json"))?,
@@ -407,7 +360,7 @@ mod tests {
     }
 
     #[test]
-    fn sync_ralph_state_custom_queue_done_paths_are_synced() -> Result<()> {
+    fn sync_ralph_state_custom_queue_done_paths_are_not_synced() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path().join("repo");
         let workspace_root = temp.path().join("workspace");
@@ -432,14 +385,14 @@ mod tests {
         let resolved = build_test_resolved(&repo_root, Some(queue_path), Some(done_path));
         sync_ralph_state(&resolved, &workspace_root)?;
 
-        // Verify custom paths are synced
-        assert_eq!(
-            fs::read_to_string(workspace_root.join("queue/active.json"))?,
-            "{custom_queue}"
+        // Verify custom paths are NOT synced
+        assert!(
+            !workspace_root.join("queue/active.json").exists(),
+            "custom queue path should not be synchronized"
         );
-        assert_eq!(
-            fs::read_to_string(workspace_root.join("archive/done.json"))?,
-            "{custom_done}"
+        assert!(
+            !workspace_root.join("archive/done.json").exists(),
+            "custom done path should not be synchronized"
         );
         // Verify config and prompts still sync
         assert_eq!(
@@ -474,63 +427,11 @@ mod tests {
         let resolved = build_test_resolved(&repo_root, Some(queue_path), Some(done_path));
         sync_ralph_state(&resolved, &workspace_root)?;
 
-        // Queue should exist
-        assert!(workspace_root.join("queue/active.json").exists());
+        // Queue should NOT be synchronized
+        assert!(!workspace_root.join("queue/active.json").exists());
         // Done should NOT exist (wasn't created)
         assert!(!workspace_root.join("archive/done.json").exists());
         Ok(())
-    }
-
-    #[test]
-    fn sync_ralph_state_queue_path_outside_repo_root_errors() {
-        let temp = TempDir::new().unwrap();
-        let repo_root = temp.path().join("repo");
-        let workspace_root = temp.path().join("workspace");
-        fs::create_dir_all(&repo_root).unwrap();
-        git_test::init_repo(&repo_root).unwrap();
-        fs::create_dir_all(&workspace_root).unwrap();
-
-        // Queue path outside repo root
-        let outside_queue = temp.path().join("outside/queue.json");
-        fs::create_dir_all(outside_queue.parent().unwrap()).unwrap();
-        fs::write(&outside_queue, "{queue}").unwrap();
-
-        let done_path = repo_root.join(".ralph/done.json");
-        let resolved = build_test_resolved(&repo_root, Some(outside_queue), Some(done_path));
-
-        let result = sync_ralph_state(&resolved, &workspace_root);
-        assert!(result.is_err(), "Queue path outside repo root should error");
-        let err_msg = result.unwrap_err().to_string();
-        assert!(
-            err_msg.contains("queue") && err_msg.contains("not under repo root"),
-            "Error should indicate queue path issue: {}",
-            err_msg
-        );
-    }
-
-    #[test]
-    fn sync_ralph_state_queue_path_with_traversal_errors() {
-        let temp = TempDir::new().unwrap();
-        let repo_root = temp.path().join("repo");
-        let workspace_root = temp.path().join("workspace");
-        fs::create_dir_all(&repo_root).unwrap();
-        git_test::init_repo(&repo_root).unwrap();
-        fs::create_dir_all(&workspace_root).unwrap();
-
-        // Queue path with traversal
-        let traversal_queue = repo_root.join("..").join("queue.json");
-
-        let done_path = repo_root.join(".ralph/done.json");
-        let resolved = build_test_resolved(&repo_root, Some(traversal_queue), Some(done_path));
-
-        let result = sync_ralph_state(&resolved, &workspace_root);
-        assert!(result.is_err(), "Queue path with .. should error");
-        let err_msg = result.unwrap_err().to_string();
-        assert!(
-            err_msg.contains("..") || err_msg.contains("traversal"),
-            "Error should indicate traversal issue: {}",
-            err_msg
-        );
     }
 
     // Unit tests for should_sync_gitignored_entry filter

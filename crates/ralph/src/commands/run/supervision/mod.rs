@@ -4,6 +4,7 @@
 //! - Orchestrate post-run workflow: CI gate, queue updates, git operations, notifications.
 //! - Manage ContinueSession for session resumption.
 //! - Coordinate celebration triggers and productivity stats.
+//! - Provide parallel-worker supervision without mutating queue/done.
 //!
 //! Not handled here:
 //! - Individual concern implementations (see queue_ops.rs, git_ops.rs, ci.rs, notify.rs).
@@ -15,7 +16,9 @@
 //! - Git repo state reflects task changes when is_dirty is true.
 
 use crate::celebrations;
+use crate::completions;
 use crate::contracts::GitRevertMode;
+use crate::contracts::TaskStatus;
 use crate::git;
 use crate::notification;
 use crate::productivity;
@@ -347,6 +350,197 @@ pub(crate) fn post_run_supervise(
     })
 }
 
+/// Post-run supervision for parallel workers.
+///
+/// Ensures completion signals are present, restores shared bookkeeping files,
+/// and commits/pushes only the worker's task changes without mutating queue/done.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn post_run_supervise_parallel_worker(
+    resolved: &crate::config::Resolved,
+    task_id: &str,
+    git_revert_mode: GitRevertMode,
+    git_commit_push_enabled: bool,
+    push_policy: PushPolicy,
+    revert_prompt: Option<runutil::RevertPromptHandler>,
+    ci_continue: Option<CiContinueContext<'_>>,
+    lfs_check: bool,
+) -> Result<()> {
+    let label = format!("PostRunSuperviseParallelWorker for {}", task_id.trim());
+    logging::with_scope(&label, || {
+        let status = git::status_porcelain(&resolved.repo_root)?;
+        let is_dirty = !status.trim().is_empty();
+
+        if is_dirty {
+            if let Err(err) = warn_if_modified_lfs(&resolved.repo_root, lfs_check) {
+                return Err(anyhow!(
+                    "LFS validation failed: {}. Use --lfs-check to enable strict validation or fix the LFS issues.",
+                    err
+                ));
+            }
+            let mut ci_continue = ci_continue;
+            if let Some(ci_continue) = ci_continue.as_mut() {
+                let continue_session = &mut *ci_continue.continue_session;
+                let on_resume = &mut *ci_continue.on_resume;
+                if continue_session
+                    .session_id
+                    .as_deref()
+                    .unwrap_or("")
+                    .is_empty()
+                {
+                    log::warn!(
+                        "CI gate continue requested but no session id; falling back to standard CI gate handling."
+                    );
+                    if let Err(err) = run_ci_gate(resolved) {
+                        let outcome = runutil::apply_git_revert_mode(
+                            &resolved.repo_root,
+                            git_revert_mode,
+                            "CI gate failure",
+                            revert_prompt.as_ref(),
+                        )?;
+                        anyhow::bail!(
+                            "{} Error: {:#}",
+                            runutil::format_revert_failure_message(
+                                &format!(
+                                    "CI gate failed: '{}' did not pass after the task completed.",
+                                    ci_gate_command_label(resolved)
+                                ),
+                                outcome,
+                            ),
+                            err
+                        );
+                    }
+                } else if let Err(err) = ci::run_ci_gate_with_continue_session(
+                    resolved,
+                    git_revert_mode,
+                    revert_prompt.as_ref(),
+                    continue_session,
+                    |output| on_resume(output),
+                ) {
+                    let outcome = runutil::apply_git_revert_mode(
+                        &resolved.repo_root,
+                        git_revert_mode,
+                        "CI gate failure",
+                        revert_prompt.as_ref(),
+                    )?;
+                    anyhow::bail!(
+                        "{} Error: {:#}",
+                        runutil::format_revert_failure_message(
+                            &format!(
+                                "CI gate failed: '{}' did not pass after the task completed.",
+                                ci_gate_command_label(resolved)
+                            ),
+                            outcome,
+                        ),
+                        err
+                    );
+                }
+            } else if let Err(err) = run_ci_gate(resolved) {
+                let outcome = runutil::apply_git_revert_mode(
+                    &resolved.repo_root,
+                    git_revert_mode,
+                    "CI gate failure",
+                    revert_prompt.as_ref(),
+                )?;
+                anyhow::bail!(
+                    "{} Error: {:#}",
+                    runutil::format_revert_failure_message(
+                        &format!(
+                            "CI gate failed: '{}' did not pass after the task completed.",
+                            ci_gate_command_label(resolved)
+                        ),
+                        outcome,
+                    ),
+                    err
+                );
+            }
+        }
+
+        ensure_completion_signal(resolved, task_id)?;
+        restore_parallel_worker_bookkeeping(resolved)?;
+        stage_completion_signal(resolved, task_id)?;
+
+        let status = git::status_porcelain(&resolved.repo_root)?;
+        if status.trim().is_empty() {
+            return Ok(());
+        }
+
+        if git_commit_push_enabled {
+            let task_title = task_title_from_queue_or_done(resolved, task_id)?.unwrap_or_default();
+            finalize_git_state(
+                resolved,
+                task_id,
+                &task_title,
+                git_commit_push_enabled,
+                push_policy,
+            )
+            .context("Git finalization failed")?;
+        } else {
+            log::info!("Auto git commit/push disabled; leaving repo dirty after worker run.");
+        }
+
+        Ok(())
+    })
+}
+
+fn ensure_completion_signal(resolved: &crate::config::Resolved, task_id: &str) -> Result<()> {
+    if completions::read_completion_signal(&resolved.repo_root, task_id)?.is_some() {
+        return Ok(());
+    }
+
+    let signal = completions::CompletionSignal {
+        task_id: task_id.to_string(),
+        status: TaskStatus::Done,
+        notes: Vec::new(),
+    };
+    completions::write_completion_signal(&resolved.repo_root, &signal)?;
+    log::info!(
+        "Completion signal missing for {}; created default Done signal.",
+        task_id
+    );
+    Ok(())
+}
+
+fn stage_completion_signal(resolved: &crate::config::Resolved, task_id: &str) -> Result<()> {
+    let signal_path = completions::completion_signal_path(&resolved.repo_root, task_id)?;
+    if !signal_path.exists() {
+        return Ok(());
+    }
+    git::add_paths_force(&resolved.repo_root, &[signal_path])
+        .context("force-add completion signal")?;
+    Ok(())
+}
+
+fn task_title_from_queue_or_done(
+    resolved: &crate::config::Resolved,
+    task_id: &str,
+) -> Result<Option<String>> {
+    let queue_file = queue::load_queue(&resolved.queue_path)?;
+    if let Some(task) = queue_file.tasks.iter().find(|t| t.id.trim() == task_id) {
+        return Ok(Some(task.title.clone()));
+    }
+    let done_file = queue::load_queue_or_default(&resolved.done_path)?;
+    if let Some(task) = done_file.tasks.iter().find(|t| t.id.trim() == task_id) {
+        return Ok(Some(task.title.clone()));
+    }
+    Ok(None)
+}
+
+fn restore_parallel_worker_bookkeeping(resolved: &crate::config::Resolved) -> Result<()> {
+    let productivity_path = resolved
+        .repo_root
+        .join(".ralph")
+        .join("cache")
+        .join("productivity.json");
+    let paths = vec![
+        resolved.queue_path.clone(),
+        resolved.done_path.clone(),
+        productivity_path,
+    ];
+    git::restore_tracked_paths_to_head(&resolved.repo_root, &paths)
+        .context("restore queue/done/productivity to HEAD")?;
+    Ok(())
+}
+
 /// Trigger celebration and record productivity stats for task completion.
 fn trigger_celebration(
     resolved: &crate::config::Resolved,
@@ -390,6 +584,7 @@ fn trigger_celebration(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::completions;
     use crate::constants::limits::CI_GATE_AUTO_RETRY_LIMIT;
     use crate::contracts::{
         AgentConfig, Config, NotificationConfig, QueueConfig, QueueFile, Runner, Task,
@@ -967,5 +1162,142 @@ echo '{{"sessionID":"sess-123"}}'
             ci_failure_retry_count: 0,
         };
         assert_eq!(single_session.phase_type, PhaseType::SinglePhase);
+    }
+
+    #[test]
+    fn post_run_parallel_worker_restores_bookkeeping_and_creates_signal() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let repo_root = temp_dir.path();
+        git_test::init_repo(repo_root)?;
+
+        let cache_dir = repo_root.join(".ralph/cache");
+        std::fs::create_dir_all(&cache_dir)?;
+
+        write_queue(repo_root, TaskStatus::Todo)?;
+        queue::save_queue(
+            &repo_root.join(".ralph/done.json"),
+            &QueueFile {
+                version: 1,
+                tasks: vec![],
+            },
+        )?;
+        let productivity_path = cache_dir.join("productivity.json");
+        std::fs::write(&productivity_path, "{\"stats\":[]}")?;
+        git_test::commit_all(repo_root, "init queue/done/productivity")?;
+
+        let resolved = resolved_for_repo(repo_root);
+        let queue_before = std::fs::read_to_string(&resolved.queue_path)?;
+        let done_before = std::fs::read_to_string(&resolved.done_path)?;
+        let productivity_before = std::fs::read_to_string(&productivity_path)?;
+
+        // Dirty the bookkeeping files
+        std::fs::write(&resolved.queue_path, "{\"version\":1,\"tasks\":[]}")?;
+        std::fs::write(&resolved.done_path, "{\"version\":1,\"tasks\":[]}")?;
+        std::fs::write(&productivity_path, "{\"stats\":[\"changed\"]}")?;
+
+        post_run_supervise_parallel_worker(
+            &resolved,
+            "RQ-0001",
+            GitRevertMode::Disabled,
+            false,
+            PushPolicy::RequireUpstream,
+            None,
+            None,
+            false,
+        )?;
+
+        assert_eq!(std::fs::read_to_string(&resolved.queue_path)?, queue_before);
+        assert_eq!(std::fs::read_to_string(&resolved.done_path)?, done_before);
+        assert_eq!(
+            std::fs::read_to_string(&productivity_path)?,
+            productivity_before
+        );
+
+        let signal_path = completions::completion_signal_path(repo_root, "RQ-0001")?;
+        assert!(signal_path.exists(), "completion signal should exist");
+
+        let status_paths = git::status_paths(repo_root)?;
+        let queue_rel = resolved
+            .queue_path
+            .strip_prefix(repo_root)
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        let done_rel = resolved
+            .done_path
+            .strip_prefix(repo_root)
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        let productivity_rel = productivity_path
+            .strip_prefix(repo_root)
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+
+        assert!(
+            !status_paths.contains(&queue_rel),
+            "queue.json should be restored to HEAD"
+        );
+        assert!(
+            !status_paths.contains(&done_rel),
+            "done.json should be restored to HEAD"
+        );
+        assert!(
+            !status_paths.contains(&productivity_rel),
+            "productivity.json should be restored to HEAD"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn post_run_parallel_worker_force_adds_signal_when_ignored() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let repo_root = temp_dir.path();
+        git_test::init_repo(repo_root)?;
+
+        let gitignore_path = repo_root.join(".gitignore");
+        std::fs::write(&gitignore_path, ".ralph/cache/completions\n")?;
+        git_test::git_run(repo_root, &["add", ".gitignore"])?;
+        git_test::commit_all(repo_root, "ignore completions")?;
+
+        write_queue(repo_root, TaskStatus::Todo)?;
+        queue::save_queue(
+            &repo_root.join(".ralph/done.json"),
+            &QueueFile {
+                version: 1,
+                tasks: vec![],
+            },
+        )?;
+        git_test::commit_all(repo_root, "init queue/done")?;
+
+        let resolved = resolved_for_repo(repo_root);
+        post_run_supervise_parallel_worker(
+            &resolved,
+            "RQ-0001",
+            GitRevertMode::Disabled,
+            false,
+            PushPolicy::RequireUpstream,
+            None,
+            None,
+            false,
+        )?;
+
+        let signal_path = completions::completion_signal_path(repo_root, "RQ-0001")?;
+        assert!(signal_path.exists(), "completion signal should exist");
+
+        let signal_rel = signal_path
+            .strip_prefix(repo_root)
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        let status_paths = git::status_paths(repo_root)?;
+        assert!(
+            status_paths.contains(&signal_rel),
+            "completion signal should be staged even if ignored"
+        );
+
+        Ok(())
     }
 }

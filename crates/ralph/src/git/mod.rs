@@ -33,8 +33,8 @@ pub use clean::{
     RALPH_RUN_CLEAN_ALLOWED_PATHS, repo_dirty_only_allowed_paths, require_clean_repo_ignoring_paths,
 };
 pub use commit::{
-    commit_all, is_ahead_of_upstream, push_upstream, push_upstream_allow_create,
-    revert_uncommitted, upstream_ref,
+    add_paths_force, commit_all, is_ahead_of_upstream, push_upstream, push_upstream_allow_create,
+    restore_tracked_paths_to_head, revert_uncommitted, upstream_ref,
 };
 pub use error::GitError;
 pub use lfs::{check_lfs_health, filter_modified_lfs_files, has_lfs, list_lfs_files};

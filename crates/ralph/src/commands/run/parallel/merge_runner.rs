@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Consume PRs and attempt merges based on configured policy.
 //! - Resolve merge conflicts using an AI runner when enabled.
+//! - Apply completion signals on the base branch after merge.
 //! - Emit merge results for downstream cleanup.
 //!
 //! Not handled here:
@@ -18,8 +19,9 @@ use crate::commands::run::parallel::path_map::map_resolved_path_into_workspace;
 use crate::config;
 use crate::contracts::{
     ConflictPolicy, MergeRunnerConfig, ParallelMergeMethod, QueueFile, RunnerCliOptionsPatch,
+    TaskStatus,
 };
-use crate::{git, promptflow, prompts, queue, runner};
+use crate::{completions, git, outpututil, productivity, promptflow, prompts, queue, runner};
 use anyhow::{Context, Result, bail};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -36,6 +38,9 @@ pub(crate) enum MergeQueueSource {
 pub(crate) struct MergeResult {
     pub task_id: String,
     pub merged: bool,
+    pub queue_bytes: Option<Vec<u8>>,
+    pub done_bytes: Option<Vec<u8>>,
+    pub productivity_bytes: Option<Vec<u8>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -134,9 +139,14 @@ fn handle_pr(
     )?;
 
     if merged {
+        let sync =
+            apply_completion_and_collect_bytes(resolved, workspace_root, &pr.base, &task_id)?;
         let _ = merge_result_tx.send(MergeResult {
             task_id,
             merged: true,
+            queue_bytes: Some(sync.queue_bytes),
+            done_bytes: sync.done_bytes,
+            productivity_bytes: sync.productivity_bytes,
         });
     }
 
@@ -331,6 +341,137 @@ fn validate_queue_done_in_workspace(
     queue::log_warnings(&warnings);
 
     Ok(())
+}
+
+struct QueueSyncBytes {
+    queue_bytes: Vec<u8>,
+    done_bytes: Option<Vec<u8>>,
+    productivity_bytes: Option<Vec<u8>>,
+}
+
+fn apply_completion_and_collect_bytes(
+    resolved: &config::Resolved,
+    workspace_root: &Path,
+    base_branch: &str,
+    task_id: &str,
+) -> Result<QueueSyncBytes> {
+    let base_sync_path = workspace_root.join(".base-sync");
+    git::ensure_workspace_exists(&resolved.repo_root, &base_sync_path, base_branch)
+        .with_context(|| format!("ensure base-sync workspace at {}", base_sync_path.display()))?;
+
+    let workspace_queue_path = map_resolved_path_into_workspace(
+        &resolved.repo_root,
+        &base_sync_path,
+        &resolved.queue_path,
+        "queue",
+    )?;
+    let workspace_done_path = map_resolved_path_into_workspace(
+        &resolved.repo_root,
+        &base_sync_path,
+        &resolved.done_path,
+        "done",
+    )?;
+
+    let mut workspace_resolved = resolved.clone();
+    workspace_resolved.repo_root = base_sync_path.clone();
+    workspace_resolved.queue_path = workspace_queue_path.clone();
+    workspace_resolved.done_path = workspace_done_path.clone();
+    if workspace_resolved.project_config_path.is_some() {
+        workspace_resolved.project_config_path = Some(base_sync_path.join(".ralph/config.json"));
+    }
+
+    ensure_completion_signal_in_workspace(&workspace_resolved, task_id)?;
+    let _ = crate::commands::run::apply_phase3_completion_signal(&workspace_resolved, task_id)?;
+
+    let task_title =
+        task_title_from_queue_done_paths(&workspace_queue_path, &workspace_done_path, task_id)?
+            .unwrap_or_else(|| "Parallel completion".to_string());
+
+    let stats_enabled = resolved.config.tui.stats_enabled.unwrap_or(true);
+    if stats_enabled {
+        let cache_dir = workspace_resolved.repo_root.join(".ralph").join("cache");
+        if let Err(err) =
+            productivity::record_task_completion_by_id(task_id, &task_title, &cache_dir)
+        {
+            log::debug!(
+                "Failed to record productivity for {} in base-sync workspace: {}",
+                task_id,
+                err
+            );
+        }
+    }
+
+    let status = git::status_porcelain(&base_sync_path)?;
+    if !status.trim().is_empty() {
+        let message = outpututil::format_task_commit_message(task_id, &task_title);
+        match git::commit_all(&base_sync_path, &message) {
+            Ok(()) => {
+                push_branch(&base_sync_path)?;
+            }
+            Err(git::GitError::NoChangesToCommit) => {}
+            Err(err) => return Err(err.into()),
+        }
+    }
+
+    let queue_bytes = std::fs::read(&workspace_queue_path)
+        .with_context(|| format!("read queue bytes from {}", workspace_queue_path.display()))?;
+    let done_bytes =
+        if workspace_done_path.exists() {
+            Some(std::fs::read(&workspace_done_path).with_context(|| {
+                format!("read done bytes from {}", workspace_done_path.display())
+            })?)
+        } else {
+            None
+        };
+    let productivity_path = base_sync_path
+        .join(".ralph")
+        .join("cache")
+        .join("productivity.json");
+    let productivity_bytes = if productivity_path.exists() {
+        Some(std::fs::read(&productivity_path).with_context(|| {
+            format!(
+                "read productivity bytes from {}",
+                productivity_path.display()
+            )
+        })?)
+    } else {
+        None
+    };
+
+    Ok(QueueSyncBytes {
+        queue_bytes,
+        done_bytes,
+        productivity_bytes,
+    })
+}
+
+fn ensure_completion_signal_in_workspace(resolved: &config::Resolved, task_id: &str) -> Result<()> {
+    if completions::read_completion_signal(&resolved.repo_root, task_id)?.is_some() {
+        return Ok(());
+    }
+    let signal = completions::CompletionSignal {
+        task_id: task_id.to_string(),
+        status: TaskStatus::Done,
+        notes: vec!["Missing completion signal on merge; defaulted to done.".to_string()],
+    };
+    completions::write_completion_signal(&resolved.repo_root, &signal)?;
+    Ok(())
+}
+
+fn task_title_from_queue_done_paths(
+    queue_path: &Path,
+    done_path: &Path,
+    task_id: &str,
+) -> Result<Option<String>> {
+    let queue_file = queue::load_queue(queue_path)?;
+    if let Some(task) = queue_file.tasks.iter().find(|t| t.id.trim() == task_id) {
+        return Ok(Some(task.title.clone()));
+    }
+    let done_file = queue::load_queue_or_default(done_path)?;
+    if let Some(task) = done_file.tasks.iter().find(|t| t.id.trim() == task_id) {
+        return Ok(Some(task.title.clone()));
+    }
+    Ok(None)
 }
 
 fn run_merge_runner_prompt(
@@ -823,5 +964,75 @@ mod tests {
             "Error chain should mention duplicate ID: {}",
             full_error
         );
+    }
+
+    #[test]
+    fn apply_completion_and_collect_bytes_updates_queue_and_clears_signal() -> Result<()> {
+        let (_remote_dir, author_dir, workspace_dir) = setup_merge_test();
+
+        // Ensure we are on main branch locally
+        git_test::git_run(author_dir.path(), &["checkout", "-B", "main"])?;
+
+        // Create queue/done files in the author repo
+        let ralph_dir = author_dir.path().join(".ralph");
+        fs::create_dir_all(&ralph_dir)?;
+        let queue_path = ralph_dir.join("queue.json");
+        let done_path = ralph_dir.join("done.json");
+
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![build_test_task("RQ-0001", TaskStatus::Todo)],
+        };
+        let done = QueueFile {
+            version: 1,
+            tasks: vec![],
+        };
+        save_queue_file(&queue_path, &queue);
+        save_queue_file(&done_path, &done);
+        git_test::commit_all(author_dir.path(), "add queue files")?;
+        git_test::push_branch(author_dir.path(), "main")?;
+
+        // Add completion signal to main and push
+        let signal = completions::CompletionSignal {
+            task_id: "RQ-0001".to_string(),
+            status: TaskStatus::Done,
+            notes: vec!["Completed".to_string()],
+        };
+        let signal_path = completions::write_completion_signal(author_dir.path(), &signal)?;
+        git_test::git_run(
+            author_dir.path(),
+            &["add", "-f", signal_path.to_string_lossy().as_ref()],
+        )?;
+        git_test::git_run(
+            author_dir.path(),
+            &["commit", "-m", "add completion signal"],
+        )?;
+        git_test::push_branch(author_dir.path(), "main")?;
+
+        let resolved = build_test_resolved(author_dir.path(), queue_path, done_path);
+
+        let sync =
+            apply_completion_and_collect_bytes(&resolved, workspace_dir.path(), "main", "RQ-0001")?;
+
+        let updated_queue: QueueFile = serde_json::from_slice(&sync.queue_bytes)?;
+        assert!(
+            updated_queue.tasks.is_empty(),
+            "queue should be empty after completion"
+        );
+        let done_bytes = sync.done_bytes.expect("done bytes should be present");
+        let updated_done: QueueFile = serde_json::from_slice(&done_bytes)?;
+        assert!(
+            updated_done.tasks.iter().any(|t| t.id == "RQ-0001"),
+            "done should include completed task"
+        );
+
+        let base_sync_path = workspace_dir.path().join(".base-sync");
+        let signal_path = completions::completion_signal_path(&base_sync_path, "RQ-0001")?;
+        assert!(
+            !signal_path.exists(),
+            "completion signal should be removed after apply"
+        );
+
+        Ok(())
     }
 }
