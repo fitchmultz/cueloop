@@ -1,7 +1,7 @@
 //! Integration tests for LLM output safeguarding.
 
 use anyhow::{Context, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 mod test_support;

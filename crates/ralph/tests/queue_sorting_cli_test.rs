@@ -248,7 +248,7 @@ fn queue_sort_reorders_queue_by_priority_ascending() -> Result<()> {
     init_repo(dir.path())?;
     write_queue(dir.path())?;
 
-    let (status, stdout, stderr) = run_in_dir(
+    let (status, stdout, stderr) = test_support::run_in_dir(
         dir.path(),
         &[
             "queue",
