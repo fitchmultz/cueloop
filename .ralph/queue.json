@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0580",
-      "status": "todo",
-      "title": "Enforce clean-repo preflight for parallel run loop",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "parallel",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/mod.rs",
-        "crates/ralph/src/commands/run/mod.rs",
-        "cargo test -p ralph"
-      ],
-      "evidence": [
-        "Path: crates/ralph/src/commands/run/parallel/mod.rs:70-115 (run_loop_parallel lacks clean-repo enforcement)",
-        "Path: crates/ralph/src/commands/run/mod.rs:604-613 (run_one_impl enforces clean repo via require_clean_repo_ignoring_paths)",
-        "Repro: create uncommitted change outside allowed paths, then run `ralph run loop --parallel 2`; it proceeds without the clean-repo guard"
-      ],
-      "plan": [
-        "Add a preflight clean-repo check to run_loop_parallel using git::require_clean_repo_ignoring_paths with the same allowed paths as run_one_impl.",
-        "Honor --force to bypass the check, consistent with non-parallel behavior.",
-        "Add a unit/integration test that parallel run rejects dirty repos when --force is not set.",
-        "Verify by running `cargo test -p ralph` and confirming the new test passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-03T20:11:25Z",
-      "updated_at": "2026-02-03T20:11:25Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0581",
       "status": "todo",
       "title": "Count open PRs toward parallel max_tasks on resume",

@@ -475,6 +475,54 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0580",
+      "status": "done",
+      "title": "Enforce clean-repo preflight for parallel run loop",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "parallel",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/git/clean.rs",
+        "crates/ralph/tests/gitutil_test.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "Path: crates/ralph/src/commands/run/parallel/mod.rs:72-125 (run_loop_parallel lacks clean-repo enforcement - no require_clean_repo_ignoring_paths call)",
+        "Path: crates/ralph/src/commands/run/mod.rs:604-613 (run_one_impl enforces clean repo via require_clean_repo_ignoring_paths with RALPH_RUN_CLEAN_ALLOWED_PATHS)",
+        "Path: crates/ralph/src/git/clean.rs:25-30 (RALPH_RUN_CLEAN_ALLOWED_PATHS defines allowed dirty paths)",
+        "Repro: create uncommitted change outside allowed paths, then run `ralph run loop --parallel 2`; it proceeds without the clean-repo guard"
+      ],
+      "plan": [
+        "Add a preflight clean-repo check to run_loop_parallel using git::require_clean_repo_ignoring_paths with RALPH_RUN_CLEAN_ALLOWED_PATHS (same as run_one_impl).",
+        "Honor --force to bypass the check, consistent with non-parallel behavior.",
+        "Add a unit/integration test that parallel run rejects dirty repos when --force is not set.",
+        "Verify by running `cargo test -p ralph` and confirming the new test passes."
+      ],
+      "notes": [
+        "Scope expanded to include git/clean.rs for RALPH_RUN_CLEAN_ALLOWED_PATHS reference and gitutil_test.rs for test patterns",
+        "Added clean-repo preflight check to run_loop_parallel",
+        "Uses git::require_clean_repo_ignoring_paths with RALPH_RUN_CLEAN_ALLOWED_PATHS",
+        "Honors --force flag to bypass check (consistent with run_one_impl)",
+        "Added unit test run_loop_parallel_rejects_dirty_repo_without_force",
+        "make ci passes (1747+ tests)"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-03T20:11:25Z",
+      "updated_at": "2026-02-03T23:08:32.518176000Z",
+      "completed_at": "2026-02-03T23:08:32.518176000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

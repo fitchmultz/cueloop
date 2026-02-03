@@ -77,6 +77,14 @@ pub(crate) fn run_loop_parallel(
     // other run loops from selecting the same tasks during the selection→spawn window.
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run loop", opts.force)?;
 
+    // Preflight: require a clean repo before creating workspaces/spawning workers.
+    // Honor --force to bypass (matches run_one_impl behavior).
+    git::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        opts.force,
+        git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+    )?;
+
     let cache_dir = resolved.repo_root.join(".ralph/cache");
     let ctrlc = crate::runner::ctrlc_state()
         .map_err(|e| anyhow::anyhow!("Ctrl-C handler initialization failed: {}", e))?;
@@ -2458,5 +2466,73 @@ mod tests {
             fs::read_to_string(&productivity_path).unwrap(),
             sentinel_productivity
         );
+    }
+
+    #[test]
+    fn run_loop_parallel_rejects_dirty_repo_without_force() -> anyhow::Result<()> {
+        use crate::testsupport::git as git_test;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new()?;
+        git_test::init_repo(temp.path())?;
+
+        // Avoid false positives: queue lock may create runtime files under .ralph/lock or .ralph/cache.
+        // Ignore those so the dirty signal is *our* disallowed file.
+        std::fs::write(
+            temp.path().join(".gitignore"),
+            ".ralph/lock/\n.ralph/cache/\n",
+        )?;
+        git_test::git_run(temp.path(), &["add", ".gitignore"])?;
+        git_test::git_run(temp.path(), &["commit", "-m", "init"])?;
+
+        // Ensure .ralph exists (lock code may assume it).
+        std::fs::create_dir_all(temp.path().join(".ralph"))?;
+
+        // Create a minimal valid queue.json (otherwise we get "no todo tasks" before clean-repo check)
+        let queue_path = temp.path().join(".ralph/queue.json");
+        let queue_content = r#"{"version":1,"tasks":[{"id":"RQ-0001","status":"todo","title":"Test","scope":["file.rs"],"evidence":["obs"],"plan":["step"],"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}]}"#;
+        std::fs::write(&queue_path, queue_content)?;
+
+        // Introduce a disallowed dirty change.
+        std::fs::write(temp.path().join("notes.txt"), "dirty")?;
+
+        let repo_root = temp.path().to_path_buf();
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.clone(),
+            queue_path,
+            done_path: repo_root.join(".ralph/done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let err = run_loop_parallel(
+            &resolved,
+            ParallelRunOptions {
+                max_tasks: 0,
+                workers: 2,
+                agent_overrides: AgentOverrides::default(),
+                force: false,
+                merge_when: ParallelMergeWhen::AsCreated,
+            },
+        )
+        .unwrap_err();
+
+        // The error should be a DirtyRepo error (wrapped in anyhow)
+        let err_str = format!("{}", err);
+        assert!(
+            err_str.contains("repo is dirty"),
+            "expected DirtyRepo error, got: {}",
+            err_str
+        );
+        assert!(
+            err_str.contains("notes.txt"),
+            "expected error to mention notes.txt, got: {}",
+            err_str
+        );
+
+        Ok(())
     }
 }
