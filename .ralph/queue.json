@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0578",
-      "status": "todo",
-      "title": "Validate queue/done bytes before applying merge results",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "parallel",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/mod.rs",
-        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
-        "cargo test -p ralph"
-      ],
-      "evidence": [
-        "Path: crates/ralph/src/commands/run/parallel/mod.rs:890-923 (apply_merge_queue_sync writes queue/done bytes without parsing or validation)",
-        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:286-338 (validation only occurs in conflict-resolution path)",
-        "Repro: merge a PR that writes invalid JSON into queue/done; apply_merge_queue_sync will persist invalid files to root"
-      ],
-      "plan": [
-        "Parse queue/done bytes in apply_merge_queue_sync using load_queue_with_repair_and_validate before writing to disk.",
-        "If validation fails, return an error and keep local queue/done untouched; include actionable error context.",
-        "Add tests to cover invalid queue bytes being rejected.",
-        "Verify by running `cargo test -p ralph` and confirming the validation tests pass."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-03T20:11:25Z",
-      "updated_at": "2026-02-03T20:11:25Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0579",
       "status": "todo",
       "title": "Reject PR heads that do not match the parallel branch prefix",

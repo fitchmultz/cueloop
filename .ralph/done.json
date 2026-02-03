@@ -374,6 +374,55 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0578",
+      "status": "done",
+      "title": "Validate queue/done bytes before applying merge results",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "parallel",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/jsonc.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "Path: crates/ralph/src/commands/run/parallel/mod.rs:890-925 (apply_merge_queue_sync persists queue/done/productivity bytes directly; bypasses queue parsing + semantic validation)",
+        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:423-452 (apply_completion_and_collect_bytes reads queue/done bytes from the base-sync workspace and returns them without validating as QueueFile JSONC + semantics)",
+        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:270-342 (validate_queue_done_in_workspace exists but is only invoked after AI conflict resolution, not for clean merges)",
+        "Risk/Repro: if a merged PR introduces unparseable or semantically invalid queue/done contents, the parallel merge flow can write those bytes into the local repo, breaking subsequent queue operations"
+      ],
+      "plan": [
+        "In apply_merge_queue_sync, parse queue_bytes and optional done_bytes into QueueFile values (use the same JSONC parsing rules as queue::load_queue) and validate them via queue::validate_queue/validate_queue_set before touching disk.",
+        "Serialize validated QueueFile values and atomically write via queue::save_queue (and remove done_path when done_bytes is None); avoid writing raw bytes from MergeResult.",
+        "On any parse/validation error, return an error and leave local queue/done/productivity untouched; include task_id and the failing context in the error chain.",
+        "Add unit tests for apply_merge_queue_sync: rejects invalid queue bytes, rejects invalid done bytes, accepts missing done bytes, and preserves existing files on failure.",
+        "Verify by running `cargo test -p ralph`."
+      ],
+      "notes": [
+        "merge_runner validates queue/done in the merge workspace only after AI conflict resolution, but the clean-merge path still produces bytes that are applied locally without any parse/validation gate.",
+        "queue parsing supports JSONC (comments + trailing commas) and semantic validation helpers exist, but apply_merge_queue_sync currently bypasses them entirely.",
+        "Validate merge queue/done bytes with JSONC parsing + semantic checks before write",
+        "Persist normalized queue/done via save_queue; skip writes on validation failure",
+        "Added apply_merge_queue_sync tests for parse/UTF-8/semantic failures and JSONC success",
+        "make ci"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-03T20:11:25Z",
+      "updated_at": "2026-02-03T21:45:34.445935000Z",
+      "completed_at": "2026-02-03T21:45:34.445935000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }
