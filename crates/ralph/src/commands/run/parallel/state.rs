@@ -207,6 +207,13 @@ impl ParallelPrRecord {
         }
     }
 
+    /// Returns true if the PR is open (not merged/closed) and not yet merged.
+    /// These represent work already in flight from a prior run that should
+    /// count toward max_tasks limits on resume.
+    pub(crate) fn is_open_unmerged(&self) -> bool {
+        matches!(self.lifecycle, ParallelPrLifecycle::Open) && !self.merged
+    }
+
     pub fn pr_info(&self, fallback_head: &str, fallback_base: &str) -> crate::git::PrInfo {
         let head = self
             .head

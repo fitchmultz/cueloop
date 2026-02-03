@@ -523,6 +523,49 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0581",
+      "status": "done",
+      "title": "Count open PRs toward parallel max_tasks on resume",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "parallel",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/src/commands/run/parallel/state.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "Path: crates/ralph/src/commands/run/parallel/mod.rs:1133-1139 (initial_tasks_started counts tasks_in_flight and finished_without_pr, but ignores open PRs)",
+        "Path: crates/ralph/src/commands/run/parallel/worker.rs:83-88 (open PRs are excluded from selection, but not counted toward max_tasks)",
+        "Repro: create state with an open PR record, run with --max-tasks 1; a new task still starts"
+      ],
+      "plan": [
+        "Include open (unmerged) PR records in initial_tasks_started so max_tasks reflects work already completed in a previous parallel run.",
+        "Add a unit test that builds a state file with open PRs and asserts max_tasks prevents over-starting on resume.",
+        "Verify by running `cargo test -p ralph` and confirming the new test passes."
+      ],
+      "notes": [
+        "Fixed: open/unmerged PRs now count toward max_tasks on resume",
+        "Added is_open_unmerged() helper to ParallelPrRecord",
+        "Updated initial_tasks_started() to include open/unmerged PRs",
+        "Refactored 4 existing locations to use shared helper",
+        "Added unit test: resume_open_prs_count_toward_max_tasks"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-03T20:11:25Z",
+      "updated_at": "2026-02-03T23:34:22.421265000Z",
+      "completed_at": "2026-02-03T23:34:22.421265000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

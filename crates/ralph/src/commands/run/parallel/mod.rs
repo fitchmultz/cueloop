@@ -146,9 +146,7 @@ pub(crate) fn run_loop_parallel(
     let existing_work_items: Vec<MergeWorkItem> = state_file
         .prs
         .iter()
-        .filter(|record| {
-            matches!(record.lifecycle, state::ParallelPrLifecycle::Open) && !record.merged
-        })
+        .filter(|record| record.is_open_unmerged())
         .filter(|record| {
             // Skip PRs with merge blockers
             if let Some(ref blocker) = record.merge_blocker {
@@ -204,9 +202,11 @@ pub(crate) fn run_loop_parallel(
     let mut created_work_items: Vec<MergeWorkItem> = existing_work_items.clone();
 
     // Only track workspaces for open/unmerged PRs (closed/merged should not drive merge behavior)
-    for record in state_file.prs.iter().filter(|record| {
-        matches!(record.lifecycle, state::ParallelPrLifecycle::Open) && !record.merged
-    }) {
+    for record in state_file
+        .prs
+        .iter()
+        .filter(|record| record.is_open_unmerged())
+    {
         let path = record
             .workspace_path()
             .unwrap_or_else(|| settings.workspace_root.join(&record.task_id));
@@ -805,9 +805,7 @@ fn blocking_pr_task_ids(state_file: &state::ParallelStateFile) -> Vec<String> {
     state_file
         .prs
         .iter()
-        .filter(|record| {
-            matches!(record.lifecycle, state::ParallelPrLifecycle::Open) && !record.merged
-        })
+        .filter(|record| record.is_open_unmerged())
         .map(|record| record.task_id.clone())
         .collect()
 }
@@ -831,7 +829,7 @@ fn validate_and_block_mismatched_prs(
 ) {
     for record in state_file.prs.iter_mut() {
         // Only check open, unmerged PRs
-        if record.merged || !matches!(record.lifecycle, state::ParallelPrLifecycle::Open) {
+        if !record.is_open_unmerged() {
             continue;
         }
 
@@ -1128,13 +1126,24 @@ fn effective_in_flight_count(
 
 /// Initialize the tasks_started counter from resumed state.
 ///
-/// Returns the number of tasks_in_flight plus finished-without-PR records as u32,
-/// capping at u32::MAX.
+/// Returns the number of:
+/// - tasks_in_flight records, plus
+/// - finished-without-PR records, plus
+/// - open/unmerged PR records (these represent prior completed work still in flight via PR),
+///   as u32, capping at u32::MAX.
 fn initial_tasks_started(state_file: &state::ParallelStateFile) -> u32 {
+    let open_unmerged_prs = state_file
+        .prs
+        .iter()
+        .filter(|record| record.is_open_unmerged())
+        .count();
+
     let total = state_file
         .tasks_in_flight
         .len()
-        .saturating_add(state_file.finished_without_pr.len());
+        .saturating_add(state_file.finished_without_pr.len())
+        .saturating_add(open_unmerged_prs);
+
     u32::try_from(total).unwrap_or(u32::MAX)
 }
 
@@ -1906,6 +1915,61 @@ mod tests {
 
         // With max_tasks = 0 (unlimited), should be able to start more
         assert!(can_start_more_tasks(2, 0));
+    }
+
+    #[test]
+    fn resume_open_prs_count_toward_max_tasks() {
+        let mut state_file = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        // One open/unmerged PR from a previous run should count as "already started"
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0100".to_string(),
+            pr_number: 1,
+            pr_url: "https://example.com/pr/1".to_string(),
+            head: Some("ralph/RQ-0100".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: false,
+            lifecycle: state::ParallelPrLifecycle::Open,
+            merge_blocker: None,
+        });
+
+        // These should NOT count toward started (they are not open+unmerged)
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0101".to_string(),
+            pr_number: 2,
+            pr_url: "https://example.com/pr/2".to_string(),
+            head: Some("ralph/RQ-0101".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: false,
+            lifecycle: state::ParallelPrLifecycle::Closed,
+            merge_blocker: None,
+        });
+        state_file.prs.push(state::ParallelPrRecord {
+            task_id: "RQ-0102".to_string(),
+            pr_number: 3,
+            pr_url: "https://example.com/pr/3".to_string(),
+            head: Some("ralph/RQ-0102".to_string()),
+            base: Some("main".to_string()),
+            workspace_path: None,
+            merged: true,
+            lifecycle: state::ParallelPrLifecycle::Merged,
+            merge_blocker: None,
+        });
+
+        assert_eq!(initial_tasks_started(&state_file), 1);
+
+        // With max_tasks=1, we should NOT be allowed to start any new tasks on resume.
+        assert!(!can_start_more_tasks(initial_tasks_started(&state_file), 1));
+
+        // With max_tasks=2, we can start one more.
+        assert!(can_start_more_tasks(initial_tasks_started(&state_file), 2));
     }
 
     #[test]

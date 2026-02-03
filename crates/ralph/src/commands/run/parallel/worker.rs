@@ -82,7 +82,7 @@ pub(crate) fn collect_excluded_ids(
     }
     // Only exclude tasks with PRs that are still open and not merged
     for record in &state_file.prs {
-        if matches!(record.lifecycle, state::ParallelPrLifecycle::Open) && !record.merged {
+        if record.is_open_unmerged() {
             excluded.insert(record.task_id.trim().to_string());
         }
     }
