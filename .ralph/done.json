@@ -281,6 +281,51 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0573",
+      "status": "done",
+      "title": "Ensure workspace cleanup when parallel worker spawn fails",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "parallel",
+        "cleanup"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/src/commands/run/parallel/cleanup_guard.rs",
+        "crates/ralph/src/commands/run/parallel/worker.rs",
+        "crates/ralph/src/git/workspace.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/commands/run/parallel/mod.rs:267-283 creates/syncs a workspace then calls spawn_worker(..)? before guard.register_workspace(..); if spawn_worker fails, the function returns early and the workspace directory is left on disk.",
+        "crates/ralph/src/commands/run/parallel/mod.rs:298-299 registers the workspace only after a successful spawn_worker, so failure paths never reach workspace registration.",
+        "crates/ralph/src/commands/run/parallel/cleanup_guard.rs:188-199 removes only workspaces tracked in ParallelCleanupGuard.workspaces (registered via register_workspace); it does not remove untracked workspace directories."
+      ],
+      "plan": [
+        "In crates/ralph/src/commands/run/parallel/mod.rs, register the workspace with ParallelCleanupGuard immediately after git::create_workspace_at (and sync_ralph_state), before calling spawn_worker.",
+        "Confirm workspace cleanup remains safe and idempotent when a workspace is pre-registered (manual removals should continue to be no-ops due to path.exists checks).",
+        "Add regression coverage that forces a spawn_worker failure and asserts the workspace directory is removed via guard drop/cleanup (likely by injecting a failing spawner or factoring the spawn step into a testable helper).",
+        "Run cargo test -p ralph and make ci to verify parallel cleanup behavior and prevent regressions."
+      ],
+      "notes": [
+        "Scope updated: removed non-existent crates/ralph/src/commands/run/parallel/tests.rs; current unit tests for parallel cleanup live in crates/ralph/src/commands/run/parallel/cleanup_guard.rs under #[cfg(test)].",
+        "Current code still registers workspaces after spawn_worker succeeds, so a spawn_worker error can leak a workspace directory until manually cleaned.",
+        "Register workspaces before sync/spawn so cleanup handles early failures.",
+        "Added regression tests for sync and spawn failure cleanup paths.",
+        "CI: make ci"
+      ],
+      "request": "loop audit finding",
+      "created_at": "2026-02-03T14:36:05Z",
+      "updated_at": "2026-02-03T19:51:45.460929000Z",
+      "completed_at": "2026-02-03T19:51:45.460929000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
     }
   ]
 }

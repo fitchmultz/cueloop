@@ -1,38 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0573",
-      "status": "todo",
-      "title": "Ensure workspace cleanup when parallel worker spawn fails",
-      "priority": "medium",
-      "tags": [
-        "parallel",
-        "cleanup",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/mod.rs",
-        "crates/ralph/src/commands/run/parallel/cleanup_guard.rs",
-        "crates/ralph/src/commands/run/parallel/tests.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/commands/run/parallel/mod.rs:294-326 creates/syncs workspace before spawning worker; if spawn_worker fails, the workspace is not registered with the cleanup guard and is leaked.",
-        "crates/ralph/src/commands/run/parallel/mod.rs:303-309 returns early on spawn failure, skipping cleanup for the untracked workspace."
-      ],
-      "plan": [
-        "Register the workspace with the cleanup guard immediately after creation (before spawn) so any error path cleans it up.",
-        "Add a targeted test that simulates spawn failure and asserts the workspace is removed/cleaned by the guard.",
-        "Verify parallel cleanup tests still pass and add documentation if cleanup semantics change."
-      ],
-      "notes": [],
-      "request": "loop audit finding",
-      "created_at": "2026-02-03T14:36:05Z",
-      "updated_at": "2026-02-03T14:36:05Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }

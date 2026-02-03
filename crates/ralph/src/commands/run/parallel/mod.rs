@@ -264,21 +264,28 @@ pub(crate) fn run_loop_parallel(
                     None => break,
                 };
 
-                let workspace = git::create_workspace_at(
-                    &resolved.repo_root,
-                    &settings.workspace_root,
+                let (workspace, child) = spawn_worker_with_registered_workspace(
+                    &mut guard,
                     &task_id,
-                    &base_branch,
-                    &settings.branch_prefix,
-                )?;
-                sync_ralph_state(resolved, &workspace.path)?;
-
-                let child = spawn_worker(
-                    resolved,
-                    &workspace.path,
-                    &task_id,
-                    &worker_overrides,
-                    opts.force,
+                    || {
+                        git::create_workspace_at(
+                            &resolved.repo_root,
+                            &settings.workspace_root,
+                            &task_id,
+                            &base_branch,
+                            &settings.branch_prefix,
+                        )
+                    },
+                    |path| sync_ralph_state(resolved, path),
+                    |workspace| {
+                        spawn_worker(
+                            resolved,
+                            &workspace.path,
+                            &task_id,
+                            &worker_overrides,
+                            opts.force,
+                        )
+                    },
                 )?;
 
                 let record = state::ParallelTaskRecord::new(&task_id, &workspace, child.id());
@@ -295,8 +302,6 @@ pub(crate) fn run_loop_parallel(
                         child,
                     },
                 );
-                // Also register the workspace for cleanup
-                guard.register_workspace(task_id.clone(), workspace);
 
                 tasks_started += 1;
             }
@@ -1034,11 +1039,33 @@ fn apply_git_commit_push_policy_to_parallel_settings(
     }
 }
 
+fn spawn_worker_with_registered_workspace<CreateWorkspace, SyncWorkspace, SpawnWorker>(
+    guard: &mut ParallelCleanupGuard,
+    task_id: &str,
+    create_workspace: CreateWorkspace,
+    sync_workspace: SyncWorkspace,
+    spawn: SpawnWorker,
+) -> Result<(git::WorkspaceSpec, std::process::Child)>
+where
+    CreateWorkspace: FnOnce() -> Result<git::WorkspaceSpec>,
+    SyncWorkspace: FnOnce(&Path) -> Result<()>,
+    SpawnWorker: FnOnce(&git::WorkspaceSpec) -> Result<std::process::Child>,
+{
+    let workspace = create_workspace()?;
+    guard.register_workspace(task_id.to_string(), workspace.clone());
+    sync_workspace(&workspace.path)?;
+    let child = spawn(&workspace)?;
+    Ok((workspace, child))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::contracts::Config;
 
+    use std::cell::Cell;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::{Arc, mpsc};
     use tempfile::TempDir;
 
     #[test]
@@ -1338,6 +1365,90 @@ mod tests {
         assert!(msg.contains("Parallel state base branch"));
         assert!(msg.contains("in-flight"));
         assert!(msg.contains("state.json"));
+        Ok(())
+    }
+
+    fn create_test_cleanup_guard(temp: &TempDir) -> ParallelCleanupGuard {
+        let workspace_root = temp.path().join("workspaces");
+        std::fs::create_dir_all(&workspace_root).expect("create workspace root");
+
+        let state_path = temp.path().join("state.json");
+        let state_file = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        let (pr_tx, _pr_rx) = mpsc::channel::<git::PrInfo>();
+        let merge_stop = Arc::new(AtomicBool::new(false));
+
+        ParallelCleanupGuard::new(
+            merge_stop,
+            pr_tx,
+            None,
+            state_path,
+            state_file,
+            workspace_root,
+        )
+    }
+
+    #[test]
+    fn spawn_failure_cleans_registered_workspace() -> Result<()> {
+        let temp = TempDir::new()?;
+        let mut guard = create_test_cleanup_guard(&temp);
+        let workspace_root = temp.path().join("workspaces");
+        let workspace_path = workspace_root.join("RQ-0001");
+
+        let result = spawn_worker_with_registered_workspace(
+            &mut guard,
+            "RQ-0001",
+            || {
+                std::fs::create_dir_all(&workspace_path)?;
+                Ok(git::WorkspaceSpec {
+                    path: workspace_path.clone(),
+                    branch: "ralph/RQ-0001".to_string(),
+                })
+            },
+            |_| Ok(()),
+            |_| Err(anyhow::anyhow!("spawn failed")),
+        );
+
+        assert!(result.is_err());
+        guard.cleanup()?;
+        assert!(!workspace_path.exists());
+        Ok(())
+    }
+
+    #[test]
+    fn sync_failure_cleans_registered_workspace_without_spawning() -> Result<()> {
+        let temp = TempDir::new()?;
+        let mut guard = create_test_cleanup_guard(&temp);
+        let workspace_root = temp.path().join("workspaces");
+        let workspace_path = workspace_root.join("RQ-0002");
+        let spawn_called = Cell::new(false);
+
+        let result = spawn_worker_with_registered_workspace(
+            &mut guard,
+            "RQ-0002",
+            || {
+                std::fs::create_dir_all(&workspace_path)?;
+                Ok(git::WorkspaceSpec {
+                    path: workspace_path.clone(),
+                    branch: "ralph/RQ-0002".to_string(),
+                })
+            },
+            |_| Err(anyhow::anyhow!("sync failed")),
+            |_| {
+                spawn_called.set(true);
+                Err(anyhow::anyhow!("spawn should not run"))
+            },
+        );
+
+        assert!(result.is_err());
+        assert!(!spawn_called.get());
+        guard.cleanup()?;
+        assert!(!workspace_path.exists());
         Ok(())
     }
 
