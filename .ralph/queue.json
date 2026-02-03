@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0565",
-      "status": "todo",
-      "title": "Prevent duplicate task selection across concurrent run loops",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "parallel",
-        "queue"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/mod.rs",
-        "crates/ralph/src/commands/run/parallel/worker.rs",
-        "crates/ralph/src/commands/run/parallel/mod.rs"
-      ],
-      "evidence": [
-        "crates/ralph/src/commands/run/mod.rs:359-371 runs parallel workers with `QueueLockMode::Skip`, so they do not hold the queue lock.",
-        "crates/ralph/src/commands/run/parallel/worker.rs:46-65 selects tasks under a short-lived lock but never marks them `Doing` in the main queue.",
-        "crates/ralph/src/commands/run/parallel/mod.rs:240-272 shows tasks are spawned without updating the main queue, so a concurrent run can reselect the same task."
-      ],
-      "plan": [
-        "Add a parallel run lock (dir lock) held for the duration of the parallel loop OR mark selected tasks as `Doing` in the main queue before spawning workers.",
-        "Add a test that starts a second run while a parallel loop is active and verifies it either fails fast or skips in-flight tasks.",
-        "Verify by running `cargo test -p ralph parallel` and confirming concurrency protection works."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T22:35:14Z",
-      "updated_at": "2026-02-02T22:35:14Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0566",
       "status": "todo",
       "title": "Avoid copying heavy gitignored directories into each workspace",

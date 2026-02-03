@@ -37,7 +37,10 @@ fn lock_holder_process() -> Result<()> {
 
     std::fs::create_dir_all(repo_root.join(".ralph")).context("create .ralph dir")?;
 
-    let _lock = queue::acquire_queue_lock(&repo_root, "lock holder", false)?;
+    let label =
+        std::env::var("RALPH_TEST_LOCK_LABEL").unwrap_or_else(|_| "lock holder".to_string());
+
+    let _lock = queue::acquire_queue_lock(&repo_root, &label, false)?;
     println!("LOCK_HELD");
     let _ = std::io::stdout().flush();
 
@@ -106,6 +109,92 @@ fn lock_contention_blocks_second_process() -> Result<()> {
     anyhow::ensure!(
         msg.contains(lock_dir.to_string_lossy().as_ref()),
         "expected lock path in error: {msg}"
+    );
+
+    let _ = child.kill();
+    let _ = child.wait();
+
+    let _ = std::fs::remove_dir_all(&lock_dir);
+
+    Ok(())
+}
+
+/// Test that a parallel run loop prevents another run loop from starting.
+///
+/// This validates the concurrency contract: the queue lock is held for the
+/// entire parallel run loop duration, preventing duplicate task selection.
+#[test]
+fn parallel_supervisor_prevents_second_supervisor() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    let repo_root = dir.path().to_path_buf();
+    std::fs::create_dir_all(repo_root.join(".ralph")).context("create .ralph dir")?;
+
+    // Spawn a subprocess that acquires the queue lock with "run loop" label
+    let mut child = Command::new(current_exe())
+        .arg("--exact")
+        .arg("lock_holder_process")
+        .arg("--nocapture")
+        .env("RALPH_TEST_LOCK_HOLD", "1")
+        .env("RALPH_TEST_REPO_ROOT", &repo_root)
+        .env("RALPH_TEST_LOCK_LABEL", "run loop")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .context("spawn lock holder process")?;
+
+    let stdout = child.stdout.take().context("capture lock holder stdout")?;
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let mut reader = BufReader::new(stdout);
+        let mut line = String::new();
+        loop {
+            line.clear();
+            match reader.read_line(&mut line) {
+                Ok(0) => break,
+                Ok(_) => {
+                    if tx.send(line.clone()).is_err() {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    // Wait for the lock holder to signal readiness
+    let mut got_signal = false;
+    let start = Instant::now();
+    while start.elapsed() < Duration::from_secs(10) {
+        match rx.recv_timeout(Duration::from_millis(200)) {
+            Ok(line) => {
+                if line.contains("LOCK_HELD") {
+                    got_signal = true;
+                    break;
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(_) => break,
+        }
+    }
+
+    anyhow::ensure!(got_signal, "lock holder did not signal readiness");
+
+    // Attempt to acquire the queue lock - should fail with contention
+    let err = queue::acquire_queue_lock(&repo_root, "run loop", false).unwrap_err();
+    let msg = format!("{err:#}");
+    let lock_dir = lock::queue_lock_dir(&repo_root);
+
+    // Verify the error message includes the lock path
+    anyhow::ensure!(
+        msg.contains(lock_dir.to_string_lossy().as_ref()),
+        "expected lock path in error: {msg}"
+    );
+
+    // Verify the error message indicates a supervising process holds the lock
+    anyhow::ensure!(
+        msg.contains("run loop") || msg.contains("already held"),
+        "expected 'run loop' or 'already held' in error: {msg}"
     );
 
     let _ = child.kill();

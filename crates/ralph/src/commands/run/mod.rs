@@ -62,7 +62,9 @@ pub use crate::agent::AgentOverrides;
 enum QueueLockMode {
     Acquire,
     Held,
-    Skip,
+    /// Acquire the queue lock but allow creating upstream branches (used by parallel workers).
+    /// This combines the safety of lock acquisition with the push policy of Skip mode.
+    AcquireAllowUpstream,
 }
 
 pub enum RunOutcome {
@@ -356,7 +358,7 @@ pub fn run_one_with_id(
     .map(|_| ())
 }
 
-/// Run a specific task as a parallel worker (skips queue lock, allows upstream creation).
+/// Run a specific task as a parallel worker (acquires queue lock, allows upstream creation).
 pub fn run_one_parallel_worker(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
@@ -367,7 +369,7 @@ pub fn run_one_parallel_worker(
         resolved,
         agent_overrides,
         force,
-        QueueLockMode::Skip,
+        QueueLockMode::AcquireAllowUpstream,
         Some(task_id),
         None,
         None,
@@ -450,12 +452,10 @@ fn run_one_impl(
         .store(false, std::sync::atomic::Ordering::SeqCst);
 
     let _queue_lock = match lock_mode {
-        QueueLockMode::Acquire => Some(queue::acquire_queue_lock(
-            &resolved.repo_root,
-            "run one",
-            force,
-        )?),
-        QueueLockMode::Held | QueueLockMode::Skip => None,
+        QueueLockMode::Acquire | QueueLockMode::AcquireAllowUpstream => Some(
+            queue::acquire_queue_lock(&resolved.repo_root, "run one", force)?,
+        ),
+        QueueLockMode::Held => None,
     };
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done = queue::load_queue_or_default(&resolved.done_path)?;
@@ -497,7 +497,7 @@ fn run_one_impl(
         .unwrap_or(true);
 
     let push_policy = match lock_mode {
-        QueueLockMode::Skip => PushPolicy::AllowCreateUpstream,
+        QueueLockMode::AcquireAllowUpstream => PushPolicy::AllowCreateUpstream,
         QueueLockMode::Acquire | QueueLockMode::Held => PushPolicy::RequireUpstream,
     };
 

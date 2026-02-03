@@ -19,6 +19,7 @@ use crate::commands::run::parallel::args::build_override_args;
 use crate::commands::run::selection::select_run_one_task_index_excluding;
 use crate::config;
 use crate::git::WorkspaceSpec;
+use crate::lock::DirLock;
 use crate::queue;
 use anyhow::{Context, Result};
 use std::collections::HashMap;
@@ -36,14 +37,16 @@ pub(crate) struct WorkerState {
     pub child: Child,
 }
 
-/// Select the next runnable task from the queue, excluding certain IDs.
-pub(crate) fn select_next_task(
+/// Select the next runnable task from the queue, requiring the caller to hold the queue lock.
+///
+/// The `_queue_lock` parameter enforces at compile time that the caller holds the lock.
+/// This prevents race conditions during task selection in parallel mode.
+pub(crate) fn select_next_task_locked(
     resolved: &config::Resolved,
     include_draft: bool,
     excluded_ids: &HashSet<String>,
-    force: bool,
+    _queue_lock: &DirLock,
 ) -> Result<Option<(String, String)>> {
-    let _lock = queue::acquire_queue_lock(&resolved.repo_root, "parallel selection", force)?;
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
@@ -249,6 +252,112 @@ mod tests {
         for worker in in_flight.values_mut() {
             let _ = worker.child.wait();
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn select_next_task_locked_works_under_held_lock() -> Result<()> {
+        use crate::config;
+        use crate::contracts::{QueueFile, Task, TaskStatus};
+        use tempfile::TempDir;
+
+        let temp = TempDir::new()?;
+        let repo_root = temp.path().to_path_buf();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+
+        // Create a queue with one todo task
+        let queue_path = ralph_dir.join("queue.json");
+        let mut queue_file = QueueFile::default();
+        queue_file.tasks.push(Task {
+            id: "RQ-0001".to_string(),
+            title: "Test task".to_string(),
+            status: TaskStatus::Todo,
+            priority: crate::contracts::TaskPriority::Medium,
+            tags: vec![],
+            scope: vec![],
+            evidence: vec![],
+            plan: vec![],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: Some("2026-01-01T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-01T00:00:00Z".to_string()),
+            completed_at: None,
+            scheduled_start: None,
+            depends_on: vec![],
+            blocks: vec![],
+            relates_to: vec![],
+            duplicates: None,
+            custom_fields: std::collections::HashMap::new(),
+            parent_id: None,
+        });
+        queue::save_queue(&queue_path, &queue_file)?;
+
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.clone(),
+            queue_path: queue_path.clone(),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        // Acquire the queue lock (as the parallel supervisor would)
+        let queue_lock = queue::acquire_queue_lock(&repo_root, "test", false)?;
+
+        // Call select_next_task_locked with the held lock
+        let excluded = HashSet::new();
+        let result = select_next_task_locked(&resolved, false, &excluded, &queue_lock)?;
+
+        // Should return the todo task
+        assert!(result.is_some());
+        let (task_id, task_title) = result.unwrap();
+        assert_eq!(task_id, "RQ-0001");
+        assert_eq!(task_title, "Test task");
+
+        Ok(())
+    }
+
+    #[test]
+    fn select_next_task_locked_returns_none_when_no_tasks() -> Result<()> {
+        use crate::config;
+        use crate::contracts::QueueFile;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new()?;
+        let repo_root = temp.path().to_path_buf();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+
+        // Create an empty queue
+        let queue_path = ralph_dir.join("queue.json");
+        let queue_file = QueueFile::default();
+        queue::save_queue(&queue_path, &queue_file)?;
+
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.clone(),
+            queue_path: queue_path.clone(),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        // Acquire the queue lock
+        let queue_lock = queue::acquire_queue_lock(&repo_root, "test", false)?;
+
+        // Call select_next_task_locked with the held lock
+        let excluded = HashSet::new();
+        let result = select_next_task_locked(&resolved, false, &excluded, &queue_lock)?;
+
+        // Should return None since no tasks are available
+        assert!(result.is_none());
 
         Ok(())
     }

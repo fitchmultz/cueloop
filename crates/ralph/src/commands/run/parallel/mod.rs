@@ -38,10 +38,11 @@ mod state;
 mod sync;
 mod worker;
 
+use crate::queue;
 use cleanup_guard::ParallelCleanupGuard;
 use merge_runner::{MergeQueueSource, MergeResult};
 use sync::{commit_failure_changes, ensure_branch_pushed, sync_ralph_state};
-use worker::{WorkerState, collect_excluded_ids, select_next_task, spawn_worker};
+use worker::{WorkerState, collect_excluded_ids, select_next_task_locked, spawn_worker};
 
 pub(crate) struct ParallelRunOptions {
     pub max_tasks: u32,
@@ -70,6 +71,10 @@ pub(crate) fn run_loop_parallel(
     resolved: &config::Resolved,
     opts: ParallelRunOptions,
 ) -> Result<()> {
+    // Acquire the queue lock for the entire parallel run loop to prevent
+    // other run loops from selecting the same tasks during the selection→spawn window.
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "run loop", opts.force)?;
+
     let cache_dir = resolved.repo_root.join(".ralph/cache");
     let ctrlc = crate::runner::ctrlc_state()
         .map_err(|e| anyhow::anyhow!("Ctrl-C handler initialization failed: {}", e))?;
@@ -247,11 +252,15 @@ pub(crate) fn run_loop_parallel(
                 && !signal::stop_signal_exists(&cache_dir)
             {
                 let excluded = collect_excluded_ids(guard.state_file(), guard.in_flight());
-                let (task_id, task_title) =
-                    match select_next_task(resolved, include_draft, &excluded, opts.force)? {
-                        Some(task) => task,
-                        None => break,
-                    };
+                let (task_id, task_title) = match select_next_task_locked(
+                    resolved,
+                    include_draft,
+                    &excluded,
+                    &_queue_lock,
+                )? {
+                    Some(task) => task,
+                    None => break,
+                };
 
                 let workspace = git::create_workspace_at(
                     &resolved.repo_root,
@@ -409,7 +418,8 @@ pub(crate) fn run_loop_parallel(
                 let no_more_tasks = opts.max_tasks != 0 && tasks_started >= opts.max_tasks;
                 let excluded = collect_excluded_ids(guard.state_file(), guard.in_flight());
                 let next_available =
-                    select_next_task(resolved, include_draft, &excluded, opts.force)?.is_some();
+                    select_next_task_locked(resolved, include_draft, &excluded, &_queue_lock)?
+                        .is_some();
                 if no_more_tasks || !next_available {
                     break;
                 }
