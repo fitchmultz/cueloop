@@ -165,6 +165,7 @@ pub fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
     let output = Command::new(ralph_bin())
         .current_dir(dir)
         .env_remove("RUST_LOG")
+        .env("RALPH_REPO_ROOT_OVERRIDE", dir)
         .args(args)
         .output()
         .expect("failed to execute ralph binary");

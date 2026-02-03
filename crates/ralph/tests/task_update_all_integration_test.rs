@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::ExitStatus;
 
 mod test_support;
 
@@ -36,18 +36,8 @@ fn ralph_bin() -> PathBuf {
 }
 
 fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
-    let output = Command::new(ralph_bin())
-        .current_dir(dir)
-        .args(args)
-        .output()
-        .expect("failed to execute ralph binary");
-    (
-        output.status,
-        String::from_utf8_lossy(&output.stdout).to_string(),
-        String::from_utf8_lossy(&output.stderr).to_string(),
-    )
+    test_support::run_in_dir(dir, args)
 }
-
 fn configure_runner(dir: &Path, runner: &str, model: &str, bin_path: Option<&Path>) -> Result<()> {
     let config_path = dir.join(".ralph/config.json");
     if !config_path.exists() {

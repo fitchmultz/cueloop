@@ -691,7 +691,13 @@ mod tests {
         unsafe { env::set_var(REPO_ROOT_OVERRIDE_ENV, &workspace_rel) };
 
         let resolved = resolve_from_cwd()?;
-        assert_eq!(resolved.repo_root, workspace);
+        // Canonicalize both paths to handle platform differences (e.g., macOS /private/var vs /var)
+        let resolved_canonical = resolved
+            .repo_root
+            .canonicalize()
+            .unwrap_or(resolved.repo_root.clone());
+        let workspace_canonical = workspace.canonicalize().unwrap_or(workspace);
+        assert_eq!(resolved_canonical, workspace_canonical);
 
         match prior_override {
             Some(value) => unsafe { env::set_var(REPO_ROOT_OVERRIDE_ENV, value) },
