@@ -982,7 +982,6 @@ mod tests {
         // effective_in_flight_count should return 3 (max, not sum)
         assert_eq!(effective_in_flight_count(&state_file, 3), 3);
     }
-<<<<<<< HEAD
 
     // ============================================================================
     // Stop signal idle-stop exit tests (RQ-0570)
