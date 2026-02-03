@@ -276,7 +276,6 @@ mod tests {
             task_id: "RQ-0001".to_string(),
             task_title: "Test task".to_string(),
             workspace: WorkspaceSpec {
-                task_id: "RQ-0001".to_string(),
                 path: workspace_path.clone(),
                 branch: "ralph/RQ-0001".to_string(),
             },
@@ -401,7 +400,6 @@ mod tests {
             task_id: "RQ-0001".to_string(),
             task_title: "Test task".to_string(),
             workspace: WorkspaceSpec {
-                task_id: "RQ-0001".to_string(),
                 path: workspace_path.clone(),
                 branch: "ralph/RQ-0001".to_string(),
             },
@@ -446,7 +444,6 @@ mod tests {
             task_id: "RQ-0001".to_string(),
             task_title: "Test task".to_string(),
             workspace: WorkspaceSpec {
-                task_id: "RQ-0001".to_string(),
                 path: workspace_path.clone(),
                 branch: "ralph/RQ-0001".to_string(),
             },
@@ -490,7 +487,6 @@ mod tests {
                 task_id: "RQ-0001".to_string(),
                 task_title: "Test task".to_string(),
                 workspace: WorkspaceSpec {
-                    task_id: "RQ-0001".to_string(),
                     path: workspace_path,
                     branch: "ralph/RQ-0001".to_string(),
                 },

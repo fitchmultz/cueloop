@@ -219,7 +219,6 @@ pub(crate) fn run_loop_parallel(
             completed_workspaces.insert(
                 record.task_id.clone(),
                 git::WorkspaceSpec {
-                    task_id: record.task_id.clone(),
                     path,
                     branch: format!("{}{}", settings.branch_prefix, record.task_id),
                 },

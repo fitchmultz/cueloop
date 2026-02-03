@@ -23,7 +23,6 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub(crate) struct WorkspaceSpec {
-    pub task_id: String,
     pub path: PathBuf,
     pub branch: String,
 }
@@ -90,11 +89,7 @@ pub(crate) fn create_workspace_at(
     checkout_branch_from_base(&path, &branch, &base_ref)?;
     hard_reset_and_clean(&path, &base_ref)?;
 
-    Ok(WorkspaceSpec {
-        task_id: trimmed_id.to_string(),
-        path,
-        branch,
-    })
+    Ok(WorkspaceSpec { path, branch })
 }
 
 /// Ensures a workspace exists and is properly configured for the given branch.

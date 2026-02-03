@@ -261,7 +261,6 @@ mod tests {
                 task_id: "RQ-0004".to_string(),
                 task_title: "title".to_string(),
                 workspace: WorkspaceSpec {
-                    task_id: "RQ-0004".to_string(),
                     path: PathBuf::from("/tmp/workspaces/RQ-0004"),
                     branch: "ralph/RQ-0004".to_string(),
                 },
