@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0617",
-      "status": "todo",
-      "title": "Enhance `ralph doctor`: add `--format json` and make `--auto-fix` fix doctor-detected issues (not just sanity checks)",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "doctor",
-        "ux",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/doctor.rs",
-        "crates/ralph/src/cli/doctor.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "`./target/release/ralph doctor --help` advertises `--auto-fix`, but `crates/ralph/src/commands/doctor.rs` documents doctor as read-only and currently only sanity checks can auto-fix (`crates/ralph/src/cli/doctor.rs`).",
-        "Doctor output is human-oriented; there is no machine-readable output mode for scripting or CI."
-      ],
-      "plan": [
-        "Add `ralph doctor --format text|json` (default: text) that returns structured results (checks, severity, message, suggested_fix).",
-        "Define a conservative set of auto-fixes that are safe and local (e.g., run config migrations, run `queue repair` on missing fields, remove stale lock dirs when PID is dead), gated behind `--auto-fix`.",
-        "Make the help text explicit about what `--auto-fix` does and does not do; ensure `--no-sanity-checks` behavior remains clear.",
-        "Add tests for JSON output stability and for each auto-fix path using temp dirs and synthetic lock dirs/queue files.",
-        "Update `docs/cli.md` doctor section with examples for scripting (`--format json`).",
-        "Verify by running `make ci` and confirming doctor tests cover both formats and safe auto-fix behavior."
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-04T14:58:48Z",
-      "updated_at": "2026-02-04T14:58:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "time_to_ship": "medium (format + fixes + tests)",
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement"
-      }
-    },
-    {
       "id": "RQ-0618",
       "status": "todo",
       "title": "Add Markdown and GitHub-issue friendly export formats to `ralph queue export`",
@@ -118,10 +76,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (TUI wiring + tests)",
         "user_value": "Fewer context switches: jump from task → code in one keystroke.",
-        "opportunity_type": "ux improvement"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -160,10 +118,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (render-only UI + tests)",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "opportunity_type": "ux improvement",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
+        "time_to_ship": "medium (render-only UI + tests)"
       }
     },
     {
@@ -207,10 +165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "scan_agent": "scan-innovation",
         "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
-        "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation"
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "opportunity_type": "feature gap"
       }
     },
     {
@@ -255,8 +213,8 @@
       "custom_fields": {
         "opportunity_type": "UX improvement",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one batch operation at a time",
-        "user_value": "Reduces queue maintenance time by 80% for large projects"
+        "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
     {
@@ -300,10 +258,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "user_value": "Reduces regression risk; enables confident refactoring",
         "opportunity_type": "reliability",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
     {
@@ -394,10 +352,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "measurable_impact": "Estimates within 25% of actual duration after 20 tasks",
         "user_value": "Improves planning accuracy; sets realistic expectations",
-        "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "feature gap"
       }
     },
     {
@@ -441,9 +399,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "measurable_impact": "New user success rate >90% within 30 minutes",
         "scan_agent": "scan-innovation",
         "user_value": "Reduces time-to-productivity from hours to minutes",
-        "measurable_impact": "New user success rate >90% within 30 minutes",
         "opportunity_type": "UX improvement"
       }
     },
@@ -487,10 +445,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "feature gap",
         "user_value": "Proactively identifies improvement opportunities; reduces manual scanning",
-        "measurable_impact": "Auto-detects 30%+ of maintenance tasks"
+        "opportunity_type": "feature gap",
+        "measurable_impact": "Auto-detects 30%+ of maintenance tasks",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -535,8 +493,8 @@
       "custom_fields": {
         "scan_agent": "scan-innovation",
         "time_to_ship": "incremental - add one channel at a time",
-        "user_value": "Enables remote monitoring; integrates with existing workflows",
-        "opportunity_type": "integration"
+        "opportunity_type": "integration",
+        "user_value": "Enables remote monitoring; integrates with existing workflows"
       }
     },
     {
@@ -579,10 +537,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "measurable_impact": "50%+ improvement in queue operations for large projects",
         "opportunity_type": "performance",
-        "user_value": "Identifies bottlenecks; improves Ralph responsiveness",
-        "measurable_impact": "50%+ improvement in queue operations for large projects"
+        "scan_agent": "scan-innovation",
+        "user_value": "Identifies bottlenecks; improves Ralph responsiveness"
       }
     }
   ]
