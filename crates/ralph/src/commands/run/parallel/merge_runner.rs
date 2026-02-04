@@ -79,11 +79,13 @@ impl Drop for BaseSyncWorkspaceCleanupGuard {
     }
 }
 
-/// Work item for the merge runner containing trusted task_id and PR info.
+/// Work item for the merge runner containing trusted task_id, PR info, and workspace metadata.
 #[derive(Debug, Clone)]
 pub(crate) struct MergeWorkItem {
     pub task_id: String,
     pub pr: git::PrInfo,
+    /// Optional path to the worker workspace for completion signal lookup.
+    pub workspace_path: Option<PathBuf>,
 }
 
 pub(crate) enum MergeQueueSource {
@@ -239,6 +241,7 @@ fn handle_work_item(
         let sync = apply_completion_and_collect_bytes(
             resolved,
             workspace_root,
+            work_item.workspace_path.as_deref(),
             &work_item.pr.base,
             &work_item.task_id,
         )?;
@@ -455,6 +458,7 @@ struct QueueSyncBytes {
 fn apply_completion_and_collect_bytes(
     resolved: &config::Resolved,
     workspace_root: &Path,
+    workspace_path: Option<&Path>,
     base_branch: &str,
     task_id: &str,
 ) -> Result<QueueSyncBytes> {
@@ -485,7 +489,12 @@ fn apply_completion_and_collect_bytes(
         workspace_resolved.project_config_path = Some(base_sync_path.join(".ralph/config.json"));
     }
 
-    ensure_completion_signal_in_workspace(&base_sync_path, workspace_root, task_id)?;
+    ensure_completion_signal_in_workspace(
+        &base_sync_path,
+        workspace_root,
+        workspace_path,
+        task_id,
+    )?;
     let applied =
         crate::commands::run::apply_phase3_completion_signal(&workspace_resolved, task_id)?;
     if applied.is_none() {
@@ -557,27 +566,48 @@ fn apply_completion_and_collect_bytes(
     })
 }
 
-/// Ensures a completion signal exists in the workspace, erroring when missing.
+/// Ensures a completion signal exists for the task, copying it into base-sync when found.
 ///
 /// Behavior:
-/// 1. If signal exists in workspace_repo_root, return Ok(())
-/// 2. Else return an error with actionable remediation steps
+/// 1. If signal exists in base_sync_root, return Ok(())
+/// 2. Else check the explicit workspace_path (if provided) and the default
+///    `{workspace_root}/{task_id}` path; copy the signal into base-sync if found.
+/// 3. Else auto-finalize with a minimal completion signal.
 fn ensure_completion_signal_in_workspace(
     base_sync_root: &Path,
     workspace_root: &Path,
+    workspace_path: Option<&Path>,
     task_id: &str,
 ) -> Result<()> {
     if completions::read_completion_signal(base_sync_root, task_id)?.is_some() {
         return Ok(());
     }
 
-    if let Some(signal) = completions::read_completion_signal(workspace_root, task_id)? {
-        completions::write_completion_signal(base_sync_root, &signal)?;
-        log::info!(
-            "Copied completion signal for {} from workspace into base-sync.",
-            task_id
-        );
-        return Ok(());
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(path) = workspace_path {
+        candidates.push(path.to_path_buf());
+    }
+    let default_path = workspace_root.join(task_id.trim());
+    if workspace_path
+        .map(|path| path != default_path)
+        .unwrap_or(true)
+    {
+        candidates.push(default_path);
+    }
+
+    for candidate in candidates {
+        if !candidate.exists() {
+            continue;
+        }
+        if let Some(signal) = completions::read_completion_signal(&candidate, task_id)? {
+            completions::write_completion_signal(base_sync_root, &signal)?;
+            log::info!(
+                "Copied completion signal for {} from workspace {} into base-sync.",
+                task_id,
+                candidate.display()
+            );
+            return Ok(());
+        }
     }
 
     let fallback = completions::CompletionSignal {
@@ -1135,8 +1165,13 @@ mod tests {
 
         let resolved = build_test_resolved(author_dir.path(), queue_path, done_path);
 
-        let sync =
-            apply_completion_and_collect_bytes(&resolved, workspace_dir.path(), "main", "RQ-0001")?;
+        let sync = apply_completion_and_collect_bytes(
+            &resolved,
+            workspace_dir.path(),
+            Some(workspace_dir.path()),
+            "main",
+            "RQ-0001",
+        )?;
 
         let updated_queue: QueueFile = serde_json::from_slice(&sync.queue_bytes)?;
         assert!(
@@ -1202,8 +1237,13 @@ mod tests {
         let resolved =
             build_test_resolved(author_dir.path(), queue_path.clone(), done_path.clone());
 
-        let result =
-            apply_completion_and_collect_bytes(&resolved, workspace_dir.path(), "main", "RQ-0001")?;
+        let result = apply_completion_and_collect_bytes(
+            &resolved,
+            workspace_dir.path(),
+            Some(workspace_dir.path()),
+            "main",
+            "RQ-0001",
+        )?;
 
         let updated_queue: QueueFile = serde_json::from_slice(&result.queue_bytes)?;
         assert!(
@@ -1282,6 +1322,7 @@ mod tests {
                 head: "wrong-prefix/RQ-0001".to_string(), // Mismatched!
                 base: "main".to_string(),
             },
+            workspace_path: None,
         };
 
         // Stop signal (not stopped)

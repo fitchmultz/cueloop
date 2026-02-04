@@ -239,6 +239,7 @@ pub(crate) fn run_loop_parallel(
             MergeWorkItem {
                 task_id: record.task_id.clone(),
                 pr,
+                workspace_path: record.workspace_path.as_ref().map(PathBuf::from),
             }
         })
         .collect();
@@ -538,6 +539,7 @@ pub(crate) fn run_loop_parallel(
                                     let work_item = MergeWorkItem {
                                         task_id: task_id.clone(),
                                         pr: pr.clone(),
+                                        workspace_path: Some(workspace.path.clone()),
                                     };
                                     created_work_items.push(work_item.clone());
                                     if settings.auto_merge
@@ -826,6 +828,14 @@ fn load_or_init_parallel_state(
             state::save_state(state_path, &existing)?;
         }
 
+        let cleaned_workspaces = cleanup_pr_workspaces(&existing, &settings.workspace_root);
+        if !cleaned_workspaces.is_empty() {
+            log::info!(
+                "Removed stale workspaces for merged/closed PRs: {}",
+                cleaned_workspaces.join(", ")
+            );
+        }
+
         // Prune non-blocking finished-without-PR records on load
         let now = time::OffsetDateTime::now_utc();
         let dropped_finished_without_pr =
@@ -930,6 +940,53 @@ fn load_or_init_parallel_state(
         state::save_state(state_path, &state)?;
         Ok(state)
     }
+}
+
+fn cleanup_pr_workspaces(
+    state_file: &state::ParallelStateFile,
+    workspace_root: &Path,
+) -> Vec<String> {
+    let mut removed = Vec::new();
+
+    for record in &state_file.prs {
+        if record.is_open_unmerged() {
+            continue;
+        }
+
+        let task_id = record.task_id.trim();
+        if task_id.is_empty() {
+            continue;
+        }
+
+        let candidate = record
+            .workspace_path()
+            .or_else(|| Some(workspace_root.join(task_id)));
+        let Some(path) = candidate else {
+            continue;
+        };
+
+        if !path.exists() {
+            continue;
+        }
+
+        let spec = git::WorkspaceSpec {
+            path: path.clone(),
+            branch: record.head.clone().unwrap_or_default(),
+        };
+
+        if let Err(err) = git::remove_workspace(workspace_root, &spec, true) {
+            log::warn!(
+                "Failed to remove workspace for {} at {}: {:#}",
+                task_id,
+                path.display(),
+                err
+            );
+        } else {
+            removed.push(task_id.to_string());
+        }
+    }
+
+    removed
 }
 
 fn in_flight_task_ids(state_file: &state::ParallelStateFile) -> Vec<String> {
@@ -1838,6 +1895,49 @@ mod tests {
         assert!(msg.contains("base branch is missing"));
         assert!(msg.contains("in-flight"));
         assert!(msg.contains("state.json"));
+        Ok(())
+    }
+
+    #[test]
+    fn load_or_init_cleans_workspaces_for_merged_prs() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let workspace_root = repo_root.join("workspaces");
+        let workspace_path = workspace_root.join("RQ-0001");
+        std::fs::create_dir_all(&workspace_path)?;
+        std::fs::write(workspace_path.join("README.md"), "stale workspace")?;
+
+        let mut state = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        let pr = git::PrInfo {
+            number: 1,
+            url: "https://example.com/pr/1".to_string(),
+            head: "ralph/RQ-0001".to_string(),
+            base: "main".to_string(),
+        };
+        let mut record = state::ParallelPrRecord::new("RQ-0001", &pr, Some(&workspace_path));
+        record.merged = true;
+        record.lifecycle = state::ParallelPrLifecycle::Merged;
+        state.prs.push(record);
+
+        let state_path = state::state_file_path(repo_root);
+        state::save_state(&state_path, &state)?;
+
+        let started_at = "2026-02-03T00:00:00Z".to_string();
+        let mut settings = test_parallel_settings(repo_root);
+        settings.workspace_root = workspace_root.clone();
+
+        load_or_init_parallel_state(repo_root, &state_path, "main", &started_at, &mut settings)?;
+
+        assert!(
+            !workspace_path.exists(),
+            "merged PR workspace should be cleaned up"
+        );
         Ok(())
     }
 
