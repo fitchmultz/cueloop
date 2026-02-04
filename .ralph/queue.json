@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0583",
-      "status": "todo",
-      "title": "Prune in-flight tasks with missing PID using a TTL",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "parallel",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/mod.rs",
-        "crates/ralph/src/commands/run/parallel/state.rs",
-        "cargo test -p ralph"
-      ],
-      "evidence": [
-        "Path: crates/ralph/src/commands/run/parallel/mod.rs:927-954 (prune_stale_tasks_in_flight retains records when pid is None)",
-        "Path: crates/ralph/src/commands/run/parallel/state.rs:65-92 (tasks_in_flight stored in state file and used for exclusions)",
-        "Repro: create state.json with a tasks_in_flight entry that has pid=null and an existing workspace path; parallel run will never drop it and capacity stays blocked"
-      ],
-      "plan": [
-        "Extend ParallelTaskRecord with started_at (or last_seen) and persist it when spawning workers.",
-        "Update prune_stale_tasks_in_flight to drop pid-less records older than a safe TTL and log a warning.",
-        "Add tests for pid-missing records both within and beyond the TTL.",
-        "Verify by running `cargo test -p ralph` and confirming the new tests pass."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-03T20:11:25Z",
-      "updated_at": "2026-02-03T20:11:25Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0584",
       "status": "todo",
       "title": "Add preflight queue/done validation in parallel loop",

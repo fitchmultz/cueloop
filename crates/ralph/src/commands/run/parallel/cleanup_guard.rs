@@ -292,6 +292,7 @@ mod tests {
                 workspace_path: workspace_path.to_string_lossy().to_string(),
                 branch: "ralph/RQ-0001".to_string(),
                 pid: Some(pid),
+                started_at: "2026-02-02T00:00:00Z".to_string(),
             });
 
         // Verify worker is running

@@ -344,7 +344,13 @@ pub(crate) fn run_loop_parallel(
                     },
                 )?;
 
-                let record = state::ParallelTaskRecord::new(&task_id, &workspace, child.id());
+                let task_started_at = timeutil::now_utc_rfc3339_or_fallback();
+                let record = state::ParallelTaskRecord::new(
+                    &task_id,
+                    &workspace,
+                    child.id(),
+                    Some(task_started_at),
+                );
                 guard.state_file_mut().upsert_task(record);
                 state::save_state(&state_path, guard.state_file())?;
 
@@ -1129,14 +1135,21 @@ fn apply_merge_queue_sync(resolved: &config::Resolved, result: &MergeResult) -> 
 ///
 /// Drops records when:
 /// - The workspace path no longer exists, OR
-/// - The recorded PID exists and is no longer running (pid_is_running returns Some(false))
+/// - The recorded PID exists and is no longer running (pid_is_running returns Some(false)), OR
+/// - PID is missing (None) AND started_at is missing/invalid OR older than the TTL
 ///
 /// Retains records when:
-/// - PID is missing (None), OR
-/// - pid_is_running returns None (indeterminate status)
+/// - pid_is_running returns None (indeterminate status), OR
+/// - PID is missing but started_at is within TTL
 ///
 /// Returns the list of dropped task IDs for logging.
 fn prune_stale_tasks_in_flight(state_file: &mut state::ParallelStateFile) -> Vec<String> {
+    let now = time::OffsetDateTime::now_utc();
+    let ttl_secs: i64 = crate::constants::timeouts::PARALLEL_FINISHED_WITHOUT_PR_BLOCKER_TTL
+        .as_secs()
+        .try_into()
+        .unwrap_or(i64::MAX);
+
     let mut dropped = Vec::new();
     state_file.tasks_in_flight.retain(|record| {
         let path = Path::new(&record.workspace_path);
@@ -1144,12 +1157,41 @@ fn prune_stale_tasks_in_flight(state_file: &mut state::ParallelStateFile) -> Vec
             dropped.push(record.task_id.clone());
             return false;
         }
-        if let Some(pid) = record.pid
-            && crate::lock::pid_is_running(pid) == Some(false)
-        {
+
+        if let Some(pid) = record.pid {
+            if crate::lock::pid_is_running(pid) == Some(false) {
+                dropped.push(record.task_id.clone());
+                return false;
+            }
+            // Retain when running or indeterminate (pid_is_running == None).
+            return true;
+        }
+
+        // PID is missing: time-bound it so it can't block capacity forever.
+        let Some(started_at) = timeutil::parse_rfc3339_opt(&record.started_at) else {
+            log::warn!(
+                "Dropping stale in-flight task {} with missing pid: missing/invalid started_at (workspace: {}).",
+                record.task_id,
+                record.workspace_path
+            );
+            dropped.push(record.task_id.clone());
+            return false;
+        };
+
+        let age_secs = (now.unix_timestamp() - started_at.unix_timestamp()).max(0);
+        if age_secs >= ttl_secs {
+            log::warn!(
+                "Dropping stale in-flight task {} with missing pid after TTL (age_secs={}, ttl_secs={}, started_at='{}', workspace: {}).",
+                record.task_id,
+                age_secs,
+                ttl_secs,
+                record.started_at,
+                record.workspace_path
+            );
             dropped.push(record.task_id.clone());
             return false;
         }
+
         true
     });
     dropped
@@ -1338,6 +1380,7 @@ mod tests {
             workspace_path: "/nonexistent/path/RQ-0001".to_string(),
             branch: "ralph/RQ-0001".to_string(),
             pid: Some(12345),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
 
         let dropped = prune_stale_tasks_in_flight(&mut state_file);
@@ -1369,6 +1412,7 @@ mod tests {
             workspace_path: workspace_path.to_string_lossy().to_string(),
             branch: "ralph/RQ-0002".to_string(),
             pid: Some(pid),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
 
         let dropped = prune_stale_tasks_in_flight(&mut state_file);
@@ -1379,10 +1423,13 @@ mod tests {
     }
 
     #[test]
-    fn prune_stale_tasks_retains_missing_pid_with_existing_workspace() -> Result<()> {
+    fn prune_stale_tasks_retains_missing_pid_within_ttl() -> Result<()> {
         let temp = TempDir::new()?;
         let workspace_path = temp.path().join("RQ-0003");
         std::fs::create_dir_all(&workspace_path)?;
+
+        // Use a recent timestamp so the record is within TTL
+        let recent_timestamp = timeutil::now_utc_rfc3339_or_fallback();
 
         let mut state_file = state::ParallelStateFile::new(
             "2026-02-01T00:00:00Z".to_string(),
@@ -1395,6 +1442,7 @@ mod tests {
             workspace_path: workspace_path.to_string_lossy().to_string(),
             branch: "ralph/RQ-0003".to_string(),
             pid: None,
+            started_at: recent_timestamp,
         });
 
         let dropped = prune_stale_tasks_in_flight(&mut state_file);
@@ -1402,6 +1450,62 @@ mod tests {
         assert!(dropped.is_empty());
         assert_eq!(state_file.tasks_in_flight.len(), 1);
         assert_eq!(state_file.tasks_in_flight[0].task_id, "RQ-0003");
+        Ok(())
+    }
+
+    #[test]
+    fn prune_stale_tasks_drops_missing_pid_beyond_ttl() -> Result<()> {
+        let temp = TempDir::new()?;
+        let workspace_path = temp.path().join("RQ-OLD");
+        std::fs::create_dir_all(&workspace_path)?;
+
+        let mut state_file = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+        // Use a very old timestamp (well beyond the 24h TTL)
+        state_file.tasks_in_flight.push(state::ParallelTaskRecord {
+            task_id: "RQ-OLD".to_string(),
+            workspace_path: workspace_path.to_string_lossy().to_string(),
+            branch: "ralph/RQ-OLD".to_string(),
+            pid: None,
+            started_at: "2020-01-01T00:00:00Z".to_string(),
+        });
+
+        let dropped = prune_stale_tasks_in_flight(&mut state_file);
+
+        assert_eq!(dropped, vec!["RQ-OLD"]);
+        assert!(state_file.tasks_in_flight.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn prune_stale_tasks_drops_missing_pid_with_missing_started_at() -> Result<()> {
+        let temp = TempDir::new()?;
+        let workspace_path = temp.path().join("RQ-LEGACY");
+        std::fs::create_dir_all(&workspace_path)?;
+
+        let mut state_file = state::ParallelStateFile::new(
+            "2026-02-01T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+        // Simulate a legacy record with missing started_at (empty string)
+        state_file.tasks_in_flight.push(state::ParallelTaskRecord {
+            task_id: "RQ-LEGACY".to_string(),
+            workspace_path: workspace_path.to_string_lossy().to_string(),
+            branch: "ralph/RQ-LEGACY".to_string(),
+            pid: None,
+            started_at: "".to_string(),
+        });
+
+        let dropped = prune_stale_tasks_in_flight(&mut state_file);
+
+        assert_eq!(dropped, vec!["RQ-LEGACY"]);
+        assert!(state_file.tasks_in_flight.is_empty());
         Ok(())
     }
 
@@ -1426,6 +1530,7 @@ mod tests {
             workspace_path: workspace_path.to_string_lossy().to_string(),
             branch: "ralph/RQ-0004".to_string(),
             pid: Some(pid),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
 
         let dropped = prune_stale_tasks_in_flight(&mut state_file);
@@ -1528,6 +1633,9 @@ mod tests {
         let workspace_path = repo_root.join("workspaces").join("RQ-0001");
         std::fs::create_dir_all(&workspace_path)?;
 
+        // Use a recent timestamp so the record is not pruned by TTL
+        let recent_timestamp = timeutil::now_utc_rfc3339_or_fallback();
+
         let mut state = state::ParallelStateFile::new(
             "2026-02-01T00:00:00Z".to_string(),
             "".to_string(),
@@ -1539,6 +1647,7 @@ mod tests {
             workspace_path: workspace_path.to_string_lossy().to_string(),
             branch: "ralph/RQ-0001".to_string(),
             pid: None,
+            started_at: recent_timestamp,
         });
         let state_path = state::state_file_path(repo_root);
         state::save_state(&state_path, &state)?;
@@ -1563,6 +1672,9 @@ mod tests {
         let workspace_path = repo_root.join("workspaces").join("RQ-0001");
         std::fs::create_dir_all(&workspace_path)?;
 
+        // Use a recent timestamp so the record is not pruned by TTL
+        let recent_timestamp = timeutil::now_utc_rfc3339_or_fallback();
+
         let mut state = state::ParallelStateFile::new(
             "2026-02-01T00:00:00Z".to_string(),
             "old".to_string(),
@@ -1574,6 +1686,7 @@ mod tests {
             workspace_path: workspace_path.to_string_lossy().to_string(),
             branch: "ralph/RQ-0001".to_string(),
             pid: None,
+            started_at: recent_timestamp,
         });
         let state_path = state::state_file_path(repo_root);
         state::save_state(&state_path, &state)?;
@@ -1784,6 +1897,7 @@ mod tests {
                 .to_string(),
             branch: "ralph/RQ-0002".to_string(),
             pid: Some(12345),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
         let state_path = state::state_file_path(repo_root);
         state::save_state(&state_path, &state)?;
@@ -1961,12 +2075,14 @@ mod tests {
             workspace_path: ws1.to_string_lossy().to_string(),
             branch: "ralph/RQ-0001".to_string(),
             pid: Some(12345),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
         state_file.tasks_in_flight.push(state::ParallelTaskRecord {
             task_id: "RQ-0002".to_string(),
             workspace_path: ws2.to_string_lossy().to_string(),
             branch: "ralph/RQ-0002".to_string(),
             pid: Some(12346),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
         // AutoPrDisabled only counts as started when auto_pr is still disabled
         state_file
@@ -2079,12 +2195,14 @@ mod tests {
                 workspace_path: "/tmp/ws/RQ-0001".to_string(),
                 branch: "ralph/RQ-0001".to_string(),
                 pid: Some(12345),
+                started_at: "2026-02-02T00:00:00Z".to_string(),
             });
             s.tasks_in_flight.push(state::ParallelTaskRecord {
                 task_id: "RQ-0002".to_string(),
                 workspace_path: "/tmp/ws/RQ-0002".to_string(),
                 branch: "ralph/RQ-0002".to_string(),
                 pid: Some(12346),
+                started_at: "2026-02-02T00:00:00Z".to_string(),
             });
             s
         };
@@ -2114,12 +2232,14 @@ mod tests {
             workspace_path: "/tmp/ws/RQ-0001".to_string(),
             branch: "ralph/RQ-0001".to_string(),
             pid: Some(12345),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
         state_file.tasks_in_flight.push(state::ParallelTaskRecord {
             task_id: "RQ-0002".to_string(),
             workspace_path: "/tmp/ws/RQ-0002".to_string(),
             branch: "ralph/RQ-0002".to_string(),
             pid: Some(12346),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
 
         // With tasks_in_flight.len() == 2 and guard_in_flight_len == 1,

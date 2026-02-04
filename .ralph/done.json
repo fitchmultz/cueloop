@@ -612,6 +612,50 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0583",
+      "status": "done",
+      "title": "Prune in-flight tasks with missing PID using a TTL",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "parallel",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/src/commands/run/parallel/state.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "Path: crates/ralph/src/commands/run/parallel/mod.rs:927-954 (prune_stale_tasks_in_flight retains records when pid is None)",
+        "Path: crates/ralph/src/commands/run/parallel/state.rs:65-92 (tasks_in_flight stored in state file and used for exclusions)",
+        "Repro: create state.json with a tasks_in_flight entry that has pid=null and an existing workspace path; parallel run will never drop it and capacity stays blocked"
+      ],
+      "plan": [
+        "Extend ParallelTaskRecord with started_at (or last_seen) and persist it when spawning workers.",
+        "Update prune_stale_tasks_in_flight to drop pid-less records older than a safe TTL and log a warning.",
+        "Add tests for pid-missing records both within and beyond the TTL.",
+        "Verify by running `cargo test -p ralph` and confirming the new tests pass."
+      ],
+      "notes": [
+        "Extended ParallelTaskRecord with started_at field (with backward compat via serde(default))",
+        "Updated prune_stale_tasks_in_flight to TTL-prune pid-less records older than 24h",
+        "Added 3 new tests for TTL pruning scenarios (within TTL, beyond TTL, missing started_at)",
+        "All tests pass including 6 prune-specific tests and full CI gate",
+        "No related tasks require updates"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-03T20:11:25Z",
+      "updated_at": "2026-02-04T00:49:34.197385000Z",
+      "completed_at": "2026-02-04T00:49:34.197385000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

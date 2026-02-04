@@ -142,15 +142,26 @@ pub(crate) struct ParallelTaskRecord {
     pub workspace_path: String,
     pub branch: String,
     pub pid: Option<u32>,
+
+    /// Timestamp when the task was started (RFC3339).
+    /// Backward compatible: legacy state files may omit this field.
+    #[serde(default)]
+    pub started_at: String,
 }
 
 impl ParallelTaskRecord {
-    pub fn new(task_id: &str, workspace: &WorkspaceSpec, pid: u32) -> Self {
+    pub fn new(
+        task_id: &str,
+        workspace: &WorkspaceSpec,
+        pid: u32,
+        started_at: Option<String>,
+    ) -> Self {
         Self {
             task_id: task_id.to_string(),
             workspace_path: workspace.path.to_string_lossy().to_string(),
             branch: workspace.branch.clone(),
             pid: Some(pid),
+            started_at: started_at.unwrap_or_else(crate::timeutil::now_utc_rfc3339_or_fallback),
         }
     }
 }

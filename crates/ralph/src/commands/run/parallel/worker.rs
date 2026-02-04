@@ -271,6 +271,7 @@ mod tests {
             workspace_path: "/tmp/workspace/RQ-0002".to_string(),
             branch: "ralph/RQ-0002".to_string(),
             pid: Some(123),
+            started_at: "2026-02-02T00:00:00Z".to_string(),
         });
         // Open PR should be excluded
         state_file.prs.push(state::ParallelPrRecord {
