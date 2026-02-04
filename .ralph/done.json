@@ -1121,6 +1121,59 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0594",
+      "status": "done",
+      "title": "Preflight origin-remote check before spawning parallel workers",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "parallel",
+        "preflight"
+      ],
+      "scope": [
+        "crates/ralph/src/git/workspace.rs",
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/tests/parallel_gh_preflight_test.rs",
+        "crates/ralph/tests/parallel_path_preflight_test.rs",
+        "cargo test -p ralph parallel_"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/git/workspace.rs:195-207 origin_urls() bails when origin is missing",
+        "code: crates/ralph/src/git/workspace.rs:77 calls origin_urls during create_workspace_at",
+        "code: crates/ralph/src/git/workspace.rs:138 calls origin_urls during ensure_workspace_exists",
+        "code: crates/ralph/src/commands/run/parallel/mod.rs:72-189 run_loop_parallel has multiple preflight checks but no origin check",
+        "test: parallel_gh_preflight_test.rs exists for gh CLI preflight testing",
+        "test: parallel_path_preflight_test.rs exists for path mapping preflight testing"
+      ],
+      "plan": [
+        "Add origin remote preflight check in run_loop_parallel before worker spawning (around line 180, after gh CLI check).",
+        "Use git::origin_urls() or similar to verify origin exists and is pushable.",
+        "Return a clear error message suggesting: 1) git remote add origin <url>, or 2) disable parallel mode.",
+        "Add test in parallel_gh_preflight_test.rs or new test file that runs parallel mode in a repo without origin and asserts early failure with clear message.",
+        "Verify by running `cargo test -p ralph parallel_` and confirming all tests pass."
+      ],
+      "notes": [
+        "The origin check currently happens at workspace creation time (line 77 in workspace.rs), which is too late for a clean preflight failure.",
+        "Existing preflight checks in run_loop_parallel: clean repo check (line 82), queue validation (line 108), path mapping (line 131), gh CLI check (line 178).",
+        "Best place for origin check is after gh CLI check (line 178-182) since both are remote-related preflight checks.",
+        "Added origin remote preflight check in run_loop_parallel before worker spawning",
+        "Uses git::origin_urls() to verify origin exists and is pushable",
+        "Clear error message suggests adding origin or disabling parallel mode",
+        "Added parallel_origin_preflight_test.rs with 2 integration tests",
+        "All 1968 tests pass, CI gate clean"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T06:36:59.784248000Z",
+      "completed_at": "2026-02-04T06:36:59.784248000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

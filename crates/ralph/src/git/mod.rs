@@ -47,5 +47,6 @@ pub use status::{
 };
 // NEW: workspace-based isolation (clone workspaces).
 pub(crate) use workspace::{
-    WorkspaceSpec, create_workspace_at, ensure_workspace_exists, remove_workspace, workspace_root,
+    WorkspaceSpec, create_workspace_at, ensure_workspace_exists, origin_urls, remove_workspace,
+    workspace_root,
 };

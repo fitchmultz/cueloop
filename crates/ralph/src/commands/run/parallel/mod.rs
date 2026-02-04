@@ -181,6 +181,12 @@ pub(crate) fn run_loop_parallel(
         )?;
     }
 
+    // Preflight: parallel workspaces require a pushable origin remote.
+    // Fail fast before state file creation / worker spawn.
+    let _ = git::origin_urls(&resolved.repo_root).context(
+        "Parallel preflight: origin remote check failed (parallel mode requires `origin`)",
+    )?;
+
     if settings.workers < 2 {
         bail!(
             "Parallel run requires workers >= 2 (got {})",

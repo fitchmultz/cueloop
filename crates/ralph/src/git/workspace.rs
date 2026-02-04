@@ -192,7 +192,7 @@ fn clone_repo_from_local(repo_root: &Path, dest: &Path) -> Result<()> {
     Ok(())
 }
 
-fn origin_urls(repo_root: &Path) -> Result<(String, String)> {
+pub(crate) fn origin_urls(repo_root: &Path) -> Result<(String, String)> {
     let fetch = remote_url(repo_root, &["remote", "get-url", "origin"])?;
     let push = remote_url(repo_root, &["remote", "get-url", "--push", "origin"])?;
 
@@ -201,7 +201,16 @@ fn origin_urls(repo_root: &Path) -> Result<(String, String)> {
         (Some(fetch_url), None) => Ok((fetch_url.clone(), fetch_url)),
         (None, Some(push_url)) => Ok((push_url.clone(), push_url)),
         (None, None) => {
-            bail!("No 'origin' remote configured; parallel workspaces require a pushable origin.")
+            bail!(
+                "No 'origin' git remote configured (required for parallel mode).\n\
+Parallel workspaces need a pushable `origin` remote to retarget and push branches.\n\
+\n\
+Fix options:\n\
+1) Add origin:\n\
+   git remote add origin <url>\n\
+2) Or disable parallel mode:\n\
+   run without `--parallel` (use the non-parallel run loop)\n"
+            )
         }
     }
 }

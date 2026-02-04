@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-04T06:17:09.055504000Z",
+  "last_updated_at": "2026-02-04T06:39:14.879616000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -520,7 +520,7 @@
     },
     "2026-02-04": {
       "date": "2026-02-04",
-      "completed_count": 12,
+      "completed_count": 13,
       "tasks": [
         {
           "id": "RQ-0582",
@@ -581,6 +581,11 @@
           "id": "RQ-0593",
           "title": "Update docs to use --parallel (not --parallel-workers) for queue stop",
           "completed_at": "2026-02-04T06:17:09.055503000Z"
+        },
+        {
+          "id": "RQ-0594",
+          "title": "Preflight origin-remote check before spawning parallel workers",
+          "completed_at": "2026-02-04T06:39:14.879616000Z"
         }
       ]
     }
@@ -590,7 +595,7 @@
     "longest_streak": 6,
     "last_completed_date": "2026-02-04"
   },
-  "total_completed": 109,
+  "total_completed": 110,
   "milestones": [
     {
       "threshold": 10,
