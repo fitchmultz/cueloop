@@ -17,7 +17,7 @@
 use crate::commands::watch::comments::detect_comments;
 use crate::commands::watch::debounce::{can_reprocess, cleanup_old_entries};
 use crate::commands::watch::state::WatchState;
-use crate::commands::watch::tasks::{handle_detected_comments, reconcile_removed_comments};
+use crate::commands::watch::tasks::handle_detected_comments;
 use crate::commands::watch::types::{DetectedComment, WatchOptions};
 use crate::config::Resolved;
 use anyhow::Result;
@@ -80,11 +80,6 @@ pub fn process_pending_files(
 
     if !all_comments.is_empty() {
         handle_detected_comments(resolved, &all_comments, opts)?;
-    }
-
-    // Reconcile: close tasks for removed comments
-    if opts.close_removed {
-        reconcile_removed_comments(resolved, &all_comments, opts)?;
     }
 
     Ok(())
