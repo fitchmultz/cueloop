@@ -1080,6 +1080,47 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0593",
+      "status": "done",
+      "title": "Update docs to use --parallel (not --parallel-workers) for queue stop",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "docs"
+      ],
+      "scope": [
+        "docs/cli.md:1118",
+        "rg -n \"parallel-workers\" docs/cli.md",
+        "rg -n \"parallel-workers\" docs/"
+      ],
+      "evidence": [
+        "docs: docs/cli.md:1118 uses `--parallel-workers N` but the actual CLI flag is `--parallel`",
+        "docs: docs/cli.md:577, 578, 582, 599, 602, 676, 677, 1963, 1989, 1990 correctly use `--parallel` flag",
+        "Only one occurrence of `--parallel-workers` remains at line 1118 in the stop signal documentation"
+      ],
+      "plan": [
+        "Edit docs/cli.md line 1118: change `--parallel-workers N` to `--parallel N`",
+        "Verify fix by running `rg -n \"parallel-workers\" docs/` and confirming no matches remain"
+      ],
+      "notes": [
+        "Confirmed: Only one occurrence of --parallel-workers exists in the entire docs/ directory",
+        "The fix is a single-line change at docs/cli.md:1118",
+        "Fixed docs/cli.md line 1118: --parallel-workers N → --parallel N",
+        "Verified: rg shows no remaining parallel-workers in docs/",
+        "make ci passed: all 1761+ tests, formatting, linting, build, schemas"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T06:14:55.662573000Z",
+      "completed_at": "2026-02-04T06:14:55.662573000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

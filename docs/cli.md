@@ -1115,7 +1115,7 @@ This is useful when you start a long-running loop with `--max-tasks 0` but want 
 - The loop exits between tasks (current task completes, then exits)
 - Stop signal is honored after both successful and failed task attempts
 
-**Parallel mode** (`ralph run loop --parallel-workers N`):
+**Parallel mode** (`ralph run loop --parallel N`):
 - The loop stops scheduling new tasks immediately
 - Waits for all in-flight tasks to complete
 - Exits once no workers are running

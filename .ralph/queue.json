@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0593",
-      "status": "todo",
-      "title": "Update docs to use --parallel (not --parallel-workers) for queue stop",
-      "priority": "low",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "docs/cli.md",
-        "rg -n \"parallel-workers\" docs/cli.md"
-      ],
-      "evidence": [
-        "docs: docs/cli.md:1118 lists `ralph run loop --parallel-workers N` but CLI flag is --parallel"
-      ],
-      "plan": [
-        "Replace the outdated `--parallel-workers` flag with `--parallel` in the queue stop documentation.",
-        "Search the docs for any other `parallel-workers` mentions and update them.",
-        "Verify by running `rg -n \"parallel-workers\" docs/cli.md` and confirming no matches remain."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-04T02:49:30Z",
-      "updated_at": "2026-02-04T02:49:30Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0594",
       "status": "todo",
       "title": "Preflight origin-remote check before spawning parallel workers",
