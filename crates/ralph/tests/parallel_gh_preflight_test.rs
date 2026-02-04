@@ -101,7 +101,7 @@ fn parallel_run_fails_fast_when_gh_not_found() -> Result<()> {
     );
 
     // Verify state file was NOT created (fail-fast before expensive orchestration)
-    let state_path = dir.path().join(".ralph/cache/parallel_state.json");
+    let state_path = dir.path().join(".ralph/cache/parallel/state.json");
     assert!(
         !state_path.exists(),
         "state file should not exist due to fail-fast"

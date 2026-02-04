@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0587",
-      "status": "todo",
-      "title": "Fix parallel gh preflight test to assert correct state file path",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "crates/ralph/tests/parallel_gh_preflight_test.rs",
-        "crates/ralph/src/commands/run/parallel/state.rs",
-        "cargo test -p ralph parallel_gh_preflight_test"
-      ],
-      "evidence": [
-        "code: crates/ralph/tests/parallel_gh_preflight_test.rs:103-105 uses .ralph/cache/parallel_state.json",
-        "code: crates/ralph/src/commands/run/parallel/state.rs:352-354 defines .ralph/cache/parallel/state.json"
-      ],
-      "plan": [
-        "Update the test to reference the canonical state path (reuse state::state_file_path or .ralph/cache/parallel/state.json).",
-        "Ensure the fail-fast assertion still verifies no state file is created before orchestration.",
-        "Verify by running `cargo test -p ralph parallel_gh_preflight_test` and confirming it passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-04T02:49:30Z",
-      "updated_at": "2026-02-04T02:49:30Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0588",
       "status": "todo",
       "title": "Fail fast in parallel mode when queue/done paths are outside repo root",

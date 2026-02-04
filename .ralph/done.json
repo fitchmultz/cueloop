@@ -802,6 +802,48 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0587",
+      "status": "done",
+      "title": "Fix parallel gh preflight test to assert correct state file path",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "test-fix"
+      ],
+      "scope": [
+        "crates/ralph/tests/parallel_gh_preflight_test.rs",
+        "crates/ralph/src/commands/run/parallel/state.rs",
+        "cargo test -p ralph parallel_gh_preflight_test"
+      ],
+      "evidence": [
+        "code: crates/ralph/tests/parallel_gh_preflight_test.rs:104 uses .ralph/cache/parallel_state.json (WRONG)",
+        "code: crates/ralph/src/commands/run/parallel/state.rs:352-354 defines .ralph/cache/parallel/state.json (CORRECT)",
+        "The test asserts state_path at line 104-105 using wrong path - should use parallel/state.json subdirectory"
+      ],
+      "plan": [
+        "Update line 104 in parallel_gh_preflight_test.rs to use .ralph/cache/parallel/state.json instead of .ralph/cache/parallel_state.json",
+        "Ensure the fail-fast assertion still verifies no state file is created before orchestration.",
+        "Verify by running `cargo test -p ralph parallel_gh_preflight_test` and confirming it passes."
+      ],
+      "notes": [
+        "Verified: state.rs:352-354 confirms canonical path is .ralph/cache/parallel/state.json",
+        "Test bug: Line 104 uses .ralph/cache/parallel_state.json (missing subdirectory)",
+        "Fixed line 104: changed path from .ralph/cache/parallel_state.json to .ralph/cache/parallel/state.json",
+        "Verified: matches state_file_path() in state.rs:352-354",
+        "All 3 parallel_gh_preflight tests pass, full CI gate passes"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T03:06:38.218206000Z",
+      "completed_at": "2026-02-04T03:06:38.218206000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }
