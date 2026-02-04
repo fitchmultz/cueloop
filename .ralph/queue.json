@@ -1,4 +1,344 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0587",
+      "status": "todo",
+      "title": "Fix parallel gh preflight test to assert correct state file path",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/tests/parallel_gh_preflight_test.rs",
+        "crates/ralph/src/commands/run/parallel/state.rs",
+        "cargo test -p ralph parallel_gh_preflight_test"
+      ],
+      "evidence": [
+        "code: crates/ralph/tests/parallel_gh_preflight_test.rs:103-105 uses .ralph/cache/parallel_state.json",
+        "code: crates/ralph/src/commands/run/parallel/state.rs:352-354 defines .ralph/cache/parallel/state.json"
+      ],
+      "plan": [
+        "Update the test to reference the canonical state path (reuse state::state_file_path or .ralph/cache/parallel/state.json).",
+        "Ensure the fail-fast assertion still verifies no state file is created before orchestration.",
+        "Verify by running `cargo test -p ralph parallel_gh_preflight_test` and confirming it passes."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0588",
+      "status": "todo",
+      "title": "Fail fast in parallel mode when queue/done paths are outside repo root",
+      "priority": "high",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/commands/run/parallel/path_map.rs",
+        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
+        "cargo test -p ralph parallel_*"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/config.rs:359-390 allows absolute queue/done paths",
+        "code: crates/ralph/src/commands/run/parallel/path_map.rs:35-49 rejects paths outside repo root",
+        "code: crates/ralph/src/commands/run/parallel/merge_runner.rs:451-474 maps queue/done into base-sync workspace"
+      ],
+      "plan": [
+        "Add a parallel-mode preflight validation that rejects queue/done paths outside repo_root with an actionable error.",
+        "Add tests that configure absolute queue/done paths outside the repo and assert parallel preflight fails before any workers spawn.",
+        "Update docs/help to mention the parallel requirement (queue/done under repo root).",
+        "Verify by running `cargo test -p ralph parallel_*` and confirming the new test passes."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0589",
+      "status": "todo",
+      "title": "Require explicit completion signals in parallel workers (avoid auto Done)",
+      "priority": "high",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/supervision/mod.rs",
+        "crates/ralph/src/commands/run/phases/phase3.rs",
+        "cargo test -p ralph supervision_*"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/commands/run/supervision/mod.rs:458-499 auto-creates a Done completion signal when missing",
+        "code: crates/ralph/src/commands/run/parallel/merge_runner.rs:484-489 fails if completion signal is missing in base-sync"
+      ],
+      "plan": [
+        "Change parallel worker post-run supervision to error when the completion signal is missing (or gate auto-create behind explicit config).",
+        "Adjust the parallel worker flow to surface remediation steps (rerun Phase 3 or manual task done/rejected) instead of writing Done implicitly.",
+        "Add tests ensuring missing signals in parallel mode fail fast without creating a Done signal.",
+        "Verify by running `cargo test -p ralph supervision_*` (and any new parallel worker tests) and confirming they pass."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0590",
+      "status": "todo",
+      "title": "Expand ~ in queue/done/workspace paths to avoid mislocated workspaces",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/git/workspace.rs",
+        "cargo test -p ralph config_*"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/config.rs:359-390 treats paths as absolute only via Path::is_absolute (tilde not expanded)",
+        "code: crates/ralph/src/git/workspace.rs:30-39 joins relative workspace_root onto repo_root"
+      ],
+      "plan": [
+        "Introduce a shared path-normalization helper that expands leading `~` to HOME.",
+        "Apply it to queue.file, queue.done_file, and parallel.workspace_root resolution.",
+        "Add tests for `~` expansion to ensure paths resolve to the home directory.",
+        "Verify by running `cargo test -p ralph config_*` (or specific new tests) and confirming they pass."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0591",
+      "status": "todo",
+      "title": "Validate parallel.branch_prefix with git ref rules",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/git/workspace.rs",
+        "cargo test -p ralph config_*"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/config.rs:272-277 only rejects empty branch_prefix",
+        "code: crates/ralph/src/git/workspace.rs:64-89 uses branch_prefix in git checkout -B"
+      ],
+      "plan": [
+        "Add validation for branch_prefix using git ref rules (e.g., `git check-ref-format --branch`).",
+        "Provide a clear error message pointing to parallel.branch_prefix when invalid.",
+        "Add tests for invalid prefixes (spaces, '..', '@{').",
+        "Verify by running `cargo test -p ralph config_*` and confirming tests pass."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0592",
+      "status": "todo",
+      "title": "Persist merge blockers when merge runner detects PR head mismatch",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/src/commands/run/parallel/state.rs"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/commands/run/parallel/merge_runner.rs:210-219 logs head mismatch and returns without updating state",
+        "code: crates/ralph/src/commands/run/parallel/mod.rs:264-285 only skips PRs when merge_blocker is set"
+      ],
+      "plan": [
+        "Extend merge runner to report head mismatches back to the supervisor (e.g., new MergeResult field or callback).",
+        "Persist merge_blocker in state.json when a head mismatch is detected.",
+        "Add tests covering head mismatch -> merge_blocker set -> subsequent runs skip the PR without repeated warnings.",
+        "Verify by running `cargo test -p ralph parallel_*` and confirming the new test passes."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0593",
+      "status": "todo",
+      "title": "Update docs to use --parallel (not --parallel-workers) for queue stop",
+      "priority": "low",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "docs/cli.md",
+        "rg -n \"parallel-workers\" docs/cli.md"
+      ],
+      "evidence": [
+        "docs: docs/cli.md:1118 lists `ralph run loop --parallel-workers N` but CLI flag is --parallel"
+      ],
+      "plan": [
+        "Replace the outdated `--parallel-workers` flag with `--parallel` in the queue stop documentation.",
+        "Search the docs for any other `parallel-workers` mentions and update them.",
+        "Verify by running `rg -n \"parallel-workers\" docs/cli.md` and confirming no matches remain."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0594",
+      "status": "todo",
+      "title": "Preflight origin-remote check before spawning parallel workers",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/src/git/workspace.rs",
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "cargo test -p ralph parallel_*"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/git/workspace.rs:192-202 bails when origin is missing",
+        "code: crates/ralph/src/git/workspace.rs:74-83 calls origin_urls during workspace creation"
+      ],
+      "plan": [
+        "Add a parallel-mode preflight that checks for a pushable origin remote before any worker is spawned.",
+        "Return a clear error message suggesting how to add origin or disable parallel mode.",
+        "Add a test that runs parallel mode in a repo without origin and asserts early failure.",
+        "Verify by running `cargo test -p ralph parallel_*` and confirming the new test passes."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0595",
+      "status": "todo",
+      "title": "Prevent workspace_root-in-repo from leaving the repo dirty across runs",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/src/git/workspace.rs",
+        "crates/ralph/src/git/clean.rs",
+        ".gitignore",
+        "docs/configuration.md"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/git/workspace.rs:30-39 allows relative workspace_root inside repo_root",
+        "code: crates/ralph/src/git/clean.rs:25-30 allowed dirty paths exclude workspace directories",
+        "repo: .gitignore lacks .ralph/workspaces (lines 11-16)"
+      ],
+      "plan": [
+        "Add validation/warning when workspace_root is under repo_root and not gitignored, or auto-add a gitignore entry.",
+        "Update docs/configuration to discourage in-repo workspace roots unless ignored.",
+        "Add a test that sets workspace_root to .ralph/workspaces and asserts the preflight behavior (warning/error or gitignore update).",
+        "Verify by running `cargo test -p ralph parallel_*` (and checking .gitignore if modified)."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0596",
+      "status": "todo",
+      "title": "Use queue repair for parallel task selection to avoid aborting on minor JSON errors",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/worker.rs",
+        "crates/ralph/src/queue.rs",
+        "cargo test -p ralph parallel_*"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/commands/run/parallel/worker.rs:51-52 uses queue::load_queue without repair",
+        "code: crates/ralph/src/queue.rs:67-103 provides load_queue_with_repair"
+      ],
+      "plan": [
+        "Switch parallel task selection to load the queue with repair + validation (consistent with other repair-friendly paths).",
+        "Add a test where queue.json has trailing commas and parallel selection still succeeds.",
+        "Verify by running `cargo test -p ralph parallel_*` and confirming the new test passes."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T02:49:30Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    }
+  ]
 }
