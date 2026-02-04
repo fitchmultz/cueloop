@@ -937,6 +937,57 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0590",
+      "status": "done",
+      "title": "Expand ~ in queue/done/workspace paths to avoid mislocated workspaces",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "config",
+        "path-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/git/workspace.rs",
+        "crates/ralph/src/fsutil.rs",
+        "cargo test -p ralph config_*"
+      ],
+      "evidence": [
+        "code: crates/ralph/src/config.rs:359-374 resolve_queue_path uses value.is_absolute() but does not expand ~",
+        "code: crates/ralph/src/config.rs:376-391 resolve_done_path uses value.is_absolute() but does not expand ~",
+        "code: crates/ralph/src/git/workspace.rs:30-41 workspace_root joins relative path onto repo_root without ~ expansion",
+        "fsutil.rs exists and may be appropriate location for shared path-normalization helper"
+      ],
+      "plan": [
+        "Add a shared path-normalization helper in fsutil.rs (or appropriate module) that expands leading `~` to HOME.",
+        "Apply the helper to resolve_queue_path() for queue.file config option.",
+        "Apply the helper to resolve_done_path() for queue.done_file config option.",
+        "Apply the helper to workspace_root() for parallel.workspace_root config option.",
+        "Add unit tests for `~` expansion covering edge cases (HOME unset, nested ~, absolute paths).",
+        "Run `cargo test -p ralph config_*` to verify existing tests still pass.",
+        "Run `make ci` to ensure full CI gate passes."
+      ],
+      "notes": [
+        "Task scope expanded to include fsutil.rs as potential location for shared helper",
+        "Evidence line numbers verified accurate as of current codebase state",
+        "Added expand_tilde helper in fsutil.rs to expand ~ to HOME",
+        "Applied to resolve_queue_path, resolve_done_path, and workspace_root",
+        "Refactored resolve_instruction_path to use shared helper",
+        "Added comprehensive unit tests for edge cases (HOME unset, double slash, nested ~)",
+        "All 1767 tests pass; make ci passes"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-04T02:49:30Z",
+      "updated_at": "2026-02-04T04:36:19.673823000Z",
+      "completed_at": "2026-02-04T04:36:19.673823000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

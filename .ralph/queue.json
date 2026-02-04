@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0590",
-      "status": "todo",
-      "title": "Expand ~ in queue/done/workspace paths to avoid mislocated workspaces",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "crates/ralph/src/config.rs",
-        "crates/ralph/src/git/workspace.rs",
-        "cargo test -p ralph config_*"
-      ],
-      "evidence": [
-        "code: crates/ralph/src/config.rs:359-390 treats paths as absolute only via Path::is_absolute (tilde not expanded)",
-        "code: crates/ralph/src/git/workspace.rs:30-39 joins relative workspace_root onto repo_root"
-      ],
-      "plan": [
-        "Introduce a shared path-normalization helper that expands leading `~` to HOME.",
-        "Apply it to queue.file, queue.done_file, and parallel.workspace_root resolution.",
-        "Add tests for `~` expansion to ensure paths resolve to the home directory.",
-        "Verify by running `cargo test -p ralph config_*` (or specific new tests) and confirming they pass."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-04T02:49:30Z",
-      "updated_at": "2026-02-04T02:49:30Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0591",
       "status": "todo",
       "title": "Validate parallel.branch_prefix with git ref rules",

@@ -357,16 +357,18 @@ pub fn resolve_id_width(cfg: &Config) -> Result<usize> {
 }
 
 pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
-    let value = cfg
+    let raw = cfg
         .queue
         .file
         .clone()
         .unwrap_or_else(|| PathBuf::from(".ralph/queue.json"));
-    if value.as_os_str().is_empty() {
+    if raw.as_os_str().is_empty() {
         bail!(
             "Empty queue.file: path is required. Specify a valid path (e.g., '.ralph/queue.json') in .ralph/config.json or via --queue-file."
         );
     }
+
+    let value = fsutil::expand_tilde(&raw);
     if value.is_absolute() {
         return Ok(value);
     }
@@ -374,16 +376,18 @@ pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
 }
 
 pub fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
-    let value = cfg
+    let raw = cfg
         .queue
         .done_file
         .clone()
         .unwrap_or_else(|| PathBuf::from(".ralph/done.json"));
-    if value.as_os_str().is_empty() {
+    if raw.as_os_str().is_empty() {
         bail!(
             "Empty queue.done_file: path is required. Specify a valid path (e.g., '.ralph/done.json') in .ralph/config.json or via --done-file."
         );
     }
+
+    let value = fsutil::expand_tilde(&raw);
     if value.is_absolute() {
         return Ok(value);
     }

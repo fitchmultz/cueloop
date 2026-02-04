@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-04T04:03:11.886768000Z",
+  "last_updated_at": "2026-02-04T04:38:32.336080000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -520,7 +520,7 @@
     },
     "2026-02-04": {
       "date": "2026-02-04",
-      "completed_count": 8,
+      "completed_count": 9,
       "tasks": [
         {
           "id": "RQ-0582",
@@ -561,6 +561,11 @@
           "id": "RQ-0589",
           "title": "Require explicit completion signals in parallel workers (avoid auto Done)",
           "completed_at": "2026-02-04T04:03:11.886767000Z"
+        },
+        {
+          "id": "RQ-0590",
+          "title": "Expand ~ in queue/done/workspace paths to avoid mislocated workspaces",
+          "completed_at": "2026-02-04T04:38:32.336080000Z"
         }
       ]
     }
@@ -570,7 +575,7 @@
     "longest_streak": 6,
     "last_completed_date": "2026-02-04"
   },
-  "total_completed": 105,
+  "total_completed": 106,
   "milestones": [
     {
       "threshold": 10,

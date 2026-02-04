@@ -163,17 +163,12 @@ pub(crate) fn validate_instruction_file_paths(repo_root: &Path, config: &Config)
 }
 
 pub(crate) fn resolve_instruction_path(repo_root: &Path, raw: &Path) -> std::path::PathBuf {
-    let as_string = raw.to_string_lossy();
-    if let Some(rest) = as_string.strip_prefix("~/")
-        && let Ok(home) = std::env::var("HOME")
-    {
-        return std::path::PathBuf::from(home).join(rest);
-    }
+    let expanded = crate::fsutil::expand_tilde(raw);
 
-    if raw.is_absolute() {
-        raw.to_path_buf()
+    if expanded.is_absolute() {
+        expanded
     } else {
-        repo_root.join(raw)
+        repo_root.join(expanded)
     }
 }
 
@@ -456,10 +451,16 @@ pub(crate) fn apply_project_type_guidance_if_needed(
 
 #[cfg(test)]
 mod tests {
-    use super::{instruction_file_warnings, wrap_with_instruction_files};
+    use super::{instruction_file_warnings, resolve_instruction_path, wrap_with_instruction_files};
     use crate::contracts::Config;
+    use serial_test::serial;
+    use std::env;
     use std::path::Path;
+    use std::sync::Mutex;
     use tempfile::TempDir;
+
+    // Global lock for environment variable tests
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn wrap_with_instruction_files_is_noop_when_none_configured() {
@@ -534,5 +535,77 @@ mod tests {
             warnings.is_empty(),
             "Expected no warnings for unconfigured AGENTS.md"
         );
+    }
+
+    #[test]
+    #[serial]
+    fn resolve_instruction_path_expands_tilde_to_home() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let original_home = env::var("HOME").ok();
+
+        unsafe { env::set_var("HOME", "/custom/home") };
+
+        let repo_root = Path::new("/repo/root");
+        let resolved = resolve_instruction_path(repo_root, Path::new("~/instructions.md"));
+        assert_eq!(resolved, Path::new("/custom/home/instructions.md"));
+
+        // Restore HOME
+        match original_home {
+            Some(v) => unsafe { env::set_var("HOME", v) },
+            None => unsafe { env::remove_var("HOME") },
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn resolve_instruction_path_expands_tilde_alone_to_home() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let original_home = env::var("HOME").ok();
+
+        unsafe { env::set_var("HOME", "/custom/home") };
+
+        let repo_root = Path::new("/repo/root");
+        let resolved = resolve_instruction_path(repo_root, Path::new("~"));
+        assert_eq!(resolved, Path::new("/custom/home"));
+
+        // Restore HOME
+        match original_home {
+            Some(v) => unsafe { env::set_var("HOME", v) },
+            None => unsafe { env::remove_var("HOME") },
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn resolve_instruction_path_relative_when_home_unset() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let original_home = env::var("HOME").ok();
+
+        // Remove HOME - tilde should not expand
+        unsafe { env::remove_var("HOME") };
+
+        let repo_root = Path::new("/repo/root");
+        let resolved = resolve_instruction_path(repo_root, Path::new("~/instructions.md"));
+        // When HOME is unset, ~/instructions.md is treated as relative to repo_root
+        assert_eq!(resolved, Path::new("/repo/root/~/instructions.md"));
+
+        // Restore HOME
+        if let Some(v) = original_home {
+            unsafe { env::set_var("HOME", v) }
+        }
+    }
+
+    #[test]
+    fn resolve_instruction_path_absolute_unchanged() {
+        let repo_root = Path::new("/repo/root");
+        let resolved = resolve_instruction_path(repo_root, Path::new("/absolute/path/file.md"));
+        assert_eq!(resolved, Path::new("/absolute/path/file.md"));
+    }
+
+    #[test]
+    fn resolve_instruction_path_relative_unchanged() {
+        let repo_root = Path::new("/repo/root");
+        let resolved = resolve_instruction_path(repo_root, Path::new("relative/path/file.md"));
+        assert_eq!(resolved, Path::new("/repo/root/relative/path/file.md"));
     }
 }

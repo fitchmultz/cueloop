@@ -5,6 +5,7 @@ use ralph::contracts::{
     AgentConfig, Config, GitRevertMode, Model, NotificationConfig, ProjectType, QueueConfig,
     ReasoningEffort, Runner, WebhookConfig,
 };
+use serial_test::serial;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -639,4 +640,121 @@ fn test_validate_config_invalid_phases_fails() {
     cfg.agent.phases = Some(4);
     let result = config::validate_config(&cfg);
     assert!(result.is_err());
+}
+
+// Tests for tilde expansion in path resolution
+
+#[test]
+#[serial]
+fn test_resolve_queue_path_expands_tilde_to_home() {
+    let _guard = env_lock().lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    let repo_root = PathBuf::from("/repo/root");
+    let mut cfg = Config::default();
+    cfg.queue.file = Some(PathBuf::from("~/myqueue.json"));
+
+    let queue_path = config::resolve_queue_path(&repo_root, &cfg).unwrap();
+    assert_eq!(queue_path, PathBuf::from("/custom/home/myqueue.json"));
+
+    // Restore HOME
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn test_resolve_done_path_expands_tilde_to_home() {
+    let _guard = env_lock().lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    let repo_root = PathBuf::from("/repo/root");
+    let mut cfg = Config::default();
+    cfg.queue.done_file = Some(PathBuf::from("~/mydone.json"));
+
+    let done_path = config::resolve_done_path(&repo_root, &cfg).unwrap();
+    assert_eq!(done_path, PathBuf::from("/custom/home/mydone.json"));
+
+    // Restore HOME
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn test_resolve_queue_path_expands_tilde_alone_to_home() {
+    let _guard = env_lock().lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    let repo_root = PathBuf::from("/repo/root");
+    let mut cfg = Config::default();
+    cfg.queue.file = Some(PathBuf::from("~"));
+
+    let queue_path = config::resolve_queue_path(&repo_root, &cfg).unwrap();
+    assert_eq!(queue_path, PathBuf::from("/custom/home"));
+
+    // Restore HOME
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn test_resolve_queue_path_does_not_join_when_tilde_expands() {
+    let _guard = env_lock().lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    // When ~ expands to an absolute path, it should NOT be joined to repo_root
+    let repo_root = PathBuf::from("/repo/root");
+    let mut cfg = Config::default();
+    cfg.queue.file = Some(PathBuf::from("~/queue.json"));
+
+    let queue_path = config::resolve_queue_path(&repo_root, &cfg).unwrap();
+    // Should be /custom/home/queue.json, NOT /repo/root/custom/home/queue.json
+    assert_eq!(queue_path, PathBuf::from("/custom/home/queue.json"));
+    assert!(!queue_path.to_string_lossy().contains("/repo/root"));
+
+    // Restore HOME
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn test_resolve_queue_path_relative_when_home_unset() {
+    let _guard = env_lock().lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    // Remove HOME - tilde should not expand, path treated as relative
+    unsafe { env::remove_var("HOME") };
+
+    let dir = TempDir::new().expect("create temp dir");
+    let repo_root = dir.path();
+    let mut cfg = Config::default();
+    cfg.queue.file = Some(PathBuf::from("~/queue.json"));
+
+    // When HOME is unset, ~/queue.json is treated as a relative path
+    let queue_path = config::resolve_queue_path(repo_root, &cfg).unwrap();
+    assert_eq!(queue_path, repo_root.join("~/queue.json"));
+
+    // Restore HOME
+    if let Some(v) = original_home {
+        unsafe { env::set_var("HOME", v) }
+    }
 }

@@ -16,6 +16,7 @@
 //! - Clones must have a pushable `origin` remote.
 
 use crate::contracts::Config;
+use crate::fsutil;
 use crate::git::error::git_base_command;
 use anyhow::{Context, Result, bail};
 use std::fs;
@@ -28,11 +29,13 @@ pub(crate) struct WorkspaceSpec {
 }
 
 pub(crate) fn workspace_root(repo_root: &Path, cfg: &Config) -> PathBuf {
-    let root = cfg
+    let raw = cfg
         .parallel
         .workspace_root
         .clone()
         .unwrap_or_else(|| default_workspace_root(repo_root));
+
+    let root = fsutil::expand_tilde(&raw);
     if root.is_absolute() {
         root
     } else {
@@ -350,7 +353,13 @@ mod tests {
     use super::*;
     use crate::contracts::{Config, ParallelConfig};
     use crate::testsupport::git as git_test;
+    use serial_test::serial;
+    use std::env;
+    use std::sync::Mutex;
     use tempfile::TempDir;
+
+    // Global lock for environment variable tests
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn workspace_root_uses_repo_root_for_relative_path() {
@@ -623,5 +632,84 @@ mod tests {
         assert!(err.to_string().contains("origin"));
 
         Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn workspace_root_expands_tilde_to_home() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let original_home = env::var("HOME").ok();
+
+        unsafe { env::set_var("HOME", "/custom/home") };
+
+        let cfg = Config {
+            parallel: ParallelConfig {
+                workspace_root: Some(PathBuf::from("~/ralph-workspaces")),
+                ..ParallelConfig::default()
+            },
+            ..Config::default()
+        };
+        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let root = workspace_root(&repo_root, &cfg);
+        assert_eq!(root, PathBuf::from("/custom/home/ralph-workspaces"));
+
+        // Restore HOME
+        match original_home {
+            Some(v) => unsafe { env::set_var("HOME", v) },
+            None => unsafe { env::remove_var("HOME") },
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn workspace_root_expands_tilde_alone_to_home() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let original_home = env::var("HOME").ok();
+
+        unsafe { env::set_var("HOME", "/custom/home") };
+
+        let cfg = Config {
+            parallel: ParallelConfig {
+                workspace_root: Some(PathBuf::from("~")),
+                ..ParallelConfig::default()
+            },
+            ..Config::default()
+        };
+        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let root = workspace_root(&repo_root, &cfg);
+        assert_eq!(root, PathBuf::from("/custom/home"));
+
+        // Restore HOME
+        match original_home {
+            Some(v) => unsafe { env::set_var("HOME", v) },
+            None => unsafe { env::remove_var("HOME") },
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn workspace_root_relative_when_home_unset() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let original_home = env::var("HOME").ok();
+
+        // Remove HOME - tilde should not expand
+        unsafe { env::remove_var("HOME") };
+
+        let cfg = Config {
+            parallel: ParallelConfig {
+                workspace_root: Some(PathBuf::from("~/workspaces")),
+                ..ParallelConfig::default()
+            },
+            ..Config::default()
+        };
+        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let root = workspace_root(&repo_root, &cfg);
+        // When HOME is unset, ~/workspaces is treated as relative to repo_root
+        assert_eq!(root, PathBuf::from("/tmp/ralph-test/~/workspaces"));
+
+        // Restore HOME
+        if let Some(v) = original_home {
+            unsafe { env::set_var("HOME", v) }
+        }
     }
 }

@@ -1,10 +1,11 @@
-//! Filesystem helpers for temp directories, atomic writes, and safeguard dumps.
+//! Filesystem helpers for temp directories, atomic writes, path normalization, and safeguard dumps.
 //!
 //! Responsibilities:
 //! - Create and clean Ralph temp directories.
 //! - Write files atomically and sync parent directories best-effort.
 //! - Persist safeguard dumps for troubleshooting output.
 //! - Redact sensitive data in safeguard dumps by default (secrets, API keys, tokens).
+//! - Expand tilde (`~`) to the user's home directory for Unix-style paths.
 //!
 //! Not handled here:
 //! - Directory locks or lock ownership metadata (see `crate::lock`).
@@ -17,6 +18,7 @@
 //! - Temp cleanup is best-effort and may skip entries on IO errors.
 //! - `safeguard_text_dump` requires explicit opt-in (env var or debug mode) to write raw content.
 //! - `safeguard_text_dump_redacted` is the default and safe choice for error dumps.
+//! - `expand_tilde` only handles leading `~` or `~/...`, not `~user/...` or nested tildes.
 
 use crate::constants::paths::{LEGACY_PROMPT_PREFIX, RALPH_TEMP_DIR_NAME};
 
@@ -27,6 +29,43 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
+
+/// Expands a leading `~` to the user's home directory (`$HOME`) for Unix-style paths.
+///
+/// Supported:
+/// - `~` → `$HOME`
+/// - `~/...` → `$HOME/...`
+///
+/// Not handled (intentionally):
+/// - `~user/...` (username-based expansion)
+/// - `.../~/...` (nested tilde)
+/// - Windows `%USERPROFILE%` expansion (callers should supply absolute paths)
+///
+/// If `$HOME` is unset or empty, the input path is returned unchanged.
+pub fn expand_tilde(path: &Path) -> PathBuf {
+    let raw = path.to_string_lossy();
+
+    let home = std::env::var("HOME")
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty());
+
+    let Some(home) = home else {
+        return path.to_path_buf();
+    };
+
+    if raw == "~" {
+        return PathBuf::from(home);
+    }
+
+    if let Some(rest) = raw.strip_prefix("~/") {
+        // Avoid `PathBuf::join` treating `rest` as absolute if user wrote "~//foo".
+        let rest = rest.trim_start_matches(&['/', '\\'][..]);
+        return PathBuf::from(home).join(rest);
+    }
+
+    path.to_path_buf()
+}
 
 pub fn ralph_temp_root() -> PathBuf {
     std::env::temp_dir().join(RALPH_TEMP_DIR_NAME)

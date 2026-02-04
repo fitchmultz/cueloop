@@ -1,8 +1,9 @@
-//! Tests for fsutil filesystem helpers (temp cleanup and atomic writes).
+//! Tests for fsutil filesystem helpers (temp cleanup, atomic writes, and path normalization).
 //!
 //! Responsibilities:
 //! - Validate temp directory cleanup and naming.
 //! - Validate atomic write behavior for file content.
+//! - Validate tilde (`~`) expansion to home directory.
 //!
 //! Not covered here:
 //! - Directory locking behavior (see `lock_test.rs`).
@@ -10,12 +11,20 @@
 //!
 //! Invariants/assumptions:
 //! - Tests operate in temp directories and may be run concurrently.
+//! - Tests that modify HOME use `#[serial]` to prevent env race conditions.
 
 use ralph::fsutil;
+use serial_test::serial;
+use std::env;
 use std::fs;
+use std::path::PathBuf;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
+
+// Global lock for environment variable tests to prevent race conditions
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_cleanup_stale_temp_dirs_removes_prefixed_entries_only() {
@@ -222,4 +231,194 @@ fn test_write_atomic_idempotent() {
 
     let read_contents = fs::read(&file_path).unwrap();
     assert_eq!(read_contents, contents);
+}
+
+// Tests for expand_tilde
+
+#[test]
+#[serial]
+fn expand_tilde_expands_tilde_to_home_when_home_set() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    // Set HOME to a known value
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    let result = fsutil::expand_tilde(PathBuf::from("~").as_path());
+    assert_eq!(result, PathBuf::from("/custom/home"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_expands_tilde_slash_to_home_when_home_set() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    let result = fsutil::expand_tilde(PathBuf::from("~/documents/file.txt").as_path());
+    assert_eq!(result, PathBuf::from("/custom/home/documents/file.txt"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_returns_path_unchanged_when_home_unset() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    // Remove HOME
+    unsafe { env::remove_var("HOME") };
+
+    let result = fsutil::expand_tilde(PathBuf::from("~/documents").as_path());
+    // Should return unchanged since HOME is not set
+    assert_eq!(result, PathBuf::from("~/documents"));
+
+    // Restore
+    if let Some(v) = original_home {
+        unsafe { env::set_var("HOME", v) }
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_returns_path_unchanged_when_home_empty() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    // Set HOME to empty string
+    unsafe { env::set_var("HOME", "") };
+
+    let result = fsutil::expand_tilde(PathBuf::from("~/documents").as_path());
+    // Should return unchanged since HOME is empty
+    assert_eq!(result, PathBuf::from("~/documents"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_returns_path_unchanged_when_home_whitespace() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    // Set HOME to whitespace only
+    unsafe { env::set_var("HOME", "   ") };
+
+    let result = fsutil::expand_tilde(PathBuf::from("~/documents").as_path());
+    // Should return unchanged since HOME is whitespace-only
+    assert_eq!(result, PathBuf::from("~/documents"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_leaves_absolute_paths_unchanged() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    let result = fsutil::expand_tilde(PathBuf::from("/absolute/path/to/file").as_path());
+    assert_eq!(result, PathBuf::from("/absolute/path/to/file"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_leaves_nested_tilde_unchanged() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    // Tilde in the middle of path should NOT be expanded
+    let result = fsutil::expand_tilde(PathBuf::from("/some/path/~/file").as_path());
+    assert_eq!(result, PathBuf::from("/some/path/~/file"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_leaves_relative_paths_without_tilde_unchanged() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    let result = fsutil::expand_tilde(PathBuf::from("relative/path/to/file").as_path());
+    assert_eq!(result, PathBuf::from("relative/path/to/file"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_handles_tilde_with_double_slash() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    // Double slashes should be normalized
+    let result = fsutil::expand_tilde(PathBuf::from("~//documents").as_path());
+    assert_eq!(result, PathBuf::from("/custom/home/documents"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
+}
+
+#[test]
+#[serial]
+fn expand_tilde_handles_tilde_slash_only() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let original_home = env::var("HOME").ok();
+
+    unsafe { env::set_var("HOME", "/custom/home") };
+
+    let result = fsutil::expand_tilde(PathBuf::from("~/").as_path());
+    assert_eq!(result, PathBuf::from("/custom/home"));
+
+    // Restore
+    match original_home {
+        Some(v) => unsafe { env::set_var("HOME", v) },
+        None => unsafe { env::remove_var("HOME") },
+    }
 }
