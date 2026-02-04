@@ -2,6 +2,286 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0622",
+      "status": "todo",
+      "title": "TUI foundation: component architecture, focus management, and layout primitives",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "architecture",
+        "focus",
+        "layout"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request: implement core OpenTUI (TS + Bun) features in our Rust + Ratatui framework; details are in `/tmp/opentui-rust-features.md`.",
+        "`.ralph/README.md` documents that Ralph has a Ratatui-based TUI under `crates/ralph/src/tui/`.",
+        "`/tmp/opentui-rust-features.md` recommends a component-based architecture and calls out focus management and flexbox-like layout as core building blocks."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` and map the requested OpenTUI building blocks (component architecture, focus, flexbox-like layout) onto the current `crates/ralph/src/tui/` design.",
+        "Audit current TUI event handling/rendering and identify the smallest vertical slice to migrate first (one screen/flow).",
+        "Introduce a small internal component model (e.g., a `Component` trait + message routing) with private defaults (prefer `pub(crate)` over `pub`).",
+        "Implement focus management (see Focus Management in `/tmp/opentui-rust-features.md`): deterministic focus order, Tab/Shift-Tab navigation, and per-component focused state that influences rendering and input routing.",
+        "Add shared layout helpers that express common OpenTUI flex patterns using Ratatui `Layout` constraints; explicitly document the decision and when (if ever) to adopt `taffy` from `/tmp/opentui-rust-features.md`.",
+        "Migrate the chosen minimal screen/flow to the new component + focus approach without broad churn.",
+        "Add unit tests covering expected behavior and failure modes (empty focus order, removed component, focus wraparound).",
+        "Update `docs/tui-task-management.md` with the new focus/navigation behavior and examples; ensure `make ci` passes."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
+        "Keep this refactor incremental: one migrated screen first, then expand in follow-up tasks."
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-04T20:40:21Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0623",
+      "status": "todo",
+      "title": "TUI: rich text input and textarea editing (cursor, selection, placeholders)",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "input",
+        "textarea",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request points to `/tmp/opentui-rust-features.md` as the source of the OpenTUI feature set to bring to our Rust + Ratatui TUI.",
+        "`/tmp/opentui-rust-features.md` lists \"Rich Input Components\" (text input + textarea) and ranks \"Better text input\" as the top recommended implementation priority.",
+        "A Ratatui TUI exists in `crates/ralph/src/tui/` per `.ralph/README.md`."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` (Rich Input Components section) and identify the concrete Ralph TUI flows that need text input and/or multiline editing.",
+        "Choose and integrate a maintained crate for single-line input and a maintained crate for multiline textarea editing (as suggested in `/tmp/opentui-rust-features.md`), keeping dependencies minimal and well-scoped.",
+        "Implement a focused single-line input widget with cursor movement, deletion, and placeholder text; route keys via the focus manager introduced in `RQ-0622`.",
+        "Implement a focused textarea widget with cursor movement, insertion/deletion, and scrolling for overflow; support paste-like multi-char insertion safely.",
+        "Define consistent keybindings for editing (Left/Right/Home/End, Backspace/Delete, Enter, Esc) and document them in `docs/tui-task-management.md`.",
+        "Add unit tests covering expected behavior and failure modes (empty input, non-ASCII insertion, cursor bounds, multiline edits).",
+        "Run `make ci` and do a manual smoke test in `ralph tui` for both widgets."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
+        "Depends on the focus/component groundwork from `RQ-0622` so inputs can be routed deterministically."
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-04T20:40:21Z",
+      "depends_on": [
+        "RQ-0622"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0624",
+      "status": "todo",
+      "title": "TUI: scrollable containers, select/dropdown lists, and slider component",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "scroll",
+        "select",
+        "slider"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request explicitly points to `/tmp/opentui-rust-features.md` as the required spec for the OpenTUI features to implement.",
+        "`/tmp/opentui-rust-features.md` includes \"Scrollable Containers\", \"Select/Dropdown Component\", and a \"Slider Component\" as core UI primitives.",
+        "Ralph already has a Ratatui TUI under `crates/ralph/src/tui/` per `.ralph/README.md`."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` and inventory where Ralph’s TUI needs scrollable rendering, selectable lists, and adjustable numeric settings.",
+        "Implement a reusable scroll container abstraction (crate-backed or custom) that supports: vertical scrolling, scrollbars, and failure-safe bounds handling.",
+        "Add sticky-scroll behavior for log-like views (auto-follow tail unless the user scrolls up), per the guidance in `/tmp/opentui-rust-features.md`.",
+        "Implement a reusable select/dropdown list widget with selection highlight, paging/scrolling, and optional type-to-filter behavior; integrate with focus routing from `RQ-0622`.",
+        "Implement a slider widget with keyboard adjustments and a labeled value display (as in `/tmp/opentui-rust-features.md`); ensure it composes cleanly with layout helpers from `RQ-0622`.",
+        "Add unit tests covering expected behavior and failure modes (scroll bounds, empty lists, single-item lists, slider min/max clamping).",
+        "Document keybindings and behaviors in `docs/tui-task-management.md` and run `make ci`."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
+        "Keep widgets reusable and internal-first; avoid expanding public API surface unless cross-crate use is required."
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-04T20:40:21Z",
+      "depends_on": [
+        "RQ-0622"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0625",
+      "status": "todo",
+      "title": "TUI: Markdown rendering with code blocks and Tree-sitter syntax highlighting",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "markdown",
+        "syntax-highlighting",
+        "tree-sitter"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request requires implementing the feature set described in `/tmp/opentui-rust-features.md` inside our Rust + Ratatui TUI.",
+        "`/tmp/opentui-rust-features.md` lists \"Markdown Rendering\" and \"Syntax Highlighting (Tree-sitter)\" as target capabilities (with suggested crates/approaches).",
+        "Ralph’s Ratatui TUI lives under `crates/ralph/src/tui/` per `.ralph/README.md`."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` (Markdown Rendering + Syntax Highlighting sections) and define the minimal Markdown subset needed for Ralph TUI (headings, lists, emphasis, inline code, fenced code blocks).",
+        "Implement a Markdown-to-Ratatui renderer that produces styled `Line`/`Span` output with predictable wrapping and truncation behavior.",
+        "Add code block rendering with a distinct style; detect language info strings when present and integrate Tree-sitter highlighting for at least Rust (per `/tmp/opentui-rust-features.md`).",
+        "Ensure graceful degradation when the code block language is unknown or a parser fails (render as plain code).",
+        "Wire the renderer into an existing TUI screen that displays task text (plan/notes/help), using scroll containers from `RQ-0624` where needed.",
+        "Add unit tests for Markdown rendering and highlighting (success + failure modes, including malformed Markdown and Tree-sitter parse failures).",
+        "Document the feature and keybindings in `docs/tui-task-management.md`, then run `make ci`."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
+        "Keep the renderer cohesive: it should render Markdown to styled lines; it should NOT fetch remote resources or interpret HTML."
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-04T20:40:21Z",
+      "depends_on": [
+        "RQ-0622",
+        "RQ-0624"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0626",
+      "status": "todo",
+      "title": "TUI: diff viewer plus line-number gutter with diagnostics/highlights",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "diff",
+        "diagnostics"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request requires implementing the OpenTUI feature set described in `/tmp/opentui-rust-features.md`.",
+        "`/tmp/opentui-rust-features.md` includes \"Diff Viewer\" and \"Line Numbers with Diagnostics\" as target components.",
+        "Ralph already has a Ratatui TUI (`crates/ralph/src/tui/`) per `.ralph/README.md`."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` (Diff Viewer + Line Numbers with Diagnostics) and define concrete Ralph TUI use cases (e.g., previewing task edits, plan changes, or generated file diffs).",
+        "Implement a diff computation layer (crate-backed or custom) that can produce unified diff lines with insert/delete/equal metadata.",
+        "Implement a Ratatui diff viewer widget supporting unified view first, with split view as a follow-up if it stays cohesive; integrate scrolling via `RQ-0624`.",
+        "Implement a line-number gutter widget that can render highlights/indicators per line (diagnostics map), as described in `/tmp/opentui-rust-features.md`.",
+        "Add unit tests covering diff rendering and line-number/highlight behavior, including failure modes (empty inputs, large diffs, narrow terminal widths).",
+        "Document usage + keybindings in `docs/tui-task-management.md` and run `make ci`."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
+        "Keep the first slice minimal: unified diff + scrolling + basic highlights; avoid turning this into a full editor."
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-04T20:40:21Z",
+      "depends_on": [
+        "RQ-0622",
+        "RQ-0624"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0627",
+      "status": "todo",
+      "title": "TUI polish: big-text/ASCII headers and timeline-style animations",
+      "priority": "low",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "big-text",
+        "animation",
+        "polish"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request requires implementing the OpenTUI feature set described in `/tmp/opentui-rust-features.md`.",
+        "`/tmp/opentui-rust-features.md` lists \"ASCII Font/Big Text\" and \"Animations (Timeline API)\" as UI capabilities to bring over to Ratatui.",
+        "Ralph’s Ratatui TUI lives under `crates/ralph/src/tui/` per `.ralph/README.md`."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` (ASCII Font/Big Text + Animations) and identify 1–2 places in Ralph’s TUI where big headers and subtle animations improve clarity without distraction.",
+        "Integrate a maintained big-text/ASCII rendering crate or implement a minimal internal renderer, ensuring it handles terminal width constraints gracefully.",
+        "Add a small animation/timeline utility (crate-backed or custom) to support at least one effect (e.g., fade-in or highlight transition) as suggested in `/tmp/opentui-rust-features.md`.",
+        "Ensure animations are optional and fail-safe (no panics, reasonable behavior in low-refresh terminals).",
+        "Add unit tests covering rendering invariants and failure modes (narrow widths, empty text, animation progress bounds).",
+        "Document the behavior in `docs/tui-task-management.md` and run `make ci`."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
+        "Keep polish minimal and intentional; prioritize readability and operator confidence over flashy effects."
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-04T20:40:21Z",
+      "depends_on": [
+        "RQ-0622"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0620",
       "status": "todo",
       "title": "TUI ergonomics: open task scope targets in $EDITOR and copy file:line references",
@@ -35,10 +315,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (TUI wiring + tests)",
         "scan_agent": "scan-innovation",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke."
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "time_to_ship": "medium (TUI wiring + tests)",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -77,10 +357,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (render-only UI + tests)",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "time_to_ship": "medium (render-only UI + tests)"
       }
     },
     {
@@ -125,8 +405,8 @@
       "relates_to": [],
       "custom_fields": {
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "scan_agent": "scan-innovation",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "opportunity_type": "feature gap"
       }
     },
@@ -171,8 +451,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one batch operation at a time",
         "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "time_to_ship": "incremental - add one batch operation at a time",
         "opportunity_type": "UX improvement"
       }
     },
@@ -217,10 +497,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "user_value": "Reduces regression risk; enables confident refactoring",
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
         "opportunity_type": "reliability",
-        "measurable_impact": "80%+ integration test coverage for CLI commands"
+        "user_value": "Reduces regression risk; enables confident refactoring",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -264,9 +544,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "differentiation": "Unique capability among AI task runners",
+        "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation"
       }
     },
@@ -311,10 +591,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Improves planning accuracy; sets realistic expectations",
         "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation",
-        "measurable_impact": "Estimates within 25% of actual duration after 20 tasks"
+        "user_value": "Improves planning accuracy; sets realistic expectations",
+        "measurable_impact": "Estimates within 25% of actual duration after 20 tasks",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -404,10 +684,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "measurable_impact": "Auto-detects 30%+ of maintenance tasks",
         "opportunity_type": "feature gap",
-        "user_value": "Proactively identifies improvement opportunities; reduces manual scanning"
+        "user_value": "Proactively identifies improvement opportunities; reduces manual scanning",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -450,10 +730,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables remote monitoring; integrates with existing workflows",
         "time_to_ship": "incremental - add one channel at a time",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "integration",
-        "scan_agent": "scan-innovation"
+        "user_value": "Enables remote monitoring; integrates with existing workflows"
       }
     },
     {
@@ -496,9 +776,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "performance",
         "user_value": "Identifies bottlenecks; improves Ralph responsiveness",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "performance",
         "measurable_impact": "50%+ improvement in queue operations for large projects"
       }
     }
