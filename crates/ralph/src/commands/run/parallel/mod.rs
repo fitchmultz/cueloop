@@ -86,19 +86,45 @@ pub(crate) fn run_loop_parallel(
     )?;
 
     let cache_dir = resolved.repo_root.join(".ralph/cache");
-    let ctrlc = crate::runner::ctrlc_state()
-        .map_err(|e| anyhow::anyhow!("Ctrl-C handler initialization failed: {}", e))?;
-
-    if ctrlc.interrupted.load(Ordering::SeqCst) {
-        return Err(runutil::RunAbort::new(
-            runutil::RunAbortReason::Interrupted,
-            "Ctrl+C was pressed before parallel execution started",
-        )
-        .into());
+    // Ctrl-C handler: initialize if not already done. In tests, a previous test may have
+    // registered the handler, so we treat "already registered" as a non-fatal condition
+    // and skip the pre-run interrupt check in that case.
+    let ctrlc_result = crate::runner::ctrlc_state();
+    if let Ok(ctrlc) = ctrlc_result {
+        if ctrlc.interrupted.load(Ordering::SeqCst) {
+            return Err(runutil::RunAbort::new(
+                runutil::RunAbortReason::Interrupted,
+                "Ctrl+C was pressed before parallel execution started",
+            )
+            .into());
+        }
+        ctrlc.interrupted.store(false, Ordering::SeqCst);
     }
-    ctrlc.interrupted.store(false, Ordering::SeqCst);
 
     signal::clear_stop_signal_at_loop_start(&cache_dir);
+
+    // Preflight: validate queue/done before doing any parallel orchestration.
+    // This fails fast on invalid queue state rather than spawning workers that will fail individually.
+    let queue_file =
+        queue::load_queue(&resolved.queue_path).context("Parallel preflight: load queue.json")?;
+    let done = queue::load_queue_or_default(&resolved.done_path)
+        .context("Parallel preflight: load done.json")?;
+    let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
+        None
+    } else {
+        Some(&done)
+    };
+
+    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let warnings = queue::validate_queue_set(
+        &queue_file,
+        done_ref,
+        &resolved.id_prefix,
+        resolved.id_width,
+        max_depth,
+    )
+    .context("Parallel preflight: validate queue/done set")?;
+    queue::log_warnings(&warnings);
 
     let mut settings = resolve_parallel_settings(resolved, &opts)?;
 
@@ -258,7 +284,11 @@ pub(crate) fn run_loop_parallel(
     // Run the main loop inside a closure so we can handle cleanup on any error
     let loop_result: Result<()> = (|| {
         loop {
-            if ctrlc.interrupted.load(Ordering::SeqCst) {
+            // Check for Ctrl-C interrupt (if handler was successfully registered)
+            if ctrlc_result
+                .as_ref()
+                .is_ok_and(|ctrlc| ctrlc.interrupted.load(Ordering::SeqCst))
+            {
                 interrupted = true;
                 log::info!("Ctrl+C detected; stopping parallel run and cleaning up.");
                 break;
@@ -2805,6 +2835,154 @@ mod tests {
             err_str.contains("notes.txt"),
             "expected error to mention notes.txt, got: {}",
             err_str
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn run_loop_parallel_fails_fast_on_invalid_queue_json() -> anyhow::Result<()> {
+        use crate::testsupport::git as git_test;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new()?;
+        git_test::init_repo(temp.path())?;
+
+        std::fs::create_dir_all(temp.path().join(".ralph"))?;
+
+        // Ignore runtime dirs so acquiring locks / touching cache doesn't dirty the repo.
+        std::fs::write(
+            temp.path().join(".gitignore"),
+            ".ralph/lock/\n.ralph/cache/\n",
+        )?;
+        git_test::git_run(temp.path(), &["add", ".gitignore"])?;
+
+        // Invalid queue: missing created_at/updated_at (semantic validation must fail).
+        let queue_path = temp.path().join(".ralph/queue.json");
+        std::fs::write(
+            &queue_path,
+            r#"{"version":1,"tasks":[{"id":"RQ-0001","status":"todo","title":"Test","scope":["file.rs"],"evidence":["obs"],"plan":["step"]}]}"#,
+        )?;
+        git_test::git_run(temp.path(), &["add", ".ralph/queue.json"])?;
+        git_test::git_run(temp.path(), &["commit", "-m", "init"])?;
+
+        let repo_root = temp.path().to_path_buf();
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.clone(),
+            queue_path,
+            done_path: repo_root.join(".ralph/done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let err = run_loop_parallel(
+            &resolved,
+            ParallelRunOptions {
+                max_tasks: 0,
+                workers: 2,
+                agent_overrides: AgentOverrides::default(),
+                force: false,
+                merge_when: ParallelMergeWhen::AsCreated,
+            },
+        )
+        .unwrap_err();
+
+        let err_chain: Vec<String> = err.chain().map(|e| e.to_string()).collect();
+        let full_error = err_chain.join(" | ");
+        assert!(
+            full_error.contains("created_at") || full_error.contains("updated_at"),
+            "expected missing timestamp validation error, got: {}",
+            full_error
+        );
+
+        // Fail-fast proof: state file is not created.
+        let state_path = state::state_file_path(&repo_root);
+        assert!(
+            !state_path.exists(),
+            "state file should not exist on preflight failure: {}",
+            state_path.display()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn run_loop_parallel_fails_fast_on_invalid_done_json() -> anyhow::Result<()> {
+        use crate::testsupport::git as git_test;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new()?;
+        git_test::init_repo(temp.path())?;
+
+        std::fs::create_dir_all(temp.path().join(".ralph"))?;
+
+        std::fs::write(
+            temp.path().join(".gitignore"),
+            ".ralph/lock/\n.ralph/cache/\n",
+        )?;
+        git_test::git_run(temp.path(), &["add", ".gitignore"])?;
+
+        // Valid queue.
+        let queue_path = temp.path().join(".ralph/queue.json");
+        std::fs::write(
+            &queue_path,
+            r#"{"version":1,"tasks":[{"id":"RQ-0001","status":"todo","title":"Test","scope":["file.rs"],"evidence":["obs"],"plan":["step"],"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}]}"#,
+        )?;
+
+        // Invalid done: contains non-terminal status (must be done/rejected only).
+        let done_path = temp.path().join(".ralph/done.json");
+        std::fs::write(
+            &done_path,
+            r#"{"version":1,"tasks":[{"id":"RQ-0002","status":"todo","title":"Bad Done","scope":["file.rs"],"evidence":["obs"],"plan":["step"],"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}]}"#,
+        )?;
+
+        git_test::git_run(
+            temp.path(),
+            &["add", ".ralph/queue.json", ".ralph/done.json"],
+        )?;
+        git_test::git_run(temp.path(), &["commit", "-m", "init"])?;
+
+        let repo_root = temp.path().to_path_buf();
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.clone(),
+            queue_path,
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let err = run_loop_parallel(
+            &resolved,
+            ParallelRunOptions {
+                max_tasks: 0,
+                workers: 2,
+                agent_overrides: AgentOverrides::default(),
+                force: false,
+                merge_when: ParallelMergeWhen::AsCreated,
+            },
+        )
+        .unwrap_err();
+
+        let err_chain: Vec<String> = err.chain().map(|e| e.to_string()).collect();
+        let full_error = err_chain.join(" | ");
+        assert!(
+            full_error.contains("done.json")
+                && full_error.contains("must contain only done/rejected"),
+            "expected done.json terminal-status validation error, got: {}",
+            full_error
+        );
+
+        let state_path = state::state_file_path(&repo_root);
+        assert!(
+            !state_path.exists(),
+            "state file should not exist on preflight failure: {}",
+            state_path.display()
         );
 
         Ok(())

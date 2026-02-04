@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0584",
-      "status": "todo",
-      "title": "Add preflight queue/done validation in parallel loop",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "parallel",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/mod.rs",
-        "crates/ralph/src/commands/run/parallel/worker.rs",
-        "crates/ralph/src/commands/run/mod.rs",
-        "cargo test -p ralph"
-      ],
-      "evidence": [
-        "Path: crates/ralph/src/commands/run/parallel/mod.rs:70-115 (run_loop_parallel has no queue validation step before spawning workers)",
-        "Path: crates/ralph/src/commands/run/parallel/worker.rs:52-68 (select_next_task_locked loads queue but does not validate)",
-        "Path: crates/ralph/src/commands/run/mod.rs:460-475 (run_one_impl validates queue/done before execution)",
-        "Repro: introduce a schema-invalid queue.json then run `ralph run loop --parallel 2`; failures occur per-worker instead of failing fast"
-      ],
-      "plan": [
-        "Validate queue/done once at the start of run_loop_parallel (using load_queue_with_repair_and_validate).",
-        "Abort the parallel run with a clear error if validation fails.",
-        "Add a test that invalid queue.json fails early in parallel mode.",
-        "Verify by running `cargo test -p ralph` and confirming the new test passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-03T20:11:25Z",
-      "updated_at": "2026-02-03T20:11:25Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0585",
       "status": "todo",
       "title": "Fail fast if gh CLI is missing when auto PR/merge is enabled",
