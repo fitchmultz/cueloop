@@ -755,6 +755,53 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0586",
+      "status": "done",
+      "title": "Clean up merge-runner base-sync workspace after use",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "parallel",
+        "reliability"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
+        "crates/ralph/src/commands/run/parallel/cleanup_guard.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:409 (apply_completion_and_collect_bytes creates workspace_root/.base-sync)",
+        "Command: rg -n base-sync -S crates/ralph/src confirms no cleanup site exists",
+        "Repro: run parallel merges repeatedly; .base-sync persists under workspace_root and accumulates state",
+        "Current behavior: base-sync workspace is created at line 409 but never removed after merge completion"
+      ],
+      "plan": [
+        "Decide whether base-sync should be reused or removed after each merge batch.",
+        "If cleanup is desired, add removal in merge_runner or cleanup_guard (after merge results are collected).",
+        "Add a test asserting base-sync cleanup behavior.",
+        "Verify by running `cargo test -p ralph` and confirming the new test passes."
+      ],
+      "notes": [
+        "Task verified: base-sync directory creation confirmed at merge_runner.rs:409",
+        "No existing cleanup logic found in cleanup_guard.rs or merge_runner.rs",
+        "Tests exist for apply_completion_and_collect_bytes but none verify base-sync cleanup",
+        "Added BaseSyncWorkspaceCleanupGuard RAII guard for .base-sync cleanup",
+        "Defense-in-depth validation: checks path name and workspace root prefix",
+        "Cleanup occurs on both success and error paths",
+        "All 14 merge_runner tests pass, CI gate passes"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-03T20:11:25Z",
+      "updated_at": "2026-02-04T02:29:07.978907000Z",
+      "completed_at": "2026-02-04T02:29:07.978907000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

@@ -25,11 +25,59 @@ use crate::contracts::{
 };
 use crate::{completions, git, outpututil, productivity, promptflow, prompts, queue, runner};
 use anyhow::{Context, Result, bail};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::Duration;
+
+/// RAII guard that ensures cleanup of the .base-sync workspace on any exit path.
+///
+/// This guard performs best-effort cleanup of the ephemeral .base-sync directory
+/// when dropped. It validates the path before deletion to prevent accidental
+/// removal of unexpected directories.
+struct BaseSyncWorkspaceCleanupGuard {
+    workspace_root: PathBuf,
+    base_sync_path: PathBuf,
+}
+
+impl BaseSyncWorkspaceCleanupGuard {
+    fn new(workspace_root: &Path, base_sync_path: &Path) -> Self {
+        Self {
+            workspace_root: workspace_root.to_path_buf(),
+            base_sync_path: base_sync_path.to_path_buf(),
+        }
+    }
+}
+
+impl Drop for BaseSyncWorkspaceCleanupGuard {
+    fn drop(&mut self) {
+        // Defense-in-depth: only delete a directory literally named ".base-sync"
+        // that lives under the configured workspace root.
+        let is_base_sync = self
+            .base_sync_path
+            .file_name()
+            .is_some_and(|n| n == std::ffi::OsStr::new(".base-sync"));
+        if !is_base_sync || !self.base_sync_path.starts_with(&self.workspace_root) {
+            log::warn!(
+                "Refusing to remove unexpected base-sync path: {} (workspace_root={})",
+                self.base_sync_path.display(),
+                self.workspace_root.display()
+            );
+            return;
+        }
+
+        match std::fs::remove_dir_all(&self.base_sync_path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => log::warn!(
+                "Failed to remove base-sync workspace {}: {}",
+                self.base_sync_path.display(),
+                err
+            ),
+        }
+    }
+}
 
 /// Work item for the merge runner containing trusted task_id and PR info.
 #[derive(Debug, Clone)]
@@ -407,6 +455,8 @@ fn apply_completion_and_collect_bytes(
     task_id: &str,
 ) -> Result<QueueSyncBytes> {
     let base_sync_path = workspace_root.join(".base-sync");
+    let _base_sync_cleanup = BaseSyncWorkspaceCleanupGuard::new(workspace_root, &base_sync_path);
+
     git::ensure_workspace_exists(&resolved.repo_root, &base_sync_path, base_branch)
         .with_context(|| format!("ensure base-sync workspace at {}", base_sync_path.display()))?;
 
@@ -1096,11 +1146,21 @@ mod tests {
             "done should include completed task"
         );
 
+        // Verify .base-sync directory is cleaned up after return
         let base_sync_path = workspace_dir.path().join(".base-sync");
-        let signal_path = completions::completion_signal_path(&base_sync_path, "RQ-0001")?;
+        assert!(
+            !base_sync_path.exists(),
+            ".base-sync should be cleaned up after apply_completion_and_collect_bytes returns"
+        );
+
+        // Verify the completion signal was removed on the base branch (origin/main).
+        git_test::git_run(author_dir.path(), &["fetch", "origin", "main"])?;
+        git_test::git_run(author_dir.path(), &["checkout", "main"])?;
+        git_test::git_run(author_dir.path(), &["reset", "--hard", "origin/main"])?;
+        let signal_path = completions::completion_signal_path(author_dir.path(), "RQ-0001")?;
         assert!(
             !signal_path.exists(),
-            "completion signal should be removed after apply"
+            "completion signal should be removed from base branch after apply"
         );
 
         Ok(())
@@ -1158,36 +1218,24 @@ mod tests {
             err_msg
         );
 
-        // Verify no mutations occurred in .base-sync
+        // Verify .base-sync directory is cleaned up even when the call errors
         let base_sync_path = workspace_dir.path().join(".base-sync");
-
-        // Queue should still contain the task (not removed)
-        let workspace_queue_path = base_sync_path.join(".ralph").join("queue.json");
-        if workspace_queue_path.exists() {
-            let workspace_queue: QueueFile =
-                serde_json::from_slice(&fs::read(&workspace_queue_path)?)?;
-            assert!(
-                workspace_queue.tasks.iter().any(|t| t.id == "RQ-0001"),
-                "queue in .base-sync should still contain the task (no mutation)"
-            );
-        }
-
-        // Done should not contain the task
-        let workspace_done_path = base_sync_path.join(".ralph").join("done.json");
-        if workspace_done_path.exists() {
-            let workspace_done: QueueFile =
-                serde_json::from_slice(&fs::read(&workspace_done_path)?)?;
-            assert!(
-                !workspace_done.tasks.iter().any(|t| t.id == "RQ-0001"),
-                "done in .base-sync should not contain the task"
-            );
-        }
-
-        // No signal should be synthesized in .base-sync
-        let signal_path = completions::completion_signal_path(&base_sync_path, "RQ-0001")?;
         assert!(
-            !signal_path.exists(),
-            "completion signal should NOT be synthesized in .base-sync when missing"
+            !base_sync_path.exists(),
+            ".base-sync should be cleaned up even when apply_completion_and_collect_bytes errors"
+        );
+
+        // Verify original repo queue/done were not mutated by the failed attempt.
+        let original_queue: QueueFile = serde_json::from_slice(&fs::read(&queue_path)?)?;
+        assert!(
+            original_queue.tasks.iter().any(|t| t.id == "RQ-0001"),
+            "original queue should still contain the task on failure"
+        );
+
+        let original_done: QueueFile = serde_json::from_slice(&fs::read(&done_path)?)?;
+        assert!(
+            !original_done.tasks.iter().any(|t| t.id == "RQ-0001"),
+            "original done should not contain the task on failure"
         );
 
         Ok(())

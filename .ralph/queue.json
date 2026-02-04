@@ -1,42 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0586",
-      "status": "todo",
-      "title": "Clean up merge-runner base-sync workspace after use",
-      "priority": "low",
-      "tags": [
-        "maintenance",
-        "parallel",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
-        "crates/ralph/src/commands/run/parallel/cleanup_guard.rs",
-        "cargo test -p ralph"
-      ],
-      "evidence": [
-        "Path: crates/ralph/src/commands/run/parallel/merge_runner.rs:352-360 (apply_completion_and_collect_bytes creates workspace_root/.base-sync)",
-        "Command: rg -n base-sync -S crates/ralph/src -> merge_runner.rs:358,360,397,1029 (no cleanup site found)",
-        "Repro: run parallel merges repeatedly; .base-sync persists under workspace_root and accumulates state"
-      ],
-      "plan": [
-        "Decide whether base-sync should be reused or removed after each merge batch.",
-        "If cleanup is desired, add removal in merge_runner or cleanup_guard (after merge results are collected).",
-        "Add a test asserting base-sync cleanup behavior.",
-        "Verify by running `cargo test -p ralph` and confirming the new test passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-03T20:11:25Z",
-      "updated_at": "2026-02-03T20:11:25Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    }
-  ]
+  "tasks": []
 }
