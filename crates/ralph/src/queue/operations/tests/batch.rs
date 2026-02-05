@@ -688,7 +688,7 @@ fn resolve_task_ids_errors_on_empty_input() {
 
     assert!(result.is_err());
     let err = result.unwrap_err().to_string();
-    assert!(err.contains("No task IDs provided"));
+    assert!(err.contains("No tasks specified"));
 }
 
 #[test]

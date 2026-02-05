@@ -1766,6 +1766,185 @@ ralph task batch --dry-run status done --tag-filter ready
 ralph task batch --continue-on-error status doing RQ-0001 RQ-0002 RQ-9999
 ```
 
+### `ralph task batch` (Extended Batch Operations)
+
+Perform batch operations on multiple tasks efficiently. Supports atomic-by-default semantics with `--continue-on-error` for partial success, and `--dry-run` for previewing changes.
+
+**Subcommands:**
+
+- `ralph task batch status <STATUS> [TASK_ID]...` - Update status for multiple tasks
+- `ralph task batch field <KEY> <VALUE> [TASK_ID]...` - Set custom field on multiple tasks  
+- `ralph task batch edit <FIELD> <VALUE> [TASK_ID]...` - Edit any field on multiple tasks
+- `ralph task batch delete [TASK_ID]...` - Delete multiple tasks from the active queue
+- `ralph task batch archive [TASK_ID]...` - Archive terminal tasks (Done/Rejected) to done.json
+- `ralph task batch clone [TASK_ID]...` - Clone multiple tasks
+- `ralph task batch split [TASK_ID]...` - Split multiple tasks into child tasks
+- `ralph task batch plan-append [TASK_ID]...` - Append plan items to multiple tasks
+- `ralph task batch plan-prepend [TASK_ID]...` - Prepend plan items to multiple tasks
+
+**Global Batch Flags:**
+
+- `--dry-run`: Preview changes without modifying the queue
+- `--continue-on-error`: Continue processing on individual task failures (default: atomic/all-or-nothing)
+
+**Task Selection:**
+
+Tasks can be selected either by explicit task IDs or by using filters:
+- Explicit IDs: `ralph task batch status doing RQ-0001 RQ-0002 RQ-0003`
+- Tag filter: `ralph task batch status doing --tag-filter rust`
+- Multiple tags: `ralph task batch status doing --tag-filter rust --tag-filter cli`
+
+**Extended Filters:**
+
+- `--tag-filter <TAG>`: Filter by tag (repeatable, OR logic, case-insensitive)
+- `--status-filter <STATUS>`: Filter by status after tag selection (repeatable, OR logic)
+- `--priority-filter <PRIORITY>`: Filter by priority (repeatable, OR logic)
+- `--scope-filter <PATTERN>`: Filter by scope substring (repeatable, OR logic, case-insensitive)
+- `--older-than <WHEN>`: Filter tasks whose updated_at is older than cutoff (e.g., `30d`, `2w`, `2026-01-01`, RFC3339)
+
+**Batch Delete:**
+
+Delete multiple tasks from the active queue:
+
+```bash
+# Delete specific tasks
+ralph task batch delete RQ-0001 RQ-0002
+
+# Delete tasks by tag filter
+ralph task batch delete --tag-filter stale
+
+# Delete old tasks not updated in 30 days
+ralph task batch delete --tag-filter backlog --older-than 30d
+
+# Preview before deleting
+ralph task batch delete --dry-run --tag-filter obsolete
+```
+
+**Batch Archive:**
+
+Archive terminal tasks (Done/Rejected) from active queue to done.json:
+
+```bash
+# Archive specific terminal tasks
+ralph task batch archive RQ-0001 RQ-0002
+
+# Archive all done tasks with a specific tag
+ralph task batch archive --tag-filter done --status-filter done
+
+# Archive old rejected tasks
+ralph task batch archive --status-filter rejected --older-than 7d
+```
+
+**Batch Clone:**
+
+Clone multiple tasks to create new tasks from existing ones:
+
+```bash
+# Clone tasks with a specific tag
+ralph task batch clone --tag-filter template
+
+# Clone with custom status and title prefix
+ralph task batch clone --tag-filter template --status todo --title-prefix "[Sprint] "
+
+# Clone specific tasks
+ralph task batch clone RQ-0001 RQ-0002 --status draft
+```
+
+**Batch Split:**
+
+Split multiple tasks into child tasks:
+
+```bash
+# Split tasks tagged as 'epic' into 3 children each
+ralph task batch split --tag-filter epic --number 3
+
+# Split with plan distribution
+ralph task batch split --tag-filter epic --number 3 --distribute-plan
+
+# Split specific tasks with custom status
+ralph task batch split RQ-0001 RQ-0002 --number 2 --status todo
+```
+
+**Batch Plan Operations:**
+
+Append or prepend plan items to multiple tasks:
+
+```bash
+# Append plan items to tasks
+ralph task batch plan-append --tag-filter rust --plan-item "Run make ci" --plan-item "Update docs"
+
+# Prepend plan items to specific task
+ralph task batch plan-prepend RQ-0001 --plan-item "Confirm repro" --plan-item "Check related issues"
+
+# Add steps to all todo tasks
+ralph task batch plan-append --status-filter todo --plan-item "Run tests before committing"
+```
+
+**Combined Filter Examples:**
+
+```bash
+# Complex filter: high priority rust tasks not updated in 2 weeks
+ralph task batch status doing \\
+  --tag-filter rust \\
+  --priority-filter high \\
+  --older-than 14d
+
+# Scope-based filtering
+ralph task batch field priority low \\
+  --scope-filter "legacy" \\
+  --status-filter todo
+
+# Multiple filters combined
+ralph task batch archive \\
+  --tag-filter maintenance \\
+  --status-filter done \\
+  --older-than 30d
+```
+
+**Atomic vs Continue-on-Error:**
+
+```bash
+# Atomic mode (default) - fails if any task doesn't exist
+ralph task batch status doing RQ-0001 RQ-0002 RQ-0003
+
+# Continue on error - updates valid tasks, reports failures
+ralph task batch --continue-on-error status doing RQ-0001 RQ-0002 RQ-9999
+```
+
+**Examples:**
+
+```bash
+# Update status for multiple tasks by ID
+ralph task batch status doing RQ-0001 RQ-0002 RQ-0003
+
+# Update status for all tasks with a specific tag
+ralph task batch status doing --tag-filter rust
+
+# Set custom field on multiple tasks
+ralph task batch field priority high RQ-0001 RQ-0002
+
+# Edit priority for all urgent tasks
+ralph task batch edit priority high --tag-filter urgent
+
+# Preview changes without applying
+ralph task batch --dry-run status done --tag-filter ready
+
+# Continue on error (partial success allowed)
+ralph task batch --continue-on-error status doing RQ-0001 RQ-0002 RQ-9999
+
+# Delete tasks matching filter
+ralph task batch delete --tag-filter obsolete --older-than 30d
+
+# Clone template tasks for new sprint
+ralph task batch clone --tag-filter template --status todo --title-prefix "[Sprint 5] "
+
+# Split epics into smaller tasks
+ralph task batch split --tag-filter epic --number 3 --distribute-plan
+
+# Add verification step to all rust tasks
+ralph task batch plan-append --tag-filter rust --plan-item "Run cargo clippy"
+```
+
 ### ralph task update
 
 Update existing task fields based on current repository state.

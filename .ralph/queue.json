@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0599",
-      "status": "todo",
-      "title": "Add batch task operations for efficient queue management",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "cli",
-        "ux",
-        "productivity"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/task/mod.rs",
-        "docs/cli.md"
-      ],
-      "evidence": [
-        "Current CLI requires individual task operations: `ralph task status doing RQ-0001`",
-        "No way to bulk-update multiple tasks at once via CLI",
-        "TUI supports some batch operations but CLI parity is incomplete",
-        "Users managing large queues need efficient bulk operations",
-        "`ralph task batch` exists but is limited to status/field edits only"
-      ],
-      "plan": [
-        "Extend `ralph task batch` with comprehensive operations: delete, archive, clone, split",
-        "Add filter-based batch operations: `--tag-filter`, `--status-filter`, `--scope-filter`",
-        "Implement `ralph task batch delete --status rejected --older-than 30d`",
-        "Add `ralph task batch clone --tag template` to clone all template tasks",
-        "Support batch plan updates: `ralph task batch edit plan --append 'New step'`",
-        "Add dry-run mode for all batch operations to preview changes",
-        "Create batch operation confirmation with summary: 'This will affect N tasks'",
-        "Verify by running batch operations with --dry-run and confirming expected changes"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-04T12:00:00Z",
-      "updated_at": "2026-02-04T12:00:00Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
-        "opportunity_type": "UX improvement",
-        "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one batch operation at a time"
-      }
-    },
-    {
       "id": "RQ-0601",
       "status": "todo",
       "title": "Add integration testing framework for Ralph CLI",
@@ -88,10 +42,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Reduces regression risk; enables confident refactoring",
-        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "opportunity_type": "reliability"
+        "scan_agent": "scan-innovation",
+        "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
     {
@@ -135,10 +89,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "opportunity_type": "feature gap",
         "differentiation": "Unique capability among AI task runners",
-        "user_value": "Enables ecosystem growth; custom integrations without forks"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -182,9 +136,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
         "measurable_impact": "Estimates within 25% of actual duration after 20 tasks",
-        "opportunity_type": "feature gap",
         "user_value": "Improves planning accuracy; sets realistic expectations"
       }
     },
@@ -230,8 +184,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "measurable_impact": "New user success rate >90% within 30 minutes",
         "user_value": "Reduces time-to-productivity from hours to minutes",
+        "measurable_impact": "New user success rate >90% within 30 minutes",
         "opportunity_type": "UX improvement"
       }
     },
@@ -276,8 +230,8 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Proactively identifies improvement opportunities; reduces manual scanning",
-        "opportunity_type": "feature gap",
         "measurable_impact": "Auto-detects 30%+ of maintenance tasks",
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation"
       }
     },
@@ -322,9 +276,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Enables remote monitoring; integrates with existing workflows",
+        "opportunity_type": "integration",
         "time_to_ship": "incremental - add one channel at a time",
-        "opportunity_type": "integration"
+        "user_value": "Enables remote monitoring; integrates with existing workflows"
       }
     },
     {
@@ -367,9 +321,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "50%+ improvement in queue operations for large projects",
-        "opportunity_type": "performance",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "performance",
+        "measurable_impact": "50%+ improvement in queue operations for large projects",
         "user_value": "Identifies bottlenecks; improves Ralph responsiveness"
       }
     }

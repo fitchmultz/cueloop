@@ -488,7 +488,10 @@ mod tests {
                 Some(crate::cli::task::TaskCommand::Batch(args)) => match args.operation {
                     crate::cli::task::args::BatchOperation::Status(status_args) => {
                         assert_eq!(status_args.status, TaskStatusArg::Doing);
-                        assert_eq!(status_args.task_ids, vec!["RQ-0001", "RQ-0002", "RQ-0003"]);
+                        assert_eq!(
+                            status_args.select.task_ids,
+                            vec!["RQ-0001", "RQ-0002", "RQ-0003"]
+                        );
                         assert!(!args.dry_run);
                         assert!(!args.continue_on_error);
                     }
@@ -519,8 +522,8 @@ mod tests {
                 Some(crate::cli::task::TaskCommand::Batch(args)) => match args.operation {
                     crate::cli::task::args::BatchOperation::Status(status_args) => {
                         assert_eq!(status_args.status, TaskStatusArg::Doing);
-                        assert!(status_args.task_ids.is_empty());
-                        assert_eq!(status_args.tag_filter, vec!["rust", "cli"]);
+                        assert!(status_args.select.task_ids.is_empty());
+                        assert_eq!(status_args.select.tag_filter, vec!["rust", "cli"]);
                     }
                     _ => panic!("expected batch status operation"),
                 },
@@ -542,7 +545,7 @@ mod tests {
                     crate::cli::task::args::BatchOperation::Field(field_args) => {
                         assert_eq!(field_args.key, "severity");
                         assert_eq!(field_args.value, "high");
-                        assert_eq!(field_args.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                        assert_eq!(field_args.select.task_ids, vec!["RQ-0001", "RQ-0002"]);
                     }
                     _ => panic!("expected batch field operation"),
                 },
@@ -575,7 +578,7 @@ mod tests {
                         crate::cli::task::args::BatchOperation::Edit(edit_args) => {
                             assert_eq!(edit_args.field, TaskEditFieldArg::Priority);
                             assert_eq!(edit_args.value, "high");
-                            assert_eq!(edit_args.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                            assert_eq!(edit_args.select.task_ids, vec!["RQ-0001", "RQ-0002"]);
                         }
                         _ => panic!("expected batch edit operation"),
                     }

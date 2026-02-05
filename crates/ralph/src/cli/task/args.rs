@@ -18,7 +18,7 @@ use clap::{Args, Subcommand, ValueEnum};
 
 use crate::agent;
 use crate::cli::queue::QueueShowFormat;
-use crate::contracts::TaskStatus;
+use crate::contracts::{TaskPriority, TaskStatus};
 use crate::queue::TaskEditKey;
 
 /// Batching mode for grouping related files in build-refactor.
@@ -34,6 +34,56 @@ pub enum BatchMode {
     Aggressive,
 }
 
+/// Task priority argument for CLI.
+#[derive(clap::ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+#[clap(rename_all = "snake_case")]
+pub enum TaskPriorityArg {
+    Critical,
+    High,
+    Medium,
+    Low,
+}
+
+impl From<TaskPriorityArg> for TaskPriority {
+    fn from(value: TaskPriorityArg) -> Self {
+        match value {
+            TaskPriorityArg::Critical => TaskPriority::Critical,
+            TaskPriorityArg::High => TaskPriority::High,
+            TaskPriorityArg::Medium => TaskPriority::Medium,
+            TaskPriorityArg::Low => TaskPriority::Low,
+        }
+    }
+}
+
+/// Shared task selection + filters for batch operations.
+#[derive(Args, Clone, Debug, Default)]
+pub struct BatchSelectArgs {
+    /// Task IDs to target (conflicts with --tag-filter).
+    #[arg(value_name = "TASK_ID...", conflicts_with = "tag_filter")]
+    pub task_ids: Vec<String>,
+
+    /// Filter tasks by tag (case-insensitive, repeatable; OR logic).
+    #[arg(long, value_name = "TAG", conflicts_with = "task_ids")]
+    pub tag_filter: Vec<String>,
+
+    /// Filter selected tasks by status (repeatable; OR logic).
+    #[arg(long, value_enum, value_name = "STATUS")]
+    pub status_filter: Vec<TaskStatusArg>,
+
+    /// Filter selected tasks by priority (repeatable; OR logic).
+    #[arg(long, value_enum, value_name = "PRIORITY")]
+    pub priority_filter: Vec<TaskPriorityArg>,
+
+    /// Filter selected tasks by scope substring (repeatable; OR logic; case-insensitive).
+    #[arg(long, value_name = "PATTERN")]
+    pub scope_filter: Vec<String>,
+
+    /// Filter selected tasks whose updated_at is older than this cutoff.
+    /// Supported forms: "7d", "1w", "2026-01-01", RFC3339
+    #[arg(long, value_name = "WHEN")]
+    pub older_than: Option<String>,
+}
+
 /// Batch operation type.
 #[derive(Subcommand)]
 pub enum BatchOperation {
@@ -43,6 +93,26 @@ pub enum BatchOperation {
     Field(BatchFieldArgs),
     /// Edit any field on multiple tasks.
     Edit(BatchEditArgs),
+
+    /// Delete multiple tasks from the active queue.
+    Delete(BatchDeleteArgs),
+
+    /// Archive terminal tasks (Done/Rejected) from active queue into done archive.
+    Archive(BatchArchiveArgs),
+
+    /// Clone multiple tasks.
+    Clone(BatchCloneArgs),
+
+    /// Split multiple tasks into child tasks.
+    Split(BatchSplitArgs),
+
+    /// Append plan items to multiple tasks.
+    #[command(name = "plan-append")]
+    PlanAppend(BatchPlanAppendArgs),
+
+    /// Prepend plan items to multiple tasks.
+    #[command(name = "plan-prepend")]
+    PlanPrepend(BatchPlanPrependArgs),
 }
 
 /// Arguments for batch status operation.
@@ -56,13 +126,8 @@ pub struct BatchStatusArgs {
     #[arg(long)]
     pub note: Option<String>,
 
-    /// Task IDs to update (mutually exclusive with --tag-filter).
-    #[arg(value_name = "TASK_ID...")]
-    pub task_ids: Vec<String>,
-
-    /// Filter tasks by tag (case-insensitive, repeatable).
-    #[arg(long, value_name = "TAG")]
-    pub tag_filter: Vec<String>,
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
 }
 
 /// Arguments for batch field operation.
@@ -74,13 +139,8 @@ pub struct BatchFieldArgs {
     /// Custom field value.
     pub value: String,
 
-    /// Task IDs to update (mutually exclusive with --tag-filter).
-    #[arg(value_name = "TASK_ID...")]
-    pub task_ids: Vec<String>,
-
-    /// Filter tasks by tag (case-insensitive, repeatable).
-    #[arg(long, value_name = "TAG")]
-    pub tag_filter: Vec<String>,
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
 }
 
 /// Arguments for batch edit operation.
@@ -93,13 +153,82 @@ pub struct BatchEditArgs {
     /// New field value.
     pub value: String,
 
-    /// Task IDs to update (mutually exclusive with --tag-filter).
-    #[arg(value_name = "TASK_ID...")]
-    pub task_ids: Vec<String>,
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
+}
 
-    /// Filter tasks by tag (case-insensitive, repeatable).
-    #[arg(long, value_name = "TAG")]
-    pub tag_filter: Vec<String>,
+/// Arguments for batch delete operation.
+#[derive(Args)]
+pub struct BatchDeleteArgs {
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
+}
+
+/// Arguments for batch archive operation.
+#[derive(Args)]
+pub struct BatchArchiveArgs {
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
+}
+
+/// Arguments for batch clone operation.
+#[derive(Args)]
+pub struct BatchCloneArgs {
+    /// Status for the cloned tasks (default: draft).
+    #[arg(long, value_enum)]
+    pub status: Option<TaskStatusArg>,
+
+    /// Prefix to add to the cloned task titles.
+    #[arg(long)]
+    pub title_prefix: Option<String>,
+
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
+}
+
+/// Arguments for batch split operation.
+#[derive(Args)]
+pub struct BatchSplitArgs {
+    /// Number of child tasks to create per source task (default: 2, minimum: 2).
+    #[arg(short = 'n', long, default_value = "2")]
+    pub number: usize,
+
+    /// Status for child tasks (default: draft).
+    #[arg(long, value_enum)]
+    pub status: Option<TaskStatusArg>,
+
+    /// Prefix to add to child task titles.
+    #[arg(long)]
+    pub title_prefix: Option<String>,
+
+    /// Distribute plan items across child tasks.
+    #[arg(long)]
+    pub distribute_plan: bool,
+
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
+}
+
+/// Arguments for batch plan-append operation.
+#[derive(Args)]
+pub struct BatchPlanAppendArgs {
+    /// Plan items to append (repeatable).
+    #[arg(long = "plan-item", value_name = "ITEM", required = true)]
+    pub plan_items: Vec<String>,
+
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
+}
+
+/// Arguments for batch plan-prepend operation.
+#[derive(Args)]
+pub struct BatchPlanPrependArgs {
+    /// Plan items to prepend (repeatable).
+    #[arg(long = "plan-item", value_name = "ITEM", required = true)]
+    pub plan_items: Vec<String>,
+
+    #[command(flatten)]
+    pub select: BatchSelectArgs,
 }
 
 /// Arguments for the batch command.
@@ -774,7 +903,7 @@ pub enum TaskCommand {
 
     /// Perform batch operations on multiple tasks efficiently.
     #[command(
-        after_long_help = "Examples:\n ralph task batch status doing RQ-0001 RQ-0002 RQ-0003\n ralph task batch status done --tag-filter ready\n ralph task batch field priority high --tag-filter urgent\n ralph task batch edit tags \"reviewed\" --tag-filter rust\n ralph task batch --dry-run status doing --tag-filter cli\n ralph task batch --continue-on-error status doing RQ-0001 RQ-0002 RQ-9999"
+        after_long_help = "Examples:\n ralph task batch status doing RQ-0001 RQ-0002 RQ-0003\n ralph task batch status done --tag-filter ready\n ralph task batch field priority high --tag-filter urgent\n ralph task batch edit tags \"reviewed\" --tag-filter rust\n ralph task batch --dry-run status doing --tag-filter cli\n ralph task batch --continue-on-error status doing RQ-0001 RQ-0002 RQ-9999\n ralph task batch delete RQ-0001 RQ-0002\n ralph task batch delete --tag-filter stale --older-than 30d\n ralph task batch archive --tag-filter done --status-filter done\n ralph task batch clone --tag-filter template --status todo --title-prefix \"[Sprint] \"\n ralph task batch split --tag-filter epic --number 3 --distribute-plan\n ralph task batch plan-append --tag-filter rust --plan-item \"Run make ci\"\n ralph task batch plan-prepend RQ-0001 --plan-item \"Confirm repro\""
     )]
     Batch(TaskBatchArgs),
 
