@@ -239,11 +239,21 @@
           "type": "string"
         },
         "custom_fields": {
-          "description": "Custom user-defined fields (key-value pairs for extensibility).",
+          "description": "Custom user-defined fields (key-value pairs for extensibility). Values may be written as string/number/boolean; Ralph coerces them to strings when loading.",
           "default": {},
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
           }
         },
         "depends_on": {

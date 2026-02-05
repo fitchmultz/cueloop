@@ -1302,8 +1302,8 @@
       "custom_fields": {
         "opportunity_type": "reliability",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (concurrency + tests)",
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
+        "time_to_ship": "medium (concurrency + tests)"
       }
     },
     {
@@ -1346,9 +1346,9 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (metadata + reconciliation + tests)"
+        "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (format + fixes + tests)",
         "scan_agent": "scan-innovation",
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "user_value": "Fewer context switches: jump from task → code in one keystroke.",
-        "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (TUI wiring + tests)"
+        "time_to_ship": "medium (TUI wiring + tests)",
+        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "time_to_ship": "medium (render-only UI + tests)",
-        "scan_agent": "scan-innovation",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "feature gap",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "feature gap"
       }
     },
     {
@@ -2108,8 +2108,8 @@
       "custom_fields": {
         "opportunity_type": "UX improvement",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one batch operation at a time",
-        "user_value": "Reduces queue maintenance time by 80% for large projects"
+        "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Reduces regression risk; enables confident refactoring",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "opportunity_type": "reliability",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Reduces regression risk; enables confident refactoring",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -2231,9 +2231,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "feature gap",
         "differentiation": "Unique capability among AI task runners",
+        "scan_agent": "scan-innovation",
         "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
@@ -2412,6 +2412,78 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance"
       }
+    },
+    {
+      "id": "RQ-0631",
+      "status": "done",
+      "title": "Fix queue validation failure when custom_fields contains numeric values",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "queue",
+        "validation",
+        "custom_fields",
+        "json",
+        "prompts",
+        "serde",
+        "task-update"
+      ],
+      "scope": [
+        "crates/ralph/assets/prompts/task_updater.md",
+        "crates/ralph/assets/prompts/task_builder.md",
+        "crates/ralph/src/commands/task/update.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/constants.rs",
+        "crates/ralph/src/contracts/task.rs",
+        "crates/ralph/src/contracts/queue.rs",
+        "crates/ralph/src/jsonc.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/validation/tests.rs",
+        "schemas/queue.schema.json",
+        "docs/queue-and-tasks.md",
+        "docs/cli.md",
+        "docs/tui-task-management.md",
+        "ralph queue validate",
+        "ralph task update RQ-0631",
+        "ralph run one --update-task",
+        "make ci"
+      ],
+      "evidence": [
+        "Task contract defines `custom_fields: HashMap<String, String>` (crates/ralph/src/contracts/task.rs), so non-string JSON values will fail queue parsing during `jsonc::parse_jsonc::<QueueFile>` before semantic validation runs (crates/ralph/src/jsonc.rs, crates/ralph/src/queue.rs).",
+        "Queue JSON repair (`queue::load_queue_with_repair`) addresses syntax issues (quotes/trailing commas) but cannot fix type mismatches like numeric `custom_fields` because deserialization still requires strings (crates/ralph/src/queue.rs).",
+        "Queue schema defines `custom_fields` as an object with `additionalProperties.type = string` (schemas/queue.schema.json).",
+        "Docs define `custom_fields` as a map of strings (docs/queue-and-tasks.md) and CLI/TUI editing formats as `key=value` string pairs (docs/cli.md, docs/tui-task-management.md).",
+        "Task Builder and Task Updater prompts do not currently state that `custom_fields` values must be quoted JSON strings (crates/ralph/assets/prompts/task_builder.md, crates/ralph/assets/prompts/task_updater.md).",
+        "`task update` creates a queue backup and validates after the runner finishes, but if post-update parsing/validation fails it returns an error and leaves the invalid queue file on disk (backup path is only logged) (crates/ralph/src/commands/task/update.rs).",
+        "Run loop aborts after 50 consecutive failures with a generic systemic-issue message (crates/ralph/src/constants.rs, crates/ralph/src/commands/run/mod.rs), which can mask a repeated queue parse/validate failure if the queue is left invalid."
+      ],
+      "plan": [
+        "Reproduce with a regression test/fixture: create a queue entry containing `\"custom_fields\": {\"guide_line_count\": 1411}` and assert `ralph queue validate` (or `queue::load_queue`) fails today due to a deserialization type mismatch (not semantic validation).",
+        "Decide contract (recommended): accept JSON scalars for `custom_fields` on read (string/number/bool) by coercing to strings, while keeping `Task.custom_fields` as `HashMap<String, String>` for CLI/TUI compatibility; reject arrays/objects/null with a clear error.",
+        "Implement custom deserialization for `Task.custom_fields` to coerce numbers/bools to strings and emit a descriptive error for unsupported value types; add unit tests covering string/number/bool success and array/object/null failure cases.",
+        "Update schema + docs to match the chosen contract: either broaden `schemas/queue.schema.json` (and docs) to allow numeric/bool values, or explicitly document that numeric/bool values are accepted but coerced to strings on load and will be serialized as strings on write.",
+        "Update `crates/ralph/assets/prompts/task_builder.md` and `crates/ralph/assets/prompts/task_updater.md` with an explicit rule + example showing `custom_fields` values as quoted JSON strings (e.g., `{\"guide_line_count\": \"1411\"}`) to reduce invalid agent writes.",
+        "Add a safety net to `task update`: if post-run queue parse/validation fails, automatically restore the pre-run backup so the queue is never left in an invalid state (prevents run loop from repeatedly failing and hitting the 50-failure abort).",
+        "Run `make ci`."
+      ],
+      "notes": [
+        "This failure is a JSON decoding/contract mismatch (non-string value into `HashMap<String, String>`), not a semantic validator error; either accept scalar values during deserialization (coerce to strings) or ensure task update always rolls back to a valid queue on failure.",
+        "Queue JSON repair currently focuses on syntax repairs; it does not address type mismatches like numeric `custom_fields` values.",
+        "Accept custom_fields scalar values (string/number/bool) by coercing them to strings on load; reject null/arrays/objects with clear errors",
+        "Harden task update: after runner modifies queue, auto-restore from backup if parse/validation/save fails so the run loop can’t get stuck on a corrupted queue",
+        "Update schema/docs/prompts to reflect coercion behavior and recommend quoting custom_fields values",
+        "Add regression tests for coercion + failure modes and queue normalization"
+      ],
+      "request": "If a task in queue.json has values for a key set as numbers, e.g. \"custom_fields.guide_line_count\": 1411, the queue does not pass validation and breaks the ralph run loop after the task update phase. Either allow numbers or update the task build prompt to enforce strings instead of numbers in the JSON. Error: Run loop aborted after 50 consecutive task failures. This usually indicates a systemic issue (e.g., repo dirty, runner misconfiguration, or interrupt flag stuck). Check logs above for root cause.",
+      "created_at": "2026-02-05T18:27:48Z",
+      "updated_at": "2026-02-05T22:44:58.948082000Z",
+      "completed_at": "2026-02-05T22:44:58.948082000Z",
+      "started_at": "2026-02-05T21:45:00.567264000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
     }
   ]
 }

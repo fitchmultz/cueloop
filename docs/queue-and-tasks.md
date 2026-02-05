@@ -38,6 +38,7 @@ Common optional fields:
 - `relates_to` (list of task IDs, defaults to empty): Tasks that this task relates to (loose coupling, no execution constraint).
 - `duplicates` (string or null): Task ID that this task duplicates.
 - `custom_fields` (map of strings, defaults to empty).
+  - **Note**: The queue loader accepts string/number/boolean values and coerces them to strings (in memory, and on subsequent saves). When manually editing `.ralph/queue.json`, values should still be quoted strings for consistency.
 
 Per-task agent overrides:
 - `agent.runner`: `codex`, `opencode`, `gemini`, `claude`, or `cursor`.

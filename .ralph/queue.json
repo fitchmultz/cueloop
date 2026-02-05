@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0631",
-      "status": "todo",
-      "title": "Fix queue validation failure when custom_fields contains numeric values",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "queue",
-        "validation",
-        "custom_fields",
-        "json"
-      ],
-      "scope": [
-        "crates/ralph/assets/prompts/task_builder.md",
-        "crates/ralph/src/contracts/task.rs",
-        "schemas/queue.schema.json",
-        "docs/queue-and-tasks.md"
-      ],
-      "evidence": [
-        "Task struct custom_fields is defined as HashMap<String, String> in crates/ralph/src/contracts/task.rs, which only accepts string values.",
-        "Queue schema defines custom_fields with additionalProperties: { type: string } in schemas/queue.schema.json.",
-        "When custom_fields contains numeric values like \"guide_line_count\": 1411, queue validation fails and breaks the ralph run loop after task update phase.",
-        "Error message: 'Run loop aborted after 50 consecutive task failures' caused by systemic validation issue.",
-        "Task builder prompt at crates/ralph/assets/prompts/task_builder.md does not explicitly enforce string-only values for custom_fields."
-      ],
-      "plan": [
-        "Update task_builder.md prompt to explicitly require all custom_fields values to be strings (not numbers, booleans, or other types).",
-        "Add JSON safety example in task_builder.md showing correct custom_fields format: all values must be quoted strings.",
-        "Verify the fix by checking that custom_fields with numeric values like 1411 are written as \"1411\" in queue.json.",
-        "Run 'make ci' to ensure all tests pass and queue validation works correctly with string-only custom_fields values."
-      ],
-      "notes": [],
-      "request": "If a task in queue.json has values for a key set as numbers, e.g. \"custom_fields.guide_line_count\": 1411, the queue does not pass validation and breaks the ralph run loop after the task update phase. Either allow numbers or update the task build prompt to enforce strings instead of numbers in the JSON. Error: Run loop aborted after 50 consecutive task failures. This usually indicates a systemic issue (e.g., repo dirty, runner misconfiguration, or interrupt flag stuck). Check logs above for root cause.",
-      "created_at": "2026-02-05T18:27:48Z",
-      "updated_at": "2026-02-05T18:27:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0633",
       "status": "todo",
       "title": "Make LFS health checks fail loud (stop swallowing git/lfs errors)",

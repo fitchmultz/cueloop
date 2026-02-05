@@ -805,6 +805,37 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn load_queue_accepts_scalar_custom_fields_and_save_normalizes_to_strings() -> Result<()> {
+        let temp = TempDir::new()?;
+        let queue_path = temp.path().join("queue.json");
+
+        // Write queue with numeric and boolean custom_fields values
+        std::fs::write(
+            &queue_path,
+            r#"{"version":1,"tasks":[{"id":"RQ-0001","title":"t","created_at":"2026-01-18T00:00:00Z","updated_at":"2026-01-18T00:00:00Z","custom_fields":{"n":1411,"b":false}}]}"#,
+        )?;
+
+        // Load queue - should accept numeric/boolean values and coerce to strings
+        let queue = crate::queue::load_queue(&queue_path)?;
+        assert_eq!(
+            queue.tasks[0].custom_fields.get("n").map(String::as_str),
+            Some("1411")
+        );
+        assert_eq!(
+            queue.tasks[0].custom_fields.get("b").map(String::as_str),
+            Some("false")
+        );
+
+        // Save queue - should serialize as strings
+        crate::queue::save_queue(&queue_path, &queue)?;
+        let rendered = std::fs::read_to_string(&queue_path)?;
+        assert!(rendered.contains("\"n\": \"1411\""));
+        assert!(rendered.contains("\"b\": \"false\""));
+
+        Ok(())
+    }
+
     // Tests for load_queue_with_repair_and_validate (RQ-0502)
 
     #[test]

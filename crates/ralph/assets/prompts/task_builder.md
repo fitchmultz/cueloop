@@ -40,7 +40,13 @@ Optional hint scope (may be empty):
   - `request` (non-empty; original user request)
   - `created_at` (non-empty; current UTC RFC3339 time)
   - `updated_at` (non-empty; current UTC RFC3339 time)
-- Optional keys: `notes`, `agent`, `completed_at`, `depends_on`
+- Optional keys: `notes`, `agent`, `completed_at`, `depends_on`, `custom_fields`
+- **CRITICAL**: `custom_fields` values SHOULD be JSON strings for consistency. (The queue loader accepts string/number/boolean and coerces them to strings on load.)
+  ```json
+  "custom_fields": { "guide_line_count": "1411", "enabled": "true" }
+  // Avoid:  "custom_fields": { "guide_line_count": 1411 }
+  // Prefer: "custom_fields": { "guide_line_count": "1411" }
+  ```
 
 ## PRIORITY ASSIGNMENT GUIDANCE
 - `critical`: Security vulnerabilities, data loss risks, blocking CI/CD, production outages

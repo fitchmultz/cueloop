@@ -38,6 +38,12 @@ For the specified task:
 - agent (preserve)
 - completed_at (preserve)
 - custom_fields (preserve but may add more)
+  - **CRITICAL**: When adding custom_fields, values SHOULD be JSON strings for consistency. (The queue loader accepts string/number/boolean and coerces them to strings on load.)
+    ```json
+    "custom_fields": { "guide_line_count": "1411", "enabled": "true" }
+    // Avoid:  "guide_line_count": 1411
+    // Prefer: "guide_line_count": "1411"
+    ```
 
 ## UPDATED_AT TIMESTAMP
 - Always set `updated_at` to current UTC RFC3339 time when modifying the task.

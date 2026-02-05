@@ -24,9 +24,10 @@
 
 use super::{TaskUpdateSettings, compare_task_fields, resolve_task_update_settings};
 use crate::commands::run::PhaseType;
-use crate::contracts::ProjectType;
-use crate::{config, prompts, queue, runner, runutil};
+use crate::contracts::{ProjectType, QueueFile};
+use crate::{config, fsutil, prompts, queue, runner, runutil};
 use anyhow::{Context, Result, anyhow, bail};
+use std::path::Path;
 
 pub fn update_task(
     resolved: &config::Resolved,
@@ -65,6 +66,111 @@ pub fn update_all_tasks(resolved: &config::Resolved, settings: &TaskUpdateSettin
     }
 
     Ok(())
+}
+
+/// Restore queue file from backup.
+/// Returns Ok(()) on successful restore, Err otherwise.
+fn restore_queue_from_backup(queue_path: &Path, backup_path: &Path) -> Result<()> {
+    let bytes = std::fs::read(backup_path)
+        .with_context(|| format!("read queue backup {}", backup_path.display()))?;
+    fsutil::write_atomic(queue_path, &bytes)
+        .with_context(|| format!("restore queue from backup {}", backup_path.display()))?;
+    Ok(())
+}
+
+/// Load, validate, and save queue after task update with automatic backup restoration on failure.
+///
+/// This function attempts to:
+/// 1. Load the queue after the runner has modified it
+/// 2. Validate the queue against semantic rules
+/// 3. Save the normalized queue back to disk
+///
+/// If any of these steps fail, the original queue is automatically restored from backup
+/// and the error is returned with context about the restoration.
+fn load_validate_and_save_queue_after_update(
+    resolved: &config::Resolved,
+    backup_path: &Path,
+    max_depth: u8,
+) -> Result<QueueFile> {
+    // Step 1: Load queue after update (with repair for common JSON errors)
+    let after = queue::load_queue_with_repair(&resolved.queue_path)
+        .with_context(|| "parse queue after task update")
+        .or_else(
+            |err| match restore_queue_from_backup(&resolved.queue_path, backup_path) {
+                Ok(()) => Err(err).with_context(|| {
+                    format!(
+                        "queue parse failed after task update; restored queue from backup {}",
+                        backup_path.display()
+                    )
+                }),
+                Err(restore_err) => Err(err).with_context(|| {
+                    format!(
+                        "queue parse failed after task update AND restore failed (backup {}): {:#}",
+                        backup_path.display(),
+                        restore_err
+                    )
+                }),
+            },
+        )?;
+
+    // Step 2: Prepare done file reference for validation
+    let done_after = queue::load_queue_or_default(&resolved.done_path)
+        .with_context(|| format!("read done {}", resolved.done_path.display()))?;
+    let done_after_ref = if done_after.tasks.is_empty() && !resolved.done_path.exists() {
+        None
+    } else {
+        Some(&done_after)
+    };
+
+    // Step 3: Validate queue set (semantic validation)
+    queue::validate_queue_set(
+        &after,
+        done_after_ref,
+        &resolved.id_prefix,
+        resolved.id_width,
+        max_depth,
+    )
+    .context("validate queue set after task update")
+    .or_else(|err| {
+        match restore_queue_from_backup(&resolved.queue_path, backup_path) {
+            Ok(()) => Err(err).with_context(|| {
+                format!(
+                    "queue validation failed after task update; restored queue from backup {}",
+                    backup_path.display()
+                )
+            }),
+            Err(restore_err) => Err(err).with_context(|| {
+                format!(
+                    "queue validation failed after task update AND restore failed (backup {}): {:#}",
+                    backup_path.display(),
+                    restore_err
+                )
+            }),
+        }
+    })?;
+
+    // Step 4: Save the validated queue
+    queue::save_queue(&resolved.queue_path, &after)
+        .context("save queue after task update")
+        .or_else(
+            |err| match restore_queue_from_backup(&resolved.queue_path, backup_path) {
+                Ok(()) => Err(err).with_context(|| {
+                    format!(
+                        "queue save failed after task update; restored queue from backup {}",
+                        backup_path.display()
+                    )
+                }),
+                Err(restore_err) => Err(err).with_context(|| {
+                    format!(
+                        "queue save failed after task update AND restore failed (backup {}): {:#}",
+                        backup_path.display(),
+                        restore_err
+                    )
+                }),
+            },
+        )?;
+
+    Ok(after)
 }
 
 fn update_task_impl(
@@ -210,43 +316,12 @@ fn update_task_impl(
         },
     )?;
 
-    // Load queue after update, with repair for common JSON errors
-    let after = match queue::load_queue_with_repair(&resolved.queue_path) {
-        Ok(queue) => queue,
-        Err(err) => {
-            log::error!(
-                "Failed to parse queue after task update. Backup available at: {}",
-                backup_path.display()
-            );
-            log::error!(
-                "To restore from backup, copy the backup file to: {}",
-                resolved.queue_path.display()
-            );
-            return Err(err).with_context(|| {
-                format!(
-                    "task update for {}: queue file may be corrupted. Backup: {}",
-                    task_id,
-                    backup_path.display()
-                )
-            });
-        }
-    };
+    // Load, validate, and save queue after update with automatic backup restoration on failure
+    let after = load_validate_and_save_queue_after_update(resolved, &backup_path, max_depth)?;
 
+    // Load done_after again since it may have been modified during update
     let done_after = queue::load_queue_or_default(&resolved.done_path)
         .with_context(|| format!("read done {}", resolved.done_path.display()))?;
-    let done_after_ref = if done_after.tasks.is_empty() && !resolved.done_path.exists() {
-        None
-    } else {
-        Some(&done_after)
-    };
-    queue::validate_queue_set(
-        &after,
-        done_after_ref,
-        &resolved.id_prefix,
-        resolved.id_width,
-        max_depth,
-    )
-    .context("validate queue set after task update")?;
 
     // Look up the task after update - it may have been moved to done.json or removed
     match after.tasks.iter().find(|t| t.id.trim() == task_id) {
@@ -291,7 +366,242 @@ fn update_task_impl(
         }
     }
 
-    queue::save_queue(&resolved.queue_path, &after).context("save queue after task update")?;
-
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Resolved;
+    use crate::contracts::{Config, QueueFile, Task, TaskStatus};
+    use std::collections::HashMap;
+    use tempfile::TempDir;
+
+    fn task_with_timestamps(
+        id: &str,
+        status: TaskStatus,
+        created_at: Option<&str>,
+        updated_at: Option<&str>,
+    ) -> Task {
+        Task {
+            id: id.to_string(),
+            status,
+            title: "Test task".to_string(),
+            priority: Default::default(),
+            tags: vec!["tag".to_string()],
+            scope: vec!["file".to_string()],
+            evidence: vec!["observed".to_string()],
+            plan: vec!["do thing".to_string()],
+            notes: vec![],
+            request: Some("test request".to_string()),
+            agent: None,
+            created_at: created_at.map(|s| s.to_string()),
+            updated_at: updated_at.map(|s| s.to_string()),
+            completed_at: None,
+            started_at: None,
+            scheduled_start: None,
+            depends_on: vec![],
+            blocks: vec![],
+            relates_to: vec![],
+            duplicates: None,
+            custom_fields: HashMap::new(),
+            parent_id: None,
+        }
+    }
+
+    fn create_test_resolved(temp: &TempDir) -> Result<Resolved> {
+        let repo_root = temp.path().to_path_buf();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+
+        Ok(Resolved {
+            config: Config::default(),
+            repo_root,
+            queue_path: ralph_dir.join("queue.json"),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        })
+    }
+
+    #[test]
+    fn restore_queue_from_backup_success() -> Result<()> {
+        let temp = TempDir::new()?;
+        let queue_path = temp.path().join("queue.json");
+        let backup_path = temp.path().join("queue.json.backup");
+
+        // Create original queue
+        let original = QueueFile {
+            version: 1,
+            tasks: vec![task_with_timestamps(
+                "RQ-0001",
+                TaskStatus::Todo,
+                Some("2026-01-18T00:00:00Z"),
+                Some("2026-01-18T00:00:00Z"),
+            )],
+        };
+        queue::save_queue(&queue_path, &original)?;
+
+        // Create backup
+        queue::save_queue(&backup_path, &original)?;
+
+        // Corrupt the queue
+        std::fs::write(&queue_path, "corrupted json")?;
+
+        // Restore from backup
+        restore_queue_from_backup(&queue_path, &backup_path)?;
+
+        // Verify restored
+        let restored = queue::load_queue(&queue_path)?;
+        assert_eq!(restored.tasks.len(), 1);
+        assert_eq!(restored.tasks[0].id, "RQ-0001");
+
+        Ok(())
+    }
+
+    #[test]
+    fn load_validate_and_save_queue_restores_on_parse_failure() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = create_test_resolved(&temp)?;
+
+        // Create valid initial queue with all required fields
+        let initial = QueueFile {
+            version: 1,
+            tasks: vec![task_with_timestamps(
+                "RQ-0001",
+                TaskStatus::Todo,
+                Some("2026-01-18T00:00:00Z"),
+                Some("2026-01-18T00:00:00Z"),
+            )],
+        };
+        queue::save_queue(&resolved.queue_path, &initial)?;
+
+        // Create backup
+        let backup_dir = resolved.repo_root.join(".ralph/cache");
+        let backup_path = queue::backup_queue(&resolved.queue_path, &backup_dir)?;
+
+        // Corrupt the queue with invalid JSON
+        std::fs::write(&resolved.queue_path, "{ not valid json }")?;
+
+        // Attempt to load/validate/save - should fail and restore backup
+        let result = load_validate_and_save_queue_after_update(&resolved, &backup_path, 10);
+
+        // Should return error
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("restored queue from backup"),
+            "Error should mention backup restoration: {}",
+            err_msg
+        );
+
+        // Verify queue was restored to backup content
+        let restored_content = std::fs::read_to_string(&resolved.queue_path)?;
+        let restored: QueueFile = serde_json::from_str(&restored_content)?;
+        assert_eq!(restored.tasks.len(), 1);
+        assert_eq!(restored.tasks[0].id, "RQ-0001");
+
+        Ok(())
+    }
+
+    #[test]
+    fn load_validate_and_save_queue_restores_on_validation_failure() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = create_test_resolved(&temp)?;
+
+        // Create valid initial queue with all required fields
+        let initial = QueueFile {
+            version: 1,
+            tasks: vec![task_with_timestamps(
+                "RQ-0001",
+                TaskStatus::Todo,
+                Some("2026-01-18T00:00:00Z"),
+                Some("2026-01-18T00:00:00Z"),
+            )],
+        };
+        queue::save_queue(&resolved.queue_path, &initial)?;
+
+        // Create backup
+        let backup_dir = resolved.repo_root.join(".ralph/cache");
+        let backup_path = queue::backup_queue(&resolved.queue_path, &backup_dir)?;
+
+        // Replace queue with JSON that parses but fails semantic validation
+        // (missing required timestamps)
+        std::fs::write(
+            &resolved.queue_path,
+            r#"{"version":1,"tasks":[{"id":"RQ-0001","title":"Test","status":"todo","tags":[],"scope":[],"evidence":[],"plan":[],"notes":[],"depends_on":[],"blocks":[],"relates_to":[],"custom_fields":{}}]}"#,
+        )?;
+
+        // Attempt to load/validate/save - should fail and restore backup
+        let result = load_validate_and_save_queue_after_update(&resolved, &backup_path, 10);
+
+        // Should return error
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("restored queue from backup"),
+            "Error should mention backup restoration: {}",
+            err_msg
+        );
+
+        // Verify queue was restored to backup content
+        let restored_content = std::fs::read_to_string(&resolved.queue_path)?;
+        let restored: QueueFile = serde_json::from_str(&restored_content)?;
+        assert_eq!(restored.tasks.len(), 1);
+        assert_eq!(restored.tasks[0].id, "RQ-0001");
+
+        Ok(())
+    }
+
+    #[test]
+    fn load_validate_and_save_queue_succeeds_with_valid_queue() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = create_test_resolved(&temp)?;
+
+        // Create valid initial queue
+        let initial = QueueFile {
+            version: 1,
+            tasks: vec![task_with_timestamps(
+                "RQ-0001",
+                TaskStatus::Todo,
+                Some("2026-01-18T00:00:00Z"),
+                Some("2026-01-18T00:00:00Z"),
+            )],
+        };
+        queue::save_queue(&resolved.queue_path, &initial)?;
+
+        // Create backup
+        let backup_dir = resolved.repo_root.join(".ralph/cache");
+        let backup_path = queue::backup_queue(&resolved.queue_path, &backup_dir)?;
+
+        // Replace queue with another valid queue (simulating a successful update)
+        let updated = QueueFile {
+            version: 1,
+            tasks: vec![{
+                let mut t = task_with_timestamps(
+                    "RQ-0001",
+                    TaskStatus::Todo,
+                    Some("2026-01-18T00:00:00Z"),
+                    Some("2026-01-19T00:00:00Z"), // updated timestamp
+                );
+                t.title = "Updated title".to_string();
+                t
+            }],
+        };
+        queue::save_queue(&resolved.queue_path, &updated)?;
+
+        // Should succeed
+        let result = load_validate_and_save_queue_after_update(&resolved, &backup_path, 10);
+        assert!(result.is_ok());
+
+        // Verify the updated content is preserved
+        let final_content = std::fs::read_to_string(&resolved.queue_path)?;
+        let final_queue: QueueFile = serde_json::from_str(&final_content)?;
+        assert_eq!(final_queue.tasks.len(), 1);
+        assert_eq!(final_queue.tasks[0].title, "Updated title");
+
+        Ok(())
+    }
 }
