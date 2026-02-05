@@ -109,16 +109,15 @@ pub(crate) fn copy_text_to_clipboard(text: &str) -> Result<()> {
             }
         }
 
-        if run_clipboard_cmd(
-            Command::new("xclip").args(["-selection", "clipboard"]),
-            text,
-        )
-        .is_ok()
-        {
+        let mut xclip = Command::new("xclip");
+        xclip.args(["-selection", "clipboard"]);
+        if run_clipboard_cmd(xclip, text).is_ok() {
             return Ok(());
         }
 
-        if run_clipboard_cmd(Command::new("xsel").args(["-i", "-b"]), text).is_ok() {
+        let mut xsel = Command::new("xsel");
+        xsel.args(["-i", "-b"]);
+        if run_clipboard_cmd(xsel, text).is_ok() {
             return Ok(());
         }
 
