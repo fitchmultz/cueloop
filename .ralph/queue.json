@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0623",
-      "status": "todo",
-      "title": "TUI: rich text input and textarea editing (cursor, selection, placeholders)",
-      "priority": "high",
-      "tags": [
-        "tui",
-        "ratatui",
-        "opentui",
-        "input",
-        "textarea",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/",
-        "crates/ralph/Cargo.toml",
-        "docs/tui-task-management.md",
-        "make ci"
-      ],
-      "evidence": [
-        "User request points to `/tmp/opentui-rust-features.md` as the source of the OpenTUI feature set to bring to our Rust + Ratatui TUI.",
-        "`/tmp/opentui-rust-features.md` lists \"Rich Input Components\" (text input + textarea) and ranks \"Better text input\" as the top recommended implementation priority.",
-        "A Ratatui TUI exists in `crates/ralph/src/tui/` per `.ralph/README.md`."
-      ],
-      "plan": [
-        "Read `/tmp/opentui-rust-features.md` (Rich Input Components section) and identify the concrete Ralph TUI flows that need text input and/or multiline editing.",
-        "Choose and integrate a maintained crate for single-line input and a maintained crate for multiline textarea editing (as suggested in `/tmp/opentui-rust-features.md`), keeping dependencies minimal and well-scoped.",
-        "Implement a focused single-line input widget with cursor movement, deletion, and placeholder text; route keys via the focus manager introduced in `RQ-0622`.",
-        "Implement a focused textarea widget with cursor movement, insertion/deletion, and scrolling for overflow; support paste-like multi-char insertion safely.",
-        "Define consistent keybindings for editing (Left/Right/Home/End, Backspace/Delete, Enter, Esc) and document them in `docs/tui-task-management.md`.",
-        "Add unit tests covering expected behavior and failure modes (empty input, non-ASCII insertion, cursor bounds, multiline edits).",
-        "Run `make ci` and do a manual smoke test in `ralph tui` for both widgets."
-      ],
-      "notes": [
-        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
-        "Depends on the focus/component groundwork from `RQ-0622` so inputs can be routed deterministically."
-      ],
-      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
-      "created_at": "2026-02-04T20:40:21Z",
-      "updated_at": "2026-02-04T20:40:21Z",
-      "depends_on": [
-        "RQ-0622"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0624",
       "status": "todo",
       "title": "TUI: scrollable containers, select/dropdown lists, and slider component",
@@ -271,8 +224,8 @@
       "custom_fields": {
         "scan_agent": "scan-innovation",
         "user_value": "Fewer context switches: jump from task → code in one keystroke.",
-        "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (TUI wiring + tests)"
+        "time_to_ship": "medium (TUI wiring + tests)",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -311,10 +264,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "time_to_ship": "medium (render-only UI + tests)",
-        "scan_agent": "scan-innovation",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -358,10 +311,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "scan_agent": "scan-innovation",
         "opportunity_type": "feature gap",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption"
       }
     },
     {
@@ -404,10 +357,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "UX improvement",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one batch operation at a time",
-        "user_value": "Reduces queue maintenance time by 80% for large projects"
+        "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "opportunity_type": "UX improvement",
+        "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
     {
@@ -499,9 +452,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation",
+        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "differentiation": "Unique capability among AI task runners",
-        "user_value": "Enables ecosystem growth; custom integrations without forks"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -545,10 +498,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Improves planning accuracy; sets realistic expectations",
+        "measurable_impact": "Estimates within 25% of actual duration after 20 tasks",
         "scan_agent": "scan-innovation",
         "opportunity_type": "feature gap",
-        "measurable_impact": "Estimates within 25% of actual duration after 20 tasks"
+        "user_value": "Improves planning accuracy; sets realistic expectations"
       }
     },
     {
@@ -592,10 +545,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "New user success rate >90% within 30 minutes",
-        "opportunity_type": "UX improvement",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces time-to-productivity from hours to minutes"
+        "measurable_impact": "New user success rate >90% within 30 minutes",
+        "user_value": "Reduces time-to-productivity from hours to minutes",
+        "opportunity_type": "UX improvement"
       }
     },
     {
@@ -639,8 +592,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Proactively identifies improvement opportunities; reduces manual scanning",
         "measurable_impact": "Auto-detects 30%+ of maintenance tasks",
+        "user_value": "Proactively identifies improvement opportunities; reduces manual scanning",
         "opportunity_type": "feature gap"
       }
     },
@@ -684,9 +637,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "incremental - add one channel at a time",
-        "opportunity_type": "integration",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "integration",
+        "time_to_ship": "incremental - add one channel at a time",
         "user_value": "Enables remote monitoring; integrates with existing workflows"
       }
     },
@@ -731,8 +684,8 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Identifies bottlenecks; improves Ralph responsiveness",
-        "opportunity_type": "performance",
         "measurable_impact": "50%+ improvement in queue operations for large projects",
+        "opportunity_type": "performance",
         "scan_agent": "scan-innovation"
       }
     }

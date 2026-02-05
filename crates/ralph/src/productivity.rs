@@ -533,24 +533,42 @@ mod tests {
 
     #[test]
     fn test_velocity_calculation() {
+        // Use today's date and yesterday to ensure they fall within the 7-day window
+        let today = timeutil::now_utc_rfc3339()
+            .unwrap_or_default()
+            .split('T')
+            .next()
+            .unwrap_or("2026-02-04")
+            .to_string();
+        let yesterday = {
+            let parts: Vec<&str> = today.split('-').collect();
+            let day: u32 = parts[2].parse().unwrap_or(4);
+            format!(
+                "{}-{}-{:02}",
+                parts[0],
+                parts[1],
+                day.saturating_sub(1).max(1)
+            )
+        };
+
         let stats = ProductivityStats {
             version: 1,
             first_task_completed_at: None,
-            last_updated_at: "2026-01-29T00:00:00Z".to_string(),
+            last_updated_at: format!("{}T00:00:00Z", today),
             daily: {
                 let mut daily = BTreeMap::new();
                 daily.insert(
-                    "2026-01-29".to_string(),
+                    today.clone(),
                     DayStats {
-                        date: "2026-01-29".to_string(),
+                        date: today.clone(),
                         completed_count: 5,
                         tasks: vec![],
                     },
                 );
                 daily.insert(
-                    "2026-01-28".to_string(),
+                    yesterday.clone(),
                     DayStats {
-                        date: "2026-01-28".to_string(),
+                        date: yesterday,
                         completed_count: 3,
                         tasks: vec![],
                     },

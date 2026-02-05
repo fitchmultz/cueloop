@@ -16,4 +16,6 @@
 // As more overlays migrate to use the component system, these warnings will go away.
 #![allow(dead_code)]
 
+mod single_line_input;
 mod task_editor_overlay;
+mod textarea;

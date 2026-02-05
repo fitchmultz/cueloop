@@ -324,6 +324,25 @@ Editable fields include (at least):
 - custom_fields
 - timestamps (created_at, updated_at, completed_at)
 
+### Text Editing Key Reference
+
+While editing in **single-line inputs** or **textareas**:
+
+- `Enter`: commit/submit (save edit)
+- `Esc`: cancel edit (discard changes)
+- `←/→` (Left/Right): move cursor by character
+- `Home/End`: move cursor to start/end of line
+- `Backspace`: delete previous character
+- `Delete`: delete next character
+- `Ctrl+Backspace` or `Ctrl+W`: delete previous word
+- `Paste` (terminal paste): insert text at cursor
+
+**Textarea-only bindings:**
+- `Alt+Enter`: insert newline (keeps edit active)
+- `↑/↓` (Up/Down): move cursor vertically between lines
+- `PgUp/PgDn`: scroll within the textarea
+- `Ctrl+←/→`: move cursor by word
+
 ---
 
 ## Known Gaps / Behavioral Differences vs CLI (Current State)

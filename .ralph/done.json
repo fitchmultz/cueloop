@@ -1303,9 +1303,9 @@
       ],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
         "time_to_ship": "medium (concurrency + tests)",
-        "opportunity_type": "reliability"
+        "opportunity_type": "reliability",
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
     },
     {
@@ -1349,10 +1349,10 @@
         "RQ-0608"
       ],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "opportunity_type": "ux improvement",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1398,10 +1398,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (format + fixes + tests)"
+        "time_to_ship": "medium (format + fixes + tests)",
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1445,10 +1445,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
+        "time_to_ship": "small/medium (formatters + tests)",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
-        "time_to_ship": "small/medium (formatters + tests)"
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1574,6 +1574,69 @@
       "updated_at": "2026-02-04T23:24:47.461742000Z",
       "completed_at": "2026-02-04T23:24:47.461742000Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0623",
+      "status": "done",
+      "title": "TUI: rich text input and textarea editing (cursor, selection, placeholders)",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "input",
+        "textarea",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/src/tui/foundation/",
+        "crates/ralph/src/tui/components/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request points to `/tmp/opentui-rust-features.md` as the source of the OpenTUI feature set to bring to our Rust + Ratatui TUI.",
+        "`/tmp/opentui-rust-features.md` lists \"Rich Input Components\" (text input + textarea) and ranks \"Better text input\" as the top recommended implementation priority.",
+        "A Ratatui TUI exists in `crates/ralph/src/tui/` per `.ralph/README.md`.",
+        "RQ-0622 (TUI foundation) is complete - foundation files exist in `crates/ralph/src/tui/foundation/` with 49+ tests providing Component trait, FocusManager, and layout primitives.",
+        "RQ-0628 (migration to foundation) is complete - existing TUI code now uses foundation components; new input widgets should build on the foundation layer.",
+        "Current Cargo.toml already includes `tui-textarea = 0.7` which provides textarea functionality; `tui-input` crate is recommended for single-line input.",
+        "Pilot component exists at `crates/ralph/src/tui/components/task_editor_overlay.rs` demonstrating Component trait usage - use as reference for new input components."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` (Rich Input Components section) and identify the concrete Ralph TUI flows that need text input and/or multiline editing.",
+        "Evaluate using existing `tui-textarea` dependency vs custom implementation; add `tui-input` crate for single-line input if needed (per `/tmp/opentui-rust-features.md`).",
+        "Implement a focused single-line input component using the foundation Component trait with cursor movement, deletion, and placeholder text; integrate with FocusManager from foundation.",
+        "Implement a focused textarea component using the foundation Component trait with cursor movement, insertion/deletion, and scrolling for overflow; support paste-like multi-char insertion safely.",
+        "Define consistent keybindings for editing (Left/Right/Home/End, Backspace/Delete, Enter, Esc) and document them in `docs/tui-task-management.md`.",
+        "Add unit tests in `crates/ralph/src/tui/foundation/tests.rs` or new test file covering expected behavior and failure modes (empty input, non-ASCII insertion, cursor bounds, multiline edits).",
+        "Run `make ci` and do a manual smoke test in `ralph tui` for both widgets."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
+        "Dependency RQ-0622 is complete (in done.json) - foundation is ready for building input components.",
+        "Dependency RQ-0628 is complete (in done.json) - existing code migrated to foundation; new components should follow the same patterns.",
+        "Foundation provides: Component trait with RenderCtx, FocusManager with deterministic ordering, layout primitives, UiEvent wrapper.",
+        "Reference implementation: `crates/ralph/src/tui/components/task_editor_overlay.rs` shows how to implement Component trait.",
+        "Existing dependency `tui-textarea = 0.7` is already available in Cargo.toml.",
+        "Implemented SingleLineInputComponent with cursor, deletion, word delete, placeholder, paste normalization",
+        "Implemented TextAreaComponent with multi-line editing, Alt+Enter newline, placeholder, list field mode",
+        "Added tui-input=0.11 dependency per OpenTUI spec recommendation",
+        "Documented keybindings in docs/tui-task-management.md",
+        "All 1868 tests pass; formatting and clippy clean"
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-05T00:58:32.560271000Z",
+      "completed_at": "2026-02-05T00:58:32.560271000Z",
+      "depends_on": [
+        "RQ-0622"
+      ],
       "blocks": [],
       "relates_to": [],
       "custom_fields": {}
