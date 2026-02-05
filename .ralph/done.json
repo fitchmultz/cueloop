@@ -1302,10 +1302,10 @@
         "RQ-0610"
       ],
       "custom_fields": {
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (concurrency + tests)",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "reliability",
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
     },
     {
@@ -1349,10 +1349,10 @@
         "RQ-0608"
       ],
       "custom_fields": {
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (metadata + reconciliation + tests)",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (metadata + reconciliation + tests)"
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
       }
     },
     {
@@ -1398,10 +1398,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (format + fixes + tests)"
+        "time_to_ship": "medium (format + fixes + tests)",
+        "opportunity_type": "ux improvement",
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
       }
     },
     {
@@ -1445,10 +1445,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
         "time_to_ship": "small/medium (formatters + tests)",
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement"
+        "opportunity_type": "ux improvement",
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1759,6 +1759,64 @@
       "created_at": "2026-02-04T20:40:21Z",
       "updated_at": "2026-02-05T03:08:21.408529000Z",
       "completed_at": "2026-02-05T03:08:21.408529000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0626",
+      "status": "done",
+      "title": "TUI: diff viewer plus line-number gutter with diagnostics/highlights",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "diff",
+        "diagnostics"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/src/tui/components/",
+        "crates/ralph/src/tui/foundation/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request requires implementing the OpenTUI feature set described in `/tmp/opentui-rust-features.md`.",
+        "`/tmp/opentui-rust-features.md` section 6 (Diff Viewer) recommends the `similar` crate for diff computation with unified/split views.",
+        "`/tmp/opentui-rust-features.md` section 7 (Line Numbers with Diagnostics) provides a custom implementation pattern for line-number gutters with highlight indicators.",
+        "Ralph has an established TUI foundation (`crates/ralph/src/tui/foundation/`) with Component trait, focus management, and layout primitives.",
+        "Existing TUI components (`crates/ralph/src/tui/components/`) include scroll_container, select_list, slider, markdown_renderer, syntax_highlighter - serving as patterns for new widgets.",
+        "RQ-0624 (scrollable containers) and RQ-0622 are completed and in done.json, providing scrolling infrastructure this task can leverage."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` sections 6 (Diff Viewer) and 7 (Line Numbers with Diagnostics) to understand the target feature set.",
+        "Add `similar` crate to Cargo.toml for diff computation (unified diff with insert/delete/equal metadata).",
+        "Create `crates/ralph/src/tui/components/diff_viewer.rs` implementing a unified diff viewer widget using the Component foundation.",
+        "Create `crates/ralph/src/tui/components/line_number_gutter.rs` implementing a line-number gutter with per-line highlight/diagnostic indicators.",
+        "Integrate diff viewer with existing scroll_container from RQ-0624 for scrollable diff viewing.",
+        "Add unit tests covering diff rendering (empty inputs, large diffs, narrow widths) and line-number gutter behavior (highlights, diagnostics).",
+        "Update `docs/tui-task-management.md` with diff viewer usage and keybindings.",
+        "Run `make ci` to verify all tests pass and code meets quality standards."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md` sections 6 and 7.",
+        "Keep the first slice minimal: unified diff + scrolling + basic highlights; avoid turning this into a full editor.",
+        "Follow the existing component pattern in `crates/ralph/src/tui/components/` - new widgets should implement the Component foundation traits.",
+        "Dependencies RQ-0622 and RQ-0624 are completed (found in done.json).",
+        "Implemented DiffViewerComponent with unified diff rendering using similar crate",
+        "Implemented LineNumberGutterComponent with highlights and diagnostics support",
+        "Refactored ScrollableContainerComponent to use Vec<Line<'static>> for styled text",
+        "Added comprehensive unit tests (13 for diff viewer, 9 for gutter)",
+        "Updated docs/tui-task-management.md with usage examples"
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-05T03:59:08.111088000Z",
+      "completed_at": "2026-02-05T03:59:08.111088000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

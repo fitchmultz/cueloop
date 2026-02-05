@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0626",
-      "status": "todo",
-      "title": "TUI: diff viewer plus line-number gutter with diagnostics/highlights",
-      "priority": "medium",
-      "tags": [
-        "tui",
-        "ratatui",
-        "opentui",
-        "diff",
-        "diagnostics"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/",
-        "crates/ralph/Cargo.toml",
-        "docs/tui-task-management.md",
-        "make ci"
-      ],
-      "evidence": [
-        "User request requires implementing the OpenTUI feature set described in `/tmp/opentui-rust-features.md`.",
-        "`/tmp/opentui-rust-features.md` includes \"Diff Viewer\" and \"Line Numbers with Diagnostics\" as target components.",
-        "Ralph already has a Ratatui TUI (`crates/ralph/src/tui/`) per `.ralph/README.md`."
-      ],
-      "plan": [
-        "Read `/tmp/opentui-rust-features.md` (Diff Viewer + Line Numbers with Diagnostics) and define concrete Ralph TUI use cases (e.g., previewing task edits, plan changes, or generated file diffs).",
-        "Implement a diff computation layer (crate-backed or custom) that can produce unified diff lines with insert/delete/equal metadata.",
-        "Implement a Ratatui diff viewer widget supporting unified view first, with split view as a follow-up if it stays cohesive; integrate scrolling via `RQ-0624`.",
-        "Implement a line-number gutter widget that can render highlights/indicators per line (diagnostics map), as described in `/tmp/opentui-rust-features.md`.",
-        "Add unit tests covering diff rendering and line-number/highlight behavior, including failure modes (empty inputs, large diffs, narrow terminal widths).",
-        "Document usage + keybindings in `docs/tui-task-management.md` and run `make ci`."
-      ],
-      "notes": [
-        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
-        "Keep the first slice minimal: unified diff + scrolling + basic highlights; avoid turning this into a full editor."
-      ],
-      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
-      "created_at": "2026-02-04T20:40:21Z",
-      "updated_at": "2026-02-04T20:40:21Z",
-      "depends_on": [
-        "RQ-0622",
-        "RQ-0624"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0627",
       "status": "todo",
       "title": "TUI polish: big-text/ASCII headers and timeline-style animations",
@@ -127,10 +81,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (TUI wiring + tests)",
         "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (TUI wiring + tests)"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -169,10 +123,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (render-only UI + tests)"
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
+        "time_to_ship": "medium (render-only UI + tests)",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -216,10 +170,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "opportunity_type": "feature gap",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "scan_agent": "scan-innovation",
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption"
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
       }
     },
     {
@@ -262,10 +216,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "incremental - add one batch operation at a time",
         "scan_agent": "scan-innovation",
         "user_value": "Reduces queue maintenance time by 80% for large projects",
-        "opportunity_type": "UX improvement"
+        "opportunity_type": "UX improvement",
+        "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
     {
@@ -310,8 +264,8 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "reliability",
-        "scan_agent": "scan-innovation",
         "user_value": "Reduces regression risk; enables confident refactoring",
+        "scan_agent": "scan-innovation",
         "measurable_impact": "80%+ integration test coverage for CLI commands"
       }
     },
@@ -357,9 +311,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
+        "differentiation": "Unique capability among AI task runners",
         "opportunity_type": "feature gap",
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
-        "differentiation": "Unique capability among AI task runners"
+        "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
     {
@@ -404,9 +358,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "feature gap",
-        "measurable_impact": "Estimates within 25% of actual duration after 20 tasks",
         "scan_agent": "scan-innovation",
-        "user_value": "Improves planning accuracy; sets realistic expectations"
+        "user_value": "Improves planning accuracy; sets realistic expectations",
+        "measurable_impact": "Estimates within 25% of actual duration after 20 tasks"
       }
     },
     {
@@ -451,9 +405,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces time-to-productivity from hours to minutes",
         "measurable_impact": "New user success rate >90% within 30 minutes",
-        "opportunity_type": "UX improvement"
+        "opportunity_type": "UX improvement",
+        "user_value": "Reduces time-to-productivity from hours to minutes"
       }
     },
     {
@@ -497,8 +451,8 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "feature gap",
-        "user_value": "Proactively identifies improvement opportunities; reduces manual scanning",
         "scan_agent": "scan-innovation",
+        "user_value": "Proactively identifies improvement opportunities; reduces manual scanning",
         "measurable_impact": "Auto-detects 30%+ of maintenance tasks"
       }
     },
@@ -542,10 +496,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "incremental - add one channel at a time",
-        "user_value": "Enables remote monitoring; integrates with existing workflows",
+        "opportunity_type": "integration",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "integration"
+        "user_value": "Enables remote monitoring; integrates with existing workflows",
+        "time_to_ship": "incremental - add one channel at a time"
       }
     },
     {
@@ -588,10 +542,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "measurable_impact": "50%+ improvement in queue operations for large projects",
         "user_value": "Identifies bottlenecks; improves Ralph responsiveness",
         "opportunity_type": "performance",
-        "measurable_impact": "50%+ improvement in queue operations for large projects"
+        "scan_agent": "scan-innovation"
       }
     }
   ]

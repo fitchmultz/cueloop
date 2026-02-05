@@ -52,7 +52,7 @@ pub(crate) struct ScrollableContainerComponent {
 
     title: Option<String>,
 
-    lines: Vec<String>,
+    lines: Vec<Line<'static>>,
     scroll_state: ScrollViewState,
 
     sticky: bool,
@@ -98,7 +98,7 @@ impl ScrollableContainerComponent {
         self.sticky
     }
 
-    pub(crate) fn set_lines(&mut self, lines: Vec<String>) {
+    pub(crate) fn set_lines(&mut self, lines: Vec<Line<'static>>) {
         self.lines = lines;
         if self.sticky {
             self.scroll_to_bottom();
@@ -107,13 +107,28 @@ impl ScrollableContainerComponent {
         }
     }
 
-    pub(crate) fn push_line(&mut self, line: impl Into<String>) {
-        self.lines.push(line.into());
+    /// Convenience method to set lines from plain strings.
+    pub(crate) fn set_lines_plain(&mut self, lines: Vec<String>) {
+        self.set_lines(
+            lines
+                .into_iter()
+                .map(|s| Line::from(Span::raw(s)))
+                .collect(),
+        );
+    }
+
+    pub(crate) fn push_line(&mut self, line: Line<'static>) {
+        self.lines.push(line);
         if self.sticky {
             self.scroll_to_bottom();
         } else {
             self.clamp_offset();
         }
+    }
+
+    /// Convenience method to push a plain string line.
+    pub(crate) fn push_line_plain(&mut self, line: impl Into<String>) {
+        self.push_line(Line::from(Span::raw(line.into())));
     }
 
     fn offset(&self) -> usize {
@@ -346,8 +361,8 @@ impl Component for ScrollableContainerComponent {
         let end = start.saturating_add(viewport).min(total);
 
         let mut text_lines: Vec<Line<'static>> = Vec::with_capacity(end.saturating_sub(start));
-        for s in self.lines[start..end].iter() {
-            text_lines.push(Line::from(Span::raw(s.clone())));
+        for line in self.lines[start..end].iter().cloned() {
+            text_lines.push(line);
         }
         if text_lines.is_empty() {
             text_lines.push(Line::from(Span::styled(
@@ -385,7 +400,7 @@ mod tests {
         let mut c = ScrollableContainerComponent::new(ComponentId::new("scroll_container", 0), 0);
         c.last_viewport_lines = 3;
 
-        c.set_lines(vec![
+        c.set_lines_plain(vec![
             "a".into(),
             "b".into(),
             "c".into(),
@@ -401,7 +416,7 @@ mod tests {
     fn manual_scroll_disables_sticky_until_bottom() {
         let mut c = ScrollableContainerComponent::new(ComponentId::new("scroll_container", 0), 0);
         c.last_viewport_lines = 3;
-        c.set_lines(vec![
+        c.set_lines_plain(vec![
             "a".into(),
             "b".into(),
             "c".into(),
@@ -425,7 +440,7 @@ mod tests {
         let mut c = ScrollableContainerComponent::new(ComponentId::new("scroll_container", 0), 0);
         c.last_viewport_lines = 3;
         c.sticky = false;
-        c.set_lines(vec!["a".into(), "b".into()]);
+        c.set_lines_plain(vec!["a".into(), "b".into()]);
         // total=2, viewport=3 => max=0
         assert_eq!(c.offset(), 0);
     }

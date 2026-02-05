@@ -356,6 +356,76 @@ When focused:
 - Mouse wheel: scroll (3 lines per tick)
 - Sticky scroll: auto-follows new content until you scroll up manually
 
+### Diff Viewer (Unified)
+
+`DiffViewerComponent` renders a unified, line-based diff with:
+- `-` deletions (red)
+- `+` insertions (green)
+- ` ` unchanged (gray)
+
+It uses the same scrolling behavior as other scrollable panels:
+- `↑/↓`, `PgUp/PgDn`, `Home/End`
+- Mouse wheel scrolling
+- Scrollbar indicator
+
+**Usage:**
+```rust
+use crate::tui::components::{DiffViewerComponent, DiffViewerStyle};
+
+let mut diff_viewer = DiffViewerComponent::new();
+diff_viewer.set_title("Changes");
+diff_viewer.set_inputs(old_content, new_content);
+// Render via Component::render()
+```
+
+### Line Number Gutter
+
+`LineNumberGutterComponent` renders a dedicated gutter area (separate from content) with:
+- Right-aligned line numbers
+- Optional per-line highlight background + symbol
+- Optional error/warning diagnostic symbols
+
+**Compose gutter + content side-by-side:**
+
+```rust
+use crate::tui::foundation::layout::{row, Item};
+use crate::tui::components::{
+    LineNumberGutterComponent, 
+    LineNumberGutterConfig, 
+    DiffViewerComponent,
+    DiagnosticSeverity, 
+    LineHighlight,
+};
+use std::collections::HashMap;
+
+// Layout: fixed-width gutter + flexible content area
+let rects = row(area, 0, &[Item::fixed(6), Item::flex(1)]);
+let gutter_area = rects[0];
+let content_area = rects[1];
+
+// Configure gutter
+let mut gutter = LineNumberGutterComponent::new(LineNumberGutterConfig::default());
+gutter.set_range(1, 100); // start at line 1, 100 total lines
+
+// Add highlights
+let mut highlights = HashMap::new();
+highlights.insert(5, LineHighlight {
+    bg: Color::Blue,
+    symbol: Some("▶".to_string()),
+});
+gutter.set_highlights(highlights);
+
+// Add diagnostics
+let mut diagnostics = HashMap::new();
+diagnostics.insert(10, DiagnosticSeverity::Error);
+diagnostics.insert(15, DiagnosticSeverity::Warning);
+gutter.set_diagnostics(diagnostics);
+
+// Render gutter and content
+gutter.render(f, gutter_area, app, ctx);
+content.render(f, content_area, app, ctx);
+```
+
 ### Select Lists / Dropdowns
 
 When a select list is open:

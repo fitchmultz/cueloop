@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-05T03:11:36.026202000Z",
+  "last_updated_at": "2026-02-05T04:06:15.696470000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -626,7 +626,7 @@
     },
     "2026-02-05": {
       "date": "2026-02-05",
-      "completed_count": 3,
+      "completed_count": 4,
       "tasks": [
         {
           "id": "RQ-0623",
@@ -642,6 +642,11 @@
           "id": "RQ-0625",
           "title": "TUI: Markdown rendering with code blocks and Tree-sitter syntax highlighting",
           "completed_at": "2026-02-05T03:11:36.026200000Z"
+        },
+        {
+          "id": "RQ-0626",
+          "title": "TUI: diff viewer plus line-number gutter with diagnostics/highlights",
+          "completed_at": "2026-02-05T04:06:15.696469000Z"
         }
       ]
     }
@@ -651,7 +656,7 @@
     "longest_streak": 7,
     "last_completed_date": "2026-02-05"
   },
-  "total_completed": 120,
+  "total_completed": 121,
   "milestones": [
     {
       "threshold": 10,
