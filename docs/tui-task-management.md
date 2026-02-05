@@ -434,3 +434,74 @@ If you want the TUI to mirror the CLI UX more closely, consider:
 These are optional; core task management is already present in the TUI today.
 
 ---
+
+## Markdown Rendering in Task Details
+
+The TUI now supports rich Markdown rendering for task content, providing better readability for structured text and code.
+
+### Supported Markdown Subset
+
+The following Markdown elements are supported when viewing task details:
+
+- **Headings**: `# H1`, `## H2`, `### H3+` - Rendered with distinct colors and bold styling
+- **Emphasis**: `*italic*`, `**bold**` - Properly styled text emphasis
+- **Inline code**: `` `code` `` - Highlighted with distinct background
+- **Code blocks**: ` ```language ` - Fenced code blocks with optional syntax highlighting
+- **Lists**:
+  - Unordered: `- item`, `* item` - Bullet points
+  - Ordered: `1. item`, `2. item` - Numbered lists
+- **Line breaks**: Soft and hard breaks are handled correctly
+
+### Syntax Highlighting
+
+Code blocks with language hints receive syntax highlighting:
+
+```markdown
+```rust
+fn main() {
+    println!("Hello, Ralph!");
+}
+```
+```
+
+Currently supported languages:
+- **Rust** (`rust`, `rs`) - Full Tree-sitter-based highlighting
+
+For unsupported languages, code blocks are rendered with monospace styling and a visual gutter.
+
+### Where Markdown is Rendered
+
+Markdown rendering is applied automatically to:
+
+- **Task Evidence** - Bullet-point lists support Markdown formatting
+- **Task Plan** - Numbered steps support Markdown formatting  
+- **Task Notes** - Free-form notes support Markdown formatting
+- **Task Description** (Task Builder) - Your natural language description is rendered as Markdown
+- **Help Overlay** - All help content is rendered as Markdown
+
+### Graceful Degradation
+
+If Tree-sitter highlighting is unavailable or fails to initialize:
+- Code blocks still render with proper monospace font and visual gutter
+- All other Markdown elements continue to work normally
+- No error messages or visual glitches appear
+
+### Example Task Content
+
+When you write task content like this:
+
+```markdown
+## Implementation Steps
+
+1. Add the `pulldown-cmark` dependency to **Cargo.toml**
+2. Create a `MarkdownRenderer` component
+3. Handle code blocks with ` ```rust ` fences:
+   ```rust
+   fn render() -> Vec<Line> {
+       // Your code here
+   }
+   ```
+4. Test with *italic* and **bold** formatting
+```
+
+It will render in the TUI with proper styling, colors, and code highlighting.

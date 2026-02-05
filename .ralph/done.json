@@ -1304,8 +1304,8 @@
       "custom_fields": {
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
         "opportunity_type": "reliability",
-        "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (concurrency + tests)"
+        "time_to_ship": "medium (concurrency + tests)",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1349,10 +1349,10 @@
         "RQ-0608"
       ],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
         "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
     {
@@ -1398,8 +1398,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
         "time_to_ship": "medium (format + fixes + tests)"
       }
@@ -1445,10 +1445,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation",
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
         "time_to_ship": "small/medium (formatters + tests)",
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1696,6 +1696,69 @@
       "created_at": "2026-02-04T20:40:21Z",
       "updated_at": "2026-02-05T01:49:39.464364000Z",
       "completed_at": "2026-02-05T01:49:39.464364000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0625",
+      "status": "done",
+      "title": "TUI: Markdown rendering with code blocks and Tree-sitter syntax highlighting",
+      "priority": "high",
+      "tags": [
+        "tui",
+        "ratatui",
+        "opentui",
+        "markdown",
+        "syntax-highlighting",
+        "tree-sitter"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/src/tui/components/",
+        "crates/ralph/src/tui/foundation/",
+        "crates/ralph/src/tui/render/",
+        "crates/ralph/Cargo.toml",
+        "docs/tui-task-management.md",
+        "make ci"
+      ],
+      "evidence": [
+        "User request requires implementing the feature set described in `/tmp/opentui-rust-features.md` inside our Rust + Ratatui TUI.",
+        "`/tmp/opentui-rust-features.md` lists \"Markdown Rendering\" (section 12) and \"Syntax Highlighting (Tree-sitter)\" (section 2) as target capabilities with suggested crates: `pulldown-cmark` for Markdown, `tree-sitter` for syntax highlighting.",
+        "Ralph's Ratatui TUI lives under `crates/ralph/src/tui/` per `.ralph/README.md`.",
+        "RQ-0622 (TUI foundation) is complete - foundation files exist in `crates/ralph/src/tui/foundation/` with Component trait, FocusManager, and layout primitives.",
+        "RQ-0624 (scrollable containers) is complete - `crates/ralph/src/tui/components/scroll_container.rs` provides ScrollableContainerComponent for scrollable markdown views.",
+        "Existing components in `crates/ralph/src/tui/components/` demonstrate the Component trait pattern for new widgets."
+      ],
+      "plan": [
+        "Read `/tmp/opentui-rust-features.md` (Markdown Rendering section 12 + Syntax Highlighting section 2) and define the minimal Markdown subset needed for Ralph TUI (headings, lists, emphasis, inline code, fenced code blocks).",
+        "Add `pulldown-cmark` dependency to `crates/ralph/Cargo.toml` for Markdown parsing (per OpenTUI spec recommendation).",
+        "Add `tree-sitter` and `tree-sitter-rust` dependencies for syntax highlighting (per OpenTUI spec recommendation).",
+        "Implement a MarkdownRenderer component in `crates/ralph/src/tui/components/` that uses the foundation Component trait and produces styled `Line`/`Span` output.",
+        "Implement a SyntaxHighlighter module supporting Tree-sitter highlighting for Rust; design for graceful degradation when language parser is unavailable.",
+        "Add code block rendering with distinct style; integrate Tree-sitter highlighting when language info string is present and parser exists.",
+        "Wire the MarkdownRenderer into existing TUI screens that display task text (plan/notes/help), using ScrollableContainerComponent from RQ-0624 for scrollable views.",
+        "Add unit tests for Markdown rendering and highlighting covering success and failure modes (malformed Markdown, Tree-sitter parse failures, unsupported languages).",
+        "Document the feature and keybindings in `docs/tui-task-management.md`, then run `make ci`."
+      ],
+      "notes": [
+        "Spec reference (must read before implementing): `/tmp/opentui-rust-features.md`.",
+        "Dependencies RQ-0622 and RQ-0624 are complete (in done.json) - foundation and scrollable containers are ready.",
+        "Foundation provides: Component trait with RenderCtx, FocusManager, layout primitives (row, col, pad, split, centered).",
+        "ScrollableContainerComponent from RQ-0624 provides sticky-scroll behavior suitable for markdown content.",
+        "Keep the renderer cohesive: it should render Markdown to styled lines; it should NOT fetch remote resources or interpret HTML.",
+        "Reference implementation: existing components in `crates/ralph/src/tui/components/` show Component trait usage.",
+        "Implemented MarkdownRenderer with pulldown-cmark for headings, lists, emphasis, inline code, fenced code blocks",
+        "Implemented SyntaxHighlighter with Tree-sitter for Rust code highlighting with graceful degradation",
+        "Integrated Markdown rendering into help overlay and task details panel (evidence, plan, notes)",
+        "Added 8 unit tests for markdown renderer and 5 unit tests for syntax highlighter",
+        "Updated docs/tui-task-management.md with Markdown rendering documentation"
+      ],
+      "request": "Series of tasks to implement these core features that are found in the TS + Bun framework opentui into our Rust based Ratatui framework. Read the file at /tmp/opentui-rust-features.md for the details. Include this file path in EACH new task evidence, plan, AND notes sections to ensure the execution agent reads this file. /tmp/opentui-rust-features.md",
+      "created_at": "2026-02-04T20:40:21Z",
+      "updated_at": "2026-02-05T03:08:21.408529000Z",
+      "completed_at": "2026-02-05T03:08:21.408529000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

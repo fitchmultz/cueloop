@@ -17,6 +17,7 @@ use super::super::{App, AppMode};
 use super::{DetailsPanelContent, filter_summary_for_width, render_details_panel};
 use crate::contracts::{TaskPriority, TaskStatus};
 use crate::tui::DetailsContextMode;
+use crate::tui::components::markdown_renderer::{MarkdownRenderConfig, MarkdownRenderer};
 use crate::tui::render::utils::{priority_color, status_color, wrap_text};
 use ratatui::{
     Frame,
@@ -186,14 +187,20 @@ pub fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         } else {
             current.value().to_string()
         };
-        for line in wrap_text(&display, app.detail_width as usize) {
-            let style = if current.value().is_empty() {
-                Style::default().fg(Color::DarkGray)
-            } else {
-                Style::default().add_modifier(Modifier::BOLD)
-            };
-            lines.push(Line::from(Span::styled(line, style)));
+
+        // Render description as Markdown if not empty
+        if current.value().is_empty() {
+            for line in wrap_text(&display, app.detail_width as usize) {
+                lines.push(Line::from(Span::styled(
+                    line,
+                    Style::default().fg(Color::DarkGray),
+                )));
+            }
+        } else {
+            let cfg = MarkdownRenderConfig::new(app.detail_width as usize);
+            lines.extend(MarkdownRenderer::render(&display, cfg));
         }
+
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "The task builder agent will create a structured task with proper scoping, evidence, and planning.",
@@ -456,14 +463,15 @@ pub fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 ),
                 Span::styled(":", Style::default()),
             ]));
-            for item in &task.evidence {
-                for line in wrap_text(item, app.detail_width.saturating_sub(4) as usize) {
-                    lines.push(Line::from(Span::styled(
-                        format!(" • {}", line),
-                        Style::default(),
-                    )));
-                }
-            }
+            // Convert evidence to Markdown list and render
+            let evidence_md = task
+                .evidence
+                .iter()
+                .map(|e| format!("- {e}"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let cfg = MarkdownRenderConfig::new(app.detail_width.saturating_sub(2) as usize);
+            lines.extend(MarkdownRenderer::render(&evidence_md, cfg));
         }
 
         if !task.plan.is_empty() {
@@ -472,14 +480,16 @@ pub fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 Span::styled("Plan", Style::default().add_modifier(Modifier::UNDERLINED)),
                 Span::styled(":", Style::default()),
             ]));
-            for (i, item) in task.plan.iter().enumerate() {
-                for line in wrap_text(item, app.detail_width.saturating_sub(4) as usize) {
-                    lines.push(Line::from(Span::styled(
-                        format!(" {}. {}", i + 1, line),
-                        Style::default(),
-                    )));
-                }
-            }
+            // Convert plan to Markdown numbered list and render
+            let plan_md = task
+                .plan
+                .iter()
+                .enumerate()
+                .map(|(i, p)| format!("{}. {p}", i + 1))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let cfg = MarkdownRenderConfig::new(app.detail_width.saturating_sub(2) as usize);
+            lines.extend(MarkdownRenderer::render(&plan_md, cfg));
         }
 
         if !task.notes.is_empty() {
@@ -488,14 +498,15 @@ pub fn draw_task_details(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 Span::styled("Notes", Style::default().add_modifier(Modifier::UNDERLINED)),
                 Span::styled(":", Style::default()),
             ]));
-            for item in &task.notes {
-                for line in wrap_text(item, app.detail_width.saturating_sub(4) as usize) {
-                    lines.push(Line::from(Span::styled(
-                        format!(" - {}", line),
-                        Style::default().fg(Color::Yellow),
-                    )));
-                }
-            }
+            // Convert notes to Markdown list and render
+            let notes_md = task
+                .notes
+                .iter()
+                .map(|n| format!("- {n}"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let cfg = MarkdownRenderConfig::new(app.detail_width.saturating_sub(2) as usize);
+            lines.extend(MarkdownRenderer::render(&notes_md, cfg));
         }
 
         if !task.depends_on.is_empty() {

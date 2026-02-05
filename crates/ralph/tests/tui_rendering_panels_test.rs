@@ -256,8 +256,9 @@ fn test_render_task_with_notes() {
 
     let output = get_rendered_output(&mut terminal, &mut app);
     assert!(output.contains("Notes"));
-    assert!(output.contains("- First note"));
-    assert!(output.contains("- Second note"));
+    // Notes are now rendered as Markdown bullet lists (using • instead of -)
+    assert!(output.contains("First note"));
+    assert!(output.contains("Second note"));
 }
 
 #[test]

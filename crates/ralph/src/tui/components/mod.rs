@@ -18,10 +18,11 @@
 
 mod util;
 
+pub(crate) mod markdown_renderer;
 mod scroll_container;
 mod select_list;
-mod slider;
-
 mod single_line_input;
+mod slider;
+pub(crate) mod syntax_highlighter;
 mod task_editor_overlay;
 mod textarea;

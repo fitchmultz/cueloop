@@ -14,6 +14,7 @@
 
 use crate::tui::App;
 use crate::tui::app_scroll::ScrollOperations;
+use crate::tui::components::markdown_renderer::{MarkdownRenderConfig, MarkdownRenderer};
 use crate::tui::help;
 use crate::tui::render::utils::scroll_indicator;
 use ratatui::{
@@ -37,7 +38,13 @@ pub fn draw_help_overlay(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         vertical: 1,
     });
     let content_width = inner.width as usize;
-    let total_lines = help::help_line_count(content_width);
+
+    // Render help as Markdown
+    let md = help::help_overlay_markdown();
+    let cfg = MarkdownRenderConfig::new(content_width);
+    let lines = MarkdownRenderer::render(&md, cfg);
+    let total_lines = lines.len();
+
     let visible_lines = inner.height as usize;
     app.set_help_visible_lines(visible_lines, total_lines);
 
@@ -47,7 +54,6 @@ pub fn draw_help_overlay(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         .borders(Borders::ALL);
     f.render_widget(block, popup);
 
-    let lines = help::help_overlay_lines(content_width);
     let paragraph = Paragraph::new(Text::from(lines)).scroll((app.help_scroll() as u16, 0));
     f.render_widget(paragraph, inner);
 }

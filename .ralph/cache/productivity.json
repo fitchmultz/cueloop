@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-05T01:53:35.798047000Z",
+  "last_updated_at": "2026-02-05T03:11:36.026202000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -626,7 +626,7 @@
     },
     "2026-02-05": {
       "date": "2026-02-05",
-      "completed_count": 2,
+      "completed_count": 3,
       "tasks": [
         {
           "id": "RQ-0623",
@@ -637,6 +637,11 @@
           "id": "RQ-0624",
           "title": "TUI: scrollable containers, select/dropdown lists, and slider component",
           "completed_at": "2026-02-05T01:53:35.798047000Z"
+        },
+        {
+          "id": "RQ-0625",
+          "title": "TUI: Markdown rendering with code blocks and Tree-sitter syntax highlighting",
+          "completed_at": "2026-02-05T03:11:36.026200000Z"
         }
       ]
     }
@@ -646,7 +651,7 @@
     "longest_streak": 7,
     "last_completed_date": "2026-02-05"
   },
-  "total_completed": 119,
+  "total_completed": 120,
   "milestones": [
     {
       "threshold": 10,

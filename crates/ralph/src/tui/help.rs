@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Build the help overlay line list from the canonical keymap.
 //! - Provide wrapped line counts for scrolling/rendering.
+//! - Provide Markdown-formatted help content for rich rendering.
 //!
 //! Not handled here:
 //! - Rendering styles or layout beyond line construction.
@@ -11,6 +12,8 @@
 //! Invariants/assumptions:
 //! - Keymap sections are the source of truth for help content.
 //! - Callers provide a non-zero width when requesting wrapped lines.
+
+#![allow(dead_code)]
 
 use super::keymap;
 use ratatui::style::{Modifier, Style};
@@ -58,6 +61,34 @@ pub(crate) fn help_overlay_plain_lines() -> Vec<String> {
             HelpLine::Blank => String::new(),
         })
         .collect()
+}
+
+/// Build help content as Markdown for rich rendering.
+pub(crate) fn help_overlay_markdown() -> String {
+    let mut md = String::new();
+    md.push_str("# Keybindings\n\n");
+
+    let close_keys = join_keys(keymap::help_close_keys());
+    md.push_str(&format!("Press `{close_keys}` to close.\n\n"));
+
+    for section in keymap::help_sections()
+        .iter()
+        .chain(keymap::normal_sections())
+        .chain(keymap::board_sections())
+        .chain(keymap::multi_select_sections())
+        .chain(keymap::executing_sections())
+    {
+        md.push_str(&format!("## {}\n\n", section.title));
+        for binding in section.bindings {
+            md.push_str(&format!(
+                "`{}`: {}\n",
+                binding.keys_display, binding.description
+            ));
+        }
+        md.push('\n');
+    }
+
+    md
 }
 
 fn build_help_overlay_lines() -> Vec<HelpLine> {
