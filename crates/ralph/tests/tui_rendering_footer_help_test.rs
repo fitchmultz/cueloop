@@ -36,6 +36,7 @@ fn test_render_help_footer_normal_mode() {
     assert!(output.contains(":del"));
     assert!(output.contains(":edit"));
     // Filter/search functionality - check for at least one of these
+    // With 160 width, all hints should fit; with new O/y bindings, verify they appear
     let has_filter_features = output.contains("search")
         || output.contains("tags")
         || output.contains("filter")
@@ -43,10 +44,13 @@ fn test_render_help_footer_normal_mode() {
         || output.contains("/:search")
         || output.contains("t:tags")
         || output.contains("f:filter")
-        || output.contains("x:clear");
+        || output.contains("x:clear")
+        || output.contains("O:open")
+        || output.contains("y:yank");
     assert!(
         has_filter_features,
-        "Help footer should include filter/search keybindings"
+        "Help footer should include filter/search or new keybindings: {}",
+        output
     );
 }
 

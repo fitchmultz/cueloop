@@ -241,6 +241,12 @@ pub(super) fn handle_normal_mode_key(
             app.start_filter_scopes_input();
             Ok(TuiAction::Continue)
         }
+        KeyCode::Char('O') if is_plain_char(&key, 'O') => {
+            app.execute_palette_command(PaletteCommand::OpenScopeInEditor, now_rfc3339)
+        }
+        KeyCode::Char('y') if is_plain_char(&key, 'y') => {
+            app.execute_palette_command(PaletteCommand::CopyFileLineRef, now_rfc3339)
+        }
         KeyCode::Char('f') if is_plain_char(&key, 'f') => {
             app.cycle_status_filter();
             Ok(TuiAction::Continue)

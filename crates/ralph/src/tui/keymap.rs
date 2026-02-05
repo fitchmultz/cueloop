@@ -143,6 +143,24 @@ const NORMAL_ACTION_BINDINGS: &[KeyBinding] = &[
         footer_hint: None,
     },
     KeyBinding {
+        keys: &["O"],
+        keys_display: "O",
+        description: "open selected task scope in $EDITOR",
+        footer_hint: Some(FooterHint {
+            keys: "O",
+            label: "open",
+        }),
+    },
+    KeyBinding {
+        keys: &["y"],
+        keys_display: "y",
+        description: "copy file:line refs from notes/evidence",
+        footer_hint: Some(FooterHint {
+            keys: "y",
+            label: "yank",
+        }),
+    },
+    KeyBinding {
         keys: &["L"],
         keys_display: "L",
         description: "toggle loop mode",
@@ -615,6 +633,8 @@ mod tests {
             "Tab",
             "PgUp/PgDn",
             "Home/End",
+            "O",
+            "y",
         ] {
             assert!(
                 keys.contains(expected),
@@ -650,6 +670,8 @@ mod tests {
             "`Ctrl+P`: command palette (shortcut)",
             "`Ctrl+F`: search tasks (shortcut)",
             "`o`: filter by scope",
+            "`O`: open selected task scope in $EDITOR",
+            "`y`: copy file:line refs from notes/evidence",
         ] {
             assert!(
                 doc_text.contains(expected),

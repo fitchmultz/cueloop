@@ -66,6 +66,10 @@ pub enum PaletteCommand {
     BatchSetStatus(crate::contracts::TaskStatus),
     /// Clear all selections
     ClearSelection,
+    /// Open selected task's scope paths in $VISUAL/$EDITOR (or fallback).
+    OpenScopeInEditor,
+    /// Copy first/all file:line references from notes/evidence to clipboard.
+    CopyFileLineRef,
     Quit,
 }
 

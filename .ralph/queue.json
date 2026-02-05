@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0620",
-      "status": "todo",
-      "title": "TUI ergonomics: open task scope targets in $EDITOR and copy file:line references",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "tui",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/tui/",
-        "docs/tui-task-management.md"
-      ],
-      "evidence": [
-        "`docs/tui-task-management.md` documents rich task navigation/editing, but there is no documented way to open a scoped file from the TUI in an external editor.",
-        "Tasks frequently include `scope` paths (and watch-mode includes `Detected in: file:line` notes), which are natural jump targets."
-      ],
-      "plan": [
-        "Add a TUI action (keybinding + command palette entry) to open the selected task's primary scope path in `$EDITOR` (or `open`/`xdg-open` fallback) without blocking the UI.",
-        "Parse common file:line patterns from `notes` (e.g., `Detected in: path:line`) and provide a 'copy reference' action that writes `path:line` to clipboard (platform-gated) or prints it for manual copy.",
-        "Keep the minimal slice to local execution only (no network, no PR automation).",
-        "Update `docs/tui-task-management.md` with the new keybindings and examples.",
-        "Add tests around path selection/parsing (unit tests) and ensure the feature is disabled gracefully when `$EDITOR` is unset.",
-        "Verify by running `make ci` and manually smoke-testing `ralph tui` to open a file from a seeded task scope."
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-04T14:58:48Z",
-      "updated_at": "2026-02-04T14:58:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "time_to_ship": "medium (TUI wiring + tests)",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
-        "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0621",
       "status": "todo",
       "title": "Add a read-only TUI view for parallel run-loop state (workers, PRs, merge blockers)",
@@ -77,10 +37,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (render-only UI + tests)",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (render-only UI + tests)"
       }
     },
     {
@@ -124,8 +84,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "scan_agent": "scan-innovation",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "opportunity_type": "feature gap"
       }
@@ -171,9 +131,9 @@
       "relates_to": [],
       "custom_fields": {
         "time_to_ship": "incremental - add one batch operation at a time",
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
         "opportunity_type": "UX improvement",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -217,9 +177,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
         "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
         "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
@@ -264,9 +224,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
         "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "opportunity_type": "feature gap",
         "differentiation": "Unique capability among AI task runners"
       }
     },
@@ -311,10 +271,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
-        "user_value": "Improves planning accuracy; sets realistic expectations",
-        "measurable_impact": "Estimates within 25% of actual duration after 20 tasks"
+        "opportunity_type": "feature gap",
+        "measurable_impact": "Estimates within 25% of actual duration after 20 tasks",
+        "user_value": "Improves planning accuracy; sets realistic expectations"
       }
     },
     {
@@ -358,10 +318,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "UX improvement",
-        "scan_agent": "scan-innovation",
         "user_value": "Reduces time-to-productivity from hours to minutes",
-        "measurable_impact": "New user success rate >90% within 30 minutes"
+        "measurable_impact": "New user success rate >90% within 30 minutes",
+        "opportunity_type": "UX improvement",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -405,8 +365,8 @@
       "relates_to": [],
       "custom_fields": {
         "measurable_impact": "Auto-detects 30%+ of maintenance tasks",
-        "opportunity_type": "feature gap",
         "user_value": "Proactively identifies improvement opportunities; reduces manual scanning",
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation"
       }
     },
@@ -450,10 +410,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "integration",
-        "user_value": "Enables remote monitoring; integrates with existing workflows",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one channel at a time"
+        "time_to_ship": "incremental - add one channel at a time",
+        "opportunity_type": "integration",
+        "user_value": "Enables remote monitoring; integrates with existing workflows"
       }
     },
     {
@@ -496,10 +456,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Identifies bottlenecks; improves Ralph responsiveness",
         "measurable_impact": "50%+ improvement in queue operations for large projects",
         "opportunity_type": "performance",
-        "scan_agent": "scan-innovation",
-        "user_value": "Identifies bottlenecks; improves Ralph responsiveness"
+        "scan_agent": "scan-innovation"
       }
     }
   ]

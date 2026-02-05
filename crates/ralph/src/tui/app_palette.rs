@@ -256,6 +256,14 @@ pub fn build_palette_entries(loop_active: bool) -> Vec<PaletteEntry> {
             cmd: PaletteCommand::Quit,
             title: "Quit".to_string(),
         },
+        PaletteEntry {
+            cmd: PaletteCommand::OpenScopeInEditor,
+            title: "Open task scope in editor".to_string(),
+        },
+        PaletteEntry {
+            cmd: PaletteCommand::CopyFileLineRef,
+            title: "Copy file:line references".to_string(),
+        },
     ]
 }
 

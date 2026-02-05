@@ -1302,10 +1302,10 @@
         "RQ-0610"
       ],
       "custom_fields": {
-        "time_to_ship": "medium (concurrency + tests)",
-        "opportunity_type": "reliability",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (concurrency + tests)"
       }
     },
     {
@@ -1349,10 +1349,10 @@
         "RQ-0608"
       ],
       "custom_fields": {
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
-        "opportunity_type": "ux improvement"
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
+        "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
     {
@@ -1398,10 +1398,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
         "time_to_ship": "medium (format + fixes + tests)",
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement"
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
+        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1446,9 +1446,9 @@
       "relates_to": [],
       "custom_fields": {
         "time_to_ship": "small/medium (formatters + tests)",
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement"
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
       }
     },
     {
@@ -1881,6 +1881,66 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0620",
+      "status": "done",
+      "title": "TUI ergonomics: open task scope targets in $EDITOR and copy file:line references",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "tui",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/",
+        "crates/ralph/src/tui/events/palette.rs",
+        "crates/ralph/src/tui/keymap.rs",
+        "crates/ralph/src/tui/app_palette_ops.rs",
+        "docs/tui-task-management.md"
+      ],
+      "evidence": [
+        "`docs/tui-task-management.md` documents rich task navigation/editing, but there is no documented way to open a scoped file from the TUI in an external editor.",
+        "Tasks frequently include `scope` paths (and watch-mode includes `Detected in: file:line` notes), which are natural jump targets.",
+        "Current TUI has scope filtering (`o` key) but no 'open in editor' or clipboard copy functionality for scope paths.",
+        "`PaletteCommand` enum in `events/palette.rs` has no commands for opening files or copying references.",
+        "Scope is stored in tasks but only used for filtering, not navigation."
+      ],
+      "plan": [
+        "Add `OpenScopeInEditor` and `CopyScopeReference` variants to `PaletteCommand` in `events/palette.rs`.",
+        "Add keybinding (e.g., `ctrl+o`) in `keymap.rs` for opening primary scope path in `$EDITOR`.",
+        "Implement editor detection: use `$EDITOR` env var, fallback to `open` (macOS), `xdg-open` (Linux), or platform-appropriate handler.",
+        "Add non-blocking file opening via `std::process::Command::spawn()` to avoid freezing the TUI.",
+        "Parse file:line patterns from task notes (e.g., `path:line` format) for copy reference feature.",
+        "Implement clipboard copy with platform-gated support (macOS `pbcopy`, Linux `xclip`/`wl-copy`, or print to status line as fallback).",
+        "Add palette entries: 'Open scope in editor' and 'Copy scope reference'.",
+        "Update `docs/tui-task-management.md` with new keybindings (`ctrl+o`, etc.) and examples.",
+        "Add unit tests for path parsing, editor command construction, and clipboard fallback behavior.",
+        "Add graceful degradation when `$EDITOR` is unset (show status message, disable keybinding hint).",
+        "Verify by running `make ci` and manually testing `ralph tui` with a task that has scope paths."
+      ],
+      "notes": [
+        "Scope paths are already validated in task schema; primary scope is the first entry in the scope array.",
+        "Consider adding a scope preview panel in future iterations (out of scope for this task).",
+        "Added OpenScopeInEditor and CopyFileLineRef PaletteCommand variants",
+        "Keybindings: O (open scope in /Users/mitchfultz/dotfiles/cursorwait), y (copy file:line refs)",
+        "New modules: external_tools.rs, file_line_refs.rs with comprehensive tests",
+        "Updated docs/tui-task-management.md with new keybindings",
+        "CI gate passes (1953+ tests)"
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-04T14:58:48Z",
+      "updated_at": "2026-02-05T06:51:41.669422000Z",
+      "completed_at": "2026-02-05T06:51:41.669422000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "time_to_ship": "medium (TUI wiring + tests)",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation"
+      }
     }
   ]
 }

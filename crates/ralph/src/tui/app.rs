@@ -2200,6 +2200,40 @@ impl PaletteOperations for App {
                 self.set_status_message("Selection cleared");
                 Ok(TuiAction::Continue)
             }
+            PaletteCommand::OpenScopeInEditor => {
+                let Some(task) = self.selected_task() else {
+                    self.set_status_message("No task selected");
+                    return Ok(TuiAction::Continue);
+                };
+
+                if task.scope.is_empty() {
+                    self.set_status_message("Selected task has no scope paths");
+                    return Ok(TuiAction::Continue);
+                }
+
+                Ok(TuiAction::OpenScopeInEditor(task.scope.clone()))
+            }
+            PaletteCommand::CopyFileLineRef => {
+                let Some(task) = self.selected_task() else {
+                    self.set_status_message("No task selected");
+                    return Ok(TuiAction::Continue);
+                };
+
+                let refs = crate::tui::file_line_refs::extract_file_line_refs(
+                    task.notes
+                        .iter()
+                        .chain(task.evidence.iter())
+                        .map(|s| s.as_str()),
+                );
+
+                if refs.is_empty() {
+                    self.set_status_message("No file:line references found in notes/evidence");
+                    return Ok(TuiAction::Continue);
+                }
+
+                let text = crate::tui::file_line_refs::format_refs_for_clipboard(&refs);
+                Ok(TuiAction::CopyToClipboard(text))
+            }
         }
     }
 }
@@ -2530,6 +2564,39 @@ where
                             strict_templates: false,
                         };
                         spawn_task_builder(opts, options.repoprompt_mode, tx_clone);
+                    }
+                    Ok(false)
+                }
+                TuiAction::OpenScopeInEditor(scope) => {
+                    let Some(queue_path) = app_ref.queue_path.as_ref() else {
+                        app_ref.set_status_message("Cannot open editor: queue path not set");
+                        return Ok(false);
+                    };
+                    let repo_root =
+                        crate::tui::external_tools::repo_root_from_queue_path(queue_path);
+                    let paths = crate::tui::external_tools::resolve_scope_paths(
+                        repo_root.as_deref(),
+                        &scope,
+                    );
+
+                    match crate::tui::external_tools::open_paths_in_editor(&paths) {
+                        Ok(()) => app_ref.set_status_message(format!(
+                            "Opened {} scope path(s) in editor",
+                            paths.len()
+                        )),
+                        Err(e) => {
+                            app_ref.set_status_message(format!("Open in editor failed: {}", e))
+                        }
+                    }
+
+                    Ok(false)
+                }
+                TuiAction::CopyToClipboard(text) => {
+                    match crate::tui::external_tools::copy_text_to_clipboard(&text) {
+                        Ok(()) => {
+                            app_ref.set_status_message("Copied file:line reference(s) to clipboard")
+                        }
+                        Err(e) => app_ref.set_status_message(format!("Copy failed: {}", e)),
                     }
                     Ok(false)
                 }

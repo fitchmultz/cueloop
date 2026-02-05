@@ -36,6 +36,8 @@ mod components;
 mod config_edit;
 mod dependency_graph_cache;
 mod events;
+mod external_tools;
+mod file_line_refs;
 mod foundation;
 mod help;
 mod input;

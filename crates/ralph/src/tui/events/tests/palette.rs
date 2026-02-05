@@ -38,7 +38,7 @@ fn command_palette_with_no_matches_sets_status_message() {
     let queue = make_queue(vec![make_test_task("RQ-0001")]);
     let mut app = App::new(queue);
     app.mode = AppMode::CommandPalette {
-        query: input("nope"),
+        query: input("xyz123!@#"), // Query that definitely won't match any command
         selected: 0,
     };
 
@@ -206,4 +206,101 @@ fn palette_move_task_up_executes() {
     assert_eq!(action, TuiAction::Continue);
     assert_eq!(app.queue.tasks[0].id, "RQ-0002");
     assert!(app.dirty);
+}
+
+#[test]
+fn palette_open_scope_in_editor_emits_action() {
+    let mut task = make_test_task("RQ-0001");
+    task.scope = vec!["src/main.rs".to_string(), "Cargo.toml".to_string()];
+    let queue = make_queue(vec![task]);
+    let mut app = App::new(queue);
+
+    let action = app
+        .execute_palette_command(PaletteCommand::OpenScopeInEditor, "2026-01-20T00:00:00Z")
+        .expect("execute command");
+
+    assert_eq!(
+        action,
+        TuiAction::OpenScopeInEditor(vec!["src/main.rs".to_string(), "Cargo.toml".to_string()])
+    );
+}
+
+#[test]
+fn palette_open_scope_in_editor_no_task_selected() {
+    let queue = make_queue(vec![]);
+    let mut app = App::new(queue);
+
+    let action = app
+        .execute_palette_command(PaletteCommand::OpenScopeInEditor, "2026-01-20T00:00:00Z")
+        .expect("execute command");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.status_message.as_deref(), Some("No task selected"));
+}
+
+#[test]
+fn palette_open_scope_in_editor_empty_scope() {
+    let task = make_test_task("RQ-0001");
+    // scope is empty by default
+    let queue = make_queue(vec![task]);
+    let mut app = App::new(queue);
+
+    let action = app
+        .execute_palette_command(PaletteCommand::OpenScopeInEditor, "2026-01-20T00:00:00Z")
+        .expect("execute command");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some("Selected task has no scope paths")
+    );
+}
+
+#[test]
+fn palette_copy_file_line_refs_emits_clipboard_action() {
+    let mut task = make_test_task("RQ-0001");
+    task.notes = vec!["See `src/main.rs:42`".to_string()];
+    task.evidence = vec!["Also crates/ralph/src/tui/app.rs:855".to_string()];
+    let queue = make_queue(vec![task]);
+    let mut app = App::new(queue);
+
+    let action = app
+        .execute_palette_command(PaletteCommand::CopyFileLineRef, "2026-01-20T00:00:00Z")
+        .expect("execute command");
+
+    assert_eq!(
+        action,
+        TuiAction::CopyToClipboard("src/main.rs:42\ncrates/ralph/src/tui/app.rs:855".to_string())
+    );
+}
+
+#[test]
+fn palette_copy_file_line_refs_with_no_matches_sets_status() {
+    let mut task = make_test_task("RQ-0001");
+    task.notes = vec!["no refs here".to_string()];
+    let queue = make_queue(vec![task]);
+    let mut app = App::new(queue);
+
+    let action = app
+        .execute_palette_command(PaletteCommand::CopyFileLineRef, "2026-01-20T00:00:00Z")
+        .expect("execute command");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some("No file:line references found in notes/evidence")
+    );
+}
+
+#[test]
+fn palette_copy_file_line_refs_no_task_selected() {
+    let queue = make_queue(vec![]);
+    let mut app = App::new(queue);
+
+    let action = app
+        .execute_palette_command(PaletteCommand::CopyFileLineRef, "2026-01-20T00:00:00Z")
+        .expect("execute command");
+
+    assert_eq!(action, TuiAction::Continue);
+    assert_eq!(app.status_message.as_deref(), Some("No task selected"));
 }

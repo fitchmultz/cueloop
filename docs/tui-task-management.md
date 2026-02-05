@@ -33,6 +33,8 @@ Actions:
 - `g`: scan repository
 - `v`: view dependency graph
 - `r`: reload queue from disk
+- `O`: open selected task scope in $EDITOR
+- `y`: copy file:line refs from notes/evidence
 - `?` / `h`: help overlay
 - `q` / `Esc`: quit (may prompt if runner active)
 - `Ctrl+C` / `Ctrl+Q`: quit (same as `q`/`Esc`)

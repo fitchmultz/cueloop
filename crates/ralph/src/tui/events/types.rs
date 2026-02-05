@@ -47,6 +47,10 @@ pub enum TuiAction {
     BuildTask(String),
     /// Trigger task builder agent with full options
     BuildTaskWithOptions(TaskBuilderOptions),
+    /// Spawn the user's editor for these (repo-relative or absolute) paths.
+    OpenScopeInEditor(Vec<String>),
+    /// Copy the provided text to the system clipboard.
+    CopyToClipboard(String),
 }
 
 /// Actions that can discard unsaved changes.
