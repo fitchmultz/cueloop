@@ -1300,8 +1300,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (concurrency + tests)",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "reliability",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
@@ -1345,9 +1345,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (metadata + reconciliation + tests)",
         "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation"
       }
     },
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
         "scan_agent": "scan-innovation",
         "time_to_ship": "medium (format + fixes + tests)",
-        "opportunity_type": "ux improvement"
+        "opportunity_type": "ux improvement",
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "small/medium (formatters + tests)"
+        "time_to_ship": "small/medium (formatters + tests)",
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1933,9 +1933,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "time_to_ship": "medium (TUI wiring + tests)",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke."
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1990,9 +1990,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (render-only UI + tests)",
         "opportunity_type": "ux improvement",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "time_to_ship": "medium (render-only UI + tests)"
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
       }
     },
     {
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "opportunity_type": "feature gap",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "scan_agent": "scan-innovation",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption"
       }
     },
     {
@@ -2107,9 +2107,9 @@
       "relates_to": [],
       "custom_fields": {
         "time_to_ship": "incremental - add one batch operation at a time",
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
         "opportunity_type": "UX improvement",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "reliability",
-        "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "user_value": "Reduces regression risk; enables confident refactoring",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces regression risk; enables confident refactoring"
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -2232,9 +2232,9 @@
       "relates_to": [],
       "custom_fields": {
         "differentiation": "Unique capability among AI task runners",
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "feature gap"
+        "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
     {
@@ -3276,6 +3276,67 @@
       "updated_at": "2026-02-06T11:50:25.589543000Z",
       "completed_at": "2026-02-06T11:50:25.589543000Z",
       "started_at": "2026-02-06T11:13:41.199647000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0654",
+      "status": "done",
+      "title": "Expand `ralph queue list --sort-by` to support timestamps and scheduling fields",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "queue",
+        "ux",
+        "triage",
+        "sorting"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue/list.rs",
+        "crates/ralph/src/cli/queue/shared.rs",
+        "crates/ralph/src/cli/queue/mod.rs",
+        "crates/ralph/src/cli/queue/sort.rs",
+        "crates/ralph/src/cli/queue/tests.rs",
+        "crates/ralph/src/contracts/task.rs",
+        "crates/ralph/src/timeutil.rs",
+        "crates/ralph/tests/queue_sorting_cli_test.rs",
+        "docs/cli.md",
+        "ralph queue list --help",
+        "ralph queue sort --help"
+      ],
+      "evidence": [
+        "Command: `ralph queue list --help` currently supports `--sort-by priority` only.",
+        "Command: `ralph queue list` already supports scheduling filters (`--scheduled`, `--scheduled-after`, `--scheduled-before`) on `scheduled_start`, but there is no `--sort-by scheduled_start` (or other timestamps) for time-based triage.",
+        "Code: `QueueSortBy` (in `crates/ralph/src/cli/queue/shared.rs`) currently only contains `priority` and is shared by both `queue list` and `queue sort`, so adding more fields requires either implementing them for both commands or splitting list vs sort enums.",
+        "Tests: `crates/ralph/tests/queue_sorting_cli_test.rs` currently asserts clap errors list only `priority` as the valid sort-by value for both `queue list` and `queue sort`."
+      ],
+      "plan": [
+        "Split sort-by enums so `queue list` can grow without widening `queue sort` reordering semantics: keep `QueueSortBy` (priority-only) for `ralph queue sort`, introduce a dedicated `QueueListSortBy` for `ralph queue list`.",
+        "Implement `ralph queue list --sort-by` for: `priority` (existing), `created_at`, `updated_at`, `started_at`, `scheduled_start`, `status`, and `title`; use `crate::timeutil::parse_rfc3339` for timestamp comparison and always include a stable tie-breaker (e.g., `id`) so output ordering is deterministic.",
+        "Define and document ordering rules for missing/invalid timestamps (and missing scheduled_start) for both ascending and descending sorts.",
+        "Update docs/help: `docs/cli.md` and `ralph queue list --help` should list all supported sort fields and include examples for scheduled triage; keep `ralph queue sort --help` limited to priority and document the distinction.",
+        "Update tests: extend `crates/ralph/tests/queue_sorting_cli_test.rs` to expect new list sort-by values while keeping sort command limited to priority; add ordering tests for each new list sort field (including missing timestamp cases) and update any affected unit tests in `crates/ralph/src/cli/queue/tests.rs`.",
+        "Verify by running `make ci` and confirming it passes."
+      ],
+      "notes": [
+        "Opportunity type: UX improvement.",
+        "Why it matters: Better sorting reduces friction in daily triage and makes CLI workflows competitive with the TUI for backlog management.",
+        "Acceptance criteria: Sort results are correct and stable; edge cases (missing timestamps) are well-defined; tests cover all modes.",
+        "Observation: scheduling already exists as filters in `queue list`; this task is specifically about adding time-based sorting while keeping `queue sort` (file reordering) conservative.",
+        "queue list: add --sort-by priority|created_at|updated_at|started_at|scheduled_start|status|title with stable id tie-breaker",
+        "missing/invalid timestamps sort last regardless of order (documented)",
+        "queue sort remains priority-only; help/docs clarify list vs sort semantics",
+        "docs/tests updated: docs/cli.md + queue_sorting_cli_test coverage for new fields"
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-06T01:53:55Z",
+      "updated_at": "2026-02-06T12:22:24.655667000Z",
+      "completed_at": "2026-02-06T12:22:24.655667000Z",
+      "started_at": "2026-02-06T11:56:04.731767000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

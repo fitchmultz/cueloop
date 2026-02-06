@@ -1,4 +1,15 @@
 //! Queue sort subcommand.
+//!
+//! Responsibilities:
+//! - Reorder tasks in .ralph/queue.json by priority.
+//!
+//! Not handled here:
+//! - Time-based or complex sorting (use `ralph queue list --sort-by` for that).
+//! - Sorting by arbitrary fields (intentionally limited to prevent footguns).
+//!
+//! Invariants/assumptions:
+//! - Only supports priority sorting to avoid dangerous queue reordering.
+//! - Mutates queue.json; use with care in collaborative environments.
 
 use anyhow::Result;
 use clap::Args;
@@ -11,10 +22,10 @@ use super::{QueueSortBy, QueueSortOrder};
 /// Arguments for `ralph queue sort`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --order descending\n  ralph queue sort --order ascending"
+    after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --order descending\n  ralph queue sort --order ascending\n  ralph queue list --scheduled --sort-by scheduled_start --order ascending\n\nNote:\n  - `ralph queue sort` reorders .ralph/queue.json and intentionally supports priority only.\n  - For triage/time-based sorting without mutating files, use `ralph queue list --sort-by ...`."
 )]
 pub struct QueueSortArgs {
-    /// Sort by field (supported: priority; default: priority).
+    /// Sort by field (supported: priority only; reorders queue file).
     #[arg(long, value_enum, default_value_t = QueueSortBy::Priority)]
     pub sort_by: QueueSortBy,
 

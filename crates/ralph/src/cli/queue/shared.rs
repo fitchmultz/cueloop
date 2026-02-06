@@ -90,6 +90,10 @@ pub enum QueueImportFormat {
     Json,
 }
 
+/// Sort-by field for `ralph queue sort` (reorders queue file).
+///
+/// Intentionally conservative: only supports priority to avoid dangerous
+/// "reorder by arbitrary field" footguns that mutate queue.json.
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[clap(rename_all = "snake_case")]
 pub enum QueueSortBy {
@@ -101,6 +105,43 @@ impl std::fmt::Display for QueueSortBy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             QueueSortBy::Priority => f.write_str("priority"),
+        }
+    }
+}
+
+/// Sort-by field for `ralph queue list` (sorts output only).
+///
+/// Supports comprehensive time-based and metadata sorting for triage
+/// without the risks of mutating queue.json ordering.
+#[derive(Clone, Copy, Debug, ValueEnum)]
+#[clap(rename_all = "snake_case")]
+pub enum QueueListSortBy {
+    /// Sort by priority.
+    Priority,
+    /// Sort by created_at timestamp.
+    CreatedAt,
+    /// Sort by updated_at timestamp.
+    UpdatedAt,
+    /// Sort by started_at timestamp.
+    StartedAt,
+    /// Sort by scheduled_start timestamp.
+    ScheduledStart,
+    /// Sort by status lifecycle ordering.
+    Status,
+    /// Sort by title (case-insensitive).
+    Title,
+}
+
+impl std::fmt::Display for QueueListSortBy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QueueListSortBy::Priority => f.write_str("priority"),
+            QueueListSortBy::CreatedAt => f.write_str("created_at"),
+            QueueListSortBy::UpdatedAt => f.write_str("updated_at"),
+            QueueListSortBy::StartedAt => f.write_str("started_at"),
+            QueueListSortBy::ScheduledStart => f.write_str("scheduled_start"),
+            QueueListSortBy::Status => f.write_str("status"),
+            QueueListSortBy::Title => f.write_str("title"),
         }
     }
 }

@@ -987,8 +987,8 @@ Common flag families across `ralph queue` subcommands:
   * `--limit <N>` (default: 50; `0` = no limit)
   * `--all`: ignore `--limit`
 * Sorting:
-  * `list`: `--sort-by priority` and `--order <ascending|descending>` (sorts output only)
-  * `sort`: `--sort-by priority` and `--order <ascending|descending>` (reorders queue file)
+  * `list`: `--sort-by <priority|created_at|updated_at|started_at|scheduled_start|status|title>` and `--order <ascending|descending>` (sorts output only; missing/invalid timestamps sort last)
+  * `sort`: `--sort-by priority` and `--order <ascending|descending>` (reorders queue file; priority only for safety)
 * Scheduled filters (`list`, `search`):
   * `--scheduled`: only show tasks with `scheduled_start` set
   * `--scheduled-after <TIMESTAMP>`: filter tasks scheduled after this time (RFC3339 or relative)
@@ -1119,7 +1119,7 @@ Flags:
 * `--format <compact|long|json>`: output format (default: `compact`). JSON outputs an array of task objects (same shape as queue export).
 * `--limit <N>`: maximum tasks to show (default: 50; `0` = no limit).
 * `--all`: show all tasks (ignores `--limit`).
-* `--sort-by <priority>`: sort output by field.
+* `--sort-by <priority|created_at|updated_at|started_at|scheduled_start|status|title>`: sort output by field (default: `descending`). Missing/invalid timestamps sort last regardless of order.
 * `--order <ascending|descending>`: sort order (default: `descending`).
 * `--scheduled`: filter to only show tasks with `scheduled_start` set.
 * `--scheduled-after <TIMESTAMP>`: filter tasks scheduled after this time (RFC3339 or relative expression like `+7d`).
@@ -1140,6 +1140,10 @@ ralph queue list --scheduled-after '2026-01-01T00:00:00Z'
 ralph queue list --scheduled-before '+7d'
 ralph queue list --with-eta
 ralph queue list --with-eta --format long
+ralph queue list --sort-by updated_at
+ralph queue list --scheduled --sort-by scheduled_start --order ascending
+ralph queue list --sort-by status --order ascending
+ralph queue list --sort-by title
 ```
 
 ### `ralph queue search`
@@ -1207,7 +1211,7 @@ Sort tasks by priority (reorders the queue file).
 
 Flags:
 
-* `--sort-by <priority>`: sort by field (default: `priority`).
+* `--sort-by <priority>`: sort by field (default: `priority`). Only priority is supported for queue file reordering; use `ralph queue list --sort-by` for time-based triage.
 * `--order <ascending|descending>`: sort order (default: `descending`, highest priority first).
 
 ```bash
@@ -1215,6 +1219,8 @@ ralph queue sort
 ralph queue sort --order descending
 ralph queue sort --order ascending
 ```
+
+Note: `ralph queue sort` intentionally supports only priority sorting to prevent accidental queue reordering. For time-based triage without modifying the queue file, use `ralph queue list --sort-by <field>`.
 
 ### `ralph queue stats`
 

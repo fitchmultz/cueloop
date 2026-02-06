@@ -54,8 +54,8 @@ pub use prune::QueuePruneArgs;
 pub use repair::RepairArgs;
 pub use search::QueueSearchArgs;
 pub use shared::{
-    QueueExportFormat, QueueImportFormat, QueueListFormat, QueueReportFormat, QueueShowFormat,
-    QueueSortBy, QueueSortOrder, StatusArg,
+    QueueExportFormat, QueueImportFormat, QueueListFormat, QueueListSortBy, QueueReportFormat,
+    QueueShowFormat, QueueSortBy, QueueSortOrder, StatusArg,
 };
 pub use show::QueueShowArgs;
 pub(crate) use show::show_task;

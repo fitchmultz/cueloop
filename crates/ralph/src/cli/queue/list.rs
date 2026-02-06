@@ -14,13 +14,21 @@
 //!
 //! Invariants/assumptions:
 //! - Queue files are loaded and validated before filtering.
-//! - Output ordering: active queue tasks first, done tasks appended when --include-done.
+//! - Output ordering:
+//!   - Default: active queue tasks are emitted in queue file order.
+//!   - With --include-done: done tasks are appended after active tasks.
+//!   - With --sort-by: tasks are sorted by the requested field (mixing statuses as needed).
 //! - ETA is based on execution history only; missing history shows "n/a".
 //! - ETA column is only added to text formats (compact/long), not JSON.
 //! - Scheduled filters use RFC3339 or relative time expressions.
+//! - Sorting is stable: all comparisons end with id tie-breaker for deterministic output.
+//! - Missing/invalid timestamps sort last regardless of sort order (known before unknown).
+
+use std::cmp::Ordering;
 
 use anyhow::{Result, bail};
 use clap::Args;
+use time::OffsetDateTime;
 
 use crate::cli::queue::shared::task_eta_display;
 use crate::cli::{load_and_validate_queues, resolve_list_limit};
@@ -29,12 +37,12 @@ use crate::contracts::{Task, TaskStatus};
 use crate::eta_calculator::EtaCalculator;
 use crate::{outpututil, queue};
 
-use super::{QueueListFormat, QueueSortBy, QueueSortOrder, StatusArg};
+use super::{QueueListFormat, QueueListSortBy, QueueSortOrder, StatusArg};
 
 /// Arguments for `ralph queue list`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue list --status doing --scope crates/ralph\n  ralph queue list --include-done --limit 20\n  ralph queue list --only-done --all\n  ralph queue list --filter-deps=RQ-0100\n  ralph queue list --format json\n  ralph queue list --format json | jq '.[] | select(.status == \"todo\")'\n  ralph queue list --scheduled\n  ralph queue list --scheduled-after '2026-01-01T00:00:00Z'\n  ralph queue list --scheduled-before '+7d'\n  ralph queue list --with-eta\n  ralph queue list --with-eta --format long"
+    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue list --status doing --scope crates/ralph\n  ralph queue list --include-done --limit 20\n  ralph queue list --only-done --all\n  ralph queue list --filter-deps=RQ-0100\n  ralph queue list --format json\n  ralph queue list --format json | jq '.[] | select(.status == \"todo\")'\n  ralph queue list --scheduled\n  ralph queue list --scheduled-after '2026-01-01T00:00:00Z'\n  ralph queue list --scheduled-before '+7d'\n  ralph queue list --with-eta\n  ralph queue list --with-eta --format long\n  ralph queue list --sort-by updated_at\n  ralph queue list --scheduled --sort-by scheduled_start --order ascending\n  ralph queue list --scheduled-after '+0d' --sort-by scheduled_start --order ascending"
 )]
 pub struct QueueListArgs {
     /// Filter by status (repeatable).
@@ -73,9 +81,10 @@ pub struct QueueListArgs {
     #[arg(long)]
     pub all: bool,
 
-    /// Sort by field (supported: priority).
+    /// Sort by field (supported: priority, created_at, updated_at, started_at, scheduled_start, status, title).
+    /// Missing/invalid timestamps sort last regardless of order.
     #[arg(long, value_enum)]
-    pub sort_by: Option<QueueSortBy>,
+    pub sort_by: Option<QueueListSortBy>,
 
     /// Sort order (default: descending).
     #[arg(long, value_enum, default_value_t = QueueSortOrder::Descending)]
@@ -216,28 +225,87 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueListArgs) -> Result<()> {
 
     // Apply sort if specified
     let tasks = if let Some(sort_by) = args.sort_by {
-        match sort_by {
-            QueueSortBy::Priority => {
-                let mut sorted = tasks;
-                sorted.sort_by(|a, b| {
-                    // Since Ord has Critical > High > Medium > Low (semantically),
-                    // we reverse for descending to put higher priority first.
-                    let ord = if args.order.is_descending() {
-                        a.priority.cmp(&b.priority).reverse()
-                    } else {
-                        a.priority.cmp(&b.priority)
-                    };
-                    match ord {
-                        std::cmp::Ordering::Equal => a.id.cmp(&b.id),
-                        other => other,
-                    }
-                });
-                sorted
-            }
-        }
+        let descending = args.order.is_descending();
+        let mut sorted = tasks;
+        sorted.sort_by(|a, b| {
+            let ord = match sort_by {
+                QueueListSortBy::Priority => {
+                    let ord = a.priority.cmp(&b.priority);
+                    if descending { ord.reverse() } else { ord }
+                }
+                QueueListSortBy::CreatedAt => cmp_optional_rfc3339_missing_last(
+                    a.created_at.as_deref(),
+                    b.created_at.as_deref(),
+                    descending,
+                ),
+                QueueListSortBy::UpdatedAt => cmp_optional_rfc3339_missing_last(
+                    a.updated_at.as_deref(),
+                    b.updated_at.as_deref(),
+                    descending,
+                ),
+                QueueListSortBy::StartedAt => cmp_optional_rfc3339_missing_last(
+                    a.started_at.as_deref(),
+                    b.started_at.as_deref(),
+                    descending,
+                ),
+                QueueListSortBy::ScheduledStart => cmp_optional_rfc3339_missing_last(
+                    a.scheduled_start.as_deref(),
+                    b.scheduled_start.as_deref(),
+                    descending,
+                ),
+                QueueListSortBy::Status => {
+                    let ord = status_rank(a.status).cmp(&status_rank(b.status));
+                    if descending { ord.reverse() } else { ord }
+                }
+                QueueListSortBy::Title => {
+                    let ord = cmp_ascii_case_insensitive(&a.title, &b.title)
+                        .then_with(|| a.title.cmp(&b.title));
+                    if descending { ord.reverse() } else { ord }
+                }
+            };
+
+            ord.then_with(|| a.id.cmp(&b.id))
+        });
+        sorted
     } else {
         tasks
     };
+
+    // Helper functions for sorting
+    fn cmp_optional_rfc3339_missing_last(
+        a: Option<&str>,
+        b: Option<&str>,
+        descending: bool,
+    ) -> Ordering {
+        let a_dt: Option<OffsetDateTime> = a.and_then(crate::timeutil::parse_rfc3339_opt);
+        let b_dt: Option<OffsetDateTime> = b.and_then(crate::timeutil::parse_rfc3339_opt);
+
+        match (a_dt, b_dt) {
+            (Some(a_dt), Some(b_dt)) => {
+                let ord = a_dt.cmp(&b_dt);
+                if descending { ord.reverse() } else { ord }
+            }
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
+        }
+    }
+
+    fn status_rank(s: TaskStatus) -> u8 {
+        match s {
+            TaskStatus::Draft => 0,
+            TaskStatus::Todo => 1,
+            TaskStatus::Doing => 2,
+            TaskStatus::Done => 3,
+            TaskStatus::Rejected => 4,
+        }
+    }
+
+    fn cmp_ascii_case_insensitive(a: &str, b: &str) -> Ordering {
+        a.bytes()
+            .map(|c| c.to_ascii_lowercase())
+            .cmp(b.bytes().map(|c| c.to_ascii_lowercase()))
+    }
 
     let max = limit.unwrap_or(usize::MAX);
     let tasks: Vec<&Task> = tasks.into_iter().take(max).collect();
