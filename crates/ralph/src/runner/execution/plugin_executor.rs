@@ -141,20 +141,28 @@ impl PluginExecutor {
                     reasoning_effort,
                     permission_mode,
                     phase_type: Some(phase_type),
-                    session_id,
+                    session_id: session_id.clone(),
                 };
 
                 let (cmd, payload, _guards) = plugin.build_run_command(ctx)?;
 
-                run_with_streaming_json(
+                let mut output = run_with_streaming_json(
                     cmd,
                     payload.as_deref(),
-                    runner,
+                    runner.clone(),
                     bin,
                     timeout,
                     output_handler.clone(),
                     output_stream,
-                )
+                )?;
+
+                // For runners that require Ralph-managed session IDs (like kimi),
+                // preserve the session_id since it won't be in the runner's output
+                if self.requires_managed_session_id(&runner) {
+                    output.session_id = session_id;
+                }
+
+                Ok(output)
             }
         }
     }
