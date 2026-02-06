@@ -15,6 +15,7 @@
 
 mod archive;
 mod burndown;
+mod explain;
 mod export;
 mod graph;
 mod history;
@@ -39,6 +40,7 @@ use clap::{Args, Subcommand};
 use crate::config;
 
 pub use burndown::QueueBurndownArgs;
+pub use explain::QueueExplainArgs;
 pub use export::QueueExportArgs;
 pub use graph::QueueGraphArgs;
 pub use history::QueueHistoryArgs;
@@ -78,6 +80,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Graph(args) => graph::handle(&resolved, args),
         QueueCommand::Export(args) => export::handle(&resolved, args),
         QueueCommand::Stop => stop::handle(&resolved),
+        QueueCommand::Explain(args) => explain::handle(&resolved, args),
     }
 }
 
@@ -182,6 +185,12 @@ pub enum QueueCommand {
         after_long_help = "Examples:\n ralph queue stop\n\nNotes:\n - This creates a stop signal file that the run loop checks between tasks.\n - Sequential mode: exits between tasks (current task completes, then exits).\n - Parallel mode: stops scheduling new tasks; waits for in-flight tasks to complete.\n - The stop signal is automatically cleared when the loop honors the request.\n - To force immediate termination, use Ctrl+C in the running loop."
     )]
     Stop,
+
+    /// Explain why tasks are (not) runnable.
+    #[command(
+        after_long_help = "Examples:\n  ralph queue explain\n  ralph queue explain --format json\n  ralph queue explain --include-draft\n  ralph queue explain --format json --include-draft"
+    )]
+    Explain(QueueExplainArgs),
 }
 
 #[cfg(test)]

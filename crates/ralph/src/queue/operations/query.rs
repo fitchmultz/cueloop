@@ -141,7 +141,7 @@ pub fn select_runnable_task_index(
 
     if options.include_draft {
         return active.tasks.iter().position(|task| {
-            task.status == TaskStatus::Draft && are_dependencies_met(task, active, done)
+            task.status == TaskStatus::Draft && is_task_runnable(task, active, done)
         });
     }
 
@@ -199,6 +199,14 @@ pub fn select_runnable_task_index_with_target(
                     needle
                 );
             }
+            if is_task_scheduled_for_future(task) {
+                bail!(
+                    "Queue query failed (operation={}): target task {} is scheduled for the future ({}). Wait until the scheduled time.",
+                    operation,
+                    needle,
+                    task.scheduled_start.as_deref().unwrap_or("unknown")
+                );
+            }
         }
         TaskStatus::Todo => {
             if !are_dependencies_met(task, active, done) {
@@ -206,6 +214,14 @@ pub fn select_runnable_task_index_with_target(
                     "Queue query failed (operation={}): target task {} is blocked by unmet dependencies. Resolve dependencies before running.",
                     operation,
                     needle
+                );
+            }
+            if is_task_scheduled_for_future(task) {
+                bail!(
+                    "Queue query failed (operation={}): target task {} is scheduled for the future ({}). Wait until the scheduled time.",
+                    operation,
+                    needle,
+                    task.scheduled_start.as_deref().unwrap_or("unknown")
                 );
             }
         }

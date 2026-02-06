@@ -640,6 +640,42 @@ ralph run resume --non-interactive
 ralph run loop --resume --max-tasks 5
 ```
 
+### Dry-run mode
+
+Use `--dry-run` to simulate task selection without actually running any tasks. This is useful for understanding what would run and why tasks are blocked before starting execution.
+
+Behavior:
+- Performs task selection using the same logic as real runs
+- Prints selected task (if any) with status
+- When no task is selected, prints detailed blocker information (dependencies, schedule, status)
+- Does not acquire queue lock
+- Does not modify `.ralph/queue.json` or `.ralph/done.json`
+- Does not invoke any runner or start sessions
+
+Flags:
+
+* `--dry-run`: Enable dry-run mode (selection-only introspection).
+
+Constraints:
+- Conflicts with `--interactive` (TUI mode)
+- Conflicts with `--parallel-worker` and `--parallel`
+
+Examples:
+
+```bash
+# See what task would be selected
+ralph run one --dry-run
+
+# See what task would be selected including drafts
+ralph run one --dry-run --include-draft
+
+# Check if a specific task is runnable
+ralph run one --dry-run --id RQ-0001
+
+# Simulate loop mode (reports first selection only)
+ralph run loop --dry-run
+```
+
 ### Parallel loop (CLI-only)
 
 `--parallel [N]` runs multiple tasks concurrently in separate isolated git workspace clones. The default is `2`
@@ -887,11 +923,39 @@ Print the next runnable task (ID by default). If no runnable task exists, prints
 Flags:
 
 * `--with-title`: include task title after ID.
+* `--explain`: print an explanation when no runnable task is found (to stderr).
 
 ```bash
 ralph queue next
 ralph queue next --with-title
+ralph queue next --explain
 ```
+
+### `ralph queue explain`
+
+Explain why tasks are (not) runnable. Provides structured runnability analysis with actionable reasons for blocked tasks.
+
+Flags:
+
+* `--format <text|json>`: output format (default: `text`). JSON output is versioned and stable for scripting.
+* `--include-draft`: include draft tasks in the analysis.
+
+```bash
+ralph queue explain
+ralph queue explain --format json
+ralph queue explain --include-draft
+ralph queue explain --format json --include-draft
+```
+
+Output (text format):
+- Summary of queue runnability (total tasks, candidates, runnable count)
+- Blocker counts by type (dependencies, schedule, status)
+- First blocking task with specific reasons
+- Hints for next steps (`ralph queue graph`, `ralph queue list --scheduled`, etc.)
+
+Output (JSON format):
+- Full `QueueRunnabilityReport` structure with version, timestamps, and per-task runnability rows
+- Each task includes `runnable` boolean and `reasons` array with structured blocker information
 
 ### `ralph queue next-id`
 

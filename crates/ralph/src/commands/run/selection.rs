@@ -14,7 +14,7 @@
 
 use crate::contracts::QueueFile;
 use crate::queue::operations::{
-    RunnableSelectionOptions, are_dependencies_met, is_task_runnable, select_runnable_task_index,
+    RunnableSelectionOptions, is_task_runnable, select_runnable_task_index,
     select_runnable_task_index_with_target,
 };
 use anyhow::Result;
@@ -70,7 +70,7 @@ pub(crate) fn select_run_one_task_index_excluding(
         return Ok(queue_file.tasks.iter().position(|task| {
             task.status == crate::contracts::TaskStatus::Draft
                 && !is_in_flight(&task.id)
-                && are_dependencies_met(task, queue_file, done_ref)
+                && is_task_runnable(task, queue_file, done_ref)
         }));
     }
 

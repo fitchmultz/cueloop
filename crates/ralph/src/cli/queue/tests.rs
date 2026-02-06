@@ -18,8 +18,8 @@ use clap::CommandFactory;
 use tempfile::TempDir;
 
 use super::{
-    QueueExportArgs, QueueExportFormat, QueueListArgs, QueueListFormat, QueueSearchArgs,
-    QueueSortOrder, export, list, search,
+    QueueExplainArgs, QueueExportArgs, QueueExportFormat, QueueListArgs, QueueListFormat,
+    QueueNextArgs, QueueSearchArgs, QueueSortOrder, export, list, next, search,
 };
 use crate::config;
 use crate::contracts::{Config, QueueFile, Task, TaskStatus};
@@ -432,5 +432,105 @@ fn queue_search_json_format_outputs_valid_json() -> Result<()> {
     args.format = QueueListFormat::Json;
 
     search::handle(&resolved, args)?;
+    Ok(())
+}
+
+#[test]
+fn queue_explain_help_includes_examples() {
+    let mut cmd = crate::cli::Cli::command();
+    let queue = cmd.find_subcommand_mut("queue").expect("queue subcommand");
+    let explain_cmd = queue
+        .find_subcommand_mut("explain")
+        .expect("queue explain subcommand");
+    let help = explain_cmd.render_long_help().to_string();
+
+    assert!(
+        help.contains("ralph queue explain"),
+        "missing explain example: {help}"
+    );
+    assert!(
+        help.contains("--format json"),
+        "missing format json example: {help}"
+    );
+    assert!(
+        help.contains("--include-draft"),
+        "missing include-draft example: {help}"
+    );
+}
+
+#[test]
+fn queue_explain_smoke() -> Result<()> {
+    let dir = TempDir::new()?;
+    let resolved = resolved_for_dir(&dir);
+    write_queue(&resolved.queue_path)?;
+
+    let args = QueueExplainArgs {
+        format: crate::cli::queue::shared::QueueReportFormat::Text,
+        include_draft: false,
+    };
+
+    super::explain::handle(&resolved, args)?;
+    Ok(())
+}
+
+#[test]
+fn queue_explain_json_format() -> Result<()> {
+    let dir = TempDir::new()?;
+    let resolved = resolved_for_dir(&dir);
+    write_queue(&resolved.queue_path)?;
+
+    let args = QueueExplainArgs {
+        format: crate::cli::queue::shared::QueueReportFormat::Json,
+        include_draft: false,
+    };
+
+    super::explain::handle(&resolved, args)?;
+    Ok(())
+}
+
+#[test]
+fn queue_next_help_includes_explain_flag() {
+    let mut cmd = crate::cli::Cli::command();
+    let queue = cmd.find_subcommand_mut("queue").expect("queue subcommand");
+    let next_cmd = queue
+        .find_subcommand_mut("next")
+        .expect("queue next subcommand");
+    let help = next_cmd.render_long_help().to_string();
+
+    // Check that --explain flag is documented
+    assert!(help.contains("--explain"), "missing --explain flag: {help}");
+    assert!(
+        help.contains("Print an explanation when no runnable task is found"),
+        "missing explain description: {help}"
+    );
+}
+
+#[test]
+fn queue_next_with_explain() -> Result<()> {
+    let dir = TempDir::new()?;
+    let resolved = resolved_for_dir(&dir);
+    write_queue(&resolved.queue_path)?;
+
+    let args = QueueNextArgs {
+        with_title: false,
+        explain: true,
+    };
+
+    next::handle(&resolved, args)?;
+    Ok(())
+}
+
+#[test]
+fn queue_next_without_explain() -> Result<()> {
+    let dir = TempDir::new()?;
+    let resolved = resolved_for_dir(&dir);
+    write_queue(&resolved.queue_path)?;
+
+    let args = QueueNextArgs {
+        with_title: false,
+        explain: false,
+    };
+
+    next::handle(&resolved, args)?;
     Ok(())
 }

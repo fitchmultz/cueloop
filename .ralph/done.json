@@ -1300,10 +1300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
         "opportunity_type": "reliability",
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (concurrency + tests)",
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1346,9 +1346,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "ux improvement",
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
+        "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (format + fixes + tests)",
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
         "opportunity_type": "ux improvement",
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation",
-        "time_to_ship": "small/medium (formatters + tests)"
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
+        "time_to_ship": "small/medium (formatters + tests)",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "scan_agent": "scan-innovation",
         "time_to_ship": "medium (TUI wiring + tests)",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke."
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1991,8 +1991,8 @@
       "custom_fields": {
         "scan_agent": "scan-innovation",
         "time_to_ship": "medium (render-only UI + tests)",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "opportunity_type": "ux improvement"
+        "opportunity_type": "ux improvement",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
       }
     },
     {
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2165,8 +2165,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "scan_agent": "scan-innovation",
         "user_value": "Reduces regression risk; enables confident refactoring",
         "opportunity_type": "reliability"
       }
@@ -2231,9 +2231,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
         "differentiation": "Unique capability among AI task runners",
         "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation"
       }
     },
@@ -2655,6 +2655,72 @@
       "updated_at": "2026-02-06T02:39:22.459843000Z",
       "completed_at": "2026-02-06T02:39:22.459843000Z",
       "started_at": "2026-02-06T02:10:43.654220000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0645",
+      "status": "done",
+      "title": "Explain why no tasks are runnable (queue explain + run --dry-run)",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "ux",
+        "cli",
+        "queue",
+        "run",
+        "debuggability"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue/mod.rs",
+        "crates/ralph/src/cli/queue/next.rs",
+        "crates/ralph/src/cli/queue/graph.rs",
+        "crates/ralph/src/queue/operations/query.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/run/selection.rs",
+        "crates/ralph/src/cli/run.rs",
+        "docs/cli.md",
+        "schemas/queue.schema.json",
+        "ralph queue next",
+        "ralph queue explain",
+        "ralph run one --dry-run",
+        "ralph run loop --dry-run"
+      ],
+      "evidence": [
+        "CLI: `crates/ralph/src/cli/queue/next.rs` prints the next runnable task ID, but when nothing is runnable it prints the next available ID (via `next_id_across`) without explaining why no task is runnable.",
+        "CLI: `crates/ralph/src/cli/run.rs` defines `ralph run one` and `ralph run loop`, but neither supports `--dry-run` for selection-only introspection.",
+        "Runtime: `crates/ralph/src/commands/run/mod.rs` logs \"All runnable tasks are blocked by unmet dependencies.\" whenever any todo/draft exists but none is runnable; this can be misleading when the true blocker is `scheduled_start` being in the future.",
+        "Core logic: `crates/ralph/src/queue/operations/query.rs` enforces both dependency and `scheduled_start` constraints (`is_task_runnable`), but there is no API/CLI that reports per-task non-runnable reasons (deps vs schedule vs status)."
+      ],
+      "plan": [
+        "Add a shared \"runnability reasons\" helper (new module or extend `crates/ralph/src/queue/operations/query.rs`) that returns structured non-runnable reasons per task (unmet deps, scheduled in future, status not runnable).",
+        "Implement `ralph queue explain` as a new subcommand (`crates/ralph/src/cli/queue/explain.rs` + wire into `crates/ralph/src/cli/queue/mod.rs`) with text output by default and `--format json` for scripting (stable shape).",
+        "Extend `ralph queue next` (`crates/ralph/src/cli/queue/next.rs`) with `--explain` to print the chosen task (if any) and, when none is runnable, print the first blocking reason plus a hint to run `ralph queue explain`.",
+        "Add `--dry-run` to `ralph run one` and `ralph run loop` (`crates/ralph/src/cli/run.rs` + `crates/ralph/src/commands/run/mod.rs`) to perform selection + print rationale without invoking any runner and without modifying `.ralph/queue.json` / `.ralph/done.json`.",
+        "Fix misleading \"blocked by unmet dependencies\" messaging in `crates/ralph/src/commands/run/mod.rs` to reflect both dependency and scheduling blockers (or explicitly point users to `queue explain`).",
+        "Add tests covering success + failure modes: blocked-by-deps, scheduled-in-future, only-drafts (without `--include-draft`), and empty-queue. Put core logic tests under `crates/ralph/src/queue/operations/tests/`, and CLI help/flag parsing tests under `crates/ralph/src/cli/queue/tests.rs` + `crates/ralph/src/cli/run.rs`.",
+        "Update `docs/cli.md` with examples for `queue explain`, `queue next --explain`, and `run --dry-run`, then verify with `make ci`."
+      ],
+      "notes": [
+        "Opportunity type: UX improvement + reliability.",
+        "Why it matters: When automation stalls, users need deterministic, local explanations to recover quickly (no guesswork, no runner cost).",
+        "Repo observation: The current \"no runnable tasks\" message in `run` can be incorrect when `scheduled_start` is the actual blocker, increasing confusion during recovery.",
+        "Acceptance criteria: `queue explain` and `run --dry-run` provide actionable reasons (deps vs schedule vs status); JSON output is stable for scripting; docs/help include examples.",
+        "Add runnability report helper (deps/schedule/status) with stable JSON output.",
+        "Add 'ralph queue explain' and 'ralph queue next --explain' for actionable selection/blocker diagnostics.",
+        "Add 'ralph run one --dry-run' and 'ralph run loop --dry-run' for selection-only introspection (no lock, no queue/done writes).",
+        "Fix selection semantics to respect scheduled_start for draft/target selection and improve 'no runnable tasks' messaging.",
+        "Document new commands/flags in docs/cli.md; extend tests for success and failure modes."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-06T01:53:55Z",
+      "updated_at": "2026-02-06T03:32:40.846657000Z",
+      "completed_at": "2026-02-06T03:32:40.846657000Z",
+      "started_at": "2026-02-06T02:45:22.229314000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

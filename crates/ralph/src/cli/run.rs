@@ -75,6 +75,13 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
                     factories.scan_factory,
                 )?;
                 Ok(())
+            } else if args.dry_run {
+                if args.parallel_worker {
+                    return Err(anyhow::anyhow!(
+                        "--dry-run cannot be used with --parallel-worker"
+                    ));
+                }
+                run_cmd::dry_run_one(&resolved, &overrides, args.id.as_deref())
             } else {
                 if args.parallel_worker {
                     let task_id = args.id.as_deref().ok_or_else(|| {
@@ -132,6 +139,8 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
                     factories.scan_factory,
                 )?;
                 Ok(())
+            } else if args.dry_run {
+                run_cmd::dry_run_loop(&resolved, &overrides)
             } else {
                 run_cmd::run_loop(
                     &resolved,
@@ -268,6 +277,9 @@ Examples:\n\
  ralph run one --repo-prompt plan\n\
  ralph run one --repo-prompt off\n\
  ralph run one --non-interactive\n\
+ ralph run one --dry-run\n\
+ ralph run one --dry-run --include-draft\n\
+ ralph run one --dry-run --id RQ-0001\n\
  ralph tui"
     )]
     One(RunOneArgs),
@@ -291,6 +303,7 @@ Examples:\n\
  ralph run loop --repo-prompt tools --max-tasks 1\n\
  ralph run loop --repo-prompt off --max-tasks 1\n\
  ralph run loop --lfs-check --max-tasks 1\n\
+ ralph run loop --dry-run\n\
  ralph run loop -i\n\
  ralph tui"
     )]
@@ -337,6 +350,15 @@ pub struct RunOneArgs {
     #[arg(long, conflicts_with = "interactive")]
     pub non_interactive: bool,
 
+    /// Select a task and print why it would (or would not) run.
+    /// Does not invoke any runner and does not write queue/done.
+    #[arg(
+        long,
+        conflicts_with = "interactive",
+        conflicts_with = "parallel_worker"
+    )]
+    pub dry_run: bool,
+
     /// Internal: run as a parallel worker (skips queue lock, allows upstream creation).
     #[arg(long, hide = true)]
     pub parallel_worker: bool,
@@ -370,6 +392,11 @@ pub struct RunLoopArgs {
     /// Skip interactive prompts (for CI/non-interactive environments).
     #[arg(long)]
     pub non_interactive: bool,
+
+    /// Select a task and print why it would (or would not) run.
+    /// Does not invoke any runner and does not write queue/done.
+    #[arg(long, conflicts_with = "interactive", conflicts_with = "parallel")]
+    pub dry_run: bool,
 
     /// Run tasks in parallel using N workers (default when flag present: 2).
     #[arg(
@@ -483,5 +510,105 @@ mod tests {
             },
             _ => panic!("expected Command::Run"),
         }
+    }
+
+    #[test]
+    fn run_one_dry_run_parses() {
+        let args = vec!["ralph", "run", "one", "--dry-run"];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            crate::cli::Command::Run(run_args) => match run_args.command {
+                RunCommand::One(one_args) => {
+                    assert!(one_args.dry_run);
+                    assert!(!one_args.interactive);
+                }
+                _ => panic!("expected RunCommand::One"),
+            },
+            _ => panic!("expected Command::Run"),
+        }
+    }
+
+    #[test]
+    fn run_one_dry_run_with_id_parses() {
+        let args = vec!["ralph", "run", "one", "--dry-run", "--id", "RQ-0001"];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            crate::cli::Command::Run(run_args) => match run_args.command {
+                RunCommand::One(one_args) => {
+                    assert!(one_args.dry_run);
+                    assert_eq!(one_args.id, Some("RQ-0001".to_string()));
+                }
+                _ => panic!("expected RunCommand::One"),
+            },
+            _ => panic!("expected Command::Run"),
+        }
+    }
+
+    #[test]
+    fn run_one_dry_run_conflicts_with_interactive() {
+        let args = vec!["ralph", "run", "one", "--dry-run", "--interactive"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_err(),
+            "--dry-run and --interactive should conflict"
+        );
+    }
+
+    #[test]
+    fn run_loop_dry_run_parses() {
+        let args = vec!["ralph", "run", "loop", "--dry-run"];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            crate::cli::Command::Run(run_args) => match run_args.command {
+                RunCommand::Loop(loop_args) => {
+                    assert!(loop_args.dry_run);
+                }
+                _ => panic!("expected RunCommand::Loop"),
+            },
+            _ => panic!("expected Command::Run"),
+        }
+    }
+
+    #[test]
+    fn run_loop_dry_run_conflicts_with_parallel() {
+        let args = vec!["ralph", "run", "loop", "--dry-run", "--parallel"];
+        let result = Cli::try_parse_from(args);
+        assert!(result.is_err(), "--dry-run and --parallel should conflict");
+    }
+
+    #[test]
+    fn run_one_help_includes_dry_run_examples() {
+        let mut cmd = Cli::command();
+        let run = cmd.find_subcommand_mut("run").expect("run subcommand");
+        let run_one = run.find_subcommand_mut("one").expect("run one subcommand");
+        let help = run_one.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph run one --dry-run"),
+            "missing dry-run example: {help}"
+        );
+        assert!(
+            help.contains("ralph run one --dry-run --include-draft"),
+            "missing dry-run --include-draft example: {help}"
+        );
+        assert!(
+            help.contains("ralph run one --dry-run --id RQ-0001"),
+            "missing dry-run --id example: {help}"
+        );
+    }
+
+    #[test]
+    fn run_loop_help_includes_dry_run_examples() {
+        let mut cmd = Cli::command();
+        let run = cmd.find_subcommand_mut("run").expect("run subcommand");
+        let run_loop = run
+            .find_subcommand_mut("loop")
+            .expect("run loop subcommand");
+        let help = run_loop.render_long_help().to_string();
+
+        assert!(
+            help.contains("ralph run loop --dry-run"),
+            "missing dry-run example: {help}"
+        );
     }
 }

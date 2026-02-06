@@ -11,6 +11,7 @@ mod edit;
 mod fields;
 mod mutation;
 mod query;
+mod runnability;
 mod status;
 mod validate;
 
@@ -20,6 +21,7 @@ pub use edit::*;
 pub use fields::*;
 pub use mutation::*;
 pub use query::*;
+pub use runnability::*;
 pub use status::*;
 
 #[cfg(test)]
