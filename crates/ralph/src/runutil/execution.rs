@@ -196,11 +196,22 @@ fn wrap_output_handler_with_capture(
     let existing_for_handler = existing.clone();
 
     let handler: runner::OutputHandler = Arc::new(Box::new(move |chunk: &str| {
-        if let Ok(mut buf) = capture_for_handler.lock() {
+        fn append_chunk(buf: &mut String, chunk: &str, max_bytes: usize) {
             buf.push_str(chunk);
             if buf.len() > max_bytes {
                 let excess = buf.len() - max_bytes;
                 buf.drain(..excess);
+            }
+        }
+
+        match capture_for_handler.lock() {
+            Ok(mut buf) => {
+                append_chunk(&mut buf, chunk, max_bytes);
+            }
+            Err(poisoned) => {
+                log::warn!("timeout_stdout_capture mutex poisoned; recovering captured output");
+                let mut buf = poisoned.into_inner();
+                append_chunk(&mut buf, chunk, max_bytes);
             }
         }
         if let Some(existing) = existing_for_handler.as_ref() {
@@ -297,7 +308,15 @@ where
                 let mut safeguard_msg = String::new();
                 let message = if revert_on_error {
                     if let Some(capture) = timeout_stdout_capture.as_ref() {
-                        let captured = capture.lock().map(|buf| buf.clone()).unwrap_or_default();
+                        let captured = match capture.lock() {
+                            Ok(buf) => buf.clone(),
+                            Err(poisoned) => {
+                                log::warn!(
+                                    "timeout_stdout_capture mutex poisoned; recovering captured output for diagnostics"
+                                );
+                                poisoned.into_inner().clone()
+                            }
+                        };
                         if !captured.trim().is_empty() {
                             match fsutil::safeguard_text_dump_redacted("runner_error", &captured) {
                                 Ok(path) => {

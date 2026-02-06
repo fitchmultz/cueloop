@@ -1300,10 +1300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (concurrency + tests)",
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "reliability"
+        "opportunity_type": "reliability",
+        "time_to_ship": "medium (concurrency + tests)",
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (format + fixes + tests)",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "ux improvement",
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "small/medium (formatters + tests)",
-        "scan_agent": "scan-innovation",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
-        "opportunity_type": "ux improvement"
+        "time_to_ship": "small/medium (formatters + tests)",
+        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1932,8 +1932,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
         "time_to_ship": "medium (TUI wiring + tests)"
       }
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (render-only UI + tests)"
+        "time_to_ship": "medium (render-only UI + tests)",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2046,9 +2046,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
       }
     },
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "UX improvement",
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one batch operation at a time"
+        "opportunity_type": "UX improvement",
+        "time_to_ship": "incremental - add one batch operation at a time",
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Reduces regression risk; enables confident refactoring",
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "reliability",
-        "measurable_impact": "80%+ integration test coverage for CLI commands"
+        "user_value": "Reduces regression risk; enables confident refactoring",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -2231,9 +2231,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "differentiation": "Unique capability among AI task runners",
         "scan_agent": "scan-innovation",
         "opportunity_type": "feature gap",
+        "differentiation": "Unique capability among AI task runners",
         "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
@@ -3472,8 +3472,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "reported_at": "2026-02-06",
-        "user_visible_blocker": "true"
+        "user_visible_blocker": "true",
+        "reported_at": "2026-02-06"
       }
     },
     {
@@ -3528,8 +3528,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi",
         "file_line_count": "444",
+        "runner_used": "kimi",
         "scan_agent": "scan-maintenance"
       }
     },
@@ -3577,11 +3577,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
         "model_used": "kimi-code/kimi-for-coding",
+        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
+        "occurrence_count": "4",
         "runner_used": "kimi",
-        "scan_agent": "scan-maintenance",
-        "occurrence_count": "4"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -3635,8 +3635,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance"
+        "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -3801,14 +3801,14 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "legacy_code_removed": "true",
         "model_used": "kimi-code/kimi-for-coding",
-        "completed_via": "RQ-0657 (foundational plugin framework)",
-        "runner_used": "kimi",
+        "legacy_code_removed": "true",
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
         "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
         "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
-        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631"
+        "completed_via": "RQ-0657 (foundational plugin framework)",
+        "runner_used": "kimi",
+        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs"
       }
     },
     {
@@ -3923,8 +3923,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -3984,8 +3984,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4118,11 +4118,11 @@
         "RQ-0663"
       ],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
-        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
+        "plugin_status": "already_implemented",
+        "model_used": "kimi-code/kimi-for-coding",
         "cleanup_required": "true",
-        "plugin_status": "already_implemented"
+        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164"
       }
     },
     {
@@ -4179,11 +4179,11 @@
       "relates_to": [],
       "custom_fields": {
         "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
-        "runner_used": "kimi",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427",
         "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
+        "runner_used": "kimi",
         "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427"
       }
     },
     {
@@ -4244,10 +4244,10 @@
       ],
       "custom_fields": {
         "plugin_status": "implemented_needs_cleanup",
-        "runner_used": "kimi",
         "cleanup_type": "legacy_code_removal",
+        "rq_0657_status": "completed",
         "model_used": "kimi-code/kimi-for-coding",
-        "rq_0657_status": "completed"
+        "runner_used": "kimi"
       }
     },
     {
@@ -4311,14 +4311,68 @@
       ],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "rq_0657_status": "completed",
-        "runner_used": "kimi",
-        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
-        "verification_only": "true",
-        "cleanup_status": "already_completed_via_rq_0657",
-        "task_type": "cleanup",
         "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
-        "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885"
+        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
+        "task_type": "cleanup",
+        "runner_used": "kimi",
+        "cleanup_status": "already_completed_via_rq_0657",
+        "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
+        "rq_0657_status": "completed",
+        "verification_only": "true"
+      }
+    },
+    {
+      "id": "RQ-0638",
+      "status": "done",
+      "title": "Preserve timeout diagnostics when output-capture mutex is poisoned",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "operability",
+        "timeout",
+        "runutil"
+      ],
+      "scope": [
+        "crates/ralph/src/runutil/execution.rs",
+        "crates/ralph/src/runutil/tests.rs",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/runutil/execution.rs:199: `if let Ok(mut buf) = capture_for_handler.lock()` silently drops output chunks on PoisonError.",
+        "crates/ralph/src/runutil/execution.rs:300: `capture.lock().map(|buf| buf.clone()).unwrap_or_default()` discards PoisonError and returns empty string, losing all captured output.",
+        "Both issues affect timeout_stdout_capture: Arc<Mutex<String>> used for timeout diagnostics and safeguard dumps.",
+        "crates/ralph/src/runutil/tests.rs: No existing test coverage for mutex poisoning scenarios.",
+        "File verified: execution.rs is 572 lines, tests.rs is 412 lines."
+      ],
+      "plan": [
+        "In wrap_output_handler_with_capture handler (line 199): Change `if let Ok(mut buf) = ...` to handle PoisonError with `unwrap_or_else(|e| e.into_inner())` to recover data from poisoned mutex.",
+        "In timeout error handling (line 300): Change `capture.lock().map(...).unwrap_or_default()` to use `unwrap_or_else(|e| e.into_inner().clone())` to preserve captured output on poison.",
+        "Add logging (warn!) when mutex poison is detected so operators are aware of the issue.",
+        "Add unit test in crates/ralph/src/runutil/tests.rs that: creates an Arc<Mutex<String>>, spawns a thread that panics while holding the lock, then verifies the handler still records output without panicking.",
+        "Verify by running `make ci` and confirming it passes."
+      ],
+      "notes": [
+        "Verified 2026-02-06: File line numbers confirmed. execution.rs uses flat module structure (mod entry in runutil.rs).",
+        "Fixed mutex poisoning in timeout_stdout_capture: wrap_output_handler_with_capture (line ~198) and timeout error handling (line ~310) now use into_inner() to recover data",
+        "Added warning logs when mutex poison is detected for operator visibility",
+        "Added unit test timeout_stdout_capture_survives_mutex_poison verifying graceful handling",
+        "All 23 runutil tests pass; clippy clean; type-check passes"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-05T20:49:31Z",
+      "updated_at": "2026-02-06T22:36:24.004391000Z",
+      "completed_at": "2026-02-06T22:36:24.004391000Z",
+      "started_at": "2026-02-06T22:24:56.380980000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "tests_file_lines": "412",
+        "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
+        "execution_file_lines": "572"
       }
     }
   ]

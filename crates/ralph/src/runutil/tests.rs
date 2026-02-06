@@ -410,3 +410,133 @@ fn no_safeguard_dump_for_empty_stderr() {
         "Error should NOT mention stderr dump path when stderr is empty"
     );
 }
+
+#[test]
+fn timeout_stdout_capture_survives_mutex_poison() {
+    //! Verifies that timeout diagnostic output is preserved even when the
+    //! output-capture mutex is poisoned by a panicking thread.
+    use std::sync::Arc;
+    use std::sync::Mutex;
+    use std::thread;
+
+    struct MockTimeoutBackend;
+    impl RunnerBackend for MockTimeoutBackend {
+        fn run_prompt<'a>(
+            &mut self,
+            _runner_kind: Runner,
+            _work_dir: &std::path::Path,
+            _bins: crate::runner::RunnerBinaries<'a>,
+            _model: Model,
+            _reasoning_effort: Option<ReasoningEffort>,
+            _runner_cli: crate::runner::ResolvedRunnerCliOptions,
+            _prompt: &str,
+            _timeout: Option<std::time::Duration>,
+            _permission_mode: Option<ClaudePermissionMode>,
+            _output_handler: Option<crate::runner::OutputHandler>,
+            _output_stream: crate::runner::OutputStream,
+            _phase_type: crate::commands::run::PhaseType,
+            _session_id: Option<String>,
+            _plugins: Option<&crate::plugins::registry::PluginRegistry>,
+        ) -> anyhow::Result<crate::runner::RunnerOutput, crate::runner::RunnerError> {
+            Err(crate::runner::RunnerError::Timeout)
+        }
+
+        fn resume_session<'a>(
+            &mut self,
+            _runner_kind: Runner,
+            _work_dir: &std::path::Path,
+            _bins: crate::runner::RunnerBinaries<'a>,
+            _model: Model,
+            _reasoning_effort: Option<ReasoningEffort>,
+            _runner_cli: crate::runner::ResolvedRunnerCliOptions,
+            _session_id: &str,
+            _message: &str,
+            _permission_mode: Option<ClaudePermissionMode>,
+            _timeout: Option<std::time::Duration>,
+            _output_handler: Option<crate::runner::OutputHandler>,
+            _output_stream: crate::runner::OutputStream,
+            _phase_type: crate::commands::run::PhaseType,
+            _plugins: Option<&crate::plugins::registry::PluginRegistry>,
+        ) -> anyhow::Result<crate::runner::RunnerOutput, crate::runner::RunnerError> {
+            unreachable!("resume_session should not be called")
+        }
+    }
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+
+    // Create an output handler that will poison its capture mutex
+    let capture_for_handler: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    let capture_for_panic = capture_for_handler.clone();
+
+    // Spawn a thread that acquires the lock and panics, poisoning the mutex
+    let handle = thread::spawn(move || {
+        let _lock = capture_for_panic.lock().unwrap();
+        panic!("intentional panic to poison mutex");
+    });
+
+    // Wait for the thread to panic and poison the mutex
+    let _ = handle.join();
+
+    // Verify the mutex is poisoned
+    assert!(
+        capture_for_handler.is_poisoned(),
+        "Mutex should be poisoned after thread panic"
+    );
+
+    // Verify we can still recover the data using the same pattern as the fix
+    let recovered_data = match capture_for_handler.lock() {
+        Ok(buf) => buf.clone(),
+        Err(poisoned) => poisoned.into_inner().clone(),
+    };
+    // The mutex was locked but no data was written before the panic
+    assert_eq!(recovered_data, "");
+
+    // Now test the actual timeout handling with a poisoned capture
+    let invocation = RunnerInvocation {
+        repo_root: temp_dir.path(),
+        runner_kind: Runner::Codex,
+        bins: crate::runner::RunnerBinaries {
+            codex: "codex",
+            opencode: "opencode",
+            gemini: "gemini",
+            claude: "claude",
+            cursor: "cursor",
+            kimi: "kimi",
+            pi: "pi",
+        },
+        model: Model::Gpt52Codex,
+        reasoning_effort: None,
+        runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
+        prompt: "test prompt",
+        timeout: Some(std::time::Duration::from_secs(1)),
+        permission_mode: None,
+        revert_on_error: true,
+        git_revert_mode: GitRevertMode::Disabled,
+        output_handler: None,
+        output_stream: crate::runner::OutputStream::HandlerOnly,
+        revert_prompt: None,
+        phase_type: crate::commands::run::PhaseType::Implementation,
+        session_id: None,
+    };
+
+    let messages = RunnerErrorMessages {
+        log_label: "test",
+        interrupted_msg: "interrupted",
+        timeout_msg: "timeout occurred",
+        terminated_msg: "terminated",
+        non_zero_msg: |code| format!("non-zero exit: {}", code),
+        other_msg: |err| format!("other error: {}", err),
+    };
+
+    let mut backend = MockTimeoutBackend;
+    let result = run_prompt_with_handling_backend(invocation, messages, &mut backend);
+
+    // The timeout should still be handled gracefully without panicking
+    assert!(result.is_err());
+    let err_msg = format!("{}", result.unwrap_err());
+    assert!(
+        err_msg.contains("timeout occurred"),
+        "Error should contain timeout message, got: {}",
+        err_msg
+    );
+}

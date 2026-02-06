@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0638",
-      "status": "todo",
-      "title": "Preserve timeout diagnostics when output-capture mutex is poisoned",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "operability",
-        "timeout",
-        "runutil"
-      ],
-      "scope": [
-        "crates/ralph/src/runutil/execution.rs",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "crates/ralph/src/runutil/execution.rs:198-205: wrap_output_handler_with_capture drops capture writes if mutex lock fails (including PoisonError).",
-        "crates/ralph/src/runutil/execution.rs:299-311: timeout path reads capture via `capture.lock().map(...).unwrap_or_default()`, discarding PoisonError and losing captured output.",
-        "Operability impact: timeouts can lose diagnostic output, undermining safeguard dumps."
-      ],
-      "plan": [
-        "Handle PoisonError explicitly with `unwrap_or_else(|e| e.into_inner())` when locking capture for both writing and reading; log a warning when poison is detected.",
-        "Add a unit test that poisons the mutex (panic while holding lock), then invokes the handler and asserts capture still records output and does not panic.",
-        "Verify by running `make ci` and confirming it passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-05T20:49:31Z",
-      "updated_at": "2026-02-05T20:49:31Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0639",
       "status": "todo",
       "title": "Deduplicate TaskEditKey field formatting to prevent TUI/CLI drift",
