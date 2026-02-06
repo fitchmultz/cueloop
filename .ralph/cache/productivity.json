@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-06T21:35:15.051332000Z",
+  "last_updated_at": "2026-02-06T22:23:10.471847000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -702,7 +702,7 @@
     },
     "2026-02-06": {
       "date": "2026-02-06",
-      "completed_count": 26,
+      "completed_count": 27,
       "tasks": [
         {
           "id": "RQ-0633",
@@ -833,6 +833,11 @@
           "id": "RQ-0662",
           "title": "Isolate pi runner into its own plugin for easier runner-specific customization",
           "completed_at": "2026-02-06T21:35:15.051329000Z"
+        },
+        {
+          "id": "RQ-0663",
+          "title": "Cleanup legacy cursor runner code after plugin migration",
+          "completed_at": "2026-02-06T22:23:10.471847000Z"
         }
       ]
     }
@@ -842,7 +847,7 @@
     "longest_streak": 8,
     "last_completed_date": "2026-02-06"
   },
-  "total_completed": 157,
+  "total_completed": 158,
   "milestones": [
     {
       "threshold": 10,

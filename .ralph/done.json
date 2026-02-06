@@ -1300,10 +1300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "opportunity_type": "reliability",
         "time_to_ship": "medium (concurrency + tests)",
-        "scan_agent": "scan-innovation"
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -1345,9 +1345,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
         "time_to_ship": "medium (metadata + reconciliation + tests)",
-        "scan_agent": "scan-innovation",
         "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
       }
     },
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (format + fixes + tests)",
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1442,9 +1442,9 @@
       "relates_to": [],
       "custom_fields": {
         "time_to_ship": "small/medium (formatters + tests)",
+        "scan_agent": "scan-innovation",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
-        "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (render-only UI + tests)",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (render-only UI + tests)"
       }
     },
     {
@@ -2107,8 +2107,8 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "UX improvement",
-        "scan_agent": "scan-innovation",
         "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "reliability",
+        "user_value": "Reduces regression risk; enables confident refactoring",
         "scan_agent": "scan-innovation",
-        "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "user_value": "Reduces regression risk; enables confident refactoring"
+        "opportunity_type": "reliability",
+        "measurable_impact": "80%+ integration test coverage for CLI commands"
       }
     },
     {
@@ -2232,8 +2232,8 @@
       "relates_to": [],
       "custom_fields": {
         "differentiation": "Unique capability among AI task runners",
-        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "feature gap",
         "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
@@ -3527,10 +3527,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
-        "file_line_count": "444"
+        "runner_used": "kimi",
+        "file_line_count": "444",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -3577,10 +3577,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding",
         "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
+        "scan_agent": "scan-maintenance",
         "occurrence_count": "4"
       }
     },
@@ -3634,9 +3634,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance",
-        "runner_used": "kimi"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -3801,14 +3801,14 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
         "legacy_code_removed": "true",
-        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
-        "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
-        "completed_via": "RQ-0657 (foundational plugin framework)",
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "completed_via": "RQ-0657 (foundational plugin framework)",
+        "runner_used": "kimi",
+        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
+        "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
+        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631"
       }
     },
     {
@@ -4050,8 +4050,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4118,11 +4118,11 @@
         "RQ-0663"
       ],
       "custom_fields": {
-        "plugin_status": "already_implemented",
-        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
         "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
-        "cleanup_required": "true"
+        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
+        "cleanup_required": "true",
+        "plugin_status": "already_implemented"
       }
     },
     {
@@ -4179,11 +4179,11 @@
       "relates_to": [],
       "custom_fields": {
         "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
-        "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
-        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
         "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427",
-        "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework"
+        "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
+        "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4243,11 +4243,82 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
+        "plugin_status": "implemented_needs_cleanup",
         "runner_used": "kimi",
-        "rq_0657_status": "completed",
         "cleanup_type": "legacy_code_removal",
-        "plugin_status": "implemented_needs_cleanup"
+        "model_used": "kimi-code/kimi-for-coding",
+        "rq_0657_status": "completed"
+      }
+    },
+    {
+      "id": "RQ-0663",
+      "status": "done",
+      "title": "Cleanup legacy cursor runner code after plugin migration",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "runner",
+        "cursor",
+        "plugin",
+        "cleanup",
+        "tech-debt"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/runners.rs",
+        "crates/ralph/src/runner/execution/mod.rs",
+        "crates/ralph/src/runner/execution/response.rs",
+        "crates/ralph/src/runner/execution/builtin_plugins.rs",
+        "crates/ralph/src/runner/execution/cli_spec.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "COMPLETED: Legacy cursor code has been removed. runners.rs is now a placeholder (16 lines) stating all runners migrated to plugin system.",
+        "crates/ralph/src/runner/execution/mod.rs:54-56: Legacy exports removed; only extract_final_assistant_response remains for backward compatibility.",
+        "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885: CursorPlugin struct fully implements RunnerPlugin trait with build_run_command, build_resume_command, parse_response_line.",
+        "crates/ralph/src/runner/execution/builtin_plugins.rs:856-885: CursorResponseParser implements ResponseParser trait for type=message_end format.",
+        "crates/ralph/src/runner/execution/cli_spec.rs:75-109: apply_cursor_options maps --force, --sandbox (phase-aware), and --plan (phase-aware) flags.",
+        "crates/ralph/src/runner/execution/response.rs:13-14: CursorResponseParser imported from builtin_plugins.rs (no duplication).",
+        "CursorPlugin uses --print flag, stream-json output format, and positional prompt argument."
+      ],
+      "plan": [
+        "Verify CursorPlugin implementation is complete and matches expected behavior (phase-aware sandbox, plan modes, --print flag).",
+        "Verify runners.rs no longer contains legacy cursor code (should be placeholder only).",
+        "Verify mod.rs no longer exports legacy cursor functions.",
+        "Verify response.rs imports CursorResponseParser from builtin_plugins.rs (no duplication).",
+        "Verify make ci passes.",
+        "Mark task as complete - the cleanup has already been done."
+      ],
+      "notes": [
+        "COMPLETED AS PART OF RQ-0657: The foundational plugin framework task (RQ-0657) implemented ALL built-in runner plugins including Cursor.",
+        "CursorPlugin ALREADY EXISTS in builtin_plugins.rs:805-885 with full RunnerPlugin trait implementation.",
+        "Legacy cleanup has already occurred: runners.rs is now a placeholder file (16 lines).",
+        "The legacy exports (run_cursor, run_cursor_resume) have been removed from mod.rs.",
+        "Cursor plugin features: --print flag, --sandbox/--plan phase-aware defaults, --force for yolo mode, stream-json output.",
+        "Refreshed 2026-02-06: All scope paths verified to exist. Task goal achieved; verification pass only.",
+        "Phase 3 verification complete: runners.rs is 16-line placeholder, mod.rs exports only extract_final_assistant_response, response.rs imports CursorResponseParser from builtin_plugins.rs, CursorPlugin fully implements RunnerPlugin trait with phase-aware options, make ci passes (2178+ tests)",
+        "No code changes made during Phase 3 - verification-only task",
+        "No stale task dependencies identified in queue"
+      ],
+      "request": "create tasks to have all runners isolated and integrated into the plugin system approach. We currently support codex, claude, pi, kimi, opencode, and cursor-agent.",
+      "created_at": "2026-02-06T16:21:11Z",
+      "updated_at": "2026-02-06T22:21:28.523368000Z",
+      "completed_at": "2026-02-06T22:21:28.523368000Z",
+      "started_at": "2026-02-06T21:37:42.348561000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [
+        "RQ-0657"
+      ],
+      "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
+        "rq_0657_status": "completed",
+        "runner_used": "kimi",
+        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
+        "verification_only": "true",
+        "cleanup_status": "already_completed_via_rq_0657",
+        "task_type": "cleanup",
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
+        "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885"
       }
     }
   ]
