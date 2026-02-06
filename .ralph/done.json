@@ -1300,10 +1300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (concurrency + tests)",
         "opportunity_type": "reliability",
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
-        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation",
         "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
+        "time_to_ship": "medium (format + fixes + tests)",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (format + fixes + tests)"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1441,8 +1441,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "time_to_ship": "small/medium (formatters + tests)",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
       }
@@ -1933,8 +1933,8 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Fewer context switches: jump from task → code in one keystroke.",
-        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (TUI wiring + tests)",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation"
       }
     },
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (render-only UI + tests)"
+        "time_to_ship": "medium (render-only UI + tests)",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
       }
     },
     {
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
-        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
+        "opportunity_type": "feature gap"
       }
     },
     {
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "UX improvement",
         "time_to_ship": "incremental - add one batch operation at a time",
-        "scan_agent": "scan-innovation"
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -2165,9 +2165,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "reliability",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
         "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
@@ -2231,9 +2231,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
-        "scan_agent": "scan-innovation",
         "differentiation": "Unique capability among AI task runners",
+        "scan_agent": "scan-innovation",
+        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "opportunity_type": "feature gap"
       }
     },
@@ -3527,10 +3527,61 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
-        "runner_used": "kimi",
         "file_line_count": "444",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance",
+        "runner_used": "kimi"
+      }
+    },
+    {
+      "id": "RQ-0636",
+      "status": "done",
+      "title": "Stop writing empty timestamps (replace now_utc_rfc3339().unwrap_or_default)",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "correctness",
+        "time",
+        "persistence"
+      ],
+      "scope": [
+        "crates/ralph/src/execution_history.rs",
+        "crates/ralph/src/productivity.rs",
+        "crates/ralph/src/timeutil.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "Command: rg -n 'now_utc_rfc3339\\(\\)\\.unwrap_or_default\\(\\)' crates/ralph/src -> execution_history.rs:121; productivity.rs:55,207,340 (4 occurrences total).",
+        "crates/ralph/src/timeutil.rs:67-69: `now_utc_rfc3339_or_fallback()` exists and uses FALLBACK_RFC3339 constant instead of empty string.",
+        "Helper function now_utc_rfc3339_or_fallback() is already used in 50+ call sites across codebase (session/, queue/, commands/run/, etc.).",
+        "Failure mode: empty timestamps can be persisted into .ralph/cache files, breaking parsing/sorting and producing confusing UX.",
+        "Test coverage exists: execution_history.rs has 14 internal tests, productivity.rs has 17 tests, timeutil.rs has 11 internal + 23 integration tests."
+      ],
+      "plan": [
+        "Replace all 4 `now_utc_rfc3339().unwrap_or_default()` call sites with `now_utc_rfc3339_or_fallback()` or propagate `Result` when the caller already returns `Result`.",
+        "Add/adjust tests to assert persisted timestamps are non-empty (e.g., ProductivityStats default/record paths and execution history record path).",
+        "Verify by running `make ci` and confirming it passes."
+      ],
+      "notes": [
+        "2026-02-06: Verified all scope files exist. Line numbers confirmed: execution_history.rs:121; productivity.rs:55,207,340. The helper function is well-established across the codebase.",
+        "Replaced all 4 now_utc_rfc3339().unwrap_or_default() with now_utc_rfc3339_or_fallback()",
+        "Added 3 regression tests to verify timestamps are never empty",
+        "CI gate passes (2200+ tests)"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-05T20:49:31Z",
+      "updated_at": "2026-02-06T15:44:16.177707000Z",
+      "completed_at": "2026-02-06T15:44:16.177707000Z",
+      "started_at": "2026-02-06T15:30:32.855640000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "runner_used": "kimi",
+        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance",
+        "occurrence_count": "4"
       }
     }
   ]

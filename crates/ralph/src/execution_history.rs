@@ -118,7 +118,7 @@ pub fn record_execution(
     let mut history = load_execution_history(cache_dir)?;
 
     let entry = ExecutionEntry {
-        timestamp: crate::timeutil::now_utc_rfc3339().unwrap_or_default(),
+        timestamp: crate::timeutil::now_utc_rfc3339_or_fallback(),
         task_id: task_id.to_string(),
         runner: runner.to_string(),
         model: model.to_string(),
@@ -302,6 +302,11 @@ mod tests {
         let history = load_execution_history(temp.path()).unwrap();
         assert_eq!(history.entries.len(), 1);
         assert_eq!(history.entries[0].runner, "codex");
+        // CRITICAL: Timestamp must never be empty (regression test for RQ-0636)
+        assert!(
+            !history.entries[0].timestamp.is_empty(),
+            "Timestamp should never be empty"
+        );
     }
 
     #[test]

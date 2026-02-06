@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-06T15:22:04.786563000Z",
+  "last_updated_at": "2026-02-06T15:45:41.542781000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -702,7 +702,7 @@
     },
     "2026-02-06": {
       "date": "2026-02-06",
-      "completed_count": 16,
+      "completed_count": 17,
       "tasks": [
         {
           "id": "RQ-0633",
@@ -783,6 +783,11 @@
           "id": "RQ-0635",
           "title": "Use real RFC3339 parsing for execution history weighting (fix inaccurate age_days)",
           "completed_at": "2026-02-06T15:22:04.786562000Z"
+        },
+        {
+          "id": "RQ-0636",
+          "title": "Stop writing empty timestamps (replace now_utc_rfc3339().unwrap_or_default)",
+          "completed_at": "2026-02-06T15:45:41.542780000Z"
         }
       ]
     }
@@ -792,7 +797,7 @@
     "longest_streak": 8,
     "last_completed_date": "2026-02-06"
   },
-  "total_completed": 147,
+  "total_completed": 148,
   "milestones": [
     {
       "threshold": 10,

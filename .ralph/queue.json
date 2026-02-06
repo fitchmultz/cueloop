@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0636",
-      "status": "todo",
-      "title": "Stop writing empty timestamps (replace now_utc_rfc3339().unwrap_or_default)",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "correctness",
-        "time",
-        "persistence"
-      ],
-      "scope": [
-        "crates/ralph/src/execution_history.rs",
-        "crates/ralph/src/productivity.rs",
-        "crates/ralph/src/timeutil.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "Command: rg -n \"now_utc_rfc3339\\(\\)\\.unwrap_or_default\\(\\)\" crates/ralph/src -> execution_history.rs:121; productivity.rs:53,205,334,366.",
-        "crates/ralph/src/timeutil.rs:67-69: `now_utc_rfc3339_or_fallback()` exists to avoid empty timestamps.",
-        "Failure mode: empty timestamps can be persisted into .ralph/cache files, breaking parsing/sorting and producing confusing UX."
-      ],
-      "plan": [
-        "Replace all `now_utc_rfc3339().unwrap_or_default()` call sites with `now_utc_rfc3339_or_fallback()` or propagate `Result` when the caller already returns `Result`.",
-        "Add/adjust tests to assert persisted timestamps are non-empty (e.g., ProductivityStats default/record paths and execution history record path).",
-        "Verify by running `make ci` and confirming it passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-05T20:49:31Z",
-      "updated_at": "2026-02-06T00:42:34.331395000Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance",
-        "stale_evidence": "Updated rg results for now_utc_rfc3339().unwrap_or_default(): productivity.rs:55,207,340; execution_history.rs:121"
-      }
-    },
-    {
       "id": "RQ-0637",
       "status": "todo",
       "title": "Fail fast on malformed README version markers (don't default to version 1)",

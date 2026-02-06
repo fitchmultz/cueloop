@@ -52,7 +52,7 @@ pub struct ProductivityStats {
 
 impl Default for ProductivityStats {
     fn default() -> Self {
-        let now = timeutil::now_utc_rfc3339().unwrap_or_default();
+        let now = timeutil::now_utc_rfc3339_or_fallback();
         Self {
             version: STATS_SCHEMA_VERSION,
             first_task_completed_at: None,
@@ -204,7 +204,7 @@ fn update_stats_with_completion(
     let completed_at = task
         .completed_at
         .clone()
-        .unwrap_or_else(|| timeutil::now_utc_rfc3339().unwrap_or_default());
+        .unwrap_or_else(timeutil::now_utc_rfc3339_or_fallback);
 
     update_stats_with_completion_ref(stats, &task.id, &task.title, &completed_at)
 }
@@ -337,7 +337,7 @@ fn check_milestone(stats: &mut ProductivityStats) -> Option<u64> {
         if stats.total_completed == threshold {
             // Check if already recorded
             if !stats.milestones.iter().any(|m| m.threshold == threshold) {
-                let now = timeutil::now_utc_rfc3339().unwrap_or_default();
+                let now = timeutil::now_utc_rfc3339_or_fallback();
                 stats.milestones.push(Milestone {
                     threshold,
                     achieved_at: now,
@@ -615,6 +615,11 @@ mod tests {
         let stats = load_productivity_stats(temp.path()).unwrap();
         assert_eq!(stats.total_completed, 0);
         assert!(stats.daily.is_empty());
+        // CRITICAL: Default last_updated_at must never be empty (regression test for RQ-0636)
+        assert!(
+            !stats.last_updated_at.is_empty(),
+            "Default last_updated_at should never be empty"
+        );
     }
 
     #[test]
@@ -632,6 +637,20 @@ mod tests {
         // Verify saved
         let stats = load_productivity_stats(temp.path()).unwrap();
         assert_eq!(stats.total_completed, 1);
+
+        // CRITICAL: All persisted timestamps must be non-empty (regression test for RQ-0636)
+        assert!(
+            !stats.last_updated_at.is_empty(),
+            "last_updated_at should never be empty"
+        );
+        for day_stats in stats.daily.values() {
+            for task_ref in &day_stats.tasks {
+                assert!(
+                    !task_ref.completed_at.is_empty(),
+                    "Task completed_at should never be empty"
+                );
+            }
+        }
     }
 
     #[test]
