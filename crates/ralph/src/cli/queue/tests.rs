@@ -91,6 +91,7 @@ fn base_list_args() -> QueueListArgs {
         scheduled: false,
         scheduled_after: None,
         scheduled_before: None,
+        with_eta: false,
     }
 }
 
@@ -512,6 +513,7 @@ fn queue_next_with_explain() -> Result<()> {
 
     let args = QueueNextArgs {
         with_title: false,
+        with_eta: false,
         explain: true,
     };
 
@@ -527,6 +529,7 @@ fn queue_next_without_explain() -> Result<()> {
 
     let args = QueueNextArgs {
         with_title: false,
+        with_eta: false,
         explain: false,
     };
 

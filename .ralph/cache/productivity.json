@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-06T05:40:36.390869000Z",
+  "last_updated_at": "2026-02-06T07:07:07.822225000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -702,7 +702,7 @@
     },
     "2026-02-06": {
       "date": "2026-02-06",
-      "completed_count": 6,
+      "completed_count": 7,
       "tasks": [
         {
           "id": "RQ-0633",
@@ -733,6 +733,11 @@
           "id": "RQ-0647",
           "title": "Record execution_history for CLI runs (not just TUI) to unlock ETA",
           "completed_at": "2026-02-06T05:40:36.390869000Z"
+        },
+        {
+          "id": "RQ-0648",
+          "title": "Expose ETA estimates in CLI (queue list/next/stats) using execution_history",
+          "completed_at": "2026-02-06T07:07:07.822224000Z"
         }
       ]
     }
@@ -742,7 +747,7 @@
     "longest_streak": 8,
     "last_completed_date": "2026-02-06"
   },
-  "total_completed": 137,
+  "total_completed": 138,
   "milestones": [
     {
       "threshold": 10,

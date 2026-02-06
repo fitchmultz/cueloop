@@ -1,4 +1,16 @@
 //! Integration tests for webhook delivery.
+//!
+//! Responsibilities:
+//! - Validate core webhook behaviors: non-blocking delivery, retry configuration, signing header,
+//!   queue backpressure policies, and event filtering.
+//!
+//! Not handled:
+//! - Cryptographic correctness of signature generation beyond basic header presence/shape.
+//! - External network behavior (tests use a local TCP listener).
+//!
+//! Invariants/assumptions:
+//! - Tests are `#[serial]` because the webhook worker is global within a process.
+//! - Timeouts should tolerate a loaded CI machine (avoid single fixed sleeps when waiting for IO).
 
 use serial_test::serial;
 use std::io::{Read, Write};
@@ -11,6 +23,22 @@ use std::time::{Duration, Instant};
 // Import webhook types
 use ralph::contracts::{WebhookConfig, WebhookQueuePolicy};
 use ralph::webhook;
+
+fn wait_for_mutex_value<T: Clone>(
+    value: &Arc<std::sync::Mutex<Option<T>>>,
+    timeout: Duration,
+) -> Option<T> {
+    let start = Instant::now();
+    loop {
+        if let Some(v) = value.lock().expect("lock mutex").clone() {
+            return Some(v);
+        }
+        if start.elapsed() >= timeout {
+            return None;
+        }
+        thread::sleep(Duration::from_millis(25));
+    }
+}
 
 /// Test that send_webhook returns immediately (non-blocking).
 #[test]
@@ -142,13 +170,9 @@ fn webhook_includes_signature_header() {
 
     webhook::notify_task_created("TEST-0003", "Test", &config, "2024-01-01T00:00:00Z");
 
-    // Wait for delivery - needs to be long enough for worker to process and make HTTP request
-    // Use a longer timeout to account for CI variability
-    thread::sleep(Duration::from_millis(2500));
-
-    let sig = received_sig.lock().unwrap();
+    let sig = wait_for_mutex_value(&received_sig, Duration::from_secs(10));
     assert!(sig.is_some(), "X-Ralph-Signature header should be present");
-    let sig_str = sig.as_ref().unwrap().to_lowercase();
+    let sig_str = sig.expect("signature must be present").to_lowercase();
     assert!(
         sig_str.contains("sha256="),
         "Signature should contain sha256= prefix: {}",

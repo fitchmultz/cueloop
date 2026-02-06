@@ -1,20 +1,31 @@
 //! Task statistics and reporting commands.
 //!
-//! Responsibilities: provide analytics on task velocity, completion rates, and tag distribution.
+//! Responsibilities:
+//! - Provide analytics on task velocity, completion rates, and tag distribution.
+//! - Support execution history-based ETA estimation for new tasks.
+//!
 //! Supports three report types:
-//! - `stats`: Summary statistics (completion rate, avg duration, tag breakdown)
+//! - `stats`: Summary statistics (completion rate, avg duration, tag breakdown, execution history ETA)
 //! - `history`: Timeline of creation/completion events by day
 //! - `burndown`: Text chart of remaining tasks over time
 //!
-//! Not handled: queue persistence, CLI argument parsing, or prompt/runner workflows.
-//! Invariants/assumptions: queue files are validated before reporting and timestamps are RFC3339.
+//! Not handled:
+//! - Queue persistence, CLI argument parsing, or prompt/runner workflows.
+//! - Actual ETA calculation logic (see `crate::eta_calculator`).
+//!
+//! Invariants/assumptions:
+//! - Queue files are validated before reporting and timestamps are RFC3339.
+//! - Execution history ETA is based on (runner, model, phase_count) key from config.
 
 use anyhow::Result;
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
+use std::path::Path;
 use time::{Duration, OffsetDateTime};
 
 use crate::contracts::{QueueFile, Task, TaskStatus};
+use crate::eta_calculator::{EtaCalculator, format_eta};
+use crate::runner::resolve_agent_settings;
 use crate::timeutil;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -89,6 +100,17 @@ struct TagBreakdown {
 }
 
 #[derive(Debug, Serialize)]
+struct ExecutionHistoryEtaReport {
+    runner: String,
+    model: String,
+    phase_count: u8,
+    sample_count: usize,
+    estimated_total_seconds: u64,
+    estimated_total_human: String,
+    confidence: String,
+}
+
+#[derive(Debug, Serialize)]
 struct StatsReport {
     summary: StatsSummary,
     durations: Option<DurationStats>,
@@ -97,6 +119,7 @@ struct StatsReport {
     slow_groups: SlowGroups,
     tag_breakdown: Vec<TagBreakdown>,
     filters: StatsFilters,
+    execution_history_eta: Option<ExecutionHistoryEtaReport>,
 }
 
 #[derive(Debug, Serialize)]
@@ -295,7 +318,57 @@ fn build_stats_report(queue: &QueueFile, done: Option<&QueueFile>, tags: &[Strin
         filters: StatsFilters {
             tags: tags.to_vec(),
         },
+        execution_history_eta: None, // Will be populated separately
     }
+}
+
+/// Build execution history ETA report from resolved config and cache.
+fn build_execution_history_eta(
+    resolved_config: &crate::contracts::AgentConfig,
+    cache_dir: &Path,
+) -> Option<ExecutionHistoryEtaReport> {
+    // Resolve runner/model from config (no task overrides, no CLI overrides)
+    let empty_cli_patch = crate::contracts::RunnerCliOptionsPatch::default();
+    let settings = resolve_agent_settings(
+        None, // runner_override
+        None, // model_override
+        None, // effort_override
+        &empty_cli_patch,
+        None, // task_agent
+        resolved_config,
+    )
+    .ok()?;
+
+    let phase_count = resolved_config.phases.unwrap_or(3);
+    let calculator = EtaCalculator::load(cache_dir);
+
+    let estimate = calculator.estimate_new_task_total(
+        settings.runner.as_str(),
+        settings.model.as_str(),
+        phase_count,
+    )?;
+
+    let sample_count = calculator.count_entries_for_key(
+        settings.runner.as_str(),
+        settings.model.as_str(),
+        phase_count,
+    );
+
+    let confidence_str = match estimate.confidence {
+        crate::eta_calculator::EtaConfidence::High => "high",
+        crate::eta_calculator::EtaConfidence::Medium => "medium",
+        crate::eta_calculator::EtaConfidence::Low => "low",
+    };
+
+    Some(ExecutionHistoryEtaReport {
+        runner: settings.runner.as_str().to_string(),
+        model: settings.model.as_str().to_string(),
+        phase_count,
+        sample_count,
+        estimated_total_seconds: estimate.remaining.as_secs(),
+        estimated_total_human: format_eta(estimate.remaining),
+        confidence: confidence_str.to_string(),
+    })
 }
 
 fn calc_duration_stats(durations: &[Duration]) -> Option<DurationStats> {
@@ -617,14 +690,23 @@ fn print_json<T: Serialize>(report: &T) -> Result<()> {
 /// * `tags` - Optional tag filter (case-insensitive)
 /// * `format` - Output format (text or json)
 /// * `queue_file_size_kb` - Size of the queue file in KB for display
+/// * `config_agent` - Agent config for resolving runner/model/phase_count
+/// * `cache_dir` - Optional cache directory for execution history (if None, ETA section is skipped)
 pub(crate) fn print_stats(
     queue: &QueueFile,
     done: Option<&QueueFile>,
     tags: &[String],
     format: ReportFormat,
     queue_file_size_kb: u64,
+    config_agent: &crate::contracts::AgentConfig,
+    cache_dir: Option<&Path>,
 ) -> Result<()> {
-    let report = build_stats_report(queue, done, tags);
+    let mut report = build_stats_report(queue, done, tags);
+
+    // Build execution history ETA if cache_dir is provided
+    if let Some(cache) = cache_dir {
+        report.execution_history_eta = build_execution_history_eta(config_agent, cache);
+    }
 
     match format {
         ReportFormat::Json => {
@@ -725,6 +807,22 @@ pub(crate) fn print_stats(
                         entry.count, entry.tag, entry.percentage
                     );
                 }
+                println!();
+            }
+
+            // Execution History ETA section
+            if let Some(ref eta) = report.execution_history_eta {
+                println!(
+                    "Execution History ETA (runner={}, model={}, phases={}):",
+                    eta.runner, eta.model, eta.phase_count
+                );
+                println!("  Samples: {}", eta.sample_count);
+                println!(
+                    "  Estimated new task: {} (confidence: {})",
+                    eta.estimated_total_human, eta.confidence
+                );
+            } else if cache_dir.is_some() {
+                println!("Execution History ETA: n/a (no samples for current runner/model/phases)");
             }
         }
     }

@@ -1,7 +1,20 @@
 //! Queue stats subcommand.
+//!
+//! Responsibilities:
+//! - Print task statistics (completion rate, avg duration, tag breakdown).
+//! - Include execution-history-based ETA estimates when available.
+//!
+//! Not handled:
+//! - Task execution or runner behavior.
+//! - Queue mutations.
+//!
+//! Invariants/assumptions:
+//! - Queue files are loaded and validated before reporting.
+//! - Execution history ETA is based on config defaults (runner, model, phases).
 
 use anyhow::Result;
 use clap::Args;
+use std::path::Path;
 
 use crate::cli::load_and_validate_queues;
 use crate::config::Resolved;
@@ -12,9 +25,6 @@ use super::QueueReportFormat;
 
 /// Arguments for `ralph queue stats`.
 #[derive(Args)]
-#[command(
-    after_long_help = "Examples:\n  ralph queue stats\n  ralph queue stats --tag rust --tag cli\n  ralph queue stats --format json"
-)]
 pub struct QueueStatsArgs {
     /// Filter by tag (repeatable, case-insensitive).
     #[arg(long)]
@@ -57,12 +67,17 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueStatsArgs) -> Result<()> {
         .map(|m| m.len() / 1024)
         .unwrap_or(0);
 
+    // Cache directory for execution history
+    let cache_dir: Option<&Path> = Some(&resolved.repo_root.join(".ralph/cache"));
+
     reports::print_stats(
         &queue_file,
         done_ref,
         &args.tag,
         args.format.into(),
         file_size_kb,
+        &resolved.config.agent,
+        cache_dir,
     )?;
     Ok(())
 }

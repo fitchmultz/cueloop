@@ -1302,8 +1302,8 @@
       "custom_fields": {
         "opportunity_type": "reliability",
         "time_to_ship": "medium (concurrency + tests)",
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
     },
     {
@@ -1345,9 +1345,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
         "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
@@ -1394,9 +1394,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (format + fixes + tests)"
       }
     },
@@ -1442,9 +1442,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
         "time_to_ship": "small/medium (formatters + tests)",
-        "opportunity_type": "ux improvement",
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1933,9 +1933,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "time_to_ship": "medium (TUI wiring + tests)",
-        "opportunity_type": "ux improvement"
+        "opportunity_type": "ux improvement",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke."
       }
     },
     {
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (render-only UI + tests)",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -2047,9 +2047,9 @@
       "relates_to": [],
       "custom_fields": {
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
-        "scan_agent": "scan-innovation",
         "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
-        "opportunity_type": "feature gap"
+        "opportunity_type": "feature gap",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "UX improvement",
-        "time_to_ship": "incremental - add one batch operation at a time",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces queue maintenance time by 80% for large projects"
+        "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "time_to_ship": "incremental - add one batch operation at a time",
+        "opportunity_type": "UX improvement"
       }
     },
     {
@@ -2166,8 +2166,8 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Reduces regression risk; enables confident refactoring",
-        "opportunity_type": "reliability",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability",
         "measurable_impact": "80%+ integration test coverage for CLI commands"
       }
     },
@@ -2232,9 +2232,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "opportunity_type": "feature gap",
-        "differentiation": "Unique capability among AI task runners"
+        "differentiation": "Unique capability among AI task runners",
+        "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
     {
@@ -2865,6 +2865,77 @@
       "completed_at": "2026-02-06T05:39:15.331714000Z",
       "started_at": "2026-02-06T04:31:23.756429000Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0648",
+      "status": "done",
+      "title": "Expose ETA estimates in CLI (queue list/next/stats) using execution_history",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "ux",
+        "eta",
+        "queue",
+        "cli",
+        "planning"
+      ],
+      "scope": [
+        "crates/ralph/src/eta_calculator.rs",
+        "crates/ralph/src/execution_history.rs",
+        "crates/ralph/src/commands/run/execution_history_cli.rs",
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/contracts/task.rs",
+        "crates/ralph/src/outpututil.rs",
+        "crates/ralph/src/cli/queue/shared.rs",
+        "crates/ralph/src/cli/queue/list.rs",
+        "crates/ralph/src/cli/queue/next.rs",
+        "crates/ralph/src/cli/queue/stats.rs",
+        "crates/ralph/src/cli/queue/tests.rs",
+        "crates/ralph/tests/",
+        "docs/cli.md",
+        "ralph queue next --help",
+        "ralph queue list --help",
+        "ralph queue stats --help",
+        "make ci"
+      ],
+      "evidence": [
+        "`crates/ralph/src/execution_history.rs` persists execution history to `.ralph/cache/execution_history.json`, and CLI runs append entries via `crates/ralph/src/commands/run/execution_history_cli.rs` (Done-only semantics).",
+        "`crates/ralph/src/eta_calculator.rs` loads history from a cache dir (`EtaCalculator::load`) and formats durations (`format_eta`); the TUI stores the latest estimate in `crates/ralph/src/tui/app.rs` as `current_eta`.",
+        "`ralph queue next --help` exposes only `--with-title` and `--explain` (no ETA output).",
+        "`ralph queue list --help` supports `--format compact|long|json` plus filtering/scheduling, but no ETA-related flag/column; `ralph queue stats --help` also has no execution_history/ETA section."
+      ],
+      "plan": [
+        "Decide the CLI output contract: add opt-in `--with-eta` for `ralph queue next` and `ralph queue list` (text formats), and keep `ralph queue list --format json` unchanged; if JSON-with-ETA is needed, add a new explicit format (e.g., `--format eta_json`).",
+        "Add a shared helper to compute a not-started task ETA from execution history: resolve `(runner, model)` from `task.agent` falling back to `resolved.config.agent`, use `phase_count = resolved.config.agent.phases`, load history from `resolved.repo_root` + `.ralph/cache`, and compute a total estimate; return `None` when there is no history for that key.",
+        "Implement `ralph queue next --with-eta`: when a runnable task exists, print an extra ETA column (and optionally confidence indicator); when missing history, print `n/a`.",
+        "Implement `ralph queue list --with-eta`: for `--format compact|long`, append an ETA column per row; decide whether ETA is computed for all tasks or only todo/runnable tasks and document it in help/examples.",
+        "Extend `ralph queue stats` to include an execution_history-based section (text) and fields (json): sample count plus an estimated total duration for the current configured `(runner, model, phases)`; keep existing keys stable.",
+        "Add integration tests under `crates/ralph/tests/` that create a temp repo with `.ralph/cache/execution_history.json`, run `ralph queue next/list/stats` with the new flags, and assert both seeded-history output and `n/a` behavior; update `docs/cli.md` and confirm `make ci` passes."
+      ],
+      "notes": [
+        "Opportunity type: UX improvement.",
+        "Why it matters: ETA in CLI makes it easier to choose between tasks, plan time blocks, and detect regressions in iteration speed.",
+        "Output contract note: `ralph queue list --format json` is documented as the queue export shape; ETA should be opt-in via new flags/formats rather than changing default JSON output.",
+        "Implementation note: `EtaCalculator::calculate_eta` can return `Duration::ZERO` for not-started tasks when there is no history; treat missing history as `n/a` instead of showing `0s`.",
+        "Acceptance criteria: ETA is visible and accurate for seeded history; missing history is clearly communicated as `n/a`; docs/help include examples.",
+        "Add --with-eta for queue next/list (text formats) and execution-history ETA section for queue stats (text+json).",
+        "Fix queue next output to keep ETA in same line/column; keep list JSON export unchanged.",
+        "Centralize integration test fixtures in crates/ralph/tests/test_support.rs and add ETA integration tests.",
+        "Stabilize webhook signature integration test polling; keep CI reliable; make ci passes."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-06T01:53:55Z",
+      "updated_at": "2026-02-06T07:05:43.123196000Z",
+      "completed_at": "2026-02-06T07:05:43.123196000Z",
+      "started_at": "2026-02-06T05:47:22.151533000Z",
+      "depends_on": [
+        "RQ-0647"
+      ],
       "blocks": [],
       "relates_to": [],
       "custom_fields": {

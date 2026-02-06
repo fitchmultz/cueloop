@@ -405,3 +405,217 @@ fn burndown_zero_count_day_renders_empty_bar() -> Result<()> {
 
     Ok(())
 }
+
+// ------------------------------------------------------------------------
+// Execution History ETA tests
+// ------------------------------------------------------------------------
+
+#[test]
+fn stats_json_includes_execution_history_eta_when_present() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    init_repo(dir.path())?;
+    test_support::configure_agent_runner_model_phases(dir.path(), "codex", "gpt-5.3", 3)?;
+
+    // Create a simple queue
+    let queue = r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "title": "Test task",
+      "created_at": "2026-01-18T00:00:00Z",
+      "updated_at": "2026-01-18T00:00:00Z"
+    }
+  ]
+}"#;
+    std::fs::write(dir.path().join(".ralph/queue.json"), queue)?;
+
+    // Write execution history
+    test_support::write_execution_history_v1_single_sample(
+        dir.path(),
+        "codex",
+        "gpt-5.3",
+        210,
+        60,
+        120,
+        30,
+    )?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats", "--format", "json"]);
+    anyhow::ensure!(
+        status.success(),
+        "expected stats to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let payload = parse_json_output(&stdout)?;
+
+    // Check execution_history_eta field exists and has expected structure
+    let eta = payload
+        .get("execution_history_eta")
+        .context("missing execution_history_eta")?;
+
+    anyhow::ensure!(
+        eta.get("runner").and_then(Value::as_str) == Some("codex"),
+        "expected runner to be codex"
+    );
+    anyhow::ensure!(
+        eta.get("model").and_then(Value::as_str) == Some("gpt-5.3"),
+        "expected model to be gpt-5.3"
+    );
+    anyhow::ensure!(
+        eta.get("phase_count").and_then(Value::as_u64) == Some(3),
+        "expected phase_count to be 3"
+    );
+    anyhow::ensure!(
+        eta.get("sample_count").and_then(Value::as_u64) == Some(1),
+        "expected sample_count to be 1"
+    );
+    anyhow::ensure!(
+        eta.get("estimated_total_seconds").and_then(Value::as_u64) == Some(210),
+        "expected estimated_total_seconds to be 210"
+    );
+    anyhow::ensure!(
+        eta.get("estimated_total_human").and_then(Value::as_str) == Some("3m 30s"),
+        "expected estimated_total_human to be 3m 30s"
+    );
+    anyhow::ensure!(
+        eta.get("confidence").and_then(Value::as_str) == Some("low"),
+        "expected confidence to be low (only 1 sample)"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn stats_json_execution_history_eta_null_when_no_history() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    init_repo(dir.path())?;
+
+    // Create a simple queue without execution history
+    let queue = r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "title": "Test task",
+      "created_at": "2026-01-18T00:00:00Z",
+      "updated_at": "2026-01-18T00:00:00Z"
+    }
+  ]
+}"#;
+    std::fs::write(dir.path().join(".ralph/queue.json"), queue)?;
+    // No execution history written
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats", "--format", "json"]);
+    anyhow::ensure!(
+        status.success(),
+        "expected stats to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let payload = parse_json_output(&stdout)?;
+
+    // execution_history_eta should be null when no history
+    anyhow::ensure!(
+        payload.get("execution_history_eta").is_some(),
+        "execution_history_eta field should exist even when null"
+    );
+    anyhow::ensure!(
+        payload.get("execution_history_eta").unwrap().is_null(),
+        "execution_history_eta should be null when no history"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn stats_text_includes_execution_history_eta_section() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    init_repo(dir.path())?;
+    test_support::configure_agent_runner_model_phases(dir.path(), "codex", "gpt-5.3", 3)?;
+
+    let queue = r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "title": "Test task",
+      "created_at": "2026-01-18T00:00:00Z",
+      "updated_at": "2026-01-18T00:00:00Z"
+    }
+  ]
+}"#;
+    std::fs::write(dir.path().join(".ralph/queue.json"), queue)?;
+    test_support::write_execution_history_v1_single_sample(
+        dir.path(),
+        "codex",
+        "gpt-5.3",
+        210,
+        60,
+        120,
+        30,
+    )?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats"]);
+    anyhow::ensure!(
+        status.success(),
+        "expected stats to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Text output should include the ETA section
+    anyhow::ensure!(
+        stdout.contains("Execution History ETA"),
+        "expected 'Execution History ETA' section in text output\nstdout:\n{stdout}"
+    );
+    anyhow::ensure!(
+        stdout.contains("runner=codex"),
+        "expected runner info in ETA section\nstdout:\n{stdout}"
+    );
+    anyhow::ensure!(
+        stdout.contains("Samples: 1"),
+        "expected sample count in ETA section\nstdout:\n{stdout}"
+    );
+    anyhow::ensure!(
+        stdout.contains("Estimated new task:"),
+        "expected estimated duration in ETA section\nstdout:\n{stdout}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn stats_text_shows_na_when_no_history() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    init_repo(dir.path())?;
+
+    let queue = r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "title": "Test task",
+      "created_at": "2026-01-18T00:00:00Z",
+      "updated_at": "2026-01-18T00:00:00Z"
+    }
+  ]
+}"#;
+    std::fs::write(dir.path().join(".ralph/queue.json"), queue)?;
+    // No execution history
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats"]);
+    anyhow::ensure!(
+        status.success(),
+        "expected stats to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Text output should show n/a for missing history
+    anyhow::ensure!(
+        stdout.contains("Execution History ETA: n/a"),
+        "expected 'Execution History ETA: n/a' in text output\nstdout:\n{stdout}"
+    );
+
+    Ok(())
+}

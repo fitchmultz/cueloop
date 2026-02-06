@@ -1,4 +1,20 @@
 //! Output formatting helpers for Ralph CLI and TUI surfaces.
+//!
+//! Responsibilities:
+//! - Format task IDs, titles, and fields for display.
+//! - Provide styled output for status, priority, and other task fields.
+//! - Truncate and tail text for compact display.
+//! - Format custom fields as key=value pairs.
+//!
+//! Not handled here:
+//! - ETA formatting (see `crate::eta_calculator::format_eta`).
+//! - Actual rendering to the terminal (see `crate::output::theme`).
+//! - Task serialization for JSON export (see `crate::contracts`).
+//!
+//! Invariants/assumptions:
+//! - Truncation preserves unicode character boundaries (uses char iteration).
+//! - Empty values are handled gracefully with placeholders.
+//! - ANSI styling is provided via the `colored` crate.
 
 use crate::contracts::{Task, TaskPriority, TaskStatus};
 use colored::Colorize;

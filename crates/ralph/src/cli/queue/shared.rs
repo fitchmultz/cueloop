@@ -3,14 +3,17 @@
 //! Responsibilities:
 //! - Define shared clap enums used by queue/task commands.
 //! - Provide lightweight conversions for report/status types.
+//! - Provide shared ETA computation helpers for queue commands.
 //!
 //! Not handled here:
 //! - Command handlers or IO.
 //! - Business logic for queue mutations or reporting.
+//! - Actual ETA calculation logic (see `crate::eta_calculator`).
 //!
 //! Invariants/assumptions:
 //! - Enum variants map 1:1 with CLI strings.
 //! - Conversions are lossless and do not validate data.
+//! - ETA display uses execution history only (no heuristics).
 
 use clap::ValueEnum;
 
@@ -40,7 +43,7 @@ pub enum QueueShowFormat {
     Compact,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[clap(rename_all = "snake_case")]
 pub enum QueueListFormat {
     /// Compact tab-separated summary (ID, status, title).
@@ -141,5 +144,55 @@ impl From<QueueReportFormat> for reports::ReportFormat {
             QueueReportFormat::Text => reports::ReportFormat::Text,
             QueueReportFormat::Json => reports::ReportFormat::Json,
         }
+    }
+}
+
+/// Compute the ETA display string for a task using execution history.
+///
+/// Returns "n/a" when:
+/// - Task status is not `draft` or `todo` (terminal/in-progress tasks don't need ETA)
+/// - No execution history exists for the resolved (runner, model, phase_count) key
+/// - Runner/model resolution fails
+///
+/// Uses `EtaCalculator::estimate_new_task_total` which only returns estimates
+/// when actual history samples exist (no heuristic fallbacks).
+pub(crate) fn task_eta_display(
+    resolved: &crate::config::Resolved,
+    calculator: &crate::eta_calculator::EtaCalculator,
+    task: &crate::contracts::Task,
+) -> String {
+    use crate::contracts::TaskStatus;
+    use crate::eta_calculator::format_eta;
+    use crate::runner::resolve_agent_settings;
+
+    // Only estimate for non-terminal, not-started tasks
+    if !matches!(task.status, TaskStatus::Draft | TaskStatus::Todo) {
+        return "n/a".to_string();
+    }
+
+    // Resolve runner/model using same precedence as runtime (no CLI overrides)
+    let empty_cli_patch = crate::contracts::RunnerCliOptionsPatch::default();
+    let settings = match resolve_agent_settings(
+        None, // runner_override
+        None, // model_override
+        None, // effort_override
+        &empty_cli_patch,
+        task.agent.as_ref(),
+        &resolved.config.agent,
+    ) {
+        Ok(s) => s,
+        Err(_) => return "n/a".to_string(),
+    };
+
+    let phase_count = resolved.config.agent.phases.unwrap_or(3);
+
+    // Get estimate from calculator (returns None if no history)
+    match calculator.estimate_new_task_total(
+        settings.runner.as_str(),
+        settings.model.as_str(),
+        phase_count,
+    ) {
+        Some(estimate) => format_eta(estimate.remaining),
+        None => "n/a".to_string(),
     }
 }

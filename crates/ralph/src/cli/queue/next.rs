@@ -3,14 +3,17 @@
 //! Responsibilities:
 //! - Print the next runnable task ID (or ID+title with --with-title).
 //! - Provide explanation of why no task is runnable with --explain.
+//! - Optionally display ETA estimate from execution history with --with-eta.
 //!
 //! Does not handle:
 //! - Task execution (see `crate::commands::run`).
 //! - Queue mutations.
+//! - Real-time progress tracking (see TUI app).
 //!
 //! Invariants/assumptions:
 //! - When no runnable task exists, prints next available ID (for script compatibility).
 //! - Explanations go to stderr to preserve stdout contract.
+//! - ETA is based on execution history only; missing history shows "n/a".
 
 use std::io::Write;
 
@@ -18,7 +21,9 @@ use anyhow::Result;
 use clap::Args;
 
 use crate::cli::load_and_validate_queues;
+use crate::cli::queue::shared::task_eta_display;
 use crate::config::Resolved;
+use crate::eta_calculator::EtaCalculator;
 use crate::queue::operations::{
     NotRunnableReason, RunnableSelectionOptions, queue_runnability_report,
 };
@@ -26,15 +31,14 @@ use crate::{outpututil, queue};
 
 /// Arguments for `ralph queue next`.
 #[derive(Args)]
-#[command(after_long_help = "Examples:\n\
-  ralph queue next\n\
-  ralph queue next --with-title\n\
-  ralph queue next --explain\n\
-  ralph queue next --explain --with-title")]
 pub struct QueueNextArgs {
     /// Include the task title after the ID.
     #[arg(long)]
     pub with_title: bool,
+
+    /// Include an execution-history-based ETA estimate.
+    #[arg(long)]
+    pub with_eta: bool,
 
     /// Print an explanation when no runnable task is found.
     #[arg(long)]
@@ -47,9 +51,30 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueNextArgs) -> Result<()> {
         .as_ref()
         .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
 
+    // Load ETA calculator if needed
+    let eta_calculator = args.with_eta.then(|| {
+        let cache_dir = resolved.repo_root.join(".ralph/cache");
+        EtaCalculator::load(&cache_dir)
+    });
+
     // Get runnable task (same logic as run one)
     if let Some(next) = queue::next_runnable_task(&queue_file, done_ref) {
-        if args.with_title {
+        if args.with_eta {
+            let calc = eta_calculator
+                .as_ref()
+                .expect("with_eta implies eta_calculator exists");
+            let eta = task_eta_display(resolved, calc, next);
+
+            if args.with_title {
+                println!(
+                    "{}\t{}",
+                    outpututil::format_task_id_title(&next.id, &next.title),
+                    eta
+                );
+            } else {
+                println!("{}\t{}", outpututil::format_task_id(&next.id), eta);
+            }
+        } else if args.with_title {
             println!(
                 "{}",
                 outpututil::format_task_id_title(&next.id, &next.title)
@@ -74,8 +99,12 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueNextArgs) -> Result<()> {
         max_depth,
     )?;
 
-    // Always print the next ID to stdout (preserves contract)
-    println!("{next_id}");
+    // Print with ETA column if requested (stable column count)
+    if args.with_eta {
+        println!("{}\tn/a", next_id);
+    } else {
+        println!("{next_id}");
+    }
 
     // If --explain, provide detailed explanation to stderr
     if args.explain {
@@ -198,6 +227,30 @@ mod tests {
     #[test]
     fn next_args_both_flags() {
         let cli = TestCli::parse_from(["test", "--with-title", "--explain"]);
+        assert!(cli.args.with_title);
+        assert!(cli.args.explain);
+    }
+
+    #[test]
+    fn next_args_with_eta() {
+        let cli = TestCli::parse_from(["test", "--with-eta"]);
+        assert!(cli.args.with_eta);
+        assert!(!cli.args.with_title);
+        assert!(!cli.args.explain);
+    }
+
+    #[test]
+    fn next_args_with_eta_and_title() {
+        let cli = TestCli::parse_from(["test", "--with-eta", "--with-title"]);
+        assert!(cli.args.with_eta);
+        assert!(cli.args.with_title);
+        assert!(!cli.args.explain);
+    }
+
+    #[test]
+    fn next_args_all_flags() {
+        let cli = TestCli::parse_from(["test", "--with-eta", "--with-title", "--explain"]);
+        assert!(cli.args.with_eta);
         assert!(cli.args.with_title);
         assert!(cli.args.explain);
     }

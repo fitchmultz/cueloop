@@ -4,23 +4,29 @@
 //! - List tasks from queue and done archive with various filters.
 //! - Support status, tag, scope, dependency, and scheduled time filters.
 //! - Output in compact, long, or JSON formats.
+//! - Optionally display ETA estimates from execution history.
 //!
 //! Not handled here:
 //! - Task creation, modification, or deletion (see other queue subcommands).
 //! - Content-based search (see `search.rs`).
 //! - Complex reporting or aggregation (see `reports` module).
+//! - Real-time progress tracking (see TUI app).
 //!
 //! Invariants/assumptions:
 //! - Queue files are loaded and validated before filtering.
 //! - Output ordering: active queue tasks first, done tasks appended when --include-done.
+//! - ETA is based on execution history only; missing history shows "n/a".
+//! - ETA column is only added to text formats (compact/long), not JSON.
 //! - Scheduled filters use RFC3339 or relative time expressions.
 
 use anyhow::{Result, bail};
 use clap::Args;
 
+use crate::cli::queue::shared::task_eta_display;
 use crate::cli::{load_and_validate_queues, resolve_list_limit};
 use crate::config::Resolved;
 use crate::contracts::{Task, TaskStatus};
+use crate::eta_calculator::EtaCalculator;
 use crate::{outpututil, queue};
 
 use super::{QueueListFormat, QueueSortBy, QueueSortOrder, StatusArg};
@@ -28,7 +34,7 @@ use super::{QueueListFormat, QueueSortBy, QueueSortOrder, StatusArg};
 /// Arguments for `ralph queue list`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue list --status doing --scope crates/ralph\n  ralph queue list --include-done --limit 20\n  ralph queue list --only-done --all\n  ralph queue list --filter-deps=RQ-0100\n  ralph queue list --format json\n  ralph queue list --format json | jq '.[] | select(.status == \"todo\")'\n  ralph queue list --scheduled\n  ralph queue list --scheduled-after '2026-01-01T00:00:00Z'\n  ralph queue list --scheduled-before '+7d'"
+    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue list --status doing --scope crates/ralph\n  ralph queue list --include-done --limit 20\n  ralph queue list --only-done --all\n  ralph queue list --filter-deps=RQ-0100\n  ralph queue list --format json\n  ralph queue list --format json | jq '.[] | select(.status == \"todo\")'\n  ralph queue list --scheduled\n  ralph queue list --scheduled-after '2026-01-01T00:00:00Z'\n  ralph queue list --scheduled-before '+7d'\n  ralph queue list --with-eta\n  ralph queue list --with-eta --format long"
 )]
 pub struct QueueListArgs {
     /// Filter by status (repeatable).
@@ -90,6 +96,10 @@ pub struct QueueListArgs {
     /// Filter tasks scheduled before this time (RFC3339 or relative expression).
     #[arg(long, value_name = "TIMESTAMP")]
     pub scheduled_before: Option<String>,
+
+    /// Include an execution-history-based ETA estimate column (text formats only).
+    #[arg(long)]
+    pub with_eta: bool,
 }
 
 pub(crate) fn handle(resolved: &Resolved, args: QueueListArgs) -> Result<()> {
@@ -232,18 +242,39 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueListArgs) -> Result<()> {
     let max = limit.unwrap_or(usize::MAX);
     let tasks: Vec<&Task> = tasks.into_iter().take(max).collect();
 
+    // Load ETA calculator if needed (only for text formats)
+    let eta_calculator = if args.with_eta && args.format != QueueListFormat::Json {
+        let cache_dir = resolved.repo_root.join(".ralph/cache");
+        Some(EtaCalculator::load(&cache_dir))
+    } else {
+        None
+    };
+
     match args.format {
         QueueListFormat::Compact => {
             for task in tasks {
-                println!("{}", outpututil::format_task_compact(task));
+                let base = outpututil::format_task_compact(task);
+                if let Some(ref calc) = eta_calculator {
+                    let eta = task_eta_display(resolved, calc, task);
+                    println!("{}\t{}", base, eta);
+                } else {
+                    println!("{}", base);
+                }
             }
         }
         QueueListFormat::Long => {
             for task in tasks {
-                println!("{}", outpututil::format_task_detailed(task));
+                let base = outpututil::format_task_detailed(task);
+                if let Some(ref calc) = eta_calculator {
+                    let eta = task_eta_display(resolved, calc, task);
+                    println!("{}\t{}", base, eta);
+                } else {
+                    println!("{}", base);
+                }
             }
         }
         QueueListFormat::Json => {
+            // JSON format ignores --with-eta per design
             let owned_tasks: Vec<Task> = tasks.into_iter().cloned().collect();
             let json = serde_json::to_string_pretty(&owned_tasks)?;
             println!("{json}");

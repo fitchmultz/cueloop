@@ -924,11 +924,16 @@ Print the next runnable task (ID by default). If no runnable task exists, prints
 Flags:
 
 * `--with-title`: include task title after ID.
+* `--with-eta`: include an execution-history-based ETA estimate.
 * `--explain`: print an explanation when no runnable task is found (to stderr).
+
+ETA estimates are based on historical execution times for the resolved (runner, model, phase_count) combination. When no history exists, displays `n/a`.
 
 ```bash
 ralph queue next
 ralph queue next --with-title
+ralph queue next --with-eta
+ralph queue next --with-title --with-eta
 ralph queue next --explain
 ```
 
@@ -1006,6 +1011,7 @@ Flags:
 * `--scheduled`: filter to only show tasks with `scheduled_start` set.
 * `--scheduled-after <TIMESTAMP>`: filter tasks scheduled after this time (RFC3339 or relative expression like `+7d`).
 * `--scheduled-before <TIMESTAMP>`: filter tasks scheduled before this time (RFC3339 or relative expression).
+* `--with-eta`: include an execution-history-based ETA estimate column (text formats only; has no effect on `--format json`).
 
 ```bash
 ralph queue list
@@ -1019,6 +1025,8 @@ ralph queue list --format json | jq '.[] | select(.status == "todo")'
 ralph queue list --scheduled
 ralph queue list --scheduled-after '2026-01-01T00:00:00Z'
 ralph queue list --scheduled-before '+7d'
+ralph queue list --with-eta
+ralph queue list --with-eta --format long
 ```
 
 ### `ralph queue search`
@@ -1099,7 +1107,14 @@ ralph queue sort --order ascending
 
 Queue reports default to human-readable text but can emit JSON for scripting.
 
-Summarize completion rates, durations, and tag breakdowns.
+Summarize completion rates, durations, tag breakdowns, and execution-history-based ETA estimates.
+
+The execution history ETA section displays:
+* **runner/model/phases**: The key used to look up historical data.
+* **Samples**: Number of completed task executions in history.
+* **Estimated new task**: Expected duration based on historical averages (with confidence level: high/medium/low).
+
+When no execution history exists for the current configuration, the ETA section shows `n/a`.
 
 Flags:
 

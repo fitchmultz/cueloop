@@ -45,9 +45,9 @@ impl EtaConfidence {
     /// Returns a visual indicator for the confidence level.
     pub fn indicator(&self) -> &'static str {
         match self {
-            EtaConfidence::High => "●",
-            EtaConfidence::Medium => "◐",
-            EtaConfidence::Low => "○",
+            EtaConfidence::High => "+++",
+            EtaConfidence::Medium => "++",
+            EtaConfidence::Low => "+",
         }
     }
 
@@ -270,6 +270,71 @@ impl EtaCalculator {
             .fold(Duration::ZERO, |acc, d| acc + d);
         total / averages.len() as u32
     }
+
+    /// Count history entries matching the given key.
+    pub fn count_entries_for_key(&self, runner: &str, model: &str, phase_count: u8) -> usize {
+        self.history
+            .entries
+            .iter()
+            .filter(|e| e.runner == runner && e.model == model && e.phase_count == phase_count)
+            .count()
+    }
+
+    /// Estimate total time for a not-started task using execution history only.
+    /// Returns None when there are zero relevant history samples.
+    pub fn estimate_new_task_total(
+        &self,
+        runner: &str,
+        model: &str,
+        phase_count: u8,
+    ) -> Option<EtaEstimate> {
+        if phase_count == 0 {
+            return None;
+        }
+
+        let averages = get_phase_averages(&self.history, runner, model, phase_count);
+        let entry_count = self
+            .history
+            .entries
+            .iter()
+            .filter(|e| e.runner == runner && e.model == model && e.phase_count == phase_count)
+            .count();
+
+        if entry_count == 0 {
+            return None;
+        }
+
+        let confidence = if entry_count >= 5 {
+            EtaConfidence::High
+        } else if entry_count >= 2 {
+            EtaConfidence::Medium
+        } else {
+            EtaConfidence::Low
+        };
+
+        let phases: Vec<ExecutionPhase> = match phase_count {
+            1 => vec![ExecutionPhase::Planning],
+            2 => vec![ExecutionPhase::Planning, ExecutionPhase::Implementation],
+            _ => vec![
+                ExecutionPhase::Planning,
+                ExecutionPhase::Implementation,
+                ExecutionPhase::Review,
+            ],
+        };
+
+        // Use known averages; for missing phases, use the calculator's existing fallback average.
+        let fallback = self.calculate_fallback_average(&averages);
+        let mut total = Duration::ZERO;
+        for p in phases {
+            total += averages.get(&p).copied().unwrap_or(fallback);
+        }
+
+        Some(EtaEstimate {
+            remaining: total,
+            confidence,
+            based_on_history: true,
+        })
+    }
 }
 
 /// Format a duration as a human-readable ETA string.
@@ -437,9 +502,9 @@ mod tests {
 
     #[test]
     fn test_confidence_levels() {
-        assert_eq!(EtaConfidence::High.indicator(), "●");
-        assert_eq!(EtaConfidence::Medium.indicator(), "◐");
-        assert_eq!(EtaConfidence::Low.indicator(), "○");
+        assert_eq!(EtaConfidence::High.indicator(), "+++");
+        assert_eq!(EtaConfidence::Medium.indicator(), "++");
+        assert_eq!(EtaConfidence::Low.indicator(), "+");
 
         assert_eq!(EtaConfidence::High.color_name(), "green");
         assert_eq!(EtaConfidence::Medium.color_name(), "yellow");
@@ -492,5 +557,144 @@ mod tests {
         // Two phases: remaining should be ~60s for Implementation
         assert!(estimate.remaining >= Duration::from_secs(30));
         assert!(estimate.remaining <= Duration::from_secs(120));
+    }
+
+    #[test]
+    fn test_estimate_new_task_total_no_history() {
+        let calculator = EtaCalculator::empty();
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 3);
+        assert!(
+            result.is_none(),
+            "Should return None when no history exists"
+        );
+    }
+
+    #[test]
+    fn test_estimate_new_task_total_with_history() {
+        let history = create_test_history();
+        let calculator = EtaCalculator::new(history);
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 3);
+        assert!(result.is_some(), "Should return Some when history exists");
+
+        let estimate = result.unwrap();
+        assert!(estimate.based_on_history);
+        // History has 60s + 120s + 30s = 210s total
+        assert_eq!(estimate.remaining, Duration::from_secs(210));
+    }
+
+    #[test]
+    fn test_estimate_new_task_total_confidence_levels() {
+        // Test with 1 entry (low confidence)
+        let mut history = ExecutionHistory::default();
+        history.entries.push(ExecutionEntry {
+            timestamp: "2026-01-31T12:00:00Z".to_string(),
+            task_id: "RQ-0001".to_string(),
+            runner: "codex".to_string(),
+            model: "sonnet".to_string(),
+            phase_count: 3,
+            phase_durations: {
+                let mut d = HashMap::new();
+                d.insert(ExecutionPhase::Planning, Duration::from_secs(60));
+                d
+            },
+            total_duration: Duration::from_secs(60),
+        });
+
+        let calculator = EtaCalculator::new(history);
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 3);
+        assert_eq!(result.unwrap().confidence, EtaConfidence::Low);
+
+        // Test with 3 entries (medium confidence)
+        let history = create_test_history(); // Has 3 entries
+        let calculator = EtaCalculator::new(history);
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 3);
+        assert_eq!(result.unwrap().confidence, EtaConfidence::Medium);
+
+        // Test with 5 entries (high confidence)
+        let mut history = ExecutionHistory::default();
+        for i in 0..5 {
+            history.entries.push(ExecutionEntry {
+                timestamp: format!("2026-01-{:02}T12:00:00Z", 31 - i),
+                task_id: format!("RQ-{:04}", i),
+                runner: "codex".to_string(),
+                model: "sonnet".to_string(),
+                phase_count: 3,
+                phase_durations: {
+                    let mut d = HashMap::new();
+                    d.insert(ExecutionPhase::Planning, Duration::from_secs(60));
+                    d.insert(ExecutionPhase::Implementation, Duration::from_secs(120));
+                    d.insert(ExecutionPhase::Review, Duration::from_secs(30));
+                    d
+                },
+                total_duration: Duration::from_secs(210),
+            });
+        }
+        let calculator = EtaCalculator::new(history);
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 3);
+        assert_eq!(result.unwrap().confidence, EtaConfidence::High);
+    }
+
+    #[test]
+    fn test_estimate_new_task_total_wrong_key() {
+        let history = create_test_history();
+        let calculator = EtaCalculator::new(history);
+
+        // Different runner
+        let result = calculator.estimate_new_task_total("claude", "sonnet", 3);
+        assert!(result.is_none());
+
+        // Different model
+        let result = calculator.estimate_new_task_total("codex", "gpt-4", 3);
+        assert!(result.is_none());
+
+        // Different phase count
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 1);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_estimate_new_task_total_phase_variations() {
+        let mut history = ExecutionHistory::default();
+        history.entries.push(ExecutionEntry {
+            timestamp: "2026-01-31T12:00:00Z".to_string(),
+            task_id: "RQ-0001".to_string(),
+            runner: "codex".to_string(),
+            model: "sonnet".to_string(),
+            phase_count: 1,
+            phase_durations: {
+                let mut d = HashMap::new();
+                d.insert(ExecutionPhase::Planning, Duration::from_secs(60));
+                d
+            },
+            total_duration: Duration::from_secs(60),
+        });
+        history.entries.push(ExecutionEntry {
+            timestamp: "2026-01-31T12:00:00Z".to_string(),
+            task_id: "RQ-0002".to_string(),
+            runner: "codex".to_string(),
+            model: "sonnet".to_string(),
+            phase_count: 2,
+            phase_durations: {
+                let mut d = HashMap::new();
+                d.insert(ExecutionPhase::Planning, Duration::from_secs(60));
+                d.insert(ExecutionPhase::Implementation, Duration::from_secs(120));
+                d
+            },
+            total_duration: Duration::from_secs(180),
+        });
+
+        let calculator = EtaCalculator::new(history);
+
+        // 1 phase
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 1);
+        assert_eq!(result.unwrap().remaining, Duration::from_secs(60));
+
+        // 2 phases
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 2);
+        assert_eq!(result.unwrap().remaining, Duration::from_secs(180));
+
+        // 3 phases (no data, should return None)
+        let result = calculator.estimate_new_task_total("codex", "sonnet", 3);
+        assert!(result.is_none());
     }
 }

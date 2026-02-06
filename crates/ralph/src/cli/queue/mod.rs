@@ -112,7 +112,9 @@ pub enum QueueCommand {
     Prune(QueuePruneArgs),
 
     /// Print the next todo task (ID by default).
-    #[command(after_long_help = "Examples:\n ralph queue next\n ralph queue next --with-title")]
+    #[command(
+        after_long_help = "Examples:\n ralph queue next\n ralph queue next --with-title\n ralph queue next --with-eta\n ralph queue next --with-title --with-eta\n ralph queue next --explain\n ralph queue next --explain --with-title"
+    )]
     Next(QueueNextArgs),
 
     /// Print the next available task ID (across queue + done archive).
@@ -153,7 +155,7 @@ pub enum QueueCommand {
 
     /// Show task statistics (completion rate, avg duration, tag breakdown).
     #[command(
-        after_long_help = "Examples:\n ralph queue stats\n ralph queue stats --tag rust --tag cli"
+        after_long_help = "Examples:\n ralph queue stats\n ralph queue stats --tag rust --tag cli\n ralph queue stats --format json"
     )]
     Stats(QueueStatsArgs),
 

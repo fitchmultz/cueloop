@@ -14,6 +14,7 @@
 use anyhow::{Context, Result};
 use ralph::config;
 use ralph::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use serde_json::Value;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
@@ -199,6 +200,84 @@ pub fn git_init(dir: &Path) -> Result<()> {
         .args(["commit", "--quiet", "-m", "add gitignore"])
         .status()?;
 
+    Ok(())
+}
+
+/// Update `.ralph/config.json` to set `agent.runner`, `agent.model`, and `agent.phases`.
+///
+/// Assumptions:
+/// - `ralph init` has already been run (so `.ralph/config.json` exists).
+pub fn configure_agent_runner_model_phases(
+    dir: &Path,
+    runner: &str,
+    model: &str,
+    phases: u8,
+) -> Result<()> {
+    let config_path = dir.join(".ralph/config.json");
+    let config_str = std::fs::read_to_string(&config_path).context("read .ralph/config.json")?;
+    let mut config: Value =
+        serde_json::from_str(&config_str).context("parse .ralph/config.json")?;
+
+    if config.get("agent").is_none() {
+        config["agent"] = serde_json::json!({});
+    }
+
+    let agent = config["agent"]
+        .as_object_mut()
+        .context("config.agent is not an object")?;
+    agent.insert("runner".to_string(), serde_json::json!(runner));
+    agent.insert("model".to_string(), serde_json::json!(model));
+    agent.insert("phases".to_string(), serde_json::json!(phases));
+
+    std::fs::write(
+        &config_path,
+        serde_json::to_string_pretty(&config).context("serialize .ralph/config.json")?,
+    )
+    .context("write .ralph/config.json")?;
+    Ok(())
+}
+
+/// Write `.ralph/cache/execution_history.json` with a single v1 entry.
+///
+/// Assumptions:
+/// - The history schema uses `secs`/`nanos` objects for durations.
+/// - Callers provide consistent totals (this helper does not cross-check).
+/// - The entry is always written with `phase_count = 3`.
+pub fn write_execution_history_v1_single_sample(
+    dir: &Path,
+    runner: &str,
+    model: &str,
+    total_secs: u64,
+    planning_secs: u64,
+    implementation_secs: u64,
+    review_secs: u64,
+) -> Result<()> {
+    let history = serde_json::json!({
+      "version": 1,
+      "entries": [
+        {
+          "timestamp": "2026-02-01T00:00:00Z",
+          "task_id": "RQ-9999",
+          "runner": runner,
+          "model": model,
+          "phase_count": 3,
+          "phase_durations": {
+            "planning": { "secs": planning_secs, "nanos": 0 },
+            "implementation": { "secs": implementation_secs, "nanos": 0 },
+            "review": { "secs": review_secs, "nanos": 0 }
+          },
+          "total_duration": { "secs": total_secs, "nanos": 0 }
+        }
+      ]
+    });
+
+    let cache_dir = dir.join(".ralph/cache");
+    std::fs::create_dir_all(&cache_dir).context("create .ralph/cache")?;
+    std::fs::write(
+        cache_dir.join("execution_history.json"),
+        serde_json::to_string_pretty(&history).context("serialize execution_history.json")?,
+    )
+    .context("write execution_history.json")?;
     Ok(())
 }
 
