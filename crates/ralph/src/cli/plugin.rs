@@ -10,12 +10,65 @@
 //! - `install` copies a plugin directory containing `plugin.json` into the chosen scope.
 //! - Installing does NOT auto-enable the plugin (security).
 
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
+use std::path::PathBuf;
 
 #[derive(Args)]
 pub struct PluginArgs {
     #[command(subcommand)]
     pub command: PluginCommand,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum PluginScopeArg {
+    Project,
+    Global,
+}
+
+#[derive(Args, Debug, Clone)]
+#[command(
+    after_long_help = "Examples:\n  ralph plugin init acme.super_runner\n  ralph plugin init acme.super_runner --with-runner\n  ralph plugin init acme.super_runner --with-processor\n  ralph plugin init acme.super_runner --scope global\n  ralph plugin init acme.super_runner --dry-run\n"
+)]
+pub struct PluginInitArgs {
+    /// Plugin ID (used as directory name in default layout).
+    #[arg(value_name = "PLUGIN_ID")]
+    pub id: String,
+
+    /// Where to scaffold the plugin (ignored when --path is provided).
+    #[arg(long, value_enum, default_value = "project")]
+    pub scope: PluginScopeArg,
+
+    /// Target plugin directory (overrides --scope). Relative paths are resolved from repo root.
+    #[arg(long, value_name = "DIR")]
+    pub path: Option<PathBuf>,
+
+    /// Manifest name (default: derived from id).
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// Manifest version (SemVer string).
+    #[arg(long, default_value = "0.1.0")]
+    pub version: String,
+
+    /// Optional manifest description.
+    #[arg(long)]
+    pub description: Option<String>,
+
+    /// Include runner stub + runner manifest section.
+    #[arg(long)]
+    pub with_runner: bool,
+
+    /// Include processor stub + processors manifest section.
+    #[arg(long)]
+    pub with_processor: bool,
+
+    /// Preview what would be written without creating files.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Overwrite scaffolded files if the directory already exists.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Subcommand)]
@@ -47,8 +100,8 @@ pub enum PluginCommand {
         source: String,
 
         /// Install scope: project or global
-        #[arg(long, default_value = "project")]
-        scope: String,
+        #[arg(long, value_enum, default_value = "project")]
+        scope: PluginScopeArg,
     },
 
     /// Uninstall a plugin by id from the chosen scope.
@@ -58,7 +111,13 @@ pub enum PluginCommand {
     Uninstall {
         id: String,
 
-        #[arg(long, default_value = "project")]
-        scope: String,
+        #[arg(long, value_enum, default_value = "project")]
+        scope: PluginScopeArg,
     },
+
+    /// Scaffold a new plugin directory with plugin.json and optional scripts.
+    #[command(
+        after_long_help = "Examples:\n  ralph plugin init acme.super_runner\n  ralph plugin init acme.super_runner --with-runner\n  ralph plugin init acme.super_runner --with-processor\n  ralph plugin init acme.super_runner --scope global\n  ralph plugin init acme.super_runner --dry-run\n"
+    )]
+    Init(PluginInitArgs),
 }

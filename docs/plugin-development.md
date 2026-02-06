@@ -2,6 +2,56 @@
 
 Purpose: Guide for developing custom Ralph plugins (runners and task processors).
 
+## Quick Start
+
+The fastest way to start building a plugin is with the scaffold command:
+
+```bash
+# Scaffold a new plugin in the project scope (default)
+ralph plugin init my.plugin
+
+# Scaffold with only runner support
+ralph plugin init my.plugin --with-runner
+
+# Scaffold with only processor support
+ralph plugin init my.plugin --with-processor
+
+# Scaffold in the global scope
+ralph plugin init my.plugin --scope global
+
+# Preview what would be created without writing files
+ralph plugin init my.plugin --dry-run
+```
+
+This creates:
+- `plugin.json` - A valid manifest that passes validation
+- `runner.sh` - A runner stub script (if runner support requested)
+- `processor.sh` - A processor stub script (if processor support requested)
+
+By default, both runner and processor scripts are created. Plugins are created in:
+- **Project scope**: `.ralph/plugins/<plugin_id>/`
+- **Global scope**: `~/.config/ralph/plugins/<plugin_id>/`
+
+**Important**: The plugin is NOT automatically enabled. To enable it, add to your config:
+
+```json
+{
+  "plugins": {
+    "plugins": {
+      "my.plugin": {
+        "enabled": true
+      }
+    }
+  }
+}
+```
+
+Then validate your plugin:
+
+```bash
+ralph plugin validate --id my.plugin
+```
+
 ## Overview
 
 Ralph's plugin system allows extending the tool with custom runners and task processors without modifying the core codebase. Plugins are discovered from:
@@ -21,6 +71,11 @@ my-plugin/
 ├── runner.sh         # Optional: Runner executable
 └── processor.sh      # Optional: Processor executable
 ```
+
+When you run `ralph plugin init`, the scaffold generates this layout with:
+- A valid `plugin.json` with all required fields
+- Executable shell scripts with `--help` output and protocol documentation
+- Proper file permissions (executable bit set on Unix systems)
 
 ## Plugin Manifest (`plugin.json`)
 
@@ -200,6 +255,8 @@ ralph plugin install ./my-plugin --scope global
 ```
 
 Install does NOT auto-enable the plugin for security. Enable manually in config.
+
+To create a new plugin from scratch, use `ralph plugin init` (see Quick Start section).
 
 ## Managing Plugins
 

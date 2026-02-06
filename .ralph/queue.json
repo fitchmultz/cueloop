@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0651",
-      "status": "todo",
-      "title": "Add `ralph plugin init` to scaffold a plugin (plugin.json + scripts)",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "plugins",
-        "ux",
-        "integration",
-        "scaffolding"
-      ],
-      "scope": [
-        "docs/plugin-development.md",
-        "crates/ralph/src/cli/plugin.rs",
-        "crates/ralph/src/commands/plugin/",
-        "crates/ralph/tests/",
-        "ralph plugin --help"
-      ],
-      "evidence": [
-        "Command: `ralph plugin --help` supports list/validate/install/uninstall but has no scaffolding command for creating a new plugin.",
-        "File: `docs/plugin-development.md` describes manual plugin creation (create directory, write plugin.json, scripts), which is error-prone and slows adoption.",
-        "Security posture: plugins are disabled by default; scaffolding can bake in safe defaults (e.g., no auto-enable) and correct manifest shape."
-      ],
-      "plan": [
-        "Add `ralph plugin init <DIR> --id <plugin.id> [--name ...] [--runner] [--processor]` to generate a minimal plugin directory with `plugin.json` and optional runner/processor shell scripts.",
-        "Ensure generated scripts include a `--help` path and print required env vars (minimal protocol compliance) to reduce onboarding time.",
-        "Add `--dry-run` to print what would be written and where.",
-        "Add tests that run init in a temp dir and then run `ralph plugin validate --id <id>` with the generated plugin to confirm validation passes.",
-        "Update `docs/plugin-development.md` with a one-command scaffold example.",
-        "Verify by running `make ci` and confirming it passes."
-      ],
-      "notes": [
-        "Opportunity type: integration + UX improvement.",
-        "Why it matters: A scaffolder makes the plugin system practical for real teams and reduces manifest/protocol mistakes.",
-        "Acceptance criteria: Generated plugin validates; help/examples are useful; docs point to `plugin init` as the default starting point."
-      ],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-06T01:53:55Z",
-      "updated_at": "2026-02-06T01:53:55Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0652",
       "status": "todo",
       "title": "Enrich webhook payloads and add loop/phase events for better integrations",
@@ -274,8 +227,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "reported_at": "2026-02-06",
-        "user_visible_blocker": "true"
+        "user_visible_blocker": "true",
+        "reported_at": "2026-02-06"
       }
     },
     {
@@ -351,8 +304,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "stale_evidence": "Updated rg results for now_utc_rfc3339().unwrap_or_default(): productivity.rs:55,207,340; execution_history.rs:121",
-        "scan_agent": "scan-maintenance"
+        "scan_agent": "scan-maintenance",
+        "stale_evidence": "Updated rg results for now_utc_rfc3339().unwrap_or_default(): productivity.rs:55,207,340; execution_history.rs:121"
       }
     },
     {

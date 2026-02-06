@@ -66,6 +66,7 @@ ralph --no-sanity-checks run loop
 * `ralph doctor`: verify environment readiness.
 * `ralph completions <shell>`: generate shell completion scripts.
 * `ralph productivity <subcommand>`: view productivity analytics (streaks, velocity, milestones).
+* `ralph plugin <subcommand>`: manage plugins (list, validate, install, uninstall, init).
 * `ralph version`: display version information.
 
 ## `ralph completions`
@@ -2799,6 +2800,128 @@ ralph run one --debug
 - **Never commit debug logs** to version control (ensure `.ralph/logs/` is in your repo root `.gitignore`).
 - Temp directories for safeguard dumps are created under `/tmp/ralph/` (or platform equivalent) with `ralph_` prefixes. Clean these up periodically as they persist until manually removed.
 
+## `ralph plugin`
+
+Manage Ralph plugins (runners and task processors).
+
+### Subcommands
+
+- `ralph plugin init <PLUGIN_ID>`: Scaffold a new plugin directory with plugin.json and optional scripts
+- `ralph plugin list`: List discovered plugins and their status
+- `ralph plugin validate`: Validate plugin manifests and binaries
+- `ralph plugin install <SOURCE> --scope <project|global>`: Install a plugin from a local directory
+- `ralph plugin uninstall <PLUGIN_ID> --scope <project|global>`: Uninstall a plugin
+
+### `ralph plugin init`
+
+Scaffold a new plugin directory. This is the recommended starting point for plugin development.
+
+Flags:
+
+- `--scope <project|global>`: Where to create the plugin (default: `project`)
+- `--path <DIR>`: Explicit target directory (overrides `--scope`)
+- `--name <NAME>`: Manifest name (default: derived from plugin ID)
+- `--version <SEMVER>`: Manifest version (default: `0.1.0`)
+- `--description <TEXT>`: Optional manifest description
+- `--with-runner`: Include runner stub + manifest section
+- `--with-processor`: Include processor stub + manifest section
+- `--dry-run`: Preview what would be written without creating files
+- `--force`: Overwrite existing directory
+
+By default, both runner and processor scripts are created. If either `--with-runner` or `--with-processor` is specified, only the requested capability is scaffolded.
+
+Examples:
+
+```bash
+# Scaffold a plugin with both runner and processor
+ralph plugin init acme.super_runner
+
+# Scaffold with only runner support
+ralph plugin init acme.super_runner --with-runner
+
+# Scaffold with only processor support
+ralph plugin init acme.super_runner --with-processor
+
+# Scaffold in global scope
+ralph plugin init acme.super_runner --scope global
+
+# Scaffold with custom metadata
+ralph plugin init acme.super_runner --name "Super Runner" --version "1.0.0"
+
+# Preview without writing
+ralph plugin init acme.super_runner --dry-run
+```
+
+Important notes:
+
+- The plugin is NOT automatically enabled. Add to config: `{"plugins": {"plugins": {"acme.super_runner": {"enabled": true}}}}`
+- Project scope plugins are created in `.ralph/plugins/<plugin_id>/`
+- Global scope plugins are created in `~/.config/ralph/plugins/<plugin_id>/`
+
+### `ralph plugin list`
+
+List discovered plugins (both global and project scope) and whether they are enabled.
+
+Flags:
+
+- `--json`: Output as JSON
+
+Examples:
+
+```bash
+ralph plugin list
+ralph plugin list --json
+```
+
+### `ralph plugin validate`
+
+Validate plugin manifests and check that referenced executables exist.
+
+Flags:
+
+- `--id <PLUGIN_ID>`: Validate only a specific plugin
+
+Examples:
+
+```bash
+# Validate all discovered plugins
+ralph plugin validate
+
+# Validate specific plugin
+ralph plugin validate --id acme.super_runner
+```
+
+### `ralph plugin install`
+
+Install a plugin from a local directory (must contain plugin.json).
+
+Flags:
+
+- `--scope <project|global>`: Install scope (default: `project`)
+
+Examples:
+
+```bash
+ralph plugin install ./my-plugin --scope project
+ralph plugin install ./my-plugin --scope global
+```
+
+Note: Install does NOT auto-enable the plugin. Enable manually in config.
+
+### `ralph plugin uninstall`
+
+Uninstall a plugin by ID from the chosen scope.
+
+Flags:
+
+- `--scope <project|global>`: Uninstall scope (default: `project`)
+
+Examples:
+
+```bash
+ralph plugin uninstall acme.super_runner --scope project
+```
+
 ## Help Output
 
 For the full, authoritative list of flags and examples, run:
@@ -2808,4 +2931,6 @@ ralph --help
 ralph tui --help
 ralph queue --help
 ralph run --help
+ralph plugin --help
+ralph plugin init --help
 ```

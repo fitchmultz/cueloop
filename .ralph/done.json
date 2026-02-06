@@ -1301,9 +1301,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "reliability",
-        "time_to_ship": "medium (concurrency + tests)",
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
         "scan_agent": "scan-innovation",
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
+        "time_to_ship": "medium (concurrency + tests)"
       }
     },
     {
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
         "time_to_ship": "medium (metadata + reconciliation + tests)",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
-        "scan_agent": "scan-innovation"
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
         "time_to_ship": "medium (format + fixes + tests)",
-        "scan_agent": "scan-innovation"
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
-        "scan_agent": "scan-innovation",
         "time_to_ship": "small/medium (formatters + tests)",
-        "opportunity_type": "ux improvement"
+        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation",
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
       }
     },
     {
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (TUI wiring + tests)",
         "opportunity_type": "ux improvement",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (TUI wiring + tests)",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke."
       }
     },
     {
@@ -1989,9 +1989,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "time_to_ship": "medium (render-only UI + tests)",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation"
       }
     },
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "scan_agent": "scan-innovation",
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption"
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
+        "opportunity_type": "feature gap"
       }
     },
     {
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "UX improvement",
+        "scan_agent": "scan-innovation",
         "user_value": "Reduces queue maintenance time by 80% for large projects",
         "time_to_ship": "incremental - add one batch operation at a time",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "UX improvement"
       }
     },
     {
@@ -2165,9 +2165,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
         "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
@@ -2231,10 +2231,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
-        "opportunity_type": "feature gap",
         "differentiation": "Unique capability among AI task runners",
-        "scan_agent": "scan-innovation"
+        "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "feature gap"
       }
     },
     {
@@ -3081,6 +3081,70 @@
       "updated_at": "2026-02-06T09:15:22.624941000Z",
       "completed_at": "2026-02-06T09:15:22.624941000Z",
       "started_at": "2026-02-06T08:08:43.361116000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0651",
+      "status": "done",
+      "title": "Add `ralph plugin init` to scaffold a plugin (plugin.json + scripts)",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "plugins",
+        "ux",
+        "integration",
+        "scaffolding"
+      ],
+      "scope": [
+        "docs/plugin-development.md",
+        "docs/cli.md",
+        "docs/configuration.md",
+        "crates/ralph/src/cli/plugin.rs",
+        "crates/ralph/src/commands/plugin/mod.rs",
+        "crates/ralph/src/plugins/mod.rs",
+        "crates/ralph/src/plugins/discovery.rs",
+        "crates/ralph/src/plugins/manifest.rs",
+        "crates/ralph/tests/",
+        "cargo run -p ralph -- plugin --help",
+        "cargo run -p ralph -- plugin validate --help",
+        "cargo run -p ralph -- plugin init --help"
+      ],
+      "evidence": [
+        "Command: `cargo run -p ralph -- plugin --help` lists subcommands list/validate/install/uninstall and has no `init` scaffolding command today.",
+        "Docs: `docs/plugin-development.md` describes manual plugin directory creation (write plugin.json + scripts) and does not mention a scaffold command.",
+        "Code: plugin discovery only searches `.ralph/plugins/<plugin_id>/plugin.json` (project) and `~/.config/ralph/plugins/<plugin_id>/plugin.json` (global), so a scaffold should generate that on-disk layout by default.",
+        "Code: `crates/ralph/src/plugins/manifest.rs` enforces manifest invariants (api_version=1, id must be non-empty/no path separators, processor hooks must be one of validate_task/pre_prompt/post_run), so scaffolding should generate a manifest that passes validation."
+      ],
+      "plan": [
+        "Add `plugin init` to the CLI (`crates/ralph/src/cli/plugin.rs`) with help/examples, e.g. `ralph plugin init <PLUGIN_ID> --scope project|global [--path <DIR>] [--with-runner] [--with-processor] [--name ...] [--version ...] [--description ...] [--dry-run]`.",
+        "Implement `cmd_init` in `crates/ralph/src/commands/plugin/mod.rs`: choose a default target directory under the discovery roots (`.ralph/plugins/<id>/` for project, `~/.config/ralph/plugins/<id>/` for global), write `plugin.json` using `PluginManifest` + `PLUGIN_API_VERSION`, and optionally scaffold `runner.sh` / `processor.sh` skeletons (no auto-enable; fail if target exists unless `--force`).",
+        "Ensure scaffold output passes `PluginManifest::validate()` and is discoverable by `discover_plugins` (directory name matches id; `plugin.json` exists).",
+        "Add `--dry-run` behavior and error cases: invalid id (path separators), target exists, unknown scope, and missing HOME for global scope.",
+        "Add integration tests in `crates/ralph/tests/` that run `ralph plugin init` in a temp repo and then run `ralph plugin validate --id <id>` to confirm the generated plugin validates; cover dry-run (no files written) and invalid id failure modes.",
+        "Update docs: add `ralph plugin init` as the default starting point in `docs/plugin-development.md`, add a short plugin section in `docs/cli.md` (including init examples), and ensure `docs/configuration.md` references the enablement workflow.",
+        "Verify by running `make ci` and confirming it passes."
+      ],
+      "notes": [
+        "Opportunity type: integration + UX improvement.",
+        "Why it matters: A scaffolder makes the plugin system practical for real teams and reduces manifest/protocol mistakes.",
+        "Observation: `docs/cli.md` does not currently document `ralph plugin ...` commands; adding `plugin init` is a good time to document the plugin CLI surface there.",
+        "Acceptance criteria: Generated plugin validates; help/examples are useful; scaffold defaults align with discovery roots; docs point to `plugin init` as the default starting point.",
+        "Add  scaffolder (project/global scope, optional runner/processor scripts, dry-run/force).",
+        "Plugin init outputs a manifest that passes No plugins to validate. and aligns with discovery roots.",
+        "Document plugin CLI surface + plugin init quick start in docs.",
+        "Integration tests cover success + failure modes (dry-run, invalid id, existing dir, global HOME).",
+        "CI gate: → Local CI (mutates code, always builds+installs release)...\n\n→ Fetching deps (locked)...\n  ✓ Deps fetched\n→ Formatting code...\n  ✓ Formatting complete\n→ Type-checking...\n  ✓ Type-checking complete\n→ Clippy autofix (phase 1/2)...\n  ✓ Linting complete\n→ Running tests...\n     Running unittests src/lib.rs (target/debug/deps/ralph-5c4e7b8dba4d32a1)\nrunning 2167 tests\ntest result: ok. 2167 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.60s\n     Running unittests src/main.rs (target/debug/deps/ralph-b99204e36d62fd4a)\nrunning 7 tests\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/cli_docs_tui_test.rs (target/debug/deps/cli_docs_tui_test-ebdcfab6043725d6)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/config_test.rs (target/debug/deps/config_test-14a5c9ca464a44d3)\nrunning 57 tests\ntest result: ok. 57 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n     Running tests/contracts_test.rs (target/debug/deps/contracts_test-0ca9e240b78bee3c)\nrunning 1 test\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/custom_fields_test.rs (target/debug/deps/custom_fields_test-1df27ee952d88be9)\nrunning 8 tests\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s\n     Running tests/doctor_contract_test.rs (target/debug/deps/doctor_contract_test-54f2cb5b8c0638b9)\nrunning 20 tests\ntest result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.51s\n     Running tests/fsutil_test.rs (target/debug/deps/fsutil_test-e638815f537b5642)\nrunning 23 tests\ntest result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s\n     Running tests/git_repo_ci_gate_custom_test.rs (target/debug/deps/git_repo_ci_gate_custom_test-4c963c88a054be8f)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s\n     Running tests/git_repo_ci_gate_revert_test.rs (target/debug/deps/git_repo_ci_gate_revert_test-68e31c5257ad586c)\nrunning 3 tests\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.82s\n     Running tests/git_repo_dirty_state_test.rs (target/debug/deps/git_repo_dirty_state_test-574f47585e95face)\nrunning 3 tests\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s\n     Running tests/git_repo_init_validate_test.rs (target/debug/deps/git_repo_init_validate_test-78973f68e1b9866f)\nrunning 1 test\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s\n     Running tests/git_repo_upstream_test.rs (target/debug/deps/git_repo_upstream_test-dc04eb8cf5cae6ac)\nrunning 1 test\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s\n     Running tests/git_safety_test.rs (target/debug/deps/git_safety_test-4c09f9138cf234a8)\nrunning 1 test\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s\n     Running tests/gitutil_test.rs (target/debug/deps/gitutil_test-46e6089daf597387)\nrunning 30 tests\ntest result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s\n     Running tests/help_output_contract_test.rs (target/debug/deps/help_output_contract_test-d058966623b364d7)\nrunning 7 tests\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n     Running tests/init_validation_test.rs (target/debug/deps/init_validation_test-a607515428a0c857)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s\n     Running tests/lock_contention_integration_test.rs (target/debug/deps/lock_contention_integration_test-bb8212120551c136)\nrunning 3 tests\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s\n     Running tests/lock_race_cleanup_test.rs (target/debug/deps/lock_race_cleanup_test-07496da349889227)\nrunning 8 tests\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.04s\n     Running tests/lock_support.rs (target/debug/deps/lock_support-164f0a7292587db6)\nrunning 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/lock_test.rs (target/debug/deps/lock_test-683087abe9e05e38)\nrunning 12 tests\ntest result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s\n     Running tests/makefile_ci_contract_test.rs (target/debug/deps/makefile_ci_contract_test-5c8962f58ee58fe5)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s\n     Running tests/migration_cli_integration_test.rs (target/debug/deps/migration_cli_integration_test-07702b40a25d9db1)\nrunning 6 tests\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s\n     Running tests/parallel_gh_preflight_test.rs (target/debug/deps/parallel_gh_preflight_test-f7f809fb844b860d)\nrunning 3 tests\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s\n     Running tests/parallel_origin_preflight_test.rs (target/debug/deps/parallel_origin_preflight_test-15dd3ce3a0c83bcd)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s\n     Running tests/parallel_path_preflight_test.rs (target/debug/deps/parallel_path_preflight_test-2916cf9801018ea8)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s\n     Running tests/parallel_workspace_root_gitignore_preflight_test.rs (target/debug/deps/parallel_workspace_root_gitignore_preflight_test-071e81c2ac616d45)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.35s\n     Running tests/plugin_init_integration_test.rs (target/debug/deps/plugin_init_integration_test-c47a7ffdf305c8ab)\nrunning 9 tests\ntest result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s\n     Running tests/prompt_cmd_test.rs (target/debug/deps/prompt_cmd_test-245f5c56175e1d4d)\nrunning 8 tests\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n     Running tests/promptflow_test.rs (target/debug/deps/promptflow_test-e5f90f6a92748aa4)\nrunning 12 tests\ntest result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s\n     Running tests/queue_archive_cli_test.rs (target/debug/deps/queue_archive_cli_test-f9777ccfc6814705)\nrunning 3 tests\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s\n     Running tests/queue_burndown_snapshot_test.rs (target/debug/deps/queue_burndown_snapshot_test-a72f419131e3f47d)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s\n     Running tests/queue_graph_snapshot_test.rs (target/debug/deps/queue_graph_snapshot_test-d0c27e89395ea28b)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s\n     Running tests/queue_list_eta_test.rs (target/debug/deps/queue_list_eta_test-c143a3aae0a9752f)\nrunning 6 tests\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s\n     Running tests/queue_next_eta_test.rs (target/debug/deps/queue_next_eta_test-00322bcd248fee98)\nrunning 5 tests\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s\n     Running tests/queue_next_test.rs (target/debug/deps/queue_next_test-bbb0da97b4790d31)\nrunning 1 test\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s\n     Running tests/queue_prune_cli_test.rs (target/debug/deps/queue_prune_cli_test-6b9b4b5ef7803014)\nrunning 4 tests\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s\n     Running tests/queue_sorting_cli_test.rs (target/debug/deps/queue_sorting_cli_test-0eaed54c9816fa5c)\nrunning 8 tests\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s\n     Running tests/queue_stats_history_test.rs (target/debug/deps/queue_stats_history_test-c542ab169c800a35)\nrunning 9 tests\ntest result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s\n     Running tests/redaction_expansion_test.rs (target/debug/deps/redaction_expansion_test-e8d2074d3464daf5)\nrunning 4 tests\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/release_script_help_test.rs (target/debug/deps/release_script_help_test-59e02821b693883a)\nrunning 5 tests\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n     Running tests/repair_integration_test.rs (target/debug/deps/repair_integration_test-b2bc3e9ef26a4823)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s\n     Running tests/run_cli_overrides_contract_test.rs (target/debug/deps/run_cli_overrides_contract_test-85d6d2fd6230b352)\nrunning 7 tests\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s\n     Running tests/runner_cli_inventory_script_test.rs (target/debug/deps/runner_cli_inventory_script_test-70366af53dcda2a1)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s\n     Running tests/safeguard_integration_test.rs (target/debug/deps/safeguard_integration_test-6d2ef68ef3f2321c)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s\n     Running tests/scan_cmd_test.rs (target/debug/deps/scan_cmd_test-8759faeea2269a13)\nrunning 12 tests\ntest result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/schema_alignment_test.rs (target/debug/deps/schema_alignment_test-4484d6f9303c5318)\nrunning 3 tests\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/stale_lock_cleanup_test.rs (target/debug/deps/stale_lock_cleanup_test-875c99da2ea1310a)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s\n     Running tests/supervising_process_tui_label_test.rs (target/debug/deps/supervising_process_tui_label_test-a4a473b45402e051)\nrunning 1 test\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/task_clone_cli_test.rs (target/debug/deps/task_clone_cli_test-d25170d74d33be90)\nrunning 6 tests\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s\n     Running tests/task_cmd_test.rs (target/debug/deps/task_cmd_test-87df57609b96c135)\nrunning 25 tests\ntest result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/task_done_completion_signal_test.rs (target/debug/deps/task_done_completion_signal_test-d86e1a8dc0e62384)\nrunning 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s\n     Running tests/task_lock_coexistence_test.rs (target/debug/deps/task_lock_coexistence_test-c8239d8d2f8bc37b)\nrunning 6 tests\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s\n     Running tests/task_relations_cli_test.rs (target/debug/deps/task_relations_cli_test-0e02e334145c812d)\nrunning 7 tests\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s\n     Running tests/task_show_command_test.rs (target/debug/deps/task_show_command_test-7f8c2942da966b22)\nrunning 4 tests\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s\n     Running tests/task_update_all_integration_test.rs (target/debug/deps/task_update_all_integration_test-31a4e4654e658716)\nrunning 5 tests\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s\n     Running tests/test_support.rs (target/debug/deps/test_support-a24003bfc43cd192)\nrunning 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/timeutil_test.rs (target/debug/deps/timeutil_test-84964ae2af9bc62b)\nrunning 23 tests\ntest result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s\n     Running tests/tui_app_init_test.rs (target/debug/deps/tui_app_init_test-273f0c85d6436e09)\nrunning 4 tests\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/tui_event_handling_test.rs (target/debug/deps/tui_event_handling_test-99a94c3f8fb22dab)\nrunning 30 tests\ntest result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/tui_mode_transitions_test.rs (target/debug/deps/tui_mode_transitions_test-2b4652b0277997b6)\nrunning 17 tests\ntest result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/tui_navigation_test.rs (target/debug/deps/tui_navigation_test-eca34e975d24c657)\nrunning 6 tests\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/tui_rendering_execution_test.rs (target/debug/deps/tui_rendering_execution_test-f66a7f5e5da55b60)\nrunning 8 tests\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n     Running tests/tui_rendering_footer_help_test.rs (target/debug/deps/tui_rendering_footer_help_test-d3975abae338aec8)\nrunning 9 tests\ntest result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n     Running tests/tui_rendering_layout_test.rs (target/debug/deps/tui_rendering_layout_test-b4690f6b0005e608)\nrunning 4 tests\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/tui_rendering_modes_test.rs (target/debug/deps/tui_rendering_modes_test-b94e54c961c3cd6e)\nrunning 8 tests\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/tui_rendering_panels_test.rs (target/debug/deps/tui_rendering_panels_test-cd1161bb4af1b655)\nrunning 29 tests\ntest result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n     Running tests/tui_rendering_support.rs (target/debug/deps/tui_rendering_support-7dc868932c5ab3c8)\nrunning 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/tui_task_operations_test.rs (target/debug/deps/tui_task_operations_test-08047818ca5b6168)\nrunning 12 tests\ntest result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n     Running tests/webhook_integration_test.rs (target/debug/deps/webhook_integration_test-868daff92df06bae)\nrunning 8 tests\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.32s\nrunning 5 tests\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s\n  ✓ Tests passed\n→ Release build...\n  ✓ Release build complete\n→ Release build...\n  ✓ Release build complete\n→ Generating schemas (via release binary)...\n  ✓ Schemas generated\n→ Release build...\n  ✓ Release build complete\n\n═══════════════════════════════════════════════════\n  ✓ CI completed successfully\n═══════════════════════════════════════════════════ passes."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-06T01:53:55Z",
+      "updated_at": "2026-02-06T09:55:28.323613000Z",
+      "completed_at": "2026-02-06T09:55:28.323613000Z",
+      "started_at": "2026-02-06T09:20:58.506639000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

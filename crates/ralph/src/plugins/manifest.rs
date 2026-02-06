@@ -19,9 +19,12 @@ pub(crate) struct PluginManifest {
     pub id: String,
     pub version: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub runner: Option<RunnerPlugin>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub processors: Option<ProcessorPlugin>,
 }
 
@@ -32,9 +35,11 @@ pub(crate) struct RunnerPlugin {
     pub bin: String,
 
     /// If false or omitted, `resume` will be rejected by Ralph for this runner.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_resume: Option<bool>,
 
     /// Default model when none is specified anywhere (optional).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub default_model: Option<String>,
 }
 

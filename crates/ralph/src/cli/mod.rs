@@ -146,7 +146,7 @@ pub enum Command {
 
     /// Plugin management commands.
     #[command(
-        after_long_help = "Examples:\n  ralph plugin list\n  ralph plugin validate\n  ralph plugin install ./my-plugin --scope project\n  ralph plugin uninstall my.plugin --scope project"
+        after_long_help = "Examples:\n  ralph plugin init my.plugin\n  ralph plugin init my.plugin --scope global\n  ralph plugin list\n  ralph plugin validate\n  ralph plugin install ./my-plugin --scope project\n  ralph plugin uninstall my.plugin --scope project"
     )]
     Plugin(plugin::PluginArgs),
 }
