@@ -13,7 +13,10 @@ When implementation is complete, you MUST:
    - Do NOT set `blocked`.
 4. Do NOT manually edit `.ralph/queue.json` or `.ralph/done.json` to complete tasks, and do not run `ralph queue archive` for single-task completion.
 5. Ensure `.ralph/queue.json` remains valid JSON and respects the queue contract.
-6. If the CI gate is enabled ({{config.agent.ci_gate_enabled}}), run `{{config.agent.ci_gate_command}}` and fix all failures before ending your turn.
+6. CI Gate (Conditional):
+   - BEFORE running the CI gate, check if you made ANY modifications during this phase using git status/diff.
+   - If you made NO changes (only reviewed/validated): you MAY skip the CI gate even if enabled.
+   - If you made ANY modifications: you MUST run the CI gate if enabled (`{{config.agent.ci_gate_command}}`) and fix all failures before ending your turn.
 7. Git hygiene:
    - Do NOT commit or push until `ralph task done` succeeds.
    - If auto commit/push is enabled ({{config.agent.git_commit_push_enabled}}), do NOT run `git commit` or `git push` manually; Ralph will commit/push after completion.

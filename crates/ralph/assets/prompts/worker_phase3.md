@@ -19,6 +19,16 @@ CURRENT TASK: {{TASK_ID}}. Do NOT switch tasks.
 ## PRE-FLIGHT OVERRIDE
 The repo is expected to be dirty in Phase 3 due to Phase 2 changes. Do NOT stop because the working tree is dirty.
 
+## MODIFICATION TRACKING & CI GATE POLICY
+Phase 3 is a code review phase. You have two modes of operation:
+1. **Review-only mode**: You make NO modifications - only review, validate, and approve Phase 2's work.
+2. **Refinement mode**: You make modifications to address issues found during review.
+
+**CI Gate Rule**:
+- Use `git status` or `git diff` to check if YOU made any changes during Phase 3.
+- If you made NO changes: You MAY skip running the CI gate even if enabled.
+- If you made ANY modifications: You MUST honor the CI gate configuration (`{{config.agent.ci_gate_enabled}}`) and run `{{config.agent.ci_gate_command}}` if enabled.
+
 {{CODE_REVIEW_BODY}}
 
 {{ITERATION_COMPLETION_BLOCK}}

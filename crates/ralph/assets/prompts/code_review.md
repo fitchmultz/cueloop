@@ -12,7 +12,9 @@ Task ID: {{TASK_ID}}
 - Ensure the changes are not overengineered. If they are, simplify while achieving the same goal/outcome.
 
 ## CODING STANDARDS (HARD REQUIREMENTS)
-- Required CI Gate: if enabled ({{config.agent.ci_gate_enabled}}), `{{config.agent.ci_gate_command}}` must pass before completion.
+- Required CI Gate (Conditional): 
+  - If you make NO modifications during Phase 3 (pure review/validation only), you MAY skip the CI gate even if enabled.
+  - If you make ANY modifications during Phase 3, the CI gate must pass (`{{config.agent.ci_gate_command}}`) before completion if enabled ({{config.agent.ci_gate_enabled}}).
 - Auto git commit/push: if enabled ({{config.agent.git_commit_push_enabled}}), Ralph will handle commit/push; if disabled, leave repo changes for manual handling.
 - First Principles: start from fundamentals; simplify before adding.
 - Delete Before Adding: net-negative diffs are wins when behavior stays correct.
