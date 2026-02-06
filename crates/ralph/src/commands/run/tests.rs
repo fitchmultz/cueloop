@@ -1037,7 +1037,7 @@ fn validate_resumed_task_fails_when_task_missing() -> anyhow::Result<()> {
 }
 
 #[test]
-fn validate_resumed_task_fails_when_task_not_doing() -> anyhow::Result<()> {
+fn validate_resumed_task_succeeds_when_task_todo() -> anyhow::Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
 
@@ -1046,9 +1046,43 @@ fn validate_resumed_task_fails_when_task_not_doing() -> anyhow::Result<()> {
         tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Todo)],
     };
 
-    // Should fail when task exists but is not Doing
+    // Should succeed for Todo tasks - they are valid for resumption
+    // (task was marked doing but failed before any work was done)
+    super::validate_resumed_task(&queue_file, "RQ-0001", &repo_root)?;
+
+    Ok(())
+}
+
+#[test]
+fn validate_resumed_task_fails_when_task_done() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().to_path_buf();
+
+    let queue_file = QueueFile {
+        version: 1,
+        tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Done)],
+    };
+
+    // Should fail for Done tasks (terminal state)
     let err = super::validate_resumed_task(&queue_file, "RQ-0001", &repo_root).unwrap_err();
-    assert!(err.to_string().contains("not in Doing status"));
+    assert!(err.to_string().contains("already done"));
+
+    Ok(())
+}
+
+#[test]
+fn validate_resumed_task_fails_when_task_rejected() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().to_path_buf();
+
+    let queue_file = QueueFile {
+        version: 1,
+        tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Rejected)],
+    };
+
+    // Should fail for Rejected tasks (terminal state)
+    let err = super::validate_resumed_task(&queue_file, "RQ-0001", &repo_root).unwrap_err();
+    assert!(err.to_string().contains("already rejected"));
 
     Ok(())
 }

@@ -587,10 +587,9 @@ impl RunnerPlugin for KimiPlugin {
     }
 }
 
-#[allow(dead_code)]
-struct KimiResponseParser;
+/// Response parser for Kimi's JSON format.
+pub struct KimiResponseParser;
 
-#[allow(dead_code)]
 impl KimiResponseParser {
     fn parse_json(&self, json: &JsonValue) -> Option<String> {
         // Kimi format has role="assistant" at top level with content array

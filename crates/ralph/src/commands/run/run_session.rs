@@ -92,7 +92,7 @@ pub(crate) fn create_session_for_task(
 
 /// Validate that a resumed task exists and is in a runnable state.
 /// Returns Ok(()) if valid, Err with message if not.
-/// On validation failure, clears the session file.
+/// On validation failure (task missing or in terminal state), clears the session file.
 pub(crate) fn validate_resumed_task(
     queue_file: &crate::contracts::QueueFile,
     task_id: &str,
@@ -110,13 +110,17 @@ pub(crate) fn validate_resumed_task(
             anyhow::anyhow!("Task {} no longer exists in queue", task_id)
         })?;
 
-    if task.status != TaskStatus::Doing {
+    // Only invalidate the session for terminal states (Done, Rejected).
+    // Todo and Doing are both valid states for resumption:
+    // - Doing: task was interrupted mid-execution (classic crash recovery)
+    // - Todo: task was marked doing but failed before any work was done
+    if task.status == TaskStatus::Done || task.status == TaskStatus::Rejected {
         let cache_dir = repo_root.join(".ralph/cache");
         if let Err(e) = session::clear_session(&cache_dir) {
             log::debug!("Failed to clear invalid session: {}", e);
         }
         return Err(anyhow::anyhow!(
-            "Task {} is not in Doing status (current: {})",
+            "Task {} is already {} (cannot resume)",
             task_id,
             task.status
         ));

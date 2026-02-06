@@ -248,17 +248,26 @@ pub(crate) fn run_prompt(
             output_handler,
             output_stream,
         )?,
-        Runner::Kimi => execution::run_kimi(
-            work_dir,
-            bins.kimi,
-            runner_cli,
-            model,
-            prompt,
-            timeout,
-            output_handler.clone(),
-            output_stream,
-            session_id.as_deref(),
-        )?,
+        Runner::Kimi => {
+            // Use new plugin-based execution
+            let executor = execution::PluginExecutor::new();
+            executor.run(
+                Runner::Kimi,
+                work_dir,
+                bins.kimi,
+                model,
+                None, // reasoning_effort
+                runner_cli,
+                prompt,
+                timeout,
+                None, // permission_mode
+                output_handler.clone(),
+                output_stream,
+                phase_type,
+                session_id.clone(),
+                plugins,
+            )?
+        }
         Runner::Pi => execution::run_pi(
             work_dir,
             bins.pi,
@@ -424,17 +433,26 @@ pub(crate) fn resume_session(
             output_handler,
             output_stream,
         ),
-        Runner::Kimi => execution::run_kimi(
-            work_dir,
-            bins.kimi,
-            runner_cli,
-            model,
-            message,
-            timeout,
-            output_handler,
-            output_stream,
-            Some(session_id),
-        ),
+        Runner::Kimi => {
+            // Use new plugin-based execution
+            let executor = execution::PluginExecutor::new();
+            executor.resume(
+                Runner::Kimi,
+                work_dir,
+                bins.kimi,
+                model,
+                None, // reasoning_effort
+                runner_cli,
+                session_id,
+                message,
+                timeout,
+                None, // permission_mode
+                output_handler,
+                output_stream,
+                phase_type,
+                plugins,
+            )
+        }
         Runner::Pi => execution::run_pi_resume(
             work_dir,
             bins.pi,

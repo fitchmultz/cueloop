@@ -328,40 +328,6 @@ pub(crate) fn run_claude_resume(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn run_kimi(
-    work_dir: &Path,
-    bin: &str,
-    runner_cli: ResolvedRunnerCliOptions,
-    model: Model,
-    prompt: &str,
-    timeout: Option<Duration>,
-    output_handler: Option<OutputHandler>,
-    output_stream: OutputStream,
-    session_id: Option<&str>,
-) -> Result<RunnerOutput, RunnerError> {
-    let (cmd, payload, _guards) =
-        build_kimi_command(work_dir, bin, runner_cli, model, prompt, session_id);
-
-    let output = run_with_streaming_json(
-        cmd,
-        payload.as_deref(),
-        Runner::Kimi,
-        bin,
-        timeout,
-        output_handler,
-        output_stream,
-    )?;
-
-    // Return the explicit session_id we used (Kimi doesn't output it in JSON)
-    Ok(RunnerOutput {
-        status: output.status,
-        stdout: output.stdout,
-        stderr: output.stderr,
-        session_id: session_id.map(|s| s.to_string()),
-    })
-}
-
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn run_pi(
     work_dir: &Path,
     bin: &str,
@@ -490,31 +456,6 @@ pub(crate) fn run_cursor_resume(
     )
 }
 
-fn build_kimi_command(
-    work_dir: &Path,
-    bin: &str,
-    runner_cli: ResolvedRunnerCliOptions,
-    model: Model,
-    prompt: &str,
-    session_id: Option<&str>,
-) -> RunnerCommandParts {
-    let builder = RunnerCommandBuilder::new(bin, work_dir);
-    let builder = apply_analytics_env(builder, &Runner::Kimi, &model);
-    let builder = cli_spec::apply_kimi_options(builder, runner_cli);
-    let builder = if let Some(session_id) = session_id {
-        builder.arg("--session").arg(session_id)
-    } else {
-        builder
-    };
-    builder
-        .model(&model)
-        .arg("--print")
-        .arg("--prompt")
-        .arg(prompt)
-        .output_format("stream-json")
-        .build()
-}
-
 fn build_pi_command(
     work_dir: &Path,
     bin: &str,
@@ -616,46 +557,6 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::Path;
-
-    #[test]
-    fn build_kimi_command_includes_prompt_and_optional_session() {
-        let opts = ResolvedRunnerCliOptions::default();
-        let (cmd, payload, _guards) = build_kimi_command(
-            Path::new("."),
-            "kimi",
-            opts,
-            Model::Glm47,
-            "hello",
-            Some("sess-123"),
-        );
-        let args = cmd
-            .get_args()
-            .map(|arg| arg.to_string_lossy().to_string())
-            .collect::<Vec<_>>();
-        assert!(args.contains(&"--print".to_string()));
-        assert!(args.contains(&"--prompt".to_string()));
-        assert!(args.contains(&"hello".to_string()));
-        assert!(args.contains(&"--session".to_string()));
-        assert!(args.contains(&"sess-123".to_string()));
-        assert!(!args.contains(&"--continue".to_string()));
-        assert!(payload.is_none());
-    }
-
-    #[test]
-    fn build_kimi_command_without_session_excludes_session_flag() {
-        let opts = ResolvedRunnerCliOptions::default();
-        let (cmd, payload, _guards) =
-            build_kimi_command(Path::new("."), "kimi", opts, Model::Glm47, "hello", None);
-        let args = cmd
-            .get_args()
-            .map(|arg| arg.to_string_lossy().to_string())
-            .collect::<Vec<_>>();
-        assert!(!args.contains(&"--session".to_string()));
-        assert!(args.contains(&"--prompt".to_string()));
-        assert!(args.contains(&"hello".to_string()));
-        assert!(!args.contains(&"--continue".to_string()));
-        assert!(payload.is_none());
-    }
 
     #[test]
     fn build_pi_command_uses_mode_json_and_prompt() {

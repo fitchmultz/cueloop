@@ -10,6 +10,7 @@ use serde_json::Value as JsonValue;
 
 use crate::contracts::Runner;
 
+use super::builtin_plugins::KimiResponseParser;
 use super::json::parse_json_line;
 use super::plugin_trait::ResponseParser;
 
@@ -138,42 +139,6 @@ impl ResponseParser for ClaudeResponseParser {
 
     fn runner_id(&self) -> &str {
         "claude"
-    }
-}
-
-struct KimiResponseParser;
-
-impl ResponseParser for KimiResponseParser {
-    fn parse(&self, json: &JsonValue, _buffer: &mut String) -> Option<String> {
-        // Kimi format has role="assistant" at top level with content array
-        if json.get("role").and_then(|r| r.as_str()) != Some("assistant") {
-            return None;
-        }
-
-        let content = json.get("content")?.as_array()?;
-        let mut text_parts = Vec::new();
-
-        for item in content {
-            if item.get("type").and_then(|t| t.as_str()) != Some("text") {
-                continue;
-            }
-            if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
-                let trimmed = text.trim();
-                if !trimmed.is_empty() {
-                    text_parts.push(trimmed.to_string());
-                }
-            }
-        }
-
-        if text_parts.is_empty() {
-            None
-        } else {
-            Some(text_parts.join("\n"))
-        }
-    }
-
-    fn runner_id(&self) -> &str {
-        "kimi"
     }
 }
 
@@ -379,64 +344,6 @@ fn extract_text_content(content: &JsonValue) -> Option<String> {
         }
         _ => None,
     }
-}
-
-/// Structured content extracted from Kimi runner responses.
-#[allow(dead_code)]
-pub(crate) struct KimiContent {
-    pub text: Option<String>,
-    /// Thinking/reasoning content (available for future use)
-    pub thinking: Option<String>,
-}
-
-/// Extracts both text and thinking content from Kimi responses.
-#[allow(dead_code)]
-pub(crate) fn extract_kimi_content(json: &JsonValue) -> Option<KimiContent> {
-    // Kimi format has role="assistant" at top level with content array
-    if json.get("role").and_then(|r| r.as_str()) != Some("assistant") {
-        return None;
-    }
-
-    let content = json.get("content")?;
-    let items = content.as_array()?;
-
-    let mut text_parts = Vec::new();
-    let mut thinking_parts = Vec::new();
-
-    for item in items {
-        match item.get("type").and_then(|t| t.as_str()) {
-            Some("text") => {
-                if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
-                    let trimmed = text.trim();
-                    if !trimmed.is_empty() {
-                        text_parts.push(trimmed.to_string());
-                    }
-                }
-            }
-            Some("think") => {
-                if let Some(think) = item.get("think").and_then(|t| t.as_str()) {
-                    let trimmed = think.trim();
-                    if !trimmed.is_empty() {
-                        thinking_parts.push(trimmed.to_string());
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    Some(KimiContent {
-        text: if text_parts.is_empty() {
-            None
-        } else {
-            Some(text_parts.join("\n"))
-        },
-        thinking: if thinking_parts.is_empty() {
-            None
-        } else {
-            Some(thinking_parts.join("\n"))
-        },
-    })
 }
 
 // =============================================================================
