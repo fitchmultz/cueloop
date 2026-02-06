@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0635",
-      "status": "todo",
-      "title": "Use real RFC3339 parsing for execution history weighting (fix inaccurate age_days)",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "correctness",
-        "eta",
-        "time"
-      ],
-      "scope": [
-        "crates/ralph/src/execution_history.rs",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "crates/ralph/src/execution_history.rs:188-191: weight = 0.9^(age_in_days) uses `parse_timestamp_to_secs` output to compute `age_days`.",
-        "crates/ralph/src/execution_history.rs:229-263: parse_timestamp_to_secs does ad-hoc parsing and approximate `days_since_epoch = (year - 1970) * 365 + month * 30 + day`.",
-        "User impact: ETA weighting can skew significantly; older entries may be weighted incorrectly."
-      ],
-      "plan": [
-        "Replace `parse_timestamp_to_secs` with `timeutil::parse_rfc3339_opt(timestamp)` and compute age using real unix timestamps (or OffsetDateTime deltas).",
-        "Add unit tests comparing parsed seconds to `timeutil::parse_rfc3339(ts)?.unix_timestamp()` for timestamps with and without subseconds.",
-        "Add a regression test that entries further in the past get smaller weights (monotonic decay).",
-        "Verify by running `make ci` and confirming it passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-05T20:49:31Z",
-      "updated_at": "2026-02-05T20:49:31Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0636",
       "status": "todo",
       "title": "Stop writing empty timestamps (replace now_utc_rfc3339().unwrap_or_default)",
@@ -74,14 +36,14 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "stale_evidence": "Updated rg results for now_utc_rfc3339().unwrap_or_default(): productivity.rs:55,207,340; execution_history.rs:121",
-        "scan_agent": "scan-maintenance"
+        "scan_agent": "scan-maintenance",
+        "stale_evidence": "Updated rg results for now_utc_rfc3339().unwrap_or_default(): productivity.rs:55,207,340; execution_history.rs:121"
       }
     },
     {
       "id": "RQ-0637",
       "status": "todo",
-      "title": "Fail fast on malformed README version markers (don’t default to version 1)",
+      "title": "Fail fast on malformed README version markers (don't default to version 1)",
       "priority": "medium",
       "tags": [
         "maintenance",

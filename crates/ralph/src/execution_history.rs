@@ -226,40 +226,18 @@ pub fn get_phase_averages(
     averages
 }
 
-/// Parse RFC3339 timestamp to Unix seconds.
+/// Parse RFC3339 timestamp to Unix seconds using proper RFC3339 parsing.
+///
+/// Uses the timeutil module for accurate parsing that correctly handles:
+/// - Leap years
+/// - Variable month lengths
+/// - Timezone offsets
 fn parse_timestamp_to_secs(timestamp: &str) -> Option<u64> {
-    // Simple parsing for RFC3339 format: 2026-01-31T12:00:00Z or 2026-01-31T12:00:00.000Z
-    let timestamp = timestamp.split('.').next()?;
-    let parts: Vec<&str> = timestamp.split('T').collect();
-    if parts.len() != 2 {
-        return None;
-    }
-
-    let date_parts: Vec<&str> = parts[0].split('-').collect();
-    let time_parts: Vec<&str> = parts[1].split(':').collect();
-
-    if date_parts.len() != 3 || time_parts.len() < 2 {
-        return None;
-    }
-
-    let year: i32 = date_parts[0].parse().ok()?;
-    let month: u32 = date_parts[1].parse().ok()?;
-    let day: u32 = date_parts[2].parse().ok()?;
-    let hour: u32 = time_parts[0].parse().ok()?;
-    let minute: u32 = time_parts[1].parse().ok()?;
-    let second: u32 = time_parts
-        .get(2)
-        .and_then(|s| s.trim_end_matches('Z').parse().ok())
-        .unwrap_or(0);
-
-    // Simplified conversion (approximate)
-    let days_since_epoch = (year - 1970) * 365 + month as i32 * 30 + day as i32;
-    let secs = days_since_epoch as u64 * 24 * 3600
-        + hour as u64 * 3600
-        + minute as u64 * 60
-        + second as u64;
-
-    Some(secs)
+    let dt = crate::timeutil::parse_rfc3339_opt(timestamp)?;
+    let ts = dt.unix_timestamp();
+    // Defensive: pre-epoch timestamps are not expected in execution history
+    // but we guard against overflow when casting negative i64 to u64
+    (ts >= 0).then_some(ts as u64)
 }
 
 #[cfg(test)]
@@ -440,5 +418,128 @@ mod tests {
 
         let invalid = parse_timestamp_to_secs("invalid");
         assert!(invalid.is_none());
+    }
+
+    #[test]
+    fn test_parse_timestamp_accuracy_vs_timeutil() {
+        // Test that our parsing matches timeutil::parse_rfc3339 exactly
+        let test_cases = [
+            "2026-01-31T12:00:00Z",
+            "2026-01-31T12:00:00.123Z",
+            "2026-01-31T12:00:00.123456789Z",
+            "2020-02-29T00:00:00Z", // Leap year
+            "1970-01-01T00:00:00Z", // Unix epoch
+            "2000-12-31T23:59:59Z",
+        ];
+
+        for ts in &test_cases {
+            let parsed = parse_timestamp_to_secs(ts);
+            let expected = crate::timeutil::parse_rfc3339(ts)
+                .ok()
+                .map(|dt| dt.unix_timestamp() as u64);
+
+            assert_eq!(
+                parsed, expected,
+                "parse_timestamp_to_secs({}) should match timeutil::parse_rfc3339",
+                ts
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_timestamp_leap_year_accuracy() {
+        // Leap day 2020 should be exactly 1 day after Feb 28
+        let feb28 = parse_timestamp_to_secs("2020-02-28T00:00:00Z").unwrap();
+        let feb29 = parse_timestamp_to_secs("2020-02-29T00:00:00Z").unwrap();
+        let mar01 = parse_timestamp_to_secs("2020-03-01T00:00:00Z").unwrap();
+
+        // Feb 29 is exactly 86400 seconds after Feb 28
+        assert_eq!(
+            feb29 - feb28,
+            86400,
+            "Leap day should be exactly 1 day after Feb 28"
+        );
+        // Mar 01 is exactly 86400 seconds after Feb 29
+        assert_eq!(
+            mar01 - feb29,
+            86400,
+            "Mar 01 should be exactly 1 day after Feb 29"
+        );
+    }
+
+    #[test]
+    fn test_weighted_average_monotonic_decay() {
+        // Regression test: ensure weight decreases monotonically with age
+        let mut history = ExecutionHistory::default();
+
+        // Add entries at 5-day intervals (oldest first: Jan 11, 16, 21, 26, 31)
+        for i in 0..5 {
+            let day = 11 + i * 5; // 11, 16, 21, 26, 31
+            let timestamp = format!("2026-01-{:02}T12:00:00Z", day);
+            history.entries.push(ExecutionEntry {
+                timestamp,
+                task_id: format!("RQ-{}", i),
+                runner: "codex".to_string(),
+                model: "sonnet".to_string(),
+                phase_count: 3,
+                phase_durations: {
+                    let mut d = HashMap::new();
+                    d.insert(ExecutionPhase::Planning, Duration::from_secs(100));
+                    d
+                },
+                total_duration: Duration::from_secs(100),
+            });
+        }
+
+        // Calculate weighted average
+        let avg =
+            weighted_average_duration(&history, "codex", "sonnet", 3, ExecutionPhase::Planning);
+
+        assert!(avg.is_some(), "Should have a weighted average");
+
+        // Verify that older entries have smaller weights
+        // The most recent entry (2026-01-31) should have highest weight
+        // The oldest entry (2026-01-11) should have lowest weight
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as f64;
+
+        let mut weights = vec![];
+        for entry in &history.entries {
+            let entry_secs = parse_timestamp_to_secs(&entry.timestamp).unwrap_or(now as u64) as f64;
+            let age_days = (now - entry_secs) / (24.0 * 3600.0);
+            let weight = 0.9_f64.powf(age_days);
+            weights.push((entry.timestamp.clone(), weight));
+        }
+
+        // Entries are added oldest first (Jan 11 -> Jan 31), so weights should
+        // increase as we go through the list (older = smaller weight)
+        for i in 1..weights.len() {
+            assert!(
+                weights[i - 1].1 <= weights[i].1,
+                "Weight should increase as entries get newer (older entries have lower weight): {:?} vs {:?}",
+                weights[i - 1],
+                weights[i]
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_timestamp_with_subseconds() {
+        // Subseconds should be parsed correctly (truncated to whole seconds)
+        let without_ms = parse_timestamp_to_secs("2026-01-31T12:00:00Z").unwrap();
+        let with_ms = parse_timestamp_to_secs("2026-01-31T12:00:00.500Z").unwrap();
+        let with_many_ms = parse_timestamp_to_secs("2026-01-31T12:00:00.999999Z").unwrap();
+
+        // Unix timestamp is whole seconds only
+        assert_eq!(
+            without_ms, with_ms,
+            "Subseconds should not affect unix timestamp"
+        );
+        assert_eq!(
+            without_ms, with_many_ms,
+            "Subseconds should not affect unix timestamp"
+        );
     }
 }

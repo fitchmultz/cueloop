@@ -1,7 +1,7 @@
 {
   "version": 1,
   "first_task_completed_at": "2026-01-30T12:31:17.161199000Z",
-  "last_updated_at": "2026-02-06T14:37:10.463976000Z",
+  "last_updated_at": "2026-02-06T15:22:04.786563000Z",
   "daily": {
     "2026-01-30": {
       "date": "2026-01-30",
@@ -702,7 +702,7 @@
     },
     "2026-02-06": {
       "date": "2026-02-06",
-      "completed_count": 15,
+      "completed_count": 16,
       "tasks": [
         {
           "id": "RQ-0633",
@@ -778,6 +778,11 @@
           "id": "RQ-0643",
           "title": "Fix resume flow when queue lock is stale (avoid 50-failure abort loop)",
           "completed_at": "2026-02-06T14:37:10.463976000Z"
+        },
+        {
+          "id": "RQ-0635",
+          "title": "Use real RFC3339 parsing for execution history weighting (fix inaccurate age_days)",
+          "completed_at": "2026-02-06T15:22:04.786562000Z"
         }
       ]
     }
@@ -787,7 +792,7 @@
     "longest_streak": 8,
     "last_completed_date": "2026-02-06"
   },
-  "total_completed": 146,
+  "total_completed": 147,
   "milestones": [
     {
       "threshold": 10,
