@@ -4,6 +4,8 @@ Purpose: Describe Ralph's CLI, defaults, and workflow entry points for contribut
 
 Ralph is a tool for managing AI agent loops with a structured JSON task queue.
 
+![Ralph - AI Conductor](docs/assets/ralph-hero.png)
+
 ## Status
 
 The Ralph CLI is in `crates/ralph/`.
@@ -49,11 +51,13 @@ Ralph can generate shell completion scripts for bash, zsh, fish, PowerShell, and
 ### Quick Install
 
 **Bash:**
+
 ```bash
 ralph completions bash > ~/.local/share/bash-completion/completions/ralph
 ```
 
 **Zsh:**
+
 ```bash
 ralph completions zsh > ~/.zfunc/_ralph
 # Add to ~/.zshrc if not already present:
@@ -61,11 +65,13 @@ ralph completions zsh > ~/.zfunc/_ralph
 ```
 
 **Fish:**
+
 ```bash
 ralph completions fish > ~/.config/fish/completions/ralph.fish
 ```
 
 **PowerShell:**
+
 ```powershell
 ralph completions powershell > $PROFILE.CurrentUserAllHosts
 ```
@@ -73,6 +79,7 @@ ralph completions powershell > $PROFILE.CurrentUserAllHosts
 ### Generate Without Installing
 
 To see the completion script without installing:
+
 ```bash
 ralph completions <shell>
 ```
