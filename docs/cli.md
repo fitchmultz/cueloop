@@ -2580,7 +2580,7 @@ ralph run one --debug
 - **Redaction is best-effort**: Pattern-based redaction may miss secrets in unexpected formats, encoded data, or novel patterns. Always review output before sharing.
 - **Never commit safeguard dumps** to version control. They may contain sensitive data even when redacted.
 - **Debug mode (`--debug`)** writes raw runner output to `.ralph/logs/debug.log`. This is intentional for troubleshooting but may contain secrets. Debug logs capture raw output before redaction is applied.
-- **Never commit debug logs** to version control (add `.ralph/logs/` to `.gitignore`).
+- **Never commit debug logs** to version control (ensure `.ralph/logs/` is in your repo root `.gitignore`).
 - Temp directories for safeguard dumps are created under `/tmp/ralph/` (or platform equivalent) with `ralph_` prefixes. Clean these up periodically as they persist until manually removed.
 
 ## Help Output

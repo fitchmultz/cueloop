@@ -88,7 +88,7 @@ When `--debug` is enabled, raw runner output is written to `.ralph/logs/debug.lo
 **Best practices:**
 - Only use `--debug` when necessary for troubleshooting
 - Treat `.ralph/logs/debug.log` as sensitive data
-- Add `.ralph/logs/` to `.gitignore`
+- Ensure `.ralph/logs/` is in `.gitignore`
 - Clean up debug logs after use: `rm -rf .ralph/logs/`
 
 ## Runner Model Control

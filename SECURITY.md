@@ -92,7 +92,7 @@ When the `--debug` flag is used, Ralph writes detailed logs to `.ralph/logs/debu
 ```bash
 rm -rf .ralph/logs/
 ```
-- Never commit debug logs to version control (add `.ralph/logs/` to `.gitignore`)
+- Never commit debug logs to version control (ensure `.ralph/logs/` is in your repo root `.gitignore`)
 
 ## Supported Versions
 

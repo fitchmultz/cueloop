@@ -5,6 +5,7 @@
 //! - Validate queue and done archive files
 //! - Check runner binary availability and configuration
 //! - Detect orphaned lock directories that may accumulate over time
+//! - Check project git hygiene (e.g., sensitive debug logs in `.ralph/logs/` are gitignored)
 //! - Apply safe auto-fixes when requested (--auto-fix flag)
 //!
 //! Not handled here:
@@ -16,7 +17,7 @@
 //! - All checks are independent; failures in one don't prevent others
 //! - Output uses outpututil for consistent formatting in text mode
 //! - JSON output is machine-readable and stable for scripting
-//! - Auto-fixes are conservative and safe (migrations, queue repair, stale locks)
+//! - Auto-fixes are conservative and safe (migrations, queue repair, stale locks, gitignore updates)
 //! - Returns Ok only when all critical checks pass
 
 use crate::config;
@@ -228,7 +229,7 @@ pub fn run_doctor(resolved: &config::Resolved, auto_fix: bool) -> Result<DoctorR
 
     // 6. Project Checks
     log::info!("Checking project environment...");
-    check_project(&mut report, resolved);
+    check_project(&mut report, resolved, auto_fix);
 
     // Update overall success status
     report.success = report
@@ -808,7 +809,8 @@ fn check_runner(report: &mut DoctorReport, resolved: &config::Resolved) {
     }
 }
 
-fn check_project(report: &mut DoctorReport, resolved: &config::Resolved) {
+fn check_project(report: &mut DoctorReport, resolved: &config::Resolved, auto_fix: bool) {
+    // Check Makefile
     let makefile_path = resolved.repo_root.join("Makefile");
     if makefile_path.exists() {
         report.add(CheckResult::success(
@@ -853,6 +855,104 @@ fn check_project(report: &mut DoctorReport, resolved: &config::Resolved) {
             Some("Create a Makefile with a 'ci' target"),
         ));
     }
+
+    // Check .gitignore for .ralph/logs/ entry
+    check_gitignore_ralph_logs(report, resolved, auto_fix);
+}
+
+/// Check if `.ralph/logs/` is in repo root `.gitignore`.
+///
+/// This check inspects the repo-local `.gitignore` file content directly
+/// (not using `git check-ignore`, which would incorrectly pass on machines
+/// with global excludes).
+fn check_gitignore_ralph_logs(
+    report: &mut DoctorReport,
+    resolved: &config::Resolved,
+    auto_fix: bool,
+) {
+    let gitignore_path = resolved.repo_root.join(".gitignore");
+
+    // Check if .gitignore exists
+    let content = if gitignore_path.exists() {
+        match fs::read_to_string(&gitignore_path) {
+            Ok(c) => c,
+            Err(e) => {
+                report.add(CheckResult::error(
+                    "project",
+                    "gitignore_ralph_logs",
+                    &format!("failed to read .gitignore: {}", e),
+                    false,
+                    Some("Check file permissions"),
+                ));
+                return;
+            }
+        }
+    } else {
+        String::new()
+    };
+
+    // Check if .ralph/logs/ is already ignored
+    let has_logs_entry = content.lines().any(|line| {
+        let trimmed = line.trim();
+        trimmed == ".ralph/logs/" || trimmed == ".ralph/logs"
+    });
+
+    if has_logs_entry {
+        report.add(CheckResult::success(
+            "project",
+            "gitignore_ralph_logs",
+            ".gitignore contains .ralph/logs/ (debug logs will not be committed)",
+        ));
+        return;
+    }
+
+    // Missing entry - this is a high-severity issue because debug logs may contain secrets
+    let fix_available = true;
+    let mut result = CheckResult::error(
+        "project",
+        "gitignore_ralph_logs",
+        ".gitignore missing ignore rule for .ralph/logs/ (debug logs may contain secrets)",
+        fix_available,
+        Some("Add this to your repo root .gitignore:\n\n.ralph/logs/\n"),
+    );
+
+    if auto_fix && fix_available {
+        match crate::commands::init::gitignore::ensure_ralph_gitignore_entries(&resolved.repo_root)
+        {
+            Ok(()) => {
+                // Verify the fix was applied by re-reading the file
+                match fs::read_to_string(&gitignore_path) {
+                    Ok(new_content) => {
+                        let now_has_entry = new_content.lines().any(|line| {
+                            let trimmed = line.trim();
+                            trimmed == ".ralph/logs/" || trimmed == ".ralph/logs"
+                        });
+                        if now_has_entry {
+                            log::info!("Auto-fixed: added .ralph/logs/ to .gitignore");
+                            // Convert to success since fix was applied
+                            result = CheckResult::success(
+                                "project",
+                                "gitignore_ralph_logs",
+                                ".gitignore now contains .ralph/logs/ (auto-fixed)",
+                            )
+                            .with_fix_applied(true);
+                        } else {
+                            result = result.with_fix_applied(false);
+                        }
+                    }
+                    Err(_) => {
+                        result = result.with_fix_applied(false);
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to auto-fix .gitignore: {}", e);
+                result = result.with_fix_applied(false);
+            }
+        }
+    }
+
+    report.add(result);
 }
 
 fn runner_configured(resolved: &config::Resolved) -> bool {

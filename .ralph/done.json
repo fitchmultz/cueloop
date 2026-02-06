@@ -1301,8 +1301,8 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "reliability",
-        "time_to_ship": "medium (concurrency + tests)",
         "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (concurrency + tests)",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
     },
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement"
+        "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
       }
     },
     {
@@ -1395,9 +1395,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (format + fixes + tests)",
         "opportunity_type": "ux improvement",
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "time_to_ship": "medium (format + fixes + tests)"
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "small/medium (formatters + tests)",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement"
+        "time_to_ship": "small/medium (formatters + tests)"
       }
     },
     {
@@ -1932,9 +1932,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (TUI wiring + tests)",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (TUI wiring + tests)",
         "user_value": "Fewer context switches: jump from task → code in one keystroke."
       }
     },
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (render-only UI + tests)",
-        "opportunity_type": "ux improvement",
         "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -2048,8 +2048,8 @@
       "custom_fields": {
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "opportunity_type": "feature gap",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
       }
     },
     {
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "incremental - add one batch operation at a time",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "UX improvement",
         "user_value": "Reduces queue maintenance time by 80% for large projects",
-        "opportunity_type": "UX improvement"
+        "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "reliability",
         "scan_agent": "scan-innovation",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "user_value": "Reduces regression risk; enables confident refactoring"
+        "user_value": "Reduces regression risk; enables confident refactoring",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -2231,9 +2231,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "opportunity_type": "feature gap",
         "differentiation": "Unique capability among AI task runners",
         "user_value": "Enables ecosystem growth; custom integrations without forks",
-        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation"
       }
     },
@@ -2586,6 +2586,80 @@
       ],
       "custom_fields": {
         "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0644",
+      "status": "done",
+      "title": "Prevent committing unredacted debug logs (.ralph/logs/)",
+      "priority": "critical",
+      "tags": [
+        "innovation",
+        "security",
+        "debug",
+        "gitignore",
+        "secrets",
+        "doctor"
+      ],
+      "scope": [
+        ".gitignore",
+        "Makefile",
+        "SECURITY.md",
+        "docs/cli.md",
+        "docs/error-handling.md",
+        "docs/workflow.md",
+        "crates/ralph/src/debuglog.rs",
+        "crates/ralph/src/cli/doctor.rs",
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/commands/doctor.rs",
+        "crates/ralph/src/commands/run/parallel/sync.rs",
+        "crates/ralph/src/git/status.rs",
+        "crates/ralph/tests/doctor_contract_test.rs",
+        "crates/ralph/tests/test_support.rs",
+        "git check-ignore -n -v .ralph/logs/debug.log",
+        "ralph doctor --format json",
+        "ralph doctor --format json --auto-fix",
+        "make ci"
+      ],
+      "evidence": [
+        "File: `crates/ralph/src/debuglog.rs` creates `.ralph/logs/debug.log` and documents that it captures raw, unredacted supervisor and runner output.",
+        "File: `SECURITY.md` warns `--debug` writes raw (unredacted) runner output to `.ralph/logs/debug.log` and recommends adding `.ralph/logs/` to `.gitignore`.",
+        "File: `docs/workflow.md` repeats the recommendation to gitignore `.ralph/logs/` because debug logs capture unredacted output.",
+        "File: `docs/cli.md` and `docs/error-handling.md` both call out that debug logs capture raw output and should be gitignored.",
+        "File: `.gitignore` currently ignores `.ralph/lock` and many `.ralph/cache/*` entries but does not ignore `.ralph/logs/`.",
+        "File: `Makefile` removes `.ralph/logs/` under `clean`, implying debug logs are expected to exist locally and should not be committed.",
+        "File: `crates/ralph/src/commands/run/parallel/sync.rs` explicitly treats `.ralph/logs/` as an exclude, reinforcing that logs are sensitive/ephemeral.",
+        "Command: `git check-ignore -n -v .ralph/logs/debug.log` shows `.ralph/logs` is ignored on this machine via a user global excludesfile (`/Users/mitchfultz/dotfiles/git_global/.gitignore_global`), which is non-portable and does not protect other contributors/CI; the repo-local `.gitignore` still needs an explicit `.ralph/logs/` entry."
+      ],
+      "plan": [
+        "Add `.ralph/logs/` to `.gitignore` (and keep it adjacent to other `.ralph/` ignores).",
+        "Extend `ralph doctor` (`crates/ralph/src/commands/doctor.rs`) to detect when the repo root `.gitignore` is missing an explicit `.ralph/logs/` ignore entry (do not rely on global git excludes) and report a high-severity issue with a concrete fix snippet.",
+        "Teach `ralph doctor --auto-fix` to append the ignore entry when missing (idempotent; do not reorder unrelated ignore rules; keep formatting stable).",
+        "Add/extend tests in `crates/ralph/tests/doctor_contract_test.rs` to create a temp repo with a minimal `.gitignore`, run `ralph doctor --format json`, assert the missing-ignore issue is emitted, then run `ralph doctor --format json --auto-fix` and assert `.gitignore` contains `.ralph/logs/` and the check reports `fix_applied: true`.",
+        "Verify by running `make ci` and confirming it passes."
+      ],
+      "notes": [
+        "Opportunity type: reliability + safety (security).",
+        "Why it matters: `.ralph/logs/debug.log` can contain secrets; making it easy to accidentally commit is a high-impact footgun.",
+        "Observation: `.gitignore` currently ignores other `.ralph/` state (cache, lock, workspaces) but not `.ralph/logs/`.",
+        "Observation: On some machines `.ralph/logs` may be ignored via a global git excludesfile; that is not portable and does not protect other contributors/CI.",
+        "Acceptance criteria: `.ralph/logs/` is ignored by default; doctor flags and auto-fixes missing ignore; docs remain consistent.",
+        "Ignore .ralph/logs/ in repo .gitignore to prevent committing raw debug logs",
+        "Doctor now flags missing .ralph/logs/ ignore (Error) and can auto-fix via --auto-fix",
+        "ralph init ensures .ralph/logs/ and .ralph/workspaces/ entries in .gitignore (idempotent)",
+        "Integration tests cover doctor detection + auto-fix for missing logs ignore",
+        "Docs wording updated to 'ensure .ralph/logs/ is in .gitignore'; make ci passes"
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-06T01:53:55Z",
+      "updated_at": "2026-02-06T02:39:22.459843000Z",
+      "completed_at": "2026-02-06T02:39:22.459843000Z",
+      "started_at": "2026-02-06T02:10:43.654220000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
       }
     }
   ]

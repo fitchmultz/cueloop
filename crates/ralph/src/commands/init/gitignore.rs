@@ -2,6 +2,7 @@
 //!
 //! Responsibilities:
 //! - Ensure `.ralph/workspaces/` is in `.gitignore` to prevent dirty repo issues.
+//! - Ensure `.ralph/logs/` is in `.gitignore` to prevent committing unredacted debug logs.
 //! - Provide idempotent updates to `.gitignore`.
 //!
 //! Not handled here:
@@ -20,6 +21,7 @@ use std::path::Path;
 ///
 /// Currently ensures:
 /// - `.ralph/workspaces/` is ignored (prevents dirty repo when using repo-local workspaces)
+/// - `.ralph/logs/` is ignored (prevents committing unredacted debug logs that may contain secrets)
 ///
 /// This function is idempotent - calling it multiple times is safe.
 pub fn ensure_ralph_gitignore_entries(repo_root: &Path) -> Result<()> {
@@ -33,33 +35,53 @@ pub fn ensure_ralph_gitignore_entries(repo_root: &Path) -> Result<()> {
         String::new()
     };
 
-    // Check if entry already exists (handle various formats)
+    // Check if entries already exist (handle various formats)
     let needs_workspaces_entry = !existing_content.lines().any(is_workspaces_ignore_entry);
+    let needs_logs_entry = !existing_content.lines().any(is_logs_ignore_entry);
 
-    if !needs_workspaces_entry {
-        log::debug!(".ralph/workspaces/ already in .gitignore");
+    if !needs_workspaces_entry && !needs_logs_entry {
+        log::debug!(".ralph/workspaces/ and .ralph/logs/ already in .gitignore");
         return Ok(());
     }
 
-    // Append the entry
+    // Append the entries
     let mut new_content = existing_content;
+    let will_add_logs = needs_logs_entry;
+    let will_add_workspaces = needs_workspaces_entry;
 
     // Add newline if file doesn't end with one (and isn't empty)
     if !new_content.is_empty() && !new_content.ends_with('\n') {
         new_content.push('\n');
     }
 
-    // Add a comment explaining the entry
-    if !new_content.is_empty() {
-        new_content.push('\n');
+    // Add logs entry if missing
+    if needs_logs_entry {
+        if !new_content.is_empty() {
+            new_content.push('\n');
+        }
+        new_content.push_str("# Ralph debug logs (raw/unredacted; do not commit)\n");
+        new_content.push_str(".ralph/logs/\n");
     }
-    new_content.push_str("# Ralph parallel mode workspace directories\n");
-    new_content.push_str(".ralph/workspaces/\n");
+
+    // Add workspaces entry if missing
+    if needs_workspaces_entry {
+        if !new_content.is_empty() {
+            new_content.push('\n');
+        }
+        new_content.push_str("# Ralph parallel mode workspace directories\n");
+        new_content.push_str(".ralph/workspaces/\n");
+    }
 
     fs::write(&gitignore_path, new_content)
         .with_context(|| format!("write {}", gitignore_path.display()))?;
 
-    log::info!("Added '.ralph/workspaces/' to .gitignore");
+    if will_add_logs {
+        log::info!("Added '.ralph/logs/' to .gitignore");
+    }
+    if will_add_workspaces {
+        log::info!("Added '.ralph/workspaces/' to .gitignore");
+    }
+
     Ok(())
 }
 
@@ -71,6 +93,16 @@ pub fn ensure_ralph_gitignore_entries(repo_root: &Path) -> Result<()> {
 fn is_workspaces_ignore_entry(line: &str) -> bool {
     let trimmed = line.trim();
     trimmed == ".ralph/workspaces/" || trimmed == ".ralph/workspaces"
+}
+
+/// Check if a line is a logs ignore entry.
+///
+/// Matches:
+/// - `.ralph/logs/`
+/// - `.ralph/logs`
+fn is_logs_ignore_entry(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed == ".ralph/logs/" || trimmed == ".ralph/logs"
 }
 
 #[cfg(test)]
@@ -89,7 +121,9 @@ mod tests {
         assert!(gitignore_path.exists());
         let content = fs::read_to_string(&gitignore_path)?;
         assert!(content.contains(".ralph/workspaces/"));
+        assert!(content.contains(".ralph/logs/"));
         assert!(content.contains("# Ralph parallel mode"));
+        assert!(content.contains("# Ralph debug logs"));
         Ok(())
     }
 
@@ -106,6 +140,7 @@ mod tests {
         assert!(content.contains(".env"));
         assert!(content.contains("target/"));
         assert!(content.contains(".ralph/workspaces/"));
+        assert!(content.contains(".ralph/logs/"));
         Ok(())
     }
 
@@ -121,14 +156,19 @@ mod tests {
         let gitignore_path = repo_root.join(".gitignore");
         let content = fs::read_to_string(&gitignore_path)?;
 
-        // Should only have one entry
-        let count = content.matches(".ralph/workspaces/").count();
-        assert_eq!(count, 1, "Should only have one .ralph/workspaces/ entry");
+        // Should only have one entry for each
+        let workspaces_count = content.matches(".ralph/workspaces/").count();
+        let logs_count = content.matches(".ralph/logs/").count();
+        assert_eq!(
+            workspaces_count, 1,
+            "Should only have one .ralph/workspaces/ entry"
+        );
+        assert_eq!(logs_count, 1, "Should only have one .ralph/logs/ entry");
         Ok(())
     }
 
     #[test]
-    fn ensure_ralph_gitignore_entries_detects_existing_entry_with_trailing_slash() -> Result<()> {
+    fn ensure_ralph_gitignore_entries_detects_existing_workspaces_entry() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let gitignore_path = repo_root.join(".gitignore");
@@ -137,8 +177,30 @@ mod tests {
         ensure_ralph_gitignore_entries(repo_root)?;
 
         let content = fs::read_to_string(&gitignore_path)?;
-        let count = content.matches(".ralph/workspaces/").count();
-        assert_eq!(count, 1, "Should not add duplicate");
+        // Should add logs but not duplicate workspaces
+        assert!(content.contains(".ralph/logs/"));
+        let workspaces_count = content.matches(".ralph/workspaces/").count();
+        assert_eq!(
+            workspaces_count, 1,
+            "Should not add duplicate workspaces entry"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_ralph_gitignore_entries_detects_existing_logs_entry() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let gitignore_path = repo_root.join(".gitignore");
+        fs::write(&gitignore_path, ".ralph/logs/\n")?;
+
+        ensure_ralph_gitignore_entries(repo_root)?;
+
+        let content = fs::read_to_string(&gitignore_path)?;
+        // Should add workspaces but not duplicate logs
+        assert!(content.contains(".ralph/workspaces/"));
+        let logs_count = content.matches(".ralph/logs/").count();
+        assert_eq!(logs_count, 1, "Should not add duplicate logs entry");
         Ok(())
     }
 
@@ -148,17 +210,36 @@ mod tests {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let gitignore_path = repo_root.join(".gitignore");
-        fs::write(&gitignore_path, ".ralph/workspaces\n")?;
+        fs::write(&gitignore_path, ".ralph/workspaces\n.ralph/logs\n")?;
 
         ensure_ralph_gitignore_entries(repo_root)?;
 
         let content = fs::read_to_string(&gitignore_path)?;
         // Should not add the trailing-slash version if non-trailing exists
-        let count = content
+        let workspaces_count = content
             .lines()
             .filter(|l| l.contains(".ralph/workspaces"))
             .count();
-        assert_eq!(count, 1, "Should not add duplicate");
+        let logs_count = content
+            .lines()
+            .filter(|l| l.contains(".ralph/logs"))
+            .count();
+        assert_eq!(
+            workspaces_count, 1,
+            "Should not add duplicate workspaces entry"
+        );
+        assert_eq!(logs_count, 1, "Should not add duplicate logs entry");
         Ok(())
+    }
+
+    #[test]
+    fn is_logs_ignore_entry_matches_variations() {
+        assert!(is_logs_ignore_entry(".ralph/logs/"));
+        assert!(is_logs_ignore_entry(".ralph/logs"));
+        assert!(is_logs_ignore_entry("  .ralph/logs/  ")); // with whitespace
+        assert!(is_logs_ignore_entry("  .ralph/logs  ")); // with whitespace
+        assert!(!is_logs_ignore_entry(".ralph/logs/debug.log"));
+        assert!(!is_logs_ignore_entry("# .ralph/logs/"));
+        assert!(!is_logs_ignore_entry("something else"));
     }
 }
