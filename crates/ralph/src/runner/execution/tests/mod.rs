@@ -1,7 +1,3 @@
-//! Test suite for runner execution helpers.
+//! Tests for the runner execution module.
 
-mod debuglog;
-mod parsing;
-mod process;
-mod response;
-mod stream;
+mod plugin_trait_tests;

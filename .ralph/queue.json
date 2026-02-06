@@ -2,56 +2,95 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0657",
+      "id": "RQ-0664",
       "status": "todo",
-      "title": "Create foundational runner plugin trait and execution framework",
+      "title": "Add execution_history.json to RALPH_RUN_CLEAN_ALLOWED_PATHS to fix run loop aborts",
       "priority": "high",
+      "tags": [
+        "bug",
+        "fix",
+        "runner",
+        "git",
+        "execution_history"
+      ],
+      "scope": [
+        "crates/ralph/src/git/clean.rs",
+        ".gitignore",
+        "make ci"
+      ],
+      "evidence": [
+        "User report: Run loop aborted after 50 consecutive task failures with error suggesting repo dirty issue",
+        "crates/ralph/src/git/clean.rs:25-30: RALPH_RUN_CLEAN_ALLOWED_PATHS constant missing execution_history.json",
+        "RALPH_RUN_CLEAN_ALLOWED_PATHS currently allows: queue.json, done.json, config.json, productivity.json",
+        "Execution history is written to .ralph/cache/execution_history.json during runs (crates/ralph/src/execution_history.rs:83)",
+        "When execution_history.json is created/modified, repo becomes 'dirty' causing run failures",
+        "Run loop checks repo cleanliness at start using RALPH_RUN_CLEAN_ALLOWED_PATHS (crates/ralph/src/commands/run/mod.rs:777-781)",
+        "Error message: 'Run loop aborted after 50 consecutive task failures. This usually indicates a systemic issue (e.g., repo dirty, runner misconfiguration, or interrupt flag stuck).'"
+      ],
+      "plan": [
+        "Add '.ralph/cache/execution_history.json' to RALPH_RUN_CLEAN_ALLOWED_PATHS in crates/ralph/src/git/clean.rs",
+        "Verify .gitignore already contains .ralph/cache/execution_history.json (it does - line 23)",
+        "Add/update test to verify execution_history.json is allowed in repo_dirty_only_allowed_paths check",
+        "Verify fix by running `make ci` and confirming all tests pass"
+      ],
+      "notes": [],
+      "request": "If the file .ralph/cache/execution_history.json is not in the project specific .gitignore file it is breaking loop runs. Error: Run loop aborted after 50 consecutive task failures. This usually indicates a systemic issue (e.g., repo dirty, runner misconfiguration, or interrupt flag stuck). Check logs above for root cause.",
+      "created_at": "2026-02-06T17:07:23Z",
+      "updated_at": "2026-02-06T17:07:23Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0656",
+      "status": "todo",
+      "title": "Isolate kimi runner into its own plugin for easier runner-specific customization",
+      "priority": "medium",
       "tags": [
         "refactor",
         "runner",
+        "kimi",
         "plugin",
-        "architecture",
-        "foundation"
+        "architecture"
       ],
       "scope": [
+        "crates/ralph/src/runner/execution/runners.rs",
+        "crates/ralph/src/runner/execution/cli_spec.rs",
+        "crates/ralph/src/runner/execution/response.rs",
+        "crates/ralph/src/runner/model.rs",
         "crates/ralph/src/plugins/",
-        "crates/ralph/src/runner/execution/",
         "crates/ralph/src/contracts/runner.rs",
         "make ci"
       ],
       "evidence": [
-        "User request: Create foundational plugin system to enable isolating all runners into plugins for easier runner-specific customization.",
-        "crates/ralph/src/plugins/manifest.rs:33-44: Current RunnerPlugin manifest only has bin, supports_resume, default_model - lacks execution/response-parsing traits.",
-        "crates/ralph/src/plugins/registry.rs:54-75: Registry can resolve runner binary but delegates execution to hardcoded run_* functions.",
-        "crates/ralph/src/runner/execution/runners.rs:47-491: All runner execution is hardcoded (run_codex, run_claude, run_kimi, etc.) instead of plugin-driven.",
-        "crates/ralph/src/runner/execution/cli_spec.rs:27-138: CLI option mapping is hardcoded per runner (apply_codex_options, apply_claude_options, etc.).",
-        "crates/ralph/src/runner/execution/response.rs:19-87: Response parsing is hardcoded per runner with runner-specific extract functions.",
-        "crates/ralph/src/contracts/runner.rs:21-32: Runner enum has Plugin(String) variant but no standardized trait for plugin execution."
+        "User request: Isolate kimi runner code into its own 'plugin' to allow easier modification of runner-specific settings and tailor to each runner's unique properties/output responses.",
+        "crates/ralph/src/runner/execution/runners.rs:331-362: Kimi has dedicated run_kimi() function and build_kimi_command() helper (lines 493-516).",
+        "crates/ralph/src/runner/execution/cli_spec.rs:111-121: Kimi has unique CLI option mapping (apply_kimi_options) using --yolo instead of standard --approval-mode.",
+        "crates/ralph/src/runner/execution/response.rs:11-15,87-138: Kimi has unique response parsing (KimiContent struct, extract_kimi_content, extract_kimi_assistant_text) for role=assistant format with content arrays.",
+        "crates/ralph/src/runner/model.rs:31: Kimi has unique default model 'kimi-for-coding'.",
+        "crates/ralph/src/plugins/: Existing plugin system supports runner plugins via PluginRegistry (registry.rs) and plugin manifest (manifest.rs).",
+        "AGENTS.md:72-78: Error handling uses thiserror for domain-specific matchable errors - relevant for runner plugin error types."
       ],
       "plan": [
-        "Design RunnerPlugin trait with methods for: command building, CLI option mapping, response parsing, and metadata (default model, supports resume).",
-        "Create PluginExecutor that delegates to RunnerPlugin implementations instead of hardcoded run_* functions.",
-        "Design response parsing trait (ResponseParser) with runner-specific implementations for extracting assistant text from JSON streams.",
-        "Create built-in plugin implementations for existing runners (codex, claude, kimi, etc.) that implement RunnerPlugin trait.",
-        "Refactor runner execution dispatch to use plugin registry: look up RunnerPlugin by runner ID, delegate command building and execution.",
-        "Update PluginManifest to support optional response format hints for external plugins.",
-        "Add tests for the plugin trait system and built-in implementations.",
-        "Verify by running `make ci` and confirming all tests pass."
+        "Wait for RQ-0657 to complete (foundational plugin trait framework).",
+        "Create KimiPlugin struct implementing the RunnerPlugin trait from RQ-0657.",
+        "Implement command building: extract kimi-specific logic from runners.rs:build_kimi_command, preserving --session flag handling.",
+        "Implement CLI option mapping: extract kimi-specific options from cli_spec.rs:apply_kimi_options (kimi uses --yolo instead of --approval-mode yolo).",
+        "Implement response parsing: extract kimi-specific parsing from response.rs:extract_kimi_content for role=assistant format with content arrays.",
+        "Register KimiPlugin as a built-in plugin with default model 'kimi-for-coding'.",
+        "Refactor main runner execution to delegate to kimi plugin when Runner::Kimi is selected.",
+        "Add comprehensive tests for the kimi plugin: command building, response parsing, and integration.",
+        "Verify by running `make ci` and confirming all tests pass, including new kimi plugin tests."
       ],
       "notes": [],
-      "request": "create tasks to have all runners isolated and integrated into the plugin system approach. If we need a task to make the plug-in system more foundational and integrated first that is fine, make sure this task is first if so.",
-      "created_at": "2026-02-06T16:21:11Z",
-      "updated_at": "2026-02-06T16:21:11Z",
-      "depends_on": [],
-      "blocks": [
-        "RQ-0656",
-        "RQ-0658",
-        "RQ-0659",
-        "RQ-0660",
-        "RQ-0661",
-        "RQ-0662",
-        "RQ-0663"
+      "request": "Isolate the code required for the kimi runner into it's own 'plugin'. Each runner has unique properties and output responses and isolating them will allow me to modify runner specific settings much easier going forward and tailor to each runner. You may keep reusing shared logic in situations where it truly DOES NOT need to be unique to the kimi runner.",
+      "created_at": "2026-02-06T16:15:51Z",
+      "updated_at": "2026-02-06T16:15:51Z",
+      "depends_on": [
+        "RQ-0657"
       ],
+      "blocks": [],
       "relates_to": [],
       "custom_fields": {}
     },
@@ -336,58 +375,6 @@
       "request": "create tasks to have all runners isolated and integrated into the plugin system approach. We currently support codex, claude, pi, kimi, opencode, and cursor-agent.",
       "created_at": "2026-02-06T16:21:11Z",
       "updated_at": "2026-02-06T16:21:11Z",
-      "depends_on": [
-        "RQ-0657"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
-      "id": "RQ-0656",
-      "status": "todo",
-      "title": "Isolate kimi runner into its own plugin for easier runner-specific customization",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "runner",
-        "kimi",
-        "plugin",
-        "architecture"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/execution/runners.rs",
-        "crates/ralph/src/runner/execution/cli_spec.rs",
-        "crates/ralph/src/runner/execution/response.rs",
-        "crates/ralph/src/runner/model.rs",
-        "crates/ralph/src/plugins/",
-        "crates/ralph/src/contracts/runner.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "User request: Isolate kimi runner code into its own 'plugin' to allow easier modification of runner-specific settings and tailor to each runner's unique properties/output responses.",
-        "crates/ralph/src/runner/execution/runners.rs:331-362: Kimi has dedicated run_kimi() function and build_kimi_command() helper (lines 493-516).",
-        "crates/ralph/src/runner/execution/cli_spec.rs:111-121: Kimi has unique CLI option mapping (apply_kimi_options) using --yolo instead of standard --approval-mode.",
-        "crates/ralph/src/runner/execution/response.rs:11-15,87-138: Kimi has unique response parsing (KimiContent struct, extract_kimi_content, extract_kimi_assistant_text) for role=assistant format with content arrays.",
-        "crates/ralph/src/runner/model.rs:31: Kimi has unique default model 'kimi-for-coding'.",
-        "crates/ralph/src/plugins/: Existing plugin system supports runner plugins via PluginRegistry (registry.rs) and plugin manifest (manifest.rs).",
-        "AGENTS.md:72-78: Error handling uses thiserror for domain-specific matchable errors - relevant for runner plugin error types."
-      ],
-      "plan": [
-        "Wait for RQ-0657 to complete (foundational plugin trait framework).",
-        "Create KimiPlugin struct implementing the RunnerPlugin trait from RQ-0657.",
-        "Implement command building: extract kimi-specific logic from runners.rs:build_kimi_command, preserving --session flag handling.",
-        "Implement CLI option mapping: extract kimi-specific options from cli_spec.rs:apply_kimi_options (kimi uses --yolo instead of --approval-mode yolo).",
-        "Implement response parsing: extract kimi-specific parsing from response.rs:extract_kimi_content for role=assistant format with content arrays.",
-        "Register KimiPlugin as a built-in plugin with default model 'kimi-for-coding'.",
-        "Refactor main runner execution to delegate to kimi plugin when Runner::Kimi is selected.",
-        "Add comprehensive tests for the kimi plugin: command building, response parsing, and integration.",
-        "Verify by running `make ci` and confirming all tests pass, including new kimi plugin tests."
-      ],
-      "notes": [],
-      "request": "Isolate the code required for the kimi runner into it's own 'plugin'. Each runner has unique properties and output responses and isolating them will allow me to modify runner specific settings much easier going forward and tailor to each runner. You may keep reusing shared logic in situations where it truly DOES NOT need to be unique to the kimi runner.",
-      "created_at": "2026-02-06T16:15:51Z",
-      "updated_at": "2026-02-06T16:15:51Z",
       "depends_on": [
         "RQ-0657"
       ],

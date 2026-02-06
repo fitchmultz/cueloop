@@ -1300,10 +1300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (concurrency + tests)",
-        "scan_agent": "scan-innovation",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "opportunity_type": "reliability"
+        "opportunity_type": "reliability",
+        "time_to_ship": "medium (concurrency + tests)",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
+        "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (format + fixes + tests)",
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement",
         "time_to_ship": "small/medium (formatters + tests)",
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
+        "scan_agent": "scan-innovation",
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1933,9 +1933,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (TUI wiring + tests)",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
-        "scan_agent": "scan-innovation"
+        "user_value": "Fewer context switches: jump from task → code in one keystroke."
       }
     },
     {
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (render-only UI + tests)",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
         "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "scan_agent": "scan-innovation"
+        "time_to_ship": "medium (render-only UI + tests)"
       }
     },
     {
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
-        "opportunity_type": "feature gap",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "scan_agent": "scan-innovation",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
+        "opportunity_type": "feature gap",
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption"
       }
     },
     {
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "UX improvement",
         "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "time_to_ship": "incremental - add one batch operation at a time",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one batch operation at a time"
+        "opportunity_type": "UX improvement"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
         "user_value": "Reduces regression risk; enables confident refactoring",
-        "opportunity_type": "reliability"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2231,9 +2231,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation",
         "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "feature gap",
         "differentiation": "Unique capability among AI task runners"
       }
     },
@@ -3472,8 +3472,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "reported_at": "2026-02-06",
-        "user_visible_blocker": "true"
+        "user_visible_blocker": "true",
+        "reported_at": "2026-02-06"
       }
     },
     {
@@ -3527,10 +3527,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "file_line_count": "444",
-        "runner_used": "kimi"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -3577,11 +3577,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding",
-        "occurrence_count": "4",
         "runner_used": "kimi",
-        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69"
+        "scan_agent": "scan-maintenance",
+        "occurrence_count": "4",
+        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -3634,8 +3634,90 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
+      }
+    },
+    {
+      "id": "RQ-0657",
+      "status": "done",
+      "title": "Create foundational runner plugin trait and execution framework",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "runner",
+        "plugin",
+        "architecture",
+        "foundation"
+      ],
+      "scope": [
+        "crates/ralph/src/plugins/",
+        "crates/ralph/src/runner/execution/",
+        "crates/ralph/src/runner/execution/plugin.rs",
+        "crates/ralph/src/contracts/runner.rs",
+        "crates/ralph/src/runner/execution/tests/",
+        "make ci"
+      ],
+      "evidence": [
+        "User request: Create foundational plugin system to enable isolating all runners into plugins for easier runner-specific customization.",
+        "crates/ralph/src/plugins/manifest.rs:33-44: Current RunnerPlugin manifest only has bin, supports_resume, default_model - lacks execution/response-parsing traits.",
+        "crates/ralph/src/plugins/registry.rs:54-75: Registry can resolve runner binary but delegates execution to hardcoded run_* functions.",
+        "crates/ralph/src/runner/execution/runners.rs:48-699: All 7 runner execution functions are hardcoded (run_codex, run_claude, run_kimi, etc.) instead of plugin-driven.",
+        "crates/ralph/src/runner/execution/runners.rs:48-83: run_codex and run_codex_resume functions.",
+        "crates/ralph/src/runner/execution/runners.rs:120-191: run_opencode and run_opencode_resume functions with temp file handling.",
+        "crates/ralph/src/runner/execution/runners.rs:193-256: run_gemini and run_gemini_resume functions.",
+        "crates/ralph/src/runner/execution/runners.rs:258-329: run_claude and run_claude_resume functions.",
+        "crates/ralph/src/runner/execution/runners.rs:331-362: run_kimi function with build_kimi_command helper.",
+        "crates/ralph/src/runner/execution/runners.rs:365-419: run_pi and run_pi_resume with complex session resolution.",
+        "crates/ralph/src/runner/execution/runners.rs:422-491: run_cursor and run_cursor_resume with phase-aware defaults.",
+        "crates/ralph/src/runner/execution/cli_spec.rs:27-138: CLI option mapping is hardcoded per runner (apply_codex_options, apply_claude_options, apply_kimi_options, etc.).",
+        "crates/ralph/src/runner/execution/cli_spec.rs:111-121: Kimi uses unique --yolo flag instead of standard --approval-mode.",
+        "crates/ralph/src/runner/execution/cli_spec.rs:123-138: Pi uses --print for yolo mode with unique sandbox handling.",
+        "crates/ralph/src/runner/execution/response.rs:19-190: Response parsing is hardcoded per runner with runner-specific extract functions.",
+        "crates/ralph/src/runner/execution/response.rs:90-138: extract_kimi_content with KimiContent struct for role=assistant format.",
+        "crates/ralph/src/runner/execution/response.rs:142-154: extract_codex_agent_message for item.completed event type.",
+        "crates/ralph/src/runner/execution/response.rs:156-176: extract_claude_assistant_text for assistant event type.",
+        "crates/ralph/src/runner/execution/plugin.rs:1-121: External plugin execution exists via run_plugin_runner/run_plugin_runner_resume but no trait system for built-in runners.",
+        "crates/ralph/src/contracts/runner.rs:22-32: Runner enum has Plugin(String) variant but no standardized trait for plugin execution.",
+        "crates/ralph/src/runner/execution/mod.rs:47-52: All runner functions explicitly exported - will need trait-based dispatch instead."
+      ],
+      "plan": [
+        "Design RunnerPlugin trait with methods for: command building (run/resume), CLI option mapping, response parsing, and metadata (default model, supports resume).",
+        "Create PluginExecutor that delegates to RunnerPlugin trait implementations instead of hardcoded run_* functions.",
+        "Design ResponseParser trait with runner-specific implementations for extracting assistant text from JSON streams.",
+        "Create BuiltInRunnerPlugin enum wrapping all 7 built-in runners that implements RunnerPlugin trait.",
+        "Implement runner-specific logic for each built-in: codex (exec/resume subcommands, legacy_json), opencode (temp file handling), gemini (--resume flag), claude (-p flag), kimi (--session, --yolo), pi (session path resolution), cursor (phase-aware defaults).",
+        "Refactor runner execution dispatch to use plugin-based lookup by Runner enum variant.",
+        "Add comprehensive tests for the plugin trait system in crates/ralph/src/runner/execution/tests/.",
+        "Verify by running `make ci` and confirming all tests pass."
+      ],
+      "notes": [
+        "2026-02-06: Task refreshed. External plugin system already exists (manifest/registry/discovery), but built-in runners are still hardcoded. This task bridges the gap by creating a trait system that lets built-in runners act like plugins.",
+        "Key distinction: crates/ralph/src/plugins/ handles external plugin.json-based plugins, while this task creates the trait system for built-in runners in crates/ralph/src/runner/execution/.",
+        "Removed ~120 lines of duplicated CLI option functions",
+        "Refactored response parsers to centralize JSON parsing",
+        "Verified all 73 execution module tests pass",
+        "Code compiles without warnings"
+      ],
+      "request": "create tasks to have all runners isolated and integrated into the plugin system approach. If we need a task to make the plug-in system more foundational and integrated first that is fine, make sure this task is first if so.",
+      "created_at": "2026-02-06T16:21:11Z",
+      "updated_at": "2026-02-06T17:19:11.200400000Z",
+      "completed_at": "2026-02-06T17:19:11.200400000Z",
+      "started_at": "2026-02-06T16:29:55.720978000Z",
+      "depends_on": [],
+      "blocks": [
+        "RQ-0656",
+        "RQ-0658",
+        "RQ-0659",
+        "RQ-0660",
+        "RQ-0661",
+        "RQ-0662",
+        "RQ-0663"
+      ],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi"
       }
     }

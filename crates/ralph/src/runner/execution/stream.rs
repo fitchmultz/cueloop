@@ -669,6 +669,15 @@ fn format_tool_details(input: &JsonValue) -> Option<String> {
         parts.push(format!("edits={}", edits));
     }
 
+    // Task/subagent tool fields
+    if let Some(description) = lookup_string(object, &["description"]) {
+        parts.push(format!("desc={}", truncate_tool_value(&description)));
+    }
+
+    if let Some(subagent_name) = lookup_string(object, &["subagent_name"]) {
+        parts.push(format!("agent={}", subagent_name));
+    }
+
     if parts.is_empty() {
         None
     } else {

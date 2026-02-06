@@ -187,6 +187,7 @@ pub(crate) fn ctrlc_state() -> Result<&'static Arc<CtrlCState>, CtrlCInitError> 
 /// This allows tests to have isolated Ctrl-C state without interfering with
 /// the global handler registration.
 #[cfg(test)]
+#[allow(dead_code)]
 pub(crate) fn test_ctrlc_state() -> Arc<CtrlCState> {
     Arc::new(CtrlCState {
         active_pgid: Mutex::new(None),
