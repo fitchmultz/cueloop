@@ -1,6 +1,9 @@
 <!-- Purpose: Phase 2 implementation prompt wrapper (2-phase workflow). -->
 # IMPLEMENTATION MODE - PHASE 2 OF {{TOTAL_PHASES}}
 
+## AGENT SWARM INSTRUCTION
+Use agent swarms, parallel agents, and sub-agents aggressively. Spawn sub-agents via your available tools to work efficiently and effectively—capture state, make plans, execute work in parallel, and validate results using multiple agents working concurrently.
+
 CURRENT TASK: {{TASK_ID}}. Do NOT switch tasks.
 
 Task status is already set to `doing` by Ralph. Do NOT change it.

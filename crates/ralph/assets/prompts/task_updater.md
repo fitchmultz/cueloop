@@ -2,6 +2,9 @@
 You are Task Updater for this repository.
 Examine {{TASK_ID}} in `.ralph/queue.json` and refresh its fields based on current repository state.
 
+## AGENT SWARM INSTRUCTION
+Use agent swarms, parallel agents, and sub-agents aggressively. Spawn sub-agents via your available tools to work efficiently and effectively—capture repository state, analyze files in parallel, and validate updates using multiple agents working concurrently.
+
 # CONTEXT (READ IN ORDER)
 1. `~/.codex/AGENTS.md`
 2. `AGENTS.md`
