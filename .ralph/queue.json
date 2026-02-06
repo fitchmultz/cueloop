@@ -2,74 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0656",
-      "status": "todo",
-      "title": "Isolate kimi runner into its own plugin for easier runner-specific customization",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "runner",
-        "kimi",
-        "plugin",
-        "architecture"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/execution/builtin_plugins.rs",
-        "crates/ralph/src/runner/execution/plugin_trait.rs",
-        "crates/ralph/src/runner/execution/cli_spec.rs",
-        "crates/ralph/src/runner/execution/runners.rs",
-        "crates/ralph/src/runner/execution/response.rs",
-        "crates/ralph/src/runner/model.rs",
-        "make ci"
-      ],
-      "evidence": [
-        "DEPENDENCY RQ-0657 COMPLETED: Foundational runner plugin trait and execution framework was created by RQ-0657 (done 2026-02-06T17:19:11Z).",
-        "crates/ralph/src/runner/execution/builtin_plugins.rs:527-632: KimiPlugin struct fully implements RunnerPlugin trait with build_run_command, build_resume_command, parse_response_line, and requires_managed_session_id.",
-        "crates/ralph/src/runner/execution/builtin_plugins.rs:590-632: KimiResponseParser implements ResponseParser trait for role=assistant format with content arrays.",
-        "crates/ralph/src/runner/execution/plugin_trait.rs:117-148: RunnerPlugin trait defines the interface for all runner implementations.",
-        "crates/ralph/src/runner/execution/cli_spec.rs:111-121: Kimi CLI option mapping (apply_kimi_options) uses --yolo instead of --approval-mode.",
-        "crates/ralph/src/runner/model.rs:31: Kimi default model is 'kimi-for-coding'.",
-        "BuiltInRunnerPlugin::Kimi is registered in the plugin enum (builtin_plugins.rs:47) and delegates to KimiPlugin.",
-        "crates/ralph/src/runner/execution/runners.rs:331-362: Legacy run_kimi() function still exists but is now deprecated in favor of KimiPlugin via PluginExecutor.",
-        "crates/ralph/src/runner/execution/builtin_plugins.rs:974-978: Tests verify kimi_requires_managed_session_id behavior."
-      ],
-      "plan": [
-        "Verify RQ-0657 plugin framework is complete (it is - marked done).",
-        "Review KimiPlugin implementation in builtin_plugins.rs:527-632 for completeness.",
-        "Confirm KimiPlugin properly implements all RunnerPlugin trait methods.",
-        "Verify KimiResponseParser correctly handles role=assistant format with content arrays.",
-        "Ensure cli_spec.rs:apply_kimi_options correctly maps --yolo flag (Kimi doesn't use --approval-mode).",
-        "Verify requires_managed_session_id returns true for Kimi (Ralph-managed session IDs).",
-        "Run make ci to confirm all tests pass including kimi plugin tests.",
-        "Mark task complete - Kimi runner is already isolated into its own plugin via KimiPlugin."
-      ],
-      "notes": [
-        "OBSOLETE/REFRESHED: This task was essentially completed as part of RQ-0657 which created the foundational plugin framework and implemented ALL built-in runner plugins including Kimi.",
-        "The KimiPlugin struct in builtin_plugins.rs:527-588 fully encapsulates kimi-specific logic:",
-        "  - build_run_command: Uses --session flag with Ralph-managed session IDs, --print, --prompt",
-        "  - build_resume_command: Delegates to build_run_command with session_id",
-        "  - parse_response_line: Uses KimiResponseParser for role=assistant format",
-        "  - requires_managed_session_id: Returns true (Kimi doesn't emit session IDs in JSON)",
-        "The KimiResponseParser in builtin_plugins.rs:590-632 handles Kimi's unique JSON format with role=assistant and content arrays.",
-        "Legacy functions in runners.rs (run_kimi, build_kimi_command) are still present but the new code path uses PluginExecutor which delegates to KimiPlugin.",
-        "RECOMMENDATION: This task can be marked done after verification, or the scope can be narrowed to 'remove legacy kimi code from runners.rs' if desired."
-      ],
-      "request": "Isolate the code required for the kimi runner into it's own 'plugin'. Each runner has unique properties and output responses and isolating them will allow me to modify runner specific settings much easier going forward and tailor to each runner. You may keep reusing shared logic in situations where it truly DOES NOT need to be unique to the kimi runner.",
-      "created_at": "2026-02-06T16:15:51Z",
-      "updated_at": "2026-02-06T17:43:18.051960000Z",
-      "started_at": "2026-02-06T17:43:18.051960000Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [
-        "RQ-0657"
-      ],
-      "custom_fields": {
-        "status_note": "Effectively complete - KimiPlugin implemented in RQ-0657",
-        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:527-632"
-      }
-    },
-    {
       "id": "RQ-0665",
       "status": "todo",
       "title": "Add description field to task schema for enhanced context",
@@ -93,7 +25,7 @@
         "make ci"
       ],
       "evidence": [
-        "User request: Add a new optional description field directly below the title field to allow task builder, task scanner, or manual users to add more detail to context, goal, purpose, desired outcome, etc.",
+        "User request: Add a new description field directly below the title field to allow task builder, task scanner, or manual users to add more detail to context, goal, purpose, desired outcome, etc.",
         "crates/ralph/src/contracts/task.rs:26-34: Task struct defines the core task schema with title at line 34; description field needs to be added after title.",
         "schemas/queue.schema.json:22-150: Task JSON schema definitions; needs new description field added to Task definition.",
         "crates/ralph/src/queue/validation.rs: Contains validate_task_required_fields() and other validation logic; needs to make description optional for validation but required for task builder/scanner.",

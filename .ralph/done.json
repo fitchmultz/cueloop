@@ -1300,10 +1300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (concurrency + tests)",
-        "scan_agent": "scan-innovation"
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
         "time_to_ship": "medium (metadata + reconciliation + tests)",
-        "opportunity_type": "ux improvement"
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (format + fixes + tests)",
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement"
+        "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (format + fixes + tests)",
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "opportunity_type": "ux improvement",
         "time_to_ship": "small/medium (formatters + tests)",
-        "scan_agent": "scan-innovation",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
-        "opportunity_type": "ux improvement"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (TUI wiring + tests)",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke."
+        "opportunity_type": "ux improvement",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (render-only UI + tests)",
         "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "time_to_ship": "medium (render-only UI + tests)"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2046,9 +2046,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "opportunity_type": "feature gap",
         "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "feature gap",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption"
       }
     },
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
         "time_to_ship": "incremental - add one batch operation at a time",
+        "opportunity_type": "UX improvement",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "UX improvement"
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -2166,9 +2166,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "user_value": "Reduces regression risk; enables confident refactoring",
-        "scan_agent": "scan-innovation"
+        "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
     {
@@ -2231,10 +2231,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "scan_agent": "scan-innovation",
         "opportunity_type": "feature gap",
-        "differentiation": "Unique capability among AI task runners"
+        "differentiation": "Unique capability among AI task runners",
+        "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
     {
@@ -3527,10 +3527,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
+        "scan_agent": "scan-maintenance",
         "file_line_count": "444",
-        "scan_agent": "scan-maintenance"
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -3579,9 +3579,9 @@
       "custom_fields": {
         "runner_used": "kimi",
         "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding",
         "occurrence_count": "4",
-        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
-        "model_used": "kimi-code/kimi-for-coding"
+        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69"
       }
     },
     {
@@ -3634,9 +3634,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
+        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -3717,7 +3717,97 @@
       ],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
+      }
+    },
+    {
+      "id": "RQ-0656",
+      "status": "done",
+      "title": "Isolate kimi runner into its own plugin for easier runner-specific customization",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "runner",
+        "kimi",
+        "plugin",
+        "architecture"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/execution/builtin_plugins.rs",
+        "crates/ralph/src/runner/execution/plugin_trait.rs",
+        "crates/ralph/src/runner/execution/cli_spec.rs",
+        "crates/ralph/src/runner/execution/runners.rs",
+        "crates/ralph/src/runner/execution/response.rs",
+        "crates/ralph/src/runner/execution/plugin_executor.rs",
+        "crates/ralph/src/runner/model.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "COMPLETED: Kimi runner successfully isolated into KimiPlugin as part of RQ-0657 (foundational plugin framework, done 2026-02-06T17:19:11Z).",
+        "crates/ralph/src/runner/execution/builtin_plugins.rs:530-588: KimiPlugin struct fully implements RunnerPlugin trait with build_run_command, build_resume_command, parse_response_line, and requires_managed_session_id.",
+        "crates/ralph/src/runner/execution/builtin_plugins.rs:590-631: KimiResponseParser implements ResponseParser trait for role=assistant format with content arrays.",
+        "crates/ralph/src/runner/execution/plugin_trait.rs:117-148: RunnerPlugin trait defines the interface for all runner implementations with requires_managed_session_id defaulting to false.",
+        "crates/ralph/src/runner/execution/cli_spec.rs:111-121: Kimi CLI option mapping (apply_kimi_options) uses --yolo instead of standard --approval-mode.",
+        "crates/ralph/src/runner/model.rs:31: Kimi default model is 'kimi-for-coding' via default_model_for_runner().",
+        "crates/ralph/src/runner/execution/builtin_plugins.rs:47: BuiltInRunnerPlugin::Kimi is registered in the plugin enum and delegates to KimiPlugin.",
+        "crates/ralph/src/runner/execution/plugin_executor.rs:49-67: PluginExecutor registers Kimi runner and dispatches execution to KimiPlugin.",
+        "crates/ralph/src/runner/execution/runners.rs: Legacy run_kimi() and build_kimi_command() functions have been removed - Kimi execution now fully delegated to PluginExecutor.",
+        "crates/ralph/src/runner/execution/tests/plugin_trait_tests.rs: Multiple tests verify KimiPlugin behavior including kimi_requires_managed_session_id, kimi_build_run_command, and kimi_response_parser."
+      ],
+      "plan": [
+        "VERIFIED: RQ-0657 plugin framework is complete and marked done.",
+        "VERIFIED: KimiPlugin implementation in builtin_plugins.rs:530-588 is complete and functional.",
+        "VERIFIED: KimiPlugin properly implements all RunnerPlugin trait methods (metadata, build_run_command, build_resume_command, parse_response_line, requires_managed_session_id).",
+        "VERIFIED: KimiResponseParser correctly handles role=assistant format with content arrays.",
+        "VERIFIED: cli_spec.rs:apply_kimi_options correctly maps --yolo flag (Kimi doesn't use --approval-mode).",
+        "VERIFIED: requires_managed_session_id returns true for Kimi (Ralph-managed session IDs required).",
+        "VERIFIED: Legacy kimi functions removed from runners.rs - no deprecated code path remains.",
+        "COMPLETED: make ci passes with all kimi plugin tests passing.",
+        "COMPLETED: Task marked done - Kimi runner is fully isolated into its own plugin via KimiPlugin."
+      ],
+      "notes": [
+        "COMPLETED AS PART OF RQ-0657: The foundational plugin framework task (RQ-0657) implemented ALL built-in runner plugins including Kimi.",
+        "The KimiPlugin struct in builtin_plugins.rs:530-588 fully encapsulates kimi-specific logic:",
+        "  - build_run_command: Uses --session flag with Ralph-managed session IDs, --print, --prompt, stream-json output",
+        "  - build_resume_command: Delegates to build_run_command with session_id (Kimi uses same command for resume)",
+        "  - parse_response_line: Uses KimiResponseParser for role=assistant format with content arrays",
+        "  - requires_managed_session_id: Returns true (Kimi doesn't emit session IDs in JSON output, so Ralph supplies/managers them)",
+        "The KimiResponseParser in builtin_plugins.rs:590-631 handles Kimi's unique JSON format with role=assistant and content arrays containing type/text objects.",
+        "PluginExecutor in plugin_executor.rs:49-67 registers BuiltInRunnerPlugin::Kimi and dispatches execution to KimiPlugin.",
+        "Legacy run_kimi() and build_kimi_command() functions have been completely removed from runners.rs.",
+        "All tests pass including kimi-specific tests in plugin_trait_tests.rs:",
+        "  - kimi_requires_managed_session_id",
+        "  - kimi_build_run_command_includes_session_id",
+        "  - kimi_build_run_command_without_session",
+        "  - kimi_build_run_command_with_yolo_mode",
+        "  - kimi_response_parser_extracts_assistant_text",
+        "  - plugin_executor_extract_final_response_kimi",
+        "REFRESHED AT: 2026-02-06T18:14:37Z - Verified all paths exist and Kimi plugin is fully functional.",
+        "Verified: Kimi runner fully isolated into KimiPlugin",
+        "All 13 kimi-specific tests pass",
+        "CI gate passes (2180+ tests)",
+        "Legacy code removed from runners.rs",
+        "Plugin implements RunnerPlugin trait with proper CLI mapping and response parsing"
+      ],
+      "request": "Isolate the code required for the kimi runner into it's own 'plugin'. Each runner has unique properties and output responses and isolating them will allow me to modify runner specific settings much easier going forward and tailor to each runner. You may keep reusing shared logic in situations where it truly DOES NOT need to be unique to the kimi runner.",
+      "created_at": "2026-02-06T16:15:51Z",
+      "updated_at": "2026-02-06T18:27:05.485829000Z",
+      "completed_at": "2026-02-06T18:27:05.485829000Z",
+      "started_at": "2026-02-06T17:43:18.051960000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [
+        "RQ-0657"
+      ],
+      "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
+        "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
+        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
+        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
+        "legacy_code_removed": "true",
+        "completed_via": "RQ-0657 (foundational plugin framework)",
         "runner_used": "kimi"
       }
     }
