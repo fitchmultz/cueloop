@@ -33,7 +33,10 @@ pub mod wizard;
 pub mod writers;
 
 // Re-export public items from submodules
-pub use readme::{ReadmeCheckResult, check_readme_current};
+pub use readme::{
+    ReadmeCheckResult, ReadmeVersionError, check_readme_current, check_readme_current_from_root,
+    extract_readme_version,
+};
 
 // Re-export README_VERSION from constants for backward compatibility
 pub use crate::constants::versions::README_VERSION;

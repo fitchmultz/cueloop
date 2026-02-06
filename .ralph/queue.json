@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0637",
-      "status": "todo",
-      "title": "Fail fast on malformed README version markers (don't default to version 1)",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "correctness",
-        "docs",
-        "init"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/init/readme.rs",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "crates/ralph/src/commands/init/readme.rs:48-60: extract_readme_version returns None for malformed marker values.",
-        "crates/ralph/src/commands/init/readme.rs:85 and :116: call sites use `.unwrap_or(1)`, treating malformed markers as legacy v1 silently.",
-        "Failure mode: README update logic can misclassify and hide a corrupted version marker."
-      ],
-      "plan": [
-        "Change `extract_readme_version` to return a richer type (e.g., `Result<u32>` or `(Option<u32>, bool marker_present)`) so callers can distinguish legacy/no-marker from malformed marker.",
-        "Update `check_readme_current_from_root` / `write_readme` to: treat 'no marker' as legacy v1; treat 'marker present but invalid' as `Err` with an actionable message.",
-        "Add tests: invalid marker yields `Err`; no marker yields v1; valid marker parses correctly.",
-        "Verify by running `make ci` and confirming it passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-05T20:49:31Z",
-      "updated_at": "2026-02-05T20:49:31Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0638",
       "status": "todo",
       "title": "Preserve timeout diagnostics when output-capture mutex is poisoned",

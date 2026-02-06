@@ -21,6 +21,23 @@ use crate::prompts;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
+use thiserror::Error;
+
+/// Errors that can occur when extracting README version.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum ReadmeVersionError {
+    /// No version marker found in the file (legacy file).
+    #[error("no version marker found")]
+    NoMarker,
+
+    /// Version marker is malformed (e.g., missing closing `-->`).
+    #[error("malformed version marker: missing closing '-->'")]
+    InvalidFormat,
+
+    /// Version value could not be parsed as a non-negative integer.
+    #[error("invalid version value: '{value}' is not a valid non-negative integer")]
+    ParseError { value: String },
+}
 
 const DEFAULT_RALPH_README: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -45,18 +62,31 @@ pub enum ReadmeCheckResult {
 
 /// Extract version from README content.
 /// Looks for `<!-- RALPH_README_VERSION: X -->` marker.
-pub fn extract_readme_version(content: &str) -> Option<u32> {
-    // Look for version marker: <!-- RALPH_README_VERSION: X -->
+pub fn extract_readme_version(content: &str) -> Result<u32, ReadmeVersionError> {
     let marker_start = "<!-- RALPH_README_VERSION:";
-    if let Some(start_idx) = content.find(marker_start) {
-        let after_marker = &content[start_idx + marker_start.len()..];
-        if let Some(end_idx) = after_marker.find("-->") {
-            let version_str = &after_marker[..end_idx];
-            return version_str.trim().parse::<u32>().ok();
-        }
+
+    // No marker found - this is a legacy file
+    let Some(start_idx) = content.find(marker_start) else {
+        return Err(ReadmeVersionError::NoMarker);
+    };
+
+    let after_marker = &content[start_idx + marker_start.len()..];
+
+    // Found marker start but no closing -->
+    let Some(end_idx) = after_marker.find("-->") else {
+        return Err(ReadmeVersionError::InvalidFormat);
+    };
+
+    let version_str = &after_marker[..end_idx];
+    let trimmed = version_str.trim();
+
+    // Parse the version number
+    match trimmed.parse::<u32>() {
+        Ok(version) => Ok(version),
+        Err(_) => Err(ReadmeVersionError::ParseError {
+            value: trimmed.to_string(),
+        }),
     }
-    // Legacy: no version marker means version 1
-    Some(1)
 }
 
 /// Check if README is current without modifying it.
@@ -82,7 +112,16 @@ pub fn check_readme_current_from_root(repo_root: &std::path::Path) -> Result<Rea
     let content = fs::read_to_string(&readme_path)
         .with_context(|| format!("read {}", readme_path.display()))?;
 
-    let current_version = extract_readme_version(&content).unwrap_or(1);
+    let current_version = match extract_readme_version(&content) {
+        Ok(version) => version,
+        Err(ReadmeVersionError::NoMarker) => 1, // Legacy file, treat as v1
+        Err(e) => {
+            return Err(anyhow::anyhow!(e).context(format!(
+                "README version marker in {} is malformed",
+                readme_path.display()
+            )));
+        }
+    };
 
     if current_version >= README_VERSION {
         Ok(ReadmeCheckResult::Current(current_version))
@@ -105,7 +144,16 @@ pub fn write_readme(
         // Check version for reporting purposes
         let content =
             fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-        let version = extract_readme_version(&content);
+        let version = match extract_readme_version(&content) {
+            Ok(v) => Some(v),
+            Err(ReadmeVersionError::NoMarker) => None,
+            Err(e) => {
+                return Err(anyhow::anyhow!(e).context(format!(
+                    "README version marker in {} is malformed",
+                    path.display()
+                )));
+            }
+        };
         return Ok((super::FileInitStatus::Valid, version));
     }
 
@@ -113,7 +161,16 @@ pub fn write_readme(
     let should_update = if update && path.exists() && !force {
         let content =
             fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-        let current_version = extract_readme_version(&content).unwrap_or(1);
+        let current_version = match extract_readme_version(&content) {
+            Ok(version) => version,
+            Err(ReadmeVersionError::NoMarker) => 1,
+            Err(e) => {
+                return Err(anyhow::anyhow!(e).context(format!(
+                    "README version marker in {} is malformed",
+                    path.display()
+                )));
+            }
+        };
         current_version < README_VERSION
     } else {
         true // Create new or force overwrite
@@ -123,7 +180,16 @@ pub fn write_readme(
         // Version is current, no update needed
         let content =
             fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-        let version = extract_readme_version(&content);
+        let version = match extract_readme_version(&content) {
+            Ok(v) => Some(v),
+            Err(ReadmeVersionError::NoMarker) => None,
+            Err(e) => {
+                return Err(anyhow::anyhow!(e).context(format!(
+                    "README version marker in {} is malformed",
+                    path.display()
+                )));
+            }
+        };
         return Ok((super::FileInitStatus::Valid, version));
     }
 
@@ -168,17 +234,56 @@ mod tests {
     #[test]
     fn extract_readme_version_finds_version_marker() {
         let content = "<!-- RALPH_README_VERSION: 5 -->\n# Heading";
-        assert_eq!(extract_readme_version(content), Some(5));
+        assert_eq!(extract_readme_version(content), Ok(5));
 
         let content_v2 = "<!-- RALPH_README_VERSION: 2 -->\n# Ralph";
-        assert_eq!(extract_readme_version(content_v2), Some(2));
+        assert_eq!(extract_readme_version(content_v2), Ok(2));
     }
 
     #[test]
-    fn extract_readme_version_returns_none_for_no_marker() {
+    fn extract_readme_version_returns_error_for_no_marker() {
         let content = "# Ralph runtime files\nSome content";
-        // Legacy content without marker returns Some(1) as default
-        assert_eq!(extract_readme_version(content), Some(1));
+        // Legacy content without marker returns NoMarker error
+        assert!(matches!(
+            extract_readme_version(content),
+            Err(ReadmeVersionError::NoMarker)
+        ));
+    }
+
+    #[test]
+    fn extract_readme_version_returns_error_for_invalid_version() {
+        let content = "<!-- RALPH_README_VERSION: invalid -->\n# Heading";
+        let result = extract_readme_version(content);
+        assert!(
+            matches!(result, Err(ReadmeVersionError::ParseError { value }) if value == "invalid")
+        );
+    }
+
+    #[test]
+    fn extract_readme_version_returns_error_for_malformed_marker() {
+        let content = "<!-- RALPH_README_VERSION: 5 \n# Heading"; // Missing -->
+        let result = extract_readme_version(content);
+        assert!(matches!(result, Err(ReadmeVersionError::InvalidFormat)));
+    }
+
+    #[test]
+    fn extract_readme_version_handles_whitespace() {
+        let content = "<!-- RALPH_README_VERSION:   3   -->\n# Heading";
+        assert_eq!(extract_readme_version(content), Ok(3));
+    }
+
+    #[test]
+    fn extract_readme_version_rejects_negative_numbers() {
+        let content = "<!-- RALPH_README_VERSION: -1 -->\n# Heading";
+        let result = extract_readme_version(content);
+        assert!(matches!(result, Err(ReadmeVersionError::ParseError { value }) if value == "-1"));
+    }
+
+    #[test]
+    fn extract_readme_version_rejects_floats() {
+        let content = "<!-- RALPH_README_VERSION: 1.5 -->\n# Heading";
+        let result = extract_readme_version(content);
+        assert!(matches!(result, Err(ReadmeVersionError::ParseError { value }) if value == "1.5"));
     }
 
     #[test]

@@ -1301,9 +1301,9 @@
       "relates_to": [],
       "custom_fields": {
         "time_to_ship": "medium (concurrency + tests)",
-        "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "time_to_ship": "medium (metadata + reconciliation + tests)",
         "scan_agent": "scan-innovation",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (metadata + reconciliation + tests)"
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "time_to_ship": "medium (format + fixes + tests)",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (format + fixes + tests)",
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
       }
     },
     {
@@ -1441,9 +1441,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "small/medium (formatters + tests)",
-        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "ux improvement",
+        "time_to_ship": "small/medium (formatters + tests)",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
       }
     },
@@ -1932,9 +1932,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
-        "time_to_ship": "medium (TUI wiring + tests)",
         "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (TUI wiring + tests)",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "scan_agent": "scan-innovation"
       }
     },
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (render-only UI + tests)",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "opportunity_type": "ux improvement",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "feature gap"
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
       }
     },
     {
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "UX improvement",
-        "time_to_ship": "incremental - add one batch operation at a time",
-        "user_value": "Reduces queue maintenance time by 80% for large projects"
+        "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "opportunity_type": "reliability",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces regression risk; enables confident refactoring"
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "user_value": "Reduces regression risk; enables confident refactoring",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -2231,10 +2231,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "differentiation": "Unique capability among AI task runners",
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation",
         "user_value": "Enables ecosystem growth; custom integrations without forks",
-        "opportunity_type": "feature gap"
+        "differentiation": "Unique capability among AI task runners"
       }
     },
     {
@@ -3527,9 +3527,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "file_line_count": "444",
-        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding",
+        "file_line_count": "444",
         "runner_used": "kimi"
       }
     },
@@ -3577,11 +3577,66 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding",
+        "occurrence_count": "4",
         "runner_used": "kimi",
-        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
+        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69"
+      }
+    },
+    {
+      "id": "RQ-0637",
+      "status": "done",
+      "title": "Fail fast on malformed README version markers (don't default to version 1)",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "correctness",
+        "docs",
+        "init"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/init/readme.rs",
+        "crates/ralph/src/commands/init/mod.rs",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/commands/init/readme.rs:48-60: extract_readme_version returns Some(1) for ALL cases except when marker found and parsed successfully - this treats malformed markers as legacy v1.",
+        "crates/ralph/src/commands/init/readme.rs:85: `extract_readme_version(&content).unwrap_or(1)` - call site uses unwrap_or(1) masking any None returns.",
+        "crates/ralph/src/commands/init/readme.rs:116: `extract_readme_version(&content).unwrap_or(1)` - second call site also masking potential errors.",
+        "Failure mode: A malformed marker like `<!-- RALPH_README_VERSION: invalid -->` returns Some(1) instead of failing, hiding corruption.",
+        "Existing tests at lines 168-182 only cover valid marker and no-marker cases - missing malformed marker tests."
+      ],
+      "plan": [
+        "Change `extract_readme_version` return type from `Option<u32>` to `Result<u32, ReadmeVersionError>` with error variants for: NoMarker (legacy), InvalidFormat, ParseError.",
+        "Update `check_readme_current_from_root` to handle Result: NoMarker -> treat as v1; InvalidFormat/ParseError -> return Err with actionable message.",
+        "Update `write_readme` to propagate errors from extract_readme_version instead of silently defaulting to 1.",
+        "Add unit tests: invalid marker (non-numeric), malformed marker (missing end), valid marker, no marker cases.",
+        "Add integration test that creates a README with malformed marker and verifies the error message is user-friendly.",
+        "Verify by running `make ci` and confirming it passes."
+      ],
+      "notes": [
+        "The current implementation always returns Some(1) for any non-parseable marker, making it impossible to detect corruption.",
+        "The fix requires distinguishing between: 1) No marker at all (legacy, OK to default), 2) Marker present but malformed (error, should fail fast).",
+        "Fixed: extract_readme_version now returns Result<u32, ReadmeVersionError> instead of Option<u32>",
+        "Added: ReadmeVersionError enum with NoMarker, InvalidFormat, and ParseError variants",
+        "Fixed: All call sites in write_readme now properly propagate malformed marker errors",
+        "Added: 6 new unit tests and 6 integration tests for malformed marker handling",
+        "Verified: make ci passes with 2200+ tests"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-05T20:49:31Z",
+      "updated_at": "2026-02-06T16:09:01.242774000Z",
+      "completed_at": "2026-02-06T16:09:01.242774000Z",
+      "started_at": "2026-02-06T15:47:22.410500000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
-        "occurrence_count": "4"
+        "runner_used": "kimi"
       }
     }
   ]
