@@ -2,56 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0646",
-      "status": "todo",
-      "title": "Add `ralph queue import` (CSV/TSV/JSON) to complement export",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "feature-gap",
-        "queue",
-        "import",
-        "automation"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/queue/mod.rs",
-        "crates/ralph/src/cli/queue/export.rs",
-        "crates/ralph/src/queue/",
-        "schemas/queue.schema.json",
-        "docs/cli.md",
-        "ralph queue export",
-        "ralph queue import"
-      ],
-      "evidence": [
-        "Command: `ralph queue export --help` supports CSV/TSV/JSON/Markdown/GitHub issue formats for outbound data, but `ralph queue --help` has no `import` subcommand for inbound workflows.",
-        "Workflow gap: Teams can export tasks to spreadsheets or other tools but must re-create tasks manually to re-import or migrate between repos.",
-        "Schema: `schemas/queue.schema.json` defines the full task shape; import can validate strictly before writing."
-      ],
-      "plan": [
-        "Implement `ralph queue import` with `--format csv|tsv|json` and `--input <path>` (default: stdin). Start with JSON import that accepts the same shape as `queue export --format json`.",
-        "For CSV/TSV, define a minimal column set (`title`, optional `id`, optional `priority`, optional `tags`, optional `scope`) and ignore unknown columns with a warning (or `--strict`).",
-        "Add safe defaults: generate missing IDs via next-id; set missing timestamps to now; normalize tags/scope; validate uniqueness across queue+done.",
-        "Add `--dry-run` (prints summary + validation results) and `--on-duplicate <fail|skip|rename>` to control collisions.",
-        "Add tests for each format, including failure modes: invalid CSV, duplicate IDs, invalid priority/status, malformed timestamps.",
-        "Update `docs/cli.md` and `ralph queue import --help` with examples (stdin + file input).",
-        "Verify by running `make ci` and confirming it passes."
-      ],
-      "notes": [
-        "Opportunity type: feature gap + UX improvement.",
-        "Why it matters: Import completes the export workflow and enables bulk backlog seeding and cross-repo task migration without hand-editing JSON.",
-        "Acceptance criteria: `queue import` is schema-safe, supports dry-run, and has thorough tests for success + failure modes."
-      ],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-06T01:53:55Z",
-      "updated_at": "2026-02-06T01:53:55Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0647",
       "status": "todo",
       "title": "Record execution_history for CLI runs (not just TUI) to unlock ETA",
@@ -516,8 +466,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_visible_blocker": "true",
-        "reported_at": "2026-02-06"
+        "reported_at": "2026-02-06",
+        "user_visible_blocker": "true"
       }
     },
     {

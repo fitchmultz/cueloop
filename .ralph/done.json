@@ -1300,10 +1300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "opportunity_type": "reliability",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (concurrency + tests)",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "reliability",
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
     },
     {
@@ -1345,9 +1345,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "scan_agent": "scan-innovation",
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
+        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (format + fixes + tests)",
+        "scan_agent": "scan-innovation",
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation"
+        "time_to_ship": "medium (format + fixes + tests)"
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "small/medium (formatters + tests)",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1932,9 +1932,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "time_to_ship": "medium (TUI wiring + tests)",
         "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (TUI wiring + tests)",
         "opportunity_type": "ux improvement"
       }
     },
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "time_to_ship": "medium (render-only UI + tests)",
-        "opportunity_type": "ux improvement",
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -2047,8 +2047,8 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
-        "opportunity_type": "feature gap",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "opportunity_type": "feature gap",
         "scan_agent": "scan-innovation"
       }
     },
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "time_to_ship": "incremental - add one batch operation at a time",
         "opportunity_type": "UX improvement",
         "user_value": "Reduces queue maintenance time by 80% for large projects",
-        "time_to_ship": "incremental - add one batch operation at a time"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2166,9 +2166,9 @@
       "relates_to": [],
       "custom_fields": {
         "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "opportunity_type": "reliability",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces regression risk; enables confident refactoring",
-        "opportunity_type": "reliability"
+        "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
     {
@@ -2232,9 +2232,9 @@
       "relates_to": [],
       "custom_fields": {
         "differentiation": "Unique capability among AI task runners",
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
     {
@@ -2721,6 +2721,74 @@
       "updated_at": "2026-02-06T03:32:40.846657000Z",
       "completed_at": "2026-02-06T03:32:40.846657000Z",
       "started_at": "2026-02-06T02:45:22.229314000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0646",
+      "status": "done",
+      "title": "Add `ralph queue import` (CSV/TSV/JSON) to complement export",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "feature-gap",
+        "queue",
+        "import",
+        "automation",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue/mod.rs",
+        "crates/ralph/src/cli/queue/shared.rs",
+        "crates/ralph/src/cli/queue/export.rs",
+        "crates/ralph/src/cli/queue/tests.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/queue/operations/mutation.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "crates/ralph/src/queue/",
+        "schemas/queue.schema.json",
+        "docs/cli.md",
+        "docs/queue-and-tasks.md",
+        "ralph queue export",
+        "ralph queue import"
+      ],
+      "evidence": [
+        "Code: `crates/ralph/src/cli/queue/mod.rs` defines `QueueCommand` variants (including `export`) but there is no `import` subcommand today.",
+        "Code: `crates/ralph/src/cli/queue/shared.rs` + `crates/ralph/src/cli/queue/export.rs` implement `queue export` formats `csv|tsv|json|md|gh`; JSON export is a JSON array of `Task` objects and CSV/TSV export uses a fixed header (id/title/status/priority/tags/scope/evidence/plan/notes/request/timestamps/depends_on/custom_fields).",
+        "Docs: `docs/cli.md` documents `ralph queue export` but has no `ralph queue import` section/examples.",
+        "Constraints: `crates/ralph/src/queue/validation.rs` requires `created_at` and `updated_at` for all tasks, and `completed_at` for `done`/`rejected`; import must backfill/normalize before writing.",
+        "Helpers: `crates/ralph/src/queue.rs` (`acquire_queue_lock`, `load_and_validate_queues`, `next_id_across`, `save_queue`) and `crates/ralph/src/queue/operations/mutation.rs` (`backfill_missing_fields`, `backfill_terminal_completed_at`) are the natural primitives to build on."
+      ],
+      "plan": [
+        "Add `crates/ralph/src/cli/queue/import.rs` implementing `ralph queue import` with `--format <csv|tsv|json>`, `--input <path>` (default: stdin), `--dry-run`, and `--on-duplicate <fail|skip|rename>`; wire it into `crates/ralph/src/cli/queue/mod.rs` (`QueueCommand::Import`).",
+        "JSON import (MVP): accept the same shape as `ralph queue export --format json` (a JSON array of task objects). Optionally support a `{ \"version\": 1, \"tasks\": [...] }` wrapper if it’s trivial and unambiguous.",
+        "CSV/TSV import: prioritize round-tripping the current `queue export` CSV/TSV header (id/title/status/priority/tags/scope/evidence/plan/notes/request/created_at/updated_at/completed_at/depends_on/custom_fields). Allow missing optional columns, but require at least `title`; parse list fields using the same delimiters export uses (tags/scope/depends_on comma-separated; evidence/plan/notes `;`-separated; custom_fields `k=v` comma-separated).",
+        "Normalization/backfill: for each imported task, trim and drop empty list items; generate missing IDs via `queue::next_id_across`; set missing `created_at`/`updated_at` to `now_utc`; for `done`/`rejected` tasks, set missing `completed_at` to `now_utc` (or gate behind a flag if needed). Reuse `queue::operations::mutation::{backfill_missing_fields, backfill_terminal_completed_at}` where it fits.",
+        "Persistence: acquire the queue lock (`queue::acquire_queue_lock`), load+validate active+done (`queue::load_and_validate_queues`), apply duplicate policy against both queues, insert tasks near the top (preserving an in-progress `doing` task using `suggest_new_task_insert_index`/`reposition_new_tasks`), then `queue::save_queue` and re-validate with `validate_queue_set`.",
+        "Tests: add focused tests close to the implementation (unit tests in `crates/ralph/src/cli/queue/import.rs` plus CLI help contract coverage in `crates/ralph/src/cli/queue/tests.rs`). Cover success + failure modes for each format: invalid JSON/CSV, missing required fields, duplicate ID handling modes, timestamp/backfill behavior, and validation failures for bad status/priority/timestamps.",
+        "Docs/help: add `ralph queue import --help` examples (stdin + file input + dry-run + duplicate policy) and update `docs/cli.md` (and `docs/queue-and-tasks.md` if it describes import/export workflows).",
+        "Gate: run `make ci`."
+      ],
+      "notes": [
+        "Opportunity type: feature gap + UX improvement.",
+        "Why it matters: Import completes the export workflow and enables bulk backlog seeding and cross-repo task migration without hand-editing JSON.",
+        "Implementation note: `queue export --format json` outputs a JSON array of tasks (not a full queue file), and queue validation requires `created_at`/`updated_at` (and `completed_at` for terminal statuses), so import must normalize/backfill before writing.",
+        "Acceptance criteria: `queue import` round-trips export JSON/CSV/TSV, is validation-safe (queue+done uniqueness + required timestamps), supports dry-run + duplicate policy, and is fully tested for success + failure modes.",
+        "Add ralph queue import (csv/tsv/json) with duplicate policy + timestamp/id backfill",
+        "Dry-run now validates resulting queue set; fails on invalid timestamps/dependencies",
+        "Fix rename policy to correctly record old->new ID mappings",
+        "Docs updated: docs/cli.md + docs/queue-and-tasks.md import section + examples",
+        "Tests added/updated for JSON/CSV/TSV import, duplicate handling, and dry-run behavior"
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-06T01:53:55Z",
+      "updated_at": "2026-02-06T04:25:03.219871000Z",
+      "completed_at": "2026-02-06T04:25:03.219871000Z",
+      "started_at": "2026-02-06T03:38:23.232373000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

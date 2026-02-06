@@ -75,6 +75,18 @@ pub enum QueueExportFormat {
     Gh,
 }
 
+/// Import format for `ralph queue import`.
+#[derive(Clone, Copy, Debug, ValueEnum)]
+#[clap(rename_all = "snake_case")]
+pub enum QueueImportFormat {
+    /// Comma-separated values (CSV) format.
+    Csv,
+    /// Tab-separated values (TSV) format.
+    Tsv,
+    /// JSON format (array of task objects).
+    Json,
+}
+
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[clap(rename_all = "snake_case")]
 pub enum QueueSortBy {

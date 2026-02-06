@@ -849,6 +849,7 @@ Inspect and manage the task queue (`.ralph/queue.json`) and done archive (`.ralp
 * `burndown`: show burndown chart of remaining tasks over time.
 * `schema`: print the JSON schema for the queue file.
 * `export`: export task data to CSV, TSV, JSON, Markdown, or GitHub issue format.
+* `import`: import tasks from CSV, TSV, or JSON into the active queue.
 * `stop`: request graceful stop of a running loop after current task completes.
 
 ### Queue Flags
@@ -1274,6 +1275,60 @@ ralph queue export --format gh --id-pattern RQ-0042
 ```bash
 # Tasks completed this week in Markdown
 ralph queue export --format md --status done --created-after 2026-01-27
+```
+
+
+### `ralph queue import`
+
+Import tasks from CSV, TSV, or JSON into the active queue. This complements `ralph queue export` and enables bulk backlog seeding, cross-repo task migration, and automation without hand-editing JSON.
+
+**Note**: This is a CLI-only command; there is no TUI workflow for import.
+
+Flags:
+
+* `--format <csv|tsv|json>`: input format (required).
+  * `csv`: Comma-separated values
+  * `tsv`: Tab-separated values
+  * `json`: JSON array of task objects, or `{ "version": 1, "tasks": [...] }` wrapper
+* `--input <PATH>` (or `-i`): input file path. If omitted or `-`, reads from stdin.
+* `--dry-run`: parse, normalize, and validate without writing to disk.
+* `--on-duplicate <fail|skip|rename>`: how to handle duplicate task IDs (default: `fail`).
+  * `fail`: error if an imported task ID already exists in queue or done
+  * `skip`: drop duplicate tasks and continue importing others
+  * `rename`: generate a fresh ID for duplicate tasks
+
+Normalization and backfill:
+* List fields are trimmed and empty items are dropped
+* Missing `created_at`/`updated_at` timestamps are set to current time
+* Tasks with `done`/`rejected` status get `completed_at` backfilled if missing
+* Tasks without IDs get auto-generated IDs
+
+CSV/TSV format:
+The expected header matches `ralph queue export` output:
+`id,title,status,priority,tags,scope,evidence,plan,notes,request,created_at,updated_at,completed_at,depends_on,custom_fields`
+
+Delimiter rules:
+* `tags`, `scope`, `depends_on`: comma-separated
+* `evidence`, `plan`, `notes`: semicolon-separated
+* `custom_fields`: `key=value` pairs, comma-separated
+
+Unknown columns are ignored. Only the `title` column is required.
+
+```bash
+# Import from JSON file
+ralph queue import --format json --input tasks.json
+
+# Import from CSV with dry-run to preview changes
+ralph queue import --format csv --input tasks.csv --dry-run
+
+# Pipe export to import (round-trip test)
+ralph queue export --format json | ralph queue import --format json --dry-run
+
+# Import from stdin with duplicate handling
+ralph queue export --format tsv | ralph queue import --format tsv --on-duplicate rename
+
+# Import and skip duplicates
+ralph queue import --format json --input tasks.json --on-duplicate skip
 ```
 
 ### `ralph queue stop`

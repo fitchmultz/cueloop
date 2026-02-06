@@ -19,6 +19,7 @@ mod explain;
 mod export;
 mod graph;
 mod history;
+mod import;
 mod list;
 mod next;
 mod next_id;
@@ -44,6 +45,7 @@ pub use explain::QueueExplainArgs;
 pub use export::QueueExportArgs;
 pub use graph::QueueGraphArgs;
 pub use history::QueueHistoryArgs;
+pub use import::QueueImportArgs;
 pub use list::QueueListArgs;
 pub use next::QueueNextArgs;
 pub use next_id::QueueNextIdArgs;
@@ -51,8 +53,8 @@ pub use prune::QueuePruneArgs;
 pub use repair::RepairArgs;
 pub use search::QueueSearchArgs;
 pub use shared::{
-    QueueExportFormat, QueueListFormat, QueueReportFormat, QueueShowFormat, QueueSortBy,
-    QueueSortOrder, StatusArg,
+    QueueExportFormat, QueueImportFormat, QueueListFormat, QueueReportFormat, QueueShowFormat,
+    QueueSortBy, QueueSortOrder, StatusArg,
 };
 pub use show::QueueShowArgs;
 pub(crate) use show::show_task;
@@ -79,6 +81,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Prune(args) => prune::handle(&resolved, force, args),
         QueueCommand::Graph(args) => graph::handle(&resolved, args),
         QueueCommand::Export(args) => export::handle(&resolved, args),
+        QueueCommand::Import(args) => import::handle(&resolved, force, args),
         QueueCommand::Stop => stop::handle(&resolved),
         QueueCommand::Explain(args) => explain::handle(&resolved, args),
     }
@@ -179,6 +182,12 @@ pub enum QueueCommand {
         after_long_help = "Examples:\n ralph queue export\n ralph queue export --format csv --output tasks.csv\n ralph queue export --format json --status done\n ralph queue export --format tsv --tag rust --tag cli\n ralph queue export --format md --status todo\n ralph queue export --format gh --id-pattern RQ-0001\n ralph queue export --include-archive --format csv\n ralph queue export --format csv --created-after 2026-01-01"
     )]
     Export(QueueExportArgs),
+
+    /// Import tasks from CSV, TSV, or JSON.
+    #[command(
+        after_long_help = "Examples:\n ralph queue import --format json < tasks.json\n ralph queue import --format csv tasks.csv\n ralph queue import --format tsv --on-duplicate rename tasks.tsv\n ralph queue import --format json --dry-run < tasks.json"
+    )]
+    Import(QueueImportArgs),
 
     /// Request graceful stop of a running loop after current task completes.
     #[command(

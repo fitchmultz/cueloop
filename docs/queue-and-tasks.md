@@ -217,3 +217,51 @@ The critical path is the longest dependency chain in the graph. Tasks on the cri
 - `ralph task` inserts new tasks near the top of the queue:
   - Default: insert at position 0 (top).
   - If the first task is already `doing`, insert at position 1 (immediately below the in-progress task).
+
+## Import and Export
+
+Ralph supports importing and exporting tasks for bulk operations, cross-repo migration, and integration with external tools.
+
+### Export
+
+Export tasks to CSV, TSV, JSON, Markdown, or GitHub issue format:
+
+```bash
+# Export all tasks to CSV (default)
+ralph queue export
+
+# Export to JSON for scripting
+ralph queue export --format json --output tasks.json
+
+# Export tasks with specific tags to TSV
+ralph queue export --format tsv --tag rust --tag cli
+```
+
+### Import
+
+Import tasks from CSV, TSV, or JSON into the active queue. This enables bulk backlog seeding and cross-repo task migration without hand-editing JSON.
+
+```bash
+# Import from JSON file
+ralph queue import --format json --input tasks.json
+
+# Import from CSV with dry-run to preview changes
+ralph queue import --format csv --input tasks.csv --dry-run
+
+# Pipe export to import (round-trip test)
+ralph queue export --format json | ralph queue import --format json --dry-run
+```
+
+**Normalization**: During import, Ralph automatically:
+- Trims all fields and drops empty list items
+- Backfills missing `created_at`/`updated_at` timestamps
+- Sets `completed_at` for tasks with `done`/`rejected` status
+- Generates IDs for tasks without them
+- Validates the final queue state before writing
+
+**Duplicate handling**: Use `--on-duplicate` to control behavior when imported task IDs already exist:
+- `fail` (default): error on duplicates
+- `skip`: drop duplicate tasks
+- `rename`: generate fresh IDs for duplicates
+
+See `docs/cli.md` for full import documentation.
