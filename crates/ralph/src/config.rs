@@ -35,6 +35,61 @@ use std::env;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
+// Canonical error messages for queue config validation (single source of truth)
+const ERR_EMPTY_QUEUE_ID_PREFIX: &str = "Empty queue.id_prefix: prefix is required if specified. Set a non-empty prefix (e.g., 'RQ') in .ralph/config.json or via --id-prefix.";
+const ERR_INVALID_QUEUE_ID_WIDTH: &str = "Invalid queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .ralph/config.json or via --id-width.";
+const ERR_EMPTY_QUEUE_FILE: &str = "Empty queue.file: path is required if specified. Specify a valid path (e.g., '.ralph/queue.json') in .ralph/config.json or via --queue-file.";
+const ERR_EMPTY_QUEUE_DONE_FILE: &str = "Empty queue.done_file: path is required if specified. Specify a valid path (e.g., '.ralph/done.json') in .ralph/config.json or via --done-file.";
+
+/// Validate queue.id_prefix override (if specified, must be non-empty after trim).
+fn validate_queue_id_prefix_override(id_prefix: Option<&str>) -> Result<()> {
+    if let Some(prefix) = id_prefix
+        && prefix.trim().is_empty()
+    {
+        bail!(ERR_EMPTY_QUEUE_ID_PREFIX);
+    }
+    Ok(())
+}
+
+/// Validate queue.id_width override (if specified, must be greater than 0).
+fn validate_queue_id_width_override(id_width: Option<u8>) -> Result<()> {
+    if let Some(width) = id_width
+        && width == 0
+    {
+        bail!(ERR_INVALID_QUEUE_ID_WIDTH);
+    }
+    Ok(())
+}
+
+/// Validate queue.file override (if specified, must be non-empty).
+fn validate_queue_file_override(file: Option<&Path>) -> Result<()> {
+    if let Some(path) = file
+        && path.as_os_str().is_empty()
+    {
+        bail!(ERR_EMPTY_QUEUE_FILE);
+    }
+    Ok(())
+}
+
+/// Validate queue.done_file override (if specified, must be non-empty).
+fn validate_queue_done_file_override(done_file: Option<&Path>) -> Result<()> {
+    if let Some(path) = done_file
+        && path.as_os_str().is_empty()
+    {
+        bail!(ERR_EMPTY_QUEUE_DONE_FILE);
+    }
+    Ok(())
+}
+
+/// Validate all queue config overrides in a single call.
+fn validate_queue_overrides(queue: &QueueConfig) -> Result<()> {
+    validate_queue_id_prefix_override(queue.id_prefix.as_deref())?;
+    validate_queue_id_width_override(queue.id_width)?;
+    validate_queue_file_override(queue.file.as_deref())?;
+    validate_queue_done_file_override(queue.done_file.as_deref())?;
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub struct Resolved {
     pub config: Config,
@@ -205,37 +260,8 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
         );
     }
 
-    if let Some(prefix) = &cfg.queue.id_prefix
-        && prefix.trim().is_empty()
-    {
-        bail!(
-            "Empty queue.id_prefix: prefix is required if specified. Set a non-empty prefix (e.g., 'RQ') in .ralph/config.json or via --id-prefix."
-        );
-    }
-
-    if let Some(width) = cfg.queue.id_width
-        && width == 0
-    {
-        bail!(
-            "Invalid queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .ralph/config.json or via --id-width."
-        );
-    }
-
-    if let Some(file) = &cfg.queue.file
-        && file.as_os_str().is_empty()
-    {
-        bail!(
-            "Empty queue.file: path is required if specified. Specify a valid path (e.g., '.ralph/queue.json') in .ralph/config.json or via --queue-file."
-        );
-    }
-
-    if let Some(done_file) = &cfg.queue.done_file
-        && done_file.as_os_str().is_empty()
-    {
-        bail!(
-            "Empty queue.done_file: path is required if specified. Specify a valid path (e.g., '.ralph/done.json') in .ralph/config.json or via --done-file."
-        );
-    }
+    // Validate queue overrides using shared validators (single source of truth)
+    validate_queue_overrides(&cfg.queue)?;
 
     if let Some(phases) = cfg.agent.phases
         && !(1..=3).contains(&phases)
@@ -443,37 +469,23 @@ fn git_ref_invalid_reason(branch: &str) -> Option<String> {
 }
 
 pub fn resolve_id_prefix(cfg: &Config) -> Result<String> {
+    validate_queue_id_prefix_override(cfg.queue.id_prefix.as_deref())?;
     let raw = cfg.queue.id_prefix.as_deref().unwrap_or("RQ");
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        bail!(
-            "Empty queue.id_prefix: prefix is required. Set a non-empty prefix (e.g., 'RQ') in .ralph/config.json or via --id-prefix."
-        );
-    }
-    Ok(trimmed.to_uppercase())
+    Ok(raw.trim().to_uppercase())
 }
 
 pub fn resolve_id_width(cfg: &Config) -> Result<usize> {
-    let width = cfg.queue.id_width.unwrap_or(DEFAULT_ID_WIDTH as u8) as usize;
-    if width == 0 {
-        bail!(
-            "Invalid_queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .ralph/config.json or via --id-width."
-        );
-    }
-    Ok(width)
+    validate_queue_id_width_override(cfg.queue.id_width)?;
+    Ok(cfg.queue.id_width.unwrap_or(DEFAULT_ID_WIDTH as u8) as usize)
 }
 
 pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
+    validate_queue_file_override(cfg.queue.file.as_deref())?;
     let raw = cfg
         .queue
         .file
         .clone()
         .unwrap_or_else(|| PathBuf::from(".ralph/queue.json"));
-    if raw.as_os_str().is_empty() {
-        bail!(
-            "Empty queue.file: path is required. Specify a valid path (e.g., '.ralph/queue.json') in .ralph/config.json or via --queue-file."
-        );
-    }
 
     let value = fsutil::expand_tilde(&raw);
     if value.is_absolute() {
@@ -483,16 +495,12 @@ pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
 }
 
 pub fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
+    validate_queue_done_file_override(cfg.queue.done_file.as_deref())?;
     let raw = cfg
         .queue
         .done_file
         .clone()
         .unwrap_or_else(|| PathBuf::from(".ralph/done.json"));
-    if raw.as_os_str().is_empty() {
-        bail!(
-            "Empty queue.done_file: path is required. Specify a valid path (e.g., '.ralph/done.json') in .ralph/config.json or via --done-file."
-        );
-    }
 
     let value = fsutil::expand_tilde(&raw);
     if value.is_absolute() {
@@ -844,5 +852,68 @@ mod tests {
             None => unsafe { env::remove_var(REPO_ROOT_OVERRIDE_ENV) },
         };
         env::set_current_dir(original_dir).expect("restore cwd");
+    }
+
+    // Tests for queue validation consistency between validate_config and resolve_* helpers
+
+    fn assert_same_error(actual: anyhow::Error, expected: &str) {
+        assert_eq!(actual.to_string(), expected);
+    }
+
+    #[test]
+    fn queue_id_prefix_error_is_consistent_between_validate_and_resolve() {
+        let mut cfg = Config::default();
+        cfg.queue.id_prefix = Some("   ".to_string());
+
+        assert_same_error(
+            validate_config(&cfg).unwrap_err(),
+            ERR_EMPTY_QUEUE_ID_PREFIX,
+        );
+        assert_same_error(
+            resolve_id_prefix(&cfg).unwrap_err(),
+            ERR_EMPTY_QUEUE_ID_PREFIX,
+        );
+    }
+
+    #[test]
+    fn queue_id_width_error_is_consistent_between_validate_and_resolve() {
+        let mut cfg = Config::default();
+        cfg.queue.id_width = Some(0);
+
+        assert_same_error(
+            validate_config(&cfg).unwrap_err(),
+            ERR_INVALID_QUEUE_ID_WIDTH,
+        );
+        assert_same_error(
+            resolve_id_width(&cfg).unwrap_err(),
+            ERR_INVALID_QUEUE_ID_WIDTH,
+        );
+    }
+
+    #[test]
+    fn queue_file_error_is_consistent_between_validate_and_resolve() {
+        let mut cfg = Config::default();
+        cfg.queue.file = Some(PathBuf::from(""));
+
+        assert_same_error(validate_config(&cfg).unwrap_err(), ERR_EMPTY_QUEUE_FILE);
+        assert_same_error(
+            resolve_queue_path(Path::new("/repo"), &cfg).unwrap_err(),
+            ERR_EMPTY_QUEUE_FILE,
+        );
+    }
+
+    #[test]
+    fn queue_done_file_error_is_consistent_between_validate_and_resolve() {
+        let mut cfg = Config::default();
+        cfg.queue.done_file = Some(PathBuf::from(""));
+
+        assert_same_error(
+            validate_config(&cfg).unwrap_err(),
+            ERR_EMPTY_QUEUE_DONE_FILE,
+        );
+        assert_same_error(
+            resolve_done_path(Path::new("/repo"), &cfg).unwrap_err(),
+            ERR_EMPTY_QUEUE_DONE_FILE,
+        );
     }
 }

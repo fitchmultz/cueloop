@@ -1301,9 +1301,9 @@
       "relates_to": [],
       "custom_fields": {
         "time_to_ship": "medium (concurrency + tests)",
-        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
+        "opportunity_type": "reliability",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "reliability"
+        "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
     },
     {
@@ -1346,9 +1346,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
         "opportunity_type": "ux improvement",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
+        "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
     {
@@ -1395,8 +1395,8 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (format + fixes + tests)",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement"
       }
     },
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "small/medium (formatters + tests)",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation"
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
       }
     },
     {
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (TUI wiring + tests)",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke."
+        "opportunity_type": "ux improvement",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "time_to_ship": "medium (TUI wiring + tests)"
       }
     },
     {
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (render-only UI + tests)",
-        "opportunity_type": "ux improvement",
         "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -2046,9 +2046,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "opportunity_type": "feature gap",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "scan_agent": "scan-innovation"
       }
     },
@@ -2107,9 +2107,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "UX improvement",
+        "time_to_ship": "incremental - add one batch operation at a time",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
-        "time_to_ship": "incremental - add one batch operation at a time"
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -2165,9 +2165,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "opportunity_type": "reliability",
         "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "scan_agent": "scan-innovation",
         "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
@@ -3527,9 +3527,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-maintenance",
         "file_line_count": "444",
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance",
         "runner_used": "kimi"
       }
     },
@@ -3578,10 +3578,10 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-maintenance",
+        "runner_used": "kimi",
         "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
-        "occurrence_count": "4",
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "occurrence_count": "4"
       }
     },
     {
@@ -3634,8 +3634,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance",
         "runner_used": "kimi"
       }
     },
@@ -3801,13 +3801,13 @@
         "RQ-0657"
       ],
       "custom_fields": {
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
+        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
         "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding",
         "legacy_code_removed": "true",
         "completed_via": "RQ-0657 (foundational plugin framework)",
-        "model_used": "kimi-code/kimi-for-coding",
-        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
-        "runner_used": "kimi",
         "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed"
       }
     },
@@ -3923,8 +3923,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -3984,8 +3984,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -4050,8 +4050,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4118,11 +4118,11 @@
         "RQ-0663"
       ],
       "custom_fields": {
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding",
         "cleanup_required": "true",
         "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
-        "plugin_status": "already_implemented",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "plugin_status": "already_implemented"
       }
     },
     {
@@ -4178,10 +4178,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
-        "model_used": "kimi-code/kimi-for-coding",
         "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding",
         "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427",
         "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427"
       }
@@ -4243,11 +4243,11 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
+        "rq_0657_status": "completed",
         "runner_used": "kimi",
         "cleanup_type": "legacy_code_removal",
-        "plugin_status": "implemented_needs_cleanup",
-        "rq_0657_status": "completed"
+        "model_used": "kimi-code/kimi-for-coding",
+        "plugin_status": "implemented_needs_cleanup"
       }
     },
     {
@@ -4312,13 +4312,13 @@
       "custom_fields": {
         "cleanup_status": "already_completed_via_rq_0657",
         "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
-        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
-        "rq_0657_status": "completed",
         "runner_used": "kimi",
-        "task_type": "cleanup",
-        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
         "model_used": "kimi-code/kimi-for-coding",
-        "verification_only": "true"
+        "task_type": "cleanup",
+        "verification_only": "true",
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
+        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
+        "rq_0657_status": "completed"
       }
     },
     {
@@ -4368,11 +4368,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
-        "tests_file_lines": "412",
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
         "execution_file_lines": "572",
-        "model_used": "kimi-code/kimi-for-coding"
+        "tests_file_lines": "412",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4423,9 +4423,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4484,11 +4484,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding",
         "current_loc": "3383",
+        "model_used": "kimi-code/kimi-for-coding",
+        "target_loc": "800",
         "runner_used": "kimi",
-        "target_loc": "800"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4550,14 +4550,14 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "code_lines": "2200",
+        "test_lines": "1000",
         "previous_loc": "3241",
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi",
-        "existing_submodules": "7",
-        "current_loc": "3290",
         "scan_agent": "scan-maintenance",
-        "test_lines": "1000"
+        "current_loc": "3290",
+        "code_lines": "2200",
+        "model_used": "kimi-code/kimi-for-coding",
+        "existing_submodules": "7",
+        "runner_used": "kimi"
       }
     },
     {
@@ -4602,8 +4602,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi"
       }
     },
@@ -4665,13 +4665,13 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "refresh_note": "As of 2026-02-07, auto-archive already exists in TUI and `ralph run` supervision; remaining work is queue-level age-based sweep and docs/config alignment.",
         "opportunity_type": "automation",
         "runner_used": "kimi",
         "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
-        "refresh_note": "As of 2026-02-07, auto-archive already exists in TUI and `ralph run` supervision; remaining work is queue-level age-based sweep and docs/config alignment.",
-        "model_used": "kimi-code/kimi-for-coding",
-        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load"
+        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4738,11 +4738,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "opportunity_type": "feature-gap",
         "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
-        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding",
         "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing"
       }
     },
@@ -4813,12 +4813,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "estimated_effort": "low",
-        "scan_agent": "scan-innovation",
-        "model_used": "kimi-code/kimi-for-coding",
         "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
-        "opportunity_type": "analytics"
+        "estimated_effort": "low",
+        "opportunity_type": "analytics",
+        "scan_agent": "scan-innovation",
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4937,8 +4937,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4986,6 +4986,60 @@
       "updated_at": "2026-02-07T06:08:04.363254000Z",
       "completed_at": "2026-02-07T06:08:04.363254000Z",
       "started_at": "2026-02-07T05:34:14.632099000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0684",
+      "status": "done",
+      "title": "Refactor duplicated config queue/id validation and fix resolve_id_width typo",
+      "description": "Principles violated: DRY (C), Consistency/Integrity (J), Make bugs hard to write (E).\n\nQueue/id/path validation rules are duplicated between `validate_config` and the various `resolve_*` helpers, increasing drift risk and already producing an inconsistent error message typo.\n\nWhy it matters (failure modes):\n- Divergent validation can lead to different behavior depending on code path (e.g., doctor vs normal resolve), and inconsistent user-facing errors.\n- The current typo `Invalid_queue.id_width` reduces UX quality and makes error searchability harder.\n\nMinimal proposed fix:\n- Extract shared validators for queue id/path settings and call them from both `validate_config` and `resolve_*` helpers (single source of truth).\n- Fix the typo in the `resolve_id_width` error message.\n- Add unit tests that assert both `validate_config` and `resolve_*` return consistent errors for empty/invalid settings.\n\nAcceptance criteria:\n- Tests cover invalid id_prefix/id_width/file/done_file for both validation entrypoints.\n- Error strings are consistent and typo-free.\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "config",
+        "validation",
+        "error-messages"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/contracts/config.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/config.rs:125-136 calls validate_config(&cfg)? before resolve_id_prefix/resolve_id_width/resolve_queue_path/resolve_done_path",
+        "crates/ralph/src/config.rs:200-238 validates queue.id_prefix/id_width/file/done_file in validate_config",
+        "crates/ralph/src/config.rs:445-502 re-validates the same queue fields in resolve_* helpers",
+        "crates/ralph/src/config.rs:220 vs crates/ralph/src/config.rs:460 mismatch: 'Invalid queue.id_width' vs 'Invalid_queue.id_width'",
+        "crates/ralph/src/contracts/config.rs:91-111 defines QueueConfig fields (file/done_file/id_prefix/id_width) as the underlying data model",
+        "Command: `nl -ba crates/ralph/src/config.rs | sed -n '110,160p'` + `nl -ba crates/ralph/src/config.rs | sed -n '200,260p'` + `nl -ba crates/ralph/src/config.rs | sed -n '440,520p'` + `nl -ba crates/ralph/src/contracts/config.rs | sed -n '80,130p'`"
+      ],
+      "plan": [
+        "Introduce shared helper(s) for validating queue id/path fields (id_prefix/id_width/file/done_file), colocated with the config resolution logic or QueueConfig contracts",
+        "Update validate_config and resolve_* helpers to use the shared queue validation logic (single source of truth, consistent error strings)",
+        "Fix the resolve_id_width error message typo ('Invalid_queue.id_width' -> 'Invalid queue.id_width') and align any remaining queue validation error strings where feasible",
+        "Add unit tests that exercise both validate_config and resolve_* helpers for invalid explicit inputs (empty id_prefix, id_width=0, empty queue.file/done_file) and assert error text consistency",
+        "Verify with `cargo test -p ralph` and `make ci`"
+      ],
+      "notes": [
+        "As of 2026-02-07, resolve_from_cwd_internal already calls validate_config before resolve_*; the duplicated checks are currently defensive, but drift is visible via the id_width error string typo/inconsistency.",
+        "Refactored duplicated queue config validation into shared helpers (validate_queue_id_prefix_override, validate_queue_id_width_override, validate_queue_file_override, validate_queue_done_file_override)",
+        "Fixed typo: 'Invalid_queue.id_width' → 'Invalid queue.id_width'",
+        "Added 4 unit tests ensuring error consistency between validate_config and resolve_* helpers",
+        "All tests pass: cargo test -p ralph for new consistency tests"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T06:36:25.909972000Z",
+      "completed_at": "2026-02-07T06:36:25.909972000Z",
+      "started_at": "2026-02-07T06:13:38.954996000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

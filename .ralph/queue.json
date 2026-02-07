@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0684",
-      "status": "todo",
-      "title": "Refactor duplicated config queue/id validation and fix resolve_id_width typo",
-      "description": "Principles violated: DRY (C), Consistency/Integrity (J), Make bugs hard to write (E).\n\nQueue/id/path validation rules are duplicated between `validate_config` and the various `resolve_*` helpers, increasing drift risk and already producing an inconsistent error message typo.\n\nWhy it matters (failure modes):\n- Divergent validation can lead to different behavior depending on code path (e.g., doctor vs normal resolve), and inconsistent user-facing errors.\n- The current typo `Invalid_queue.id_width` reduces UX quality and makes error searchability harder.\n\nMinimal proposed fix:\n- Extract shared validators for queue id/path settings and call them from both `validate_config` and `resolve_*` helpers (single source of truth).\n- Fix the typo in the `resolve_id_width` error message.\n- Add unit tests that assert both `validate_config` and `resolve_*` return consistent errors for empty/invalid settings.\n\nAcceptance criteria:\n- Tests cover invalid id_prefix/id_width/file/done_file for both validation entrypoints.\n- Error strings are consistent and typo-free.\n- `make ci` passes.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "config",
-        "validation",
-        "error-messages"
-      ],
-      "scope": [
-        "crates/ralph/src/config.rs",
-        "crates/ralph/src/contracts/config.rs",
-        "cargo test -p ralph",
-        "make ci"
-      ],
-      "evidence": [
-        "crates/ralph/src/config.rs:200-238 validates queue.id_prefix/id_width/file/done_file",
-        "crates/ralph/src/config.rs:445-502 re-validates the same fields in resolve_* helpers",
-        "crates/ralph/src/config.rs:460 error message typo: 'Invalid_queue.id_width'",
-        "Command: `nl -ba crates/ralph/src/config.rs | sed -n '180,260p'` and `nl -ba crates/ralph/src/config.rs | sed -n '430,520p'`"
-      ],
-      "plan": [
-        "Introduce shared helper(s) for validating queue id/path fields (prefix/width/file/done_file)",
-        "Update validate_config and resolve_* helpers to use the shared logic",
-        "Fix the resolve_id_width error message typo",
-        "Add unit tests asserting consistent validation errors across both entrypoints",
-        "Verify by running `make ci` and confirming it passes"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-07T03:39:33Z",
-      "updated_at": "2026-02-07T03:39:33Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0685",
       "status": "todo",
       "title": "Centralize TaskPriority parsing to remove duplicated mappings",
@@ -364,9 +322,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
-        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
+        "estimated_effort": "medium",
+        "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
         "opportunity_type": "automation"
       }
     },
@@ -413,9 +371,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux-improvement",
-        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
         "scan_agent": "scan-innovation",
+        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
+        "opportunity_type": "ux-improvement",
         "estimated_effort": "medium"
       }
     },
@@ -463,10 +421,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
         "opportunity_type": "reliability",
-        "estimated_effort": "medium"
+        "estimated_effort": "medium",
+        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -513,10 +471,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "automation",
         "estimated_effort": "high",
-        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
-        "scan_agent": "scan-innovation"
+        "opportunity_type": "automation",
+        "scan_agent": "scan-innovation",
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring"
       }
     },
     {
@@ -565,8 +523,8 @@
       "custom_fields": {
         "scan_agent": "scan-innovation",
         "estimated_effort": "medium",
-        "opportunity_type": "analytics",
-        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management"
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
+        "opportunity_type": "analytics"
       }
     },
     {
@@ -613,10 +571,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
-        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
-        "opportunity_type": "ai-features"
+        "estimated_effort": "medium",
+        "opportunity_type": "ai-features",
+        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment"
       }
     },
     {
@@ -665,10 +623,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
-        "estimated_effort": "high",
         "opportunity_type": "integration",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
+        "estimated_effort": "high"
       }
     },
     {
@@ -717,8 +675,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
         "estimated_effort": "medium",
+        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
         "opportunity_type": "automation"
       }
     },
@@ -768,9 +726,9 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "high",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "ecosystem",
-        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
-        "scan_agent": "scan-innovation"
+        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability"
       }
     },
     {
@@ -819,10 +777,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "integration",
         "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
-        "estimated_effort": "medium"
+        "estimated_effort": "medium",
+        "opportunity_type": "integration",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -870,10 +828,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
         "opportunity_type": "reliability",
-        "estimated_effort": "medium",
-        "scan_agent": "scan-innovation"
+        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -922,10 +880,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "estimated_effort": "medium",
         "opportunity_type": "ux-improvement",
-        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety"
+        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety",
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium"
       }
     }
   ]
