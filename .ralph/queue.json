@@ -2,11 +2,455 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0717",
+      "status": "todo",
+      "title": "Stabilize make ci: fix flaky run_one_with_id_locked runnable-status assertion",
+      "description": "Principles violated: H (Operational hygiene), F (Fail fast), J (Consistency/Integrity).\n\nmake ci currently fails intermittently due to a brittle string-assertion in a core unit test. This blocks local CI and undermines trust in the test suite.\n\nEvidence:\n- Command: `make ci` failed at `test` with:\n  - failure: `commands::run::tests::run_one_with_id_locked_skips_reacquiring_queue_lock`\n  - panic: assertion failed: `message.contains(\"is not runnable\")`\n  - location: `crates/ralph/src/commands/run/tests.rs:312`\n- Re-run of the single test passed immediately afterward:\n  - Command: `cargo test -p ralph commands::run::tests::run_one_with_id_locked_skips_reacquiring_queue_lock -- --nocapture`\n- Test code: `crates/ralph/src/commands/run/tests.rs:260-315` asserts on substrings of `anyhow::Error::to_string()`, which can vary based on error context chaining or message changes.\n\nWhy it matters:\n- CI gate becomes unreliable; developers lose time chasing nondeterministic failures.\n- The test is validating user-facing error text, but in a way that is too fragile for `anyhow` context strings.\n\nMinimal proposed fix:\n- Stop asserting on a vague substring of `err.to_string()`; instead assert on a structured error (preferred) or on a stable, single-source error message constant.\n- If the error must remain string-based, ensure the production error path always includes a stable sentinel token (e.g., `NOT_RUNNABLE`) and assert on that token.\n- Add a regression test that runs the affected path multiple times in a loop to catch nondeterminism and prints the observed message on failure for debugging.\n\nAcceptance criteria:\n- `make ci` passes, and running it twice in a row passes.\n- `cargo test -p ralph` passes without intermittent failures.\n- The test asserts on a stable invariant (typed error or stable code/constant), not a brittle `anyhow` display string.",
+      "priority": "critical",
+      "tags": [
+        "maintenance",
+        "ci",
+        "flaky",
+        "tests"
+      ],
+      "scope": [
+        "make ci",
+        "crates/ralph/src/commands/run/tests.rs",
+        "crates/ralph/src/commands/run/run_one/mod.rs"
+      ],
+      "evidence": [
+        "make ci output: failure commands::run::tests::run_one_with_id_locked_skips_reacquiring_queue_lock at crates/ralph/src/commands/run/tests.rs:312 (assertion failed: message.contains(\"is not runnable\"))",
+        "Command: cargo test -p ralph commands::run::tests::run_one_with_id_locked_skips_reacquiring_queue_lock -- --nocapture (passes immediately after make ci failure)",
+        "File: crates/ralph/src/commands/run/tests.rs:260-315"
+      ],
+      "plan": [
+        "Inspect the error path in `crates/ralph/src/commands/run/run_one/mod.rs` and identify the intended invariant for 'not runnable' tasks.",
+        "Replace string-substring assertions in `crates/ralph/src/commands/run/tests.rs` with a stable check (typed error, error enum, or stable constant/token).",
+        "Add/adjust a regression test that prints the observed error message on failure and runs multiple iterations to catch flake.",
+        "Verify by running `make ci` twice consecutively."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0718",
+      "status": "todo",
+      "title": "Remove or register unused queue.json->queue.jsonc migration code to avoid misleading behavior",
+      "description": "Principles violated: B (YAGNI/dead code), J (Consistency/Integrity), G (Least astonishment).\n\nThe codebase contains file-migration helpers for renaming `.ralph/queue.json` to `.ralph/queue.jsonc` (and done.json to done.jsonc), but the migration registry does not register any file rename migrations. This creates misleading documentation/comments and a latent footgun if later registered without fixing config defaults.\n\nEvidence:\n- File migration functions exist and appear 'official': `crates/ralph/src/migration/file_migrations.rs:185-206` (`migrate_queue_json_to_jsonc`, applicability checks).\n- Migration registry only contains a single config-key rename migration: `crates/ralph/src/migration/registry.rs:40-47`.\n- Running `ralph migrate --list` in a repo with `.ralph/queue.json` shows no file migrations; only `config_key_rename_parallel_worktree_root_2026_02` is listed.\n- Default config still resolves queue path to `.ralph/queue.json`: `crates/ralph/src/config.rs:597-610`.\n\nWhy it matters:\n- Contributors/users reading migration docs/comments can assume queue.json->queue.jsonc is supported and applied, but it is not.\n- If this migration is registered later without also updating queue-path resolution, users on default config (no `queue.file`) could end up with a renamed file that Ralph no longer reads, appearing as an empty queue.\n\nMinimal proposed fix:\n- Pick one path and make it explicit:\n  1) Delete the unused queue/done json->jsonc convenience functions + tests and remove misleading references in module docs, OR\n  2) Register safe FileRename migrations and simultaneously update `resolve_queue_path`/`resolve_done_path` to auto-detect `.jsonc` when the default `.json` is missing (and document it).\n\nAcceptance criteria:\n- `ralph migrate --list` and `--apply` behavior matches what is documented (no orphaned migrations).\n- If file rename migrations are registered: a repo with only `.ralph/queue.jsonc` remains readable without requiring `queue.file` in config, and `make ci` passes.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "migrations",
+        "docs",
+        "correctness"
+      ],
+      "scope": [
+        "crates/ralph/src/migration/file_migrations.rs",
+        "crates/ralph/src/migration/registry.rs",
+        "crates/ralph/src/config.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "File: crates/ralph/src/migration/file_migrations.rs:185-206 defines queue.json->queue.jsonc migration helpers",
+        "File: crates/ralph/src/migration/registry.rs:40-47 registers only a config-key rename migration",
+        "File: crates/ralph/src/config.rs:597-610 defaults queue path to .ralph/queue.json"
+      ],
+      "plan": [
+        "Decide whether queue/done file renames are intended to be supported migrations.",
+        "If not intended: delete the queue/done json->jsonc helpers and update module docs/comments that claim this migration exists.",
+        "If intended: register FileRename migrations and update queue/done path resolution to auto-detect .jsonc when defaults are missing.",
+        "Add tests covering the chosen behavior (including default-config repos).",
+        "Verify by running `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0719",
+      "status": "todo",
+      "title": "Revalidate config after applying profile patches to prevent invalid profile values",
+      "description": "Principles violated: E (Make bugs hard to write), J (Consistency/Integrity), F (Fail fast).\n\nConfig validation currently runs before applying `--profile` patches, which allows a profile to introduce invalid config values without revalidation.\n\nEvidence:\n- `crates/ralph/src/config.rs:193-198` calls `validate_config(&cfg)?;` before `apply_profile_patch(&mut cfg, name)?;`.\n\nWhy it matters:\n- Profiles are a first-class feature; invalid values introduced by a profile should fail fast with actionable errors.\n- Without revalidation, illegal states can reach runtime paths and cause confusing downstream failures.\n\nMinimal proposed fix:\n- After `apply_profile_patch`, re-run `validate_config(&cfg)` (or validate the patch within `apply_profile_patch`).\n- Add a unit test where a custom profile sets an invalid value (e.g., `agent.iterations = 0` or `queue.id_width = 0`) and assert that resolution fails.\n\nAcceptance criteria:\n- New unit tests cover invalid profile values and confirm an error is returned during config resolution.\n- `cargo test -p ralph` and `make ci` pass.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "config",
+        "profiles",
+        "correctness"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "File: crates/ralph/src/config.rs:193-198 validates before applying profile patch"
+      ],
+      "plan": [
+        "Update config resolution to validate after applying a selected profile patch.",
+        "Add unit tests that create a profile with invalid values and assert config resolution fails.",
+        "Verify by running `cargo test -p ralph` and `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0720",
+      "status": "todo",
+      "title": "Stop silently ignoring invalid RFC3339 timestamps in history and burndown reports",
+      "description": "Principles violated: F (Fail fast appropriately), H (Operational hygiene), J (Consistency/Integrity).\n\nThe history and burndown reports currently ignore timestamp parse failures, which can silently drop tasks from reports and produce misleading analytics.\n\nEvidence:\n- History skips tasks with invalid timestamps by gating on `let Ok(dt) = parse_rfc3339(...)`: `crates/ralph/src/reports/history.rs:77-98`.\n- Burndown treats invalid timestamps as `None` via `.ok()`: `crates/ralph/src/reports/burndown.rs:88-96`.\n- Both modules document an invariant that timestamps are RFC3339 (`Invariants/assumptions` headers).\n\nWhy it matters:\n- Reports can undercount created/completed tasks or remaining tasks without any signal, leading to wrong decisions based on analytics.\n- Invalid timestamps should be surfaced as warnings (non-fatal) or errors (fatal), but not silently ignored.\n\nMinimal proposed fix:\n- Track timestamp parse errors and surface them:\n  - Option A: return an error when invalid timestamps are encountered (strict).\n  - Option B: include a warnings list in the report output (JSON and text) and log warnings (lenient).\n- Add unit tests covering malformed timestamps and asserting the chosen behavior.\n\nAcceptance criteria:\n- Malformed timestamps are surfaced (warning or error) rather than silently ignored.\n- Unit tests cover both history and burndown failure modes.\n- `cargo test -p ralph` and `make ci` pass.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "reports",
+        "correctness"
+      ],
+      "scope": [
+        "crates/ralph/src/reports/history.rs",
+        "crates/ralph/src/reports/burndown.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "File: crates/ralph/src/reports/history.rs:77-98 silently skips invalid created_at/completed_at timestamps",
+        "File: crates/ralph/src/reports/burndown.rs:88-96 silently treats invalid timestamps as None"
+      ],
+      "plan": [
+        "Decide strict vs lenient behavior for invalid timestamps (error vs warning).",
+        "Implement parse-error handling consistently in both history and burndown reports.",
+        "Add unit tests with malformed timestamps to assert behavior.",
+        "Verify by running `cargo test -p ralph` and `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0721",
+      "status": "todo",
+      "title": "Make crates/ralph/src/lib.rs start with module docs (//! on line 1) to match repo standards",
+      "description": "Principles violated: J (Consistency/Integrity), D (Localize change).\n\nRepo guidance requires module docs at the start of each Rust file. `crates/ralph/src/lib.rs` currently begins with an inner attribute and only introduces `//!` module docs starting at line 3.\n\nEvidence:\n- `crates/ralph/src/lib.rs:1-4` shows `#![...]` first and `//!` starts at line 3.\n\nWhy it matters:\n- Consistency: contributors rely on the invariant that files begin with responsibility/non-responsibility/invariants docs for fast navigation and review.\n- Tooling: simple checks for doc headers often assume first non-empty line is `//!`.\n\nMinimal proposed fix:\n- Move the `//!` header to line 1 and place `#![deny(...)]` immediately after it (standard Rust pattern).\n- Add/extend a lightweight test or lint script to enforce the “first non-empty line is `//!`” rule if desired.\n\nAcceptance criteria:\n- `crates/ralph/src/lib.rs` begins with `//!` module docs on line 1.\n- `cargo test -p ralph` and `make ci` pass.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "rust"
+      ],
+      "scope": [
+        "crates/ralph/src/lib.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "File: crates/ralph/src/lib.rs:1-4 (`//!` module docs do not start the file)"
+      ],
+      "plan": [
+        "Move `//!` module docs to the top of `crates/ralph/src/lib.rs` (line 1).",
+        "Ensure crate-level `#![...]` attributes remain effective after the doc comment.",
+        "Verify by running `cargo test -p ralph` and `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0722",
+      "status": "todo",
+      "title": "Widen Makefile backup-artifact check to catch .bak files created outside crates/ralph/src",
+      "description": "Principles violated: H (Operational hygiene), J (Consistency/Integrity).\n\n`make ci` includes a `check-backup-artifacts` step, but it only searches `crates/ralph/src/` for `*.bak` files. Release scripts create `.bak` files in other locations (e.g., `crates/ralph/Cargo.toml.bak`, temp files), and if a script fails before cleanup, these backups can be left behind unnoticed.\n\nEvidence:\n- `Makefile:116-123` searches only `crates/ralph/src/` for `*.bak`.\n- `scripts/release.sh:219-221` uses `sed -i.bak` on `crates/ralph/Cargo.toml`.\n- `scripts/release.sh:333-339` uses `sed -i.bak` on a temp file before cleanup.\n\nWhy it matters:\n- Stray `.bak` files can be accidentally committed or confuse tooling.\n- CI should fail fast when backup artifacts exist anywhere relevant, not just in one subtree.\n\nMinimal proposed fix:\n- Update `check-backup-artifacts` to scan the repo for `*.bak` (excluding `.git/` and optionally `target/`), and print actionable output.\n- Consider adding `trap` cleanup in scripts that create `.bak` files so cleanup happens on failure paths.\n\nAcceptance criteria:\n- `make check-backup-artifacts` fails when a `.bak` file exists outside `crates/ralph/src/` (with clear error message).\n- `make ci` still passes in a clean repo.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "makefile",
+        "release",
+        "ops"
+      ],
+      "scope": [
+        "Makefile",
+        "scripts/release.sh",
+        "make check-backup-artifacts"
+      ],
+      "evidence": [
+        "File: Makefile:116-123 only checks crates/ralph/src for *.bak",
+        "File: scripts/release.sh:219-221 creates Cargo.toml.bak via sed -i.bak"
+      ],
+      "plan": [
+        "Update `check-backup-artifacts` to search an appropriate repo-wide set of paths for `*.bak`.",
+        "Add a small test or CI contract test that creates a dummy `.bak` outside crates/ralph/src and asserts the Makefile target fails.",
+        "Verify by running `make check-backup-artifacts` and `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0723",
+      "status": "todo",
+      "title": "Fix generate-changelog.sh help examples: add missing Makefile targets or remove misleading references",
+      "description": "Principles violated: J (Consistency/Integrity), G (Least astonishment).\n\n`scripts/generate-changelog.sh --help` advertises `make changelog` and `make changelog-preview`, but the Makefile does not define those targets.\n\nEvidence:\n- Help text includes Makefile targets: `scripts/generate-changelog.sh:295-300`.\n- `Makefile` contains no `changelog` targets (`rg -n changelog Makefile` finds nothing).\n\nWhy it matters:\n- Users following `--help` instructions hit dead ends, harming UX and trust.\n\nMinimal proposed fix:\n- Either add Makefile targets:\n  - `changelog`: runs `scripts/generate-changelog.sh`\n  - `changelog-preview`: runs `scripts/generate-changelog.sh --dry-run`\n- Or remove the Makefile examples from `--help` output and keep script-only examples.\n\nAcceptance criteria:\n- `scripts/generate-changelog.sh --help` examples are correct.\n- If Makefile targets are added: `make changelog-preview` runs successfully and does not modify CHANGELOG.md.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "scripts",
+        "docs",
+        "makefile"
+      ],
+      "scope": [
+        "scripts/generate-changelog.sh",
+        "Makefile",
+        "scripts/generate-changelog.sh --help"
+      ],
+      "evidence": [
+        "File: scripts/generate-changelog.sh:295-300 references make changelog targets",
+        "Command: rg -n changelog Makefile (no matches)"
+      ],
+      "plan": [
+        "Decide whether to add Makefile targets or adjust script help text.",
+        "Implement the chosen fix (targets and/or help text changes).",
+        "Add/update an existing help-output contract test if needed.",
+        "Verify by running `scripts/generate-changelog.sh --help` and (if applicable) `make changelog-preview`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0724",
+      "status": "todo",
+      "title": "Make release artifact builds reproducible: use cargo build --locked in build-release-artifacts.sh",
+      "description": "Principles violated: I (Security baseline), H (Operational hygiene), J (Consistency/Integrity).\n\nRelease artifact builds should be reproducible and pinned to `Cargo.lock`. `scripts/build-release-artifacts.sh` currently uses `cargo build --release` without `--locked`, which can allow dependency resolution drift during release builds.\n\nEvidence:\n- `scripts/build-release-artifacts.sh:115-117` runs `cargo build --release -p ralph --target ...` with no `--locked`.\n\nWhy it matters:\n- Release binaries may be built against unintended dependency versions, harming reproducibility and increasing supply-chain risk.\n\nMinimal proposed fix:\n- Add `--locked` to cargo invocations in `scripts/build-release-artifacts.sh`.\n- Ensure error messaging remains actionable if Cargo.lock is out of date.\n\nAcceptance criteria:\n- `scripts/build-release-artifacts.sh --help` still works and examples remain valid.\n- A local dry run of the script (current-target path) succeeds using `--locked`.\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "release",
+        "security",
+        "scripts"
+      ],
+      "scope": [
+        "scripts/build-release-artifacts.sh",
+        "make ci"
+      ],
+      "evidence": [
+        "File: scripts/build-release-artifacts.sh:115-117 cargo build without --locked"
+      ],
+      "plan": [
+        "Add `--locked` to cargo build invocations in `scripts/build-release-artifacts.sh`.",
+        "Run `scripts/build-release-artifacts.sh --help` and (optionally) a current-platform build to validate behavior.",
+        "Verify by running `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0725",
+      "status": "todo",
+      "title": "Centralize queue ID prefix/width validation to avoid drift between config and queue validation",
+      "description": "Principles violated: C (DRY), J (Consistency/Integrity).\n\nQueue ID prefix/width validation rules are duplicated across config resolution and queue validation, increasing drift risk (different error messages or constraints over time).\n\nEvidence:\n- Config validation: `crates/ralph/src/config.rs:586-595` validates and resolves `queue.id_prefix` and `queue.id_width`.\n- Queue validation: `crates/ralph/src/queue/validation.rs:64-75` independently validates `id_width` and `id_prefix`.\n\nWhy it matters:\n- Users can get inconsistent behavior/errors depending on whether a code path hits config validation first vs queue validation.\n- Maintaining one canonical set of rules reduces defect risk.\n\nMinimal proposed fix:\n- Move ID prefix/width validation into a shared helper (e.g., `queue::validation::{validate_id_prefix, validate_id_width}`) and call it from both config and queue validation.\n- Add unit tests asserting a single canonical error message for invalid prefix/width.\n\nAcceptance criteria:\n- One source of truth for ID prefix/width validation is used by both config resolution and queue validation.\n- Unit tests cover invalid values (empty prefix, width 0).\n- `cargo test -p ralph` and `make ci` pass.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "dry",
+        "validation",
+        "config",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/queue/validation.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "File: crates/ralph/src/config.rs:586-595 validates id_prefix/id_width",
+        "File: crates/ralph/src/queue/validation.rs:64-75 re-validates id_prefix/id_width"
+      ],
+      "plan": [
+        "Extract shared ID prefix/width validation helpers.",
+        "Replace duplicated logic in config resolution and queue validation with calls to the shared helpers.",
+        "Add unit tests to lock error messages and behavior.",
+        "Verify by running `cargo test -p ralph` and `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0726",
+      "status": "todo",
+      "title": "Reuse config validation in TUI config editor to keep error rules/messages consistent",
+      "description": "Principles violated: C (DRY), G (Least astonishment), J (Consistency/Integrity).\n\nThe TUI config editor enforces certain validations (e.g., `queue.id_width > 0`, `agent.iterations > 0`) with bespoke error messages, duplicating `crates/ralph/src/config.rs` validation rules.\n\nEvidence:\n- TUI validation snippets: `crates/ralph/src/tui/config_edit.rs:450-481` enforce `queue.id_width` and `agent.iterations` constraints.\n- Config validation rules live elsewhere and can drift: `crates/ralph/src/config.rs:586-595` and other config validation helpers.\n\nWhy it matters:\n- Users get inconsistent validation behavior and error messages between CLI config validation and TUI editing.\n- Duplicated rule implementations increase maintenance burden and bug risk.\n\nMinimal proposed fix:\n- Extract shared validators (or reuse existing ones) so both config resolution and TUI editing share a single source of truth.\n- Add unit tests covering TUI edit attempts for invalid values and asserting consistent messages/behavior.\n\nAcceptance criteria:\n- `queue.id_width` and `agent.iterations` validation rules are shared (not duplicated).\n- TUI unit tests verify invalid inputs return the expected errors.\n- `cargo test -p ralph` and `make ci` pass.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "tui",
+        "validation",
+        "dry"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/config_edit.rs",
+        "crates/ralph/src/config.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "File: crates/ralph/src/tui/config_edit.rs:450-481 validates queue.id_width and agent.iterations",
+        "File: crates/ralph/src/config.rs:586-595 validates id_prefix/id_width in config resolution"
+      ],
+      "plan": [
+        "Identify and extract shared validation functions for the edited config keys.",
+        "Update TUI config editor to call shared validators and reuse canonical error messages.",
+        "Add unit tests covering invalid TUI edits for queue.id_width and agent.iterations.",
+        "Verify by running `cargo test -p ralph` and `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0727",
+      "status": "todo",
+      "title": "Add dedicated migrations documentation page and link it from docs index and CLI reference",
+      "description": "Principles violated: J (Consistency/Integrity), H (Operational hygiene).\n\nMigrations are a core workflow feature (`ralph migrate`) but there is no dedicated documentation page explaining migration types, safety/backups, history tracking, and recovery.\n\nEvidence:\n- `docs/` contains no `migrations.md` (see `ls docs`).\n- `docs/index.md:7-17` does not link any migration guide, despite `ralph migrate` being a core command.\n\nWhy it matters:\n- Users and contributors lack a single source of truth for what migrations do and how to apply/rollback safely.\n- Increases support burden and risk of incorrect usage (e.g., running with `--force` without understanding).\n\nMinimal proposed fix:\n- Create `docs/migrations.md` covering:\n  - when migrations are checked\n  - how to list/check/apply\n  - `--auto-fix` behavior\n  - backup/history files (paths, invariants)\n  - examples for common migration scenarios\n- Link it from `docs/index.md` and cross-link from `docs/cli.md` migrate section.\n\nAcceptance criteria:\n- `docs/migrations.md` exists and includes runnable CLI examples.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "migrations"
+      ],
+      "scope": [
+        "docs/index.md",
+        "docs/cli.md",
+        "docs/migrations.md"
+      ],
+      "evidence": [
+        "File: docs/index.md:7-17 has no migration doc link",
+        "Command: ls docs (no docs/migrations.md present)"
+      ],
+      "plan": [
+        "Create `docs/migrations.md` describing migration system behavior, safety, and examples.",
+        "Add links from `docs/index.md` and relevant sections of `docs/cli.md`.",
+        "Verify by checking links resolve (relative paths) and running `rg -n migrations.md docs/index.md docs/cli.md`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0728",
+      "status": "todo",
+      "title": "Resolve clippy vec-init-then-push suggestion in daemon_integration_test temp dir selection",
+      "description": "Principles violated: A (KISS), J (Consistency/Integrity).\n\nClippy emits `clippy::vec-init-then-push` for `crates/ralph/tests/daemon_integration_test.rs`, suggesting the code should use `vec![..]` initialization. While this does not currently fail the lint step, it is noisy and can become a hard failure if lint configuration changes.\n\nEvidence:\n- `make ci` clippy output reported:\n  - warning: calls to `push` immediately after creation\n  - location: `crates/ralph/tests/daemon_integration_test.rs:48-50`\n- Source: `crates/ralph/tests/daemon_integration_test.rs:48-51` uses `let mut candidates: Vec<PathBuf> = Vec::new();` then pushes.\n\nWhy it matters:\n- Keeps CI/lint output clean and reduces future churn.\n\nMinimal proposed fix:\n- Replace with `let candidates: Vec<PathBuf> = vec![std::env::temp_dir(), PathBuf::from(\"/tmp\")];` and iterate.\n\nAcceptance criteria:\n- `make lint` emits no warning for `clippy::vec-init-then-push` in that test.\n- `make ci` passes.",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "clippy",
+        "tests"
+      ],
+      "scope": [
+        "crates/ralph/tests/daemon_integration_test.rs",
+        "make lint"
+      ],
+      "evidence": [
+        "File: crates/ralph/tests/daemon_integration_test.rs:48-51 (vec init then push)",
+        "make ci clippy output: clippy::vec-init-then-push at crates/ralph/tests/daemon_integration_test.rs:48-50"
+      ],
+      "plan": [
+        "Apply the `vec![..]` initialization refactor in `crates/ralph/tests/daemon_integration_test.rs`.",
+        "Run `make lint` to confirm clippy warning is gone.",
+        "Verify by running `make ci`."
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T17:35:59Z",
+      "updated_at": "2026-02-07T17:35:59Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
       "id": "RQ-0692",
       "status": "todo",
-      "priority": "high",
       "title": "Add unit tests for core run loop execution (commands/run/)",
       "description": "The core run loop and execution logic in commands/run/ lacks unit test coverage. This is the highest-risk module as bugs here affect all task runs. Files like run_loop.rs (736 lines), run_one/orchestration.rs (991 lines), and all phase files (phase1.rs, phase2.rs, phase3.rs, single.rs) have zero unit tests despite being critical execution paths.\n\nGoals:\n1. Add unit tests for run_loop.rs covering normal execution, error handling, and interruption\n2. Add tests for orchestration.rs covering task preparation, runner invocation, and result handling\n3. Add tests for each phase (phase1, phase2, phase3, single) covering success and failure paths\n4. Mock runner execution for isolated testing\n5. Test session management and cleanup",
+      "priority": "high",
       "tags": [
         "scan",
         "test",
@@ -43,23 +487,25 @@
         "Test session ID generation format: {task_id}-p{phase}-{timestamp}",
         "Verify by running `cargo test -p ralph commands::run` and confirming coverage"
       ],
+      "notes": [
+        "Priority: High - Core execution path with zero test coverage"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: High - Core execution path with zero test coverage"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0693",
       "status": "todo",
-      "priority": "high",
       "title": "Add unit tests for queue operations (queue/)",
       "description": "The queue module contains the data foundation for all task operations. Corruption here is catastrophic. Files in queue/operations/, queue/graph/, and queue/search/ lack unit tests despite handling critical data operations like task mutations, graph algorithms, and search functionality.\n\nGoals:\n1. Add tests for queue operations: query.rs, mutation.rs, status.rs, archive.rs\n2. Add tests for graph operations: algorithms.rs, build.rs, traversal.rs\n3. Add tests for search operations: substring.rs, normalize.rs, options.rs\n4. Test edge cases: empty queues, malformed data, concurrent modifications\n5. Test validation logic in validation.rs",
+      "priority": "high",
       "tags": [
         "scan",
         "test",
@@ -97,23 +543,25 @@
         "Test validation: validate_queue(), validate_queue_set(), handle malformed JSON",
         "Verify by running `cargo test -p ralph queue::` and checking coverage report"
       ],
+      "notes": [
+        "Priority: High - Data foundation with zero test coverage"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: High - Data foundation with zero test coverage"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0694",
       "status": "todo",
-      "priority": "high",
       "title": "Add unit tests for runner execution system",
       "description": "The runner module handles process management, output streaming, and runner configuration. This module manages external process execution and has zero unit tests despite the high risk of race conditions, I/O errors, and process management bugs.\n\nGoals:\n1. Add tests for runner/execution/stream.rs (759 lines) - output streaming logic\n2. Add tests for runner/execution/json.rs - JSON result parsing\n3. Add tests for runner/execution/runners.rs - runner management\n4. Add tests for runner/settings.rs - runner configuration\n5. Test error handling: process failures, timeouts, invalid JSON, stream errors",
+      "priority": "high",
       "tags": [
         "scan",
         "test",
@@ -148,23 +596,25 @@
         "Mock external runners for isolated testing",
         "Verify by running `cargo test -p ralph runner::` and confirming coverage"
       ],
+      "notes": [
+        "Priority: High - Process management with zero test coverage"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: High - Process management with zero test coverage"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0695",
       "status": "todo",
-      "priority": "high",
       "title": "Fix timing-dependent flaky tests in lock_race_cleanup_test.rs",
       "description": "The lock_race_cleanup_test.rs file contains multiple tests that rely on fixed-duration thread::sleep() calls for synchronization. This is an anti-pattern that causes flaky tests on slower/faster systems. Tests like test_rapid_acquire_release_no_leak use 2ms sleep x 50 cycles which may fail under load.\n\nGoals:\n1. Replace thread::sleep(Duration::from_millis(50/100)) with polling + timeout pattern\n2. Fix test_rapid_acquire_release_no_leak - remove hardcoded 2ms sleeps\n3. Ensure tests are deterministic and pass consistently across different system loads\n4. Maintain test coverage while improving reliability",
+      "priority": "high",
       "tags": [
         "scan",
         "test",
@@ -191,23 +641,25 @@
         "Run tests 10 times in a row: for i in {1..10}; do cargo test -p ralph lock_race; done",
         "Verify all tests pass consistently without flakiness"
       ],
+      "notes": [
+        "Priority: High - Flaky tests reduce CI reliability and developer trust"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: High - Flaky tests reduce CI reliability and developer trust"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0696",
       "status": "todo",
-      "priority": "high",
       "title": "Fix timing-dependent flaky tests in webhook_integration_test.rs",
       "description": "The webhook_integration_test.rs file uses fixed-duration thread::sleep() calls (200ms-2000ms) to wait for async operations. This causes flaky tests and unnecessarily slow test execution. Some tests also have weak assertions that only verify 'no panic occurred' rather than actual behavior.\n\nGoals:\n1. Replace fixed sleeps (200ms, 500ms, 1500ms) with polling + timeout pattern\n2. Strengthen weak assertions in webhook_retries_failed_deliveries, webhook_drop_new_policy, webhook_drop_oldest_policy\n3. Reduce test execution time while maintaining reliability\n4. Add proper verification of retry counts, drop behavior, and queue state",
+      "priority": "high",
       "tags": [
         "scan",
         "test",
@@ -237,23 +689,25 @@
         "Run tests 10 times to verify no flakiness",
         "Measure test execution time before/after optimization"
       ],
+      "notes": [
+        "Priority: High - Flaky tests and weak assertions reduce confidence"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: High - Flaky tests and weak assertions reduce confidence"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0697",
       "status": "todo",
-      "priority": "medium",
       "title": "Consolidate duplicate test helper functions across test files",
       "description": "Multiple integration test files contain duplicate helper functions that already exist in test_support.rs. This creates maintenance overhead and inconsistency. Files like daemon_integration_test.rs and safeguard_integration_test.rs duplicate functions for git setup, CLI execution, and runner configuration.\n\nGoals:\n1. Remove duplicate ralph_bin() from daemon_integration_test.rs - use test_support::ralph_bin()\n2. Remove duplicate temp_dir_outside_repo() from daemon_integration_test.rs - use test_support version\n3. Remove duplicate git_init(), configure_runner(), create_fake_runner() from safeguard_integration_test.rs\n4. Ensure all integration tests use shared helpers from test_support.rs\n5. Document the test_support module pattern for future tests",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -283,23 +737,25 @@
         "Run cargo test -p ralph daemon_integration safeguard_integration to verify",
         "Verify make ci passes after consolidation"
       ],
+      "notes": [
+        "Priority: Medium - Code quality and maintenance overhead"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - Code quality and maintenance overhead"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0698",
       "status": "todo",
-      "priority": "medium",
       "title": "Install and configure cargo-llvm-cov for test coverage reporting",
       "description": "The project currently lacks code coverage tooling. cargo-llvm-cov is not installed, making it impossible to measure test coverage or identify untested code paths. This is essential for prioritizing test additions and tracking coverage improvements.\n\nGoals:\n1. Install cargo-llvm-cov: cargo install cargo-llvm-cov\n2. Add coverage target to Makefile: make coverage\n3. Configure coverage thresholds and exclusions (target/, tests/, generated code)\n4. Add coverage report generation (HTML and LCOV formats)\n5. Document how to run coverage locally\n6. Optionally add coverage badge to README.md",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -331,23 +787,25 @@
         "Verify by running make coverage and viewing target/coverage/html/index.html",
         "Verify coverage data shows current baseline (~65% line coverage)"
       ],
+      "notes": [
+        "Priority: Medium - Essential for measuring and improving test coverage"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - Essential for measuring and improving test coverage"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0699",
       "status": "todo",
-      "priority": "medium",
       "title": "Add nextest configuration for faster test execution",
       "description": "The project currently uses default cargo test which runs tests sequentially. Adding nextest configuration would enable parallel test execution, retries for flaky tests, and better test output formatting. This would significantly reduce CI time and improve developer experience.\n\nGoals:\n1. Install cargo-nextest: cargo install cargo-nextest\n2. Create nextest.toml configuration file\n3. Configure test profiles: default (parallel), ci (retries, fail-fast), local (fast feedback)\n4. Update Makefile to use nextest for test and ci targets\n5. Configure retries for known flaky tests\n6. Document nextest usage in CONTRIBUTING.md",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -381,23 +839,25 @@
         "Verify by running make test and measuring execution time improvement",
         "Ensure all tests pass with nextest (check for test interdependencies)"
       ],
+      "notes": [
+        "Priority: Medium - Significant CI speed improvement"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - Significant CI speed improvement"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0700",
       "status": "todo",
-      "priority": "medium",
       "title": "Add doc tests for queue operations public APIs",
       "description": "The queue operations module contains public APIs that are missing documentation examples. Functions like load_queue(), find_task(), next_todo_task(), set_status(), and complete_task() have no doc test examples showing how to use them correctly. This makes the API harder to discover and use correctly.\n\nGoals:\n1. Add doc examples to load_queue(), save_queue(), load_queue_or_default() in queue.rs\n2. Add doc examples to find_task(), next_todo_task(), next_runnable_task() in queue/operations/query.rs\n3. Add doc examples to set_status(), complete_task(), promote_draft_to_todo() in queue/operations/status.rs\n4. Add doc examples to sort_tasks_by_priority(), split_task() in queue/operations/mutation.rs\n5. Ensure all examples are runnable tests (using ```)",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -431,23 +891,25 @@
         "Run cargo test --doc to verify all examples compile and pass",
         "Run cargo doc --no-deps to generate and review documentation"
       ],
+      "notes": [
+        "Priority: Medium - API discoverability and correctness examples"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - API discoverability and correctness examples"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0701",
       "status": "todo",
-      "priority": "medium",
       "title": "Add unit tests for CLI queue commands",
       "description": "The CLI queue command handlers in cli/queue/ lack unit tests. These files handle user-facing queue operations like archive, burndown, graph, history, list, prune, repair, search, show, sort, and stats. All 18 queue CLI files have zero unit tests despite being heavily used by users.\n\nGoals:\n1. Add unit tests for cli/queue/archive.rs - archive command handling\n2. Add unit tests for cli/queue/burndown.rs - burndown report generation\n3. Add unit tests for cli/queue/graph.rs - graph command (774 lines)\n4. Add unit tests for cli/queue/list.rs - list command formatting\n5. Add unit tests for cli/queue/search.rs - search command parsing\n6. Test error handling: invalid arguments, file not found, malformed queue",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -486,23 +948,25 @@
         "Use test_support helpers for temp queue files and CLI invocation",
         "Verify by running `cargo test -p ralph cli::queue` and checking coverage"
       ],
+      "notes": [
+        "Priority: Medium - User-facing CLI commands need test coverage"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - User-facing CLI commands need test coverage"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0702",
       "status": "todo",
-      "priority": "medium",
       "title": "Add unit tests for CLI task commands",
       "description": "The CLI task command handlers in cli/task/ lack unit tests. These files handle user-facing task operations like build, clone, edit, refactor, relations, schedule, show, start, status, and template. These are critical user workflows that currently have no unit test coverage.\n\nGoals:\n1. Add unit tests for cli/task/build.rs - task creation from prompt\n2. Add unit tests for cli/task/clone.rs - task cloning with options\n3. Add unit tests for cli/task/edit.rs - interactive task editing\n4. Add unit tests for cli/task/relations.rs - task dependency management\n5. Add unit tests for cli/task/show.rs - task display formatting\n6. Test error handling: invalid task IDs, missing tasks, permission errors",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -542,23 +1006,25 @@
         "Use test_support helpers for temp queue files and task fixtures",
         "Verify by running `cargo test -p ralph cli::task` and checking coverage"
       ],
+      "notes": [
+        "Priority: Medium - Primary user workflows need test coverage"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - Primary user workflows need test coverage"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0703",
       "status": "todo",
-      "priority": "medium",
       "title": "Add error case coverage for config_test.rs",
       "description": "The config_test.rs file tests config loading but lacks coverage for error cases like malformed JSON, missing files, and invalid values. Adding these tests would improve confidence in config handling robustness.\n\nGoals:\n1. Add test for malformed JSON in config file\n2. Add test for missing config file (should use defaults)\n3. Add test for invalid runner configuration\n4. Add test for invalid model settings\n5. Add test for config file permission errors\n6. Test config merging edge cases: conflicting values, missing layers",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -587,23 +1053,25 @@
         "Add test_invalid_phase_configuration: Invalid phase count/settings, verify error",
         "Verify by running `cargo test -p ralph config` and checking all tests pass"
       ],
+      "notes": [
+        "Priority: Medium - Error handling needs test coverage"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - Error handling needs test coverage"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0705",
       "status": "todo",
-      "priority": "medium",
       "title": "Add tests for runner output streaming edge cases",
       "description": "The runner/execution/stream.rs file (759 lines) handles output streaming from external processes but lacks unit tests. This module is critical as it processes all AI agent output and is prone to edge cases like very long lines, binary data, encoding issues, and partial reads.\n\nGoals:\n1. Add tests for line buffering with various newline styles (\\n, \\r\\n, \\r)\n2. Add tests for very long lines that exceed buffer size\n3. Add tests for binary data and non-UTF8 sequences\n4. Add tests for partial reads and interrupted streams\n5. Add tests for concurrent stdout/stderr merging\n6. Test error handling: broken pipe, stream closed unexpectedly",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -634,23 +1102,25 @@
         "Add test_empty_output: Runner produces no output",
         "Verify by running `cargo test -p ralph runner::execution::stream`"
       ],
+      "notes": [
+        "Priority: Medium - Edge case coverage for critical streaming module"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - Edge case coverage for critical streaming module"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0709",
       "status": "todo",
-      "priority": "medium",
       "title": "Add unit tests for queue graph algorithms",
       "description": "The queue graph module handles dependency resolution, cycle detection, and topological sorting but has no unit tests. These algorithms are critical for task dependency management and bugs here can cause incorrect task ordering or infinite loops.\n\nGoals:\n1. Add tests for queue/graph/algorithms.rs - dependency resolution\n2. Add tests for queue/graph/build.rs - graph construction\n3. Add tests for queue/graph/traversal.rs - graph traversal\n4. Add tests for queue/graph/types.rs - graph data structures\n5. Test cycle detection: detect and report dependency cycles\n6. Test topological sort: correct ordering respecting dependencies",
+      "priority": "medium",
       "tags": [
         "scan",
         "test",
@@ -684,23 +1154,25 @@
         "Use test_support::make_test_task() for creating test task graphs",
         "Verify by running `cargo test -p ralph queue::graph` and checking coverage"
       ],
+      "notes": [
+        "Priority: Medium - Critical algorithms for dependency management"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Medium - Critical algorithms for dependency management"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0704",
       "status": "todo",
-      "priority": "low",
       "title": "Add unit tests for TUI app components",
       "description": "The TUI module has 75 files without unit tests. While UI testing is harder than business logic testing, core components like app_tasks.rs, app_session.rs, and app_runtime.rs contain business logic that can and should be tested. The TUI rendering tests exist but the app logic tests are missing.\n\nGoals:\n1. Add tests for tui/app_tasks.rs - task list management, selection, filtering\n2. Add tests for tui/app_session.rs - session state management\n3. Add tests for tui/app_runtime.rs - runtime state, execution tracking\n4. Add tests for tui/app_palette_ops.rs - palette/command operations\n5. Test error handling: invalid task IDs, state inconsistencies\n6. Use TestBackend for rendering assertions where applicable",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -735,23 +1207,25 @@
         "Use existing tui_rendering_support.rs for test infrastructure",
         "Verify by running `cargo test -p ralph tui::app` and checking coverage"
       ],
+      "notes": [
+        "Priority: Low - App logic testing, rendering already covered"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - App logic testing, rendering already covered"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0706",
       "status": "todo",
-      "priority": "low",
       "title": "Document local-CI-first policy in README.md",
       "description": "The project follows a 'local-CI-first' philosophy as stated in CONTRIBUTING.md and AGENTS.md. However, this is not prominently documented in README.md where external contributors would first look. This can cause confusion for contributors expecting GitHub Actions or other remote CI.\n\nGoals:\n1. Add 'Local CI First' section to README.md\n2. Explain why remote CI is avoided (builds trust in local verification)\n3. Document the make ci workflow and what it checks\n4. Mention that PRs will not be accepted if make ci fails\n5. Keep it concise - 2-3 paragraphs maximum",
+      "priority": "low",
       "tags": [
         "scan",
         "documentation",
@@ -780,23 +1254,25 @@
         "Verify by viewing rendered README.md",
         "Ensure make ci passes after documentation change"
       ],
+      "notes": [
+        "Priority: Low - Documentation improvement for contributor clarity"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - Documentation improvement for contributor clarity"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0707",
       "status": "todo",
-      "priority": "low",
       "title": "Add unit tests for prompt internal modules",
       "description": "The prompts_internal module contains core logic for worker prompts, task building, scanning, and review but has no unit tests. These modules generate prompts that are sent to AI runners and are critical for correct operation. Files like worker.rs, worker_phases.rs, task_builder.rs, and scan.rs lack tests.\n\nGoals:\n1. Add tests for prompts_internal/worker.rs - worker prompt generation\n2. Add tests for prompts_internal/worker_phases.rs - phase-specific prompts\n3. Add tests for prompts_internal/task_builder.rs - task creation prompts\n4. Add tests for prompts_internal/scan.rs - scan prompt generation\n5. Add tests for prompts_internal/review.rs - review prompt generation\n6. Verify prompt output contains expected sections and formatting",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -830,23 +1306,25 @@
         "Test with various task configurations: different priorities, statuses, tags",
         "Verify by running `cargo test -p ralph prompts_internal` and checking coverage"
       ],
+      "notes": [
+        "Priority: Low - AI prompt generation testing"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - AI prompt generation testing"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0708",
       "status": "todo",
-      "priority": "low",
       "title": "Add property-based tests for timeutil operations",
       "description": "The timeutil_test.rs file tests timestamp parsing and formatting but uses fixed test cases. Property-based testing would provide better coverage for edge cases like leap years, timezone transitions, and boundary values. This is especially important for ETA calculations and history tracking.\n\nGoals:\n1. Add property-based tests for timestamp parsing (roundtrip property)\n2. Add property-based tests for duration formatting\n3. Add property-based tests for ETA calculations\n4. Test edge cases: leap years, DST transitions, unix epoch boundaries\n5. Use proptest or quickcheck for property generation",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -876,23 +1354,25 @@
         "Verify by running `cargo test -p ralph timeutil` with proptest",
         "Document property-based testing approach in test file"
       ],
+      "notes": [
+        "Priority: Low - Property-based testing for time operations"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - Property-based testing for time operations"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0710",
       "status": "todo",
-      "priority": "low",
       "title": "Add unit tests for task status transitions",
       "description": "The task status transition logic in queue/operations/status.rs and contracts/task.rs lacks comprehensive unit tests. Status transitions have business rules (e.g., can only complete from in_progress) that need verification.\n\nGoals:\n1. Add tests for valid status transitions: draft->todo, todo->in_progress, in_progress->done\n2. Add tests for invalid transitions: done->todo, in_progress->draft (should fail)\n3. Add tests for complete_task() with notes and signals\n4. Add tests for promote_draft_to_todo()\n5. Test status transition validation in contracts/task.rs",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -924,23 +1404,25 @@
         "Use test_support::make_test_task() with different statuses",
         "Verify by running `cargo test -p ralph status` and checking coverage"
       ],
+      "notes": [
+        "Priority: Low - State machine testing for task lifecycle"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - State machine testing for task lifecycle"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0711",
       "status": "todo",
-      "priority": "low",
       "title": "Add doc tests for config handling public APIs",
       "description": "The config module public APIs lack documentation examples. Functions like resolve_from_cwd(), load_layer(), apply_layer(), and validate_config() are used throughout the codebase but have no doc examples showing correct usage.\n\nGoals:\n1. Add doc examples to config.rs: resolve_from_cwd(), resolve_from_cwd_with_profile()\n2. Add doc examples to config.rs: load_layer(), apply_layer(), save_layer()\n3. Add doc examples to config.rs: validate_config(), find_repo_root()\n4. Add doc examples for ID settings: resolve_id_prefix(), resolve_id_width()\n5. Ensure all examples are runnable tests",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -970,23 +1452,25 @@
         "Run cargo test --doc to verify all examples compile and pass",
         "Run cargo doc --no-deps to review generated documentation"
       ],
+      "notes": [
+        "Priority: Low - API discoverability for config module"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - API discoverability for config module"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0712",
       "status": "todo",
-      "priority": "low",
       "title": "Add cross-platform test coverage for lock handling",
       "description": "The lock handling code in lock.rs uses platform-specific code for stale PID detection (Unix only via #[cfg(unix)]). There are no tests for Windows behavior or tests verifying graceful degradation when PID detection is unavailable.\n\nGoals:\n1. Add tests for Unix-specific PID-based stale lock detection\n2. Add tests for non-Unix fallback behavior (no PID detection)\n3. Test behavior when /proc/PID is not accessible\n4. Test lock file permission errors on different platforms\n5. Document platform differences in lock behavior",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -1018,23 +1502,25 @@
         "Verify by running tests on Unix and checking code coverage",
         "Note Windows-specific behavior in comments for future testing"
       ],
+      "notes": [
+        "Priority: Low - Cross-platform lock behavior verification"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - Cross-platform lock behavior verification"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0713",
       "status": "todo",
-      "priority": "low",
       "title": "Add unit tests for contracts module",
       "description": "The contracts module defines core data structures and validation logic but lacks unit tests. Files like contracts/task.rs, contracts/config.rs, and contracts/queue.rs contain validation logic that should be tested to ensure data integrity.\n\nGoals:\n1. Add tests for contracts/task.rs: Task validation, TaskStatus transitions\n2. Add tests for contracts/config.rs: Config validation, schema compliance\n3. Add tests for contracts/queue.rs: Queue validation, task ID uniqueness\n4. Add tests for validation error messages\n5. Test edge cases: Empty strings, invalid dates, oversized fields",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -1068,23 +1554,25 @@
         "Test serialization: Roundtrip through JSON, verify no data loss",
         "Verify by running `cargo test -p ralph contracts` and checking coverage"
       ],
+      "notes": [
+        "Priority: Low - Data contract validation testing"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - Data contract validation testing"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0714",
       "status": "todo",
-      "priority": "low",
       "title": "Add module-level documentation to queue operations files",
       "description": "Most queue/operations/*.rs files and queue/search/*.rs files lack module-level documentation (//! comments). This makes it harder for developers to understand the purpose and responsibilities of each module. According to AGENTS.md, every source file must have module docs stating what it handles and what it does NOT handle.\n\nGoals:\n1. Add module docs to queue/operations/query.rs\n2. Add module docs to queue/operations/mutation.rs\n3. Add module docs to queue/operations/status.rs\n4. Add module docs to queue/operations/archive.rs\n5. Add module docs to queue/search/mod.rs and search/*.rs\n6. Follow AGENTS.md format: responsibilities, not handled, invariants",
+      "priority": "low",
       "tags": [
         "scan",
         "documentation",
@@ -1121,23 +1609,25 @@
         "Verify no warnings: RUSTDOCFLAGS='-D warnings' cargo doc",
         "Check that all modified files have complete module docs"
       ],
+      "notes": [
+        "Priority: Low - Documentation completeness for queue modules"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - Documentation completeness for queue modules"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0715",
       "status": "todo",
-      "priority": "low",
       "title": "Add missing error case coverage for queue_next_test.rs",
       "description": "The queue_next_test.rs file has only one test case and lacks error scenarios. It should test corrupted queues, missing files, and invalid task states to ensure robust error handling when selecting the next task.\n\nGoals:\n1. Add test for corrupted queue.json (malformed JSON)\n2. Add test for missing queue file\n3. Add test when no tasks are runnable (all blocked, done, or draft)\n4. Add test for cyclic dependencies (no valid next task)\n5. Add test for empty queue\n6. Verify error messages are helpful and actionable",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -1166,23 +1656,25 @@
         "Run cargo test -p ralph queue_next to verify all tests",
         "Ensure make ci passes with new tests"
       ],
+      "notes": [
+        "Priority: Low - Error case coverage for queue next command"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - Error case coverage for queue next command"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0716",
       "status": "todo",
-      "priority": "low",
       "title": "Add tests for task relations CLI commands",
       "description": "The task relations CLI commands in cli/task/relations.rs handle adding, removing, and querying task dependencies but have no unit tests. These commands are critical for task dependency management and bugs can corrupt the task graph.\n\nGoals:\n1. Add tests for task relations add - add dependencies between tasks\n2. Add tests for task relations remove - remove dependencies\n3. Add tests for task relations list - show dependencies of a task\n4. Add tests for cycle detection when adding relations\n5. Test error handling: non-existent tasks, self-references, duplicate relations\n6. Test with task_relations_cli_test.rs patterns",
+      "priority": "low",
       "tags": [
         "scan",
         "test",
@@ -1212,16 +1704,18 @@
         "Verify integration tests still pass: cargo test task_relations_cli",
         "Verify by running `cargo test -p ralph relations` and checking coverage"
       ],
+      "notes": [
+        "Priority: Low - Task relations command testing"
+      ],
       "request": "scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      },
       "created_at": "2026-02-07T16:52:24Z",
       "updated_at": "2026-02-07T16:52:24Z",
       "depends_on": [],
-      "notes": [
-        "Priority: Low - Task relations command testing"
-      ]
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     },
     {
       "id": "RQ-0673",
@@ -1268,9 +1762,9 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "medium",
-        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "analytics"
+        "opportunity_type": "analytics",
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management"
       }
     },
     {
@@ -1317,10 +1811,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ai-features",
         "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
-        "estimated_effort": "medium"
+        "opportunity_type": "ai-features"
       }
     },
     {
@@ -1369,10 +1863,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "integration",
         "estimated_effort": "high",
         "scan_agent": "scan-innovation",
-        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation"
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
+        "opportunity_type": "integration"
       }
     },
     {
@@ -1422,8 +1916,8 @@
       "custom_fields": {
         "estimated_effort": "medium",
         "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
-        "opportunity_type": "automation",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "automation"
       }
     },
     {
@@ -1471,10 +1965,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
         "scan_agent": "scan-innovation",
-        "estimated_effort": "high",
         "opportunity_type": "ecosystem",
-        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability"
+        "estimated_effort": "high"
       }
     },
     {
@@ -1524,9 +2018,9 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "medium",
-        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
         "opportunity_type": "integration",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows"
       }
     },
     {
@@ -1575,9 +2069,9 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
-        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability",
         "estimated_effort": "medium",
-        "opportunity_type": "reliability"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1626,9 +2120,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux-improvement",
         "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "ux-improvement",
         "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety"
       }
     }
