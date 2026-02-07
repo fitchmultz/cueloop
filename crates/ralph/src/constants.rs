@@ -201,8 +201,11 @@ pub mod defaults {
     /// Redaction placeholder text.
     pub const REDACTED: &str = "[REDACTED]";
 
-    /// Fallback RFC3339 timestamp.
-    pub const FALLBACK_RFC3339: &str = "2026-01-18T00:00:00.000000000Z";
+    /// Sentinel RFC3339 timestamp used only when formatting "now" fails.
+    ///
+    /// This value is intentionally "obviously wrong" in modern persisted data so
+    /// fallback usage is detectable during debugging/audits.
+    pub const FALLBACK_RFC3339: &str = "1970-01-01T00:00:00.000000000Z";
 
     /// Default task ID width.
     pub const DEFAULT_ID_WIDTH: usize = 4;

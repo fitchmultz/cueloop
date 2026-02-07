@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Parse RFC3339 timestamps for queue/reporting workflows.
 //! - Format timestamps with fixed 9-digit fractional seconds in UTC.
+//! - Provide a testable fallback mechanism for formatting failures.
 //!
 //! Does not handle:
 //! - Parsing non-RFC3339 timestamp formats.
@@ -11,6 +12,7 @@
 //! Invariants/assumptions:
 //! - Callers provide RFC3339 strings when parsing.
 //! - Formatted timestamps are always UTC with 9-digit subseconds.
+//! - Formatting errors are logged and result in a sentinel fallback value.
 
 // Re-export for backward compatibility
 pub use crate::constants::defaults::FALLBACK_RFC3339;
@@ -64,8 +66,37 @@ pub fn format_rfc3339(dt: OffsetDateTime) -> Result<String> {
         .context("format RFC3339 timestamp")
 }
 
+/// Internal implementation for `now_utc_rfc3339_or_fallback` that accepts
+/// injectable dependencies for testability.
+///
+/// The `now_fn` produces the timestamp or an error.
+/// The `on_err` callback is invoked when an error occurs, before returning the fallback.
+fn now_utc_rfc3339_or_fallback_impl<NowFn, OnErr>(now_fn: NowFn, on_err: OnErr) -> String
+where
+    NowFn: FnOnce() -> anyhow::Result<String>,
+    OnErr: FnOnce(&anyhow::Error),
+{
+    match now_fn() {
+        Ok(ts) => ts,
+        Err(ref err) => {
+            on_err(err);
+            FALLBACK_RFC3339.to_string()
+        }
+    }
+}
+
+/// Returns the current UTC timestamp in RFC3339 format, or a sentinel fallback on error.
+///
+/// On formatting failure, logs an error and returns `FALLBACK_RFC3339` (Unix epoch).
+/// The fallback value is intentionally "obviously wrong" to make debugging easier.
 pub fn now_utc_rfc3339_or_fallback() -> String {
-    now_utc_rfc3339().unwrap_or_else(|_| FALLBACK_RFC3339.to_string())
+    now_utc_rfc3339_or_fallback_impl(now_utc_rfc3339, |err| {
+        log::error!(
+            "format RFC3339 timestamp failed; using FALLBACK_RFC3339='{}': {:#}",
+            FALLBACK_RFC3339,
+            err
+        );
+    })
 }
 
 /// Parse a relative or absolute time expression into RFC3339.
@@ -334,5 +365,41 @@ mod tests {
         assert_eq!(days_until_weekday(Weekday::Monday, Weekday::Tuesday), 1);
         // If today is Friday, next Monday is 3 days away
         assert_eq!(days_until_weekday(Weekday::Friday, Weekday::Monday), 3);
+    }
+
+    #[test]
+    fn now_utc_rfc3339_or_fallback_impl_ok_does_not_call_hook() {
+        let called = std::cell::Cell::new(false);
+        let out = now_utc_rfc3339_or_fallback_impl(
+            || Ok("2026-02-07T00:00:00.000000000Z".to_string()),
+            |_| called.set(true),
+        );
+        assert!(!called.get());
+        assert_eq!(out, "2026-02-07T00:00:00.000000000Z");
+    }
+
+    #[test]
+    fn now_utc_rfc3339_or_fallback_impl_err_calls_hook_and_returns_sentinel() {
+        let called = std::cell::Cell::new(false);
+        let out =
+            now_utc_rfc3339_or_fallback_impl(|| Err(anyhow::anyhow!("boom")), |_| called.set(true));
+        assert!(called.get());
+        assert_eq!(out, FALLBACK_RFC3339);
+        // Ensure sentinel is parseable
+        parse_rfc3339(&out).expect("sentinel must parse");
+    }
+
+    #[test]
+    fn fallback_rfc3339_is_unix_epoch() {
+        // Verify the sentinel value is the Unix epoch
+        assert_eq!(FALLBACK_RFC3339, "1970-01-01T00:00:00.000000000Z");
+        // Verify it parses correctly
+        let dt = parse_rfc3339(FALLBACK_RFC3339).unwrap();
+        assert_eq!(dt.year(), 1970);
+        assert_eq!(dt.month() as u8, 1);
+        assert_eq!(dt.day(), 1);
+        assert_eq!(dt.hour(), 0);
+        assert_eq!(dt.minute(), 0);
+        assert_eq!(dt.second(), 0);
     }
 }

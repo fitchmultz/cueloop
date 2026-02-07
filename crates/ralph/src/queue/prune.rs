@@ -67,8 +67,8 @@ pub fn prune_done_tasks(done_path: &Path, options: PruneOptions) -> Result<Prune
 /// protection is applied, then age and status filters. The original order of
 /// remaining tasks is preserved.
 fn prune_done_queue(tasks: &mut Vec<Task>, options: &PruneOptions) -> Result<PruneReport> {
-    let now = timeutil::now_utc_rfc3339_or_fallback();
-    let now_dt = parse_completed_at(&now).unwrap_or_else(OffsetDateTime::now_utc);
+    // Use OffsetDateTime directly instead of formatting/parsing a string
+    let now_dt = OffsetDateTime::now_utc();
     prune_done_queue_at(tasks, options, now_dt)
 }
 

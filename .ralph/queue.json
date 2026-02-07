@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0682",
-      "status": "todo",
-      "title": "Make RFC3339 now fallback explicit to prevent silent timestamp corruption",
-      "description": "Principles violated: Fail fast (F), Operational hygiene (H), Consistency/Integrity (J).\n\n`now_utc_rfc3339_or_fallback()` silently returns a hard-coded `FALLBACK_RFC3339` string on formatting errors. This value is a plausible real timestamp (currently `2026-01-18...`), which can silently corrupt data and mask timeout logic.\n\nWhy it matters (failure modes):\n- If formatting fails, queue/history timestamps become a fixed value that looks real, skewing reports/ETAs and making debugging difficult.\n- Session timeout checks can be skipped or miscomputed: `validate_session` parses now via the fallback and then `unwrap_or(session_time)`, potentially disabling timeout detection in the presence of errors.\n\nMinimal proposed fix (API-stable):\n- When the fallback path is used, emit a `log::error!` (or `warn!`) with the underlying error; do not silently swallow it.\n- Change `FALLBACK_RFC3339` to an unmistakable sentinel value (e.g., `1970-01-01T00:00:00.000000000Z`) so fallback usage is obvious in persisted data.\n- In `session::validate_session`, avoid the string roundtrip for now; use `OffsetDateTime::now_utc()` directly for comparisons, and only format to RFC3339 at IO boundaries.\n\nAcceptance criteria:\n- Unit tests cover session timeout behavior using deterministic time inputs (e.g., refactor validation to accept `now: OffsetDateTime` in an internal helper).\n- Fallback constant is a clear sentinel and is only used when a logged error occurs.\n- `make ci` passes.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "time",
-        "session",
-        "error-handling"
-      ],
-      "scope": [
-        "crates/ralph/src/timeutil.rs",
-        "crates/ralph/src/constants.rs",
-        "crates/ralph/src/session/mod.rs",
-        "cargo test -p ralph",
-        "make ci"
-      ],
-      "evidence": [
-        "crates/ralph/src/timeutil.rs:67-69 now_utc_rfc3339_or_fallback uses unwrap_or_else to return FALLBACK_RFC3339 (silent)",
-        "crates/ralph/src/constants.rs:205 defines FALLBACK_RFC3339 as 2026-01-18T00:00:00.000000000Z (plausible timestamp)",
-        "crates/ralph/src/session/mod.rs:120-136 parses now via now_utc_rfc3339_or_fallback and then unwrap_or(session_time), masking errors in timeout logic",
-        "Command: `rg -n \"now_utc_rfc3339_or_fallback\\(\" crates/ralph/src` shows widespread use"
-      ],
-      "plan": [
-        "Update now_utc_rfc3339_or_fallback to log the error whenever the fallback path is taken",
-        "Change FALLBACK_RFC3339 to a clear sentinel timestamp",
-        "Refactor session timeout comparison to use OffsetDateTime directly (avoid parsing formatted now)",
-        "Add/adjust unit tests for session timeout logic using deterministic time values",
-        "Verify by running `make ci` and confirming it passes"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-07T03:39:33Z",
-      "updated_at": "2026-02-07T03:39:33Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0683",
       "status": "todo",
       "title": "TUI revert prompt should not silently default when reply channel closes",
@@ -446,10 +403,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
-        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "automation",
-        "scan_agent": "scan-innovation"
+        "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -546,9 +503,9 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "medium",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "reliability",
-        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups"
+        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -596,8 +553,8 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "high",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "automation",
+        "scan_agent": "scan-innovation",
         "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring"
       }
     },
@@ -645,10 +602,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
         "opportunity_type": "analytics",
-        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
-        "scan_agent": "scan-innovation"
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation",
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management"
       }
     },
     {
@@ -695,9 +652,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
         "opportunity_type": "ai-features",
         "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
+        "estimated_effort": "medium",
         "scan_agent": "scan-innovation"
       }
     },
@@ -747,10 +704,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "integration",
         "estimated_effort": "high",
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
         "scan_agent": "scan-innovation",
-        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation"
+        "opportunity_type": "integration"
       }
     },
     {
@@ -799,9 +756,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "automation",
-        "scan_agent": "scan-innovation",
         "estimated_effort": "medium",
-        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management"
+        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -849,10 +806,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "estimated_effort": "high",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ecosystem",
         "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
-        "estimated_effort": "high"
+        "opportunity_type": "ecosystem"
       }
     },
     {
@@ -901,10 +858,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "integration",
-        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows"
+        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -953,9 +910,9 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
-        "estimated_effort": "medium",
         "opportunity_type": "reliability",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -1004,10 +961,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "opportunity_type": "ux-improvement",
         "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety",
-        "opportunity_type": "ux-improvement"
+        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety"
       }
     }
   ]

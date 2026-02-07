@@ -1300,10 +1300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
-        "opportunity_type": "reliability",
-        "time_to_ship": "medium (concurrency + tests)"
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (concurrency + tests)",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "opportunity_type": "ux improvement",
         "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
-        "opportunity_type": "ux improvement"
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "time_to_ship": "medium (format + fixes + tests)",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
+        "time_to_ship": "medium (format + fixes + tests)"
       }
     },
     {
@@ -1441,9 +1441,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "time_to_ship": "small/medium (formatters + tests)",
         "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation",
         "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
       }
     },
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (TUI wiring + tests)",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke."
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (render-only UI + tests)"
+        "time_to_ship": "medium (render-only UI + tests)",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "opportunity_type": "feature gap",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
       }
     },
     {
@@ -2107,9 +2107,9 @@
       "relates_to": [],
       "custom_fields": {
         "time_to_ship": "incremental - add one batch operation at a time",
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
         "opportunity_type": "UX improvement",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -2166,8 +2166,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "opportunity_type": "reliability",
         "user_value": "Reduces regression risk; enables confident refactoring",
+        "opportunity_type": "reliability",
         "measurable_impact": "80%+ integration test coverage for CLI commands"
       }
     },
@@ -2231,10 +2231,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "feature gap",
-        "differentiation": "Unique capability among AI task runners",
-        "user_value": "Enables ecosystem growth; custom integrations without forks"
+        "scan_agent": "scan-innovation",
+        "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "differentiation": "Unique capability among AI task runners"
       }
     },
     {
@@ -3472,8 +3472,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "reported_at": "2026-02-06",
-        "user_visible_blocker": "true"
+        "user_visible_blocker": "true",
+        "reported_at": "2026-02-06"
       }
     },
     {
@@ -3527,10 +3527,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
         "file_line_count": "444",
+        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding"
+        "runner_used": "kimi"
       }
     },
     {
@@ -3577,11 +3577,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "scan_agent": "scan-maintenance",
-        "occurrence_count": "4",
         "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
-        "model_used": "kimi-code/kimi-for-coding"
+        "runner_used": "kimi",
+        "occurrence_count": "4",
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -3634,8 +3634,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
         "scan_agent": "scan-maintenance",
+        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding"
       }
     },
@@ -3717,8 +3717,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -3801,14 +3801,14 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "legacy_code_removed": "true",
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
-        "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
+        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
+        "legacy_code_removed": "true",
         "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
         "completed_via": "RQ-0657 (foundational plugin framework)",
-        "model_used": "kimi-code/kimi-for-coding",
         "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
-        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs"
+        "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed"
       }
     },
     {
@@ -3923,8 +3923,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -3984,8 +3984,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4118,11 +4118,11 @@
         "RQ-0663"
       ],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
-        "runner_used": "kimi",
         "plugin_status": "already_implemented",
-        "cleanup_required": "true"
+        "runner_used": "kimi",
+        "cleanup_required": "true",
+        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4178,12 +4178,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
         "model_used": "kimi-code/kimi-for-coding",
         "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
+        "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
         "runner_used": "kimi",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427",
-        "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427"
+        "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427"
       }
     },
     {
@@ -4243,10 +4243,10 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "runner_used": "kimi",
-        "cleanup_type": "legacy_code_removal",
         "model_used": "kimi-code/kimi-for-coding",
         "rq_0657_status": "completed",
+        "runner_used": "kimi",
+        "cleanup_type": "legacy_code_removal",
         "plugin_status": "implemented_needs_cleanup"
       }
     },
@@ -4310,15 +4310,15 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "rq_0657_status": "completed",
-        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
-        "verification_only": "true",
-        "runner_used": "kimi",
         "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
-        "model_used": "kimi-code/kimi-for-coding",
-        "task_type": "cleanup",
+        "cleanup_status": "already_completed_via_rq_0657",
         "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
-        "cleanup_status": "already_completed_via_rq_0657"
+        "task_type": "cleanup",
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
+        "rq_0657_status": "completed",
+        "verification_only": "true",
+        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization"
       }
     },
     {
@@ -4369,10 +4369,10 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-maintenance",
-        "runner_used": "kimi",
         "tests_file_lines": "412",
-        "model_used": "kimi-code/kimi-for-coding",
-        "execution_file_lines": "572"
+        "execution_file_lines": "572",
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4423,9 +4423,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance",
         "runner_used": "kimi",
-        "scan_agent": "scan-maintenance"
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4484,11 +4484,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance",
-        "current_loc": "3383",
+        "target_loc": "800",
         "runner_used": "kimi",
-        "target_loc": "800"
+        "current_loc": "3383",
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4550,14 +4550,14 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "current_loc": "3290",
-        "existing_submodules": "7",
         "previous_loc": "3241",
+        "test_lines": "1000",
+        "current_loc": "3290",
         "code_lines": "2200",
         "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "scan_agent": "scan-maintenance",
-        "test_lines": "1000"
+        "existing_submodules": "7"
       }
     },
     {
@@ -4602,9 +4602,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance",
-        "runner_used": "kimi"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4665,13 +4665,13 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "refresh_note": "As of 2026-02-07, auto-archive already exists in TUI and `ralph run` supervision; remaining work is queue-level age-based sweep and docs/config alignment.",
         "estimated_effort": "medium",
-        "scan_agent": "scan-innovation",
-        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load",
-        "opportunity_type": "automation",
+        "model_used": "kimi-code/kimi-for-coding",
+        "refresh_note": "As of 2026-02-07, auto-archive already exists in TUI and `ralph run` supervision; remaining work is queue-level age-based sweep and docs/config alignment.",
         "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "opportunity_type": "automation",
+        "scan_agent": "scan-innovation",
+        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load"
       }
     },
     {
@@ -4739,11 +4739,11 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi",
         "scan_agent": "scan-innovation",
+        "runner_used": "kimi",
         "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing",
-        "estimated_effort": "medium",
-        "opportunity_type": "feature-gap"
+        "opportunity_type": "feature-gap",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -4813,12 +4813,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
         "estimated_effort": "low",
-        "runner_used": "kimi",
-        "opportunity_type": "analytics",
         "scan_agent": "scan-innovation",
-        "model_used": "kimi-code/kimi-for-coding"
+        "opportunity_type": "analytics"
       }
     },
     {
@@ -4874,9 +4874,71 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
+      }
+    },
+    {
+      "id": "RQ-0682",
+      "status": "done",
+      "title": "Make RFC3339 now fallback explicit to prevent silent timestamp corruption",
+      "description": "Principles violated: Fail fast (F), Operational hygiene (H), Consistency/Integrity (J).\n\n`now_utc_rfc3339_or_fallback()` silently returns a hard-coded `FALLBACK_RFC3339` string on formatting errors. This value is a plausible real timestamp (currently `2026-01-18...`), which can silently corrupt data and mask timeout logic.\n\nWhy it matters (failure modes):\n- If formatting fails, queue/history timestamps become a fixed value that looks real, skewing reports/ETAs and making debugging difficult.\n- Session timeout checks can be skipped or miscomputed: `validate_session` parses now via the fallback and then `unwrap_or(session_time)`, potentially disabling timeout detection in the presence of errors.\n\nMinimal proposed fix (API-stable):\n- When the fallback path is used, emit a `log::error!` (or `warn!`) with the underlying error; do not silently swallow it.\n- Change `FALLBACK_RFC3339` to an unmistakable sentinel value (e.g., `1970-01-01T00:00:00.000000000Z`) so fallback usage is obvious in persisted data.\n- In `session::validate_session`, avoid the string roundtrip for now; use `OffsetDateTime::now_utc()` directly for comparisons, and only format to RFC3339 at IO boundaries.\n\nAcceptance criteria:\n- Unit tests cover session timeout behavior using deterministic time inputs (e.g., refactor validation to accept `now: OffsetDateTime` in an internal helper).\n- Fallback constant is a clear sentinel and is only used when a logged error occurs.\n- `make ci` passes.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "time",
+        "session",
+        "error-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/timeutil.rs",
+        "crates/ralph/src/constants.rs",
+        "crates/ralph/src/session/mod.rs",
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/execution_history.rs",
+        "crates/ralph/src/productivity.rs",
+        "rg -n now_utc_rfc3339_or_fallback\\\\( crates/ralph/src",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/timeutil.rs:67-69 now_utc_rfc3339_or_fallback discards the formatting error (|_|), returns FALLBACK_RFC3339, and does not log",
+        "crates/ralph/src/constants.rs:205 defines FALLBACK_RFC3339 as 2026-01-18T00:00:00.000000000Z (plausible timestamp)",
+        "crates/ralph/src/session/mod.rs:121-136 parses now via now_utc_rfc3339_or_fallback and then unwrap_or(session_time), masking errors and potentially disabling timeout detection",
+        "crates/ralph/src/session/mod.rs:504-542 timeout-related tests currently derive timestamps from now_utc_rfc3339_or_fallback, increasing coupling to the fallback behavior",
+        "crates/ralph/src/queue.rs:290-301 backup_queue uses now_utc_rfc3339_or_fallback for backup filenames (fallback affects auditability)",
+        "crates/ralph/src/execution_history.rs:120-129 execution history entries persist timestamp from now_utc_rfc3339_or_fallback",
+        "callsite_count=50 via `rg -n now_utc_rfc3339_or_fallback\\\\( crates/ralph/src | wc -l`"
+      ],
+      "plan": [
+        "Audit all call sites of now_utc_rfc3339_or_fallback and identify which ones persist timestamps (vs doing comparisons)",
+        "Update now_utc_rfc3339_or_fallback to log the formatting error whenever the fallback path is taken (no silent fallback)",
+        "Change FALLBACK_RFC3339 to an unmistakable sentinel RFC3339 timestamp that still parses (e.g., 1970-01-01T00:00:00.000000000Z)",
+        "Refactor session timeout comparison to avoid parsing formatted now: compare against OffsetDateTime::now_utc() (or a test-injectable now) directly",
+        "Update/add unit tests for session timeout logic to use deterministic time inputs and add coverage for fallback usage semantics",
+        "Verify by running `cargo test -p ralph` and `make ci`"
+      ],
+      "notes": [
+        "now_utc_rfc3339_or_fallback currently has 50 call sites, including persistence paths (queue backups, execution history, productivity stats); any sentinel/logging change should be validated against these IO/file-name uses.",
+        "Changed FALLBACK_RFC3339 from plausible 2026-01-18 to Unix epoch sentinel (1970-01-01)",
+        "Added error logging when fallback path is used",
+        "Refactored session validation to use OffsetDateTime directly, avoiding string roundtrip",
+        "Added comprehensive unit tests for timeout logic with deterministic time inputs",
+        "All 2221 tests pass; CI clean"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T05:27:58.393707000Z",
+      "completed_at": "2026-02-07T05:27:58.393707000Z",
+      "started_at": "2026-02-07T04:53:05.745654000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance",
         "runner_used": "kimi",
-        "scan_agent": "scan-maintenance"
+        "model_used": "kimi-code/kimi-for-coding"
       }
     }
   ]

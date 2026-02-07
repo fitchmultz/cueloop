@@ -92,11 +92,15 @@ pub enum SessionValidationResult {
     Timeout { hours: u64, session: SessionState },
 }
 
-/// Validate a session against the current queue state.
-pub fn validate_session(
+/// Internal helper that accepts an injected `now` for deterministic testing.
+///
+/// Compares `now` against the session's `last_updated_at` to detect timeouts.
+/// Uses `OffsetDateTime` directly to avoid string roundtrip issues.
+fn validate_session_with_now(
     session: &SessionState,
     queue: &QueueFile,
     timeout_hours: Option<u64>,
+    now: time::OffsetDateTime,
 ) -> SessionValidationResult {
     // Check if task still exists and is in Doing status
     let task = match queue.tasks.iter().find(|t| t.id.trim() == session.task_id) {
@@ -117,12 +121,10 @@ pub fn validate_session(
         };
     }
 
-    // Check session timeout
+    // Check session timeout using the injected `now`
     if let Some(timeout) = timeout_hours
         && let Ok(session_time) = timeutil::parse_rfc3339(&session.last_updated_at)
     {
-        let now = timeutil::parse_rfc3339(&timeutil::now_utc_rfc3339_or_fallback())
-            .unwrap_or(session_time);
         // Calculate duration by subtracting earlier from later
         if now > session_time {
             let elapsed = now - session_time;
@@ -137,6 +139,23 @@ pub fn validate_session(
     }
 
     SessionValidationResult::Valid(session.clone())
+}
+
+/// Validate a session against the current queue state.
+///
+/// Uses the current UTC time for timeout comparisons. For deterministic testing,
+/// use `validate_session_with_now` directly.
+pub fn validate_session(
+    session: &SessionState,
+    queue: &QueueFile,
+    timeout_hours: Option<u64>,
+) -> SessionValidationResult {
+    validate_session_with_now(
+        session,
+        queue,
+        timeout_hours,
+        time::OffsetDateTime::now_utc(),
+    )
 }
 
 /// Check for existing session and return validation result.
@@ -385,11 +404,18 @@ mod tests {
         }
     }
 
-    fn test_session(task_id: &str) -> SessionState {
+    /// Fixed reference timestamp for deterministic tests.
+    const TEST_NOW: &str = "2026-02-07T12:00:00.000000000Z";
+
+    fn test_now() -> time::OffsetDateTime {
+        timeutil::parse_rfc3339(TEST_NOW).unwrap()
+    }
+
+    fn test_session_with_time(task_id: &str, last_updated_at: &str) -> SessionState {
         SessionState::new(
             "test-session-id".to_string(),
             task_id.to_string(),
-            timeutil::now_utc_rfc3339_or_fallback(),
+            last_updated_at.to_string(),
             1,
             crate::contracts::Runner::Claude,
             "sonnet".to_string(),
@@ -397,6 +423,10 @@ mod tests {
             None,
             None, // phase_settings
         )
+    }
+
+    fn test_session(task_id: &str) -> SessionState {
+        test_session_with_time(task_id, TEST_NOW)
     }
 
     #[test]
@@ -503,37 +533,24 @@ mod tests {
 
     #[test]
     fn validate_session_returns_timeout_when_older_than_threshold() {
-        // Create a session that is 48 hours old
-        let old_timestamp = timeutil::format_rfc3339(
-            timeutil::parse_rfc3339(&timeutil::now_utc_rfc3339_or_fallback())
-                .unwrap()
-                .saturating_sub(Duration::hours(48)),
-        )
-        .unwrap();
-        let session = SessionState::new(
-            "test-session-id".to_string(),
-            "RQ-0001".to_string(),
-            old_timestamp,
-            1,
-            crate::contracts::Runner::Claude,
-            "sonnet".to_string(),
-            0,
-            None,
-            None,
-        );
+        // Use deterministic "now" and session time 48 hours before that
+        let now = test_now();
+        let session_time = now - Duration::hours(48);
+        let session =
+            test_session_with_time("RQ-0001", &timeutil::format_rfc3339(session_time).unwrap());
         let queue = QueueFile {
             version: 1,
             tasks: vec![test_task("RQ-0001", TaskStatus::Doing)],
         };
 
         // With 24-hour threshold, should timeout
-        let result = validate_session(&session, &queue, Some(24));
+        let result = validate_session_with_now(&session, &queue, Some(24), now);
         match result {
             SessionValidationResult::Timeout {
                 hours,
                 session: timed_out,
             } => {
-                assert!(hours >= 48, "Expected at least 48 hours, got {hours}");
+                assert_eq!(hours, 48, "Expected exactly 48 hours, got {hours}");
                 assert_eq!(timed_out.task_id, session.task_id);
                 assert_eq!(timed_out.session_id, session.session_id);
             }
@@ -544,29 +561,18 @@ mod tests {
     /// Regression test for RQ-0632: check_session must return Timeout with the embedded
     /// session state so callers don't need to re-load (which could panic if session.json
     /// disappears between the first load and the re-load).
+    ///
+    /// Note: This test uses the real wall-clock time via `check_session`, so we only assert
+    /// that the result is a Timeout with the session embedded, not the exact hours value.
     #[test]
     fn check_session_returns_timeout_and_includes_loaded_session() {
         let temp_dir = TempDir::new().unwrap();
 
-        // 48 hours old session
-        let old_timestamp = timeutil::format_rfc3339(
-            timeutil::parse_rfc3339(&timeutil::now_utc_rfc3339_or_fallback())
-                .unwrap()
-                .saturating_sub(Duration::hours(48)),
-        )
-        .unwrap();
-
-        let session = SessionState::new(
-            "test-session-id".to_string(),
-            "RQ-0001".to_string(),
-            old_timestamp,
-            1,
-            crate::contracts::Runner::Claude,
-            "sonnet".to_string(),
-            0,
-            None,
-            None,
-        );
+        // Create a session with a very old timestamp (1 year ago) to ensure it times out
+        // regardless of when the test runs
+        let session_time = time::OffsetDateTime::now_utc() - Duration::days(365);
+        let session =
+            test_session_with_time("RQ-0001", &timeutil::format_rfc3339(session_time).unwrap());
 
         save_session(temp_dir.path(), &session).unwrap();
 
@@ -582,7 +588,8 @@ mod tests {
                 hours,
                 session: timed_out,
             } => {
-                assert!(hours >= 48, "Expected at least 48 hours, got {hours}");
+                // Just verify we got a reasonable timeout value (at least 24 hours)
+                assert!(hours >= 24, "Expected at least 24 hours, got {hours}");
                 assert_eq!(timed_out.task_id, session.task_id);
                 assert_eq!(timed_out.session_id, session.session_id);
                 assert_eq!(timed_out.last_updated_at, session.last_updated_at);
@@ -593,31 +600,18 @@ mod tests {
 
     #[test]
     fn validate_session_returns_valid_when_within_custom_threshold() {
-        // Create a session that is 12 hours old
-        let old_timestamp = timeutil::format_rfc3339(
-            timeutil::parse_rfc3339(&timeutil::now_utc_rfc3339_or_fallback())
-                .unwrap()
-                .saturating_sub(Duration::hours(12)),
-        )
-        .unwrap();
-        let session = SessionState::new(
-            "test-session-id".to_string(),
-            "RQ-0001".to_string(),
-            old_timestamp,
-            1,
-            crate::contracts::Runner::Claude,
-            "sonnet".to_string(),
-            0,
-            None,
-            None,
-        );
+        // Session 12 hours old with 48-hour threshold should be valid
+        let now = test_now();
+        let session_time = now - Duration::hours(12);
+        let session =
+            test_session_with_time("RQ-0001", &timeutil::format_rfc3339(session_time).unwrap());
         let queue = QueueFile {
             version: 1,
             tasks: vec![test_task("RQ-0001", TaskStatus::Doing)],
         };
 
         // With 48-hour threshold, 12-hour session should be valid
-        let result = validate_session(&session, &queue, Some(48));
+        let result = validate_session_with_now(&session, &queue, Some(48), now);
         assert!(
             matches!(result, SessionValidationResult::Valid(_)),
             "Session within custom threshold should return Valid"
@@ -626,31 +620,18 @@ mod tests {
 
     #[test]
     fn validate_session_returns_valid_when_within_default_threshold() {
-        // Create a session that is just 1 hour old
-        let old_timestamp = timeutil::format_rfc3339(
-            timeutil::parse_rfc3339(&timeutil::now_utc_rfc3339_or_fallback())
-                .unwrap()
-                .saturating_sub(Duration::hours(1)),
-        )
-        .unwrap();
-        let session = SessionState::new(
-            "test-session-id".to_string(),
-            "RQ-0001".to_string(),
-            old_timestamp,
-            1,
-            crate::contracts::Runner::Claude,
-            "sonnet".to_string(),
-            0,
-            None,
-            None,
-        );
+        // Session 1 hour old with 24-hour threshold should be valid
+        let now = test_now();
+        let session_time = now - Duration::hours(1);
+        let session =
+            test_session_with_time("RQ-0001", &timeutil::format_rfc3339(session_time).unwrap());
         let queue = QueueFile {
             version: 1,
             tasks: vec![test_task("RQ-0001", TaskStatus::Doing)],
         };
 
         // With default 24-hour threshold, 1-hour session should be valid
-        let result = validate_session(&session, &queue, Some(24));
+        let result = validate_session_with_now(&session, &queue, Some(24), now);
         assert!(
             matches!(result, SessionValidationResult::Valid(_)),
             "Session within default threshold should return Valid"
@@ -670,6 +651,67 @@ mod tests {
         assert!(
             matches!(result, SessionValidationResult::Valid(_)),
             "Session should be Valid when no timeout is configured"
+        );
+    }
+
+    #[test]
+    fn validate_session_invalid_last_updated_does_not_timeout() {
+        // Session with unparsable timestamp should not trigger timeout (kept for safety)
+        let session = test_session_with_time("RQ-0001", "not-a-valid-timestamp");
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![test_task("RQ-0001", TaskStatus::Doing)],
+        };
+
+        // Even with a short timeout, invalid timestamp means we can't compute age
+        let result = validate_session_with_now(
+            &session,
+            &queue,
+            Some(1), // 1 hour threshold
+            test_now(),
+        );
+        assert!(
+            matches!(result, SessionValidationResult::Valid(_)),
+            "Session with invalid timestamp should be Valid (can't compute timeout)"
+        );
+    }
+
+    #[test]
+    fn validate_session_exact_boundary_returns_timeout() {
+        // Session exactly at the threshold boundary should timeout (>=)
+        let now = test_now();
+        let session_time = now - Duration::hours(24); // exactly 24 hours old
+        let session =
+            test_session_with_time("RQ-0001", &timeutil::format_rfc3339(session_time).unwrap());
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![test_task("RQ-0001", TaskStatus::Doing)],
+        };
+
+        // With 24-hour threshold, exactly 24 hours should timeout
+        let result = validate_session_with_now(&session, &queue, Some(24), now);
+        assert!(
+            matches!(result, SessionValidationResult::Timeout { .. }),
+            "Session exactly at threshold should timeout"
+        );
+    }
+
+    #[test]
+    fn validate_session_future_timestamp_no_timeout() {
+        // Session with future timestamp should not timeout (now <= session_time)
+        let now = test_now();
+        let session_time = now + Duration::hours(1); // 1 hour in the future
+        let session =
+            test_session_with_time("RQ-0001", &timeutil::format_rfc3339(session_time).unwrap());
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![test_task("RQ-0001", TaskStatus::Doing)],
+        };
+
+        let result = validate_session_with_now(&session, &queue, Some(1), now);
+        assert!(
+            matches!(result, SessionValidationResult::Valid(_)),
+            "Session with future timestamp should be Valid (no timeout)"
         );
     }
 }

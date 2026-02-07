@@ -123,7 +123,8 @@ fn test_now_utc_rfc3339_or_fallback_success() {
 
 #[test]
 fn test_fallback_constant() {
-    assert_eq!(timeutil::FALLBACK_RFC3339, "2026-01-18T00:00:00.000000000Z");
+    // Fallback is the Unix epoch sentinel (obviously wrong for modern data)
+    assert_eq!(timeutil::FALLBACK_RFC3339, "1970-01-01T00:00:00.000000000Z");
 }
 
 #[test]
@@ -211,12 +212,13 @@ fn test_now_utc_rfc3339_consistent_length() {
 fn test_fallback_timestamp_components() {
     let fallback = timeutil::FALLBACK_RFC3339;
 
-    // Year: 2026
-    assert_eq!(&fallback[0..4], "2026");
+    // Unix epoch: 1970-01-01T00:00:00.000000000Z
+    // Year: 1970
+    assert_eq!(&fallback[0..4], "1970");
     // Month: 01
     assert_eq!(&fallback[5..7], "01");
-    // Day: 18
-    assert_eq!(&fallback[8..10], "18");
+    // Day: 01
+    assert_eq!(&fallback[8..10], "01");
     // Separator: T
     assert_eq!(&fallback[10..11], "T");
     // Hour: 00
