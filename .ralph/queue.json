@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0690",
-      "status": "todo",
-      "title": "Fix CONTRIBUTING.md CI gate step order and add drift guard",
-      "description": "Principles violated: Consistency/Integrity (J), Least astonishment (G).\n\n`CONTRIBUTING.md` documents a CI gate step order that does not match the actual `make ci` pipeline. This is a concrete docs-code mismatch that can mislead contributors and cause churn when debugging CI failures locally.\n\nWhy it matters (failure modes):\n- Contributors may run the wrong sequence when trying to reproduce failures or optimize local workflows.\n- Docs drift is likely to recur unless guarded.\n\nMinimal proposed fix:\n- Update the documented pipeline order in `CONTRIBUTING.md` to match `Makefile:ci`.\n- Add a small test (or extend an existing Makefile contract test) that asserts `CONTRIBUTING.md` contains the same ordered step list as the Makefile to prevent future drift.\n\nAcceptance criteria:\n- `CONTRIBUTING.md` CI step order matches Makefile `ci` recipe.\n- New/updated test fails on drift and passes when aligned.\n- `make ci` passes.",
-      "priority": "low",
-      "tags": [
-        "maintenance",
-        "docs",
-        "ci"
-      ],
-      "scope": [
-        "CONTRIBUTING.md",
-        "Makefile",
-        "crates/ralph/tests/makefile_ci_contract_test.rs",
-        "cargo test -p ralph",
-        "make ci"
-      ],
-      "evidence": [
-        "CONTRIBUTING.md:52-56 lists: check-env-safety → check-backup-artifacts → generate → format → type-check → lint → build → test → install",
-        "Makefile:130-139 runs: check-env-safety → check-backup-artifacts → deps → format → type-check → lint → test → build → generate → install",
-        "AGENTS.md:16 matches the Makefile order",
-        "Command: `nl -ba CONTRIBUTING.md | sed -n '40,80p'` and `nl -ba Makefile | sed -n '120,150p'`"
-      ],
-      "plan": [
-        "Update the CI step list in CONTRIBUTING.md to match Makefile:ci",
-        "Add/extend a test to assert the documented step sequence matches the Makefile pipeline",
-        "Verify by running `make ci` and confirming it passes"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-07T03:39:33Z",
-      "updated_at": "2026-02-07T03:39:33Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0691",
       "status": "todo",
       "title": "Fix config module docs precedence statement (defaults/global/project)",
@@ -121,9 +81,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "automation",
         "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "automation",
         "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays"
       }
     },
@@ -170,10 +130,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ux-improvement",
-        "estimated_effort": "medium",
-        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings"
+        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -220,10 +180,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "estimated_effort": "medium",
         "opportunity_type": "reliability",
-        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups"
+        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -271,9 +231,9 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "high",
-        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "automation",
-        "scan_agent": "scan-innovation"
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring"
       }
     },
     {
@@ -320,10 +280,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
         "estimated_effort": "medium",
         "opportunity_type": "analytics",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management"
       }
     },
     {
@@ -370,10 +330,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ai-features",
+        "estimated_effort": "medium",
         "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
-        "scan_agent": "scan-innovation",
-        "estimated_effort": "medium"
+        "opportunity_type": "ai-features",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -422,10 +382,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "high",
         "opportunity_type": "integration",
         "scan_agent": "scan-innovation",
-        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation"
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
+        "estimated_effort": "high"
       }
     },
     {
@@ -524,10 +484,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "high",
-        "scan_agent": "scan-innovation",
+        "opportunity_type": "ecosystem",
         "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
-        "opportunity_type": "ecosystem"
+        "estimated_effort": "high",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -577,9 +537,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "integration",
-        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium",
         "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
-        "estimated_effort": "medium"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -627,10 +587,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium",
         "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
-        "opportunity_type": "reliability",
-        "estimated_effort": "medium"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -681,8 +641,8 @@
       "custom_fields": {
         "opportunity_type": "ux-improvement",
         "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety",
-        "scan_agent": "scan-innovation",
-        "estimated_effort": "medium"
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
       }
     }
   ]
