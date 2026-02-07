@@ -135,7 +135,7 @@ pub fn build_interactive_factories_with_invokers(
                 &resolved,
                 scan_cmd::ScanOptions {
                     focus,
-                    mode: ScanMode::Maintenance,
+                    mode: ScanMode::General,
                     runner_override: overrides.runner,
                     model_override: overrides.model,
                     reasoning_effort_override: overrides.reasoning_effort,

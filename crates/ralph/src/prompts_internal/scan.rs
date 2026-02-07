@@ -23,8 +23,10 @@ pub(crate) fn load_scan_prompt(
     let template_id = match (version, mode) {
         (ScanPromptVersion::V1, ScanMode::Maintenance) => PromptTemplateId::ScanMaintenanceV1,
         (ScanPromptVersion::V1, ScanMode::Innovation) => PromptTemplateId::ScanInnovationV1,
+        (ScanPromptVersion::V1, ScanMode::General) => PromptTemplateId::ScanGeneralV2,
         (ScanPromptVersion::V2, ScanMode::Maintenance) => PromptTemplateId::ScanMaintenanceV2,
         (ScanPromptVersion::V2, ScanMode::Innovation) => PromptTemplateId::ScanInnovationV2,
+        (ScanPromptVersion::V2, ScanMode::General) => PromptTemplateId::ScanGeneralV2,
     };
     load_prompt_template(repo_root, template_id)
 }
@@ -41,8 +43,10 @@ pub(crate) fn render_scan_prompt(
     let template_id = match (version, mode) {
         (ScanPromptVersion::V1, ScanMode::Maintenance) => PromptTemplateId::ScanMaintenanceV1,
         (ScanPromptVersion::V1, ScanMode::Innovation) => PromptTemplateId::ScanInnovationV1,
+        (ScanPromptVersion::V1, ScanMode::General) => PromptTemplateId::ScanGeneralV2,
         (ScanPromptVersion::V2, ScanMode::Maintenance) => PromptTemplateId::ScanMaintenanceV2,
         (ScanPromptVersion::V2, ScanMode::Innovation) => PromptTemplateId::ScanInnovationV2,
+        (ScanPromptVersion::V2, ScanMode::General) => PromptTemplateId::ScanGeneralV2,
     };
     let template_meta = prompt_template(template_id);
     ensure_required_placeholders(template, template_meta.required_placeholders)?;

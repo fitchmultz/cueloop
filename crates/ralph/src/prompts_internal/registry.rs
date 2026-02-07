@@ -25,6 +25,7 @@ pub(crate) enum PromptTemplateId {
     ScanMaintenanceV2,
     ScanInnovationV1,
     ScanInnovationV2,
+    ScanGeneralV2,
     MergeConflicts,
     CodeReview,
     CompletionChecklist,
@@ -214,6 +215,16 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
                 "/assets/prompts/scan_innovation_v2.md"
             )),
             label: "scan innovation v2",
+            required_placeholders: SCAN_V2_REQUIRED,
+            project_type_guidance: true,
+        },
+        PromptTemplateId::ScanGeneralV2 => PromptTemplate {
+            rel_path: ".ralph/prompts/scan_general_v2.md",
+            embedded_default: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/assets/prompts/scan_general_v2.md"
+            )),
+            label: "scan general v2",
             required_placeholders: SCAN_V2_REQUIRED,
             project_type_guidance: true,
         },

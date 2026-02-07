@@ -50,7 +50,7 @@ pub(crate) fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
     let task_builder = load_task_builder_prompt(repo_root)?;
     let task_updater = load_task_updater_prompt(repo_root)?;
     let merge_conflicts = load_merge_conflict_prompt(repo_root)?;
-    let scan = load_scan_prompt(repo_root, ScanPromptVersion::V2, ScanMode::Maintenance)?;
+    let scan = load_scan_prompt(repo_root, ScanPromptVersion::V2, ScanMode::General)?;
     let completion_checklist = load_completion_checklist(repo_root)?;
     let code_review = load_code_review_prompt(repo_root)?;
     let phase2_handoff = load_phase2_handoff_checklist(repo_root)?;
