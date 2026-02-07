@@ -64,6 +64,13 @@ pub struct Config {
 
     /// Plugin configuration (enable/disable + per-plugin settings).
     pub plugins: PluginsConfig,
+
+    /// Optional named profiles for quick workflow switching.
+    ///
+    /// Each profile is an AgentConfig-shaped patch applied over `agent` when selected.
+    /// Profile values override base config but are overridden by CLI flags and task.agent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profiles: Option<BTreeMap<String, AgentConfig>>,
 }
 
 /// Aging threshold configuration for `ralph queue aging`.
@@ -1062,6 +1069,7 @@ impl Default for Config {
             },
             tui: TuiConfig::default(),
             plugins: PluginsConfig::default(),
+            profiles: None,
         }
     }
 }

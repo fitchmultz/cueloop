@@ -19,6 +19,12 @@ use crate::contracts::RunnerCliOptionsPatch;
 pub(crate) fn build_override_args(overrides: &AgentOverrides) -> Vec<String> {
     let mut args = Vec::new();
 
+    // Propagate profile selection to workers
+    if let Some(profile) = overrides.profile.as_deref() {
+        args.push("--profile".to_string());
+        args.push(profile.to_string());
+    }
+
     if let Some(runner) = overrides.runner.clone() {
         args.push("--runner".to_string());
         args.push(runner.as_str().to_string());

@@ -137,6 +137,16 @@
         }
       ]
     },
+    "profiles": {
+      "description": "Optional named profiles for quick workflow switching.\n\nEach profile is an AgentConfig-shaped patch applied over `agent` when selected. Profile values override base config but are overridden by CLI flags and task.agent.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "$ref": "#/definitions/AgentConfig"
+      }
+    },
     "project_type": {
       "description": "\"code\" or \"docs\". Drives prompt defaults and small workflow decisions.",
       "default": "code",

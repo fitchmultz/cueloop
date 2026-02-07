@@ -505,6 +505,7 @@ fn resolve_run_agent_settings_cli_overrides_task_agent_and_config() -> anyhow::R
     });
 
     let overrides = super::AgentOverrides {
+        profile: None,
         runner: Some(Runner::Codex),
         model: Some(Model::Gpt52Codex),
         reasoning_effort: Some(ReasoningEffort::High),
@@ -544,6 +545,7 @@ fn resolve_run_agent_settings_defaults_to_glm47_for_opencode_runner() -> anyhow:
     let task = base_task();
 
     let overrides = super::AgentOverrides {
+        profile: None,
         runner: Some(Runner::Opencode),
         model: None,
         reasoning_effort: None,
@@ -583,6 +585,7 @@ fn resolve_run_agent_settings_defaults_to_gemini_flash_for_gemini_runner() -> an
     let task = base_task();
 
     let overrides = super::AgentOverrides {
+        profile: None,
         runner: Some(Runner::Gemini),
         model: None,
         reasoning_effort: None,
@@ -692,6 +695,7 @@ fn resolve_run_agent_settings_effort_is_ignored_for_opencode() -> anyhow::Result
         runner_cli: None,
     });
     let overrides = super::AgentOverrides {
+        profile: None,
         runner: Some(Runner::Opencode),
         model: Some(Model::Gpt52),
         reasoning_effort: Some(ReasoningEffort::High),
@@ -1306,6 +1310,7 @@ fn overrides_with_notifications(
     notify_on_fail: Option<bool>,
 ) -> super::AgentOverrides {
     super::AgentOverrides {
+        profile: None,
         runner: None,
         model: None,
         reasoning_effort: None,
@@ -1768,6 +1773,7 @@ fn test_overrides_with_phases(
     phase_overrides: Option<PhaseOverrides>,
 ) -> AgentOverrides {
     AgentOverrides {
+        profile: None,
         runner,
         model,
         reasoning_effort: effort,

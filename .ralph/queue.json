@@ -2,55 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0670",
-      "status": "todo",
-      "title": "Add configuration profiles for quick workflow switching",
-      "description": "No way to quickly switch between different workflow configurations. Users must manually edit config or pass many CLI flags. Add named profiles that bundle runner, model, phases, and other settings.\n\nGoals:\n1. Add `profiles` section to config with named presets\n2. Support `ralph run --profile quick-fix` or `ralph scan --profile thorough`\n3. Profiles override base config but CLI flags override profiles\n4. Include built-in profiles: quick (phases=1, runner=kimi), thorough (phases=3, runner=claude)\n5. Add `ralph config profiles` command to list/manage profiles\n\nEvidence:\n- Current: Config has agent.* settings but no grouping mechanism\n- Gap: No quick way to switch between 'quick fix' vs 'deep review' modes\n- User pain: Must remember and type multiple flags: `--runner claude --model opus --phases 3 --effort high`",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "configuration",
-        "ux-improvement",
-        "productivity"
-      ],
-      "scope": [
-        "crates/ralph/src/contracts/config.rs",
-        "crates/ralph/src/cli/config.rs",
-        "crates/ralph/src/config/loader.rs",
-        "docs/configuration.md"
-      ],
-      "evidence": [
-        "Current capability: All agent settings are flat - runner, model, phases, effort exist individually",
-        "Gap observed: No way to save/restore common setting combinations",
-        "CLI pattern: Users frequently use same flag combinations (--runner X --model Y --phases Z)",
-        "Precedent: Many CLI tools have profiles/contexts (kubectl, AWS CLI, Docker)"
-      ],
-      "plan": [
-        "Add ProfileConfig struct with all agent settings that can be overridden",
-        "Add profiles: HashMap<String, ProfileConfig> to root config",
-        "Add --profile <name> flag to run, task, scan commands",
-        "Implement profile resolution: base config → profile → CLI flags (later overrides earlier)",
-        "Add built-in profiles: 'quick' (kimi, phases=1), 'thorough' (claude/opus, phases=3), 'balanced' (sonnet, phases=2)",
-        "Add `ralph config profiles list/show/add/remove` subcommands",
-        "Add profile validation (ensure referenced profiles exist)",
-        "Update docs/configuration.md with profile examples",
-        "Verify by running `ralph run one --profile quick` and confirming correct runner/phases are used"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-07T00:41:40Z",
-      "updated_at": "2026-02-07T00:41:40Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "estimated_effort": "medium",
-        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
-        "opportunity_type": "ux-improvement",
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0671",
       "status": "todo",
       "title": "Add intelligent retry with exponential backoff for transient failures",
@@ -94,10 +45,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
-        "opportunity_type": "reliability",
+        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups"
+        "estimated_effort": "medium",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -145,8 +96,8 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "automation",
-        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
         "scan_agent": "scan-innovation",
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
         "estimated_effort": "high"
       }
     },
@@ -195,9 +146,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "analytics",
-        "scan_agent": "scan-innovation",
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
         "estimated_effort": "medium",
-        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -244,10 +195,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ai-features",
         "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
-        "scan_agent": "scan-innovation",
-        "estimated_effort": "medium"
+        "opportunity_type": "ai-features",
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -296,10 +247,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
         "scan_agent": "scan-innovation",
         "estimated_effort": "high",
-        "opportunity_type": "integration"
+        "opportunity_type": "integration",
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation"
       }
     },
     {
@@ -347,10 +298,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "automation",
-        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
-        "estimated_effort": "medium"
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium",
+        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management"
       }
     },
     {
@@ -400,8 +351,8 @@
       "custom_fields": {
         "estimated_effort": "high",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ecosystem",
-        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability"
+        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
+        "opportunity_type": "ecosystem"
       }
     },
     {
@@ -450,9 +401,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "estimated_effort": "medium",
         "opportunity_type": "integration",
         "scan_agent": "scan-innovation",
-        "estimated_effort": "medium",
         "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows"
       }
     },
@@ -501,10 +452,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
-        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium",
         "opportunity_type": "reliability",
-        "estimated_effort": "medium"
+        "scan_agent": "scan-innovation",
+        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability"
       }
     },
     {

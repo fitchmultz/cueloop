@@ -33,6 +33,8 @@ use super::repoprompt::{
 /// These overrides take precedence over task.agent and config defaults.
 #[derive(Debug, Clone, Default)]
 pub struct AgentOverrides {
+    /// Named configuration profile to apply.
+    pub profile: Option<String>,
     pub runner: Option<Runner>,
     pub model: Option<Model>,
     pub reasoning_effort: Option<ReasoningEffort>,
@@ -70,6 +72,8 @@ pub struct AgentOverrides {
 /// This parses the CLI arguments and validates runner/model compatibility.
 pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides> {
     use crate::runner;
+
+    let profile = args.profile.clone();
 
     let runner = match args.runner.as_deref() {
         Some(value) => Some(parse_runner(value)?),
@@ -217,6 +221,7 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
     };
 
     Ok(AgentOverrides {
+        profile,
         runner,
         model,
         reasoning_effort,
@@ -268,6 +273,7 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
     let runner_cli = parse_runner_cli_patch(&args.runner_cli)?;
 
     Ok(AgentOverrides {
+        profile: None,
         runner,
         model,
         reasoning_effort,
@@ -411,6 +417,7 @@ mod tests {
     #[test]
     fn resolve_run_agent_overrides_includes_phases() {
         let args = RunAgentArgs {
+            profile: None,
             runner: Some("codex".to_string()),
             model: Some("gpt-5.2-codex".to_string()),
             effort: Some("high".to_string()),
@@ -456,6 +463,7 @@ mod tests {
     #[test]
     fn resolve_run_agent_overrides_parses_runner_cli_args() {
         let args = RunAgentArgs {
+            profile: None,
             runner: None,
             model: None,
             effort: None,
@@ -505,6 +513,7 @@ mod tests {
     #[test]
     fn resolve_run_agent_overrides_can_disable_update_task_via_cli() {
         let args = RunAgentArgs {
+            profile: None,
             runner: None,
             model: None,
             effort: None,
@@ -543,6 +552,7 @@ mod tests {
     #[test]
     fn resolve_run_agent_overrides_quick_flag_sets_phases_to_one() {
         let args = RunAgentArgs {
+            profile: None,
             runner: None,
             model: None,
             effort: None,
@@ -581,6 +591,7 @@ mod tests {
     #[test]
     fn resolve_run_agent_overrides_phases_override_takes_precedence_when_quick_false() {
         let args = RunAgentArgs {
+            profile: None,
             runner: None,
             model: None,
             effort: None,
@@ -619,6 +630,7 @@ mod tests {
     #[test]
     fn resolve_run_agent_overrides_phase_flags_parsed_correctly() {
         let args = RunAgentArgs {
+            profile: None,
             runner: Some("claude".to_string()),
             model: Some("sonnet".to_string()),
             effort: None,
@@ -684,6 +696,7 @@ mod tests {
     fn resolve_run_agent_overrides_phase_flags_partial() {
         // Test that partial phase overrides work (e.g., only --runner-phase1)
         let args = RunAgentArgs {
+            profile: None,
             runner: None,
             model: None,
             effort: None,
@@ -736,6 +749,7 @@ mod tests {
     fn resolve_run_agent_overrides_empty_phase_flags_returns_none() {
         // Test that no phase flags results in phase_overrides: None
         let args = RunAgentArgs {
+            profile: None,
             runner: None,
             model: None,
             effort: None,
@@ -775,6 +789,7 @@ mod tests {
     fn resolve_run_agent_overrides_invalid_runner_phase_includes_phase_in_error() {
         // Test that invalid runner for a phase produces error
         let args = RunAgentArgs {
+            profile: None,
             runner: None,
             model: None,
             effort: None,

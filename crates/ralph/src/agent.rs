@@ -13,8 +13,12 @@
 
 mod args;
 mod parse;
+pub(crate) mod profiles;
 mod repoprompt;
 mod resolve;
+
+// Re-export profile helpers for use in config module
+pub(crate) use profiles::{all_profile_names, resolve_profile_patch};
 
 // Public API re-exports (backward compatibility)
 pub use args::{AgentArgs, RunAgentArgs, RunnerCliArgs};

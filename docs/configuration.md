@@ -50,6 +50,7 @@ Ralph can read both `.json` and `.jsonc` files regardless of extension. When wri
 - `parallel` (object): Parallel run-loop configuration for `ralph run loop` (CLI only).
 - `queue` (object): Queue file locations and task ID formatting.
 - `plugins` (object): Plugin configuration (enable/disable + per-plugin settings).
+- `profiles` (object, optional): Named configuration profiles for quick workflow switching. See [Profiles](#profiles) below.
 
 ## Agent Configuration
 `agent` controls default execution settings. Defaults are schema-defined.
@@ -655,3 +656,101 @@ Plugin management commands:
 - `ralph plugin uninstall <id> --scope project|global`: Uninstall a plugin
 
 See [Plugin Development Guide](./plugin-development.md) for creating custom plugins.
+
+## Profiles
+
+Configuration profiles enable quick switching between different workflow presets without manually editing config or passing many CLI flags for each invocation.
+
+A profile is an `AgentConfig`-shaped patch that is applied over the base `agent` configuration when selected via `--profile <NAME>`.
+
+### Built-in Profiles
+
+Ralph includes two built-in profiles that are always available:
+
+- **`quick`**: Fast, single-pass execution
+  - `runner`: `kimi`
+  - `model`: `kimi-for-coding`
+  - `phases`: `1`
+
+- **`thorough`**: Deep, multi-phase execution with powerful models
+  - `runner`: `claude`
+  - `model`: `opus`
+  - `phases`: `3`
+
+### Custom Profiles
+
+Define custom profiles in your config file under the `profiles` key:
+
+```json
+{
+  "version": 1,
+  "profiles": {
+    "codex-review": {
+      "runner": "codex",
+      "model": "gpt-5.3-codex",
+      "phases": 2
+    },
+    "gemini-audit": {
+      "runner": "gemini",
+      "model": "gemini-3-pro-preview",
+      "phases": 3
+    }
+  }
+}
+```
+
+### Profile Precedence
+
+When a profile is selected, the final configuration is computed in this order (highest to lowest):
+
+1. **CLI flags** (e.g., `--runner`, `--model`, `--phases`, `--effort`)
+2. **Task overrides** (`task.agent.*` in the queue)
+3. **Selected profile** (config-defined or built-in)
+4. **Base config** (merged global + project config)
+
+This means:
+- CLI flags always win
+- A profile can be partially overridden by CLI flags
+- User-defined profiles with the same name as built-ins override the built-in
+
+### Using Profiles
+
+Select a profile using the `--profile` flag:
+
+```bash
+# Run with the quick profile
+ralph run one --profile quick
+
+# Scan with the thorough profile
+ralph scan --profile thorough "security audit"
+
+# Override specific settings while using a profile
+ralph run one --profile quick --phases 2 --runner claude
+
+# List available profiles
+ralph config profiles list
+
+# Inspect a specific profile
+ralph config profiles show quick
+```
+
+### Profile Inheritance
+
+Profiles are merged into the base config using the same leaf-wise merge semantics as config layers:
+
+- `Some(value)` in the profile overrides the base config
+- `None` or omitted fields inherit from the base config
+
+This means a profile only needs to specify the fields it wants to change:
+
+```json
+{
+  "profiles": {
+    "fast-fix": {
+      "phases": 1
+    }
+  }
+}
+```
+
+The above profile only changes `phases`, leaving all other `agent` settings at their base values.

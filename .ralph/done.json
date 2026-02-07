@@ -1395,9 +1395,9 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (format + fixes + tests)",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (format + fixes + tests)"
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1442,9 +1442,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "small/medium (formatters + tests)",
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
-        "scan_agent": "scan-innovation"
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
       }
     },
     {
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (TUI wiring + tests)",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "time_to_ship": "medium (TUI wiring + tests)"
       }
     },
     {
@@ -1989,9 +1989,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "scan_agent": "scan-innovation",
         "time_to_ship": "medium (render-only UI + tests)",
+        "scan_agent": "scan-innovation",
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "opportunity_type": "ux improvement"
       }
     },
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
+        "opportunity_type": "feature gap",
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2106,9 +2106,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "UX improvement",
         "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "scan_agent": "scan-innovation",
         "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "user_value": "Reduces regression risk; enables confident refactoring",
-        "opportunity_type": "reliability",
-        "measurable_impact": "80%+ integration test coverage for CLI commands"
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -2231,10 +2231,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "differentiation": "Unique capability among AI task runners",
-        "scan_agent": "scan-innovation"
+        "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "feature gap"
       }
     },
     {
@@ -3472,8 +3472,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_visible_blocker": "true",
-        "reported_at": "2026-02-06"
+        "reported_at": "2026-02-06",
+        "user_visible_blocker": "true"
       }
     },
     {
@@ -3527,10 +3527,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
         "file_line_count": "444",
-        "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -3577,10 +3577,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "scan_agent": "scan-maintenance",
-        "occurrence_count": "4",
         "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
+        "runner_used": "kimi",
+        "occurrence_count": "4",
+        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding"
       }
     },
@@ -3634,9 +3634,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "scan_agent": "scan-maintenance",
-        "runner_used": "kimi"
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -3717,8 +3717,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -3801,14 +3801,14 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding",
         "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
-        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
-        "completed_via": "RQ-0657 (foundational plugin framework)",
+        "model_used": "kimi-code/kimi-for-coding",
         "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
+        "runner_used": "kimi",
+        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
         "legacy_code_removed": "true",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631"
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
+        "completed_via": "RQ-0657 (foundational plugin framework)"
       }
     },
     {
@@ -3923,8 +3923,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4119,10 +4119,10 @@
       ],
       "custom_fields": {
         "plugin_status": "already_implemented",
-        "model_used": "kimi-code/kimi-for-coding",
+        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
         "runner_used": "kimi",
         "cleanup_required": "true",
-        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164"
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4178,12 +4178,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
-        "model_used": "kimi-code/kimi-for-coding",
-        "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
-        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
         "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427",
-        "runner_used": "kimi"
+        "model_used": "kimi-code/kimi-for-coding",
+        "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
+        "runner_used": "kimi",
+        "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110"
       }
     },
     {
@@ -4243,11 +4243,11 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "runner_used": "kimi",
+        "rq_0657_status": "completed",
         "cleanup_type": "legacy_code_removal",
-        "model_used": "kimi-code/kimi-for-coding",
         "plugin_status": "implemented_needs_cleanup",
-        "rq_0657_status": "completed"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4311,14 +4311,14 @@
       ],
       "custom_fields": {
         "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
-        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding",
-        "task_type": "cleanup",
         "cleanup_status": "already_completed_via_rq_0657",
+        "model_used": "kimi-code/kimi-for-coding",
+        "verification_only": "true",
+        "runner_used": "kimi",
+        "task_type": "cleanup",
         "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
-        "rq_0657_status": "completed",
-        "verification_only": "true"
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
+        "rq_0657_status": "completed"
       }
     },
     {
@@ -4368,10 +4368,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "scan_agent": "scan-maintenance",
         "tests_file_lines": "412",
-        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding",
         "execution_file_lines": "572"
       }
     },
@@ -4550,14 +4550,14 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "code_lines": "2200",
         "current_loc": "3290",
-        "existing_submodules": "7",
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
         "scan_agent": "scan-maintenance",
-        "previous_loc": "3241",
-        "code_lines": "2200",
         "test_lines": "1000",
-        "model_used": "kimi-code/kimi-for-coding"
+        "existing_submodules": "7",
+        "previous_loc": "3241"
       }
     },
     {
@@ -4603,8 +4603,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "kimi",
-        "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4666,12 +4666,12 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "automation",
         "refresh_note": "As of 2026-02-07, auto-archive already exists in TUI and `ralph run` supervision; remaining work is queue-level age-based sweep and docs/config alignment.",
         "estimated_effort": "medium",
-        "runner_used": "kimi",
-        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load",
-        "opportunity_type": "automation",
-        "scan_agent": "scan-innovation"
+        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load"
       }
     },
     {
@@ -4739,11 +4739,11 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "estimated_effort": "medium",
+        "runner_used": "kimi",
         "scan_agent": "scan-innovation",
-        "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing",
+        "estimated_effort": "medium",
         "opportunity_type": "feature-gap",
-        "runner_used": "kimi"
+        "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing"
       }
     },
     {
@@ -4813,12 +4813,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "kimi",
+        "scan_agent": "scan-innovation",
+        "model_used": "kimi-code/kimi-for-coding",
         "estimated_effort": "low",
         "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "analytics",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "opportunity_type": "analytics"
       }
     },
     {
@@ -4936,9 +4936,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding"
+        "runner_used": "kimi"
       }
     },
     {
@@ -4990,9 +4990,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
+        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance"
+        "runner_used": "kimi"
       }
     },
     {
@@ -5045,8 +5045,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance"
+        "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -5153,9 +5153,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
+        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -5216,8 +5216,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "kimi",
-        "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -5280,8 +5280,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance",
         "runner_used": "kimi"
       }
     },
@@ -5344,12 +5344,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "supervision_wc_lines": "1446",
-        "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding",
-        "mod_rs_wc_lines": "1734",
         "runner_used": "kimi",
-        "run_tests_wc_lines": "2617"
+        "run_tests_wc_lines": "2617",
+        "scan_agent": "scan-maintenance",
+        "mod_rs_wc_lines": "1734",
+        "model_used": "kimi-code/kimi-for-coding",
+        "supervision_wc_lines": "1446"
       }
     },
     {
@@ -5525,11 +5525,90 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding",
-        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "automation",
+        "model_used": "kimi-code/kimi-for-coding",
         "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
-        "opportunity_type": "automation"
+        "estimated_effort": "medium"
+      }
+    },
+    {
+      "id": "RQ-0670",
+      "status": "done",
+      "title": "Add configuration profiles for quick workflow switching",
+      "description": "No way to quickly switch between different workflow configurations. Users must manually edit config or pass many CLI flags. Add named profiles that bundle runner, model, phases, and other settings.\n\nGoals:\n1. Add `profiles` section to config with named presets\n2. Support `ralph run --profile quick-fix` or `ralph scan --profile thorough`\n3. Profiles override base config but CLI flags override profiles\n4. Include built-in profiles: quick (phases=1, runner=kimi), thorough (phases=3, runner=claude)\n5. Add `ralph config profiles` command to list/manage profiles\n\nEvidence:\n- Current: Config has agent.* settings but no grouping mechanism\n- Gap: No quick way to switch between 'quick fix' vs 'deep review' modes\n- User pain: Must remember and type multiple flags: `--runner claude --model opus --phases 3 --effort high`",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "configuration",
+        "ux-improvement",
+        "productivity"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts/config.rs",
+        "crates/ralph/src/contracts/model.rs",
+        "crates/ralph/src/contracts/runner.rs",
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/agent/args.rs",
+        "crates/ralph/src/agent/resolve.rs",
+        "crates/ralph/src/cli/config.rs",
+        "crates/ralph/src/cli/run.rs",
+        "crates/ralph/src/cli/scan.rs",
+        "crates/ralph/src/cli/task/args.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/scan.rs",
+        "docs/configuration.md",
+        "docs/cli.md",
+        "schemas/config.schema.json",
+        "cmd: ralph run one --profile quick --dry-run",
+        "cmd: ralph scan --profile thorough",
+        "cmd: ralph config profiles list"
+      ],
+      "evidence": [
+        "Config resolution loads defaults -> global config (~/.config/ralph/config.json or $XDG_CONFIG_HOME/ralph/config.json) -> project config (.ralph/config.json) via config::resolve_from_cwd/apply_layer in crates/ralph/src/config.rs; there is no profile selection layer today",
+        "contracts::Config has agent.* and leaf-wise merge semantics (AgentConfig.merge_from, optional agent.phase_overrides), but no config-level profiles map exists in crates/ralph/src/contracts/config.rs (and schemas/config.schema.json contains no \\\"profiles\\\" property)",
+        "CLI agent flags in crates/ralph/src/agent/args.rs cover runner/model/effort/phases/quick/repo-prompt/runner_cli/etc, but there is no --profile flag",
+        "Run/scan handlers resolve config then compute CLI overrides via agent::resolve_run_agent_overrides / agent::resolve_agent_overrides in crates/ralph/src/agent/resolve.rs; there is no step that applies a named preset between config defaults and CLI/task overrides",
+        "docs/configuration.md documents agent.* and per-phase precedence but does not describe configuration profiles; docs/cli.md uses the word \\\"profile\\\" only in unrelated contexts (shell profile install text, PRD example)"
+      ],
+      "plan": [
+        "Extend the config contract: add a profiles map (e.g., BTreeMap<String, AgentConfig>-shaped overrides) to contracts::Config in crates/ralph/src/contracts/config.rs and define explicit merge semantics (union keys; when a name collides, merge leaf-wise using AgentConfig.merge_from)",
+        "Extend config parsing and layering in crates/ralph/src/config.rs: add profiles to ConfigLayer, and merge profiles during apply_layer with correct precedence (defaults < global < project; project profile values override global for the same profile name)",
+        "Add `--profile <NAME>` to CLI: add a profile field to crates/ralph/src/agent/args.rs (AgentArgs + RunAgentArgs), and add the flag to crates/ralph/src/cli/scan.rs (ScanArgs does not flatten AgentArgs); plumb the value through crates/ralph/src/cli/run.rs, crates/ralph/src/cli/scan.rs, and the relevant task commands that accept agent args",
+        "Implement profile application: resolve base config (defaults/global/project) -> apply selected profile onto resolved.config.agent (and any nested agent.* such as phase overrides) -> apply existing precedence rules for task.agent and CLI flags (explicitly document final precedence as: CLI flags > task.agent > selected profile > base config)",
+        "Add built-in profiles (fallback when not defined in config): quick (runner=kimi, model=kimi-for-coding, phases=1) and thorough (runner=claude, model=opus, phases=3); include built-ins in list output and unknown-name validation errors",
+        "Add `ralph config profiles` subcommands in crates/ralph/src/cli/config.rs (at least list + show), with useful --help examples and clear output for built-in vs user-defined profiles",
+        "Update help text and docs: update crates/ralph/src/cli/run.rs and crates/ralph/src/cli/scan.rs long help to include --profile examples and precedence; update docs/configuration.md and docs/cli.md with config examples and the override order",
+        "Regenerate and commit schemas/config.schema.json via `make generate` and verify schema includes profiles",
+        "Add tests: config profile merge + application precedence in crates/ralph/src/config.rs tests; clap parsing/help coverage for --profile in crates/ralph/src/cli/run.rs and crates/ralph/src/cli/scan.rs tests; unknown profile name errors list available profiles (including built-ins)"
+      ],
+      "notes": [
+        "Scope refresh: crates/ralph/src/config/loader.rs does not exist; config resolution lives in crates/ralph/src/config.rs",
+        "As of 2026-02-07, there is no config-level profiles feature and no `--profile` flag in CLI; the only \"profile\" mentions in docs are unrelated (shell profile install text, PRD example)",
+        "Added profiles field to Config contract (BTreeMap<String, AgentConfig>)",
+        "Added --profile flag to ralph run and ralph scan commands",
+        "Implemented built-in profiles: quick (kimi/1-phase) and thorough (claude/opus/3-phase)",
+        "Added ralph config profiles list/show subcommands",
+        "Profile propagation to parallel workers implemented",
+        "Updated docs/configuration.md and docs/cli.md with profile documentation",
+        "Regenerated schemas/config.schema.json with profiles support",
+        "All 2252+ tests passing, CI gate passes"
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T13:37:36.572859000Z",
+      "completed_at": "2026-02-07T13:37:36.572859000Z",
+      "started_at": "2026-02-07T12:29:29.391437000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
+        "opportunity_type": "ux-improvement",
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium"
       }
     }
   ]

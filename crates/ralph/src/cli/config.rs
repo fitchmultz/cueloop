@@ -3,7 +3,9 @@
 use anyhow::Result;
 use clap::{Args, Subcommand, ValueEnum};
 
-use crate::{config, contracts};
+use crate::{
+    agent, agent::profiles::BUILTIN_QUICK, agent::profiles::BUILTIN_THOROUGH, config, contracts,
+};
 
 /// Output format for `config show` command.
 #[derive(Debug, Clone, Copy, Default, ValueEnum)]
@@ -26,19 +28,22 @@ pub struct ConfigShowArgs {
 }
 
 pub fn handle_config(cmd: ConfigCommand) -> Result<()> {
-    let resolved = config::resolve_from_cwd()?;
     match cmd {
-        ConfigCommand::Show(args) => match args.format {
-            ConfigShowFormat::Json => {
-                let rendered = serde_json::to_string_pretty(&resolved.config)?;
-                println!("{rendered}");
+        ConfigCommand::Show(args) => {
+            let resolved = config::resolve_from_cwd()?;
+            match args.format {
+                ConfigShowFormat::Json => {
+                    let rendered = serde_json::to_string_pretty(&resolved.config)?;
+                    println!("{rendered}");
+                }
+                ConfigShowFormat::Yaml => {
+                    let rendered = serde_yaml::to_string(&resolved.config)?;
+                    print!("{rendered}");
+                }
             }
-            ConfigShowFormat::Yaml => {
-                let rendered = serde_yaml::to_string(&resolved.config)?;
-                print!("{rendered}");
-            }
-        },
+        }
         ConfigCommand::Paths => {
+            let resolved = config::resolve_from_cwd()?;
             println!("repo_root: {}", resolved.repo_root.display());
             println!("queue: {}", resolved.queue_path.display());
             println!("done: {}", resolved.done_path.display());
@@ -57,14 +62,116 @@ pub fn handle_config(cmd: ConfigCommand) -> Result<()> {
             let schema = schemars::schema_for!(contracts::Config);
             println!("{}", serde_json::to_string_pretty(&schema)?);
         }
+        ConfigCommand::Profiles(profiles_args) => {
+            handle_profiles(profiles_args)?;
+        }
     }
     Ok(())
+}
+
+fn handle_profiles(args: ConfigProfilesArgs) -> Result<()> {
+    let resolved = config::resolve_from_cwd()?;
+
+    match args.command {
+        ConfigProfilesCommand::List => {
+            let names = agent::all_profile_names(resolved.config.profiles.as_ref());
+
+            if names.is_empty() {
+                println!("No profiles configured.");
+                println!("Built-in profiles: quick, thorough");
+                return Ok(());
+            }
+
+            println!("Available profiles:");
+            for name in names {
+                let is_builtin = name == BUILTIN_QUICK || name == BUILTIN_THOROUGH;
+                let marker = if is_builtin { " (built-in)" } else { "" };
+
+                // Get effective patch for this profile
+                if let Some(patch) =
+                    agent::resolve_profile_patch(&name, resolved.config.profiles.as_ref())
+                {
+                    let details = format_profile_summary(&patch);
+                    println!("  {}{} - {}", name, marker, details);
+                } else {
+                    println!("  {}{}", name, marker);
+                }
+            }
+        }
+        ConfigProfilesCommand::Show { name } => {
+            let name = name.trim();
+            if name.is_empty() {
+                anyhow::bail!("Profile name cannot be empty");
+            }
+
+            match agent::resolve_profile_patch(name, resolved.config.profiles.as_ref()) {
+                Some(patch) => {
+                    println!("Profile: {}", name);
+                    let is_builtin = name == BUILTIN_QUICK || name == BUILTIN_THOROUGH;
+                    if is_builtin {
+                        println!("Source: built-in");
+                    } else if resolved
+                        .config
+                        .profiles
+                        .as_ref()
+                        .is_some_and(|p| p.contains_key(name))
+                    {
+                        println!("Source: config");
+                    }
+                    println!();
+                    let rendered = serde_yaml::to_string(&patch)?;
+                    print!("{}", rendered);
+                }
+                None => {
+                    let names = agent::all_profile_names(resolved.config.profiles.as_ref());
+                    anyhow::bail!(
+                        "Unknown profile: {name:?}. Available profiles: {}",
+                        names.into_iter().collect::<Vec<_>>().join(", ")
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Format a profile patch as a summary string.
+fn format_profile_summary(patch: &contracts::AgentConfig) -> String {
+    let mut parts = Vec::new();
+
+    if let Some(runner) = &patch.runner {
+        parts.push(format!("runner={}", runner.as_str()));
+    }
+    if let Some(model) = &patch.model {
+        parts.push(format!("model={}", model.as_str()));
+    }
+    if let Some(phases) = patch.phases {
+        parts.push(format!("phases={}", phases));
+    }
+    if let Some(effort) = &patch.reasoning_effort {
+        parts.push(format!("effort={}", format_reasoning_effort(*effort)));
+    }
+
+    if parts.is_empty() {
+        "no overrides".to_string()
+    } else {
+        parts.join(", ")
+    }
+}
+
+fn format_reasoning_effort(effort: contracts::ReasoningEffort) -> &'static str {
+    match effort {
+        contracts::ReasoningEffort::Low => "low",
+        contracts::ReasoningEffort::Medium => "medium",
+        contracts::ReasoningEffort::High => "high",
+        contracts::ReasoningEffort::XHigh => "xhigh",
+    }
 }
 
 #[derive(Args)]
 #[command(
     about = "Inspect and manage Ralph configuration",
-    after_long_help = "Examples:\n  ralph config show\n  ralph config show --format json\n  ralph config paths\n  ralph config schema"
+    after_long_help = "Examples:\n  ralph config show\n  ralph config show --format json\n  ralph config paths\n  ralph config schema\n  ralph config profiles list\n  ralph config profiles show quick"
 )]
 pub struct ConfigArgs {
     #[command(subcommand)]
@@ -84,4 +191,25 @@ pub enum ConfigCommand {
     /// Print the JSON schema for the configuration.
     #[command(after_long_help = "Example:\n  ralph config schema")]
     Schema,
+    /// List and inspect configuration profiles.
+    #[command(
+        after_long_help = "Examples:\n  ralph config profiles list\n  ralph config profiles show quick\n  ralph config profiles show thorough"
+    )]
+    Profiles(ConfigProfilesArgs),
+}
+
+/// Arguments for the `ralph config profiles` command.
+#[derive(Args)]
+pub struct ConfigProfilesArgs {
+    #[command(subcommand)]
+    pub command: ConfigProfilesCommand,
+}
+
+/// Subcommands for `ralph config profiles`.
+#[derive(Subcommand)]
+pub enum ConfigProfilesCommand {
+    /// List available profiles (built-in + configured).
+    List,
+    /// Show one profile (effective patch), falling back to built-ins.
+    Show { name: String },
 }

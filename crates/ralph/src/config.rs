@@ -31,6 +31,7 @@ use crate::fsutil;
 use crate::prompts_internal::util::validate_instruction_file_paths;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -115,19 +116,31 @@ pub struct ConfigLayer {
     pub parallel: ParallelConfig,
     pub tui: TuiConfig,
     pub plugins: PluginsConfig,
+    /// Named profiles for quick workflow switching.
+    pub profiles: Option<BTreeMap<String, AgentConfig>>,
 }
 
 pub fn resolve_from_cwd() -> Result<Resolved> {
-    resolve_from_cwd_internal(true)
+    resolve_from_cwd_internal(true, None)
+}
+
+/// Resolve config with an optional profile selection.
+///
+/// The profile is applied after base config resolution but before instruction_files validation.
+pub fn resolve_from_cwd_with_profile(profile: Option<&str>) -> Result<Resolved> {
+    resolve_from_cwd_internal(true, profile)
 }
 
 /// Resolve config for the doctor command, skipping instruction_files validation.
 /// This allows doctor to diagnose and warn about missing files without failing early.
 pub fn resolve_from_cwd_for_doctor() -> Result<Resolved> {
-    resolve_from_cwd_internal(false)
+    resolve_from_cwd_internal(false, None)
 }
 
-fn resolve_from_cwd_internal(validate_instruction_files: bool) -> Result<Resolved> {
+fn resolve_from_cwd_internal(
+    validate_instruction_files: bool,
+    profile: Option<&str>,
+) -> Result<Resolved> {
     let cwd = env::current_dir().context("resolve current working directory")?;
     log::debug!("resolving configuration from cwd: {}", cwd.display());
     let repo_root = if let Some(raw_override) = env::var_os(REPO_ROOT_OVERRIDE_ENV) {
@@ -178,6 +191,11 @@ fn resolve_from_cwd_internal(validate_instruction_files: bool) -> Result<Resolve
     }
 
     validate_config(&cfg)?;
+
+    // Apply selected profile if specified
+    if let Some(name) = profile {
+        apply_profile_patch(&mut cfg, name)?;
+    }
 
     // Validate instruction_files early for fast feedback (before runtime prompt rendering)
     if validate_instruction_files {
@@ -249,7 +267,41 @@ pub fn apply_layer(mut base: Config, layer: ConfigLayer) -> Result<Config> {
     base.tui.merge_from(layer.tui);
     base.plugins.merge_from(layer.plugins);
 
+    // Merge profiles across layers
+    if let Some(profiles) = layer.profiles {
+        let base_profiles = base.profiles.get_or_insert_with(BTreeMap::new);
+        for (name, patch) in profiles {
+            base_profiles
+                .entry(name)
+                .and_modify(|existing| existing.merge_from(patch.clone()))
+                .or_insert(patch);
+        }
+    }
+
     Ok(base)
+}
+
+/// Apply a named profile patch to the resolved config.
+///
+/// Profile values are merged into `cfg.agent` using leaf-wise merge semantics.
+/// Config-defined profiles take precedence over built-in profiles.
+fn apply_profile_patch(cfg: &mut Config, name: &str) -> Result<()> {
+    let name = name.trim();
+    if name.is_empty() {
+        bail!("Invalid --profile: name cannot be empty");
+    }
+
+    let patch =
+        crate::agent::resolve_profile_patch(name, cfg.profiles.as_ref()).ok_or_else(|| {
+            let names = crate::agent::all_profile_names(cfg.profiles.as_ref());
+            anyhow::anyhow!(
+                "Unknown profile: {name:?}. Available profiles: {}",
+                names.into_iter().collect::<Vec<_>>().join(", ")
+            )
+        })?;
+
+    cfg.agent.merge_from(patch);
+    Ok(())
 }
 
 pub fn validate_config(cfg: &Config) -> Result<()> {
@@ -376,6 +428,69 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
         bail!(
             "Empty agent.ci_gate_command: CI gate command must be non-empty when enabled. Set a command (e.g., 'make ci') or disable the gate with agent.ci_gate_enabled=false."
         );
+    }
+
+    // Validate profile agent configs
+    if let Some(profiles) = cfg.profiles.as_ref() {
+        for (name, patch) in profiles {
+            validate_agent_patch(patch, &format!("profiles.{name}"))?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate an AgentConfig patch (used for base agent and profile agents).
+fn validate_agent_patch(agent: &AgentConfig, label: &str) -> Result<()> {
+    if let Some(phases) = agent.phases
+        && !(1..=3).contains(&phases)
+    {
+        bail!("Invalid {label}.phases: {phases}. Supported values are 1, 2, or 3.");
+    }
+
+    if let Some(iterations) = agent.iterations
+        && iterations == 0
+    {
+        bail!("Invalid {label}.iterations: {iterations}. Iterations must be greater than 0.");
+    }
+
+    if let Some(timeout) = agent.session_timeout_hours
+        && timeout == 0
+    {
+        bail!(
+            "Invalid {label}.session_timeout_hours: {timeout}. Session timeout must be greater than 0."
+        );
+    }
+
+    if let Some(bin) = &agent.codex_bin
+        && bin.trim().is_empty()
+    {
+        bail!("Empty {label}.codex_bin: binary path is required if specified.");
+    }
+    if let Some(bin) = &agent.opencode_bin
+        && bin.trim().is_empty()
+    {
+        bail!("Empty {label}.opencode_bin: binary path is required if specified.");
+    }
+    if let Some(bin) = &agent.gemini_bin
+        && bin.trim().is_empty()
+    {
+        bail!("Empty {label}.gemini_bin: binary path is required if specified.");
+    }
+    if let Some(bin) = &agent.claude_bin
+        && bin.trim().is_empty()
+    {
+        bail!("Empty {label}.claude_bin: binary path is required if specified.");
+    }
+    if let Some(bin) = &agent.cursor_bin
+        && bin.trim().is_empty()
+    {
+        bail!("Empty {label}.cursor_bin: binary path is required if specified.");
+    }
+    if let Some(bin) = &agent.kimi_bin
+        && bin.trim().is_empty()
+    {
+        bail!("Empty {label}.kimi_bin: binary path is required if specified.");
     }
 
     Ok(())

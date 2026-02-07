@@ -228,6 +228,7 @@ Inspect and manage Ralph configuration. This command displays the resolved confi
 * `show`: Display the resolved configuration (YAML by default, JSON with `--format json`).
 * `paths`: Print paths to queue, done archive, and config files.
 * `schema`: Print the JSON schema for configuration validation.
+* `profiles`: List and inspect configuration profiles.
 
 ### `ralph config show`
 
@@ -282,6 +283,30 @@ Print the JSON schema for the Ralph configuration file. This schema can be used 
 
 ```bash
 ralph config schema
+```
+
+### `ralph config profiles`
+
+List and inspect configuration profiles for quick workflow switching.
+
+#### `ralph config profiles list`
+
+List all available profiles (built-in + user-defined from config):
+
+```bash
+ralph config profiles list
+```
+
+Output includes profile name, whether it's built-in, and a summary of configured overrides.
+
+#### `ralph config profiles show <NAME>`
+
+Display the effective configuration patch for a specific profile:
+
+```bash
+ralph config profiles show quick
+ralph config profiles show thorough
+ralph config profiles show my-custom-profile
 ```
 
 ## `ralph init`
@@ -901,6 +926,26 @@ These flags configure a normalized runner CLI behavior surface across Codex/Open
 * `--output-format <stream-json|json|text>`: execution requires `stream-json`.
 * `--unsupported-option-policy <ignore|warn|error>`: handling for unsupported options (default: `warn`).
 
+### Configuration Profiles
+
+Use `--profile <NAME>` to quickly switch between workflow presets:
+
+* `--profile quick`: Use the quick profile (kimi, 1-phase)
+* `--profile thorough`: Use the thorough profile (claude/opus, 3-phase)
+* Custom profiles can be defined in config under the `profiles` key
+
+Profile precedence (highest to lowest):
+1. CLI flags
+2. Task override (`task.agent.*`)
+3. Selected profile (if `--profile` specified)
+4. Config defaults (`agent.*`)
+
+CLI flags can override specific settings from a profile:
+
+```bash
+ralph run one --profile quick --phases 2 --runner claude
+```
+
 ### Phase-Specific Overrides
 
 Use phase-specific flags to select different runners/models/effort for each execution phase:
@@ -914,7 +959,8 @@ Precedence per phase (highest to lowest):
 2. Config phase override (`agent.phase_overrides.phaseN.*`)
 3. CLI global override (`--runner`, `--model`, `--effort`)
 4. Task override (`task.agent.*`)
-5. Config defaults (`agent.*`)
+5. Selected profile (if `--profile` specified)
+6. Config defaults (`agent.*`)
 
 Single-pass execution (`--phases 1`) uses Phase 2 overrides (behaviorally closest to implementation).
 
@@ -941,6 +987,9 @@ Examples:
 
 ```bash
 ralph run one
+ralph run one --profile quick
+ralph run one --profile thorough
+ralph run one --profile quick --runner claude  # CLI overrides profile
 ralph run one --phases 3
 ralph run one --phases 2
 ralph run one --phases 1
@@ -950,6 +999,8 @@ ralph run one -i
 ralph run one -i --visualize
 ralph run one --update-task
 ralph run loop --max-tasks 0
+ralph run loop --profile quick --max-tasks 5
+ralph run loop --profile thorough --max-tasks 3
 ralph run loop --phases 3 --max-tasks 0
 ralph run loop --quick --max-tasks 1
 ralph run loop --include-draft --max-tasks 1
@@ -998,6 +1049,8 @@ ralph scan --focus "production readiness gaps"                        # Flag-bas
 ralph scan --mode maintenance "security audit"                        # Maintenance mode (default)
 ralph scan --mode innovation "feature gaps for CLI"                   # Innovation mode
 ralph scan -m innovation "enhancement opportunities"                  # Short flag for mode
+ralph scan --profile thorough "deep risk audit"
+ralph scan --profile quick "quick bug fixes"
 ralph scan --runner opencode --model gpt-5.2 "CI and safety gaps"     # With runner overrides
 ralph scan --force "scan even with uncommitted changes"
 ralph scan --approval-mode auto-edits --runner claude "auto edits review"
@@ -1677,6 +1730,8 @@ Notes:
 ```bash
 # Terminal 1: Start a long-running loop
 ralph run loop --max-tasks 0
+ralph run loop --profile quick --max-tasks 5
+ralph run loop --profile thorough --max-tasks 3
 
 # Terminal 2: Request graceful stop after current task
 ralph queue stop
@@ -3055,10 +3110,19 @@ Raw (non-redacted) safeguard dumps require explicit opt-in via one of:
 ```bash
 # Redacted dumps (default) - secrets are masked
 ralph run one
+ralph run one --profile quick
+ralph run one --profile thorough
+ralph run one --profile quick --runner claude  # CLI overrides profile
 
 # Raw dumps with env var - secrets written to disk
 RALPH_RAW_DUMP=1 ralph run one
+ralph run one --profile quick
+ralph run one --profile thorough
+ralph run one --profile quick --runner claude  # CLI overrides profile
 RALPH_RAW_DUMP=true ralph run one
+ralph run one --profile quick
+ralph run one --profile thorough
+ralph run one --profile quick --runner claude  # CLI overrides profile
 
 # Raw dumps via debug mode - secrets in debug.log and dumps
 ralph run one --debug

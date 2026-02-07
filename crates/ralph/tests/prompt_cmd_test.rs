@@ -18,6 +18,7 @@ fn make_resolved(temp: &TempDir) -> ralph::config::Resolved {
     let done_path = repo_root.join(".ralph/done.json");
 
     let cfg = Config {
+        profiles: None,
         version: 1,
         project_type: Some(ProjectType::Code),
         queue: QueueConfig {

@@ -20,12 +20,19 @@ use crate::cli::interactive;
 use crate::{agent, commands::run as run_cmd, config, debuglog, tui};
 
 pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()> {
-    let resolved = config::resolve_from_cwd()?;
+    // Extract profile from the command to resolve config with the selected profile
+    let profile = match &cmd {
+        RunCommand::Resume(args) => args.agent.profile.as_deref(),
+        RunCommand::One(args) => args.agent.profile.as_deref(),
+        RunCommand::Loop(args) => args.agent.profile.as_deref(),
+    };
+    let resolved = config::resolve_from_cwd_with_profile(profile)?;
     match cmd {
         RunCommand::Resume(args) => {
             if args.debug {
                 debuglog::enable(&resolved.repo_root)?;
             }
+            // Profile already applied during config resolution; just resolve remaining overrides
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
 
             // Resume is essentially a loop with auto_resume=true
@@ -50,6 +57,7 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
             if args.debug {
                 debuglog::enable(&resolved.repo_root)?;
             }
+            // Profile already applied during config resolution; just resolve remaining overrides
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
 
             if args.interactive {
@@ -107,6 +115,7 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
             if args.debug {
                 debuglog::enable(&resolved.repo_root)?;
             }
+            // Profile already applied during config resolution; just resolve remaining overrides
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
 
             if args.interactive {
@@ -260,13 +269,16 @@ pub enum RunCommand {
         after_long_help = "Runner selection (precedence):\n\
  1) CLI overrides (--runner/--model/--effort)\n\
  2) task.agent in .ralph/queue.json (if present)\n\
- 3) config defaults (.ralph/config.json then ~/.config/ralph/config.json)\n\
+ 3) selected profile (if --profile specified)\n\
+ 4) config defaults (.ralph/config.json then ~/.config/ralph/config.json)\n\
 \n\
 Examples:\n\
  ralph run one\n\
  ralph run one --id RQ-0001\n\
  ralph run one -i\n\
  ralph run one --debug\n\
+ ralph run one --profile quick (kimi, 1-phase)\n\
+ ralph run one --profile thorough (claude/opus, 3-phase)\n\
  ralph run one --phases 3 (plan/implement+CI/review+complete)\n\
  ralph run one --phases 2 (plan/implement)\n\
  ralph run one --phases 1 (single-pass)\n\
@@ -295,6 +307,8 @@ Examples:\n\
         about = "Run tasks repeatedly until no todo remain (or --max-tasks is reached)",
         after_long_help = "Examples:\n\
  ralph run loop --max-tasks 0\n\
+ ralph run loop --profile quick --max-tasks 5 (kimi, 1-phase)\n\
+ ralph run loop --profile thorough --max-tasks 5 (claude/opus, 3-phase)\n\
  ralph run loop --phases 3 --max-tasks 0 (plan/implement+CI/review+complete)\n\
  ralph run loop --phases 2 --max-tasks 0 (plan/implement)\n\
  ralph run loop --phases 1 --max-tasks 1 (single-pass)\n\

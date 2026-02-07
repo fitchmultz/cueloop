@@ -77,6 +77,11 @@ pub struct AgentArgs {
 /// Extended agent arguments for run commands (includes phases).
 #[derive(Args, Clone, Debug, Default)]
 pub struct RunAgentArgs {
+    /// Named configuration profile to apply before resolving task/CLI overrides.
+    /// Examples: quick, thorough, quick-fix
+    #[arg(long, value_name = "NAME")]
+    pub profile: Option<String>,
+
     /// Runner override for this invocation (codex, opencode, gemini, claude, cursor).
     /// Overrides task.agent and config.
     #[arg(long)]
