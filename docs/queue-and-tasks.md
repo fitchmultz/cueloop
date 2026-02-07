@@ -1,5 +1,7 @@
 # Queue and Tasks
 
+![Queue Lifecycle](assets/images/2026-02-07-queue-lifecycle.png)
+
 Purpose: Define the queue file format, task fields, and status lifecycle based on `schemas/queue.schema.json`.
 
 ## Queue File
@@ -270,6 +272,8 @@ If `RQ-0452` exists in both `done.json` (completed task about "Fix Kimi runner")
 - Always run `ralph queue validate` after manual edits to catch issues early
 
 ## Dependency Visualization
+
+![Dependency Graph](assets/images/2026-02-07-dependency-graph.png)
 
 Ralph provides multiple ways to visualize task dependencies:
 

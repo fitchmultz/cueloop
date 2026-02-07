@@ -1,5 +1,7 @@
 # Proper way to invoke a coherent non-interactive conversation with the kimi runner
 
+![Session Management](assets/images/2026-02-07-session-management.png)
+
 Phase 1 invocation of kimi: `kimi --print --output-format stream-json --debug --session RQ-0000-p1-1769972400 --prompt "Phase 1 prompt instructions"`
 Generalized version: `kimi --print --output-format stream-json --debug --session <TASK_ID>-p<PHASE_NUMBER>-<CURRENT_TIME_SECS> --prompt "<PROMPT>"`
 

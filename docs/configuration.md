@@ -1,5 +1,7 @@
 # Configuration
 
+![Configuration Layers](assets/images/2026-02-07-config-layers.png)
+
 Purpose: Document Ralph's JSON configuration layout, defaults, and override precedence for global and project settings.
 
 ## Overview
@@ -404,6 +406,8 @@ Platform notes:
 - **Linux**: Uses D-Bus/notify-send; sound plays via `paplay`/`aplay` or `canberra-gtk-play` for default sounds.
 
 ## Webhook Configuration
+
+![Webhooks](assets/images/2026-02-07-webhooks.png)
 
 `agent.webhook` controls HTTP webhook notifications for task events. Webhooks complement desktop notifications by enabling external integrations (Slack, Discord, CI systems, etc.) to receive real-time task events.
 

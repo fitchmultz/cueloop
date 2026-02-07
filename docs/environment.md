@@ -1,5 +1,7 @@
 # Environment Variables
 
+![Environment Variables](assets/images/2026-02-07-environment.png)
+
 Purpose: List environment variables recognized by Ralph and how they affect behavior.
 
 ## .env Files

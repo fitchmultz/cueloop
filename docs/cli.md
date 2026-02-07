@@ -1,5 +1,7 @@
 # CLI Reference
 
+![CLI Commands](assets/images/2026-02-07-cli-commands.png)
+
 Purpose: Summarize Ralph commands, flags, and customization points with examples for common workflows.
 
 ## Platform Requirements

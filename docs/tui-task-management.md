@@ -1,4 +1,6 @@
-# Ralph TUI Task Management (CLI Parity Guide)
+# Ralph TUI Task Management
+
+![TUI Interface](assets/images/2026-02-07-tui-interface.png) (CLI Parity Guide)
 
 This guide maps **CLI task commands** (`ralph task ...`) to equivalent **TUI workflows**.
 

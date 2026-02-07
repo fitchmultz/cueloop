@@ -1,5 +1,7 @@
 # Releasing Ralph
 
+![Release Process](assets/images/2026-02-07-release-process.png)
+
 Purpose: Document the complete local release workflow for Ralph without GitHub Actions.
 
 ## Overview

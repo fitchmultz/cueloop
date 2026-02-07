@@ -1,4 +1,6 @@
-# Competitive Analysis: snarktank/ralph vs mitchfultz/ralph
+# Competitive Analysis:
+
+![Competitive Analysis](assets/images/2026-02-07-competitive-analysis.png) snarktank/ralph vs mitchfultz/ralph
 
 ## Executive Summary
 

@@ -1,5 +1,7 @@
 # Workflow and Architecture
 
+![3-Phase Workflow](assets/images/2026-02-07-workflow-3phase.png)
+
 Purpose: Explain Ralph's high-level runtime layout, phases, and prompt override workflow without deep internals.
 
 ## Runtime Files
@@ -176,6 +178,8 @@ New event types (`loop_*`, `phase_*`) are **opt-in** and not enabled by default.
 Use `["*"]` to subscribe to all events including new ones.
 
 ### Runner Session Handling (Kimi)
+
+![Session Management](assets/images/2026-02-07-session-management.png)
 
 Ralph uses explicit session management for runners that support it (notably **Kimi**):
 

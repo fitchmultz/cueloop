@@ -1,5 +1,7 @@
 # Ralph Docs
 
+![Documentation Overview](assets/images/2026-02-07-docs-overview.png)
+
 Purpose: Provide a concise, navigable reference for Ralph configuration, CLI usage, queue/task schema, workflow, and environment settings.
 
 ## Start Here

@@ -1,5 +1,7 @@
 # Error Handling Guidelines
 
+![Error Handling](assets/images/2026-02-07-error-handling.png)
+
 This document describes the error handling patterns used in Ralph and provides guidance for contributors.
 
 ## Philosophy

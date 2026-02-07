@@ -1,5 +1,7 @@
 # Quick Start Guide
 
+![AI Runners Comparison](assets/images/2026-02-07-runners-comparison.png)
+
 Get up and running with Ralph in minutes.
 
 ## Installation

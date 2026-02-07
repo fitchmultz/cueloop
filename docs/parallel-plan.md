@@ -1,5 +1,7 @@
 # TACTICAL FABRICATION DIRECTIVE
 
+![Parallel Execution](assets/images/2026-02-07-parallel-execution.png)
+
 ## 1. MISSION BRIEF (The Context Injection)
 
 - **Target Objective:** Replace the parallel run-loop’s git worktree-based isolation with a simpler, more reliable “per-task workspace clone” model, while preserving the user-facing behavior of `ralph run loop --parallel N`. Parallel workers must be able to run simultaneously, run `make ci`, commit/push their branch, create PRs, and a merge runner must merge PRs and optionally AI-resolve conflicts.
