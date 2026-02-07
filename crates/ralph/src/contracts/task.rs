@@ -12,11 +12,13 @@
 //! - Serde/schemars attributes define the task wire contract.
 //! - Task priority ordering is critical > high > medium > low.
 
+use anyhow::{Result, bail};
 use schemars::JsonSchema;
 use serde::de::{self, Deserializer};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use super::RunnerCliOptionsPatch;
 use super::{Model, ModelEffort, ReasoningEffort, Runner};
@@ -185,6 +187,32 @@ impl TaskPriority {
 impl std::fmt::Display for TaskPriority {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for TaskPriority {
+    type Err = anyhow::Error;
+
+    fn from_str(value: &str) -> Result<Self> {
+        let token = value.trim();
+
+        if token.eq_ignore_ascii_case("critical") {
+            return Ok(TaskPriority::Critical);
+        }
+        if token.eq_ignore_ascii_case("high") {
+            return Ok(TaskPriority::High);
+        }
+        if token.eq_ignore_ascii_case("medium") {
+            return Ok(TaskPriority::Medium);
+        }
+        if token.eq_ignore_ascii_case("low") {
+            return Ok(TaskPriority::Low);
+        }
+
+        bail!(
+            "Invalid priority: '{}'. Expected one of: critical, high, medium, low.",
+            token
+        )
     }
 }
 
@@ -362,6 +390,38 @@ mod tests {
         assert_eq!(TaskPriority::Medium.cycle(), TaskPriority::High);
         assert_eq!(TaskPriority::High.cycle(), TaskPriority::Critical);
         assert_eq!(TaskPriority::Critical.cycle(), TaskPriority::Low);
+    }
+
+    #[test]
+    fn task_priority_from_str_is_case_insensitive_and_trims() {
+        assert_eq!("HIGH".parse::<TaskPriority>().unwrap(), TaskPriority::High);
+        assert_eq!(
+            "Medium".parse::<TaskPriority>().unwrap(),
+            TaskPriority::Medium
+        );
+        assert_eq!(" low ".parse::<TaskPriority>().unwrap(), TaskPriority::Low);
+        assert_eq!(
+            "CRITICAL".parse::<TaskPriority>().unwrap(),
+            TaskPriority::Critical
+        );
+    }
+
+    #[test]
+    fn task_priority_from_str_invalid_has_canonical_error_message() {
+        let err = "nope".parse::<TaskPriority>().unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Invalid priority: 'nope'. Expected one of: critical, high, medium, low."
+        );
+    }
+
+    #[test]
+    fn task_priority_from_str_empty_string_errors() {
+        let err = "".parse::<TaskPriority>().unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Invalid priority: ''. Expected one of: critical, high, medium, low."
+        );
     }
 
     #[test]

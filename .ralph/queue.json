@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0685",
-      "status": "todo",
-      "title": "Centralize TaskPriority parsing to remove duplicated mappings",
-      "description": "Principles violated: DRY (C), Least astonishment (G), Consistency/Integrity (J).\n\n`TaskPriority` parsing is implemented in multiple places with duplicated mappings and slightly different error strings. This creates drift risk and inconsistent user-facing errors across commands.\n\nWhy it matters (failure modes):\n- Adding a new priority or changing accepted spellings requires editing multiple locations.\n- Different commands can accept/reject different strings or produce inconsistent error messages.\n\nMinimal proposed fix:\n- Implement a single parser for `TaskPriority` (e.g., `impl FromStr for TaskPriority` in contracts, or a dedicated helper) and use it everywhere.\n- Delete per-command `parse_priority` helpers in import/edit/preview.\n- Keep/expand a single set of unit tests for case-insensitive parsing and consistent error messages.\n\nAcceptance criteria:\n- No duplicate `parse_priority*` helpers remain.\n- Existing tests are updated and still pass; add missing tests for error text consistency.\n- `make ci` passes.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "queue",
-        "cli",
-        "validation"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/queue/import.rs",
-        "crates/ralph/src/queue/operations/edit.rs",
-        "crates/ralph/src/contracts/queue.rs",
-        "cargo test -p ralph",
-        "make ci"
-      ],
-      "evidence": [
-        "crates/ralph/src/cli/queue/import.rs:441-453 defines parse_priority (case-insensitive)",
-        "crates/ralph/src/queue/operations/edit.rs:351-362 defines parse_priority (duplicate mapping)",
-        "crates/ralph/src/queue/operations/edit.rs:652-663 defines parse_priority_for_preview (duplicate mapping)",
-        "Command: `rg -n \"parse_priority\" crates/ralph/src/cli/queue/import.rs crates/ralph/src/queue/operations/edit.rs`"
-      ],
-      "plan": [
-        "Add a single TaskPriority parser (FromStr or TaskPriority::parse) in contracts",
-        "Update import/edit/preview call sites to use the shared parser",
-        "Delete duplicate parse_priority helpers and consolidate tests",
-        "Verify by running `make ci` and confirming it passes"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-07T03:39:33Z",
-      "updated_at": "2026-02-07T03:39:33Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0686",
       "status": "todo",
       "title": "Deduplicate TaskStatus parsing and cycling logic in queue edit preview",
@@ -322,10 +280,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "opportunity_type": "automation",
         "estimated_effort": "medium",
         "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
-        "opportunity_type": "automation"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -371,9 +329,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
         "opportunity_type": "ux-improvement",
+        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
+        "scan_agent": "scan-innovation",
         "estimated_effort": "medium"
       }
     },
@@ -421,10 +379,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "opportunity_type": "reliability",
-        "estimated_effort": "medium",
         "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
-        "scan_agent": "scan-innovation"
+        "estimated_effort": "medium"
       }
     },
     {
@@ -471,10 +429,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "high",
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
         "opportunity_type": "automation",
-        "scan_agent": "scan-innovation",
-        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring"
+        "estimated_effort": "high",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -521,8 +479,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "estimated_effort": "medium",
+        "scan_agent": "scan-innovation",
         "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
         "opportunity_type": "analytics"
       }
@@ -572,8 +530,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "estimated_effort": "medium",
         "opportunity_type": "ai-features",
+        "estimated_effort": "medium",
         "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment"
       }
     },
@@ -623,10 +581,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "estimated_effort": "high",
         "opportunity_type": "integration",
         "scan_agent": "scan-innovation",
-        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
-        "estimated_effort": "high"
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation"
       }
     },
     {
@@ -725,10 +683,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "high",
         "scan_agent": "scan-innovation",
+        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
         "opportunity_type": "ecosystem",
-        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability"
+        "estimated_effort": "high"
       }
     },
     {
@@ -779,8 +737,8 @@
       "custom_fields": {
         "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
         "estimated_effort": "medium",
-        "opportunity_type": "integration",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "integration"
       }
     },
     {
@@ -828,10 +786,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "reliability",
-        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
         "scan_agent": "scan-innovation",
-        "estimated_effort": "medium"
+        "estimated_effort": "medium",
+        "opportunity_type": "reliability",
+        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability"
       }
     },
     {
@@ -880,10 +838,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux-improvement",
         "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety",
         "scan_agent": "scan-innovation",
-        "estimated_effort": "medium"
+        "estimated_effort": "medium",
+        "opportunity_type": "ux-improvement"
       }
     }
   ]

@@ -219,7 +219,7 @@ pub fn apply_task_edit(
             task.priority = if trimmed.is_empty() {
                 task.priority.cycle()
             } else {
-                parse_priority(trimmed).with_context(|| {
+                trimmed.parse::<TaskPriority>().with_context(|| {
                     format!("Queue edit failed (task_id={}, field=priority)", needle)
                 })?
             };
@@ -348,19 +348,6 @@ fn parse_status(value: &str) -> Result<TaskStatus> {
     }
 }
 
-fn parse_priority(value: &str) -> Result<TaskPriority> {
-    match value.trim().to_lowercase().as_str() {
-        "critical" => Ok(TaskPriority::Critical),
-        "high" => Ok(TaskPriority::High),
-        "medium" => Ok(TaskPriority::Medium),
-        "low" => Ok(TaskPriority::Low),
-        _ => bail!(
-            "Invalid priority: '{}'. Expected one of: critical, high, medium, low.",
-            value
-        ),
-    }
-}
-
 fn parse_list(input: &str) -> Vec<String> {
     input
         .split([',', '\n'])
@@ -478,7 +465,7 @@ pub fn preview_task_edit(
             preview_task.priority = if trimmed.is_empty() {
                 preview_task.priority.cycle()
             } else {
-                parse_priority_for_preview(trimmed).with_context(|| {
+                trimmed.parse::<TaskPriority>().with_context(|| {
                     format!(
                         "Queue edit preview failed (task_id={}, field=priority)",
                         needle
@@ -644,19 +631,6 @@ fn parse_status_for_preview(value: &str) -> Result<TaskStatus> {
         "rejected" => Ok(TaskStatus::Rejected),
         _ => bail!(
             "Invalid status: '{}'. Expected one of: draft, todo, doing, done, rejected.",
-            value
-        ),
-    }
-}
-
-fn parse_priority_for_preview(value: &str) -> Result<TaskPriority> {
-    match value.trim().to_lowercase().as_str() {
-        "critical" => Ok(TaskPriority::Critical),
-        "high" => Ok(TaskPriority::High),
-        "medium" => Ok(TaskPriority::Medium),
-        "low" => Ok(TaskPriority::Low),
-        _ => bail!(
-            "Invalid priority: '{}'. Expected one of: critical, high, medium, low.",
             value
         ),
     }
@@ -982,6 +956,38 @@ mod tests {
         assert!(!TaskEditKey::Request.is_list_field());
         assert!(!TaskEditKey::Duplicates.is_list_field());
         assert!(!TaskEditKey::ScheduledStart.is_list_field());
+    }
+
+    #[test]
+    fn preview_task_edit_invalid_priority_includes_canonical_parser_error() {
+        let queue = test_queue();
+        let now = "2026-01-21T12:00:00Z".to_string();
+
+        let err = preview_task_edit(
+            &queue,
+            None,
+            "RQ-0001",
+            TaskEditKey::Priority,
+            "nope",
+            &now,
+            "RQ",
+            4,
+            10,
+        )
+        .unwrap_err();
+
+        let msg = err.to_string();
+
+        // The outer context message should contain field=priority
+        assert!(msg.contains("field=priority"), "err was: {msg}");
+
+        // The canonical parser error should be in the error chain (source)
+        let expected = "nope".parse::<TaskPriority>().unwrap_err().to_string();
+        let found_canonical = err.chain().any(|e| e.to_string().contains(&expected));
+        assert!(
+            found_canonical,
+            "canonical error not in chain. err was: {msg}, expected: {expected}"
+        );
     }
 
     #[test]

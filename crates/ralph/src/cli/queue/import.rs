@@ -284,9 +284,10 @@ fn parse_csv_tasks(input: &str, delimiter: u8) -> Result<Vec<Task>> {
 
         // Optional: priority
         if let Some(&idx) = header_map.get("priority") {
-            let priority_str = record.get(idx).unwrap_or("").trim().to_lowercase();
-            if !priority_str.is_empty() {
-                task.priority = parse_priority(&priority_str)?;
+            let raw = record.get(idx).unwrap_or("");
+            let trimmed = raw.trim();
+            if !trimmed.is_empty() {
+                task.priority = trimmed.parse()?;
             }
         }
 
@@ -433,20 +434,6 @@ fn parse_status(s: &str) -> Result<TaskStatus> {
         "rejected" => Ok(TaskStatus::Rejected),
         _ => bail!(
             "Invalid status: '{}'. Expected: draft, todo, doing, done, rejected",
-            s
-        ),
-    }
-}
-
-/// Parse priority case-insensitively.
-fn parse_priority(s: &str) -> Result<TaskPriority> {
-    match s.to_lowercase().as_str() {
-        "critical" => Ok(TaskPriority::Critical),
-        "high" => Ok(TaskPriority::High),
-        "medium" => Ok(TaskPriority::Medium),
-        "low" => Ok(TaskPriority::Low),
-        _ => bail!(
-            "Invalid priority: '{}'. Expected: critical, high, medium, low",
             s
         ),
     }
@@ -786,11 +773,14 @@ mod tests {
     }
 
     #[test]
-    fn parse_priority_case_insensitive() {
-        assert_eq!(parse_priority("HIGH").unwrap(), TaskPriority::High);
-        assert_eq!(parse_priority("Medium").unwrap(), TaskPriority::Medium);
-        assert_eq!(parse_priority("low").unwrap(), TaskPriority::Low);
-        assert_eq!(parse_priority("CRITICAL").unwrap(), TaskPriority::Critical);
+    fn parse_csv_invalid_priority_uses_canonical_parser_error() {
+        let csv = "title,priority\nTest,nope";
+        let err = parse_csv_tasks(csv, b',').unwrap_err();
+
+        let expected = "nope".parse::<TaskPriority>().unwrap_err().to_string();
+        let msg = err.to_string();
+
+        assert!(msg.contains(&expected), "err was: {msg}");
     }
 
     #[test]
