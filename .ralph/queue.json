@@ -1,4 +1,757 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0666",
+      "status": "todo",
+      "title": "Implement auto-archive system for completed tasks",
+      "description": "Add configurable auto-archiving for completed/rejected tasks to eliminate manual `ralph queue archive` requirement. Currently users must manually run archive command - this creates friction and leads to queue bloat.\n\nGoals:\n1. Add `queue.auto_archive_enabled` and `queue.auto_archive_after_days` config options\n2. Auto-move tasks to done.json after configured days in terminal state\n3. Support both immediate (0 days) and delayed archiving\n4. Add TUI indicator showing auto-archive status\n5. Respect manual archive as override\n\nEvidence:\n- Current: Users must run `ralph queue archive` manually (docs/cli.md)\n- Gap: No automation for queue maintenance\n- Competitive: snarktank/ralph has built-in auto-archiving (docs/competitive-analysis.md)",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "automation",
+        "queue-management",
+        "ux-improvement"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts/config.rs",
+        "crates/ralph/src/queue/archive.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "docs/configuration.md"
+      ],
+      "evidence": [
+        "Current capability: Manual `ralph queue archive` command exists (docs/cli.md)",
+        "Gap observed: No automatic archiving triggers - users must remember to run command",
+        "Config location: queue.* section in config schema has file paths but no auto-archive",
+        "Competitive comparison: snarktank/ralph has auto-archive, mitchfultz/ralph requires manual (docs/competitive-analysis.md)"
+      ],
+      "plan": [
+        "Add auto_archive_enabled (bool) and auto_archive_after_days (integer, default 7) to QueueConfig",
+        "Implement auto-archive check in task completion flow (post_run_supervise)",
+        "Add auto-archive batch job that runs on queue load if enabled",
+        "Add TUI status indicator showing 'auto-archive in N days' for terminal tasks",
+        "Update config schema and documentation",
+        "Add tests for auto-archive logic including edge cases (already archived, config disabled)",
+        "Verify by running `ralph task done RQ-XXXX` with auto_archive_enabled=true and confirming task moves to done.json immediately or after delay"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load",
+        "opportunity_type": "automation",
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0667",
+      "status": "todo",
+      "title": "Activate processor plugin hooks (validate_task, pre_prompt, post_run)",
+      "description": "Processor plugin hooks are declared in manifest but NEVER actually invoked - this is a broken feature. The registry has `enabled_processor_plugins()` and `resolve_processor_bin()` but they're marked `#[allow(dead_code)]`.\n\nGoals:\n1. Add hook invocation points in task execution flow\n2. Call validate_task before execution (can reject task with error message)\n3. Call pre_prompt before runner invocation (can modify prompt context)\n4. Call post_run after execution (can process output, trigger side effects)\n5. Support multiple processors chained in config order\n\nEvidence:\n- Current: Processor hooks declared in plugin.json manifest (plugins/manifest.rs)\n- Gap: No invocation in execution flow - feature is non-functional\n- Code evidence: `#[allow(dead_code)]` on processor functions in registry.rs",
+      "priority": "critical",
+      "tags": [
+        "innovation",
+        "plugin-system",
+        "extensibility",
+        "bug-fix"
+      ],
+      "scope": [
+        "crates/ralph/src/plugins/registry.rs",
+        "crates/ralph/src/runner/execution/plugin_executor.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/run/phases/mod.rs",
+        "docs/plugin-development.md"
+      ],
+      "evidence": [
+        "Current capability: Plugin manifest defines processor hooks: validate_task, pre_prompt, post_run (plugins/manifest.rs)",
+        "Gap observed: Registry has `enabled_processor_plugins()` and `resolve_processor_bin()` marked `#[allow(dead_code)]` - never called",
+        "Execution flow: commands/run/mod.rs has no processor hook integration points",
+        "Documentation: plugin-development.md documents processor hooks as if they work"
+      ],
+      "plan": [
+        "Remove #[allow(dead_code)] from processor functions in registry.rs after verifying invocation paths",
+        "Add ProcessorExecutor struct to manage processor lifecycle and hook invocation",
+        "Add validate_task hook call before task execution (can return error to abort)",
+        "Add pre_prompt hook call after prompt compilation but before runner spawn (can modify prompt)",
+        "Add post_run hook call in post_run_supervise (receives exit status, output, can trigger side effects)",
+        "Support chaining multiple processors in config-defined order",
+        "Add tests for processor hook invocation including error handling",
+        "Create example processor plugin in examples/ directory",
+        "Verify by running `ralph plugin init my-processor --type processor`, enabling it, and confirming hooks fire during task execution"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "opportunity_type": "feature-gap",
+        "estimated_effort": "medium",
+        "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing",
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0668",
+      "status": "todo",
+      "title": "Add task aging report to identify stale work",
+      "description": "No way to identify tasks that have been sitting in queue for too long. This leads to forgotten work and queue rot. Add an aging report that surfaces stale tasks by status and age thresholds.\n\nGoals:\n1. Add `ralph queue aging` command showing tasks grouped by age buckets\n2. Default thresholds: >7 days (warning), >14 days (stale), >30 days (rotten)\n3. Configurable thresholds in config\n4. Show aging in TUI with visual indicators (color-coded)\n5. Support filtering by status (default: todo, doing)\n\nEvidence:\n- Current: Queue has timestamps (created_at, started_at) but no aging analysis\n- Gap: No visibility into stale tasks\n- User pain: Forgotten tasks accumulate, queue bloat",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "analytics",
+        "queue-management",
+        "visibility"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue/mod.rs",
+        "crates/ralph/src/queue/reports.rs",
+        "crates/ralph/src/tui/components/task_list.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "Current capability: `ralph queue stats` shows time tracking metrics (lead time, work time)",
+        "Gap observed: No aging report - can't easily find tasks sitting >N days",
+        "Timestamps exist: Task schema has created_at, started_at, updated_at fields",
+        "Reports exist: reports.rs has stats, history, burndown - but no aging"
+      ],
+      "plan": [
+        "Add aging_thresholds config to queue section (warning_days, stale_days, rotten_days)",
+        "Implement AgingReport struct with age bucket categorization",
+        "Add `ralph queue aging [--status todo,doing] [--thresholds]` CLI command",
+        "Add aging indicators to TUI task list (subtle color coding or icons)",
+        "Add aging overlay/view in TUI showing stale tasks prioritized",
+        "Update documentation with aging command examples",
+        "Add integration tests for aging calculation edge cases (timezone, DST)",
+        "Verify by running `ralph queue aging` and confirming tasks sorted by age with appropriate buckets"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
+        "opportunity_type": "analytics",
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "low"
+      }
+    },
+    {
+      "id": "RQ-0669",
+      "status": "todo",
+      "title": "Implement dependency-based auto-execution for unblocked tasks",
+      "description": "Tasks with depends_on don't automatically start when dependencies complete. Users must manually check and run tasks even when all prerequisites are satisfied. This creates friction and delays.\n\nGoals:\n1. Add `ralph run --auto-deps` mode that monitors done.json for dependency satisfaction\n2. Automatically promote blocked tasks to todo when dependencies complete\n3. Optionally auto-start tasks when dependencies done (with --start-when-ready)\n4. Add TUI indicator showing 'N tasks unblocked and ready'\n5. Support dependency chain visualization\n\nEvidence:\n- Current: depends_on field exists but is only validated, not monitored\n- Gap: No automation for dependency lifecycle\n- User pain: Manual tracking of when prerequisites complete",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "automation",
+        "dependencies",
+        "workflow"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/dependencies.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/tui/app.rs",
+        "docs/workflow.md"
+      ],
+      "evidence": [
+        "Current capability: Dependency validation exists - checks for cycles and missing deps (queue/dependencies.rs)",
+        "Gap observed: No automation - tasks with satisfied deps still require manual status change",
+        "Queue explain: `ralph queue explain` shows why tasks aren't runnable but doesn't auto-resolve",
+        "Field exists: Task schema has depends_on array but no auto-promotion logic"
+      ],
+      "plan": [
+        "Add DependencyMonitor to watch done.json for completed dependencies",
+        "Add `ralph run --auto-deps [--start-when-ready]` CLI option",
+        "Implement auto-promote logic: when dependency task completes, check dependents and promote to todo",
+        "Add 'ready to run' section in TUI showing unblocked tasks\n",
+        "Add notification when tasks become unblocked (desktop + webhook)",
+        "Add dependency satisfaction indicator in task list (checkmark when all deps done)",
+        "Update docs/workflow.md with dependency auto-execution patterns",
+        "Add tests for complex dependency chains and edge cases (circular protection, missing deps)",
+        "Verify by creating task A, task B depending on A, completing A, and confirming B auto-promotes to todo"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation",
+        "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
+        "estimated_effort": "medium",
+        "opportunity_type": "automation"
+      }
+    },
+    {
+      "id": "RQ-0670",
+      "status": "todo",
+      "title": "Add configuration profiles for quick workflow switching",
+      "description": "No way to quickly switch between different workflow configurations. Users must manually edit config or pass many CLI flags. Add named profiles that bundle runner, model, phases, and other settings.\n\nGoals:\n1. Add `profiles` section to config with named presets\n2. Support `ralph run --profile quick-fix` or `ralph scan --profile thorough`\n3. Profiles override base config but CLI flags override profiles\n4. Include built-in profiles: quick (phases=1, runner=kimi), thorough (phases=3, runner=claude)\n5. Add `ralph config profiles` command to list/manage profiles\n\nEvidence:\n- Current: Config has agent.* settings but no grouping mechanism\n- Gap: No quick way to switch between 'quick fix' vs 'deep review' modes\n- User pain: Must remember and type multiple flags: `--runner claude --model opus --phases 3 --effort high`",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "configuration",
+        "ux-improvement",
+        "productivity"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts/config.rs",
+        "crates/ralph/src/cli/config.rs",
+        "crates/ralph/src/config/loader.rs",
+        "docs/configuration.md"
+      ],
+      "evidence": [
+        "Current capability: All agent settings are flat - runner, model, phases, effort exist individually",
+        "Gap observed: No way to save/restore common setting combinations",
+        "CLI pattern: Users frequently use same flag combinations (--runner X --model Y --phases Z)",
+        "Precedent: Many CLI tools have profiles/contexts (kubectl, AWS CLI, Docker)"
+      ],
+      "plan": [
+        "Add ProfileConfig struct with all agent settings that can be overridden",
+        "Add profiles: HashMap<String, ProfileConfig> to root config",
+        "Add --profile <name> flag to run, task, scan commands",
+        "Implement profile resolution: base config → profile → CLI flags (later overrides earlier)",
+        "Add built-in profiles: 'quick' (kimi, phases=1), 'thorough' (claude/opus, phases=3), 'balanced' (sonnet, phases=2)",
+        "Add `ralph config profiles list/show/add/remove` subcommands",
+        "Add profile validation (ensure referenced profiles exist)",
+        "Update docs/configuration.md with profile examples",
+        "Verify by running `ralph run one --profile quick` and confirming correct runner/phases are used"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "estimated_effort": "medium",
+        "opportunity_type": "ux-improvement",
+        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0671",
+      "status": "todo",
+      "title": "Add intelligent retry with exponential backoff for transient failures",
+      "description": "Runner failures are currently terminal with no automatic retry. Network issues, rate limits, or temporary runner unavailability require manual intervention. Add smart retry classification and exponential backoff.\n\nGoals:\n1. Classify failures as retryable vs permanent vs requires-user-input\n2. Add exponential backoff for retryable failures (network, rate limit, temporary unavailability)\n3. Add config: max_retries (default 3), retry_backoff_base_ms (default 1000)\n4. Distinguish runner-specific errors (e.g., 429 rate limit vs 401 auth failure)\n5. Add retry count to task metadata and show in TUI\n\nEvidence:\n- Current: RunnerError enum has variants but no retry classification\n- Gap: All failures immediately surface to user\n- User pain: Transient network issues require manual restart",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "reliability",
+        "resilience",
+        "runner"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/error.rs",
+        "crates/ralph/src/runner/execution/mod.rs",
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/contracts/config.rs"
+      ],
+      "evidence": [
+        "Current capability: RunnerError captures failure details but execution flow immediately surfaces to user",
+        "Gap observed: No retry classification - NonZeroExit, Timeout, Interrupted all treated as terminal",
+        "Error types: RunnerError::Timeout, RunnerError::Interrupted are clearly retryable",
+        "Config gap: No retry-related settings in agent config section"
+      ],
+      "plan": [
+        "Add FailureClassification enum: Retryable { max_attempts, backoff }, NonRetryable, RequiresUserInput",
+        "Implement classify_error() for each runner type based on exit codes and error patterns",
+        "Add retry_attempts counter to task metadata (custom_fields or new field)",
+        "Add retry config to agent: max_retries (3), retry_backoff_base_ms (1000), retry_backoff_multiplier (2.0)",
+        "Implement retry loop in run execution with exponential backoff sleep",
+        "Add retry indicator in TUI execution view ('Retry 2/3 in 4s...')",
+        "Add webhook event for task_retry with attempt count",
+        "Update docs/error-handling.md with retry behavior documentation",
+        "Add tests for retry logic including backoff calculation and max retry exhaustion",
+        "Verify by simulating network failure and confirming automatic retry with backoff"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "estimated_effort": "medium",
+        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability"
+      }
+    },
+    {
+      "id": "RQ-0672",
+      "status": "todo",
+      "title": "Implement continuous execution mode with background daemon capability",
+      "description": "No way to run Ralph as a persistent background service. Watch mode is foreground-only, and run loop stops when queue empties. Add continuous execution that monitors queue and auto-executes tasks.\n\nGoals:\n1. Add `ralph run --continuous` that loops indefinitely, sleeping when queue empty\n2. Add `ralph daemon` command to run as background service (Unix socket/Windows service)\n3. Support graceful shutdown with signal handling\n4. Add queue-watching trigger (re-check when queue.json changes)\n5. Support configurable idle sleep interval (default 30s)\n\nEvidence:\n- Current: `ralph run loop` stops when no tasks; `ralph watch` is foreground only\n- Gap: No background service capability\n- User pain: Must keep terminal open or use external tools (screen, systemd)",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "automation",
+        "daemon",
+        "background-service"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/daemon.rs",
+        "crates/ralph/src/signal.rs",
+        "crates/ralph/src/main.rs"
+      ],
+      "evidence": [
+        "Current capability: `ralph run loop` exists but exits when queue empty",
+        "Gap observed: No continuous mode - users must manually restart or use external process managers",
+        "Watch mode: `ralph watch` only watches files, not queue, and is foreground-only",
+        "Signal handling: signal.rs exists but only for graceful stop, not daemon lifecycle"
+      ],
+      "plan": [
+        "Add --continuous flag to run command with configurable --idle-interval-secs (default 30)",
+        "Implement file watcher on queue.json to trigger immediate re-check when queue changes",
+        "Add `ralph daemon start/stop/status` commands with PID file management",
+        "Implement Unix socket for daemon communication (status, pause, resume)",
+        "Add daemon logs to .ralph/logs/daemon.log with rotation",
+        "Add systemd service file template in docs/ or scripts/",
+        "Add TUI 'Connect to daemon' mode for monitoring background execution",
+        "Update docs with daemon setup instructions",
+        "Add tests for daemon lifecycle including graceful shutdown",
+        "Verify by running `ralph daemon start`, adding a task, and confirming it auto-executes"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "automation",
+        "estimated_effort": "high",
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring"
+      }
+    },
+    {
+      "id": "RQ-0673",
+      "status": "todo",
+      "title": "Add ETA accuracy tracking and prediction improvement",
+      "description": "ETA estimates are provided but never validated against actual completion times. No feedback loop to improve predictions. Add accuracy tracking to measure and improve ETA predictions over time.\n\nGoals:\n1. Track predicted vs actual completion times for each task\n2. Calculate ETA accuracy metrics (MAE, bias, variance by runner/model)\n3. Add `ralph productivity accuracy` command showing prediction performance\n4. Use accuracy data to adjust future predictions (calibration)\n5. Show confidence intervals, not just point estimates\n\nEvidence:\n- Current: ETA calculator exists but only computes weighted averages\n- Gap: No accuracy measurement or feedback loop\n- User pain: ETAs may be consistently optimistic/pessimistic but never corrected",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "analytics",
+        "eta",
+        "predictions"
+      ],
+      "scope": [
+        "crates/ralph/src/eta_calculator.rs",
+        "crates/ralph/src/productivity.rs",
+        "crates/ralph/src/execution_history.rs",
+        "crates/ralph/src/cli/productivity.rs"
+      ],
+      "evidence": [
+        "Current capability: ETA calculator computes weighted averages by (runner, model, phase_count)",
+        "Gap observed: No comparison of predicted vs actual times - predictions never improve",
+        "Execution history: Stores phase durations but not the ETA that was predicted",
+        "Confidence levels: High/Medium/Low exist but based only on sample count, not accuracy"
+      ],
+      "plan": [
+        "Add predicted_duration_ms to execution history entries (captured at task start)",
+        "Add accuracy metrics to productivity data: mae_ms, bias_ms, variance_ms by (runner, model)",
+        "Implement accuracy calculation: compare predicted vs actual at task completion",
+        "Add calibration factor that adjusts future predictions based on historical bias",
+        "Add `ralph productivity accuracy [--runner X] [--days 30]` command",
+        "Show confidence intervals in TUI: 'ETA: 5-8 minutes (85% confidence)'",
+        "Add accuracy webhook events for external monitoring",
+        "Update docs with ETA accuracy interpretation guide",
+        "Add tests for calibration algorithm edge cases (insufficient data, outliers)",
+        "Verify by running `ralph productivity accuracy` after completing several tasks and seeing metrics"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "opportunity_type": "analytics",
+        "scan_agent": "scan-innovation",
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
+        "estimated_effort": "medium"
+      }
+    },
+    {
+      "id": "RQ-0674",
+      "status": "todo",
+      "title": "Add AI-powered task complexity analysis with auto-split suggestions",
+      "description": "No automated assistance for determining if a task is too large or should be split. Users must manually judge complexity. Add AI analysis that evaluates task scope/plan and suggests splitting when appropriate.\n\nGoals:\n1. Add `ralph task analyze <TASK_ID>` command for complexity evaluation\n2. Analyze: scope length, plan step count, evidence detail, estimated effort\n3. Suggest splitting when complexity exceeds thresholds\n4. Generate split proposals with logical task boundaries\n5. Integrate with existing `ralph task split` command\n\nEvidence:\n- Current: Manual task splitting exists (`ralph task split`) but no guidance on when to use\n- Gap: No complexity heuristics or automated analysis\n- User pain: Large tasks often fail or take much longer than expected",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "ai-features",
+        "task-management",
+        "complexity"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/task/split.rs",
+        "crates/ralph/src/cli/task.rs",
+        "crates/ralph/src/task/complexity.rs",
+        "crates/ralph/src/commands/task/analyze.rs"
+      ],
+      "evidence": [
+        "Current capability: `ralph task split` exists but is manual - no guidance on when to split",
+        "Gap observed: No complexity scoring or automated suggestions",
+        "Refactor task builder: Exists for large files but not for task complexity",
+        "Task schema: Has scope, evidence, plan fields that could be analyzed"
+      ],
+      "plan": [
+        "Create TaskComplexityAnalyzer with heuristics: scope word count, plan step count, evidence quality",
+        "Add complexity_score (1-10) and complexity_reasoning to task custom_fields",
+        "Implement `ralph task analyze <TASK_ID> [--suggest-split]` command",
+        "Add --analyze flag to `ralph task build` to check complexity before creating",
+        "Integrate with split command: `ralph task split --auto-suggest` uses AI to propose boundaries",
+        "Add complexity warning in TUI when selecting high-complexity tasks",
+        "Add webhook event for complexity_analysis_complete",
+        "Update task builder prompt to encourage right-sized tasks",
+        "Add tests for complexity scoring edge cases (short scope but complex plan)",
+        "Verify by running `ralph task analyze RQ-XXXX` on a large task and receiving split suggestions"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ai-features",
+        "estimated_effort": "medium"
+      }
+    },
+    {
+      "id": "RQ-0675",
+      "status": "todo",
+      "title": "Implement incoming webhook server for external integrations",
+      "description": "Ralph can SEND webhooks but cannot RECEIVE them. No HTTP endpoint for external services (GitHub, Slack, CI/CD) to trigger actions. Add an incoming webhook server for external integration.\n\nGoals:\n1. Add `ralph server` command that starts HTTP server on configurable port (default 8473)\n2. Support endpoints: POST /webhook/task (create task), POST /webhook/trigger (start run)\n3. Add HMAC-SHA256 signature verification for security\n4. Support GitHub webhook format for issue/PR events\n5. Add request queuing and rate limiting\n\nEvidence:\n- Current: Outbound webhooks exist (9 event types) but no inbound\n- Gap: No HTTP server capability\n- User pain: Can't integrate with external CI systems, GitHub webhooks, Slack commands",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "integrations",
+        "webhook-server",
+        "api"
+      ],
+      "scope": [
+        "crates/ralph/src/server/mod.rs",
+        "crates/ralph/src/server/webhook.rs",
+        "crates/ralph/src/server/routes.rs",
+        "crates/ralph/src/cli/server.rs",
+        "docs/integrations.md"
+      ],
+      "evidence": [
+        "Current capability: Outbound webhook system is mature (9 events, retries, HMAC)",
+        "Gap observed: No incoming webhook capability - can't receive external triggers",
+        "No HTTP server: Main is purely CLI, no server modules exist",
+        "Integration gap: GitHub webhooks, Slack commands, CI triggers not possible"
+      ],
+      "plan": [
+        "Add axum or warp dependency for HTTP server (lightweight, async)",
+        "Create server module with configurable bind address and port (default 127.0.0.1:8473)",
+        "Implement POST /webhook/task endpoint for external task creation",
+        "Implement POST /webhook/trigger endpoint to start run loop",
+        "Add HMAC-SHA256 verification using configured webhook.secret",
+        "Add GitHub-compatible endpoint at /webhook/github for PR/issue events",
+        "Implement request queue with rate limiting (requests per minute per source)",
+        "Add server logging and request/response logging to .ralph/logs/server.log",
+        "Add `ralph server start/stop/status` CLI commands",
+        "Create example integrations for GitHub webhooks and Slack commands",
+        "Verify by running `ralph server start`, then POST to /webhook/task and confirming task created"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
+        "opportunity_type": "integration",
+        "estimated_effort": "high",
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0676",
+      "status": "todo",
+      "title": "Add smart scheduling rules for time-based task automation",
+      "description": "No time-based automation rules. Can't automatically escalate priority, reject stale drafts, or change status based on age. Add configurable rules for time-based task actions.\n\nGoals:\n1. Add `automation_rules` config section with time-based triggers\n2. Support rules: escalate priority after N days, auto-reject stale drafts, remind after delay\n3. Add `ralph queue rules` command to list/apply rules\n4. Support dry-run mode to preview rule effects\n5. Integrate with continuous/daemon mode for automatic application\n\nEvidence:\n- Current: Basic `scheduled_start` field exists but no rule engine\n- Gap: No automation based on task age or time in status\n- User pain: Stale drafts accumulate, high-priority work gets forgotten",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "automation",
+        "scheduling",
+        "rules-engine"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts/config.rs",
+        "crates/ralph/src/queue/rules.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/queue/automation.rs"
+      ],
+      "evidence": [
+        "Current capability: `ralph task schedule` sets future start date - manual only",
+        "Gap observed: No recurring or conditional automation based on task state",
+        "Queue prune: Exists for age-based deletion but not general rules",
+        "Aging report: Would identify stale tasks but not act on them"
+      ],
+      "plan": [
+        "Add AutomationRule struct with trigger (time_in_status, age), condition, and action",
+        "Add automation_rules: Vec<AutomationRule> to config",
+        "Implement rule engine that evaluates rules against queue on schedule/trigger",
+        "Add `ralph queue rules list/test/apply` CLI commands",
+        "Support actions: set_priority, set_status, add_tag, add_note, notify",
+        "Add built-in rule templates: 'escalate_after_7d', 'reject_stale_drafts'",
+        "Integrate with daemon mode for automatic rule application",
+        "Add webhook events for rule_triggered and rule_action_applied",
+        "Add TUI notification when rules are applied to tasks",
+        "Add tests for rule evaluation including complex conditions",
+        "Verify by configuring a rule 'after 1d in draft, add tag stale', waiting 1 day, and confirming tag added"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "estimated_effort": "medium",
+        "opportunity_type": "automation",
+        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0677",
+      "status": "todo",
+      "title": "Add plugin marketplace with remote install and discovery",
+      "description": "Plugins can only be installed from local directories. No discovery, versioning, or remote installation. Add a plugin marketplace for easy sharing and installation.\n\nGoals:\n1. Add `ralph plugin search <query>` to find plugins from registry\n2. Add `ralph plugin install <source>` supporting git URLs, GitHub repos, registry IDs\n3. Add version resolution and update checking\n4. Add plugin registry format (JSON index)\n5. Support signed plugins for security\n\nEvidence:\n- Current: `ralph plugin install <local-dir>` only supports local paths\n- Gap: No remote installation, no discovery mechanism\n- User pain: Must manually download/clone plugins, no version management",
+      "priority": "low",
+      "tags": [
+        "innovation",
+        "plugin-system",
+        "marketplace",
+        "ecosystem"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/plugin/mod.rs",
+        "crates/ralph/src/plugin/marketplace.rs",
+        "crates/ralph/src/plugin/registry.rs",
+        "docs/plugin-development.md"
+      ],
+      "evidence": [
+        "Current capability: Plugin install only supports local directory paths (commands/plugin/mod.rs)",
+        "Gap observed: No remote install, no version management, no discovery",
+        "Registry exists: PluginRegistry but only for discovered local plugins",
+        "Discovery: Only scans ~/.config/ralph/plugins/ and .ralph/plugins/"
+      ],
+      "plan": [
+        "Add PluginMarketplace client for fetching plugin index from registry URL",
+        "Extend `ralph plugin install` to support: github:user/repo, https://git..., registry:plugin-id",
+        "Add version resolution using semver - install latest compatible or specific version",
+        "Add `ralph plugin update [plugin-id]` to check and apply updates",
+        "Add `ralph plugin search <query>` with filtering by type (runner/processor)",
+        "Add `ralph plugin info <plugin-id>` showing description, versions, dependencies",
+        "Support plugin signing/verification with GPG or Sigstore",
+        "Add official Ralph plugin registry (GitHub repo with index.json)",
+        "Update docs with plugin publishing guide",
+        "Add tests for version resolution and update checking",
+        "Verify by running `ralph plugin install github:ralph-plugins/slack-integration` and confirming installation"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "opportunity_type": "ecosystem",
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "high",
+        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability"
+      }
+    },
+    {
+      "id": "RQ-0678",
+      "status": "todo",
+      "title": "Implement bidirectional GitHub sync for issues and PRs",
+      "description": "GitHub integration is one-way only (export/publish). Tasks can become GitHub issues but status doesn't sync back. Add bidirectional synchronization.\n\nGoals:\n1. Add `ralph queue sync github` command to sync task status with linked issues/PRs\n2. Poll GitHub for status changes (issue closed → task done, PR merged → task done)\n3. Sync comments bidirectionally\n4. Support labels sync (GitHub labels ↔ tags)\n5. Add webhook support for real-time sync (with ralph server feature)\n\nEvidence:\n- Current: `ralph queue issue publish` creates GitHub issues but no sync\n- Gap: One-way only - no status sync back from GitHub\n- User pain: Must manually mark tasks done when GitHub issues close",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "integrations",
+        "github",
+        "sync"
+      ],
+      "scope": [
+        "crates/ralph/src/git/issue.rs",
+        "crates/ralph/src/git/pr.rs",
+        "crates/ralph/src/cli/queue/issue.rs",
+        "crates/ralph/src/queue/sync.rs"
+      ],
+      "evidence": [
+        "Current capability: `ralph queue issue publish` and parallel mode PR creation exist",
+        "Gap observed: No synchronization - GitHub issue close doesn't update task status",
+        "Export only: Export formats include GitHub markdown but no import/sync",
+        "Git module: issue.rs and pr.rs exist but only have create/update, no sync polling"
+      ],
+      "plan": [
+        "Add github_issue_id and github_pr_id fields to task custom_fields for linking",
+        "Implement GitHub sync polling using gh CLI or GraphQL API",
+        "Add `ralph queue sync github [--poll-interval 5m]` command",
+        "Implement status mapping: issue closed → task done, PR merged → task done",
+        "Add bidirectional comment sync (GitHub comments → task notes, task notes → GitHub comments)",
+        "Add label/tag sync configuration (map GitHub labels to Ralph tags)",
+        "Integrate with ralph server for webhook-based real-time sync",
+        "Add sync status indicator in TUI showing last sync time",
+        "Add dry-run mode to preview sync changes",
+        "Update docs with GitHub sync setup and configuration",
+        "Add tests for sync logic including conflict resolution",
+        "Verify by publishing task to GitHub, closing issue, running sync, and confirming task marked done"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "estimated_effort": "medium",
+        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
+        "opportunity_type": "integration",
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0679",
+      "status": "todo",
+      "title": "Add health check system with disk space and resource monitoring",
+      "description": "No proactive health monitoring. Queue operations, temp files, and debug logs can consume disk space without warning. Add health checks that warn before resources are exhausted.\n\nGoals:\n1. Add pre-flight health checks: disk space, memory, git state, runner availability\n2. Add `ralph doctor --health-check` for continuous monitoring\n3. Configurable thresholds: disk_space_threshold_mb (default 1000)\n4. Add health status to TUI status bar\n5. Add webhook alerts for health issues\n\nEvidence:\n- Current: `ralph doctor` runs one-time checks but no continuous monitoring\n- Gap: No resource monitoring or alerts\n- Risk: Disk full during long runs can cause data corruption",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "reliability",
+        "monitoring",
+        "health-checks"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/doctor.rs",
+        "crates/ralph/src/health/mod.rs",
+        "crates/ralph/src/contracts/config.rs",
+        "crates/ralph/src/tui/components/status_bar.rs"
+      ],
+      "evidence": [
+        "Current capability: `ralph doctor` validates environment and runner binaries",
+        "Gap observed: No disk space, memory, or resource monitoring",
+        "Debug logs: Can grow large (.ralph/logs/debug.log) with no rotation based on disk space",
+        "Temp files: Parallel mode creates workspaces with no cleanup on disk full"
+      ],
+      "plan": [
+        "Add HealthChecker struct with checks: disk_space, memory, git_state, runner_available",
+        "Add health config to agent: disk_space_threshold_mb (1000), memory_threshold_percent (90)",
+        "Add pre-flight health check before task execution with warning/abort on failure",
+        "Add `ralph doctor --watch [--interval 60]` for continuous monitoring mode",
+        "Add health indicator to TUI status bar (green/yellow/red based on checks)",
+        "Add health_check_failed webhook event with details",
+        "Add automatic cleanup of old debug logs when disk space low",
+        "Add health check results to safeguard dumps for debugging",
+        "Update docs with health check configuration and troubleshooting",
+        "Add tests for health check logic including edge cases (disk full, permission denied)",
+        "Verify by running `ralph doctor --watch` with artificially low threshold and confirming alerts"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "opportunity_type": "reliability",
+        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0680",
+      "status": "todo",
+      "title": "Add undo/redo system for task operations",
+      "description": "No way to undo task operations. Accidental deletes, status changes, or edits can't be easily reverted. Add an undo/redo system for queue mutations.\n\nGoals:\n1. Add operation history stack for queue mutations\n2. Support undo for: delete, archive, status change, edit, batch operations\n3. Add `ralph queue undo` and `ralph queue redo` commands\n4. Add undo support in TUI (Ctrl+Z / Ctrl+Y)\n5. Persist undo history across sessions (configurable)\n\nEvidence:\n- Current: No undo capability - operations are immediate and permanent\n- Gap: Accidental changes require manual repair or queue.json editing\n- User pain: One wrong `ralph task delete` or batch operation can lose work",
+      "priority": "low",
+      "tags": [
+        "innovation",
+        "ux-improvement",
+        "safety",
+        "data-recovery"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/undo.rs",
+        "crates/ralph/src/queue/operations/mod.rs",
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/tui/app.rs"
+      ],
+      "evidence": [
+        "Current capability: Queue repair exists for corruption but not for user mistakes",
+        "Gap observed: No operation history or undo capability anywhere",
+        "Batch operations: Can affect many tasks at once with no recovery path",
+        "Delete: `ralph task delete` immediately removes task from queue"
+      ],
+      "plan": [
+        "Add OperationRecord struct capturing operation type, before/after state, timestamp",
+        "Add undo_history: Vec<OperationRecord> to queue with max size limit (default 100)",
+        "Instrument all queue mutation operations to push to undo stack",
+        "Implement `ralph queue undo [--steps N]` to revert last N operations",
+        "Implement `ralph queue redo` to re-apply undone operations",
+        "Add Ctrl+Z / Ctrl+Y keybindings in TUI for undo/redo",
+        "Add undo indicator in TUI showing 'Undo available (3 operations)'",
+        "Persist undo history to .ralph/cache/undo_history.json (optional, default on)",
+        "Add config option: max_undo_history_size, persist_undo_history",
+        "Update docs with undo/redo usage and limitations",
+        "Add tests for undo/redo including complex sequences and edge cases",
+        "Verify by running `ralph task delete RQ-XXXX`, then `ralph queue undo`, and confirming task restored"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T00:41:40Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium",
+        "opportunity_type": "ux-improvement",
+        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety"
+      }
+    }
+  ]
 }
