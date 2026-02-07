@@ -20,7 +20,7 @@
 //! - Paths are resolved relative to repo root unless absolute.
 //! - Global config lives at `~/.config/ralph/config.json` (or `$XDG_CONFIG_HOME/ralph/config.json`).
 //! - Project config lives at `.ralph/config.json` relative to repo root.
-//! - Config merging follows precedence: global → project → defaults.
+//! - Config layers are applied in this order: defaults, then global, then project (later layers override earlier ones).
 //! - `save_layer` creates parent directories automatically if needed.
 
 use crate::constants::defaults::DEFAULT_ID_WIDTH;
