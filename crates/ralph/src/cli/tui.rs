@@ -142,7 +142,7 @@ mod tests {
     fn browse_only_runner_rejects_execution() {
         let handler: runner::OutputHandler = Arc::new(Box::new(|_text: &str| {}));
         let revert_prompt: runutil::RevertPromptHandler =
-            Arc::new(|_context: &runutil::RevertPromptContext| runutil::RevertDecision::Keep);
+            Arc::new(|_context: &runutil::RevertPromptContext| Ok(runutil::RevertDecision::Keep));
         let runner = browse_only_runner("RQ-0001".to_string(), handler, revert_prompt);
         let err = runner().expect_err("expected browse-only error");
         assert!(
@@ -155,7 +155,7 @@ mod tests {
     fn browse_only_scan_runner_rejects_scan() {
         let handler: runner::OutputHandler = Arc::new(Box::new(|_text: &str| {}));
         let revert_prompt: runutil::RevertPromptHandler =
-            Arc::new(|_context: &runutil::RevertPromptContext| runutil::RevertDecision::Keep);
+            Arc::new(|_context: &runutil::RevertPromptContext| Ok(runutil::RevertDecision::Keep));
         let runner = browse_only_scan_runner("".to_string(), handler, revert_prompt);
         let err = runner().expect_err("expected browse-only scan error");
         assert!(

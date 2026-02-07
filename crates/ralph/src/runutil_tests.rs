@@ -167,7 +167,7 @@ fn apply_git_revert_mode_uses_prompt_handler_keep() {
     let file_path = dir.path().join("file.txt");
     fs::write(&file_path, "modified").expect("modify file");
 
-    let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Keep);
+    let handler: RevertPromptHandler = Arc::new(|_context| Ok(RevertDecision::Keep));
     let outcome = apply_git_revert_mode(
         dir.path(),
         GitRevertMode::Ask,
@@ -195,7 +195,7 @@ fn apply_git_revert_mode_uses_prompt_handler_revert() {
     let file_path = dir.path().join("file.txt");
     fs::write(&file_path, "modified").expect("modify file");
 
-    let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Revert);
+    let handler: RevertPromptHandler = Arc::new(|_context| Ok(RevertDecision::Revert));
     let outcome = apply_git_revert_mode(
         dir.path(),
         GitRevertMode::Ask,
@@ -223,8 +223,10 @@ fn apply_git_revert_mode_uses_prompt_handler_continue() {
     let file_path = dir.path().join("file.txt");
     fs::write(&file_path, "modified").expect("modify file");
 
-    let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Continue {
-        message: "keep going".to_string(),
+    let handler: RevertPromptHandler = Arc::new(|_context| {
+        Ok(RevertDecision::Continue {
+            message: "keep going".to_string(),
+        })
     });
     let outcome = apply_git_revert_mode(
         dir.path(),
@@ -253,7 +255,7 @@ fn apply_git_revert_mode_allows_proceed_when_enabled() {
     let file_path = dir.path().join("file.txt");
     fs::write(&file_path, "modified").expect("modify file");
 
-    let handler: RevertPromptHandler = Arc::new(|_context| RevertDecision::Proceed);
+    let handler: RevertPromptHandler = Arc::new(|_context| Ok(RevertDecision::Proceed));
     let outcome = apply_git_revert_mode_with_context(
         dir.path(),
         GitRevertMode::Ask,
@@ -442,7 +444,7 @@ fn run_prompt_interrupt_returns_abort_reason() {
         git_revert_mode: GitRevertMode::Ask,
         output_handler: None,
         output_stream: runner::OutputStream::Terminal,
-        revert_prompt: Some(Arc::new(|_context| RevertDecision::Keep)),
+        revert_prompt: Some(Arc::new(|_context| Ok(RevertDecision::Keep))),
         phase_type: PhaseType::Implementation,
         session_id: None,
     };
@@ -492,7 +494,7 @@ fn run_prompt_user_revert_returns_abort_reason() {
         git_revert_mode: GitRevertMode::Ask,
         output_handler: None,
         output_stream: runner::OutputStream::Terminal,
-        revert_prompt: Some(Arc::new(|_context| RevertDecision::Revert)),
+        revert_prompt: Some(Arc::new(|_context| Ok(RevertDecision::Revert))),
         phase_type: PhaseType::Implementation,
         session_id: None,
     };

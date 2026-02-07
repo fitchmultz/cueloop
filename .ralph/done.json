@@ -1300,9 +1300,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "time_to_ship": "medium (concurrency + tests)",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort.",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (concurrency + tests)",
         "opportunity_type": "reliability"
       }
     },
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (metadata + reconciliation + tests)"
+        "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "opportunity_type": "ux improvement",
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
       }
     },
     {
@@ -1394,10 +1394,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation",
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
-        "time_to_ship": "medium (format + fixes + tests)"
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (format + fixes + tests)",
+        "opportunity_type": "ux improvement"
       }
     },
     {
@@ -1441,10 +1441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
         "time_to_ship": "small/medium (formatters + tests)",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation",
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat)."
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (TUI wiring + tests)",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ux improvement"
+        "time_to_ship": "medium (TUI wiring + tests)",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke."
       }
     },
     {
@@ -1989,8 +1989,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (render-only UI + tests)",
+        "opportunity_type": "ux improvement",
         "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "scan_agent": "scan-innovation"
       }
@@ -2047,9 +2047,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types"
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "incremental - add one batch operation at a time",
         "opportunity_type": "UX improvement",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces queue maintenance time by 80% for large projects"
+        "user_value": "Reduces queue maintenance time by 80% for large projects",
+        "time_to_ship": "incremental - add one batch operation at a time"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "user_value": "Reduces regression risk; enables confident refactoring",
         "opportunity_type": "reliability",
-        "measurable_impact": "80%+ integration test coverage for CLI commands"
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "scan_agent": "scan-innovation",
+        "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
     {
@@ -2231,10 +2231,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation",
+        "differentiation": "Unique capability among AI task runners",
         "user_value": "Enables ecosystem growth; custom integrations without forks",
-        "differentiation": "Unique capability among AI task runners"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "feature gap"
       }
     },
     {
@@ -3577,11 +3577,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-maintenance",
         "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
-        "runner_used": "kimi",
         "occurrence_count": "4",
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance"
+        "runner_used": "kimi"
       }
     },
     {
@@ -3635,8 +3635,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-maintenance",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -3717,8 +3717,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -3801,13 +3801,13 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi",
         "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
         "legacy_code_removed": "true",
-        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
         "completed_via": "RQ-0657 (foundational plugin framework)",
+        "model_used": "kimi-code/kimi-for-coding",
+        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
         "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
+        "runner_used": "kimi",
         "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed"
       }
     },
@@ -3923,8 +3923,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4050,8 +4050,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -4118,10 +4118,10 @@
         "RQ-0663"
       ],
       "custom_fields": {
-        "plugin_status": "already_implemented",
-        "runner_used": "kimi",
         "cleanup_required": "true",
         "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
+        "plugin_status": "already_implemented",
+        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding"
       }
     },
@@ -4178,12 +4178,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
-        "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
         "runner_used": "kimi",
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
+        "model_used": "kimi-code/kimi-for-coding",
         "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427"
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427",
+        "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427"
       }
     },
     {
@@ -4244,10 +4244,10 @@
       ],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "rq_0657_status": "completed",
         "runner_used": "kimi",
         "cleanup_type": "legacy_code_removal",
-        "plugin_status": "implemented_needs_cleanup"
+        "plugin_status": "implemented_needs_cleanup",
+        "rq_0657_status": "completed"
       }
     },
     {
@@ -4310,15 +4310,15 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
         "cleanup_status": "already_completed_via_rq_0657",
+        "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
         "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
-        "task_type": "cleanup",
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi",
         "rq_0657_status": "completed",
-        "verification_only": "true",
-        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization"
+        "runner_used": "kimi",
+        "task_type": "cleanup",
+        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
+        "model_used": "kimi-code/kimi-for-coding",
+        "verification_only": "true"
       }
     },
     {
@@ -4370,8 +4370,8 @@
       "custom_fields": {
         "scan_agent": "scan-maintenance",
         "tests_file_lines": "412",
-        "execution_file_lines": "572",
         "runner_used": "kimi",
+        "execution_file_lines": "572",
         "model_used": "kimi-code/kimi-for-coding"
       }
     },
@@ -4423,9 +4423,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "runner_used": "kimi"
       }
     },
     {
@@ -4484,11 +4484,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "target_loc": "800",
-        "runner_used": "kimi",
-        "current_loc": "3383",
+        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance"
+        "current_loc": "3383",
+        "runner_used": "kimi",
+        "target_loc": "800"
       }
     },
     {
@@ -4550,14 +4550,14 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "previous_loc": "3241",
-        "test_lines": "1000",
-        "current_loc": "3290",
         "code_lines": "2200",
+        "previous_loc": "3241",
         "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
+        "existing_submodules": "7",
+        "current_loc": "3290",
         "scan_agent": "scan-maintenance",
-        "existing_submodules": "7"
+        "test_lines": "1000"
       }
     },
     {
@@ -4602,9 +4602,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance"
+        "scan_agent": "scan-maintenance",
+        "runner_used": "kimi"
       }
     },
     {
@@ -4665,12 +4665,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
-        "model_used": "kimi-code/kimi-for-coding",
-        "refresh_note": "As of 2026-02-07, auto-archive already exists in TUI and `ralph run` supervision; remaining work is queue-level age-based sweep and docs/config alignment.",
-        "runner_used": "kimi",
         "opportunity_type": "automation",
+        "runner_used": "kimi",
+        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
+        "refresh_note": "As of 2026-02-07, auto-archive already exists in TUI and `ralph run` supervision; remaining work is queue-level age-based sweep and docs/config alignment.",
+        "model_used": "kimi-code/kimi-for-coding",
         "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load"
       }
     },
@@ -4739,11 +4739,11 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
+        "opportunity_type": "feature-gap",
+        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
         "runner_used": "kimi",
-        "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing",
-        "opportunity_type": "feature-gap",
-        "estimated_effort": "medium"
+        "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing"
       }
     },
     {
@@ -4813,11 +4813,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
-        "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
         "estimated_effort": "low",
         "scan_agent": "scan-innovation",
+        "model_used": "kimi-code/kimi-for-coding",
+        "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
         "opportunity_type": "analytics"
       }
     },
@@ -4874,9 +4874,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4936,9 +4936,63 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "runner_used": "kimi"
+      }
+    },
+    {
+      "id": "RQ-0683",
+      "status": "done",
+      "title": "TUI revert prompt should not silently default when reply channel closes",
+      "description": "Principles violated: Fail fast (F), Least astonishment (G), Operational hygiene (H).\n\nThe TUI's `revert_prompt` handler defaults to `RevertDecision::Keep` if the reply channel closes (`recv()` error). This silently hides an internal coordination failure between the runner thread and the UI event loop.\n\nWhy it matters (failure modes):\n- If the UI thread is dropped/stuck and cannot answer, the runner proceeds with an implicit decision without surfacing that the prompt never completed.\n- Defaulting to Keep can be surprising and may leave the repo in an unintended state in workflows where revert is expected on failure.\n\nMinimal proposed fix:\n- Replace `reply_rx.recv().unwrap_or(Keep)` with explicit error handling: log a warning/error and choose an explicit, documented default.\n- Consider treating a closed reply channel as a hard error returned to the runner loop (safer) instead of silently selecting.\n- Add a unit test that exercises the closed-channel path, asserting the chosen behavior.\n\nAcceptance criteria:\n- Tests cover the closed-channel path deterministically.\n- Behavior is documented and consistent with the chosen safety default.\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "tui",
+        "runner",
+        "error-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/events/confirm.rs",
+        "crates/ralph/src/runutil/revert.rs",
+        "crates/ralph/src/tui/events/tests/confirm_revert.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/app.rs:1776-1791 builds a RevertPromptHandler; if sending RunnerEvent::RevertPrompt fails it returns RevertDecision::Keep, and if reply_rx.recv() fails it defaults via unwrap_or(RevertDecision::Keep)",
+        "crates/ralph/src/tui/events/confirm.rs:195-241 stores the reply Sender in ConfirmRevertState/AppMode::ConfirmRevert, and UI completion is expected to send a RevertDecision back to the runner thread",
+        "crates/ralph/src/runutil/revert.rs:71-119 uses the RevertPromptHandler return value directly when git_revert_mode=ask (TUI prompt result drives apply_revert_decision)",
+        "Command: `nl -ba crates/ralph/src/tui/app.rs | sed -n '1760,1810p'` and `nl -ba crates/ralph/src/tui/events/confirm.rs | sed -n '190,260p'`"
+      ],
+      "plan": [
+        "Decide and document the behavior for internal coordination failures in the TUI revert prompt (send-to-UI failure and reply channel close), including the safety default (Keep vs Revert vs abort/propagate error)",
+        "Implement explicit error handling for reply_rx.recv() (no silent unwrap_or) and ensure the send failure path is also surfaced (warning/status/log) rather than silently defaulting",
+        "Add a deterministic unit test covering the closed-channel reply path (and, if behavior differs, the send-to-UI failure path)",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [
+        "Revert prompt types/logic live in crates/ralph/src/runutil/revert.rs (re-exported via crates/ralph/src/runutil.rs); the TUI wires the handler in crates/ralph/src/tui/app.rs.",
+        "Implemented fail-fast error handling for TUI revert prompt",
+        "Changed RevertPromptHandler to return Result<RevertDecision> instead of silently defaulting to Keep",
+        "Added 3 deterministic unit tests covering send failure, reply channel close, and success paths",
+        "Updated module documentation in revert.rs and revert_prompt.rs",
+        "All 2224+ tests pass; make ci completes successfully"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T06:08:04.363254000Z",
+      "completed_at": "2026-02-07T06:08:04.363254000Z",
+      "started_at": "2026-02-07T05:34:14.632099000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance",
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     }
   ]

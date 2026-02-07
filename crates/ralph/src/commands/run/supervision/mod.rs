@@ -1048,10 +1048,11 @@ echo '{{"sessionID":"sess-123"}}'
         resolved.config.agent.ci_gate_command = Some(ci_command);
         resolved.config.agent.opencode_bin = Some(runner_path.to_str().unwrap().to_string());
 
-        let prompt_handler: runutil::RevertPromptHandler =
-            Arc::new(|_context| runutil::RevertDecision::Continue {
+        let prompt_handler: runutil::RevertPromptHandler = Arc::new(|_context| {
+            Ok(runutil::RevertDecision::Continue {
                 message: "fix the ci gate".to_string(),
-            });
+            })
+        });
 
         let mut continue_session = ContinueSession {
             runner: Runner::Opencode,

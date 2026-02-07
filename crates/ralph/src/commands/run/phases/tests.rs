@@ -257,11 +257,11 @@ echo '{{"sessionID":"sess-123"}}'
         let calls = Arc::clone(&calls);
         move |_context: &runutil::RevertPromptContext| {
             if calls.fetch_add(1, Ordering::SeqCst) == 0 {
-                runutil::RevertDecision::Continue {
+                Ok(runutil::RevertDecision::Continue {
                     message: "continue".to_string(),
-                }
+                })
             } else {
-                runutil::RevertDecision::Keep
+                Ok(runutil::RevertDecision::Keep)
             }
         }
     });
@@ -351,7 +351,7 @@ echo '{{"sessionID":"sess-123"}}'
     };
 
     let prompt_handler: runutil::RevertPromptHandler =
-        Arc::new(|_context: &runutil::RevertPromptContext| runutil::RevertDecision::Proceed);
+        Arc::new(|_context: &runutil::RevertPromptContext| Ok(runutil::RevertDecision::Proceed));
 
     let invocation = PhaseInvocation {
         resolved: &resolved,
@@ -740,7 +740,7 @@ echo '{{"sessionID":"sess-123"}}'
         let prompt_calls = Arc::clone(&prompt_calls);
         move |_context: &runutil::RevertPromptContext| {
             prompt_calls.fetch_add(1, Ordering::SeqCst);
-            runutil::RevertDecision::Keep
+            Ok(runutil::RevertDecision::Keep)
         }
     });
 

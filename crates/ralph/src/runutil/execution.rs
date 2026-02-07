@@ -62,7 +62,7 @@ pub(crate) struct RunnerInvocation<'a> {
 
 pub(crate) struct RunnerErrorMessages<'a, FNonZero, FOther>
 where
-    FNonZero: FnOnce(i32) -> String,
+    FNonZero: FnMut(i32) -> String,
     FOther: FnOnce(runner::RunnerError) -> String,
 {
     pub log_label: &'a str,
@@ -228,7 +228,7 @@ pub(crate) fn run_prompt_with_handling_backend<FNonZero, FOther>(
     backend: &mut impl RunnerBackend,
 ) -> Result<runner::RunnerOutput>
 where
-    FNonZero: FnOnce(i32) -> String,
+    FNonZero: FnMut(i32) -> String,
     FOther: FnOnce(runner::RunnerError) -> String,
 {
     let RunnerInvocation {
@@ -254,7 +254,7 @@ where
         interrupted_msg,
         timeout_msg,
         terminated_msg,
-        non_zero_msg,
+        mut non_zero_msg,
         other_msg,
     } = messages;
 
@@ -362,6 +362,8 @@ where
                 session_id,
             }) => {
                 log_stderr_tail(log_label, &stderr.to_string());
+                // Compute base_msg immediately since non_zero_msg is FnOnce and we may loop
+                let base_msg = non_zero_msg(code);
                 let mut safeguard_msg = String::new();
                 if revert_on_error {
                     if !stdout.0.is_empty() {
@@ -431,21 +433,19 @@ where
                         RevertOutcome::Reverted {
                             source: RevertSource::User,
                         } => {
-                            let message =
-                                format_revert_failure_message(&non_zero_msg(code), outcome);
+                            let message = format_revert_failure_message(&base_msg, outcome);
                             return Err(anyhow::Error::new(RunAbort::new(
                                 RunAbortReason::UserRevert,
                                 format!("{}{}", message, safeguard_msg),
                             )));
                         }
                         _ => {
-                            let message =
-                                format_revert_failure_message(&non_zero_msg(code), outcome);
+                            let message = format_revert_failure_message(&base_msg, outcome);
                             bail!("{}{}", message, safeguard_msg);
                         }
                     }
                 }
-                bail!("{}{}", non_zero_msg(code), safeguard_msg);
+                bail!("{}{}", base_msg, safeguard_msg);
             }
             Err(runner::RunnerError::TerminatedBySignal {
                 stdout,
@@ -537,6 +537,7 @@ where
                 bail!("{}{}", terminated_msg, safeguard_msg);
             }
             Err(err) => {
+                let base_msg = other_msg(err);
                 let message = if revert_on_error {
                     let outcome = apply_git_revert_mode(
                         repo_root,
@@ -550,15 +551,15 @@ where
                             source: RevertSource::User,
                         }
                     ) {
-                        let message = format_revert_failure_message(&other_msg(err), outcome);
+                        let message = format_revert_failure_message(&base_msg, outcome);
                         return Err(anyhow::Error::new(RunAbort::new(
                             RunAbortReason::UserRevert,
                             message,
                         )));
                     }
-                    format_revert_failure_message(&other_msg(err), outcome)
+                    format_revert_failure_message(&base_msg, outcome)
                 } else {
-                    other_msg(err)
+                    base_msg
                 };
                 bail!("{message}");
             }
@@ -571,7 +572,7 @@ pub(crate) fn run_prompt_with_handling<FNonZero, FOther>(
     messages: RunnerErrorMessages<'_, FNonZero, FOther>,
 ) -> Result<runner::RunnerOutput>
 where
-    FNonZero: FnOnce(i32) -> String,
+    FNonZero: FnMut(i32) -> String,
     FOther: FnOnce(runner::RunnerError) -> String,
 {
     let mut backend = RealRunnerBackend;

@@ -44,6 +44,7 @@ mod help;
 mod input;
 mod keymap;
 mod render;
+mod revert_prompt;
 mod task_edit;
 pub mod terminal;
 mod textarea_input;

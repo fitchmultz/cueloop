@@ -1689,6 +1689,7 @@ pub(crate) fn auto_save_if_dirty(
 }
 
 /// Event sent from the runner thread to the TUI.
+#[derive(Debug)]
 pub(crate) enum RunnerEvent {
     /// Output chunk received
     Output(String),
@@ -1768,27 +1769,11 @@ where
 
     let build_handlers = |tx: &mpsc::Sender<RunnerEvent>| {
         let tx_clone_for_handler = tx.clone();
-        let tx_clone_for_prompt = tx.clone();
         let handler: crate::runner::OutputHandler = Arc::new(Box::new(move |text: &str| {
             let _ = tx_clone_for_handler.send(RunnerEvent::Output(text.to_string()));
         }));
 
-        let revert_prompt: runutil::RevertPromptHandler =
-            Arc::new(move |context: &runutil::RevertPromptContext| {
-                let (reply_tx, reply_rx) = mpsc::channel();
-                if tx_clone_for_prompt
-                    .send(RunnerEvent::RevertPrompt {
-                        label: context.label.clone(),
-                        preface: context.preface.clone(),
-                        allow_proceed: context.allow_proceed,
-                        reply: reply_tx,
-                    })
-                    .is_err()
-                {
-                    return runutil::RevertDecision::Keep;
-                }
-                reply_rx.recv().unwrap_or(runutil::RevertDecision::Keep)
-            });
+        let revert_prompt = crate::tui::revert_prompt::make_tui_revert_prompt_handler(tx.clone());
 
         (handler, revert_prompt)
     };

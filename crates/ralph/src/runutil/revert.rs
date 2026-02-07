@@ -11,6 +11,9 @@
 //! Invariants/assumptions:
 //! - `apply_git_revert_mode*` never mutates repo state unless mode=Enabled or user chooses Revert.
 //! - Non-interactive stdin (non-TTY) in Ask mode defaults to "keep changes".
+//! - If an interactive UI cannot complete the prompt (reply channel closes / coordination
+//!   failure), the prompt handler returns an error and the run aborts; no default decision
+//!   is assumed.
 
 use anyhow::Result;
 use std::io::{BufRead, BufReader, IsTerminal, Write};
@@ -68,7 +71,8 @@ impl RevertPromptContext {
     }
 }
 
-pub type RevertPromptHandler = Arc<dyn Fn(&RevertPromptContext) -> RevertDecision + Send + Sync>;
+pub type RevertPromptHandler =
+    Arc<dyn Fn(&RevertPromptContext) -> Result<RevertDecision> + Send + Sync>;
 
 pub fn apply_git_revert_mode(
     repo_root: &Path,
@@ -102,11 +106,8 @@ pub fn apply_git_revert_mode_with_context(
         }),
         GitRevertMode::Ask => {
             if let Some(prompt) = revert_prompt {
-                return apply_revert_decision(
-                    repo_root,
-                    prompt(&prompt_context),
-                    prompt_context.allow_proceed,
-                );
+                let decision = prompt(&prompt_context)?;
+                return apply_revert_decision(repo_root, decision, prompt_context.allow_proceed);
             }
             let stdin = std::io::stdin();
             if !stdin.is_terminal() {
