@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0666",
-      "status": "todo",
-      "title": "Implement auto-archive system for completed tasks",
-      "description": "Add configurable auto-archiving for completed/rejected tasks to eliminate manual `ralph queue archive` requirement. Currently users must manually run archive command - this creates friction and leads to queue bloat.\n\nGoals:\n1. Add `queue.auto_archive_enabled` and `queue.auto_archive_after_days` config options\n2. Auto-move tasks to done.json after configured days in terminal state\n3. Support both immediate (0 days) and delayed archiving\n4. Add TUI indicator showing auto-archive status\n5. Respect manual archive as override\n\nEvidence:\n- Current: Users must run `ralph queue archive` manually (docs/cli.md)\n- Gap: No automation for queue maintenance\n- Competitive: snarktank/ralph has built-in auto-archiving (docs/competitive-analysis.md)",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "automation",
-        "queue-management",
-        "ux-improvement"
-      ],
-      "scope": [
-        "crates/ralph/src/contracts/config.rs",
-        "crates/ralph/src/queue/archive.rs",
-        "crates/ralph/src/commands/run/mod.rs",
-        "docs/configuration.md"
-      ],
-      "evidence": [
-        "Current capability: Manual `ralph queue archive` command exists (docs/cli.md)",
-        "Gap observed: No automatic archiving triggers - users must remember to run command",
-        "Config location: queue.* section in config schema has file paths but no auto-archive",
-        "Competitive comparison: snarktank/ralph has auto-archive, mitchfultz/ralph requires manual (docs/competitive-analysis.md)"
-      ],
-      "plan": [
-        "Add auto_archive_enabled (bool) and auto_archive_after_days (integer, default 7) to QueueConfig",
-        "Implement auto-archive check in task completion flow (post_run_supervise)",
-        "Add auto-archive batch job that runs on queue load if enabled",
-        "Add TUI status indicator showing 'auto-archive in N days' for terminal tasks",
-        "Update config schema and documentation",
-        "Add tests for auto-archive logic including edge cases (already archived, config disabled)",
-        "Verify by running `ralph task done RQ-XXXX` with auto_archive_enabled=true and confirming task moves to done.json immediately or after delay"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-07T00:41:40Z",
-      "updated_at": "2026-02-07T00:41:40Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load",
-        "opportunity_type": "automation",
-        "estimated_effort": "medium",
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0667",
       "status": "todo",
       "title": "Activate processor plugin hooks (validate_task, pre_prompt, post_run)",
@@ -93,8 +46,8 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "feature-gap",
-        "estimated_effort": "medium",
         "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing",
+        "estimated_effort": "medium",
         "scan_agent": "scan-innovation"
       }
     },
@@ -140,10 +93,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
+        "estimated_effort": "low",
         "opportunity_type": "analytics",
         "scan_agent": "scan-innovation",
-        "estimated_effort": "low"
+        "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention"
       }
     },
     {
@@ -189,9 +142,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
         "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
-        "estimated_effort": "medium",
         "opportunity_type": "automation"
       }
     },
@@ -238,10 +191,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
         "opportunity_type": "ux-improvement",
         "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -288,9 +241,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
-        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
         "scan_agent": "scan-innovation",
+        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
+        "estimated_effort": "medium",
         "opportunity_type": "reliability"
       }
     },
@@ -339,9 +292,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "opportunity_type": "automation",
         "estimated_effort": "high",
-        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring"
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
+        "opportunity_type": "automation"
       }
     },
     {
@@ -388,10 +341,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "estimated_effort": "medium",
         "opportunity_type": "analytics",
         "scan_agent": "scan-innovation",
-        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
-        "estimated_effort": "medium"
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management"
       }
     },
     {
@@ -438,10 +391,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "estimated_effort": "medium",
         "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "ai-features",
-        "estimated_effort": "medium"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -490,10 +443,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
         "opportunity_type": "integration",
-        "estimated_effort": "high",
-        "scan_agent": "scan-innovation"
+        "estimated_effort": "high"
       }
     },
     {
@@ -541,9 +494,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
         "estimated_effort": "medium",
         "opportunity_type": "automation",
-        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
         "scan_agent": "scan-innovation"
       }
     },
@@ -592,10 +545,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ecosystem",
-        "scan_agent": "scan-innovation",
         "estimated_effort": "high",
-        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability"
+        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ecosystem"
       }
     },
     {
@@ -645,9 +598,9 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "medium",
-        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "integration",
-        "scan_agent": "scan-innovation"
+        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows"
       }
     },
     {
@@ -695,10 +648,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "reliability",
-        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
         "estimated_effort": "medium",
-        "scan_agent": "scan-innovation"
+        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -747,9 +700,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "estimated_effort": "medium",
         "opportunity_type": "ux-improvement",
+        "scan_agent": "scan-innovation",
         "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety"
       }
     }

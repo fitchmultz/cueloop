@@ -1300,9 +1300,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "opportunity_type": "reliability",
         "time_to_ship": "medium (concurrency + tests)",
-        "scan_agent": "scan-innovation",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
     },
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
-        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (metadata + reconciliation + tests)",
+        "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current."
       }
     },
     {
@@ -1395,8 +1395,8 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "ux improvement",
-        "time_to_ship": "medium (format + fixes + tests)",
         "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (format + fixes + tests)",
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics."
       }
     },
@@ -1441,9 +1441,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
-        "time_to_ship": "small/medium (formatters + tests)",
         "scan_agent": "scan-innovation",
+        "time_to_ship": "small/medium (formatters + tests)",
+        "user_value": "Faster backlog sharing and review in Markdown-native tools (GitHub, PRs, chat).",
         "opportunity_type": "ux improvement"
       }
     },
@@ -1932,10 +1932,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "medium (TUI wiring + tests)"
+        "time_to_ship": "medium (TUI wiring + tests)",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke."
       }
     },
     {
@@ -1990,8 +1990,8 @@
       "relates_to": [],
       "custom_fields": {
         "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
-        "opportunity_type": "ux improvement",
         "time_to_ship": "medium (render-only UI + tests)",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation"
       }
     },
@@ -2046,9 +2046,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
         "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "feature gap"
       }
     },
@@ -2106,10 +2106,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "opportunity_type": "UX improvement",
         "time_to_ship": "incremental - add one batch operation at a time",
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
-        "opportunity_type": "UX improvement"
+        "scan_agent": "scan-innovation",
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "80%+ integration test coverage for CLI commands",
         "opportunity_type": "reliability",
-        "user_value": "Reduces regression risk; enables confident refactoring",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "measurable_impact": "80%+ integration test coverage for CLI commands",
+        "user_value": "Reduces regression risk; enables confident refactoring"
       }
     },
     {
@@ -2231,10 +2231,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "differentiation": "Unique capability among AI task runners",
         "opportunity_type": "feature gap",
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
-        "scan_agent": "scan-innovation"
+        "user_value": "Enables ecosystem growth; custom integrations without forks"
       }
     },
     {
@@ -3472,8 +3472,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "reported_at": "2026-02-06",
-        "user_visible_blocker": "true"
+        "user_visible_blocker": "true",
+        "reported_at": "2026-02-06"
       }
     },
     {
@@ -3528,9 +3528,9 @@
       "relates_to": [],
       "custom_fields": {
         "file_line_count": "444",
+        "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi",
-        "scan_agent": "scan-maintenance"
+        "runner_used": "kimi"
       }
     },
     {
@@ -3579,9 +3579,9 @@
       "custom_fields": {
         "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
         "occurrence_count": "4",
-        "scan_agent": "scan-maintenance",
         "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -3634,8 +3634,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance"
       }
     },
@@ -3801,14 +3801,14 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "completed_via": "RQ-0657 (foundational plugin framework)",
-        "runner_used": "kimi",
-        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
-        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
-        "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
         "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
-        "legacy_code_removed": "true"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
+        "legacy_code_removed": "true",
+        "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
+        "completed_via": "RQ-0657 (foundational plugin framework)",
+        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
+        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs"
       }
     },
     {
@@ -3923,8 +3923,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -3984,8 +3984,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4050,8 +4050,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -4118,11 +4118,11 @@
         "RQ-0663"
       ],
       "custom_fields": {
+        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
         "model_used": "kimi-code/kimi-for-coding",
         "cleanup_required": "true",
-        "runner_used": "kimi",
-        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
-        "plugin_status": "already_implemented"
+        "plugin_status": "already_implemented",
+        "runner_used": "kimi"
       }
     },
     {
@@ -4178,12 +4178,12 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework",
         "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
+        "model_used": "kimi-code/kimi-for-coding",
         "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427",
         "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding",
-        "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework"
+        "runner_used": "kimi"
       }
     },
     {
@@ -4243,11 +4243,11 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "rq_0657_status": "completed",
         "runner_used": "kimi",
         "cleanup_type": "legacy_code_removal",
         "model_used": "kimi-code/kimi-for-coding",
-        "plugin_status": "implemented_needs_cleanup"
+        "plugin_status": "implemented_needs_cleanup",
+        "rq_0657_status": "completed"
       }
     },
     {
@@ -4310,15 +4310,15 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "cleanup_status": "already_completed_via_rq_0657",
-        "task_type": "cleanup",
-        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
-        "runner_used": "kimi",
-        "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
-        "rq_0657_status": "completed",
-        "verification_only": "true",
         "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
-        "model_used": "kimi-code/kimi-for-coding"
+        "runner_used": "kimi",
+        "task_type": "cleanup",
+        "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
+        "cleanup_status": "already_completed_via_rq_0657",
+        "model_used": "kimi-code/kimi-for-coding",
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
+        "verification_only": "true",
+        "rq_0657_status": "completed"
       }
     },
     {
@@ -4369,10 +4369,10 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance",
         "runner_used": "kimi",
-        "execution_file_lines": "572",
-        "tests_file_lines": "412"
+        "tests_file_lines": "412",
+        "scan_agent": "scan-maintenance",
+        "execution_file_lines": "572"
       }
     },
     {
@@ -4423,9 +4423,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
-        "scan_agent": "scan-maintenance",
-        "model_used": "kimi-code/kimi-for-coding"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4487,8 +4487,8 @@
         "current_loc": "3383",
         "target_loc": "800",
         "scan_agent": "scan-maintenance",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -4551,13 +4551,13 @@
       "relates_to": [],
       "custom_fields": {
         "test_lines": "1000",
-        "current_loc": "3290",
-        "runner_used": "kimi",
-        "previous_loc": "3241",
+        "code_lines": "2200",
         "scan_agent": "scan-maintenance",
+        "previous_loc": "3241",
         "model_used": "kimi-code/kimi-for-coding",
         "existing_submodules": "7",
-        "code_lines": "2200"
+        "current_loc": "3290",
+        "runner_used": "kimi"
       }
     },
     {
@@ -4605,6 +4605,73 @@
         "scan_agent": "scan-maintenance",
         "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi"
+      }
+    },
+    {
+      "id": "RQ-0666",
+      "status": "done",
+      "title": "Implement auto-archive system for completed tasks",
+      "description": "Auto-archiving is now partially implemented (TUI + run supervision), but queue maintenance still relies on manual `ralph queue archive` in some workflows.\n\nCurrent state:\n- `ralph task done` / `ralph task reject` moves the task directly to `.ralph/done.json`.\n- TUI supports auto-archive on setting Done/Rejected via `tui.auto_archive_terminal` (`never|prompt|always`).\n- `ralph run` post-run supervision calls `queue::archive_terminal_tasks`.\n\nRemaining gap:\n- Terminal tasks can still linger in `.ralph/queue.json` (manual edits, TUI with auto-archive=never, or status changes that only stamp `completed_at`). Add a configurable, queue-level sweep that archives terminal tasks automatically (optionally after N days since `completed_at`) and align docs/config naming.",
+      "priority": "high",
+      "tags": [
+        "automation",
+        "queue-management",
+        "maintenance",
+        "ux-improvement"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts/config.rs",
+        "schemas/config.schema.json",
+        "crates/ralph/src/queue/operations/archive.rs",
+        "crates/ralph/src/queue/operations/status.rs",
+        "crates/ralph/src/queue/size_check.rs",
+        "crates/ralph/src/cli/queue/archive.rs",
+        "crates/ralph/src/commands/run/supervision/mod.rs",
+        "crates/ralph/src/tui/app.rs",
+        "docs/cli.md",
+        "docs/tui-task-management.md",
+        "docs/configuration.md"
+      ],
+      "evidence": [
+        "Manual archive command exists: `ralph queue archive` (docs/cli.md, crates/ralph/src/cli/queue/archive.rs)",
+        "Archive implementation: `queue::archive_terminal_tasks` moves Done/Rejected tasks and stamps timestamps (crates/ralph/src/queue/operations/archive.rs)",
+        "TUI auto-archive exists via `tui.auto_archive_terminal` (docs/tui-task-management.md, crates/ralph/src/tui/app.rs)",
+        "`ralph task done` / `ralph task reject` already archives the task by moving it to `.ralph/done.json` (crates/ralph/src/queue/operations/status.rs)",
+        "`ralph run` post-run supervision archives terminal tasks automatically (crates/ralph/src/commands/run/supervision/mod.rs)",
+        "Gap: QueueConfig has no age-based/periodic auto-archive sweep; terminal tasks can remain in `.ralph/queue.json` unless explicitly archived (schemas/config.schema.json)"
+      ],
+      "plan": [
+        "Clarify desired semantics and config surface: queue-level sweep (age-based) vs changing defaults; ensure `ralph run` invariants (Phase 3 requires task archived) remain intact",
+        "Add `queue.auto_archive_terminal_after_days: Option<u32>` (None=disabled, 0=immediate) to `QueueConfig`, regenerate schema, and document in docs/configuration.md",
+        "Implement an age-based archive helper (e.g., `archive_terminal_tasks_older_than_days`) in crates/ralph/src/queue/operations/archive.rs using `completed_at` timestamps",
+        "Integrate the sweep into safe entrypoints that already hold the queue lock (e.g., TUI session start and/or other maintenance paths) without breaking `ralph run` completion checks",
+        "Update docs: docs/cli.md and docs/tui-task-management.md to explain what is already auto-archived and how the new queue-level sweep works",
+        "Add tests covering: config disabled, immediate sweep, age-based sweep, missing/invalid timestamps, and interaction with manual `ralph queue archive`"
+      ],
+      "notes": [
+        "Repo state (2026-02-07): auto-archive on terminal status is implemented in the TUI (`tui.auto_archive_terminal`), `ralph task done/reject` archives directly, and `ralph run` post-run supervision already archives terminal tasks. This task should focus on any remaining queue-level sweep/delay behavior and docs/config alignment (or be closed if deemed unnecessary).",
+        "Implemented queue-level auto-archive sweep via queue.auto_archive_terminal_after_days",
+        "Added age-based archive logic (0=immediate, N>0=after N days)",
+        "Integrated sweep into TUI reload and CLI task edit operations",
+        "Added comprehensive tests covering all sweep scenarios",
+        "Updated docs: configuration.md, tui-task-management.md, cli.md"
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-07T00:41:40Z",
+      "updated_at": "2026-02-07T01:51:00.446019000Z",
+      "completed_at": "2026-02-07T01:51:00.446019000Z",
+      "started_at": "2026-02-07T01:05:49.874131000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "user_value": "Eliminates manual step, prevents queue bloat, reduces cognitive load",
+        "runner_used": "kimi",
+        "opportunity_type": "automation",
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium",
+        "refresh_note": "As of 2026-02-07, auto-archive already exists in TUI and `ralph run` supervision; remaining work is queue-level age-based sweep and docs/config alignment.",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     }
   ]

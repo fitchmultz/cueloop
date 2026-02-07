@@ -74,6 +74,34 @@ impl ReloadOperations for App {
             }
         }
 
+        // Run auto-archive sweep for terminal tasks if configured
+        if let Some(days) = self.project_config.queue.auto_archive_terminal_after_days
+            && let Ok(now) = crate::timeutil::now_utc_rfc3339()
+        {
+            match queue::maybe_archive_terminal_tasks_in_memory(
+                &mut self.queue,
+                &mut self.done,
+                &now,
+                Some(days),
+            ) {
+                Ok(report) => {
+                    if !report.moved_ids.is_empty() {
+                        self.dirty = true;
+                        self.dirty_done = true;
+                        self.bump_queue_and_done_rev();
+                        self.set_status_message(format!(
+                            "Auto-archived {} terminal task(s) (>{}d)",
+                            report.moved_ids.len(),
+                            days
+                        ));
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Auto-archive sweep failed: {}", e);
+                }
+            }
+        }
+
         self.bump_queue_rev();
         self.rebuild_filtered_view_with_preferred(preferred_id.as_deref());
         self.dirty = false;

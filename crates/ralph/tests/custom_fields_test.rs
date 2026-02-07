@@ -81,6 +81,7 @@ fn setup_test_queue() -> Result<(TempDir, config::Resolved)> {
             size_warning_threshold_kb: Some(500),
             task_count_warning_threshold: Some(500),
             max_dependency_depth: Some(10),
+            auto_archive_terminal_after_days: None,
         },
         ..Default::default()
     };

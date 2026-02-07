@@ -109,10 +109,11 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
     // Normal mode: acquire lock and apply
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task edit", force)?;
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+    let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
 
     let result = queue::operations::batch_apply_edit(
         &mut queue_file,
-        done_ref,
+        Some(&done_file),
         &task_ids,
         args.field.into(),
         &args.value,
@@ -123,12 +124,38 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
         false, // continue_on_error - default to atomic for CLI
     )?;
 
+    // Run auto-archive sweep for terminal tasks if configured
+    let mut archived_count = 0;
+    if let Some(days) = resolved.config.queue.auto_archive_terminal_after_days {
+        match queue::maybe_archive_terminal_tasks_in_memory(
+            &mut queue_file,
+            &mut done_file,
+            &now,
+            Some(days),
+        ) {
+            Ok(report) => {
+                archived_count = report.moved_ids.len();
+            }
+            Err(e) => {
+                log::warn!("Auto-archive sweep failed: {}", e);
+            }
+        }
+    }
+
     queue::save_queue(&resolved.queue_path, &queue_file)?;
+    if archived_count > 0 {
+        queue::save_queue(&resolved.done_path, &done_file)?;
+    }
+
     queue::operations::print_batch_results(
         &result,
         &format!("Edit field '{}'", args.field.as_str()),
         false,
     );
+
+    if archived_count > 0 {
+        println!("Auto-archived {} terminal task(s)", archived_count);
+    }
 
     Ok(())
 }

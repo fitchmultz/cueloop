@@ -283,3 +283,174 @@ fn archive_terminal_tasks_in_memory_rejects_invalid_rfc3339() {
         archive_terminal_tasks_in_memory(&mut active, &mut done, "not-a-timestamp").unwrap_err();
     assert!(format!("{err}").contains("must be a valid RFC3339 UTC timestamp"));
 }
+
+#[test]
+fn archive_terminal_tasks_older_than_days_zero_delegates_to_immediate() -> anyhow::Result<()> {
+    use crate::contracts::TaskStatus;
+
+    // Task completed 10 days ago
+    let mut old_done = task_with("RQ-0001", TaskStatus::Done, vec![]);
+    old_done.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    // Task completed 1 day ago
+    let mut recent_done = task_with("RQ-0002", TaskStatus::Done, vec![]);
+    recent_done.completed_at = Some("2026-01-10T00:00:00Z".to_string());
+
+    // Todo task (not terminal)
+    let todo_task = task_with("RQ-0003", TaskStatus::Todo, vec![]);
+
+    let mut active = QueueFile {
+        version: 1,
+        tasks: vec![old_done, recent_done, todo_task],
+    };
+    let mut done = QueueFile::default();
+
+    let now = "2026-01-11T00:00:00Z";
+    let report = archive_terminal_tasks_older_than_days_in_memory(&mut active, &mut done, now, 0)?;
+
+    // With after_days=0, all terminal tasks should be archived regardless of age
+    assert_eq!(report.moved_ids.len(), 2);
+    assert!(report.moved_ids.contains(&"RQ-0001".to_string()));
+    assert!(report.moved_ids.contains(&"RQ-0002".to_string()));
+    assert_eq!(active.tasks.len(), 1);
+    assert_eq!(active.tasks[0].id, "RQ-0003");
+
+    Ok(())
+}
+
+#[test]
+fn archive_terminal_tasks_older_than_days_respects_age_cutoff() -> anyhow::Result<()> {
+    use crate::contracts::TaskStatus;
+
+    // Task completed 10 days ago (older than 7 day cutoff)
+    let mut old_done = task_with("RQ-0001", TaskStatus::Done, vec![]);
+    old_done.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    // Task completed 1 day ago (newer than 7 day cutoff)
+    let mut recent_done = task_with("RQ-0002", TaskStatus::Done, vec![]);
+    recent_done.completed_at = Some("2026-01-10T00:00:00Z".to_string());
+
+    // Task completed exactly 7 days ago (at the cutoff, should be archived)
+    let mut exact_cutoff = task_with("RQ-0003", TaskStatus::Done, vec![]);
+    exact_cutoff.completed_at = Some("2026-01-04T00:00:00Z".to_string());
+
+    // Todo task (not terminal)
+    let todo_task = task_with("RQ-0004", TaskStatus::Todo, vec![]);
+
+    let mut active = QueueFile {
+        version: 1,
+        tasks: vec![old_done, recent_done, exact_cutoff, todo_task],
+    };
+    let mut done = QueueFile::default();
+
+    let now = "2026-01-11T00:00:00Z";
+    let report = archive_terminal_tasks_older_than_days_in_memory(&mut active, &mut done, now, 7)?;
+
+    // Only tasks >= 7 days old should be archived
+    assert_eq!(report.moved_ids.len(), 2);
+    assert!(report.moved_ids.contains(&"RQ-0001".to_string()));
+    assert!(report.moved_ids.contains(&"RQ-0003".to_string()));
+    assert!(!report.moved_ids.contains(&"RQ-0002".to_string())); // Too recent
+
+    // Recent done task should remain in active
+    assert_eq!(active.tasks.len(), 2);
+    let remaining_ids: Vec<String> = active.tasks.iter().map(|t| t.id.clone()).collect();
+    assert!(remaining_ids.contains(&"RQ-0002".to_string()));
+    assert!(remaining_ids.contains(&"RQ-0004".to_string()));
+
+    Ok(())
+}
+
+#[test]
+fn archive_terminal_tasks_older_than_days_skips_missing_completed_at() -> anyhow::Result<()> {
+    use crate::contracts::TaskStatus;
+
+    // Done task with missing completed_at
+    let mut done_no_timestamp = task_with("RQ-0001", TaskStatus::Done, vec![]);
+    done_no_timestamp.completed_at = None;
+
+    // Rejected task with empty completed_at
+    let mut rejected_empty_timestamp = task_with("RQ-0002", TaskStatus::Rejected, vec![]);
+    rejected_empty_timestamp.completed_at = Some("".to_string());
+
+    // Done task with valid old completed_at (should be archived)
+    let mut old_done = task_with("RQ-0003", TaskStatus::Done, vec![]);
+    old_done.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    let mut active = QueueFile {
+        version: 1,
+        tasks: vec![done_no_timestamp, rejected_empty_timestamp, old_done],
+    };
+    let mut done = QueueFile::default();
+
+    let now = "2026-01-11T00:00:00Z";
+    let report = archive_terminal_tasks_older_than_days_in_memory(&mut active, &mut done, now, 7)?;
+
+    // Only the task with a valid timestamp should be archived
+    assert_eq!(report.moved_ids.len(), 1);
+    assert!(report.moved_ids.contains(&"RQ-0003".to_string()));
+
+    // Tasks with missing/empty timestamps should remain in active
+    assert_eq!(active.tasks.len(), 2);
+    let remaining_ids: Vec<String> = active.tasks.iter().map(|t| t.id.clone()).collect();
+    assert!(remaining_ids.contains(&"RQ-0001".to_string()));
+    assert!(remaining_ids.contains(&"RQ-0002".to_string()));
+
+    Ok(())
+}
+
+#[test]
+fn archive_terminal_tasks_older_than_days_skips_invalid_completed_at() -> anyhow::Result<()> {
+    use crate::contracts::TaskStatus;
+
+    // Done task with invalid completed_at
+    let mut done_invalid = task_with("RQ-0001", TaskStatus::Done, vec![]);
+    done_invalid.completed_at = Some("not-a-timestamp".to_string());
+
+    // Done task with valid old completed_at (should be archived)
+    let mut old_done = task_with("RQ-0002", TaskStatus::Done, vec![]);
+    old_done.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    let mut active = QueueFile {
+        version: 1,
+        tasks: vec![done_invalid, old_done],
+    };
+    let mut done = QueueFile::default();
+
+    let now = "2026-01-11T00:00:00Z";
+    let report = archive_terminal_tasks_older_than_days_in_memory(&mut active, &mut done, now, 7)?;
+
+    // Only the task with a valid timestamp should be archived
+    assert_eq!(report.moved_ids.len(), 1);
+    assert!(report.moved_ids.contains(&"RQ-0002".to_string()));
+
+    // Task with invalid timestamp should remain in active
+    assert_eq!(active.tasks.len(), 1);
+    assert_eq!(active.tasks[0].id, "RQ-0001");
+
+    Ok(())
+}
+
+#[test]
+fn maybe_archive_terminal_tasks_in_memory_disabled_when_none() -> anyhow::Result<()> {
+    use crate::contracts::TaskStatus;
+
+    let mut old_done = task_with("RQ-0001", TaskStatus::Done, vec![]);
+    old_done.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    let mut active = QueueFile {
+        version: 1,
+        tasks: vec![old_done],
+    };
+    let mut done = QueueFile::default();
+
+    let now = "2026-01-11T00:00:00Z";
+    let report = maybe_archive_terminal_tasks_in_memory(&mut active, &mut done, now, None)?;
+
+    // When disabled (None), no tasks should be archived
+    assert!(report.moved_ids.is_empty());
+    assert_eq!(active.tasks.len(), 1);
+    assert!(done.tasks.is_empty());
+
+    Ok(())
+}

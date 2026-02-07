@@ -280,13 +280,14 @@ Example:
 ```
 
 ## Queue Configuration
-`queue` controls file locations and task ID formatting.
+`queue` controls file locations, task ID formatting, and auto-archive behavior.
 
 Supported fields:
 - `file`: path to the queue file (default: `.ralph/queue.json`).
 - `done_file`: path to the done archive (default: `.ralph/done.json`).
 - `id_prefix`: task ID prefix (default: `RQ`).
 - `id_width`: zero padding width (default: `4`, e.g. `RQ-0001`).
+- `auto_archive_terminal_after_days`: automatically archive terminal tasks (done/rejected) from queue to done after this many days (default: `null`/`None`, disabled).
 
 **Parallel mode restriction:** When running `ralph run loop --parallel ...`, `queue.file` and
 `queue.done_file` must resolve to paths **under the repository root**. Parallel mode maps these
@@ -294,7 +295,17 @@ paths into per-worker workspace clones; paths outside the repo root cannot be ma
 rejected during parallel preflight. Prefer repo-relative paths like `.ralph/queue.json` and
 `.ralph/done.json`.
 
-Example:
+### Auto-Archive Configuration
+
+The `auto_archive_terminal_after_days` setting provides a queue-level sweep that archives terminal tasks (done/rejected) automatically:
+
+- **Not set / `null`** (default): Disabled; no automatic sweep occurs.
+- **`0`**: Archive immediately when the sweep runs (during TUI startup/reload and after CLI task edit).
+- **`N > 0`**: Archive only when `completed_at` is at least `N` days old.
+
+**Safety behavior:** When `N > 0`, tasks with missing, blank, or invalid `completed_at` timestamps are **not moved**. This ensures only tasks with valid completion timestamps are archived automatically.
+
+Example configurations:
 
 ```json
 {
@@ -303,9 +314,26 @@ Example:
     "file": ".ralph/queue.json",
     "done_file": ".ralph/done.json",
     "id_prefix": "RQ",
-    "id_width": 4
+    "id_width": 4,
+    "auto_archive_terminal_after_days": 7
   }
 }
+```
+
+Immediate archive (archive all terminal tasks on sweep):
+```json
+{
+  "queue": {
+    "auto_archive_terminal_after_days": 0
+  }
+}
+```
+
+**Note:** This is distinct from `tui.auto_archive_terminal`, which controls per-status-change behavior in the TUI (see TUI Task Management documentation). The queue-level sweep runs:
+- When the TUI starts or reloads queue files
+- After `ralph task edit` operations (CLI)
+
+For immediate manual archiving, use `ralph queue archive`.
 ```
 
 ## Precedence

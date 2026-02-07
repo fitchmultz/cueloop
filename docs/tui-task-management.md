@@ -490,6 +490,40 @@ If you want the TUI to mirror the CLI UX more closely, consider:
    - Config `tui.auto_archive_terminal` controls behavior: `never`, `prompt`, or `always`.
    - When set to `prompt` or `always`, setting status to Done/Rejected triggers auto-archive.
 
+### Queue-Level Auto-Archive Sweep
+
+In addition to the TUI's per-status-change auto-archive (`tui.auto_archive_terminal`), Ralph supports a **queue-level auto-archive sweep** via `queue.auto_archive_terminal_after_days`:
+
+| Setting | Behavior |
+|---------|----------|
+| `tui.auto_archive_terminal` | Controls what happens **at the moment you set** Done/Rejected in the TUI |
+| `queue.auto_archive_terminal_after_days` | Controls a **background sweep** that runs on TUI startup/reload and after CLI edits |
+
+**Example use cases:**
+
+Immediate archive when setting status (TUI):
+```json
+{
+  "tui": {
+    "auto_archive_terminal": "always"
+  }
+}
+```
+
+Delayed sweep (archive tasks after 3 days even if you never press `a`):
+```json
+{
+  "queue": {
+    "auto_archive_terminal_after_days": 3
+  },
+  "tui": {
+    "auto_archive_terminal": "never"
+  }
+}
+```
+
+The queue-level sweep only moves tasks with valid `completed_at` timestamps. Tasks with missing/invalid timestamps remain in the active queue and can be archived manually with `a` or `ralph queue archive`.
+
 2. ~~**"Set status to …" palette commands**~~ ✅ **IMPLEMENTED**
    - Palette commands available: "Set status: Draft/Todo/Doing/Done/Rejected".
    - Also available: "Set priority: Critical/High/Medium/Low".

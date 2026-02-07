@@ -1210,6 +1210,14 @@ Move terminal tasks (done/rejected) from `.ralph/queue.json` to `.ralph/done.jso
 ralph queue archive
 ```
 
+**Note:** This command archives immediately. To enable automatic archiving based on task age, configure `queue.auto_archive_terminal_after_days` in your config. When set, the sweep runs during TUI startup/reload and after CLI task edits:
+
+- `null` (default): No automatic sweep
+- `0`: Archive all terminal tasks immediately when sweep runs
+- `N`: Archive only tasks whose `completed_at` is at least `N` days old
+
+See [Configuration](configuration.md#queue-configuration) for details.
+
 ### `ralph queue repair`
 
 Repair the queue and done files (fix missing fields, duplicates, timestamps).

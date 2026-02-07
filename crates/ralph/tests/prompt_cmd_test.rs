@@ -28,6 +28,7 @@ fn make_resolved(temp: &TempDir) -> ralph::config::Resolved {
             size_warning_threshold_kb: Some(500),
             task_count_warning_threshold: Some(500),
             max_dependency_depth: Some(10),
+            auto_archive_terminal_after_days: None,
         },
         agent: AgentConfig {
             phases: Some(3),

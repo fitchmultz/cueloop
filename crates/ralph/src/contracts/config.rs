@@ -100,6 +100,18 @@ pub struct QueueConfig {
     /// Maximum allowed dependency chain depth before warning (default: 10).
     #[schemars(range(min = 1, max = 100))]
     pub max_dependency_depth: Option<u8>,
+
+    /// Auto-archive terminal tasks (done/rejected) from queue to done after this many days.
+    ///
+    /// Semantics:
+    /// - None: disabled (default)
+    /// - Some(0): archive immediately when the sweep runs
+    /// - Some(N): archive when completed_at is at least N days old
+    ///
+    /// The sweep runs during TUI startup/reload and after CLI task edit operations.
+    /// Tasks with missing or invalid completed_at timestamps are not moved when N > 0.
+    #[schemars(range(min = 0, max = 3650))]
+    pub auto_archive_terminal_after_days: Option<u32>,
 }
 
 impl QueueConfig {
@@ -124,6 +136,9 @@ impl QueueConfig {
         }
         if other.max_dependency_depth.is_some() {
             self.max_dependency_depth = other.max_dependency_depth;
+        }
+        if other.auto_archive_terminal_after_days.is_some() {
+            self.auto_archive_terminal_after_days = other.auto_archive_terminal_after_days;
         }
     }
 }
@@ -916,6 +931,7 @@ impl Default for Config {
                 size_warning_threshold_kb: Some(DEFAULT_SIZE_WARNING_THRESHOLD_KB),
                 task_count_warning_threshold: Some(DEFAULT_TASK_COUNT_WARNING_THRESHOLD),
                 max_dependency_depth: Some(10),
+                auto_archive_terminal_after_days: None,
             },
             agent: AgentConfig {
                 runner: Some(Runner::Claude),

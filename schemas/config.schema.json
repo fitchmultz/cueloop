@@ -152,6 +152,7 @@
     "queue": {
       "description": "Queue-related configuration.",
       "default": {
+        "auto_archive_terminal_after_days": null,
         "done_file": ".ralph/done.json",
         "file": ".ralph/queue.json",
         "id_prefix": "RQ",
@@ -972,6 +973,17 @@
     "QueueConfig": {
       "type": "object",
       "properties": {
+        "auto_archive_terminal_after_days": {
+          "description": "Auto-archive terminal tasks (done/rejected) from queue to done after this many days.\n\nSemantics: - None: disabled (default) - Some(0): archive immediately when the sweep runs - Some(N): archive when completed_at is at least N days old\n\nThe sweep runs during TUI startup/reload and after CLI task edit operations. Tasks with missing or invalid completed_at timestamps are not moved when N > 0.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "maximum": 3650.0,
+          "minimum": 0.0
+        },
         "done_file": {
           "description": "Path to the JSON done archive file, relative to repo root.\n\nPaths are intended to be repo-root relative. Parallel mode requires the resolved path to be under the repo root (no `..`) so it can be copied into workspace clones.",
           "default": null,
