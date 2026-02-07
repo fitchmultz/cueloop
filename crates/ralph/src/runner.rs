@@ -599,7 +599,8 @@ fn run_plugin_prompt(
 
     let plugin_cfg = registry
         .plugin_config_blob(plugin_id)
-        .map(|v| serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()));
+        .map(|v| execution::serialize_plugin_env_json(plugin_id, &bin, "plugin config", &v))
+        .transpose()?;
 
     execution::run_plugin_runner(
         work_dir,
@@ -652,7 +653,8 @@ fn run_plugin_resume(
 
     let plugin_cfg = registry
         .plugin_config_blob(plugin_id)
-        .map(|v| serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()));
+        .map(|v| execution::serialize_plugin_env_json(plugin_id, &bin, "plugin config", &v))
+        .transpose()?;
 
     execution::run_plugin_runner_resume(
         work_dir,

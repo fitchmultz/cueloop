@@ -275,7 +275,8 @@ impl PluginExecutor {
         // Get plugin config if available
         let plugin_config_json = plugins
             .and_then(|p| p.plugin_config_blob(plugin_id))
-            .map(|v| serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()));
+            .map(|v| super::serialize_plugin_env_json(plugin_id, bin, "plugin config", &v))
+            .transpose()?;
 
         super::plugin::run_plugin_runner(
             work_dir,
@@ -311,7 +312,8 @@ impl PluginExecutor {
         // Get plugin config if available
         let plugin_config_json = plugins
             .and_then(|p| p.plugin_config_blob(plugin_id))
-            .map(|v| serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()));
+            .map(|v| super::serialize_plugin_env_json(plugin_id, bin, "plugin config", &v))
+            .transpose()?;
 
         super::plugin::run_plugin_runner_resume(
             work_dir,

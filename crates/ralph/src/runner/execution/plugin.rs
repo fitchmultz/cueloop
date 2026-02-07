@@ -23,11 +23,39 @@ use std::time::Duration;
 
 use crate::constants::paths::{ENV_MODEL_USED, ENV_RUNNER_USED};
 use crate::contracts::Model;
+use crate::contracts::Runner;
+use crate::runner::error::runner_execution_error_with_source;
 use crate::runner::{OutputHandler, OutputStream, RunnerError, RunnerOutput};
 
 use super::cli_options::ResolvedRunnerCliOptions;
 use super::command::RunnerCommandBuilder;
 use super::process::run_with_streaming_json;
+
+/// Serialize a value to JSON for plugin environment variables.
+///
+/// On failure, returns a `RunnerError` with context that includes the plugin_id
+/// and indicates which JSON blob failed (e.g., "plugin config" or "runner cli").
+/// This ensures serialization errors are propagated rather than silently falling
+/// back to "{}", which could cause plugins to run with incorrect configuration.
+pub(crate) fn serialize_plugin_env_json<T: serde::Serialize>(
+    plugin_id: &str,
+    bin: &str,
+    what: &'static str,
+    value: &T,
+) -> Result<String, RunnerError> {
+    match serde_json::to_string(value) {
+        Ok(json) => Ok(json),
+        Err(err) => {
+            let step = format!("serialize {what} JSON");
+            Err(runner_execution_error_with_source(
+                &Runner::Plugin(plugin_id.to_string()),
+                bin,
+                &step,
+                err,
+            ))
+        }
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn run_plugin_runner(
@@ -43,7 +71,7 @@ pub(crate) fn run_plugin_runner(
     session_id: Option<&str>,
     plugin_config_json: Option<String>,
 ) -> Result<RunnerOutput, RunnerError> {
-    let runner_cli_json = serde_json::to_string(&runner_cli).unwrap_or_else(|_| "{}".to_string());
+    let runner_cli_json = serialize_plugin_env_json(plugin_id, bin, "runner cli", &runner_cli)?;
     let cfg = plugin_config_json.unwrap_or_else(|| "{}".to_string());
 
     let mut builder = RunnerCommandBuilder::new(bin, work_dir)
@@ -67,7 +95,7 @@ pub(crate) fn run_plugin_runner(
     run_with_streaming_json(
         cmd,
         payload.as_deref(),
-        crate::contracts::Runner::Plugin(plugin_id.to_string()),
+        Runner::Plugin(plugin_id.to_string()),
         bin,
         timeout,
         output_handler,
@@ -89,7 +117,7 @@ pub(crate) fn run_plugin_runner_resume(
     output_stream: OutputStream,
     plugin_config_json: Option<String>,
 ) -> Result<RunnerOutput, RunnerError> {
-    let runner_cli_json = serde_json::to_string(&runner_cli).unwrap_or_else(|_| "{}".to_string());
+    let runner_cli_json = serialize_plugin_env_json(plugin_id, bin, "runner cli", &runner_cli)?;
     let cfg = plugin_config_json.unwrap_or_else(|| "{}".to_string());
 
     let builder = RunnerCommandBuilder::new(bin, work_dir)
@@ -112,10 +140,98 @@ pub(crate) fn run_plugin_runner_resume(
     run_with_streaming_json(
         cmd,
         payload.as_deref(),
-        crate::contracts::Runner::Plugin(plugin_id.to_string()),
+        Runner::Plugin(plugin_id.to_string()),
         bin,
         timeout,
         output_handler,
         output_stream,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::serialize_plugin_env_json;
+    use serde::{Serialize, Serializer};
+
+    // A struct that always fails serialization (used to test error propagation)
+    struct AlwaysFailsSerialize;
+
+    impl Serialize for AlwaysFailsSerialize {
+        fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            Err(serde::ser::Error::custom("intentional test failure"))
+        }
+    }
+
+    #[test]
+    fn serialize_plugin_config_failure_includes_plugin_id_and_context() {
+        let err = serialize_plugin_env_json(
+            "test.plugin",
+            "dummy-bin",
+            "plugin config",
+            &AlwaysFailsSerialize,
+        )
+        .unwrap_err();
+
+        let msg = err.to_string();
+        assert!(
+            msg.contains("test.plugin"),
+            "error should include plugin_id: {}",
+            msg
+        );
+        assert!(
+            msg.contains("serialize plugin config JSON"),
+            "error should indicate what failed: {}",
+            msg
+        );
+    }
+
+    #[test]
+    fn serialize_runner_cli_failure_includes_plugin_id_and_context() {
+        let err = serialize_plugin_env_json(
+            "my.plugin",
+            "/bin/my-runner",
+            "runner cli",
+            &AlwaysFailsSerialize,
+        )
+        .unwrap_err();
+
+        let msg = err.to_string();
+        assert!(
+            msg.contains("my.plugin"),
+            "error should include plugin_id: {}",
+            msg
+        );
+        assert!(
+            msg.contains("serialize runner cli JSON"),
+            "error should indicate what failed: {}",
+            msg
+        );
+    }
+
+    #[derive(Serialize)]
+    struct GoodConfig {
+        name: String,
+        enabled: bool,
+    }
+
+    #[test]
+    fn serialize_plugin_config_success_returns_valid_json() {
+        let result = serialize_plugin_env_json(
+            "test.plugin",
+            "dummy-bin",
+            "plugin config",
+            &GoodConfig {
+                name: "test".to_string(),
+                enabled: true,
+            },
+        );
+
+        assert!(result.is_ok());
+        let json = result.unwrap();
+        assert!(json.contains("test"));
+        assert!(json.contains("enabled"));
+    }
 }

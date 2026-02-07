@@ -70,5 +70,5 @@ pub(crate) use plugin_trait::{
 pub(crate) use response::ResponseParserRegistry;
 
 pub(crate) use cli_options::{ResolvedRunnerCliOptions, resolve_runner_cli_options};
-pub(crate) use plugin::{run_plugin_runner, run_plugin_runner_resume};
+pub(crate) use plugin::{run_plugin_runner, run_plugin_runner_resume, serialize_plugin_env_json};
 pub(crate) use process::ctrlc_state;
