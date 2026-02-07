@@ -28,7 +28,18 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    dotenvy::dotenv().ok();
+    // Load .env file, warning on errors but ignoring "not found"
+    if let Err(e) = dotenvy::dotenv() {
+        // Only warn on non-NotFound errors (e.g., permission denied, parse errors)
+        if is_not_found_error(&e) {
+            // Silently ignore - no .env file is expected
+        } else {
+            // Note: Logger isn't initialized yet, use eprintln
+            // Redact to avoid accidentally logging secrets from malformed .env files
+            let msg = format!("Warning: failed to load .env file: {e}");
+            eprintln!("{}", redaction::redact_text(&msg));
+        }
+    }
     let args = normalize_repo_prompt_args(std::env::args_os());
     let cli = cli::Cli::parse_from(args);
 
@@ -111,6 +122,20 @@ fn run() -> Result<()> {
         cli::Command::Plugin(args) => {
             let resolved = ralph::config::resolve_from_cwd()?;
             ralph::commands::plugin::run(&args, &resolved)
+        }
+    }
+}
+
+/// Check if a dotenvy error is a "file not found" error.
+/// This is the only error we silently ignore.
+fn is_not_found_error(e: &dotenvy::Error) -> bool {
+    use std::io;
+    match e {
+        dotenvy::Error::Io(io_err) if io_err.kind() == io::ErrorKind::NotFound => true,
+        // Also check for the generic "not found" case from dotenvy's internal handling
+        _ => {
+            let err_str = e.to_string().to_lowercase();
+            err_str.contains("not found") || err_str.contains("no such file")
         }
     }
 }

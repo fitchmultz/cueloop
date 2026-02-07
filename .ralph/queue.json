@@ -1,40 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0642",
-      "status": "todo",
-      "title": "Warn on .env load errors (ignore NotFound only)",
-      "priority": "low",
-      "tags": [
-        "maintenance",
-        "operability",
-        "env"
-      ],
-      "scope": [
-        "crates/ralph/src/main.rs",
-        "crates/ralph/tests/help_output_contract_test.rs",
-        "make test"
-      ],
-      "evidence": [
-        "crates/ralph/src/main.rs:31: `dotenvy::dotenv().ok();` ignores parse/IO errors when a .env is present.",
-        "Repro: create an invalid .env in a temp dir and run `ralph --help` from that dir; current code emits no warning, making misconfiguration hard to diagnose."
-      ],
-      "plan": [
-        "Change dotenv loading to ignore only NotFound; capture other errors and surface them as a warning (e.g., log after logger init, or print a single redacted warning to stderr).",
-        "Add an integration test that runs the ralph binary from a temp dir containing an invalid .env and asserts stderr contains a warning while exit code remains success.",
-        "Verify by running `make ci` and confirming it passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-05T20:49:31Z",
-      "updated_at": "2026-02-05T20:49:31Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    }
-  ]
+  "tasks": []
 }
