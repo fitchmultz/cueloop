@@ -47,6 +47,8 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             PhaseType::Planning,
             phase_session_id,
             ctx.execution_timings,
+            ctx.task_id,
+            ctx.plugins,
         )?;
 
         let mut continue_session = supervision::ContinueSession {
@@ -59,6 +61,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             output_handler: ctx.output_handler.clone(),
             output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,
+            task_id: ctx.task_id.to_string(),
         };
 
         // ENFORCEMENT: Phase 1 must not implement.
@@ -106,6 +109,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
                                 ctx.resolved,
                                 &mut continue_session,
                                 &message,
+                                ctx.plugins,
                             )?;
                             // Record resume duration for Phase 1
                             if let Some(timings) = ctx.execution_timings {

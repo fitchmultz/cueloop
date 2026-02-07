@@ -20,6 +20,7 @@
 
 pub(crate) mod discovery;
 pub(crate) mod manifest;
+pub(crate) mod processor_executor;
 pub(crate) mod registry;
 
 pub(crate) const PLUGIN_API_VERSION: u32 = 1;

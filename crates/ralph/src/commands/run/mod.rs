@@ -878,6 +878,22 @@ fn run_one_impl(
             .context("reload selected task after pre-run update")?;
     }
 
+    // Load plugin registry for processor hook invocation
+    let plugin_registry =
+        crate::plugins::registry::PluginRegistry::load(&resolved.repo_root, &resolved.config)
+            .context("load plugin registry")?;
+
+    // Invoke validate_task hooks before marking task as doing
+    // This allows processors to reject tasks before any work begins
+    if !plugin_registry.discovered().is_empty() {
+        let exec = crate::plugins::processor_executor::ProcessorExecutor::new(
+            &resolved.repo_root,
+            &plugin_registry,
+        );
+        exec.validate_task(&task)
+            .context("processor validate_task hook failed")?;
+    }
+
     // Mark the task as doing before running the agent (skip in parallel worker mode).
     if matches!(post_run_mode, phases::PostRunMode::ParallelWorker) {
         log::info!(
@@ -1034,6 +1050,7 @@ fn run_one_impl(
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
                         no_progress: agent_overrides.no_progress.unwrap_or(false),
                         execution_timings: execution_timings.as_ref(),
+                        plugins: Some(&plugin_registry),
                     };
 
                     // Phase 1 webhook events
@@ -1088,6 +1105,7 @@ fn run_one_impl(
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
                         no_progress: agent_overrides.no_progress.unwrap_or(false),
                         execution_timings: execution_timings.as_ref(),
+                        plugins: Some(&plugin_registry),
                     };
 
                     // Phase 2 webhook events
@@ -1146,6 +1164,7 @@ fn run_one_impl(
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
                         no_progress: agent_overrides.no_progress.unwrap_or(false),
                         execution_timings: execution_timings.as_ref(),
+                        plugins: Some(&plugin_registry),
                     };
 
                     // Phase 1 webhook events
@@ -1200,6 +1219,7 @@ fn run_one_impl(
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
                         no_progress: agent_overrides.no_progress.unwrap_or(false),
                         execution_timings: execution_timings.as_ref(),
+                        plugins: Some(&plugin_registry),
                     };
 
                     // Phase 2 webhook events
@@ -1257,6 +1277,7 @@ fn run_one_impl(
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
                         no_progress: agent_overrides.no_progress.unwrap_or(false),
                         execution_timings: execution_timings.as_ref(),
+                        plugins: Some(&plugin_registry),
                     };
 
                     // Phase 3 webhook events
@@ -1315,6 +1336,7 @@ fn run_one_impl(
                         lfs_check: agent_overrides.lfs_check.unwrap_or(false),
                         no_progress: agent_overrides.no_progress.unwrap_or(false),
                         execution_timings: execution_timings.as_ref(),
+                        plugins: Some(&plugin_registry),
                     };
 
                     // Single-phase (treated as phase 2) webhook events

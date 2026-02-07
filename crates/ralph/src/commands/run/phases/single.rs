@@ -53,6 +53,8 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
             PhaseType::SinglePhase,
             phase_session_id,
             ctx.execution_timings,
+            ctx.task_id,
+            ctx.plugins,
         )?;
 
         if ctx.is_final_iteration {
@@ -66,6 +68,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 output_handler: ctx.output_handler.clone(),
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
+                task_id: ctx.task_id.to_string(),
             };
             let runner = ctx.settings.runner.clone();
             let model = ctx.settings.model.clone();
@@ -99,6 +102,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                     ctx.notify_sound,
                     ctx.lfs_check,
                     ctx.no_progress,
+                    ctx.plugins,
                 )?,
                 PostRunMode::ParallelWorker => {
                     crate::commands::run::post_run_supervise_parallel_worker(
@@ -113,6 +117,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                             on_resume: &mut on_resume,
                         }),
                         ctx.lfs_check,
+                        ctx.plugins,
                     )?
                 }
             }
@@ -127,6 +132,7 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 output_handler: ctx.output_handler.clone(),
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
+                task_id: ctx.task_id.to_string(),
             };
             let timings = ctx.execution_timings;
             let runner = ctx.settings.runner.clone();

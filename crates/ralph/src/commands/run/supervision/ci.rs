@@ -82,6 +82,7 @@ pub(crate) fn run_ci_gate_with_continue_session<F>(
     revert_prompt: Option<&runutil::RevertPromptHandler>,
     continue_session: &mut super::ContinueSession,
     mut on_resume: F,
+    plugins: Option<&crate::plugins::registry::PluginRegistry>,
 ) -> Result<()>
 where
     F: FnMut(&crate::runner::RunnerOutput, std::time::Duration) -> Result<()>,
@@ -102,8 +103,12 @@ where
                     );
 
                     let message = strict_ci_gate_compliance_message(resolved);
-                    let (output, elapsed) =
-                        super::resume_continue_session(resolved, continue_session, &message)?;
+                    let (output, elapsed) = super::resume_continue_session(
+                        resolved,
+                        continue_session,
+                        &message,
+                        plugins,
+                    )?;
                     on_resume(&output, elapsed)?;
                     continue;
                 }
@@ -117,8 +122,12 @@ where
 
                 match outcome {
                     runutil::RevertOutcome::Continue { message } => {
-                        let (output, elapsed) =
-                            super::resume_continue_session(resolved, continue_session, &message)?;
+                        let (output, elapsed) = super::resume_continue_session(
+                            resolved,
+                            continue_session,
+                            &message,
+                            plugins,
+                        )?;
                         on_resume(&output, elapsed)?;
                         continue;
                     }

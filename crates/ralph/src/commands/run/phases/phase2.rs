@@ -60,6 +60,8 @@ pub fn execute_phase2_implementation(
                 PhaseType::Implementation,
                 phase_session_id,
                 ctx.execution_timings,
+                ctx.task_id,
+                ctx.plugins,
             )?;
 
             cache_phase2_final_response(&ctx.resolved.repo_root, ctx.task_id, &output.stdout)?;
@@ -74,6 +76,7 @@ pub fn execute_phase2_implementation(
                 output_handler: ctx.output_handler.clone(),
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
+                task_id: ctx.task_id.to_string(),
             };
 
             let timings = ctx.execution_timings;
@@ -139,6 +142,8 @@ pub fn execute_phase2_implementation(
             PhaseType::Implementation,
             phase_session_id,
             ctx.execution_timings,
+            ctx.task_id,
+            ctx.plugins,
         )?;
 
         if ctx.is_final_iteration {
@@ -152,6 +157,7 @@ pub fn execute_phase2_implementation(
                 output_handler: ctx.output_handler.clone(),
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
+                task_id: ctx.task_id.to_string(),
             };
             let runner = ctx.settings.runner.clone();
             let model = ctx.settings.model.clone();
@@ -190,6 +196,7 @@ pub fn execute_phase2_implementation(
                     ctx.notify_sound,
                     ctx.lfs_check,
                     ctx.no_progress,
+                    ctx.plugins,
                 )?,
                 PostRunMode::ParallelWorker => {
                     crate::commands::run::post_run_supervise_parallel_worker(
@@ -204,6 +211,7 @@ pub fn execute_phase2_implementation(
                             on_resume: &mut on_resume,
                         }),
                         ctx.lfs_check,
+                        ctx.plugins,
                     )?
                 }
             }
@@ -218,6 +226,7 @@ pub fn execute_phase2_implementation(
                 output_handler: ctx.output_handler.clone(),
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
+                task_id: ctx.task_id.to_string(),
             };
             let timings = ctx.execution_timings;
             let runner = ctx.settings.runner.clone();

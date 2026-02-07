@@ -1,6 +1,6 @@
 //! Phase 3 (review) execution and completion checks.
 
-use super::shared::run_ci_gate_with_continue;
+use super::shared::{execute_runner_pass, run_ci_gate_with_continue};
 use super::{PhaseInvocation, PhaseType, PostRunMode, phase_session_id_for_runner};
 use crate::commands::run::{logging, supervision};
 use crate::completions;
@@ -10,7 +10,6 @@ use crate::contracts::{GitRevertMode, TaskStatus};
 use crate::{git, promptflow, prompts, queue, runner, runutil, timeutil};
 use anyhow::{Result, anyhow, bail};
 use std::collections::HashMap;
-use std::time::Instant;
 
 pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
     let label = logging::phase_label(3, 3, "Review", ctx.task_id);
@@ -71,52 +70,23 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
 
         let phase_session_id =
             phase_session_id_for_runner(ctx.settings.runner.clone(), ctx.task_id, 3);
-        let start = Instant::now();
-        let output = runutil::run_prompt_with_handling(
-            runutil::RunnerInvocation {
-                repo_root: &ctx.resolved.repo_root,
-                runner_kind: ctx.settings.runner.clone(),
-                bins: ctx.bins,
-                model: ctx.settings.model.clone(),
-                reasoning_effort: ctx.settings.reasoning_effort,
-                runner_cli: ctx.settings.runner_cli,
-                prompt: &p3_prompt,
-                timeout: None,
-                permission_mode: ctx.resolved.config.agent.claude_permission_mode,
-                revert_on_error: false,
-                git_revert_mode: ctx.git_revert_mode,
-                output_handler: ctx.output_handler.clone(),
-                output_stream: ctx.output_stream,
-                revert_prompt: ctx.revert_prompt.clone(),
-                phase_type: PhaseType::Review,
-                session_id: phase_session_id,
-            },
-            runutil::RunnerErrorMessages {
-                log_label: "Code review",
-                interrupted_msg: "Code review interrupted: the agent run was canceled. Review the working tree and rerun Phase 3 to complete the task.",
-                timeout_msg: "Code review timed out: the agent run exceeded the time limit. Review the working tree and rerun Phase 3 to complete the task.",
-                terminated_msg: "Code review terminated: the agent was stopped by a signal. Review the working tree and rerun Phase 3 to complete the task.",
-                non_zero_msg: |code| {
-                    format!(
-                        "Code review failed: the agent exited with a non-zero code ({code}). Review the working tree and rerun Phase 3 to complete the task."
-                    )
-                },
-                other_msg: |err| {
-                    format!(
-                        "Code review failed: the agent could not be started or encountered an error. Review the working tree and rerun Phase 3. Error: {:#}",
-                        err
-                    )
-                },
-            },
+        let output = execute_runner_pass(
+            ctx.resolved,
+            ctx.settings,
+            ctx.bins,
+            &p3_prompt,
+            ctx.output_handler.clone(),
+            ctx.output_stream,
+            false, // Phase 3 does not revert on error
+            ctx.git_revert_mode,
+            ctx.revert_prompt.clone(),
+            "Code review",
+            PhaseType::Review,
+            phase_session_id,
+            ctx.execution_timings,
+            ctx.task_id,
+            ctx.plugins,
         )?;
-        if let Some(timings) = ctx.execution_timings {
-            timings.borrow_mut().record_runner_duration(
-                PhaseType::Review,
-                &ctx.settings.runner,
-                &ctx.settings.model,
-                start.elapsed(),
-            );
-        }
 
         if !ctx.is_final_iteration {
             let continue_session = supervision::ContinueSession {
@@ -129,6 +99,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 output_handler: ctx.output_handler.clone(),
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
+                task_id: ctx.task_id.to_string(),
             };
             let timings = ctx.execution_timings;
             let runner = ctx.settings.runner.clone();
@@ -164,6 +135,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
             output_handler: ctx.output_handler.clone(),
             output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,
+            task_id: ctx.task_id.to_string(),
         };
 
         if ctx.post_run_mode == PostRunMode::ParallelWorker {
@@ -183,6 +155,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                     on_resume: &mut on_resume,
                 }),
                 ctx.lfs_check,
+                ctx.plugins,
             )?;
             return Ok(());
         }
@@ -224,6 +197,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                     ctx.notify_sound,
                     ctx.lfs_check,
                     ctx.no_progress,
+                    ctx.plugins,
                 )?
             {
                 finalized = true;
@@ -244,6 +218,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<()> {
                                 ctx.resolved,
                                 &mut continue_session,
                                 &message,
+                                ctx.plugins,
                             )?;
                             // Record resume duration for Phase 3
                             if let Some(timings) = ctx.execution_timings {
@@ -319,6 +294,7 @@ pub(crate) fn finalize_phase3_if_done(
     notify_sound: Option<bool>,
     lfs_check: bool,
     no_progress: bool,
+    plugins: Option<&crate::plugins::registry::PluginRegistry>,
 ) -> Result<bool> {
     let should_finalize = if matches!(applied_status, Some(TaskStatus::Done)) {
         true
@@ -344,6 +320,7 @@ pub(crate) fn finalize_phase3_if_done(
         notify_sound,
         lfs_check,
         no_progress,
+        plugins,
     )?;
     Ok(true)
 }

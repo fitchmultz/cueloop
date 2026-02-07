@@ -74,7 +74,6 @@ impl PluginRegistry {
         resolve_plugin_relative_exe(&discovered.plugin_dir, &bin_str)
     }
 
-    #[allow(dead_code)]
     pub(crate) fn resolve_processor_bin(&self, plugin_id: &str) -> anyhow::Result<PathBuf> {
         let discovered = self
             .discovered
@@ -96,20 +95,6 @@ impl PluginRegistry {
 
         let bin_str = override_bin.unwrap_or_else(|| proc.bin.clone());
         resolve_plugin_relative_exe(&discovered.plugin_dir, &bin_str)
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn enabled_processor_plugins(&self) -> Vec<&DiscoveredPlugin> {
-        self.discovered
-            .iter()
-            .filter_map(|(id, d)| {
-                if self.is_enabled(id) && d.manifest.processors.is_some() {
-                    Some(d)
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 }
 

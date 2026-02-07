@@ -967,6 +967,7 @@ fn finalize_phase3_if_done_runs_post_run_supervise_without_signal() -> anyhow::R
         None,
         false,
         false,
+        None,
     )?;
     assert!(finalized, "expected phase 3 finalization to run");
 

@@ -3,8 +3,10 @@
 use super::{PhaseInvocation, PhaseType, RunExecutionTimings};
 use crate::commands::run::supervision;
 use crate::config;
+use crate::plugins::processor_executor::ProcessorExecutor;
+use crate::plugins::registry::PluginRegistry;
 use crate::{runner, runutil};
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use std::cell::RefCell;
 use std::time::Instant;
@@ -23,12 +25,15 @@ where
         ctx.revert_prompt.as_ref(),
         &mut continue_session,
         |output, elapsed| on_resume(output, elapsed),
+        ctx.plugins,
     )
 }
 
 /// Execute a runner pass with optional timing instrumentation.
 ///
 /// If `execution_timings` is provided, the elapsed runner time will be recorded.
+/// Invokes processor pre_prompt hooks before the runner and post_run hooks after successful
+/// runner completion.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn execute_runner_pass(
     resolved: &config::Resolved,
@@ -44,9 +49,20 @@ pub(super) fn execute_runner_pass(
     phase_type: PhaseType,
     session_id: Option<String>,
     execution_timings: Option<&RefCell<RunExecutionTimings>>,
+    task_id: &str,
+    plugins: Option<&PluginRegistry>,
 ) -> Result<runner::RunnerOutput> {
     let permission_mode = resolved.config.agent.claude_permission_mode;
     let start = Instant::now();
+
+    // Apply pre_prompt hooks if plugins are available
+    let final_prompt = if let Some(registry) = plugins {
+        let exec = ProcessorExecutor::new(&resolved.repo_root, registry);
+        exec.pre_prompt(task_id, prompt)
+            .with_context(|| "processor pre_prompt hook failed")?
+    } else {
+        prompt.to_string()
+    };
 
     let output = runutil::run_prompt_with_handling(
         runutil::RunnerInvocation {
@@ -56,7 +72,7 @@ pub(super) fn execute_runner_pass(
             model: settings.model.clone(),
             reasoning_effort: settings.reasoning_effort,
             runner_cli: settings.runner_cli,
-            prompt,
+            prompt: &final_prompt,
             timeout: None,
             permission_mode,
             revert_on_error,
@@ -85,6 +101,13 @@ pub(super) fn execute_runner_pass(
             },
         },
     )?;
+
+    // Invoke post_run hooks after successful runner execution
+    if let Some(registry) = plugins {
+        let exec = ProcessorExecutor::new(&resolved.repo_root, registry);
+        exec.post_run(task_id, &output.stdout)
+            .with_context(|| "processor post_run hook failed")?;
+    }
 
     if let Some(timings) = execution_timings {
         timings.borrow_mut().record_runner_duration(

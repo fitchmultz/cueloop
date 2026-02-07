@@ -89,6 +89,8 @@ pub struct PhaseInvocation<'a> {
     pub no_progress: bool,
     /// Optional execution timings accumulator for recording phase durations.
     pub execution_timings: Option<&'a RefCell<RunExecutionTimings>>,
+    /// Optional plugin registry for processor hook invocation.
+    pub plugins: Option<&'a crate::plugins::registry::PluginRegistry>,
 }
 
 /// Generate a unique session ID for runner session resumption.

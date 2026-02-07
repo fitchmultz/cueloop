@@ -123,6 +123,48 @@ When you run `ralph plugin init`, the scaffold generates this layout with:
 - `pre_prompt`: Called before prompt is sent to runner
 - `post_run`: Called after runner execution completes
 
+### Processor Hook Runtime Semantics
+
+The following semantics define how processor hooks are invoked during `ralph run`:
+
+**Deterministic Chaining Order**
+- Enabled processor plugins are executed in ascending lexicographic order by `plugin_id`
+- Rationale: Both discovery and config use `BTreeMap` keyed by id; iteration order is stable
+
+**Hook Invocation Points**
+
+| Hook | When Invoked | Failure Behavior |
+|------|--------------|------------------|
+| `validate_task` | After task selection but before marking `doing` | Fatal - aborts run before any work begins |
+| `pre_prompt` | After prompt compilation but before runner invocation | Fatal - aborts before spawning runner |
+| `post_run` | After each successful runner execution (including CI continues) | Fatal - aborts workflow at point of failure |
+
+**Important Notes on `post_run`**:
+- Invoked after every successful runner `run` (normal execution)
+- Invoked after each successful `resume` / Continue (CI gate enforcement)
+- May run multiple times in a single overall task execution
+
+**Environment Variables**
+
+All processor hooks receive:
+- `RALPH_PLUGIN_ID`: The plugin ID (e.g., `my.plugin`)
+- `RALPH_PLUGIN_CONFIG_JSON`: Plugin config blob as JSON string (use `{}` when missing)
+
+**Hook Protocol**
+
+For each invoked plugin/hook:
+- Binary: Resolved from manifest `processors.bin` or config override `plugins.plugins.<id>.processor.bin`
+- Working directory: Repository root
+- Arguments: `<HOOK> <TASK_ID> <FILEPATH>`
+- File contents:
+  - `validate_task`: Full task JSON
+  - `pre_prompt`: Prompt text (plugin may modify in place)
+  - `post_run`: Runner stdout (NDJSON text)
+
+**Exit Code Contract**
+- `0`: Success
+- Non-zero: Failure (abort with actionable error including plugin_id, hook name, and exit code)
+
 ## Enabling Plugins
 
 Plugins are **disabled by default** for security. Enable via config:

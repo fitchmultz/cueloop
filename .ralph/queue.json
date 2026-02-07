@@ -2,56 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0667",
-      "status": "todo",
-      "title": "Activate processor plugin hooks (validate_task, pre_prompt, post_run)",
-      "description": "Processor plugin hooks are declared in manifest but NEVER actually invoked - this is a broken feature. The registry has `enabled_processor_plugins()` and `resolve_processor_bin()` but they're marked `#[allow(dead_code)]`.\n\nGoals:\n1. Add hook invocation points in task execution flow\n2. Call validate_task before execution (can reject task with error message)\n3. Call pre_prompt before runner invocation (can modify prompt context)\n4. Call post_run after execution (can process output, trigger side effects)\n5. Support multiple processors chained in config order\n\nEvidence:\n- Current: Processor hooks declared in plugin.json manifest (plugins/manifest.rs)\n- Gap: No invocation in execution flow - feature is non-functional\n- Code evidence: `#[allow(dead_code)]` on processor functions in registry.rs",
-      "priority": "critical",
-      "tags": [
-        "innovation",
-        "plugin-system",
-        "extensibility",
-        "bug-fix"
-      ],
-      "scope": [
-        "crates/ralph/src/plugins/registry.rs",
-        "crates/ralph/src/runner/execution/plugin_executor.rs",
-        "crates/ralph/src/commands/run/mod.rs",
-        "crates/ralph/src/commands/run/phases/mod.rs",
-        "docs/plugin-development.md"
-      ],
-      "evidence": [
-        "Current capability: Plugin manifest defines processor hooks: validate_task, pre_prompt, post_run (plugins/manifest.rs)",
-        "Gap observed: Registry has `enabled_processor_plugins()` and `resolve_processor_bin()` marked `#[allow(dead_code)]` - never called",
-        "Execution flow: commands/run/mod.rs has no processor hook integration points",
-        "Documentation: plugin-development.md documents processor hooks as if they work"
-      ],
-      "plan": [
-        "Remove #[allow(dead_code)] from processor functions in registry.rs after verifying invocation paths",
-        "Add ProcessorExecutor struct to manage processor lifecycle and hook invocation",
-        "Add validate_task hook call before task execution (can return error to abort)",
-        "Add pre_prompt hook call after prompt compilation but before runner spawn (can modify prompt)",
-        "Add post_run hook call in post_run_supervise (receives exit status, output, can trigger side effects)",
-        "Support chaining multiple processors in config-defined order",
-        "Add tests for processor hook invocation including error handling",
-        "Create example processor plugin in examples/ directory",
-        "Verify by running `ralph plugin init my-processor --type processor`, enabling it, and confirming hooks fire during task execution"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-07T00:41:40Z",
-      "updated_at": "2026-02-07T00:41:40Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "opportunity_type": "feature-gap",
-        "user_value": "Unlocks full plugin extensibility - custom validators, prompt modifiers, post-processing",
-        "estimated_effort": "medium",
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0668",
       "status": "todo",
       "title": "Add task aging report to identify stale work",
@@ -93,10 +43,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "low",
         "opportunity_type": "analytics",
-        "scan_agent": "scan-innovation",
-        "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention"
+        "estimated_effort": "low",
+        "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -142,10 +92,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "automation",
         "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
-        "opportunity_type": "automation"
+        "estimated_effort": "medium"
       }
     },
     {
@@ -191,10 +141,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "estimated_effort": "medium",
         "opportunity_type": "ux-improvement",
-        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
         "scan_agent": "scan-innovation",
-        "estimated_effort": "medium"
+        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings"
       }
     },
     {
@@ -241,10 +191,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
+        "opportunity_type": "reliability",
         "estimated_effort": "medium",
-        "opportunity_type": "reliability"
+        "scan_agent": "scan-innovation",
+        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups"
       }
     },
     {
@@ -291,10 +241,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "estimated_effort": "high",
-        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
-        "opportunity_type": "automation"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "automation",
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring"
       }
     },
     {
@@ -342,9 +292,9 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "medium",
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
         "opportunity_type": "analytics",
-        "scan_agent": "scan-innovation",
-        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -391,10 +341,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
-        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
         "opportunity_type": "ai-features",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium",
+        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment"
       }
     },
     {
@@ -444,9 +394,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
         "opportunity_type": "integration",
-        "estimated_effort": "high"
+        "estimated_effort": "high",
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation"
       }
     },
     {
@@ -494,10 +444,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-innovation",
         "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
-        "estimated_effort": "medium",
         "opportunity_type": "automation",
-        "scan_agent": "scan-innovation"
+        "estimated_effort": "medium"
       }
     },
     {
@@ -545,8 +495,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "high",
         "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
+        "estimated_effort": "high",
         "scan_agent": "scan-innovation",
         "opportunity_type": "ecosystem"
       }
@@ -597,10 +547,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "integration",
-        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows"
+        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -648,10 +598,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
+        "opportunity_type": "reliability",
         "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "reliability"
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
       }
     },
     {

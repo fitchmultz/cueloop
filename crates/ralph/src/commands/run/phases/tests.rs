@@ -290,6 +290,7 @@ echo '{{"sessionID":"sess-123"}}'
         lfs_check: false,
         no_progress: false,
         execution_timings: None,
+        plugins: None,
     };
 
     let plan_text = execute_phase1_planning(&invocation, 2)?;
@@ -376,6 +377,7 @@ echo '{{"sessionID":"sess-123"}}'
         lfs_check: false,
         no_progress: false,
         execution_timings: None,
+        plugins: None,
     };
 
     let plan_text = execute_phase1_planning(&invocation, 2)?;
@@ -460,6 +462,7 @@ echo '{{"sessionID":"sess-123"}}'
         lfs_check: false,
         no_progress: false,
         execution_timings: None,
+        plugins: None,
     };
 
     let err = execute_phase1_planning(&invocation, 2).expect_err("expected baseline violation");
@@ -609,6 +612,7 @@ echo '{"sessionID":"sess-123"}'
         lfs_check: false,
         no_progress: false,
         execution_timings: None,
+        plugins: None,
     };
 
     execute_phase3_review(&invocation)?;
@@ -676,6 +680,7 @@ echo '{"sessionID":"sess-123"}'
         lfs_check: false,
         no_progress: false,
         execution_timings: None,
+        plugins: None,
     };
 
     execute_phase3_review(&invocation)?;
@@ -763,6 +768,7 @@ echo '{{"sessionID":"sess-123"}}'
         lfs_check: false,
         no_progress: false,
         execution_timings: None,
+        plugins: None,
     };
 
     let continue_session = ContinueSession {
@@ -775,6 +781,7 @@ echo '{{"sessionID":"sess-123"}}'
         output_handler: None,
         output_stream: runner::OutputStream::Terminal,
         ci_failure_retry_count: 0,
+        task_id: "RQ-0001".to_string(),
     };
 
     let err = run_ci_gate_with_continue(&invocation, continue_session, |_output, _elapsed| Ok(()))

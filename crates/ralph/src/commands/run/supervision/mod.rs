@@ -61,6 +61,8 @@ pub(crate) struct ContinueSession {
     /// Number of automatic "fix CI and rerun" retries already sent for the current CI gate loop.
     /// Used to auto-enforce CI compliance without prompting for the first N failures.
     pub ci_failure_retry_count: u8,
+    /// The task ID for this continue session (needed for processor hooks).
+    pub task_id: String,
 }
 
 /// Context for resuming a runner session during a post-run CI gate failure.
@@ -86,10 +88,13 @@ pub(crate) enum PushPolicy {
 /// Returns the runner output along with the wall-clock duration of the session.
 /// The duration is measured from the start of the function to when the runner
 /// output is received.
+///
+/// Invokes post_run processor hooks after successful resume if plugins are provided.
 pub(crate) fn resume_continue_session(
     resolved: &crate::config::Resolved,
     session: &mut ContinueSession,
     message: &str,
+    plugins: Option<&crate::plugins::registry::PluginRegistry>,
 ) -> Result<(crate::runner::RunnerOutput, std::time::Duration)> {
     let start = std::time::Instant::now();
     let session_id = session
@@ -113,12 +118,23 @@ pub(crate) fn resume_continue_session(
         session.output_handler.clone(),
         session.output_stream,
         session.phase_type,
-        None,
+        plugins,
     )?;
     let elapsed = start.elapsed();
     if let Some(new_id) = output.session_id.as_ref() {
         session.session_id = Some(new_id.clone());
     }
+
+    // Invoke post_run hooks after successful resume
+    if let Some(registry) = plugins {
+        let exec = crate::plugins::processor_executor::ProcessorExecutor::new(
+            &resolved.repo_root,
+            registry,
+        );
+        exec.post_run(&session.task_id, &output.stdout)
+            .with_context(|| "processor post_run hook failed after resume")?;
+    }
+
     Ok((output, elapsed))
 }
 
@@ -143,6 +159,7 @@ pub(crate) fn post_run_supervise(
     notify_sound: Option<bool>,
     lfs_check: bool,
     no_progress: bool,
+    plugins: Option<&crate::plugins::registry::PluginRegistry>,
 ) -> Result<()> {
     let label = format!("PostRunSupervise for {}", task_id.trim());
     logging::with_scope(&label, || {
@@ -201,6 +218,7 @@ pub(crate) fn post_run_supervise(
                     revert_prompt.as_ref(),
                     continue_session,
                     |output, elapsed| on_resume(output, elapsed),
+                    plugins,
                 ) {
                     let outcome = runutil::apply_git_revert_mode(
                         &resolved.repo_root,
@@ -374,6 +392,7 @@ pub(crate) fn post_run_supervise_parallel_worker(
     revert_prompt: Option<runutil::RevertPromptHandler>,
     ci_continue: Option<CiContinueContext<'_>>,
     lfs_check: bool,
+    plugins: Option<&crate::plugins::registry::PluginRegistry>,
 ) -> Result<()> {
     let label = format!("PostRunSuperviseParallelWorker for {}", task_id.trim());
     logging::with_scope(&label, || {
@@ -425,6 +444,7 @@ pub(crate) fn post_run_supervise_parallel_worker(
                     revert_prompt.as_ref(),
                     continue_session,
                     |output, elapsed| on_resume(output, elapsed),
+                    plugins,
                 ) {
                     let outcome = runutil::apply_git_revert_mode(
                         &resolved.repo_root,
@@ -735,9 +755,10 @@ mod tests {
             output_handler: None,
             output_stream: crate::runner::OutputStream::Terminal,
             ci_failure_retry_count: 0,
+            task_id: "RQ-0001".to_string(),
         };
 
-        let err = resume_continue_session(&resolved, &mut session, "hello")
+        let err = resume_continue_session(&resolved, &mut session, "hello", None)
             .expect_err("expected missing session id error");
         assert!(err.to_string().contains("no session id"));
         Ok(())
@@ -764,6 +785,7 @@ mod tests {
             None,
             false,
             false,
+            None,
         )?;
 
         let status = git_test::git_output(temp.path(), &["status", "--porcelain"])?;
@@ -799,6 +821,7 @@ mod tests {
             None,
             false,
             false,
+            None,
         )?;
 
         let status = git_test::git_output(temp.path(), &["status", "--porcelain"])?;
@@ -826,6 +849,7 @@ mod tests {
             None,
             false,
             false,
+            None,
         )?;
 
         let done_file = queue::load_queue_or_default(&resolved.done_path)?;
@@ -885,6 +909,7 @@ mod tests {
             None,
             false,
             false,
+            None,
         )
         .expect_err("expected push failure");
         assert!(format!("{err:#}").contains("Git push failed"));
@@ -932,6 +957,7 @@ mod tests {
             None,
             false,
             false,
+            None,
         )?;
         Ok(())
     }
@@ -971,6 +997,7 @@ mod tests {
             None,
             false,
             false,
+            None,
         )?;
 
         // Verify the task is in done
@@ -1035,6 +1062,7 @@ echo '{{"sessionID":"sess-123"}}'
             output_handler: None,
             output_stream: crate::runner::OutputStream::Terminal,
             ci_failure_retry_count: CI_GATE_AUTO_RETRY_LIMIT,
+            task_id: "RQ-0001".to_string(),
         };
 
         let mut on_resume =
@@ -1058,6 +1086,7 @@ echo '{{"sessionID":"sess-123"}}'
             None,
             false,
             false,
+            None,
         )?;
 
         let args = std::fs::read_to_string(&resume_args)?;
@@ -1099,6 +1128,7 @@ echo '{{"sessionID":"sess-123"}}'
             output_handler: None,
             output_stream: crate::runner::OutputStream::Terminal,
             ci_failure_retry_count: 0,
+            task_id: "RQ-0001".to_string(),
         };
 
         // Verify the stored runner_cli matches what was set
@@ -1130,6 +1160,7 @@ echo '{{"sessionID":"sess-123"}}'
             output_handler: None,
             output_stream: crate::runner::OutputStream::Terminal,
             ci_failure_retry_count: 0,
+            task_id: "RQ-0001".to_string(),
         };
         assert_eq!(planning_session.phase_type, PhaseType::Planning);
 
@@ -1144,6 +1175,7 @@ echo '{{"sessionID":"sess-123"}}'
             output_handler: None,
             output_stream: crate::runner::OutputStream::Terminal,
             ci_failure_retry_count: 0,
+            task_id: "RQ-0001".to_string(),
         };
         assert_eq!(impl_session.phase_type, PhaseType::Implementation);
 
@@ -1158,6 +1190,7 @@ echo '{{"sessionID":"sess-123"}}'
             output_handler: None,
             output_stream: crate::runner::OutputStream::Terminal,
             ci_failure_retry_count: 0,
+            task_id: "RQ-0001".to_string(),
         };
         assert_eq!(review_session.phase_type, PhaseType::Review);
 
@@ -1168,6 +1201,7 @@ echo '{{"sessionID":"sess-123"}}'
             reasoning_effort: None,
             runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
             phase_type: PhaseType::SinglePhase,
+            task_id: "RQ-0001".to_string(),
             session_id: Some("test-session".to_string()),
             output_handler: None,
             output_stream: crate::runner::OutputStream::Terminal,
@@ -1226,6 +1260,7 @@ echo '{{"sessionID":"sess-123"}}'
             None,
             None,
             false,
+            None,
         )?;
 
         assert_eq!(std::fs::read_to_string(&resolved.queue_path)?, queue_before);
@@ -1314,6 +1349,7 @@ echo '{{"sessionID":"sess-123"}}'
             None,
             None,
             false,
+            None,
         )?;
 
         let signal_path = completions::completion_signal_path(repo_root, "RQ-0001")?;
@@ -1376,6 +1412,7 @@ echo '{{"sessionID":"sess-123"}}'
             None,
             None,
             false,
+            None,
         )
         .expect_err("expected missing completion signal error");
 
