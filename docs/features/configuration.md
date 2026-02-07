@@ -1,0 +1,1093 @@
+# Ralph Configuration System
+
+Ralph uses a flexible, layered JSON configuration system that allows you to customize behavior at both global (user) and project levels. Configuration supports JSON with Comments (JSONC) for better documentation and organization.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Config Locations](#config-locations)
+3. [Precedence](#precedence)
+4. [JSONC Support](#jsonc-support)
+5. [Top-Level Fields](#top-level-fields)
+6. [Agent Configuration](#agent-configuration)
+7. [Parallel Configuration](#parallel-configuration)
+8. [Queue Configuration](#queue-configuration)
+9. [Plugin Configuration](#plugin-configuration)
+10. [Profile Configuration](#profile-configuration)
+11. [TUI Configuration](#tui-configuration)
+12. [Environment Variables](#environment-variables)
+13. [Validation](#validation)
+
+---
+
+## Overview
+
+Ralph's configuration system uses a two-layer architecture:
+
+- **Global Config**: User-wide defaults stored in your home directory
+- **Project Config**: Repository-specific overrides stored in `.ralph/config.json`
+
+Configuration is merged using **leaf-wise semantics**: when a value is present (`Some`), it overrides; when absent (`None`), it inherits from the parent layer. This allows fine-grained control over which settings to override.
+
+### Configuration Flow
+
+```
+CLI Flags → Project Config → Global Config → Schema Defaults
+     ↑                                                        
+     └────────────────── Profiles ───────────────────────────┘
+```
+
+---
+
+## Config Locations
+
+### Global Config
+
+Stored in your user configuration directory:
+
+| Platform | Path |
+|----------|------|
+| Linux/macOS | `~/.config/ralph/config.json` |
+| With XDG | `$XDG_CONFIG_HOME/ralph/config.json` |
+
+Created automatically on first run or via `ralph init --global`.
+
+### Project Config
+
+Stored within each repository:
+
+```
+<repo-root>/.ralph/config.json
+```
+
+Created automatically when you run `ralph init` in a repository.
+
+### Quick Reference
+
+```bash
+# View current config resolution
+ralph config show
+
+# View merged config with all layers
+ralph config show --merged
+
+# Edit global config
+ralph config edit --global
+
+# Edit project config
+ralph config edit
+
+# Validate current configuration
+ralph config validate
+```
+
+---
+
+## Precedence
+
+Configuration values are resolved in the following order (highest to lowest):
+
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 | **CLI Flags** | Command-line arguments (`--runner`, `--model`, etc.) |
+| 2 | **Task Overrides** | Per-task settings in `task.agent.*` |
+| 3 | **Profiles** | Selected profile configuration |
+| 4 | **Project Config** | `.ralph/config.json` |
+| 5 | **Global Config** | `~/.config/ralph/config.json` |
+| 6 | **Schema Defaults** | Built-in defaults from `schemas/config.schema.json` |
+
+### Example Precedence
+
+Given:
+- **Global config**: `agent.runner = "claude"`
+- **Project config**: `agent.runner = "codex"`
+- **CLI flag**: `--runner kimi`
+
+Result: `kimi` wins (CLI flag > project config > global config).
+
+### Profile Precedence
+
+When using profiles, the order is:
+
+1. CLI flags
+2. Task overrides (`task.agent.*`)
+3. Selected profile
+4. Base config (global + project merged)
+
+---
+
+## JSONC Support
+
+Ralph supports **JSON with Comments** (JSONC) for all configuration and queue files. This allows you to document your configuration directly in the files.
+
+### Supported Comment Styles
+
+```jsonc
+{
+  // Single-line comment
+  "version": 1,
+  
+  /* 
+   * Multi-line comment
+   * Great for longer explanations
+   */
+  "agent": {
+    "runner": "claude",  // Trailing comments work too
+    "phases": 3,
+  },  // Trailing commas are also supported!
+}
+```
+
+### File Extensions
+
+- `.json` - Standard JSON (fully backward compatible)
+- `.jsonc` - JSON with Comments
+
+Ralph can read both formats regardless of extension. When writing files, Ralph outputs standard JSON (comments are not preserved on rewrite).
+
+### Best Practices
+
+```jsonc
+{
+  // Schema version - must be 1
+  "version": 1,
+  
+  // Project type affects prompt defaults
+  // Options: "code" | "docs"
+  "project_type": "code",
+  
+  "agent": {
+    /* Runner selection:
+       - claude: Anthropic Claude Code
+       - codex: OpenAI Codex CLI
+       - gemini: Google Gemini CLI
+       - opencode: OpenCode
+       - cursor: Cursor agent
+       - kimi: Kimi Code CLI */
+    "runner": "claude",
+    
+    // Execution phases: 1 (single-pass), 2 (plan+implement), 3 (plan+implement+review)
+    "phases": 3
+  }
+}
+```
+
+---
+
+## Top-Level Fields
+
+The configuration root contains these main sections:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | `number` | Config schema version (must be `1`) |
+| `project_type` | `"code" \| "docs"` | Drives prompt defaults and workflow decisions |
+| `agent` | `AgentConfig` | Runner defaults and execution settings |
+| `parallel` | `ParallelConfig` | Parallel execution configuration |
+| `queue` | `QueueConfig` | Queue file locations and ID formatting |
+| `plugins` | `PluginsConfig` | Plugin enable/disable and settings |
+| `profiles` | `object` | Named configuration profiles |
+| `tui` | `TuiConfig` | Terminal UI-specific settings |
+
+### Example Structure
+
+```json
+{
+  "version": 1,
+  "project_type": "code",
+  "agent": { /* ... */ },
+  "parallel": { /* ... */ },
+  "queue": { /* ... */ },
+  "plugins": { /* ... */ },
+  "profiles": { /* ... */ },
+  "tui": { /* ... */ }
+}
+```
+
+---
+
+## Agent Configuration
+
+The `agent` section controls how Ralph executes tasks and interacts with AI runners.
+
+### Core Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `runner` | `string` | `"claude"` | Default runner: `claude`, `codex`, `gemini`, `opencode`, `cursor`, `kimi`, `pi` |
+| `model` | `string` | `"sonnet"` | Default model identifier |
+| `phases` | `1 \| 2 \| 3` | `3` | Execution phases: 1=single-pass, 2=plan+implement, 3=plan+implement+review |
+| `iterations` | `number` | `1` | Number of iterations per task (≥1) |
+| `reasoning_effort` | `"low" \| "medium" \| "high" \| "xhigh"` | `"medium"` | Reasoning depth (Codex only) |
+| `followup_reasoning_effort` | `"low" \| "medium" \| "high" \| "xhigh"` | `null` | Reasoning for iterations > 1 |
+
+### Runner Binary Paths
+
+Override executable names/paths for each runner:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `claude_bin` | `"claude"` | Claude Code executable |
+| `codex_bin` | `"codex"` | OpenAI Codex CLI |
+| `gemini_bin` | `"gemini"` | Google Gemini CLI |
+| `opencode_bin` | `"opencode"` | OpenCode CLI |
+| `cursor_bin` | `"agent"` | Cursor agent (note: uses `agent`, not `cursor`) |
+| `kimi_bin` | `"kimi"` | Kimi Code CLI |
+| `pi_bin` | `"pi"` | Pi CLI |
+
+### Permission & Safety
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `claude_permission_mode` | `"accept_edits" \| "bypass_permissions"` | `"bypass_permissions"` | Claude permission handling |
+| `git_revert_mode` | `"ask" \| "enabled" \| "disabled"` | `"ask"` | Auto-revert behavior on errors |
+| `git_commit_push_enabled` | `boolean` | `true` | Auto-commit and push after success |
+
+> ⚠️ **Safety Warning**: `bypass_permissions` allows Claude to make edits without prompting. Use with caution.
+
+### CI Gate
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `ci_gate_enabled` | `boolean` | `true` | Enable CI gate validation |
+| `ci_gate_command` | `string` | `"make ci"` | Command to run for CI gate |
+
+> ⚠️ **Safety Warning**: Disabling the CI gate skips validation before commit/push, potentially allowing broken code.
+
+### RepoPrompt Integration
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `repoprompt_plan_required` | `boolean` | `false` | Require RepoPrompt during planning |
+| `repoprompt_tool_injection` | `boolean` | `false` | Inject RepoPrompt tooling reminders |
+
+### Instruction Files
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `instruction_files` | `string[]` | `null` | Additional instruction files to inject into prompts |
+
+Paths can be:
+- Absolute: `/path/to/instructions.md`
+- Home-relative: `~/.codex/AGENTS.md`
+- Repo-relative: `AGENTS.md`
+
+```json
+{
+  "agent": {
+    "instruction_files": [
+      "~/.config/ralph/global-agents.md",
+      "AGENTS.md",
+      "docs/project-guidelines.md"
+    ]
+  }
+}
+```
+
+### Task Update Settings
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `update_task_before_run` | `boolean` | `false` | Auto-update task before execution |
+| `fail_on_prerun_update_error` | `boolean` | `false` | Fail run if pre-run update fails |
+
+### Session & Recovery
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `session_timeout_hours` | `number` | `24` | Session timeout for crash recovery (≥1) |
+
+### Scan Prompts
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `scan_prompt_version` | `"v1" \| "v2"` | `"v2"` | Scan prompt version: v1 (rule-based), v2 (rubric-based) |
+
+### Complete Agent Example
+
+```json
+{
+  "version": 1,
+  "agent": {
+    "runner": "claude",
+    "model": "sonnet",
+    "phases": 3,
+    "iterations": 1,
+    "reasoning_effort": "high",
+    "claude_permission_mode": "bypass_permissions",
+    "git_revert_mode": "ask",
+    "git_commit_push_enabled": true,
+    "ci_gate_enabled": true,
+    "ci_gate_command": "make ci",
+    "repoprompt_plan_required": false,
+    "instruction_files": ["AGENTS.md"],
+    "session_timeout_hours": 24,
+    "scan_prompt_version": "v2",
+    "update_task_before_run": false
+  }
+}
+```
+
+---
+
+### `agent.runner_cli`
+
+Normalized runner CLI behavior configuration with global defaults and per-runner overrides.
+
+#### Structure
+
+```json
+{
+  "agent": {
+    "runner_cli": {
+      "defaults": { /* applied to all runners */ },
+      "runners": {
+        "claude": { /* per-runner overrides */ },
+        "codex": { /* per-runner overrides */ }
+      }
+    }
+  }
+}
+```
+
+#### Options
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `output_format` | `"stream_json" \| "json" \| "text"` | Runner output format |
+| `verbosity` | `"quiet" \| "normal" \| "verbose"` | Output verbosity |
+| `approval_mode` | `"default" \| "auto_edits" \| "yolo" \| "safe"` | Permission behavior |
+| `sandbox` | `"default" \| "enabled" \| "disabled"` | Sandbox mode |
+| `plan_mode` | `"default" \| "enabled" \| "disabled"` | Plan/read-only behavior |
+| `unsupported_option_policy` | `"ignore" \| "warn" \| "error"` | Handle unsupported options |
+
+> ⚠️ **Safety Warning**: `approval_mode: "yolo"` bypasses all approval prompts. Use with extreme caution.
+
+> **Note**: Ralph does NOT pass approval flags to Codex. Configure Codex approval in `~/.codex/config.json`.
+
+#### Example
+
+```json
+{
+  "agent": {
+    "runner_cli": {
+      "defaults": {
+        "output_format": "stream_json",
+        "approval_mode": "yolo",
+        "unsupported_option_policy": "warn"
+      },
+      "runners": {
+        "codex": { "sandbox": "disabled" },
+        "claude": { "verbosity": "verbose" },
+        "kimi": { "approval_mode": "yolo" }
+      }
+    }
+  }
+}
+```
+
+---
+
+### `agent.phase_overrides`
+
+Per-phase overrides for runner, model, and reasoning effort. Allows different settings for each execution phase.
+
+#### Structure
+
+```json
+{
+  "agent": {
+    "phase_overrides": {
+      "phase1": { /* planning phase */ },
+      "phase2": { /* implementation phase */ },
+      "phase3": { /* review phase */ }
+    }
+  }
+}
+```
+
+#### Phase Override Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `runner` | `string` | Override runner for this phase |
+| `model` | `string` | Override model for this phase |
+| `reasoning_effort` | `"low" \| "medium" \| "high" \| "xhigh"` | Override reasoning for this phase |
+
+#### Example
+
+```json
+{
+  "agent": {
+    "runner": "codex",
+    "model": "gpt-5.3-codex",
+    "reasoning_effort": "medium",
+    "phase_overrides": {
+      "phase1": {
+        "model": "o3-mini",
+        "reasoning_effort": "high"
+      },
+      "phase2": {
+        "runner": "claude",
+        "model": "sonnet"
+      },
+      "phase3": {
+        "runner": "codex",
+        "model": "gpt-5.3-codex",
+        "reasoning_effort": "high"
+      }
+    }
+  }
+}
+```
+
+---
+
+### `agent.runner_retry`
+
+Configuration for automatic retry of runner invocations on transient failures.
+
+| Field | Type | Default | Range | Description |
+|-------|------|---------|-------|-------------|
+| `max_attempts` | `number` | `3` | 1-20 | Total attempts (including initial) |
+| `base_backoff_ms` | `number` | `1000` | 0-600000 | Initial backoff in milliseconds |
+| `multiplier` | `number` | `2.0` | 1.0-10.0 | Exponential backoff multiplier |
+| `max_backoff_ms` | `number` | `30000` | 0-600000 | Maximum backoff cap |
+| `jitter_ratio` | `number` | `0.2` | 0.0-1.0 | Random jitter ratio |
+
+#### Example
+
+```json
+{
+  "agent": {
+    "runner_retry": {
+      "max_attempts": 5,
+      "base_backoff_ms": 2000,
+      "multiplier": 2.0,
+      "max_backoff_ms": 60000,
+      "jitter_ratio": 0.2
+    }
+  }
+}
+```
+
+---
+
+### `agent.notification`
+
+Desktop notification configuration for task events.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Legacy field (prefer `notify_on_complete`) |
+| `notify_on_complete` | `boolean` | `true` | Notify on task completion |
+| `notify_on_fail` | `boolean` | `true` | Notify on task failure |
+| `notify_on_loop_complete` | `boolean` | `true` | Notify when loop mode completes |
+| `suppress_when_active` | `boolean` | `true` | Suppress when TUI is active |
+| `sound_enabled` | `boolean` | `false` | Play sound with notifications |
+| `sound_path` | `string` | `null` | Custom sound file path |
+| `timeout_ms` | `number` | `8000` | Notification timeout (1000-60000) |
+
+#### Platform Notes
+
+- **macOS**: Uses NotificationCenter; sound via `afplay`
+- **Linux**: Uses D-Bus/notify-send; sound via `paplay`/`aplay`
+- **Windows**: Uses toast notifications; sound via `winmm.dll`
+
+---
+
+### `agent.webhook`
+
+HTTP webhook configuration for external integrations.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Enable webhooks |
+| `url` | `string` | `null` | Webhook endpoint URL |
+| `secret` | `string` | `null` | HMAC-SHA256 secret for signatures |
+| `events` | `string[]` | `null` | Events to subscribe to (use `["*"]` for all) |
+| `timeout_secs` | `number` | `30` | Request timeout (1-300) |
+| `retry_count` | `number` | `3` | Retry attempts (0-10) |
+| `retry_backoff_ms` | `number` | `1000` | Retry backoff (100-30000) |
+| `queue_capacity` | `number` | `100` | Delivery queue size (10-10000) |
+| `queue_policy` | `"drop_oldest" \| "drop_new" \| "block_with_timeout"` | `"drop_oldest"` | Backpressure policy |
+
+#### Events
+
+- **Task events**: `task_created`, `task_started`, `task_completed`, `task_failed`, `task_status_changed`
+- **Loop events**: `loop_started`, `loop_stopped` (opt-in)
+- **Phase events**: `phase_started`, `phase_completed` (opt-in)
+
+#### Example
+
+```json
+{
+  "agent": {
+    "webhook": {
+      "enabled": true,
+      "url": "https://hooks.slack.com/services/...",
+      "secret": "my-webhook-secret",
+      "events": ["task_completed", "task_failed"],
+      "timeout_secs": 30,
+      "retry_count": 3,
+      "queue_capacity": 100
+    }
+  }
+}
+```
+
+---
+
+## Parallel Configuration
+
+The `parallel` section controls parallel task execution for `ralph run loop`. **Note**: Parallel mode is CLI-only; the TUI does not support parallel runs.
+
+### Core Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `workers` | `number` | `null` | Concurrent workers (≥2, null = disabled) |
+| `merge_when` | `"as_created" \| "after_all"` | `"as_created"` | When to merge PRs |
+| `merge_method` | `"squash" \| "merge" \| "rebase"` | `"squash"` | PR merge method |
+| `auto_pr` | `boolean` | `true` | Auto-create PRs for completed tasks |
+| `auto_merge` | `boolean` | `true` | Auto-merge PRs when eligible |
+| `draft_on_failure` | `boolean` | `true` | Create draft PRs on worker failure |
+
+### Conflict & Retry
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `conflict_policy` | `"auto_resolve" \| "retry_later" \| "reject"` | `"auto_resolve"` | Merge conflict handling |
+| `merge_retries` | `number` | `5` | Merge retry attempts (≥1) |
+
+### Workspace & Branch
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `workspace_root` | `string` | `null` | Root for parallel workspaces |
+| `branch_prefix` | `string` | `"ralph/"` | Prefix for worker branches |
+| `delete_branch_on_merge` | `boolean` | `true` | Delete branches after merge |
+
+> ⚠️ **Git Hygiene**: If `workspace_root` is inside the repo, you MUST gitignore it or parallel mode will fail.
+
+### Merge Runner
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `merge_runner` | `object` | `null` | Runner overrides for merge conflict resolution |
+
+The `merge_runner` object supports:
+- `runner`: Runner to use for merge conflicts
+- `model`: Model for merge conflict resolution
+- `reasoning_effort`: Reasoning depth for merge resolution
+
+### Complete Parallel Example
+
+```json
+{
+  "version": 1,
+  "parallel": {
+    "workers": 3,
+    "merge_when": "as_created",
+    "merge_method": "squash",
+    "auto_pr": true,
+    "auto_merge": true,
+    "draft_on_failure": true,
+    "conflict_policy": "auto_resolve",
+    "merge_retries": 5,
+    "branch_prefix": "ralph/",
+    "delete_branch_on_merge": true,
+    "merge_runner": {
+      "runner": "claude",
+      "model": "sonnet",
+      "reasoning_effort": "medium"
+    }
+  }
+}
+```
+
+---
+
+## Queue Configuration
+
+The `queue` section controls task queue file locations, ID formatting, and maintenance behavior.
+
+### File Paths
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `file` | `string` | `".ralph/queue.json"` | Path to active queue file |
+| `done_file` | `string` | `".ralph/done.json"` | Path to done archive |
+
+Paths are relative to repo root. Absolute paths and `~` expansion are supported.
+
+### ID Formatting
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `id_prefix` | `string` | `"RQ"` | Task ID prefix |
+| `id_width` | `number` | `4` | Zero-padding width (e.g., 4 = RQ-0001) |
+
+### Warnings & Limits
+
+| Field | Type | Default | Range | Description |
+|-------|------|---------|-------|-------------|
+| `size_warning_threshold_kb` | `number` | `500` | 100-10000 | Warn if queue file exceeds this size |
+| `task_count_warning_threshold` | `number` | `500` | 50-5000 | Warn if queue has too many tasks |
+| `max_dependency_depth` | `number` | `10` | 1-100 | Max dependency chain depth |
+
+### Auto-Archive
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `auto_archive_terminal_after_days` | `number \| null` | `null` | Auto-archive done/rejected tasks after N days |
+
+Semantics:
+- `null`: Disabled (default)
+- `0`: Archive immediately on sweep
+- `N`: Archive when `completed_at` is at least N days old
+
+### Aging Thresholds
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `aging_thresholds.warning_days` | `number` | `7` | Warn when task age > N days |
+| `aging_thresholds.stale_days` | `number` | `14` | Stale when task age > N days |
+| `aging_thresholds.rotten_days` | `number` | `30` | Rotten when task age > N days |
+
+> **Ordering invariant**: `warning_days < stale_days < rotten_days`
+
+### Complete Queue Example
+
+```json
+{
+  "version": 1,
+  "queue": {
+    "file": ".ralph/queue.json",
+    "done_file": ".ralph/done.json",
+    "id_prefix": "RQ",
+    "id_width": 4,
+    "size_warning_threshold_kb": 500,
+    "task_count_warning_threshold": 500,
+    "max_dependency_depth": 10,
+    "auto_archive_terminal_after_days": 7,
+    "aging_thresholds": {
+      "warning_days": 7,
+      "stale_days": 14,
+      "rotten_days": 30
+    }
+  }
+}
+```
+
+---
+
+## Plugin Configuration
+
+The `plugins` section enables custom runners and processors.
+
+> ⚠️ **Security Warning**: Plugins are NOT sandboxed. Only enable plugins from trusted sources.
+
+### Structure
+
+```json
+{
+  "plugins": {
+    "plugins": {
+      "<plugin-id>": {
+        "enabled": true,
+        "runner": { "bin": "custom-runner" },
+        "processor": { "bin": "custom-processor" },
+        "config": { /* opaque plugin config */ }
+      }
+    }
+  }
+}
+```
+
+### Per-Plugin Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Enable/disable the plugin |
+| `runner.bin` | `string` | `null` | Override runner executable |
+| `processor.bin` | `string` | `null` | Override processor executable |
+| `config` | `object` | `null` | Opaque plugin configuration |
+
+### Plugin Directories
+
+Plugins are discovered from:
+- Project: `.ralph/plugins/<plugin_id>/plugin.json`
+- Global: `~/.config/ralph/plugins/<plugin_id>/plugin.json`
+
+### Example
+
+```json
+{
+  "version": 1,
+  "plugins": {
+    "plugins": {
+      "my.custom-runner": {
+        "enabled": true,
+        "runner": {
+          "bin": "/usr/local/bin/custom-runner"
+        },
+        "config": {
+          "api_key": "${CUSTOM_API_KEY}",
+          "endpoint": "https://api.example.com"
+        }
+      }
+    }
+  }
+}
+```
+
+### Plugin Commands
+
+```bash
+ralph plugin list                    # List discovered plugins
+ralph plugin validate                # Validate plugin manifests
+ralph plugin install <path>          # Install a plugin
+ralph plugin uninstall <id>          # Uninstall a plugin
+```
+
+---
+
+## Profile Configuration
+
+Profiles enable quick switching between workflow presets. A profile is an `AgentConfig`-shaped patch applied over the base config.
+
+### Built-in Profiles
+
+Ralph provides two built-in profiles:
+
+| Profile | Runner | Model | Phases | Use Case |
+|---------|--------|-------|--------|----------|
+| `quick` | `kimi` | `kimi-for-coding` | `1` | Fast single-pass execution |
+| `thorough` | `claude` | `opus` | `3` | Deep multi-phase analysis |
+
+### Defining Custom Profiles
+
+```json
+{
+  "version": 1,
+  "profiles": {
+    "codex-review": {
+      "runner": "codex",
+      "model": "gpt-5.3-codex",
+      "phases": 2,
+      "reasoning_effort": "high"
+    },
+    "gemini-audit": {
+      "runner": "gemini",
+      "model": "gemini-3-pro-preview",
+      "phases": 3
+    },
+    "fast-fix": {
+      "phases": 1,
+      "iterations": 1
+    }
+  }
+}
+```
+
+### Using Profiles
+
+```bash
+# Run with a profile
+ralph run one --profile quick
+
+# Scan with a profile
+ralph scan --profile thorough "security audit"
+
+# Override settings while using a profile
+ralph run one --profile quick --phases 2
+
+# List available profiles
+ralph config profiles list
+
+# Show profile details
+ralph config profiles show quick
+```
+
+### Profile Precedence
+
+1. CLI flags (highest)
+2. Task overrides (`task.agent.*`)
+3. Selected profile
+4. Base config (lowest)
+
+User-defined profiles with the same name as built-ins override the built-in.
+
+---
+
+## TUI Configuration
+
+The `tui` section configures Terminal UI-specific behavior.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `auto_archive_terminal` | `"never" \| "prompt" \| "always"` | `null` | Auto-archive behavior for terminal tasks |
+| `celebrations_enabled` | `boolean` | `true` | Enable celebration animations |
+| `stats_enabled` | `boolean` | `true` | Enable productivity stats tracking |
+
+### Auto-Archive Behavior
+
+- `never`: Never auto-archive (default behavior)
+- `prompt`: Ask before archiving
+- `always`: Archive immediately without prompt
+
+### Example
+
+```json
+{
+  "version": 1,
+  "tui": {
+    "auto_archive_terminal": "prompt",
+    "celebrations_enabled": true,
+    "stats_enabled": true
+  }
+}
+```
+
+---
+
+## Environment Variables
+
+Environment variables can be used within configuration files for dynamic values and secrets.
+
+### Syntax
+
+Use `${VAR_NAME}` or `$VAR_NAME` syntax in string values:
+
+```json
+{
+  "agent": {
+    "webhook": {
+      "secret": "${WEBHOOK_SECRET}"
+    }
+  },
+  "plugins": {
+    "plugins": {
+      "custom": {
+        "config": {
+          "api_key": "$API_KEY"
+        }
+      }
+    }
+  }
+}
+```
+
+### Special Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `RALPH_REPO_ROOT_OVERRIDE` | Override repository root detection |
+| `XDG_CONFIG_HOME` | Override global config directory |
+
+### Best Practices
+
+1. **Never commit secrets**: Use environment variables for API keys and tokens
+2. **Use `.env` files**: Load env vars from `.env` before running Ralph
+3. **Document required vars**: List required environment variables in your project README
+
+---
+
+## Validation
+
+Ralph validates configuration on load and provides detailed error messages for invalid settings.
+
+### Validation Rules
+
+| Field | Validation |
+|-------|------------|
+| `version` | Must be `1` |
+| `agent.phases` | Must be `1`, `2`, or `3` |
+| `agent.iterations` | Must be `≥ 1` |
+| `agent.session_timeout_hours` | Must be `≥ 1` |
+| `parallel.workers` | Must be `≥ 2` (if set) |
+| `parallel.merge_retries` | Must be `≥ 1` (if set) |
+| `queue.id_width` | Must be `≥ 0` |
+| `queue.*_threshold*` | Must be within documented ranges |
+| Binary paths | Must be non-empty if specified |
+| Branch prefix | Must form valid git ref with task ID |
+
+### Validation Commands
+
+```bash
+# Validate current configuration
+ralph config validate
+
+# Show resolved configuration
+ralph config show
+
+# Show merged config with all layers
+ralph config show --merged
+```
+
+### Common Validation Errors
+
+```
+Error: Unsupported config version: 2. Ralph requires version 1.
+Solution: Set "version": 1 in your config file.
+
+Error: Invalid agent.phases: 5. Supported values are 1, 2, or 3.
+Solution: Change phases to 1, 2, or 3.
+
+Error: Empty queue.id_prefix: prefix is required if specified.
+Solution: Remove the field or set a non-empty prefix like "RQ".
+
+Error: Invalid parallel.branch_prefix: "ralph/feat".
+Solution: Use a simpler prefix like "ralph/".
+```
+
+---
+
+## Complete Configuration Example
+
+Here's a comprehensive example demonstrating all configuration sections:
+
+```jsonc
+{
+  // Schema version (required)
+  "version": 1,
+  
+  // Project type affects prompt defaults
+  "project_type": "code",
+  
+  // Agent execution settings
+  "agent": {
+    "runner": "claude",
+    "model": "sonnet",
+    "phases": 3,
+    "iterations": 1,
+    "reasoning_effort": "high",
+    
+    // Runner binaries
+    "claude_bin": "claude",
+    "codex_bin": "codex",
+    
+    // Safety settings
+    "claude_permission_mode": "bypass_permissions",
+    "git_revert_mode": "ask",
+    "git_commit_push_enabled": true,
+    
+    // CI gate
+    "ci_gate_enabled": true,
+    "ci_gate_command": "make ci",
+    
+    // RepoPrompt integration
+    "repoprompt_plan_required": false,
+    "instruction_files": ["AGENTS.md"],
+    
+    // Phase-specific overrides
+    "phase_overrides": {
+      "phase1": {
+        "model": "o3-mini",
+        "reasoning_effort": "high"
+      }
+    },
+    
+    // Runner CLI normalization
+    "runner_cli": {
+      "defaults": {
+        "approval_mode": "yolo",
+        "output_format": "stream_json"
+      },
+      "runners": {
+        "codex": { "sandbox": "disabled" }
+      }
+    },
+    
+    // Retry configuration
+    "runner_retry": {
+      "max_attempts": 3,
+      "base_backoff_ms": 1000
+    },
+    
+    // Notifications
+    "notification": {
+      "notify_on_complete": true,
+      "notify_on_fail": true,
+      "sound_enabled": false
+    },
+    
+    // Webhooks
+    "webhook": {
+      "enabled": true,
+      "url": "${WEBHOOK_URL}",
+      "secret": "${WEBHOOK_SECRET}",
+      "events": ["task_completed", "task_failed"]
+    },
+    
+    // Session management
+    "session_timeout_hours": 24,
+    "scan_prompt_version": "v2"
+  },
+  
+  // Parallel execution (CLI-only)
+  "parallel": {
+    "workers": 3,
+    "auto_pr": true,
+    "auto_merge": true,
+    "merge_method": "squash",
+    "branch_prefix": "ralph/"
+  },
+  
+  // Queue configuration
+  "queue": {
+    "file": ".ralph/queue.json",
+    "done_file": ".ralph/done.json",
+    "id_prefix": "RQ",
+    "id_width": 4,
+    "auto_archive_terminal_after_days": 7,
+    "aging_thresholds": {
+      "warning_days": 7,
+      "stale_days": 14,
+      "rotten_days": 30
+    }
+  },
+  
+  // Plugin configuration
+  "plugins": {
+    "plugins": {
+      "custom.runner": {
+        "enabled": true,
+        "runner": { "bin": "custom-runner" }
+      }
+    }
+  },
+  
+  // Custom profiles
+  "profiles": {
+    "quick": {
+      "runner": "kimi",
+      "phases": 1
+    },
+    "thorough": {
+      "runner": "claude",
+      "model": "opus",
+      "phases": 3
+    }
+  },
+  
+  // TUI settings
+  "tui": {
+    "auto_archive_terminal": "prompt",
+    "celebrations_enabled": true,
+    "stats_enabled": true
+  }
+}
+```
+
+---
+
+## See Also
+
+- [Main Configuration Documentation](../configuration.md)
+- [CLI Reference](../cli.md)
+- [Workflow Documentation](../workflow.md)
+- [JSON Schema](../../schemas/config.schema.json)
