@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0641",
-      "status": "todo",
-      "title": "Split oversized parallel run module (3241 LOC) into cohesive submodules",
-      "priority": "low",
-      "tags": [
-        "maintenance",
-        "refactor",
-        "parallel"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/parallel/mod.rs",
-        "crates/ralph/src/commands/run/parallel/",
-        "make ci"
-      ],
-      "evidence": [
-        "Command: wc -l crates/ralph/src/commands/run/parallel/mod.rs -> 3241 lines.",
-        "AGENTS.md guideline: files >1000 LOC should be split; >800 LOC requires explicit justification."
-      ],
-      "plan": [
-        "Map responsibilities in parallel/mod.rs (scheduling, worker lifecycle, PR operations, merge policy, state persistence).",
-        "Extract cohesive internal modules (e.g., scheduler.rs, worker.rs, pr_ops.rs, state_io.rs) under crates/ralph/src/commands/run/parallel/.",
-        "Keep behavior stable by leaving public APIs in mod.rs and delegating to submodules.",
-        "Add/adjust tests covering critical paths (state file reading/writing, PR record reconciliation, merge policy decisions).",
-        "Verify by running `make ci` and confirming it passes."
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-05T20:49:31Z",
-      "updated_at": "2026-02-05T20:49:31Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0642",
       "status": "todo",
       "title": "Warn on .env load errors (ignore NotFound only)",

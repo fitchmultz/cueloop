@@ -1300,8 +1300,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "reliability",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability",
         "time_to_ship": "medium (concurrency + tests)",
         "user_value": "Prevents webhook backoff from slowing CLI/TUI flows; keeps integrations best-effort."
       }
@@ -1345,10 +1345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "user_value": "Turns TODOs into stable tasks with lifecycle; reduces duplicate noise and keeps backlog current.",
-        "time_to_ship": "medium (metadata + reconciliation + tests)",
-        "opportunity_type": "ux improvement"
+        "opportunity_type": "ux improvement",
+        "scan_agent": "scan-innovation",
+        "time_to_ship": "medium (metadata + reconciliation + tests)"
       }
     },
     {
@@ -1394,9 +1394,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "time_to_ship": "medium (format + fixes + tests)",
         "user_value": "Actionable diagnostics for scripts and CI; resolves confusing `--auto-fix` semantics.",
         "opportunity_type": "ux improvement",
+        "time_to_ship": "medium (format + fixes + tests)",
         "scan_agent": "scan-innovation"
       }
     },
@@ -1932,9 +1932,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux improvement",
-        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
         "time_to_ship": "medium (TUI wiring + tests)",
+        "user_value": "Fewer context switches: jump from task → code in one keystroke.",
+        "opportunity_type": "ux improvement",
         "scan_agent": "scan-innovation"
       }
     },
@@ -1989,10 +1989,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error.",
         "time_to_ship": "medium (render-only UI + tests)",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "ux improvement",
-        "scan_agent": "scan-innovation"
+        "user_value": "Makes parallel ops debuggable without leaving the TUI; reduces operator error."
       }
     },
     {
@@ -2046,10 +2046,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
+        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption",
         "opportunity_type": "feature gap",
-        "scan_agent": "scan-innovation",
-        "measurable_impact": "Track 20%+ improvement in task completion velocity after adoption"
+        "user_value": "Enables data-driven workflow optimization; identifies slow runners/task types",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -2107,9 +2107,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "UX improvement",
-        "user_value": "Reduces queue maintenance time by 80% for large projects",
         "scan_agent": "scan-innovation",
-        "time_to_ship": "incremental - add one batch operation at a time"
+        "time_to_ship": "incremental - add one batch operation at a time",
+        "user_value": "Reduces queue maintenance time by 80% for large projects"
       }
     },
     {
@@ -2165,10 +2165,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "measurable_impact": "80%+ integration test coverage for CLI commands",
-        "opportunity_type": "reliability",
         "user_value": "Reduces regression risk; enables confident refactoring",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "reliability",
+        "measurable_impact": "80%+ integration test coverage for CLI commands"
       }
     },
     {
@@ -2231,9 +2231,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "user_value": "Enables ecosystem growth; custom integrations without forks",
         "differentiation": "Unique capability among AI task runners",
+        "user_value": "Enables ecosystem growth; custom integrations without forks",
+        "scan_agent": "scan-innovation",
         "opportunity_type": "feature gap"
       }
     },
@@ -3472,8 +3472,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_visible_blocker": "true",
-        "reported_at": "2026-02-06"
+        "reported_at": "2026-02-06",
+        "user_visible_blocker": "true"
       }
     },
     {
@@ -3527,10 +3527,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
-        "file_line_count": "444",
-        "scan_agent": "scan-maintenance"
+        "runner_used": "kimi",
+        "scan_agent": "scan-maintenance",
+        "file_line_count": "444"
       }
     },
     {
@@ -3577,10 +3577,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
+        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
         "occurrence_count": "4",
         "runner_used": "kimi",
-        "fallback_function": "now_utc_rfc3339_or_fallback at timeutil.rs:67-69",
-        "model_used": "kimi-code/kimi-for-coding",
         "scan_agent": "scan-maintenance"
       }
     },
@@ -3634,8 +3634,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "scan_agent": "scan-maintenance"
       }
     },
@@ -3717,8 +3717,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -3801,14 +3801,14 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs",
-        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
-        "runner_used": "kimi",
-        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
-        "completed_via": "RQ-0657 (foundational plugin framework)",
-        "model_used": "kimi-code/kimi-for-coding",
         "status_note": "COMPLETED - KimiPlugin fully implemented and legacy code removed",
-        "legacy_code_removed": "true"
+        "model_used": "kimi-code/kimi-for-coding",
+        "trait_location": "crates/ralph/src/runner/execution/plugin_trait.rs",
+        "runner_used": "kimi",
+        "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:530-631",
+        "completed_via": "RQ-0657 (foundational plugin framework)",
+        "legacy_code_removed": "true",
+        "executor_location": "crates/ralph/src/runner/execution/plugin_executor.rs"
       }
     },
     {
@@ -4118,11 +4118,11 @@
         "RQ-0663"
       ],
       "custom_fields": {
-        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164",
+        "plugin_status": "already_implemented",
         "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
         "cleanup_required": "true",
-        "plugin_status": "already_implemented"
+        "legacy_code_to_remove": "runners.rs:48-118, response.rs:139-164"
       }
     },
     {
@@ -4178,11 +4178,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding",
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
         "plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:354-427",
         "response_parser_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:400-427",
-        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:48-110",
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "status_note": "COMPLETED - GeminiPlugin fully implemented via RQ-0657 foundational framework"
       }
     },
@@ -4243,11 +4243,11 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "rq_0657_status": "completed",
         "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding",
         "cleanup_type": "legacy_code_removal",
-        "plugin_status": "implemented_needs_cleanup"
+        "rq_0657_status": "completed",
+        "plugin_status": "implemented_needs_cleanup",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4310,14 +4310,14 @@
         "RQ-0657"
       ],
       "custom_fields": {
-        "cleanup_status": "already_completed_via_rq_0657",
-        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
+        "rq_0657_status": "completed",
         "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
-        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
+        "original_title": "Isolate cursor runner into its own plugin for easier runner-specific customization",
         "cursor_plugin_location": "crates/ralph/src/runner/execution/builtin_plugins.rs:805-885",
-        "rq_0657_status": "completed",
+        "legacy_code_location": "crates/ralph/src/runner/execution/runners.rs:39-108",
         "task_type": "cleanup",
+        "cleanup_status": "already_completed_via_rq_0657",
         "verification_only": "true"
       }
     },
@@ -4368,11 +4368,11 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "tests_file_lines": "412",
-        "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance",
+        "execution_file_lines": "572",
         "runner_used": "kimi",
-        "execution_file_lines": "572"
+        "scan_agent": "scan-maintenance",
+        "tests_file_lines": "412",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -4423,9 +4423,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-maintenance",
-        "runner_used": "kimi"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -4484,11 +4484,80 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "target_loc": "800",
-        "current_loc": "3383",
         "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "current_loc": "3383",
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0641",
+      "status": "done",
+      "title": "Split oversized parallel run module (3290 LOC) into cohesive submodules",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "refactor",
+        "parallel",
+        "code-quality"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/mod.rs",
+        "crates/ralph/src/commands/run/parallel/args.rs",
+        "crates/ralph/src/commands/run/parallel/cleanup_guard.rs",
+        "crates/ralph/src/commands/run/parallel/merge_runner.rs",
+        "crates/ralph/src/commands/run/parallel/path_map.rs",
+        "crates/ralph/src/commands/run/parallel/state.rs",
+        "crates/ralph/src/commands/run/parallel/sync.rs",
+        "crates/ralph/src/commands/run/parallel/worker.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "Command: wc -l crates/ralph/src/commands/run/parallel/mod.rs -> 3290 lines (increased from 3241).",
+        "AGENTS.md guideline: files >1000 LOC should be split; >800 LOC requires explicit justification.",
+        "Module already has 7 submodules extracted: args.rs, cleanup_guard.rs, merge_runner.rs, path_map.rs, state.rs, sync.rs, worker.rs",
+        "Remaining ~2200 lines of code + ~1000 lines of tests still in mod.rs",
+        "Main orchestration loop (run_loop_parallel) is ~500 lines and mixes worker management, PR creation, merge coordination, signal handling",
+        "State initialization logic is complex (~200 lines) including load_or_init_parallel_state() and cleanup_pr_workspaces()",
+        "Queue sync logic (~100 lines) including apply_merge_queue_sync() and parse_bytes_to_queue_file()"
+      ],
+      "plan": [
+        "Map remaining responsibilities in parallel/mod.rs: orchestration loop, state initialization, PR lifecycle, queue sync, task pruning, capacity tracking, settings/spawning, error formatting.",
+        "Extract high-priority submodules: orchestration.rs (main loop ~500 lines), state_init.rs (~200 lines), queue_sync.rs (~100 lines).",
+        "Extract medium-priority submodules: pr_lifecycle.rs (PR validation, merge blockers), settings.rs (settings resolution, worker spawning utilities).",
+        "Consider extracting: capacity.rs (task counting), task_pruning.rs (stale task cleanup), errors.rs (error formatting).",
+        "Keep public APIs stable in mod.rs - re-export and delegate to submodules.",
+        "Add/adjust tests covering critical paths (state file I/O, PR record reconciliation, merge policy decisions, queue sync).",
+        "Verify by running `make ci` and confirming it passes."
+      ],
+      "notes": [
+        "2026-02-06: Updated line count from 3241 to 3290 - file has grown.",
+        "Existing submodules already cover: args, cleanup_guard, merge_runner, path_map, state, sync, worker.",
+        "Priority extraction targets: orchestration.rs, state_init.rs, queue_sync.rs (largest cohesive blocks).",
+        "Split oversized parallel/mod.rs (3290 LOC) into 3 cohesive submodules",
+        "mod.rs: 3290 → 962 lines (-70%), now under 1000 LOC threshold",
+        "New modules: orchestration.rs (863), state_init.rs (850), queue_sync.rs (494)",
+        "Public API stable; all existing exports unchanged",
+        "make ci passes; 2180+ tests pass"
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-05T20:49:31Z",
+      "updated_at": "2026-02-07T00:17:42.144828000Z",
+      "completed_at": "2026-02-07T00:17:42.144828000Z",
+      "started_at": "2026-02-06T23:42:02.989782000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "current_loc": "3290",
+        "model_used": "kimi-code/kimi-for-coding",
+        "code_lines": "2200",
+        "existing_submodules": "7",
+        "previous_loc": "3241",
+        "scan_agent": "scan-maintenance",
+        "test_lines": "1000",
+        "runner_used": "kimi"
       }
     }
   ]
