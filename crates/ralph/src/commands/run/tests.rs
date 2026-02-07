@@ -341,7 +341,7 @@ fn clear_stale_queue_lock_for_resume_removes_stale_lock() -> anyhow::Result<()> 
         ),
     )?;
 
-    super::clear_stale_queue_lock_for_resume(&repo_root)?;
+    super::queue_lock::clear_stale_queue_lock_for_resume(&repo_root)?;
 
     assert!(
         !lock_dir.exists(),
@@ -360,7 +360,7 @@ fn clear_stale_queue_lock_for_resume_does_not_remove_live_lock() -> anyhow::Resu
     let lock_dir = crate::lock::queue_lock_dir(&repo_root);
     let _held = queue::acquire_queue_lock(&repo_root, "live holder", false)?;
 
-    super::clear_stale_queue_lock_for_resume(&repo_root)?;
+    super::queue_lock::clear_stale_queue_lock_for_resume(&repo_root)?;
 
     assert!(lock_dir.exists(), "expected live queue lock dir to remain");
     let owner = std::fs::read_to_string(lock_dir.join("owner"))?;
@@ -1702,7 +1702,7 @@ fn stop_signal_clear_is_idempotent_for_loop_exit() -> anyhow::Result<()> {
 // ============================================================================
 
 use crate::agent::AgentOverrides;
-use crate::commands::run::RunnerCliOptionsPatch;
+use crate::contracts::RunnerCliOptionsPatch;
 use crate::runner::resolve_phase_settings_matrix;
 
 /// Helper to create a minimal AgentConfig for testing
