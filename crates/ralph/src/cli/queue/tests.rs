@@ -1291,3 +1291,77 @@ fn queue_issue_publish_help_contains_publish_subcommand() {
         .find_subcommand_mut("issue")
         .expect("queue issue subcommand");
 }
+
+#[test]
+fn queue_aging_help_examples_expanded() {
+    let mut cmd = crate::cli::Cli::command();
+    let queue = cmd.find_subcommand_mut("queue").expect("queue subcommand");
+    let aging = queue
+        .find_subcommand_mut("aging")
+        .expect("queue aging subcommand");
+    let help = aging.render_long_help().to_string();
+
+    assert!(
+        help.contains("ralph queue aging"),
+        "missing aging example: {help}"
+    );
+    assert!(
+        help.contains("ralph queue aging --format json"),
+        "missing aging json example: {help}"
+    );
+    assert!(
+        help.contains("ralph queue aging --status todo --status doing"),
+        "missing aging status filter example: {help}"
+    );
+}
+
+#[test]
+fn queue_aging_handle_smoke() -> Result<()> {
+    use super::aging;
+
+    let dir = TempDir::new()?;
+    let resolved = resolved_for_dir(&dir);
+    write_queue(&resolved.queue_path)?;
+
+    let args = aging::QueueAgingArgs {
+        status: vec![],
+        format: super::QueueReportFormat::Text,
+    };
+    aging::handle(&resolved, args)?;
+
+    Ok(())
+}
+
+#[test]
+fn queue_aging_handle_json_format() -> Result<()> {
+    use super::aging;
+
+    let dir = TempDir::new()?;
+    let resolved = resolved_for_dir(&dir);
+    write_queue(&resolved.queue_path)?;
+
+    let args = aging::QueueAgingArgs {
+        status: vec![],
+        format: super::QueueReportFormat::Json,
+    };
+    aging::handle(&resolved, args)?;
+
+    Ok(())
+}
+
+#[test]
+fn queue_aging_handle_with_status_filter() -> Result<()> {
+    use super::aging;
+
+    let dir = TempDir::new()?;
+    let resolved = resolved_for_dir(&dir);
+    write_queue(&resolved.queue_path)?;
+
+    let args = aging::QueueAgingArgs {
+        status: vec![super::StatusArg::Todo],
+        format: super::QueueReportFormat::Text,
+    };
+    aging::handle(&resolved, args)?;
+
+    Ok(())
+}

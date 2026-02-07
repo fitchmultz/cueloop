@@ -13,6 +13,7 @@
 //! - Configuration is resolved from the current working directory.
 //! - Queue state changes occur within the subcommand handlers.
 
+mod aging;
 mod archive;
 mod burndown;
 mod explain;
@@ -42,6 +43,7 @@ use clap::{Args, Subcommand};
 
 use crate::config;
 
+pub use aging::QueueAgingArgs;
 pub use burndown::QueueBurndownArgs;
 pub use explain::QueueExplainArgs;
 pub use export::QueueExportArgs;
@@ -81,6 +83,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Stats(args) => stats::handle(&resolved, args),
         QueueCommand::History(args) => history::handle(&resolved, args),
         QueueCommand::Burndown(args) => burndown::handle(&resolved, args),
+        QueueCommand::Aging(args) => aging::handle(&resolved, args),
         QueueCommand::Schema => schema::handle(),
         QueueCommand::Prune(args) => prune::handle(&resolved, force, args),
         QueueCommand::Graph(args) => graph::handle(&resolved, args),
@@ -174,6 +177,12 @@ pub enum QueueCommand {
         after_long_help = "Examples:\n ralph queue burndown\n ralph queue burndown --days 30"
     )]
     Burndown(QueueBurndownArgs),
+
+    /// Show task aging buckets to identify stale work.
+    #[command(
+        after_long_help = "Examples:\n  ralph queue aging\n  ralph queue aging --format json\n  ralph queue aging --status todo --status doing"
+    )]
+    Aging(QueueAgingArgs),
 
     /// Print the JSON schema for the queue file.
     #[command(after_long_help = "Example:\n ralph queue schema")]

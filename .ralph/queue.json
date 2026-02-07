@@ -2,51 +2,445 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0668",
+      "id": "RQ-0681",
       "status": "todo",
-      "title": "Add task aging report to identify stale work",
-      "description": "No way to identify tasks that have been sitting in queue for too long. This leads to forgotten work and queue rot. Add an aging report that surfaces stale tasks by status and age thresholds.\n\nGoals:\n1. Add `ralph queue aging` command showing tasks grouped by age buckets\n2. Default thresholds: >7 days (warning), >14 days (stale), >30 days (rotten)\n3. Configurable thresholds in config\n4. Show aging in TUI with visual indicators (color-coded)\n5. Support filtering by status (default: todo, doing)\n\nEvidence:\n- Current: Queue has timestamps (created_at, started_at) but no aging analysis\n- Gap: No visibility into stale tasks\n- User pain: Forgotten tasks accumulate, queue bloat",
+      "title": "Stop swallowing plugin config JSON serialization errors",
+      "description": "Principles violated: Fail fast (F), Least astonishment (G), Operational hygiene (H).\n\nEvidence shows plugin runner config is serialized with a silent fallback to \"{}\" when serialization fails. This discards the underlying error and causes the plugin to run with an empty/default config.\n\nWhy it matters (failure modes):\n- Plugin runners can silently misconfigure (wrong model, wrong tool flags, wrong behavior) while Ralph proceeds as if configuration was applied.\n- Debugging becomes hard because the error is not surfaced; users see downstream behavior without the root cause.\n\nMinimal proposed fix:\n- Replace `serde_json::to_string(&v).unwrap_or_else(|_| \"{}\".to_string())` with error propagation and context that includes `plugin_id`.\n- Plumb the error into `RunnerError` so the run/resume fails loudly instead of mutating behavior silently.\n- Add a focused unit test that forces a `serde_json::to_string` failure (e.g., construct a deeply nested `serde_json::Value` until serialization returns Err due to recursion limits) and assert the error is returned and contains the plugin id.\n\nAcceptance criteria:\n- New/updated test covers the failure path and asserts the error includes the plugin id and indicates config serialization failure.\n- `make ci` passes.",
       "priority": "high",
       "tags": [
-        "innovation",
-        "analytics",
-        "queue-management",
-        "visibility"
+        "maintenance",
+        "runner",
+        "plugins",
+        "error-handling"
       ],
       "scope": [
-        "crates/ralph/src/cli/queue/mod.rs",
-        "crates/ralph/src/queue/reports.rs",
-        "crates/ralph/src/tui/components/task_list.rs",
-        "docs/cli.md"
+        "crates/ralph/src/runner.rs",
+        "crates/ralph/src/runner/execution/mod.rs",
+        "cargo test -p ralph",
+        "make ci"
       ],
       "evidence": [
-        "Current capability: `ralph queue stats` shows time tracking metrics (lead time, work time)",
-        "Gap observed: No aging report - can't easily find tasks sitting >N days",
-        "Timestamps exist: Task schema has created_at, started_at, updated_at fields",
-        "Reports exist: reports.rs has stats, history, burndown - but no aging"
+        "crates/ralph/src/runner.rs:600-616 sets plugin_cfg via serde_json::to_string(...).unwrap_or_else(|_| \"{}\".to_string()) (silent fallback)",
+        "crates/ralph/src/runner.rs:653-669 repeats the same silent fallback for resume path",
+        "Command: `nl -ba crates/ralph/src/runner.rs | sed -n '560,720p'`"
       ],
       "plan": [
-        "Add aging_thresholds config to queue section (warning_days, stale_days, rotten_days)",
-        "Implement AgingReport struct with age bucket categorization",
-        "Add `ralph queue aging [--status todo,doing] [--thresholds]` CLI command",
-        "Add aging indicators to TUI task list (subtle color coding or icons)",
-        "Add aging overlay/view in TUI showing stale tasks prioritized",
-        "Update documentation with aging command examples",
-        "Add integration tests for aging calculation edge cases (timezone, DST)",
-        "Verify by running `ralph queue aging` and confirming tasks sorted by age with appropriate buckets"
+        "Replace the plugin_cfg serialization fallback with a fallible path (propagate serde_json error with context including plugin_id)",
+        "Ensure both prompt and resume plugin paths share the same serialization helper to avoid drift",
+        "Add a unit test that triggers a serde_json serialization failure and asserts Ralph returns an error (no silent \"{}\" fallback)",
+        "Verify by running `make ci` and confirming it passes"
       ],
       "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-07T00:41:40Z",
-      "updated_at": "2026-02-07T00:41:40Z",
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "analytics",
-        "estimated_effort": "low",
-        "user_value": "Prevents forgotten tasks, improves queue hygiene, surfaces work needing attention",
-        "scan_agent": "scan-innovation"
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0682",
+      "status": "todo",
+      "title": "Make RFC3339 now fallback explicit to prevent silent timestamp corruption",
+      "description": "Principles violated: Fail fast (F), Operational hygiene (H), Consistency/Integrity (J).\n\n`now_utc_rfc3339_or_fallback()` silently returns a hard-coded `FALLBACK_RFC3339` string on formatting errors. This value is a plausible real timestamp (currently `2026-01-18...`), which can silently corrupt data and mask timeout logic.\n\nWhy it matters (failure modes):\n- If formatting fails, queue/history timestamps become a fixed value that looks real, skewing reports/ETAs and making debugging difficult.\n- Session timeout checks can be skipped or miscomputed: `validate_session` parses now via the fallback and then `unwrap_or(session_time)`, potentially disabling timeout detection in the presence of errors.\n\nMinimal proposed fix (API-stable):\n- When the fallback path is used, emit a `log::error!` (or `warn!`) with the underlying error; do not silently swallow it.\n- Change `FALLBACK_RFC3339` to an unmistakable sentinel value (e.g., `1970-01-01T00:00:00.000000000Z`) so fallback usage is obvious in persisted data.\n- In `session::validate_session`, avoid the string roundtrip for now; use `OffsetDateTime::now_utc()` directly for comparisons, and only format to RFC3339 at IO boundaries.\n\nAcceptance criteria:\n- Unit tests cover session timeout behavior using deterministic time inputs (e.g., refactor validation to accept `now: OffsetDateTime` in an internal helper).\n- Fallback constant is a clear sentinel and is only used when a logged error occurs.\n- `make ci` passes.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "time",
+        "session",
+        "error-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/timeutil.rs",
+        "crates/ralph/src/constants.rs",
+        "crates/ralph/src/session/mod.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/timeutil.rs:67-69 now_utc_rfc3339_or_fallback uses unwrap_or_else to return FALLBACK_RFC3339 (silent)",
+        "crates/ralph/src/constants.rs:205 defines FALLBACK_RFC3339 as 2026-01-18T00:00:00.000000000Z (plausible timestamp)",
+        "crates/ralph/src/session/mod.rs:120-136 parses now via now_utc_rfc3339_or_fallback and then unwrap_or(session_time), masking errors in timeout logic",
+        "Command: `rg -n \"now_utc_rfc3339_or_fallback\\(\" crates/ralph/src` shows widespread use"
+      ],
+      "plan": [
+        "Update now_utc_rfc3339_or_fallback to log the error whenever the fallback path is taken",
+        "Change FALLBACK_RFC3339 to a clear sentinel timestamp",
+        "Refactor session timeout comparison to use OffsetDateTime directly (avoid parsing formatted now)",
+        "Add/adjust unit tests for session timeout logic using deterministic time values",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0683",
+      "status": "todo",
+      "title": "TUI revert prompt should not silently default when reply channel closes",
+      "description": "Principles violated: Fail fast (F), Least astonishment (G), Operational hygiene (H).\n\nThe TUI's `revert_prompt` handler defaults to `RevertDecision::Keep` if the reply channel closes (`recv()` error). This silently hides an internal coordination failure between the runner thread and the UI event loop.\n\nWhy it matters (failure modes):\n- If the UI thread is dropped/stuck and cannot answer, the runner proceeds with an implicit decision without surfacing that the prompt never completed.\n- Defaulting to Keep can be surprising and may leave the repo in an unintended state in workflows where revert is expected on failure.\n\nMinimal proposed fix:\n- Replace `reply_rx.recv().unwrap_or(Keep)` with explicit error handling: log a warning/error and choose an explicit, documented default.\n- Consider treating a closed reply channel as a hard error returned to the runner loop (safer) instead of silently selecting.\n- Add a unit test that exercises the closed-channel path, asserting the chosen behavior.\n\nAcceptance criteria:\n- Tests cover the closed-channel path deterministically.\n- Behavior is documented and consistent with the chosen safety default.\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "tui",
+        "runner",
+        "error-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/runutil.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/tui/app.rs:1773-1788 uses reply_rx.recv().unwrap_or(RevertDecision::Keep)",
+        "Command: `nl -ba crates/ralph/src/tui/app.rs | sed -n '1750,1820p'`"
+      ],
+      "plan": [
+        "Decide the safety default for a closed reply channel (Keep vs Revert vs return error) and document it",
+        "Implement explicit error handling for recv() failures (no silent unwrap_or)",
+        "Add a unit test exercising the closed-channel path",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0684",
+      "status": "todo",
+      "title": "Refactor duplicated config queue/id validation and fix resolve_id_width typo",
+      "description": "Principles violated: DRY (C), Consistency/Integrity (J), Make bugs hard to write (E).\n\nQueue/id/path validation rules are duplicated between `validate_config` and the various `resolve_*` helpers, increasing drift risk and already producing an inconsistent error message typo.\n\nWhy it matters (failure modes):\n- Divergent validation can lead to different behavior depending on code path (e.g., doctor vs normal resolve), and inconsistent user-facing errors.\n- The current typo `Invalid_queue.id_width` reduces UX quality and makes error searchability harder.\n\nMinimal proposed fix:\n- Extract shared validators for queue id/path settings and call them from both `validate_config` and `resolve_*` helpers (single source of truth).\n- Fix the typo in the `resolve_id_width` error message.\n- Add unit tests that assert both `validate_config` and `resolve_*` return consistent errors for empty/invalid settings.\n\nAcceptance criteria:\n- Tests cover invalid id_prefix/id_width/file/done_file for both validation entrypoints.\n- Error strings are consistent and typo-free.\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "config",
+        "validation",
+        "error-messages"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/contracts/config.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/config.rs:200-238 validates queue.id_prefix/id_width/file/done_file",
+        "crates/ralph/src/config.rs:445-502 re-validates the same fields in resolve_* helpers",
+        "crates/ralph/src/config.rs:460 error message typo: 'Invalid_queue.id_width'",
+        "Command: `nl -ba crates/ralph/src/config.rs | sed -n '180,260p'` and `nl -ba crates/ralph/src/config.rs | sed -n '430,520p'`"
+      ],
+      "plan": [
+        "Introduce shared helper(s) for validating queue id/path fields (prefix/width/file/done_file)",
+        "Update validate_config and resolve_* helpers to use the shared logic",
+        "Fix the resolve_id_width error message typo",
+        "Add unit tests asserting consistent validation errors across both entrypoints",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0685",
+      "status": "todo",
+      "title": "Centralize TaskPriority parsing to remove duplicated mappings",
+      "description": "Principles violated: DRY (C), Least astonishment (G), Consistency/Integrity (J).\n\n`TaskPriority` parsing is implemented in multiple places with duplicated mappings and slightly different error strings. This creates drift risk and inconsistent user-facing errors across commands.\n\nWhy it matters (failure modes):\n- Adding a new priority or changing accepted spellings requires editing multiple locations.\n- Different commands can accept/reject different strings or produce inconsistent error messages.\n\nMinimal proposed fix:\n- Implement a single parser for `TaskPriority` (e.g., `impl FromStr for TaskPriority` in contracts, or a dedicated helper) and use it everywhere.\n- Delete per-command `parse_priority` helpers in import/edit/preview.\n- Keep/expand a single set of unit tests for case-insensitive parsing and consistent error messages.\n\nAcceptance criteria:\n- No duplicate `parse_priority*` helpers remain.\n- Existing tests are updated and still pass; add missing tests for error text consistency.\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "queue",
+        "cli",
+        "validation"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue/import.rs",
+        "crates/ralph/src/queue/operations/edit.rs",
+        "crates/ralph/src/contracts/queue.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/cli/queue/import.rs:441-453 defines parse_priority (case-insensitive)",
+        "crates/ralph/src/queue/operations/edit.rs:351-362 defines parse_priority (duplicate mapping)",
+        "crates/ralph/src/queue/operations/edit.rs:652-663 defines parse_priority_for_preview (duplicate mapping)",
+        "Command: `rg -n \"parse_priority\" crates/ralph/src/cli/queue/import.rs crates/ralph/src/queue/operations/edit.rs`"
+      ],
+      "plan": [
+        "Add a single TaskPriority parser (FromStr or TaskPriority::parse) in contracts",
+        "Update import/edit/preview call sites to use the shared parser",
+        "Delete duplicate parse_priority helpers and consolidate tests",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0686",
+      "status": "todo",
+      "title": "Deduplicate TaskStatus parsing and cycling logic in queue edit preview",
+      "description": "Principles violated: DRY (C), Localize change (D), Consistency/Integrity (J).\n\n`TaskStatus` parsing and status cycling are duplicated between the apply path and the preview (dry-run) path in `queue/operations/edit.rs`.\n\nWhy it matters (failure modes):\n- Any future change to status order or accepted strings requires updating multiple helpers; drift would cause preview to disagree with real edits.\n- Inconsistent error strings across preview vs apply increases UX confusion.\n\nMinimal proposed fix:\n- Reuse the same `cycle_status` and `parse_status` helpers for both apply and preview paths (or move them to a shared module used by both).\n- Remove `*_for_preview` duplicates.\n- Add a unit test asserting preview and apply paths interpret the same inputs and cycle order.\n\nAcceptance criteria:\n- No duplicate cycle_status_for_preview/parse_status_for_preview remain.\n- Tests cover at least one cycle sequence and invalid status input for both paths.\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "queue",
+        "cli",
+        "dry-run"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/operations/edit.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/queue/operations/edit.rs:327-349 defines cycle_status/parse_status",
+        "crates/ralph/src/queue/operations/edit.rs:628-650 defines cycle_status_for_preview/parse_status_for_preview (duplicates)",
+        "Command: `nl -ba crates/ralph/src/queue/operations/edit.rs | sed -n '320,420p'` and `nl -ba crates/ralph/src/queue/operations/edit.rs | sed -n '620,700p'`"
+      ],
+      "plan": [
+        "Refactor preview code paths to reuse the same cycle_status/parse_status helpers as apply",
+        "Delete *_for_preview duplicates",
+        "Add unit tests asserting preview/apply equivalence for status parsing and cycling",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0687",
+      "status": "todo",
+      "title": "Fix AGENTS.md session ID format to match implementation and docs",
+      "description": "Principles violated: Consistency/Integrity (J), Least astonishment (G).\n\n`AGENTS.md` documents a session ID format that does not match the actual implementation or `docs/workflow.md`. This makes manual debugging and runner resumption error-prone.\n\nWhy it matters (failure modes):\n- Contributors may pass the wrong `--session` values to runners when resuming/debugging sessions.\n- Future maintainers can accidentally change code to match the wrong doc, creating backwards-incompatible behavior.\n\nMinimal proposed fix:\n- Update `AGENTS.md` to describe the actual format generated by `generate_phase_session_id`: `{task_id}-p{phase}-{timestamp}`.\n- Ensure the example matches `docs/workflow.md` and the code comment in `phases/mod.rs`.\n\nAcceptance criteria:\n- `AGENTS.md` session format matches `docs/workflow.md` and `crates/ralph/src/commands/run/phases/mod.rs`.\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "runner",
+        "sessions"
+      ],
+      "scope": [
+        "AGENTS.md",
+        "docs/workflow.md",
+        "crates/ralph/src/commands/run/phases/mod.rs",
+        "make ci"
+      ],
+      "evidence": [
+        "AGENTS.md:166-167 claims session IDs are `ralph-{task_id}-p{phase}-{timestamp}-{pid}`",
+        "crates/ralph/src/commands/run/phases/mod.rs:96-107 documents and generates `{task_id}-p{phase}-{timestamp}`",
+        "docs/workflow.md:150-151 documents `{task_id}-p{phase}-{timestamp}`",
+        "Command: `nl -ba AGENTS.md | sed -n '150,190p'` and `nl -ba crates/ralph/src/commands/run/phases/mod.rs | sed -n '60,140p'`"
+      ],
+      "plan": [
+        "Update AGENTS.md session ID format and example to match docs/workflow.md and generate_phase_session_id",
+        "Scan docs for any remaining references to the old format and update them if present",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0688",
+      "status": "todo",
+      "title": "Split oversized TUI app module to reduce defect risk",
+      "description": "Principles violated: Localize change (D), KISS (A), Cohesion/SRP (D).\n\n`crates/ralph/src/tui/app.rs` is 2,278 lines, which increases navigation cost, makes reviews harder, and raises the risk of unrelated edits colliding.\n\nWhy it matters (failure modes):\n- Small UI changes require touching a large file with many responsibilities (event handling, runner integration, rendering coordination, terminal setup).\n- Harder to add focused tests or reason about invariants; regressions are easier to introduce.\n\nMinimal proposed fix:\n- Split `tui/app.rs` into cohesive submodules (e.g., terminal setup, event loop, runner integration, app state mutations, rendering coordination), keeping the public API stable.\n- Add module docs (`//!`) for each new file explaining responsibilities and invariants.\n- Keep refactor behavior-preserving; rely on existing test suite as a safety net and add targeted unit tests for any newly isolated logic.\n\nAcceptance criteria:\n- `crates/ralph/src/tui/app.rs` reduced substantially (goal: <800 LOC) with new submodules under `crates/ralph/src/tui/`.\n- No behavior changes (existing tests pass).\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "tui",
+        "refactor",
+        "module-boundaries"
+      ],
+      "scope": [
+        "crates/ralph/src/tui/app.rs",
+        "crates/ralph/src/tui/",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "Command: `wc -l crates/ralph/src/tui/app.rs` => 2278",
+        "Command output: `wc -l crates/ralph/src/tui/app.rs crates/ralph/src/commands/run/mod.rs crates/ralph/src/config.rs` (shows app.rs as the largest production module)"
+      ],
+      "plan": [
+        "Identify natural seams in tui/app.rs (terminal setup, event loop, runner orchestration, state updates, rendering) and map to new modules",
+        "Extract code into new files under crates/ralph/src/tui/ (keep App type and public entrypoints stable)",
+        "Add module docs for each new module and keep responsibilities narrow",
+        "Update imports and ensure no circular dependencies are introduced",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0689",
+      "status": "todo",
+      "title": "Split oversized run command module to improve maintainability",
+      "description": "Principles violated: Localize change (D), KISS (A), Cohesion/SRP (D).\n\n`crates/ralph/src/commands/run/mod.rs` is 1,734 lines and mixes multiple responsibilities (preflight, runner/session setup, phase orchestration, supervision hooks, reporting). This increases defect risk and makes targeted improvements harder.\n\nWhy it matters (failure modes):\n- Changes to one aspect of the run pipeline (e.g., session handling) require edits in a large, tightly coupled module.\n- Harder to write focused tests and reason about invariants across phases.\n\nMinimal proposed fix:\n- Split `commands/run/mod.rs` into submodules (e.g., preflight, session, phases facade, reporting), keeping the CLI API stable.\n- Ensure each new module has `//!` docs and clear invariants.\n- Keep refactor behavior-preserving; rely on the existing run tests as a safety net.\n\nAcceptance criteria:\n- `crates/ralph/src/commands/run/mod.rs` reduced substantially (goal: <800 LOC) with extracted modules under `crates/ralph/src/commands/run/`.\n- No behavior changes (existing tests pass).\n- `make ci` passes.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "cli",
+        "run",
+        "refactor"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/mod.rs",
+        "crates/ralph/src/commands/run/",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "Command: `wc -l crates/ralph/src/commands/run/mod.rs` => 1734",
+        "Makefile CI order includes run pipeline tests; refactor must remain behavior-preserving (validate via make ci)"
+      ],
+      "plan": [
+        "Identify cohesive groups of functions/types in commands/run/mod.rs and define target submodules",
+        "Extract code into new submodules and keep mod.rs as the thin facade",
+        "Add module docs for each new module",
+        "Run and fix any clippy/format issues caused by moves",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0690",
+      "status": "todo",
+      "title": "Fix CONTRIBUTING.md CI gate step order and add drift guard",
+      "description": "Principles violated: Consistency/Integrity (J), Least astonishment (G).\n\n`CONTRIBUTING.md` documents a CI gate step order that does not match the actual `make ci` pipeline. This is a concrete docs-code mismatch that can mislead contributors and cause churn when debugging CI failures locally.\n\nWhy it matters (failure modes):\n- Contributors may run the wrong sequence when trying to reproduce failures or optimize local workflows.\n- Docs drift is likely to recur unless guarded.\n\nMinimal proposed fix:\n- Update the documented pipeline order in `CONTRIBUTING.md` to match `Makefile:ci`.\n- Add a small test (or extend an existing Makefile contract test) that asserts `CONTRIBUTING.md` contains the same ordered step list as the Makefile to prevent future drift.\n\nAcceptance criteria:\n- `CONTRIBUTING.md` CI step order matches Makefile `ci` recipe.\n- New/updated test fails on drift and passes when aligned.\n- `make ci` passes.",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "docs",
+        "ci"
+      ],
+      "scope": [
+        "CONTRIBUTING.md",
+        "Makefile",
+        "crates/ralph/tests/makefile_ci_contract_test.rs",
+        "cargo test -p ralph",
+        "make ci"
+      ],
+      "evidence": [
+        "CONTRIBUTING.md:52-56 lists: check-env-safety → check-backup-artifacts → generate → format → type-check → lint → build → test → install",
+        "Makefile:130-139 runs: check-env-safety → check-backup-artifacts → deps → format → type-check → lint → test → build → generate → install",
+        "AGENTS.md:16 matches the Makefile order",
+        "Command: `nl -ba CONTRIBUTING.md | sed -n '40,80p'` and `nl -ba Makefile | sed -n '120,150p'`"
+      ],
+      "plan": [
+        "Update the CI step list in CONTRIBUTING.md to match Makefile:ci",
+        "Add/extend a test to assert the documented step sequence matches the Makefile pipeline",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0691",
+      "status": "todo",
+      "title": "Fix config module docs precedence statement (defaults/global/project)",
+      "description": "Principles violated: Consistency/Integrity (J).\n\nThe module-level docs in `crates/ralph/src/config.rs` claim config merging precedence is `global → project → defaults`, which implies defaults override project config. This contradicts `docs/configuration.md` and typical layering (defaults first, then global, then project; CLI overrides both).\n\nWhy it matters:\n- Misleading documentation causes incorrect future edits and misunderstandings when debugging config behavior.\n\nMinimal proposed fix:\n- Update the module docs line to reflect the real precedence order (defaults → global → project; CLI flags override both).\n\nAcceptance criteria:\n- `crates/ralph/src/config.rs` docs match `docs/configuration.md` and the actual resolution behavior.\n- `make ci` passes.",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "docs",
+        "config"
+      ],
+      "scope": [
+        "crates/ralph/src/config.rs",
+        "docs/configuration.md",
+        "make ci"
+      ],
+      "evidence": [
+        "crates/ralph/src/config.rs:23 says: 'Config merging follows precedence: global → project → defaults.'",
+        "docs/configuration.md:6-10 says project config takes precedence over global; CLI overrides both; defaults are schema-defined",
+        "Command: `nl -ba crates/ralph/src/config.rs | sed -n '1,40p'` and `nl -ba docs/configuration.md | sed -n '1,20p'`"
+      ],
+      "plan": [
+        "Update the precedence statement in crates/ralph/src/config.rs module docs",
+        "Double-check any other mentions of precedence in docs for consistency",
+        "Verify by running `make ci` and confirming it passes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-07T03:39:33Z",
+      "updated_at": "2026-02-07T03:39:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -94,8 +488,8 @@
       "custom_fields": {
         "scan_agent": "scan-innovation",
         "opportunity_type": "automation",
-        "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
-        "estimated_effort": "medium"
+        "estimated_effort": "medium",
+        "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays"
       }
     },
     {
@@ -141,10 +535,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
-        "opportunity_type": "ux-improvement",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings"
+        "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
+        "estimated_effort": "medium",
+        "opportunity_type": "ux-improvement"
       }
     },
     {
@@ -192,9 +586,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "reliability",
+        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
         "estimated_effort": "medium",
-        "scan_agent": "scan-innovation",
-        "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -241,10 +635,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "high",
-        "scan_agent": "scan-innovation",
         "opportunity_type": "automation",
-        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring"
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "high"
       }
     },
     {
@@ -291,8 +685,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
         "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
+        "estimated_effort": "medium",
         "opportunity_type": "analytics",
         "scan_agent": "scan-innovation"
       }
@@ -341,10 +735,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ai-features",
         "scan_agent": "scan-innovation",
         "estimated_effort": "medium",
-        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment"
+        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
+        "opportunity_type": "ai-features"
       }
     },
     {
@@ -393,10 +787,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
         "opportunity_type": "integration",
+        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation",
         "estimated_effort": "high",
-        "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation"
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -445,9 +839,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
         "opportunity_type": "automation",
-        "estimated_effort": "medium"
+        "estimated_effort": "medium",
+        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management"
       }
     },
     {
@@ -495,10 +889,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
-        "estimated_effort": "high",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "ecosystem"
+        "opportunity_type": "ecosystem",
+        "estimated_effort": "high",
+        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability"
       }
     },
     {
@@ -548,9 +942,9 @@
       "relates_to": [],
       "custom_fields": {
         "opportunity_type": "integration",
-        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
+        "scan_agent": "scan-innovation",
         "estimated_effort": "medium",
-        "scan_agent": "scan-innovation"
+        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows"
       }
     },
     {
@@ -598,10 +992,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "reliability",
-        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
+        "scan_agent": "scan-innovation",
         "estimated_effort": "medium",
-        "scan_agent": "scan-innovation"
+        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
+        "opportunity_type": "reliability"
       }
     },
     {
@@ -650,10 +1044,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "estimated_effort": "medium",
-        "opportunity_type": "ux-improvement",
         "scan_agent": "scan-innovation",
-        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety"
+        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety",
+        "opportunity_type": "ux-improvement",
+        "estimated_effort": "medium"
       }
     }
   ]

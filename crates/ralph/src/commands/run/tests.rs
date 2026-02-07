@@ -115,6 +115,7 @@ fn resolved_with_agent_defaults(
             task_count_warning_threshold: Some(500),
             max_dependency_depth: Some(10),
             auto_archive_terminal_after_days: None,
+            aging_thresholds: None,
         },
         ..Config::default()
     };
@@ -204,6 +205,7 @@ fn resolved_with_repo_root(repo_root: PathBuf) -> crate::config::Resolved {
             task_count_warning_threshold: Some(500),
             max_dependency_depth: Some(10),
             auto_archive_terminal_after_days: None,
+            aging_thresholds: None,
         },
         tui: crate::contracts::TuiConfig {
             auto_archive_terminal: None,
@@ -1277,6 +1279,7 @@ fn resolved_with_notification_config(
             task_count_warning_threshold: Some(500),
             max_dependency_depth: Some(10),
             auto_archive_terminal_after_days: None,
+            aging_thresholds: None,
         },
         ..Config::default()
     };

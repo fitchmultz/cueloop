@@ -226,6 +226,8 @@ pub struct App {
     /// Parallel state overlay state (lazy-initialized on first use).
     pub(crate) parallel_state_overlay:
         Option<crate::tui::app_parallel_state::ParallelStateOverlayState>,
+    /// Aging thresholds for task aging indicators.
+    pub aging_thresholds: crate::reports::AgingThresholds,
 }
 
 impl App {
@@ -311,6 +313,7 @@ impl App {
             ui_frame: 0,
             help_overlay_start_frame: None,
             parallel_state_overlay: None,
+            aging_thresholds: crate::reports::AgingThresholds::default(),
         };
         app.rebuild_filtered_view();
         app
@@ -2265,6 +2268,11 @@ pub fn prepare_tui_session(
     }
     app.project_config = project_config;
     app.project_config_path = project_config_path;
+
+    // Initialize aging thresholds from config
+    app.aging_thresholds =
+        crate::reports::AgingThresholds::from_queue_config(&resolved.config.queue)
+            .unwrap_or_default();
 
     // Initialize cached mtimes for external change detection
     app.queue_mtime = std::fs::metadata(&resolved.queue_path)

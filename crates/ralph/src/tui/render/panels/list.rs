@@ -1,7 +1,7 @@
 //! Task list panel rendering.
 //!
 //! Responsibilities:
-//! - Render the task list with status, priority, and scheduled indicators.
+//! - Render the task list with status, priority, scheduled, and aging indicators.
 //! - Display filter summary and runner/loop status in the panel title.
 //!
 //! Not handled here:
@@ -14,6 +14,7 @@
 
 use super::super::App;
 use super::{filter_summary_for_width, format_duration_compact, task_list_suffix_spans};
+use crate::reports::{AgingBucket, compute_task_aging};
 use crate::tui::app_multi_select::MultiSelectOperations;
 use crate::tui::app_panel::PanelOperations;
 use crate::tui::render::utils::status_color;
@@ -70,6 +71,9 @@ pub fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         app.set_list_area(inner);
     }
 
+    // Compute now once for all aging calculations
+    let now = time::OffsetDateTime::now_utc();
+
     let items: Vec<ListItem> = app
         .filtered_indices
         .iter()
@@ -81,6 +85,18 @@ pub fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             let is_cursor = i == app.selected;
             let is_multi_selected = app.multi_select_mode && app.is_selected(i);
             let status_style = Style::default().fg(status_color(task.status));
+
+            // Compute aging for this task
+            let aging = compute_task_aging(task, app.aging_thresholds, now);
+
+            // Build aging indicator (only for non-fresh buckets to avoid noise)
+            let aging_indicator = match aging.bucket {
+                AgingBucket::Unknown => Some(("? ", Color::DarkGray)),
+                AgingBucket::Fresh => None,
+                AgingBucket::Warning => aging.age.map(|_age| ("⏳", Color::Yellow)),
+                AgingBucket::Stale => aging.age.map(|_age| ("⏳", Color::Red)),
+                AgingBucket::Rotten => aging.age.map(|_age| ("⏳", Color::Red)),
+            };
 
             // Check if task is scheduled for future and build clock indicator
             let scheduled_indicator = task.scheduled_start.as_ref().and_then(|scheduled| {
@@ -133,6 +149,14 @@ pub fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                     Style::default().fg(Color::DarkGray),
                 ));
                 spans.push(Span::raw(" "));
+                // Add aging indicator if applicable
+                if let Some((symbol, color)) = aging_indicator {
+                    spans.push(Span::styled(
+                        symbol,
+                        Style::default().fg(color).add_modifier(Modifier::BOLD),
+                    ));
+                    spans.push(Span::raw(" "));
+                }
                 // Add clock indicator if scheduled
                 if let Some(ref indicator) = scheduled_indicator
                     && !indicator.is_empty()
@@ -156,6 +180,11 @@ pub fn draw_task_list(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                     Style::default().fg(Color::DarkGray),
                 ));
                 spans.push(Span::raw(" "));
+                // Add aging indicator if applicable
+                if let Some((symbol, color)) = aging_indicator {
+                    spans.push(Span::styled(symbol, Style::default().fg(color)));
+                    spans.push(Span::raw(" "));
+                }
                 // Add clock indicator if scheduled
                 if let Some(ref indicator) = scheduled_indicator
                     && !indicator.is_empty()

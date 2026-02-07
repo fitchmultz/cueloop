@@ -128,6 +128,7 @@ fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::
         task_count_warning_threshold: Some(500),
         max_dependency_depth: Some(10),
         auto_archive_terminal_after_days: None,
+        aging_thresholds: None,
     };
 
     crate::config::Resolved {

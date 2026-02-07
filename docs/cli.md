@@ -1319,6 +1319,28 @@ ralph queue burndown --days 30
 ralph queue burndown --format json
 ```
 
+### `ralph queue aging`
+
+Show task aging buckets to identify stale work. Tasks are grouped by age into
+fresh, warning, stale, and rotten categories based on configurable thresholds.
+
+Age is computed from the relevant timestamp for each status:
+- `todo`/`draft`: uses `created_at`
+- `doing`: uses `started_at` (or `created_at` if not started)
+- `done`/`rejected`: uses `completed_at`, `updated_at`, or `created_at`
+
+Flags:
+
+* `--status <STATUS>`: filter by status (repeatable). Default: `todo`, `doing`.
+* `--format <text|json>`: output format (default: `text`).
+
+```bash
+ralph queue aging
+ralph queue aging --format json
+ralph queue aging --status todo --status doing
+ralph queue aging --status doing
+```
+
 ### `ralph queue schema`
 
 Print the JSON schema for the queue file.

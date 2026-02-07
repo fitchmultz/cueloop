@@ -555,6 +555,7 @@ fn test_queue_config_merge_from_partial() {
         task_count_warning_threshold: Some(500),
         max_dependency_depth: Some(10),
         auto_archive_terminal_after_days: None,
+        aging_thresholds: None,
     };
 
     let override_config = QueueConfig {
@@ -566,6 +567,7 @@ fn test_queue_config_merge_from_partial() {
         task_count_warning_threshold: None,
         max_dependency_depth: None,
         auto_archive_terminal_after_days: None,
+        aging_thresholds: None,
     };
 
     base.merge_from(override_config);

@@ -66,6 +66,26 @@ pub struct Config {
     pub plugins: PluginsConfig,
 }
 
+/// Aging threshold configuration for `ralph queue aging`.
+///
+/// Controls the day thresholds for categorizing tasks by age.
+/// Ordering invariant: warning_days < stale_days < rotten_days
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[serde(default, deny_unknown_fields)]
+pub struct QueueAgingThresholds {
+    /// Warn when task age is strictly greater than this many days.
+    #[schemars(range(min = 0, max = 3650))]
+    pub warning_days: Option<u32>,
+
+    /// Mark as stale when age is strictly greater than this many days.
+    #[schemars(range(min = 0, max = 3650))]
+    pub stale_days: Option<u32>,
+
+    /// Mark as rotten when age is strictly greater than this many days.
+    #[schemars(range(min = 0, max = 3650))]
+    pub rotten_days: Option<u32>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct QueueConfig {
@@ -112,6 +132,12 @@ pub struct QueueConfig {
     /// Tasks with missing or invalid completed_at timestamps are not moved when N > 0.
     #[schemars(range(min = 0, max = 3650))]
     pub auto_archive_terminal_after_days: Option<u32>,
+
+    /// Thresholds for `ralph queue aging` buckets.
+    ///
+    /// Default: warning>7d, stale>14d, rotten>30d.
+    /// Ordering must satisfy: warning_days < stale_days < rotten_days.
+    pub aging_thresholds: Option<QueueAgingThresholds>,
 }
 
 impl QueueConfig {
@@ -139,6 +165,9 @@ impl QueueConfig {
         }
         if other.auto_archive_terminal_after_days.is_some() {
             self.auto_archive_terminal_after_days = other.auto_archive_terminal_after_days;
+        }
+        if other.aging_thresholds.is_some() {
+            self.aging_thresholds = other.aging_thresholds;
         }
     }
 }
@@ -932,6 +961,11 @@ impl Default for Config {
                 task_count_warning_threshold: Some(DEFAULT_TASK_COUNT_WARNING_THRESHOLD),
                 max_dependency_depth: Some(10),
                 auto_archive_terminal_after_days: None,
+                aging_thresholds: Some(QueueAgingThresholds {
+                    warning_days: Some(7),
+                    stale_days: Some(14),
+                    rotten_days: Some(30),
+                }),
             },
             agent: AgentConfig {
                 runner: Some(Runner::Claude),

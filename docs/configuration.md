@@ -336,6 +336,39 @@ Immediate archive (archive all terminal tasks on sweep):
 For immediate manual archiving, use `ralph queue archive`.
 ```
 
+### Aging Thresholds
+
+`queue.aging_thresholds` controls the day thresholds for `ralph queue aging` task categorization.
+This helps identify stale work by grouping tasks into buckets based on their age.
+
+Supported fields:
+- `warning_days`: warn when age is strictly greater than N days (default: `7`)
+- `stale_days`: stale when age is strictly greater than N days (default: `14`)
+- `rotten_days`: rotten when age is strictly greater than N days (default: `30`)
+
+**Ordering invariant:** Config validation enforces `warning_days < stale_days < rotten_days`.
+
+**Age computation by status:**
+- `draft`, `todo`: uses `created_at` timestamp
+- `doing`: uses `started_at` if present, otherwise `created_at`
+- `done`, `rejected`: uses `completed_at` if present, then `updated_at`, then `created_at`
+
+Tasks with missing/invalid timestamps or future timestamps are categorized as `unknown`.
+
+Example configuration:
+```json
+{
+  "version": 1,
+  "queue": {
+    "aging_thresholds": {
+      "warning_days": 5,
+      "stale_days": 10,
+      "rotten_days": 20
+    }
+  }
+}
+```
+
 ## Precedence
 1. CLI flags (single run)
 2. Project config (`.ralph/config.json`)
