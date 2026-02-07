@@ -445,9 +445,9 @@ pub fn preview_task_edit(
         }
         TaskEditKey::Status => {
             let next_status = if trimmed.is_empty() {
-                cycle_status_for_preview(preview_task.status)
+                cycle_status(preview_task.status)
             } else {
-                parse_status_for_preview(trimmed).with_context(|| {
+                parse_status(trimmed).with_context(|| {
                     format!(
                         "Queue edit preview failed (task_id={}, field=status)",
                         needle
@@ -610,30 +610,6 @@ pub fn preview_task_edit(
         new_value,
         warnings,
     })
-}
-
-fn cycle_status_for_preview(status: TaskStatus) -> TaskStatus {
-    match status {
-        TaskStatus::Draft => TaskStatus::Todo,
-        TaskStatus::Todo => TaskStatus::Doing,
-        TaskStatus::Doing => TaskStatus::Done,
-        TaskStatus::Done => TaskStatus::Rejected,
-        TaskStatus::Rejected => TaskStatus::Draft,
-    }
-}
-
-fn parse_status_for_preview(value: &str) -> Result<TaskStatus> {
-    match value.trim().to_lowercase().as_str() {
-        "draft" => Ok(TaskStatus::Draft),
-        "todo" => Ok(TaskStatus::Todo),
-        "doing" => Ok(TaskStatus::Doing),
-        "done" => Ok(TaskStatus::Done),
-        "rejected" => Ok(TaskStatus::Rejected),
-        _ => bail!(
-            "Invalid status: '{}'. Expected one of: draft, todo, doing, done, rejected.",
-            value
-        ),
-    }
 }
 
 fn normalize_rfc3339_input_for_preview(label: &str, value: &str) -> Result<Option<String>> {
@@ -1007,5 +983,94 @@ mod tests {
 
         // Tags uses ", " separator
         assert_eq!(format_field_value(&task, TaskEditKey::Tags), "rust, cli");
+    }
+
+    #[test]
+    fn preview_and_apply_cycle_status_in_the_same_order() {
+        let now = "2026-01-21T12:00:00Z".to_string();
+
+        // Start from the module's default test task status (currently Todo).
+        let mut apply_queue = test_queue();
+
+        // Cycle through all statuses once, comparing preview's computed next value
+        // to apply's real mutation at each step.
+        for _ in 0..5 {
+            let preview = preview_task_edit(
+                &apply_queue,
+                None,
+                "RQ-0001",
+                TaskEditKey::Status,
+                "", // empty => cycle
+                &now,
+                "RQ",
+                4,
+                10,
+            )
+            .expect("preview should succeed");
+
+            apply_task_edit(
+                &mut apply_queue,
+                None,
+                "RQ-0001",
+                TaskEditKey::Status,
+                "", // empty => cycle
+                &now,
+                "RQ",
+                4,
+                10,
+            )
+            .expect("apply should succeed");
+
+            let applied = apply_queue.tasks[0].status.to_string();
+            assert_eq!(preview.new_value, applied);
+        }
+    }
+
+    #[test]
+    fn preview_and_apply_invalid_status_share_canonical_parse_error() {
+        let now = "2026-01-21T12:00:00Z".to_string();
+
+        let preview_err = preview_task_edit(
+            &test_queue(),
+            None,
+            "RQ-0001",
+            TaskEditKey::Status,
+            "paused",
+            &now,
+            "RQ",
+            4,
+            10,
+        )
+        .unwrap_err();
+
+        let apply_err = {
+            let mut q = test_queue();
+            apply_task_edit(
+                &mut q,
+                None,
+                "RQ-0001",
+                TaskEditKey::Status,
+                "paused",
+                &now,
+                "RQ",
+                4,
+                10,
+            )
+            .unwrap_err()
+        };
+
+        let expected =
+            "Invalid status: 'paused'. Expected one of: draft, todo, doing, done, rejected.";
+
+        assert!(
+            preview_err.chain().any(|e| e.to_string() == expected),
+            "preview should include canonical parser error in chain: {}",
+            preview_err
+        );
+        assert!(
+            apply_err.chain().any(|e| e.to_string() == expected),
+            "apply should include canonical parser error in chain: {}",
+            apply_err
+        );
     }
 }

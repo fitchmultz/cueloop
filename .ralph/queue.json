@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0686",
-      "status": "todo",
-      "title": "Deduplicate TaskStatus parsing and cycling logic in queue edit preview",
-      "description": "Principles violated: DRY (C), Localize change (D), Consistency/Integrity (J).\n\n`TaskStatus` parsing and status cycling are duplicated between the apply path and the preview (dry-run) path in `queue/operations/edit.rs`.\n\nWhy it matters (failure modes):\n- Any future change to status order or accepted strings requires updating multiple helpers; drift would cause preview to disagree with real edits.\n- Inconsistent error strings across preview vs apply increases UX confusion.\n\nMinimal proposed fix:\n- Reuse the same `cycle_status` and `parse_status` helpers for both apply and preview paths (or move them to a shared module used by both).\n- Remove `*_for_preview` duplicates.\n- Add a unit test asserting preview and apply paths interpret the same inputs and cycle order.\n\nAcceptance criteria:\n- No duplicate cycle_status_for_preview/parse_status_for_preview remain.\n- Tests cover at least one cycle sequence and invalid status input for both paths.\n- `make ci` passes.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "queue",
-        "cli",
-        "dry-run"
-      ],
-      "scope": [
-        "crates/ralph/src/queue/operations/edit.rs",
-        "cargo test -p ralph",
-        "make ci"
-      ],
-      "evidence": [
-        "crates/ralph/src/queue/operations/edit.rs:327-349 defines cycle_status/parse_status",
-        "crates/ralph/src/queue/operations/edit.rs:628-650 defines cycle_status_for_preview/parse_status_for_preview (duplicates)",
-        "Command: `nl -ba crates/ralph/src/queue/operations/edit.rs | sed -n '320,420p'` and `nl -ba crates/ralph/src/queue/operations/edit.rs | sed -n '620,700p'`"
-      ],
-      "plan": [
-        "Refactor preview code paths to reuse the same cycle_status/parse_status helpers as apply",
-        "Delete *_for_preview duplicates",
-        "Add unit tests asserting preview/apply equivalence for status parsing and cycling",
-        "Verify by running `make ci` and confirming it passes"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-07T03:39:33Z",
-      "updated_at": "2026-02-07T03:39:33Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0687",
       "status": "todo",
       "title": "Fix AGENTS.md session ID format to match implementation and docs",
@@ -280,10 +241,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "automation",
-        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation",
         "user_value": "Removes manual dependency tracking, enables automatic workflow progression, reduces delays",
-        "scan_agent": "scan-innovation"
+        "estimated_effort": "medium",
+        "opportunity_type": "automation"
       }
     },
     {
@@ -329,10 +290,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "opportunity_type": "ux-improvement",
         "user_value": "Reduces CLI verbosity, enables workflow presets, improves discoverability of settings",
-        "scan_agent": "scan-innovation",
-        "estimated_effort": "medium"
+        "opportunity_type": "ux-improvement",
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -379,10 +340,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "opportunity_type": "reliability",
         "user_value": "Reduces manual intervention for transient failures, improves success rate, handles network hiccups",
-        "estimated_effort": "medium"
+        "opportunity_type": "reliability",
+        "estimated_effort": "medium",
+        "scan_agent": "scan-innovation"
       }
     },
     {
@@ -429,8 +390,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
         "opportunity_type": "automation",
+        "user_value": "Enables 'set and forget' operation, integrates with system services, reduces manual monitoring",
         "estimated_effort": "high",
         "scan_agent": "scan-innovation"
       }
@@ -481,8 +442,8 @@
       "custom_fields": {
         "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
-        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management",
-        "opportunity_type": "analytics"
+        "opportunity_type": "analytics",
+        "user_value": "Improves planning accuracy, builds trust in ETAs, enables better time management"
       }
     },
     {
@@ -529,10 +490,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
+        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment",
         "opportunity_type": "ai-features",
-        "estimated_effort": "medium",
-        "user_value": "Prevents oversized tasks, improves success rate, reduces manual judgment"
+        "scan_agent": "scan-innovation",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -582,8 +543,8 @@
       "relates_to": [],
       "custom_fields": {
         "estimated_effort": "high",
-        "opportunity_type": "integration",
         "scan_agent": "scan-innovation",
+        "opportunity_type": "integration",
         "user_value": "Enables external integrations, CI triggers, GitHub/Slack commands, third-party automation"
       }
     },
@@ -633,9 +594,9 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
+        "opportunity_type": "automation",
         "estimated_effort": "medium",
-        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management",
-        "opportunity_type": "automation"
+        "user_value": "Prevents forgotten work, automates queue hygiene, reduces manual status management"
       }
     },
     {
@@ -684,8 +645,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation",
-        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
         "opportunity_type": "ecosystem",
+        "user_value": "Enables plugin ecosystem growth, simplifies installation, improves discoverability",
         "estimated_effort": "high"
       }
     },
@@ -735,10 +696,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
-        "estimated_effort": "medium",
         "scan_agent": "scan-innovation",
-        "opportunity_type": "integration"
+        "user_value": "Eliminates manual status sync, keeps GitHub and Ralph in sync, enables hybrid workflows",
+        "opportunity_type": "integration",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -786,10 +747,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-innovation",
-        "estimated_effort": "medium",
         "opportunity_type": "reliability",
-        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability"
+        "scan_agent": "scan-innovation",
+        "user_value": "Prevents failures due to resource exhaustion, enables proactive maintenance, improves reliability",
+        "estimated_effort": "medium"
       }
     },
     {
@@ -838,10 +799,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety",
-        "scan_agent": "scan-innovation",
         "estimated_effort": "medium",
-        "opportunity_type": "ux-improvement"
+        "scan_agent": "scan-innovation",
+        "opportunity_type": "ux-improvement",
+        "user_value": "Reduces fear of mistakes, enables experimentation, improves data safety"
       }
     }
   ]
