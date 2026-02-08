@@ -89,8 +89,8 @@ struct WorkspaceView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 180)
-                .help("Switch between List and Kanban view (⌘⇧K)")
+                .frame(width: 240)
+                .help("Switch between List, Kanban, and Graph view (⌘⇧K)")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -106,6 +106,11 @@ struct WorkspaceView: View {
                 )
             case .kanban:
                 KanbanBoardView(
+                    workspace: workspace,
+                    selectedTaskID: $navigation.selectedTaskID
+                )
+            case .graph:
+                DependencyGraphView(
                     workspace: workspace,
                     selectedTaskID: $navigation.selectedTaskID
                 )

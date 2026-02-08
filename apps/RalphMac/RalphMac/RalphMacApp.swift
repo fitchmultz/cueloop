@@ -149,13 +149,21 @@ struct RalphMacApp: App {
 
             Divider()
 
-            Button("Toggle Kanban View") {
+            Button("Toggle View Mode") {
                 NotificationCenter.default.post(
                     name: .toggleTaskViewMode,
                     object: nil
                 )
             }
             .keyboardShortcut("k", modifiers: [.command, .shift])
+
+            Button("Show Graph View") {
+                NotificationCenter.default.post(
+                    name: .showGraphView,
+                    object: nil
+                )
+            }
+            .keyboardShortcut("g", modifiers: [.command, .shift])
         }
     }
 

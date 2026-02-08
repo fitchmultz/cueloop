@@ -51,6 +51,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 enum TaskViewMode: String, CaseIterable, Identifiable {
     case list = "List"
     case kanban = "Kanban"
+    case graph = "Graph"
 
     var id: String { rawValue }
 
@@ -58,6 +59,7 @@ enum TaskViewMode: String, CaseIterable, Identifiable {
         switch self {
         case .list: return "list.bullet"
         case .kanban: return "rectangle.split.3x3"
+        case .graph: return "point.3.connected.trianglepath.dotted"
         }
     }
 }
@@ -103,9 +105,21 @@ final class NavigationViewModel: ObservableObject {
         selectedTaskID = nil
     }
 
-    /// Toggle between list and kanban view modes
+    /// Toggle between list, kanban, and graph view modes
     func toggleTaskViewMode() {
-        taskViewMode = taskViewMode == .list ? .kanban : .list
+        switch taskViewMode {
+        case .list:
+            taskViewMode = .kanban
+        case .kanban:
+            taskViewMode = .graph
+        case .graph:
+            taskViewMode = .list
+        }
+    }
+    
+    /// Switch to a specific view mode
+    func setTaskViewMode(_ mode: TaskViewMode) {
+        taskViewMode = mode
     }
 
     // MARK: - Private Methods
@@ -144,6 +158,14 @@ final class NavigationViewModel: ObservableObject {
                 self?.toggleTaskViewMode()
             }
             .store(in: &cancellables)
+        
+        // Handle show graph view
+        NotificationCenter.default.publisher(for: .showGraphView)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.setTaskViewMode(.graph)
+            }
+            .store(in: &cancellables)
     }
 }
 
@@ -154,4 +176,5 @@ extension Notification.Name {
     static let toggleSidebar = Notification.Name("toggleSidebar")
     static let workspaceTasksUpdated = Notification.Name("workspaceTasksUpdated")
     static let toggleTaskViewMode = Notification.Name("toggleTaskViewMode")
+    static let showGraphView = Notification.Name("showGraphView")
 }

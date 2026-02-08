@@ -58,6 +58,11 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
     @Published public var taskTagFilter: String?
     @Published public var taskSortBy: TaskSortOption = .priority
     @Published public var taskSortAscending: Bool = false
+    
+    // Graph data state
+    @Published public var graphData: RalphGraphDocument?
+    @Published public var graphDataLoading: Bool = false
+    @Published public var graphDataErrorMessage: String?
 
     public enum TaskSortOption: String, CaseIterable {
         case priority = "Priority"
@@ -220,6 +225,43 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         }
 
         tasksLoading = false
+    }
+
+    // MARK: - Graph Data Loading
+
+    /// Load graph data from CLI for dependency visualization
+    public func loadGraphData() async {
+        guard let client else {
+            graphDataErrorMessage = "CLI client not available."
+            return
+        }
+
+        graphDataLoading = true
+        graphDataErrorMessage = nil
+
+        do {
+            let collected = try await client.runAndCollect(
+                arguments: ["--no-color", "queue", "graph", "--format", "json"],
+                currentDirectoryURL: workingDirectoryURL
+            )
+
+            guard collected.status.code == 0 else {
+                graphDataErrorMessage = collected.stderr.isEmpty
+                    ? "Failed to load graph data (exit \(collected.status.code))."
+                    : collected.stderr
+                graphDataLoading = false
+                return
+            }
+
+            let data = Data(collected.stdout.utf8)
+            let decoder = JSONDecoder()
+            let document = try decoder.decode(RalphGraphDocument.self, from: data)
+            graphData = document
+        } catch {
+            graphDataErrorMessage = "Failed to load graph data: \(error.localizedDescription)"
+        }
+
+        graphDataLoading = false
     }
 
     /// Returns filtered and sorted tasks based on current filter/sort state

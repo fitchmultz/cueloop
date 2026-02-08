@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0724",
-      "status": "todo",
-      "title": "Implement task dependency visualization with graph view",
-      "description": "Create a visual dependency graph showing task relationships (depends_on, blocks, relates_to). Use a force-directed graph or hierarchical tree layout to display how tasks connect. Include visual indicators for circular dependencies, critical path highlighting, and blocking relationships. This helps users understand task sequencing and identify blockers at a glance.",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "macos",
-        "ui",
-        "visualization",
-        "dependencies"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMac/",
-        "apps/RalphMac/RalphCore/"
-      ],
-      "evidence": [
-        "CLI has 'ralph queue graph' command but no visual output in UI",
-        "Dependencies are critical to Ralph workflow but invisible in current app",
-        "Users cannot see why tasks are blocked without running CLI commands",
-        "Graph visualization is a high-value feature for project management"
-      ],
-      "plan": [
-        "Create DependencyGraphView using SwiftUI Canvas or SpriteKit",
-        "Implement node representation for tasks with status colors",
-        "Draw edges for depends_on (arrow), blocks (red), relates_to (dashed)",
-        "Add force-directed layout algorithm for node positioning",
-        "Implement zoom and pan gestures for large graphs",
-        "Highlight critical path (longest dependency chain)",
-        "Add warning indicators for circular dependencies",
-        "Implement node selection to show task details",
-        "Add 'ralph queue graph --format dot' integration for export",
-        "Include alternative tree view for hierarchical visualization",
-        "Verify by creating tasks with dependencies and confirming graph renders correctly"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-08T02:39:17Z",
-      "updated_at": "2026-02-08T02:39:17Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0725",
       "status": "todo",
       "title": "Add real-time queue file watching with automatic UI updates",
