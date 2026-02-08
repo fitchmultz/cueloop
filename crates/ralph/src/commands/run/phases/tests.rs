@@ -16,11 +16,13 @@ use crate::contracts::{
 };
 use crate::queue;
 use crate::testsupport::runner::create_fake_runner;
+use crate::testsupport::{INTERRUPT_TEST_MUTEX, reset_ctrlc_interrupt_flag};
 use crate::{git, promptflow, runner, runutil};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tempfile::TempDir;
 
@@ -208,6 +210,12 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
 
 #[test]
 fn phase1_continue_resumes_and_recovers_from_plan_only_violation() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     git_init(temp.path())?;
     std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
@@ -311,6 +319,12 @@ echo '{{"sessionID":"sess-123"}}'
 
 #[test]
 fn phase1_proceed_allows_plan_only_violation() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     git_init(temp.path())?;
     std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
@@ -398,6 +412,12 @@ echo '{{"sessionID":"sess-123"}}'
 
 #[test]
 fn phase1_rejects_changes_to_baseline_dirty_paths() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     git_init(temp.path())?;
     std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
@@ -552,6 +572,12 @@ fn ensure_phase3_completion_allows_dirty_repo_when_disabled() -> Result<()> {
 
 #[test]
 fn phase3_review_non_final_skips_completion_enforcement() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     let script = r#"#!/bin/sh
 echo '{"sessionID":"sess-123"}'
@@ -625,6 +651,12 @@ echo '{"sessionID":"sess-123"}'
 
 #[test]
 fn phase3_review_non_final_runs_ci_gate_when_enabled() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     let script = r#"#!/bin/sh
 echo '{"sessionID":"sess-123"}'

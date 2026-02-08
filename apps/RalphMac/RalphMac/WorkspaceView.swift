@@ -72,6 +72,8 @@ struct WorkspaceView: View {
             runControlContent()
         case .advancedRunner:
             advancedRunnerContent()
+        case .analytics:
+            AnalyticsDashboardView(workspace: workspace)
         }
     }
 
@@ -154,6 +156,8 @@ struct WorkspaceView: View {
 
         case .advancedRunner:
             advancedRunnerDetailView()
+        case .analytics:
+            analyticsDetailView()
         }
     }
 
@@ -844,6 +848,57 @@ struct WorkspaceView: View {
                 message: "Select a command from the list to configure and run it."
             )
         }
+    }
+
+    // MARK: - Analytics Detail Column
+
+    @ViewBuilder
+    private func analyticsDetailView() -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                if let summary = workspace.analyticsData.productivitySummary {
+                    glassGroupBox("Productivity Summary") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            DetailRow(label: "Total Completed", value: "\(summary.totalCompleted)")
+                            DetailRow(label: "Current Streak", value: "\(summary.currentStreak) days")
+                            DetailRow(label: "Longest Streak", value: "\(summary.longestStreak) days")
+                            
+                            if let nextMilestone = summary.nextMilestone {
+                                DetailRow(label: "Next Milestone", value: "\(nextMilestone) tasks")
+                            }
+                        }
+                    }
+                    
+                    if !summary.milestones.isEmpty {
+                        glassGroupBox("Milestones Achieved") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(summary.milestones.prefix(5), id: \.threshold) { milestone in
+                                    HStack {
+                                        Image(systemName: milestone.celebrated ? "checkmark.circle.fill" : "circle")
+                                            .foregroundStyle(milestone.celebrated ? .green : .secondary)
+                                        Text("\(milestone.threshold) tasks")
+                                        Spacer()
+                                        Text(String(milestone.achievedAt.prefix(10)))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .font(.caption)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    emptyDetailView(
+                        icon: "chart.bar",
+                        title: "No Analytics Data",
+                        message: "Select a time range and refresh to load analytics."
+                    )
+                }
+            }
+            .padding(20)
+        }
+        .background(.clear)
+        .navigationTitle("Analytics Details")
     }
 
     private func filteredAdvancedCommands() -> [RalphCLICommandSpec] {

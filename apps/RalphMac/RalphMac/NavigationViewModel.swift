@@ -28,6 +28,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case quickActions = "Quick Actions"
     case runControl = "Run Control"
     case advancedRunner = "Advanced Runner"
+    case analytics = "Analytics"
 
     var id: String { rawValue }
 
@@ -37,6 +38,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .quickActions: return "bolt.fill"
         case .runControl: return "play.circle.fill"
         case .advancedRunner: return "terminal.fill"
+        case .analytics: return "chart.bar.fill"
         }
     }
 
@@ -46,6 +48,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .quickActions: return "2"
         case .runControl: return "3"
         case .advancedRunner: return "4"
+        case .analytics: return "5"
         }
     }
 }

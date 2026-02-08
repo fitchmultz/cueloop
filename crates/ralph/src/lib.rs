@@ -74,3 +74,29 @@ mod runutil_tests;
 
 #[cfg(test)]
 pub(crate) mod testsupport;
+
+/// Test synchronization utilities for managing global state across tests.
+///
+/// This module provides synchronization primitives to prevent test flakiness
+/// caused by global state interference between parallel tests.
+#[cfg(test)]
+pub(crate) mod test_sync {
+    use std::sync::{Mutex, OnceLock};
+
+    /// Global mutex to synchronize tests that modify the Ctrl+C interrupt flag.
+    ///
+    /// Tests that set the interrupt flag should acquire this mutex.
+    /// Tests that use the runner should reset the flag before starting.
+    pub static INTERRUPT_TEST_MUTEX: OnceLock<Mutex<()>> = OnceLock::new();
+
+    /// Reset the global Ctrl+C interrupted flag to false.
+    ///
+    /// This should be called by tests that use the runner to ensure they
+    /// don't fail due to stale interrupt flags from other tests.
+    pub fn reset_ctrlc_interrupt_flag() {
+        use std::sync::atomic::Ordering;
+        if let Ok(ctrlc) = crate::runner::ctrlc_state() {
+            ctrlc.interrupted.store(false, Ordering::SeqCst);
+        }
+    }
+}

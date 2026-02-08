@@ -13,6 +13,7 @@ use crate::contracts::{
 use crate::queue;
 use crate::runner;
 use crate::testsupport::git as git_test;
+use crate::testsupport::{INTERRUPT_TEST_MUTEX, reset_ctrlc_interrupt_flag};
 use log::{LevelFilter, Log, Metadata, Record};
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
@@ -254,6 +255,12 @@ fn task_with_status(status: TaskStatus) -> Task {
 
 #[test]
 fn run_one_with_id_locked_skips_reacquiring_queue_lock() -> anyhow::Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
     let resolved = resolved_with_repo_root(repo_root.clone());
@@ -403,6 +410,11 @@ fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyho
         }
     }
 
+    // Acquire lock to prevent other tests from running while we have the interrupt flag set.
+    // This ensures tests that use the runner don't see the flag as true.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
     std::fs::create_dir_all(repo_root.join(".ralph/cache"))?;
@@ -441,11 +453,17 @@ fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyho
 
     // Prevent the loop from executing the task; we only care that the resume path
     // cleared the stale lock before attempting `run_one`.
+    // NOTE: We set the interrupted flag to prevent the loop from actually running tasks.
+    // This is a global state mutation that must be restored even if the test panics.
+    // We set the flag as close to the run_loop call as possible to minimize interference
+    // with other tests that may be running in parallel.
     let ctrlc =
         crate::runner::ctrlc_state().map_err(|e| anyhow::anyhow!("ctrlc init failed: {e}"))?;
     let guard = InterruptGuard {
         previous: ctrlc.interrupted.load(Ordering::SeqCst),
     };
+    // Set interrupted immediately before run_loop to minimize the window where
+    // other tests might see the flag as true
     ctrlc.interrupted.store(true, Ordering::SeqCst);
 
     let result = super::run_loop(

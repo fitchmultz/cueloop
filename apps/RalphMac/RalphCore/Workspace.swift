@@ -64,6 +64,11 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
     @Published public var graphDataLoading: Bool = false
     @Published public var graphDataErrorMessage: String?
 
+    // Analytics data state
+    @Published public var analyticsData: AnalyticsData = AnalyticsData()
+    @Published public var analyticsLoading: Bool = false
+    @Published public var analyticsErrorMessage: String?
+
     // MARK: - Execution State (for Run Control Panel)
 
     /// The ID of the currently running task (if known)
@@ -233,6 +238,17 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
             case .brightWhite: return .white.opacity(0.9)
             }
         }
+    }
+
+    /// Container for all analytics data
+    public struct AnalyticsData: Sendable {
+        public var productivitySummary: ProductivitySummaryReport?
+        public var velocity: ProductivityVelocityReport?
+        public var burndown: BurndownReport?
+        public var queueStats: QueueStatsReport?
+        public var history: HistoryReport?
+        
+        public init() {}
     }
 
     private var client: RalphCLIClient?
@@ -1137,6 +1153,117 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         }
         for sub in command.subcommands {
             collectCommands(sub, includeHidden: includeHidden, into: &out)
+        }
+    }
+
+    // MARK: - Analytics Data Loading
+
+    /// Load all analytics data for the dashboard
+    public func loadAnalytics(timeRange: TimeRange = .sevenDays) async {
+        guard let client else {
+            analyticsErrorMessage = "CLI client not available."
+            return
+        }
+        
+        analyticsLoading = true
+        analyticsErrorMessage = nil
+        
+        // Load all data in parallel
+        async let summaryTask = loadProductivitySummary(client: client)
+        async let velocityTask = loadVelocity(client: client, days: timeRange.days ?? 30)
+        async let burndownTask = loadBurndown(client: client, days: timeRange.days ?? 30)
+        async let statsTask = loadQueueStats(client: client)
+        async let historyTask = loadHistory(client: client, days: timeRange.days ?? 30)
+        
+        let (summary, velocity, burndown, stats, history) = await (
+            summaryTask, velocityTask, burndownTask, statsTask, historyTask
+        )
+        
+        var newData = AnalyticsData()
+        newData.productivitySummary = summary
+        newData.velocity = velocity
+        newData.burndown = burndown
+        newData.queueStats = stats
+        newData.history = history
+        
+        await MainActor.run {
+            analyticsData = newData
+            analyticsLoading = false
+        }
+    }
+
+    private func loadProductivitySummary(client: RalphCLIClient) async -> ProductivitySummaryReport? {
+        do {
+            let collected = try await client.runAndCollect(
+                arguments: ["--no-color", "productivity", "summary", "--format", "json"],
+                currentDirectoryURL: workingDirectoryURL
+            )
+            guard collected.status.code == 0 else { return nil }
+            let data = Data(collected.stdout.utf8)
+            let decoder = JSONDecoder()
+            return try decoder.decode(ProductivitySummaryReport.self, from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadVelocity(client: RalphCLIClient, days: Int) async -> ProductivityVelocityReport? {
+        do {
+            let collected = try await client.runAndCollect(
+                arguments: ["--no-color", "productivity", "velocity", "--format", "json", "--days", String(days)],
+                currentDirectoryURL: workingDirectoryURL
+            )
+            guard collected.status.code == 0 else { return nil }
+            let data = Data(collected.stdout.utf8)
+            let decoder = JSONDecoder()
+            return try decoder.decode(ProductivityVelocityReport.self, from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadBurndown(client: RalphCLIClient, days: Int) async -> BurndownReport? {
+        do {
+            let collected = try await client.runAndCollect(
+                arguments: ["--no-color", "queue", "burndown", "--format", "json", "--days", String(days)],
+                currentDirectoryURL: workingDirectoryURL
+            )
+            guard collected.status.code == 0 else { return nil }
+            let data = Data(collected.stdout.utf8)
+            let decoder = JSONDecoder()
+            return try decoder.decode(BurndownReport.self, from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadQueueStats(client: RalphCLIClient) async -> QueueStatsReport? {
+        do {
+            let collected = try await client.runAndCollect(
+                arguments: ["--no-color", "queue", "stats", "--format", "json"],
+                currentDirectoryURL: workingDirectoryURL
+            )
+            guard collected.status.code == 0 else { return nil }
+            let data = Data(collected.stdout.utf8)
+            let decoder = JSONDecoder()
+            return try decoder.decode(QueueStatsReport.self, from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadHistory(client: RalphCLIClient, days: Int) async -> HistoryReport? {
+        do {
+            let collected = try await client.runAndCollect(
+                arguments: ["--no-color", "queue", "history", "--format", "json", "--days", String(days)],
+                currentDirectoryURL: workingDirectoryURL
+            )
+            guard collected.status.code == 0 else { return nil }
+            let data = Data(collected.stdout.utf8)
+            let decoder = JSONDecoder()
+            return try decoder.decode(HistoryReport.self, from: data)
+        } catch {
+            return nil
         }
     }
 

@@ -614,9 +614,12 @@ mod tests {
     use crate::queue;
     use crate::testsupport::git as git_test;
     use crate::testsupport::runner::create_fake_runner;
+    use crate::testsupport::{INTERRUPT_TEST_MUTEX, reset_ctrlc_interrupt_flag};
     use std::path::Path;
     use std::path::PathBuf;
     use std::sync::Arc;
+    use std::sync::Mutex;
+    use std::sync::atomic::Ordering;
     use tempfile::TempDir;
 
     fn write_queue(repo_root: &Path, status: TaskStatus) -> Result<()> {
@@ -1010,6 +1013,12 @@ mod tests {
 
     #[test]
     fn post_run_supervise_ci_gate_continue_resumes_session() -> Result<()> {
+        // Synchronize with tests that modify the interrupt flag.
+        // Hold the mutex for the entire test to prevent any race conditions.
+        let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+        let _interrupt_guard = interrupt_mutex.lock().unwrap();
+        reset_ctrlc_interrupt_flag();
+
         let temp = TempDir::new()?;
         git_test::init_repo(temp.path())?;
         write_queue(temp.path(), TaskStatus::Todo)?;

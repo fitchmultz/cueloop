@@ -129,13 +129,29 @@ struct RalphMacApp: App {
             }
             .keyboardShortcut("2", modifiers: .command)
 
+            Button("Show Run Control") {
+                NotificationCenter.default.post(
+                    name: .showSidebarSection,
+                    object: SidebarSection.runControl
+                )
+            }
+            .keyboardShortcut("3", modifiers: .command)
+
             Button("Show Advanced Runner") {
                 NotificationCenter.default.post(
                     name: .showSidebarSection,
                     object: SidebarSection.advancedRunner
                 )
             }
-            .keyboardShortcut("3", modifiers: .command)
+            .keyboardShortcut("4", modifiers: .command)
+
+            Button("Show Analytics") {
+                NotificationCenter.default.post(
+                    name: .showSidebarSection,
+                    object: SidebarSection.analytics
+                )
+            }
+            .keyboardShortcut("5", modifiers: .command)
 
             Divider()
 
