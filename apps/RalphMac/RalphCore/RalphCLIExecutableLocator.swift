@@ -13,7 +13,7 @@
  - The GUI build step bundles an executable file named `ralph` into the app bundle.
  */
 
-import Foundation
+public import Foundation
 
 public enum RalphCLIExecutableLocator {
     public enum LocatorError: Error, Equatable {

@@ -13,7 +13,7 @@
  - The app bundle includes an executable named `ralph` placed alongside the app binary.
  */
 
-import SwiftUI
+public import SwiftUI
 
 @main
 struct RalphMacApp: App {

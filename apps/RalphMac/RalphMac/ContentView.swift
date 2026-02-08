@@ -19,9 +19,9 @@
  - The GUI runs the bundled `ralph` binary exclusively (no PATH lookup).
  */
 
-import AppKit
-import SwiftUI
-import RalphCore
+public import AppKit
+public import SwiftUI
+public import RalphCore
 
 @MainActor
 final class RalphAppModel: ObservableObject {

@@ -18,7 +18,7 @@
  - Output is treated as UTF-8 when converted to text; callers requiring exact bytes should use `data`.
  */
 
-import Foundation
+public import Foundation
 
 #if canImport(Darwin)
 import Darwin

@@ -19,7 +19,7 @@
    CLI spec version.
  */
 
-import Foundation
+public import Foundation
 
 /// A JSON value that preserves unknown shapes for forward compatibility.
 public enum RalphJSONValue: Codable, Equatable, Sendable {

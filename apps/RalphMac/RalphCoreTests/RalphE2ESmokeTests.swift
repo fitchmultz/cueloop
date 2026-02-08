@@ -16,8 +16,8 @@
  - Tests must not rely on network access.
  */
 
-import Foundation
-import XCTest
+public import Foundation
+public import XCTest
 
 @testable import RalphCore
 
