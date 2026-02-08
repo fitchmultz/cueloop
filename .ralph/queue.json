@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0723",
-      "status": "todo",
-      "title": "Build visual task status workflow with drag-and-drop Kanban",
-      "description": "Create a Kanban-style board view showing tasks organized by status columns (Draft, Todo, Doing, Done). Allow users to drag tasks between columns to change status. Provide an alternative list view for users who prefer compact displays. Include visual indicators for blocked tasks, tasks with dependencies, and overdue items. This gives users a visual project management experience.",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "macos",
-        "ui",
-        "kanban",
-        "workflow",
-        "visual"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMac/",
-        "apps/RalphMac/RalphCore/"
-      ],
-      "evidence": [
-        "No visual status management exists - users must use 'ralph task status' CLI commands",
-        "Task lifecycle (draft→todo→doing→done) is core to Ralph workflow",
-        "Kanban boards are the standard UX pattern for task status management",
-        "Queue file stores status but UI provides no visualization"
-      ],
-      "plan": [
-        "Create KanbanBoardView with horizontal scrolling columns",
-        "Implement columns for each status: Draft, Todo, Doing, Done, Rejected",
-        "Create task cards showing title, priority badge, tags",
-        "Implement drag-and-drop using SwiftUI dropDestination API",
-        "Add column headers with task count badges",
-        "Implement status change via drag (triggers 'ralph task status' command)",
-        "Add visual indicators for blocked tasks (dependency warnings)",
-        "Include 'Start Work' button that sets status to Doing + sets started_at",
-        "Add toggle between Kanban view and List view",
-        "Verify by dragging a task to different columns and checking status updates"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-08T02:39:17Z",
-      "updated_at": "2026-02-08T02:39:17Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0724",
       "status": "todo",
       "title": "Implement task dependency visualization with graph view",

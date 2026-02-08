@@ -31,6 +31,10 @@
 		EE9BBA22346A4F6089F70335 /* RalphCLIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B301E8A7CC431E930E7539 /* RalphCLIClient.swift */; };
 		EF9F001157144DB59DB782FF /* RalphModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3014AC133794F7F8AF0E753 /* RalphModels.swift */; };
 		FF6677889900AA11BB22CC33DD44EE55 /* TagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */; };
+		E1FE4FE54CB8402D84A8607625CC6BB5 /* TaskCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D09515AC14F94350B766E15468824B53 /* TaskCreationView.swift */; };
+		81B3129D1A9B4ACBB70F0BDD4D0F049B /* KanbanBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7044ECE073A4355A364CD631452E561 /* KanbanBoardView.swift */; };
+		2895092585CD4799832FDA1479C815B8 /* KanbanCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC080C0014F94BAE85020345FFAAFAF2 /* KanbanCardView.swift */; };
+		62E2D8A333624CF58EA8D8EA9B611279 /* KanbanColumnView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CE6C4AFCBD2413B8BF2F723BD308B4D /* KanbanColumnView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +94,10 @@
 		E4BA912C259042DDA03E653F /* RalphMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacApp.swift; sourceTree = "<group>"; };
 		EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TagEditorView.swift; path = RalphMac/TagEditorView.swift; sourceTree = "<group>"; };
 		F3014AC133794F7F8AF0E753 /* RalphModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphModels.swift; sourceTree = "<group>"; };
+		D09515AC14F94350B766E15468824B53 /* TaskCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskCreationView.swift; path = RalphMac/TaskCreationView.swift; sourceTree = "<group>"; };
+		F7044ECE073A4355A364CD631452E561 /* KanbanBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KanbanBoardView.swift; path = RalphMac/KanbanBoardView.swift; sourceTree = "<group>"; };
+		DC080C0014F94BAE85020345FFAAFAF2 /* KanbanCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KanbanCardView.swift; path = RalphMac/KanbanCardView.swift; sourceTree = "<group>"; };
+		3CE6C4AFCBD2413B8BF2F723BD308B4D /* KanbanColumnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KanbanColumnView.swift; path = RalphMac/KanbanColumnView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -353,6 +361,10 @@
 				223344556677889900AABBCCDDEEFF11 /* TaskRelationshipPicker.swift in Sources */,
 				9A3B7C4E5D6E7F8A901B2C3D /* TaskListView.swift in Sources */,
 				D21470E978C03EA41E8C185E /* NavigationViewModel.swift in Sources */,
+				E1FE4FE54CB8402D84A8607625CC6BB5 /* TaskCreationView.swift in Sources */,
+				81B3129D1A9B4ACBB70F0BDD4D0F049B /* KanbanBoardView.swift in Sources */,
+				2895092585CD4799832FDA1479C815B8 /* KanbanCardView.swift in Sources */,
+				62E2D8A333624CF58EA8D8EA9B611279 /* KanbanColumnView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

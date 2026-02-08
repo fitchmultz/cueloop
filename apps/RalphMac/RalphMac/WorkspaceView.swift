@@ -65,14 +65,51 @@ struct WorkspaceView: View {
     private func contentColumn() -> some View {
         switch navigation.selectedSection {
         case .queue:
-            TaskListView(
-                workspace: workspace,
-                selectedTaskID: $navigation.selectedTaskID
-            )
+            queueContent()
         case .quickActions:
             quickActionsContent()
         case .advancedRunner:
             advancedRunnerContent()
+        }
+    }
+
+    // MARK: - Queue Content
+
+    @ViewBuilder
+    private func queueContent() -> some View {
+        VStack(spacing: 0) {
+            // View mode toggle toolbar
+            HStack {
+                Spacer()
+
+                Picker("View Mode", selection: $navigation.taskViewMode) {
+                    ForEach(TaskViewMode.allCases, id: \.self) { mode in
+                        Label(mode.rawValue, systemImage: mode.icon)
+                            .tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 180)
+                .help("Switch between List and Kanban view (⌘⇧K)")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            // Content based on view mode
+            switch navigation.taskViewMode {
+            case .list:
+                TaskListView(
+                    workspace: workspace,
+                    selectedTaskID: $navigation.selectedTaskID
+                )
+            case .kanban:
+                KanbanBoardView(
+                    workspace: workspace,
+                    selectedTaskID: $navigation.selectedTaskID
+                )
+            }
         }
     }
 

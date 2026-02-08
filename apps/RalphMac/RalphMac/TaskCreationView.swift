@@ -213,7 +213,7 @@ struct TaskCreationView: View {
                 HStack {
                     Image(systemName: icon)
                         .font(.title2)
-                        .foregroundStyle(.accent)
+                        .foregroundStyle(Color.accentColor)
 
                     Spacer()
 

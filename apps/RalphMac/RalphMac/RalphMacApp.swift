@@ -146,11 +146,18 @@ struct RalphMacApp: App {
                 )
             }
             .keyboardShortcut("s", modifiers: [.command, .control])
+
+            Divider()
+
+            Button("Toggle Kanban View") {
+                NotificationCenter.default.post(
+                    name: .toggleTaskViewMode,
+                    object: nil
+                )
+            }
+            .keyboardShortcut("k", modifiers: [.command, .shift])
         }
     }
-}
-
-// MARK: - Notification Names
 
     private var taskCommands: some Commands {
         CommandMenu("Task") {
@@ -160,7 +167,7 @@ struct RalphMacApp: App {
                     object: nil
                 )
             }
-            .keyboardShortcut("n", modifiers: .command)
+            .keyboardShortcut("n", modifiers: [.command, .option])
         }
     }
 }

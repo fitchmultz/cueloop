@@ -278,6 +278,70 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         tasks.first { $0.status == .todo }
     }
 
+    // MARK: - Task Status Helpers
+
+    /// Check if a task is blocked by checking if any dependency is not done
+    public func isTaskBlocked(_ task: RalphTask) -> Bool {
+        guard let dependsOn = task.dependsOn, !dependsOn.isEmpty else {
+            return false
+        }
+
+        // Task is blocked if any dependency is not in "done" status
+        for dependencyID in dependsOn {
+            if let dependency = tasks.first(where: { $0.id == dependencyID }) {
+                if dependency.status != .done {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /// Check if a task is overdue (high/critical priority todo task that's been sitting)
+    public func isTaskOverdue(_ task: RalphTask) -> Bool {
+        guard task.status == .todo || task.status == .draft else { return false }
+        guard task.priority == .high || task.priority == .critical else { return false }
+
+        // Consider overdue if created more than 7 days ago
+        guard let createdAt = task.createdAt else { return false }
+        let daysSinceCreation = Date().timeIntervalSince(createdAt) / (24 * 3600)
+        return daysSinceCreation > 7
+    }
+
+    /// Update task status via CLI, optionally setting startedAt when moving to "doing"
+    public func updateTaskStatus(taskID: String, to newStatus: RalphTaskStatus) async throws {
+        guard let client else {
+            throw WorkspaceError.cliClientUnavailable
+        }
+
+        // Build arguments for status change
+        let arguments = ["--no-color", "task", "edit", "status", newStatus.rawValue, taskID]
+
+        let collected = try await client.runAndCollect(
+            arguments: arguments,
+            currentDirectoryURL: workingDirectoryURL
+        )
+
+        guard collected.status.code == 0 else {
+            throw WorkspaceError.cliError(
+                "Failed to update status: \(collected.stderr.isEmpty ? "Exit \(collected.status.code)" : collected.stderr)"
+            )
+        }
+
+        // If moving to "doing", also set startedAt timestamp
+        if newStatus == .doing {
+            let dateFormatter = ISO8601DateFormatter()
+            let startedAt = dateFormatter.string(from: Date())
+            _ = try? await client.runAndCollect(
+                arguments: ["--no-color", "task", "edit", "started_at", startedAt, taskID],
+                currentDirectoryURL: workingDirectoryURL
+            )
+        }
+
+        // Reload tasks to get updated state
+        await loadTasks()
+    }
+
     // MARK: - Task Updates
 
     /// Update a task by applying changes via the CLI and reloading the task list.

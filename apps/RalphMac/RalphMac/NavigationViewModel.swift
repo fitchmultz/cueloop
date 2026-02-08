@@ -47,6 +47,21 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     }
 }
 
+/// Represents the task view mode for the Queue section
+enum TaskViewMode: String, CaseIterable, Identifiable {
+    case list = "List"
+    case kanban = "Kanban"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .list: return "list.bullet"
+        case .kanban: return "rectangle.split.3x3"
+        }
+    }
+}
+
 @MainActor
 final class NavigationViewModel: ObservableObject {
     // MARK: - Published Properties
@@ -54,6 +69,7 @@ final class NavigationViewModel: ObservableObject {
     @Published var selectedSection: SidebarSection = .queue
     @Published var selectedTaskID: String?
     @Published var sidebarVisibility: NavigationSplitViewVisibility = .automatic
+    @Published var taskViewMode: TaskViewMode = .list
 
     // MARK: - Private Properties
 
@@ -87,6 +103,11 @@ final class NavigationViewModel: ObservableObject {
         selectedTaskID = nil
     }
 
+    /// Toggle between list and kanban view modes
+    func toggleTaskViewMode() {
+        taskViewMode = taskViewMode == .list ? .kanban : .list
+    }
+
     // MARK: - Private Methods
 
     private func setupNotificationHandlers() {
@@ -115,6 +136,14 @@ final class NavigationViewModel: ObservableObject {
                 // This is handled by the view, but we could add validation here
             }
             .store(in: &cancellables)
+
+        // Handle toggle task view mode
+        NotificationCenter.default.publisher(for: .toggleTaskViewMode)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.toggleTaskViewMode()
+            }
+            .store(in: &cancellables)
     }
 }
 
@@ -124,4 +153,5 @@ extension Notification.Name {
     static let showSidebarSection = Notification.Name("showSidebarSection")
     static let toggleSidebar = Notification.Name("toggleSidebar")
     static let workspaceTasksUpdated = Notification.Name("workspaceTasksUpdated")
+    static let toggleTaskViewMode = Notification.Name("toggleTaskViewMode")
 }
