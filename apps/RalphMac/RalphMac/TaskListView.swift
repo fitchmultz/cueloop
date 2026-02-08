@@ -6,14 +6,16 @@
  - Show task metadata with visual indicators (status badges, priority dots, tag chips).
  - Provide search, filtering, and sorting controls.
  - Display "What's Next" section highlighting the next todo task.
+ - Support two-way binding for task selection to integrate with NavigationSplitView.
 
  Does not handle:
- - Task editing (see TaskDetailView).
+ - Task editing (see TaskDetailView - now shown in detail column).
  - Task creation (see TaskCreationView).
  - Direct CLI execution (delegates to Workspace).
 
  Invariants/assumptions callers must respect:
  - Workspace is injected via @ObservedObject.
+ - selectedTaskID is bound to external navigation state.
  - Tasks are loaded via workspace.loadTasks() before display.
  */
 
@@ -22,8 +24,7 @@ import RalphCore
 
 struct TaskListView: View {
     @ObservedObject var workspace: Workspace
-    @State private var selectedTaskID: String?
-    @State private var selectedTaskForEditing: RalphTask?
+    @Binding var selectedTaskID: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -92,6 +93,10 @@ struct TaskListView: View {
                 .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
         )
         .cornerRadius(10)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedTaskID = task.id
+        }
     }
 
     // MARK: - Filter Controls
@@ -222,24 +227,11 @@ struct TaskListView: View {
                         .listRowSeparator(.visible)
                         .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                         .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedTaskForEditing = task
-                        }
                 }
                 .listStyle(.plain)
                 #if swift(>=5.9)
                 .alternatingRowBackgrounds(.automatic)
                 #endif
-                .sheet(item: $selectedTaskForEditing) { task in
-                    TaskDetailView(
-                        workspace: workspace,
-                        task: task,
-                        isPresented: Binding(
-                            get: { selectedTaskForEditing != nil },
-                            set: { if !$0 { selectedTaskForEditing = nil } }
-                        )
-                    )
-                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -404,5 +396,3 @@ struct TaskRow: View {
         }
     }
 }
-
-

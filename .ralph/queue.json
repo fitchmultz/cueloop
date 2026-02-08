@@ -2,51 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0721",
-      "status": "todo",
-      "title": "Implement sidebar navigation with three-column layout",
-      "description": "Replace the current two-tab interface (Quick/Advanced) with a modern three-column sidebar navigation pattern. Left sidebar shows navigation sections (Queue, Task Details, Run, History, Settings). Middle column shows content list (task list, run history). Right column shows detail/inspector view. This matches modern macOS apps like Mail, Notes, and Xcode, providing familiar and efficient navigation.",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "macos",
-        "ui",
-        "navigation",
-        "ux"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMac/ContentView.swift",
-        "apps/RalphMac/RalphMac/RalphMacApp.swift"
-      ],
-      "evidence": [
-        "Current UI uses TabView with only Quick and Advanced tabs (ContentView.swift:326-332)",
-        "Navigation is limited - no way to browse different views simultaneously",
-        "Modern macOS apps use NavigationSplitView for multi-column layouts",
-        "Current min width 920px doesn't accommodate complex navigation"
-      ],
-      "plan": [
-        "Replace TabView with NavigationSplitView three-column layout",
-        "Create sidebar with sections: Queue, Active Task, Run Control, Analytics, Settings",
-        "Implement middle column as content area (task list, command output, etc.)",
-        "Implement right column as inspector/detail view",
-        "Add sidebar toggle button for collapsible sidebar",
-        "Style sidebar with system sidebar background material",
-        "Add keyboard shortcuts for navigation (Cmd+1, Cmd+2, etc.)",
-        "Implement selection state management between columns",
-        "Verify by running app and confirming smooth navigation between sections"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-08T02:39:17Z",
-      "updated_at": "2026-02-08T02:39:17Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0722",
       "status": "todo",
       "title": "Add task creation dialog with template support",

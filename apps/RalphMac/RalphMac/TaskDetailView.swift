@@ -5,15 +5,18 @@
  - Display a comprehensive form for viewing and editing all task fields.
  - Support inline editing with proper form controls (pickers, text editors, tag editors).
  - Integrate with Workspace to persist changes via CLI.
+ - Display as inline detail view within NavigationSplitView (not as sheet).
 
  Does not handle:
  - Task creation (see task builder workflow).
  - Batch operations on multiple tasks.
+ - Navigation or dismissal (handled by parent NavigationSplitView).
 
  Invariants/assumptions callers must respect:
  - Task is passed in and copied to @State for editing.
  - Changes are only persisted when user explicitly saves.
- - Sheet is dismissed on cancel or successful save.
+ - onTaskUpdated callback is called after successful save.
+ - View is displayed as detail column in NavigationSplitView.
  */
 
 import SwiftUI
@@ -22,72 +25,87 @@ import RalphCore
 struct TaskDetailView: View {
     @ObservedObject var workspace: Workspace
     let task: RalphTask
-    @Binding var isPresented: Bool
+    var onTaskUpdated: ((RalphTask) -> Void)? = nil
 
     // State for mutable copy of task being edited
     @State private var draftTask: RalphTask
     @State private var isSaving = false
     @State private var saveError: String?
     @State private var showingUnsavedChangesAlert = false
+    @State private var saveSuccess = false
 
-    init(workspace: Workspace, task: RalphTask, isPresented: Binding<Bool>) {
+    init(workspace: Workspace, task: RalphTask, onTaskUpdated: ((RalphTask) -> Void)? = nil) {
         self.workspace = workspace
         self.task = task
-        self._isPresented = isPresented
+        self.onTaskUpdated = onTaskUpdated
         self._draftTask = State(initialValue: task)
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    basicInfoSection()
-                    statusSection()
-                    tagsSection()
-                    contentSections()
-                    relationshipsSection()
-                    metadataSection()
-                }
-                .padding(20)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                basicInfoSection()
+                statusSection()
+                tagsSection()
+                contentSections()
+                relationshipsSection()
+                metadataSection()
             }
-            .background(.clear)
-            .navigationTitle("Edit Task")
-            .navigationSubtitle(task.id)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        if hasChanges() {
-                            showingUnsavedChangesAlert = true
-                        } else {
-                            isPresented = false
-                        }
+            .padding(20)
+        }
+        .background(.clear)
+        .navigationTitle(draftTask.title)
+        .navigationSubtitle(task.id)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: 8) {
+                    if isSaving {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .controlSize(.small)
+                    } else if saveSuccess {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .transition(.opacity)
                     }
-                }
 
-                ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveChanges()
                     }
                     .disabled(!hasChanges() || isSaving)
+                    .keyboardShortcut("s", modifiers: .command)
                 }
             }
-            .alert("Unsaved Changes", isPresented: $showingUnsavedChangesAlert) {
-                Button("Discard Changes", role: .destructive) {
-                    isPresented = false
+
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Reset") {
+                    if hasChanges() {
+                        showingUnsavedChangesAlert = true
+                    }
                 }
-                Button("Keep Editing", role: .cancel) {}
-            } message: {
-                Text("You have unsaved changes. Are you sure you want to discard them?")
-            }
-            .alert("Save Error", isPresented: .constant(saveError != nil)) {
-                Button("OK") {
-                    saveError = nil
-                }
-            } message: {
-                Text(saveError ?? "")
+                .disabled(!hasChanges())
             }
         }
-        .frame(minWidth: 700, minHeight: 600)
+        .alert("Discard Changes?", isPresented: $showingUnsavedChangesAlert) {
+            Button("Discard", role: .destructive) {
+                draftTask = task
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You have unsaved changes. Are you sure you want to discard them and reset to the saved version?")
+        }
+        .alert("Save Error", isPresented: .constant(saveError != nil)) {
+            Button("OK") {
+                saveError = nil
+            }
+        } message: {
+            Text(saveError ?? "")
+        }
+        .onChange(of: task.id) { _, _ in
+            // Task changed, reset draft
+            draftTask = task
+            saveSuccess = false
+        }
     }
 
     // MARK: - Sections
@@ -384,13 +402,20 @@ struct TaskDetailView: View {
     private func saveChanges() {
         isSaving = true
         saveError = nil
+        saveSuccess = false
 
         Task {
             do {
                 try await workspace.updateTask(from: task, to: draftTask)
                 await MainActor.run {
                     isSaving = false
-                    isPresented = false
+                    saveSuccess = true
+                    onTaskUpdated?(draftTask)
+
+                    // Clear success indicator after 2 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        saveSuccess = false
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -457,7 +482,6 @@ struct TaskDetailView: View {
             scope: ["apps/RalphMac/TaskDetailView.swift"],
             createdAt: Date(),
             updatedAt: Date()
-        ),
-        isPresented: .constant(true)
+        )
     )
 }

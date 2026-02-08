@@ -2,16 +2,20 @@
  WorkspaceView
 
  Responsibilities:
- - Display the Ralph UI for a single workspace (Quick actions + Advanced runner).
+ - Display the Ralph UI using a modern three-column NavigationSplitView layout.
+ - Left sidebar: Navigation sections (Queue, Quick Actions, Advanced Runner)
+ - Middle column: Content list (tasks, console output, command list)
+ - Right column: Detail/inspector view (task editing, command configuration)
  - Bind to a specific Workspace instance for isolated state management.
- - Provide working directory header with visual project identification.
 
  Does not handle:
  - Window-level tab management (see WindowView).
  - Cross-workspace operations.
+ - Direct navigation state persistence (see NavigationViewModel).
 
  Invariants/assumptions callers must respect:
  - Workspace is injected via @StateObject or @ObservedObject.
+ - NavigationViewModel manages sidebar state.
  - View updates when workspace state changes.
  */
 
@@ -20,74 +24,218 @@ import RalphCore
 
 struct WorkspaceView: View {
     @StateObject var workspace: Workspace
+    @StateObject private var navigation = NavigationViewModel()
 
     var body: some View {
-        TabView {
-            TaskListView(workspace: workspace)
-                .tabItem {
-                    Label("Tasks", systemImage: "list.bullet.rectangle")
-                }
-
-            quickActionsTab()
-                .tabItem {
-                    Label("Quick", systemImage: "bolt.fill")
-                }
-
-            advancedRunnerTab()
-                .tabItem {
-                    Label("Advanced", systemImage: "terminal.fill")
-                }
+        NavigationSplitView(columnVisibility: $navigation.sidebarVisibility) {
+            // MARK: Column 1: Sidebar
+            sidebarContent()
+                .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
+        } content: {
+            // MARK: Column 2: Content List
+            contentColumn()
+                .navigationSplitViewColumnWidth(min: 320, ideal: 400, max: 600)
+        } detail: {
+            // MARK: Column 3: Detail/Inspector
+            detailColumn()
+                .navigationSplitViewColumnWidth(min: 450, ideal: 550, max: .infinity)
         }
-        .frame(minWidth: 920, minHeight: 640)
+        .frame(minWidth: 1200, minHeight: 640)
         .background(.clear)
     }
 
-    // MARK: - Quick Actions Tab
+    // MARK: - Sidebar Column
 
     @ViewBuilder
-    private func quickActionsTab() -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            workingDirectoryHeader()
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+    private func sidebarContent() -> some View {
+        List(SidebarSection.allCases, selection: $navigation.selectedSection) { section in
+            Label(section.rawValue, systemImage: section.icon)
+                .tag(section)
+        }
+        .listStyle(.sidebar)
+        #if swift(>=5.9)
+        .sidebarBackground()
+        #endif
+        .navigationTitle("Ralph")
+    }
 
-            HStack(spacing: 12) {
-                actionButton("Version", icon: "info.circle.fill", action: { workspace.runVersion() })
-                actionButton("Init", icon: "folder.badge.plus", action: { workspace.runInit() })
+    // MARK: - Content Column
 
-                Spacer()
+    @ViewBuilder
+    private func contentColumn() -> some View {
+        switch navigation.selectedSection {
+        case .queue:
+            TaskListView(
+                workspace: workspace,
+                selectedTaskID: $navigation.selectedTaskID
+            )
+        case .quickActions:
+            quickActionsContent()
+        case .advancedRunner:
+            advancedRunnerContent()
+        }
+    }
 
-                if workspace.isRunning {
-                    Button(action: { workspace.cancel() }) {
-                        Label("Stop", systemImage: "stop.circle.fill")
-                            .foregroundStyle(.red)
+    // MARK: - Detail Column
+
+    @ViewBuilder
+    private func detailColumn() -> some View {
+        switch navigation.selectedSection {
+        case .queue:
+            if let taskID = navigation.selectedTaskID,
+               let task = workspace.tasks.first(where: { $0.id == taskID }) {
+                TaskDetailView(
+                    workspace: workspace,
+                    task: task,
+                    onTaskUpdated: { updatedTask in
+                        // Task was saved, refresh the task list
+                        Task { @MainActor in
+                            await workspace.loadTasks()
+                        }
                     }
-                    .buttonStyle(.borderless)
-                }
-
-                exitStatusBadge()
+                )
+            } else {
+                emptyDetailView(
+                    icon: "list.bullet.rectangle",
+                    title: "No Task Selected",
+                    message: "Select a task from the list to view and edit its details."
+                )
             }
-            .padding(.horizontal, 16)
+
+        case .quickActions:
+            quickActionsDetailView()
+
+        case .advancedRunner:
+            advancedRunnerDetailView()
+        }
+    }
+
+    // MARK: - Quick Actions Content Column
+
+    @ViewBuilder
+    private func quickActionsContent() -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            workingDirectoryHeader()
+                .padding(16)
+
+            Divider()
 
             consoleView()
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(16)
         }
         .contentBackground(cornerRadius: 12)
+        .navigationTitle("Quick Actions")
     }
 
-    private func actionButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: icon)
-        }
-        .buttonStyle(GlassButtonStyle())
-    }
-
-    // MARK: - Advanced Runner Tab
+    // MARK: - Quick Actions Detail Column
 
     @ViewBuilder
-    private func advancedRunnerTab() -> some View {
+    private func quickActionsDetailView() -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Working Directory Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Working Directory")
+                        .font(.headline)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(workspace.name)
+                            .font(.subheadline)
+                        Text(workspace.workingDirectoryURL.path)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    HStack {
+                        if !workspace.recentWorkingDirectories.isEmpty {
+                            Menu("Recents") {
+                                ForEach(workspace.recentWorkingDirectories, id: \.path) { url in
+                                    Button(url.path) {
+                                        workspace.selectRecentWorkingDirectory(url)
+                                    }
+                                }
+                            }
+                        }
+
+                        Button("Choose…") {
+                            workspace.chooseWorkingDirectory()
+                        }
+                        .buttonStyle(GlassButtonStyle())
+                    }
+                }
+
+                Divider()
+
+                // Quick Commands Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Quick Commands")
+                        .font(.headline)
+
+                    HStack(spacing: 12) {
+                        actionButton("Version", icon: "info.circle.fill", action: { workspace.runVersion() })
+                        actionButton("Init", icon: "folder.badge.plus", action: { workspace.runInit() })
+
+                        Spacer()
+
+                        if workspace.isRunning {
+                            Button(action: { workspace.cancel() }) {
+                                Label("Stop", systemImage: "stop.circle.fill")
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
+
+                Divider()
+
+                // Status Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Status")
+                        .font(.headline)
+
+                    HStack(spacing: 16) {
+                        if let status = workspace.lastExitStatus {
+                            HStack(spacing: 6) {
+                                Image(systemName: status.code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundStyle(status.code == 0 ? .green : .red)
+                                Text("Exit: \(status.code) [\(status.reason.rawValue)]")
+                                    .font(.system(.body, design: .monospaced))
+                            }
+                        } else {
+                            Text("No commands run yet")
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+                    }
+                }
+
+                if let error = workspace.errorMessage {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Error")
+                            .font(.headline)
+                            .foregroundStyle(.red)
+
+                        Text(error)
+                            .foregroundStyle(.red)
+                            .font(.body)
+                    }
+                }
+            }
+            .padding(20)
+        }
+        .background(.clear)
+        .navigationTitle("Quick Actions")
+    }
+
+    // MARK: - Advanced Runner Content Column
+
+    @ViewBuilder
+    private func advancedRunnerContent() -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Header with controls
             VStack(alignment: .leading, spacing: 12) {
                 workingDirectoryHeader()
 
@@ -131,30 +279,120 @@ struct WorkspaceView: View {
 
             Divider()
 
+            // Command list
             let commands = filteredAdvancedCommands()
-            NavigationSplitView {
-                List(commands, selection: $workspace.advancedSelectedCommandID) { cmd in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(cmd.displayPath)
-                            .font(.system(.body, design: .monospaced))
-                        if let about = cmd.about, !about.isEmpty {
-                            Text(about)
-                                .font(.system(.caption))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
+            List(commands, selection: $workspace.advancedSelectedCommandID) { cmd in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(cmd.displayPath)
+                        .font(.system(.body, design: .monospaced))
+                    if let about = cmd.about, !about.isEmpty {
+                        Text(about)
+                            .font(.system(.caption))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
-                .searchable(text: $workspace.advancedSearchText)
-                .sidebarBackground()
-            } detail: {
-                advancedDetailView()
-                    .contentBackground()
+                .tag(cmd.id)
             }
-            .frame(minHeight: 420)
+            .listStyle(.plain)
+            .searchable(text: $workspace.advancedSearchText, placement: .toolbar)
+            .navigationTitle("Commands")
         }
         .onChange(of: workspace.advancedSelectedCommandID) { _, _ in
             workspace.resetAdvancedInputs()
+        }
+    }
+
+    // MARK: - Advanced Runner Detail Column
+
+    @ViewBuilder
+    private func advancedRunnerDetailView() -> some View {
+        if let cmd = workspace.selectedAdvancedCommand() {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Command Header
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(cmd.displayPath)
+                            .font(.system(.title3, design: .monospaced))
+                        if let about = cmd.about, !about.isEmpty {
+                            Text(about)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    let args = cmd.args.filter { workspace.advancedShowHiddenArgs || !$0.hidden }
+                    let (positional, options) = splitArgs(args)
+
+                    // Positional Arguments
+                    if !positional.isEmpty {
+                        glassGroupBox("Positionals") {
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(positional, id: \.id) { arg in
+                                    advancedArgRow(arg: arg)
+                                }
+                            }
+                        }
+                    }
+
+                    // Options
+                    if !options.isEmpty {
+                        glassGroupBox("Options") {
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(options, id: \.id) { arg in
+                                    advancedArgRow(arg: arg)
+                                }
+                            }
+                        }
+                    }
+
+                    // Command Preview and Run
+                    glassGroupBox("Command") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            let argv = workspace.buildAdvancedArguments()
+                            Text(shellPreview(argv: argv))
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            HStack {
+                                Button("Run") {
+                                    let argv = workspace.buildAdvancedArguments()
+                                    if !argv.isEmpty {
+                                        workspace.run(arguments: argv)
+                                    }
+                                }
+                                .disabled(workspace.isRunning)
+                                .buttonStyle(GlassButtonStyle())
+
+                                if workspace.isRunning {
+                                    Button(action: { workspace.cancel() }) {
+                                        Label("Stop", systemImage: "stop.circle.fill")
+                                            .foregroundStyle(.red)
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+
+                                Spacer()
+
+                                exitStatusBadge()
+                            }
+                        }
+                    }
+
+                    // Console Output
+                    consoleView()
+                }
+                .padding(20)
+            }
+            .background(.clear)
+            .navigationTitle(cmd.name)
+        } else {
+            emptyDetailView(
+                icon: "terminal.fill",
+                title: "No Command Selected",
+                message: "Select a command from the list to configure and run it."
+            )
         }
     }
 
@@ -169,91 +407,77 @@ struct WorkspaceView: View {
         }
     }
 
+    // MARK: - Common UI Components
+
     @ViewBuilder
-    private func advancedDetailView() -> some View {
-        if let cmd = workspace.selectedAdvancedCommand() {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(cmd.displayPath)
-                        .font(.system(.headline, design: .monospaced))
-                    if let about = cmd.about, !about.isEmpty {
-                        Text(about)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                let args = cmd.args.filter { workspace.advancedShowHiddenArgs || !$0.hidden }
-                let (positional, options) = splitArgs(args)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        if !positional.isEmpty {
-                            glassGroupBox("Positionals") {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    ForEach(positional, id: \.id) { arg in
-                                        advancedArgRow(arg: arg)
-                                    }
-                                }
-                            }
-                        }
-
-                        if !options.isEmpty {
-                            glassGroupBox("Options") {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    ForEach(options, id: \.id) { arg in
-                                        advancedArgRow(arg: arg)
-                                    }
-                                }
-                            }
-                        }
-
-                        glassGroupBox("Command") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                let argv = workspace.buildAdvancedArguments()
-                                Text(shellPreview(argv: argv))
-                                    .font(.system(.caption, design: .monospaced))
-                                    .foregroundStyle(.secondary)
-                                    .textSelection(.enabled)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                HStack {
-                                    Button("Run") {
-                                        let argv = workspace.buildAdvancedArguments()
-                                        if !argv.isEmpty {
-                                            workspace.run(arguments: argv)
-                                        }
-                                    }
-                                    .disabled(workspace.isRunning)
-                                    .buttonStyle(GlassButtonStyle())
-
-                                    if workspace.isRunning {
-                                        Button(action: { workspace.cancel() }) {
-                                            Label("Stop", systemImage: "stop.circle.fill")
-                                                .foregroundStyle(.red)
-                                        }
-                                        .buttonStyle(.borderless)
-                                    }
-
-                                    Spacer()
-
-                                    exitStatusBadge()
-                                }
-                            }
-                        }
-
-                        consoleView()
-                    }
-                    .padding(.horizontal, 4)
-                }
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Select a command")
+    private func workingDirectoryHeader() -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(workspace.name)
                     .font(.headline)
-                Text("The Advanced runner is generated from `ralph __cli-spec --format json`.")
+                Text(workspace.workingDirectoryURL.path)
+                    .font(.system(.body, design: .monospaced))
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            Spacer()
+
+            if !workspace.recentWorkingDirectories.isEmpty {
+                Menu("Recents") {
+                    ForEach(workspace.recentWorkingDirectories, id: \.path) { url in
+                        Button(url.path) {
+                            workspace.selectRecentWorkingDirectory(url)
+                        }
+                    }
+                }
+            }
+
+            Button("Choose…") {
+                workspace.chooseWorkingDirectory()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func exitStatusBadge() -> some View {
+        if let status = workspace.lastExitStatus {
+            Text("Exit: \(status.code) [\(status.reason.rawValue)]")
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(status.code == 0 ? Color.secondary : Color.red)
+        }
+    }
+
+    @ViewBuilder
+    private func consoleView() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Console Output")
+                    .font(.system(.caption, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                if let error = workspace.errorMessage {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.system(.caption))
+                }
+            }
+
+            ScrollView {
+                Text(workspace.output.isEmpty ? "(no output yet)" : workspace.output)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.system(.body, design: .monospaced))
+                    .textSelection(.enabled)
+                    .padding(12)
+            }
+            .frame(minHeight: 200)
+            .underPageBackground(cornerRadius: 10, isEmphasized: false)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(.separator.opacity(0.3), lineWidth: 0.5)
+            )
         }
     }
 
@@ -328,78 +552,24 @@ struct WorkspaceView: View {
         }
     }
 
-    // MARK: - Common UI Components
-
     @ViewBuilder
-    private func workingDirectoryHeader() -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(workspace.name)
-                    .font(.headline)
-                Text(workspace.workingDirectoryURL.path)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
+    private func emptyDetailView(icon: String, title: String, message: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
 
-            Spacer()
+            Text(title)
+                .font(.headline)
 
-            if !workspace.recentWorkingDirectories.isEmpty {
-                Menu("Recents") {
-                    ForEach(workspace.recentWorkingDirectories, id: \.path) { url in
-                        Button(url.path) {
-                            workspace.selectRecentWorkingDirectory(url)
-                        }
-                    }
-                }
-            }
-
-            Button("Choose…") {
-                workspace.chooseWorkingDirectory()
-            }
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 300)
         }
-    }
-
-    @ViewBuilder
-    private func exitStatusBadge() -> some View {
-        if let status = workspace.lastExitStatus {
-            Text("Exit: \(status.code) [\(status.reason.rawValue)]")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(status.code == 0 ? Color.secondary : Color.red)
-        }
-    }
-
-    @ViewBuilder
-    private func consoleView() -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Console Output")
-                    .font(.system(.caption, weight: .semibold))
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                if let error = workspace.errorMessage {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .font(.system(.caption))
-                }
-            }
-
-            ScrollView {
-                Text(workspace.output.isEmpty ? "(no output yet)" : workspace.output)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.system(.body, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding(12)
-            }
-            .frame(minHeight: 240)
-            .underPageBackground(cornerRadius: 10, isEmphasized: false)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(.separator.opacity(0.3), lineWidth: 0.5)
-            )
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.clear)
     }
 
     private func glassGroupBox<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -414,6 +584,13 @@ struct WorkspaceView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .underPageBackground(cornerRadius: 10, isEmphasized: false)
         }
+    }
+
+    private func actionButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+        }
+        .buttonStyle(GlassButtonStyle())
     }
 
     // MARK: - Helpers

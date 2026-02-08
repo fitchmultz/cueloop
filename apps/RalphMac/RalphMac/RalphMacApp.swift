@@ -5,14 +5,16 @@
  - Define the macOS SwiftUI app entry point.
  - Configure multi-window support with native macOS tab bar integration.
  - Handle window restoration on app relaunch.
- - Provide menu commands for window/tab management.
+ - Provide menu commands for window/tab management and navigation.
 
  Does not handle:
  - Individual workspace content or CLI operations (see Workspace and WindowView).
+ - Sidebar navigation state (see NavigationViewModel).
 
  Invariants/assumptions callers must respect:
  - The app bundle includes an executable named `ralph` placed alongside the app binary.
  - Window restoration state is stored in UserDefaults.
+ - Navigation notifications are sent via NotificationCenter.
  */
 
 public import SwiftUI
@@ -33,11 +35,12 @@ struct RalphMacApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))
-        .defaultSize(width: 1200, height: 800)
+        .defaultSize(width: 1400, height: 900)
         .defaultPosition(.center)
-        
+
         .commands {
             workspaceCommands
+            navigationCommands
         }
     }
 
@@ -104,6 +107,44 @@ struct RalphMacApp: App {
                 )
             }
             .keyboardShortcut("d", modifiers: .command)
+        }
+    }
+
+    private var navigationCommands: some Commands {
+        CommandMenu("Navigation") {
+            Button("Show Queue") {
+                NotificationCenter.default.post(
+                    name: .showSidebarSection,
+                    object: SidebarSection.queue
+                )
+            }
+            .keyboardShortcut("1", modifiers: .command)
+
+            Button("Show Quick Actions") {
+                NotificationCenter.default.post(
+                    name: .showSidebarSection,
+                    object: SidebarSection.quickActions
+                )
+            }
+            .keyboardShortcut("2", modifiers: .command)
+
+            Button("Show Advanced Runner") {
+                NotificationCenter.default.post(
+                    name: .showSidebarSection,
+                    object: SidebarSection.advancedRunner
+                )
+            }
+            .keyboardShortcut("3", modifiers: .command)
+
+            Divider()
+
+            Button("Toggle Sidebar") {
+                NotificationCenter.default.post(
+                    name: .toggleSidebar,
+                    object: nil
+                )
+            }
+            .keyboardShortcut("s", modifiers: [.command, .control])
         }
     }
 }
