@@ -73,8 +73,9 @@ struct AnalyticsDashboardView: View {
             }
         }
         .onAppear {
+            let range = selectedTimeRange
             Task {
-                await workspace.loadAnalytics(timeRange: selectedTimeRange)
+                await workspace.loadAnalytics(timeRange: range)
             }
         }
         .onChange(of: selectedTimeRange) { _, newRange in
@@ -112,8 +113,9 @@ struct AnalyticsDashboardView: View {
             
             // Refresh Button
             Button(action: {
+                let range = selectedTimeRange
                 Task {
-                    await workspace.loadAnalytics(timeRange: selectedTimeRange)
+                    await workspace.loadAnalytics(timeRange: range)
                 }
             }) {
                 Image(systemName: "arrow.clockwise")

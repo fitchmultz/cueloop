@@ -252,7 +252,6 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
     }
 
     private var client: RalphCLIClient?
-    private var currentRun: RalphCLIRun?
     private var cancellables = Set<AnyCancellable>()
     private var fileWatcher: QueueFileWatcher?
     
@@ -855,28 +854,26 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         isRunning = true
         executionStartTime = Date()
 
-        do {
-            let run = try client.start(
-                arguments: arguments,
-                currentDirectoryURL: workingDirectoryURL
-            )
-            currentRun = run
+        Task { @MainActor in
+            do {
+                let collected = try await client.runAndCollect(
+                    arguments: arguments,
+                    currentDirectoryURL: workingDirectoryURL
+                )
 
-            Task { @MainActor in
-                for await event in run.events {
-                    let prefix: String = (event.stream == .stdout) ? "" : "[stderr] "
-                    let text = prefix + event.text
-                    output.append(text)
-
-                    // Parse phase information from output
-                    detectPhase(from: text)
-
-                    // Parse ANSI codes for rich display
-                    parseANSICodes(from: text)
+                // Update output
+                output = collected.stdout
+                if !collected.stderr.isEmpty {
+                    output += "\n[stderr] " + collected.stderr
                 }
 
-                let status = await run.waitUntilExit()
-                lastExitStatus = status
+                // Parse phase information from output
+                detectPhase(from: output)
+
+                // Parse ANSI codes for rich display
+                parseANSICodes(from: output)
+
+                lastExitStatus = collected.status
                 isRunning = false
 
                 // Record execution history
@@ -886,14 +883,14 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
                         taskID: currentTaskID,
                         startTime: startTime,
                         endTime: Date(),
-                        exitCode: Int(status.code),
+                        exitCode: Int(collected.status.code),
                         wasCancelled: false
                     )
                     addToHistory(record)
                 }
 
                 // Handle loop mode - run next task if enabled and not stopping
-                if isLoopMode && !stopAfterCurrent && status.code == 0 {
+                if isLoopMode && !stopAfterCurrent && collected.status.code == 0 {
                     // Small delay before next task
                     try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
                     if isLoopMode && !stopAfterCurrent {
@@ -903,18 +900,17 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
                 }
 
                 resetExecutionState()
-                currentRun = nil
+            } catch {
+                errorMessage = "Failed to run ralph: \(error)"
+                isRunning = false
+                resetExecutionState()
             }
-        } catch {
-            errorMessage = "Failed to start ralph: \(error)"
-            isRunning = false
-            resetExecutionState()
-            currentRun = nil
         }
     }
 
     public func cancel() {
-        currentRun?.cancel()
+        // Note: With runAndCollect, we can't easily cancel mid-execution.
+        // The task will complete but loop mode can be stopped.
 
         // Record cancelled execution
         if let startTime = executionStartTime {
@@ -930,7 +926,8 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         }
 
         isLoopMode = false
-        stopAfterCurrent = false
+        stopAfterCurrent = true
+        isRunning = false
         resetExecutionState()
     }
 
@@ -1168,12 +1165,15 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         analyticsLoading = true
         analyticsErrorMessage = nil
         
+        // Capture days value to avoid data race warnings with async let
+        let days = timeRange.days ?? 30
+        
         // Load all data in parallel
         async let summaryTask = loadProductivitySummary(client: client)
-        async let velocityTask = loadVelocity(client: client, days: timeRange.days ?? 30)
-        async let burndownTask = loadBurndown(client: client, days: timeRange.days ?? 30)
+        async let velocityTask = loadVelocity(client: client, days: days)
+        async let burndownTask = loadBurndown(client: client, days: days)
         async let statsTask = loadQueueStats(client: client)
-        async let historyTask = loadHistory(client: client, days: timeRange.days ?? 30)
+        async let historyTask = loadHistory(client: client, days: days)
         
         let (summary, velocity, burndown, stats, history) = await (
             summaryTask, velocityTask, burndownTask, statsTask, historyTask

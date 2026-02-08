@@ -124,33 +124,18 @@ check-backup-artifacts:
 	fi
 
 # Speed-first local CI that always builds release + installs
-ci:
+ci: check-env-safety check-backup-artifacts deps format type-check lint test build generate install
 	@echo "→ Local CI (mutates code, always builds+installs release)..."
 	@echo ""
-	@set -e; \
-	$(MAKE) check-env-safety        || { echo ""; echo "✗ CI failed at: check-env-safety"; exit 1; }; \
-	$(MAKE) check-backup-artifacts  || { echo ""; echo "✗ CI failed at: check-backup-artifacts"; exit 1; }; \
-	$(MAKE) deps                   || { echo ""; echo "✗ CI failed at: deps"; exit 1; }; \
-	$(MAKE) format                 || { echo ""; echo "✗ CI failed at: format"; exit 1; }; \
-	$(MAKE) type-check             || { echo ""; echo "✗ CI failed at: type-check"; exit 1; }; \
-	$(MAKE) lint                   || { echo ""; echo "✗ CI failed at: lint"; exit 1; }; \
-	$(MAKE) test                   || { echo ""; echo "✗ CI failed at: test"; exit 1; }; \
-	$(MAKE) build                  || { echo ""; echo "✗ CI failed at: build"; exit 1; }; \
-	$(MAKE) generate               || { echo ""; echo "✗ CI failed at: generate"; exit 1; }; \
-	$(MAKE) install                || { echo ""; echo "✗ CI failed at: install"; exit 1; }
-	@echo ""
-	@echo "═══════════════════════════════════════════════════"
-	@echo "  ✓ CI completed successfully"
-	@echo "═══════════════════════════════════════════════════"
+	@echo "  ✓ CI completed"
 
-macos-build:
+macos-build: build
 	@os="$$(uname -s)"; \
 	if [ "$$os" != "Darwin" ]; then \
 		echo "macos-build: macOS-only (uname: $$os)"; \
 		exit 1; \
 	fi; \
-	echo "→ macOS build (Rust release + Xcode build)..."; \
-	$(MAKE) build; \
+	echo "→ macOS build (Xcode build)..."; \
 	xcodebuild \
 		-project apps/RalphMac/RalphMac.xcodeproj \
 		-scheme RalphMac \
@@ -160,7 +145,7 @@ macos-build:
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		build
 
-macos-test:
+macos-test: 
 	@os="$$(uname -s)"; \
 	if [ "$$os" != "Darwin" ]; then \
 		echo "macos-test: macOS-only (uname: $$os)"; \
@@ -176,13 +161,10 @@ macos-test:
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		test
 
-macos-ci:
+macos-ci: ci macos-build macos-test
 	@os="$$(uname -s)"; \
 	if [ "$$os" != "Darwin" ]; then \
 		echo "macos-ci: macOS-only (uname: $$os)"; \
 		exit 1; \
 	fi; \
 	echo "→ macOS ship gate (Rust CI + macOS app build+test)..."; \
-	$(MAKE) ci; \
-	$(MAKE) macos-build; \
-	$(MAKE) macos-test

@@ -475,11 +475,11 @@ mod tests {
     #[test]
     fn guard_cleanup_runs_on_drop() -> Result<()> {
         let temp = TempDir::new()?;
-        let pid: u32;
+        
         let mut guard = create_test_guard(&temp);
 
         let child: Child = Command::new("sleep").arg("10").spawn()?;
-        pid = child.id();
+        let pid: u32 = child.id();
 
         let workspace_path = temp.path().join("workspaces").join("RQ-0001");
         std::fs::create_dir_all(&workspace_path)?;
