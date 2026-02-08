@@ -51,10 +51,23 @@ struct VelocityChartView: View {
                     AxisMarks(position: .leading)
                 }
                 .padding()
+                .accessibilityLabel("Daily velocity chart")
+                .accessibilityHint("Bar chart showing tasks completed per day")
+                .accessibilityHidden(true)
+                
+                // Accessible alternative for VoiceOver
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(velocityAccessibilityText(data: data))
             } else {
                 emptyStateView(message: "No velocity data available")
             }
         }
+    }
+    
+    private func velocityAccessibilityText(data: [(date: String, count: Int)]) -> String {
+        let total = data.reduce(0) { $0 + $1.count }
+        let daysWithActivity = data.filter { $0.count > 0 }.count
+        return "Daily velocity: \(total) tasks completed across \(daysWithActivity) active days."
     }
     
     private func formatDate(_ dateString: String) -> String {

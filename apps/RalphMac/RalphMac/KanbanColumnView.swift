@@ -19,6 +19,7 @@
 
 import SwiftUI
 import RalphCore
+// Note: RalphCore provides accessibility helpers for task and status types
 
 struct KanbanColumnView: View {
     let status: RalphTaskStatus
@@ -45,6 +46,11 @@ struct KanbanColumnView: View {
         )
         
         return column
+            // MARK: - Accessibility
+            // Column-level accessibility for VoiceOver users
+            .accessibilityLabel("\(status.displayName) column")
+            .accessibilityValue("\(tasks.count) tasks")
+            .accessibilityHint("Drop tasks here to change their status to \(status.displayName)")
             .dropDestination(for: String.self) { items, _ in
                 guard let taskID = items.first else { return false }
                 onTaskDrop(taskID)
@@ -61,6 +67,8 @@ struct KanbanColumnView: View {
             Circle()
                 .fill(statusColor(status))
                 .frame(width: 8, height: 8)
+                // MARK: - Accessibility
+                .accessibilityLabel("Status: \(status.displayName)")
 
             Text(status.displayName)
                 .font(.headline)
@@ -75,6 +83,8 @@ struct KanbanColumnView: View {
                 .background(Color.gray.opacity(0.15))
                 .foregroundStyle(.secondary)
                 .cornerRadius(10)
+                // MARK: - Accessibility
+                .accessibilityLabel("\(tasks.count) tasks")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -90,8 +100,10 @@ struct KanbanColumnView: View {
     private var taskList: some View {
         ScrollView {
             LazyVStack(spacing: 8) {
-                ForEach(tasks) { task in
-                    taskCard(for: task)
+                // MARK: - Accessibility
+                // Use enumerated to provide sort priority based on position in list
+                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                    taskCard(for: task, index: index, totalCount: tasks.count)
                 }
             }
             .padding(12)
@@ -106,7 +118,7 @@ struct KanbanColumnView: View {
         )
     }
     
-    private func taskCard(for task: RalphTask) -> some View {
+    private func taskCard(for task: RalphTask, index: Int, totalCount: Int) -> some View {
         KanbanCardView(
             task: task,
             isBlocked: isTaskBlocked(task),
@@ -119,13 +131,31 @@ struct KanbanColumnView: View {
         .onTapGesture {
             onTaskSelect(task.id)
         }
+        // MARK: - Accessibility
+        // Sort priority ensures VoiceOver reads tasks in visual order (top to bottom)
+        .accessibilitySortPriority(Double(totalCount - index))
         .draggable(task.id) {
-            // Drag preview
+            // Drag preview with accessibility label
             Text(task.title)
                 .padding(8)
                 .background(Color.accentColor)
                 .foregroundColor(.white)
                 .cornerRadius(8)
+                // MARK: - Accessibility
+                .accessibilityLabel("Dragging: \(task.title)")
+        }
+        // MARK: - Accessibility
+        // VoiceOver actions for users who cannot use drag and drop
+        // Note: These actions require the parent (KanbanBoardView) to handle status changes
+        // via the onTaskDrop callback. The actual status change logic is implemented there.
+        .accessibilityAction(named: "Move to Todo") {
+            if status != .todo { onTaskDrop(task.id) }
+        }
+        .accessibilityAction(named: "Move to Doing") {
+            if status != .doing { onTaskDrop(task.id) }
+        }
+        .accessibilityAction(named: "Move to Done") {
+            if status != .done { onTaskDrop(task.id) }
         }
     }
 

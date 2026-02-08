@@ -52,10 +52,23 @@ struct CompletionHistoryChart: View {
                 }
                 .chartLegend(position: .top, alignment: .trailing)
                 .padding()
+                .accessibilityLabel("Task activity chart")
+                .accessibilityHint("Line chart showing tasks created and completed over time")
+                .accessibilityHidden(true)
+                
+                // Accessible alternative for VoiceOver
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(historyAccessibilityText(history: history))
             } else {
                 emptyStateView(message: "No history data available")
             }
         }
+    }
+    
+    private func historyAccessibilityText(history: HistoryReport) -> String {
+        let totalCreated = history.days.reduce(0) { $0 + $1.created.count }
+        let totalCompleted = history.days.reduce(0) { $0 + $1.completed.count }
+        return "Task activity over \(history.days.count) days: \(totalCreated) tasks created, \(totalCompleted) tasks completed."
     }
     
     private func formatDate(_ dateString: String) -> String {

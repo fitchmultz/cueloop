@@ -122,6 +122,9 @@ struct TaskListView: View {
         .onTapGesture {
             selectedTaskID = task.id
         }
+        .accessibilityLabel("What's Next: \(task.title)")
+        .accessibilityHint("Double click to open task details")
+        .accessibilityValue("Priority \(task.priority.displayName), Status \(task.status.displayName)")
     }
 
     // MARK: - Filter Controls
@@ -143,6 +146,7 @@ struct TaskListView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
                 }
             }
             .padding(8)
@@ -162,6 +166,7 @@ struct TaskListView: View {
                 }
                 .pickerStyle(.menu)
                 .fixedSize()
+                .accessibilityLabel("Filter by Status")
 
                 // Priority filter
                 Picker("Priority", selection: $workspace.taskPriorityFilter) {
@@ -174,6 +179,7 @@ struct TaskListView: View {
                 }
                 .pickerStyle(.menu)
                 .fixedSize()
+                .accessibilityLabel("Filter by Priority")
 
                 Spacer()
 
@@ -186,6 +192,7 @@ struct TaskListView: View {
                 }
                 .pickerStyle(.menu)
                 .fixedSize()
+                .accessibilityLabel("Sort tasks")
 
                 // Sort direction toggle
                 Button(action: { workspace.taskSortAscending.toggle() }) {
@@ -193,6 +200,8 @@ struct TaskListView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Toggle sort direction")
+                .accessibilityHint("Currently sorted \(workspace.taskSortAscending ? "ascending" : "descending")")
 
                 Divider()
                     .frame(height: 20)
@@ -208,6 +217,7 @@ struct TaskListView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .disabled(workspace.tasksLoading)
+                .accessibilityLabel("Refresh task list")
             }
         }
     }
@@ -299,6 +309,7 @@ struct TaskListView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .accessibilityLabel("Priority: \(priority.displayName)")
     }
 
     @ViewBuilder
@@ -414,6 +425,7 @@ struct TaskListView: View {
             )
             .cornerRadius(6)
             .transition(.move(edge: .top).combined(with: .opacity))
+            .accessibilityLabel("Queue updated externally")
         }
     }
 }
@@ -430,6 +442,7 @@ struct TaskRow: View {
             Circle()
                 .fill(priorityColor(task.priority))
                 .frame(width: 8, height: 8)
+                .accessibilityLabel("Priority: \(task.priority.displayName)")
 
             VStack(alignment: .leading, spacing: 4) {
                 // Title
@@ -446,6 +459,7 @@ struct TaskRow: View {
                         .background(statusColor(task.status).opacity(0.2))
                         .foregroundStyle(statusColor(task.status))
                         .cornerRadius(4)
+                        .accessibilityLabel("Status: \(task.status.displayName)")
 
                     // Tags
                     if !task.tags.isEmpty {
@@ -460,6 +474,7 @@ struct TaskRow: View {
                                     .cornerRadius(3)
                             }
                         }
+                        .accessibilityLabel("Tags: \(task.tags.joined(separator: ", "))")
                     }
                 }
             }
@@ -471,10 +486,16 @@ struct TaskRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .monospaced()
+                .accessibilityLabel("Task ID: \(task.id)")
         }
         .padding(.vertical, 4)
         .background(isHighlighted ? Color.accentColor.opacity(0.15) : Color.clear)
         .animation(.easeInOut(duration: 0.3), value: isHighlighted)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(task.id): \(task.title)")
+        .accessibilityValue("Priority \(task.priority.displayName), Status \(task.status.displayName), Tags: \(task.tags.joined(separator: ", "))")
+        .accessibilityHint("Select to view task details")
+        .accessibilityAddTraits(.isButton)
     }
 
     private func statusColor(_ status: RalphTaskStatus) -> Color {

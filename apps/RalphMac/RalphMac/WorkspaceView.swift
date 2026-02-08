@@ -51,7 +51,9 @@ struct WorkspaceView: View {
         List(SidebarSection.allCases, selection: $navigation.selectedSection) { section in
             Label(section.rawValue, systemImage: section.icon)
                 .tag(section)
+                .accessibilityHint("Navigate to \(section.rawValue)")
         }
+        .accessibilityLabel("Main navigation")
         .listStyle(.sidebar)
         #if swift(>=5.9)
         .sidebarBackground()
@@ -95,6 +97,8 @@ struct WorkspaceView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 240)
                 .help("Switch between List, Kanban, and Graph view (⌘⇧K)")
+                .accessibilityLabel("Task view mode")
+                .accessibilityHint("Switch between list, kanban board, and dependency graph views")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -345,6 +349,7 @@ struct WorkspaceView: View {
                     Text(task.id)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
+                        .accessibilityLabel("Task ID: \(task.id)")
 
                     Spacer()
 
@@ -376,6 +381,7 @@ struct WorkspaceView: View {
                         ElapsedTimeView(startTime: startTime)
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.secondary)
+                            .accessibilityLabel("Elapsed time")
                     }
                 }
             }
@@ -414,6 +420,8 @@ struct WorkspaceView: View {
                     }
                 }
                 .frame(height: 12)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Phase progress: \(workspace.currentPhase?.displayName ?? "Not started")")
 
                 // Phase indicators
                 HStack(spacing: 0) {
@@ -437,7 +445,11 @@ struct WorkspaceView: View {
         glassGroupBox("Runner Configuration") {
             VStack(alignment: .leading, spacing: 8) {
                 configRow(icon: "cpu", label: "Model", value: workspace.currentRunnerConfig?.model ?? "Default")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Model: \(workspace.currentRunnerConfig?.model ?? "Default")")
                 configRow(icon: "number", label: "Max Iterations", value: workspace.currentRunnerConfig?.maxIterations.map(String.init) ?? "Auto")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Max Iterations: \(workspace.currentRunnerConfig?.maxIterations.map(String.init) ?? "Auto")")
             }
         }
     }
@@ -454,6 +466,8 @@ struct WorkspaceView: View {
                                 .foregroundStyle(.red)
                         }
                         .buttonStyle(GlassButtonStyle())
+                        .accessibilityLabel("Stop execution")
+                        .accessibilityHint("Cancel the current task execution")
 
                         if workspace.isLoopMode {
                             Button(action: { workspace.stopLoop() }) {
@@ -467,12 +481,16 @@ struct WorkspaceView: View {
                             Label("Run Next Task", systemImage: "play.circle.fill")
                         }
                         .buttonStyle(GlassButtonStyle())
+                        .accessibilityLabel("Run next task")
+                        .accessibilityHint("Starts execution of the next task in the queue")
 
                         Button(action: { workspace.startLoop() }) {
                             Label("Start Loop", systemImage: "repeat.circle")
                         }
                         .buttonStyle(GlassButtonStyle())
                         .disabled(workspace.nextTask() == nil)
+                        .accessibilityLabel("Start task loop")
+                        .accessibilityHint("Continuously run tasks until stopped")
                     }
 
                     Spacer()
@@ -598,6 +616,7 @@ struct WorkspaceView: View {
             Text(priority.displayName)
                 .font(.caption)
         }
+        .accessibilityLabel("Priority: \(priority.displayName)")
     }
 
     @ViewBuilder
@@ -609,6 +628,7 @@ struct WorkspaceView: View {
             Text(status.displayName)
                 .font(.caption)
         }
+        .accessibilityLabel("Status: \(status.displayName)")
     }
 
     @ViewBuilder
@@ -920,10 +940,12 @@ struct WorkspaceView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(workspace.name)
                     .font(.headline)
+                    .accessibilityLabel("Workspace: \(workspace.name)")
                 Text(workspace.workingDirectoryURL.path)
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+                    .accessibilityLabel("Working directory: \(workspace.workingDirectoryURL.path)")
             }
 
             Spacer()
@@ -1063,6 +1085,7 @@ struct WorkspaceView: View {
             Image(systemName: icon)
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
 
             Text(title)
                 .font(.headline)
@@ -1073,6 +1096,8 @@ struct WorkspaceView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 300)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(message)")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.clear)
     }
@@ -1096,6 +1121,7 @@ struct WorkspaceView: View {
             Label(title, systemImage: icon)
         }
         .buttonStyle(GlassButtonStyle())
+        .accessibilityLabel("\(title)")
     }
 
     // MARK: - Helpers

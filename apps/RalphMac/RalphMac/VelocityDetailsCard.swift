@@ -55,5 +55,7 @@ struct DetailRow: View {
                 .font(.caption)
                 .fontWeight(.medium)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

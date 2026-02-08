@@ -2,50 +2,50 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0735",
+      "id": "RQ-0747",
       "status": "todo",
-      "title": "Add comprehensive accessibility support for VoiceOver compatibility",
-      "description": "The macOS app has zero accessibility labels, hints, or values. It is completely unusable with VoiceOver and fails macOS accessibility standards. All interactive elements need proper accessibility attributes to support users with visual impairments.",
+      "title": "Eliminate Rust and Swift test flakiness in local CI",
+      "description": "Stabilize the mandatory local CI gate by removing nondeterminism and flaky failures across Rust and Swift test suites while preserving full test coverage. Improve execution speed only where it does not increase flakiness, and verify deterministic behavior through repeated back-to-back runs.",
       "priority": "critical",
       "tags": [
-        "maintenance",
-        "macos",
-        "accessibility",
-        "a11y",
-        "voiceover"
+        "testing",
+        "flakiness",
+        "rust",
+        "swift",
+        "ci",
+        "reliability"
       ],
       "scope": [
-        "apps/RalphMac/RalphMac/TaskListView.swift",
-        "apps/RalphMac/RalphMac/TaskDetailView.swift",
-        "apps/RalphMac/RalphMac/KanbanBoardView.swift",
-        "apps/RalphMac/RalphMac/WorkspaceView.swift",
-        "apps/RalphMac/RalphMac/RunControlConsoleView.swift"
+        "crates/ralph/src",
+        "crates/ralph/tests",
+        "apps/RalphMac",
+        "Makefile",
+        "make test",
+        "make macos-ci",
+        "make ci",
+        "cargo test --workspace",
+        "xcodebuild test"
       ],
       "evidence": [
-        "grep -r 'accessibilityLabel\\|accessibilityHint\\|accessibilityValue' returned 0 results",
-        "No Accessibility Inspector annotations found in any view files",
-        "Custom views (KanbanCard, graph nodes) lack accessibility representation"
+        "User request: Rust tests are extremely time consuming and flaky, back-to-back runs fail differently, and Swift app tests show similar flakiness; eliminate flakiness and improve speed without reducing coverage.",
+        "Repo guideline in AGENTS.md: make ci is a mandatory local gate and must pass before claiming completion."
       ],
       "plan": [
-        "Audit all views with Accessibility Inspector tool",
-        "Add .accessibilityLabel() to all buttons and interactive elements",
-        "Add .accessibilityHint() where action purpose isn't obvious",
-        "Implement NSAccessibility protocols for custom views (Kanban cards, graph nodes)",
-        "Add accessibility identifiers for UI testing",
-        "Ensure proper accessibility sort order and focus management",
-        "Test full app navigation with VoiceOver enabled",
-        "Verify by: enable VoiceOver, verify all elements are announced correctly"
+        "Establish a reproducible baseline by running Rust and Swift test suites repeatedly in back-to-back loops and capturing failure signatures, timing, and affected test targets.",
+        "Identify root causes of nondeterminism (shared state, timing/race conditions, order dependence, environment leakage, fixture collisions, clock/network dependence) and group by fix pattern.",
+        "Implement deterministic test harness and test code fixes in Rust and Swift to isolate state and remove order/timing sensitivity; avoid compatibility shims and document any explicit behavior changes.",
+        "Apply safe performance improvements that do not increase flake risk (for example fixture reuse with isolation, deterministic parallelism controls, and expensive setup minimization).",
+        "Add or strengthen tests near changed code to cover both expected behavior and previously flaky failure modes, including regression checks for order independence.",
+        "Validate reliability by running repeated stress passes for Rust tests, Swift tests, make test, and make ci/macos-ci until results are consistent and deterministic."
       ],
       "notes": [],
-      "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
-      "created_at": "2026-02-08T19:37:03Z",
-      "updated_at": "2026-02-08T19:37:03Z",
+      "request": "The Rust tests are extremely time consuming and flaky. I need these to work better. Focus on ensuring no more flakiness. I don't want to forgo running all tests but if there is a way to speed them up without increasing flakiness please do that too. Overall flakiness is absurd. Back to back to back runs can produce different failures. Similar issues for the swift app tests. Overall, all test flakiness needs eliminated so our mandatory local CI gate is more reliable. Currently it flakes and causes wasted time.",
+      "created_at": "2026-02-08T21:16:04Z",
+      "updated_at": "2026-02-08T21:16:04Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {}
     },
     {
       "id": "RQ-0734",
@@ -83,14 +83,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0733",
@@ -127,14 +127,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0732",
@@ -169,20 +169,20 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0740",
       "status": "todo",
-      "title": "Fix O(N\u00b2) task comparison performance issue in change detection",
-      "description": "Workspace.detectTaskChanges() uses nested loops with first(where:) lookups resulting in O(N\u00b2) time complexity. For large task lists (500+ tasks), this causes UI stutter when file watching detects changes. The method should use Dictionary-based lookups for O(N) performance.",
+      "title": "Fix O(N²) task comparison performance issue in change detection",
+      "description": "Workspace.detectTaskChanges() uses nested loops with first(where:) lookups resulting in O(N²) time complexity. For large task lists (500+ tasks), this causes UI stutter when file watching detects changes. The method should use Dictionary-based lookups for O(N) performance.",
       "priority": "high",
       "tags": [
         "maintenance",
@@ -195,7 +195,7 @@
       ],
       "evidence": [
         "Workspace.swift lines 464-485: detectTaskChanges uses nested loops with first(where:)",
-        "Line 474: previous.first(where:) inside loop over current = O(N\u00b2)",
+        "Line 474: previous.first(where:) inside loop over current = O(N²)",
         "File watcher triggers this on every queue.json change - performance degrades with task count"
       ],
       "plan": [
@@ -209,14 +209,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0739",
@@ -251,14 +251,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0738",
@@ -293,14 +293,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0737",
@@ -337,14 +337,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0736",
@@ -381,14 +381,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0731",
@@ -437,8 +437,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "ipc_mechanism": "custom URL scheme",
-        "url_format": "ralph://open?workspace=<encoded_path>"
+        "url_format": "ralph://open?workspace=<encoded_path>",
+        "ipc_mechanism": "custom URL scheme"
       }
     },
     {
@@ -475,14 +475,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0745",
@@ -510,8 +510,8 @@
       ],
       "plan": [
         "Add FocusState management to track currently focused task",
-        "Implement arrow key navigation (\u2191\u2193) in TaskListView",
-        "Implement arrow key navigation (\u2190\u2192\u2191\u2193) between Kanban columns and cards",
+        "Implement arrow key navigation (↑↓) in TaskListView",
+        "Implement arrow key navigation (←→↑↓) between Kanban columns and cards",
         "Add Enter key to open selected task detail",
         "Add Space key for quick preview (if applicable)",
         "Add Cmd+Enter to start work on selected task",
@@ -521,14 +521,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0744",
@@ -563,14 +563,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0743",
@@ -604,14 +604,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0742",
@@ -648,14 +648,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0741",
@@ -692,14 +692,14 @@
       ],
       "notes": [],
       "request": "maintenance scan finding",
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      },
       "created_at": "2026-02-08T19:37:03Z",
       "updated_at": "2026-02-08T19:37:03Z",
       "depends_on": [],
       "blocks": [],
-      "relates_to": []
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     },
     {
       "id": "RQ-0728",

@@ -123,6 +123,8 @@ struct TaskCreationView: View {
             }
             .pickerStyle(.segmented)
             .padding()
+            .accessibilityLabel("Creation mode")
+            .accessibilityHint("Choose between quick create or advanced template selection")
 
             if mode == .quick {
                 quickCreateForm()
@@ -139,6 +141,8 @@ struct TaskCreationView: View {
             Section {
                 TextField("Task title", text: $title)
                     .font(.title3)
+                    .accessibilityLabel("Task title")
+                    .accessibilityHint("Enter a title for the new task")
 
                 Picker("Priority", selection: $priority) {
                     ForEach(RalphTaskPriority.allCases, id: \.self) { p in
@@ -146,16 +150,20 @@ struct TaskCreationView: View {
                             Circle()
                                 .fill(priorityColor(p))
                                 .frame(width: 8, height: 8)
+                                .accessibilityLabel("Priority: \(p.displayName)")
                             Text(p.displayName)
                         }
                         .tag(p)
                     }
                 }
+                .accessibilityLabel("Task priority")
             }
 
             Section {
                 Button("Create Task") { createTask() }
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isCreating)
+                    .accessibilityLabel("Create task")
+                    .accessibilityHint("Creates the new task with the specified title and priority")
             }
         }
         .formStyle(.grouped)
@@ -214,6 +222,7 @@ struct TaskCreationView: View {
                     Image(systemName: icon)
                         .font(.title2)
                         .foregroundStyle(Color.accentColor)
+                        .accessibilityHidden(true)
 
                     Spacer()
 
@@ -222,6 +231,7 @@ struct TaskCreationView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .help("Requires target path")
+                            .accessibilityLabel("Requires target input")
                     }
                 }
 
@@ -246,6 +256,9 @@ struct TaskCreationView: View {
             .cornerRadius(10)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(name) template")
+        .accessibilityValue(description)
+        .accessibilityHint(requiresTarget ? "Requires a target path to be specified" : "Click to select this template")
     }
 
     // MARK: - Task Form View
@@ -262,6 +275,8 @@ struct TaskCreationView: View {
                         Spacer()
                     }
                     .foregroundStyle(.secondary)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Using template: \(template.name)")
                 }
             }
 
@@ -269,6 +284,8 @@ struct TaskCreationView: View {
             if selectedTemplate?.requiresTarget == true {
                 Section("Target") {
                     TextField("File or module path (e.g., src/main.rs)", text: $target)
+                        .accessibilityLabel("Target path")
+                        .accessibilityHint("Required for template variable substitution")
                     Text("Required for template variable substitution ({{target}}, {{module}}, {{file}})")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -278,6 +295,7 @@ struct TaskCreationView: View {
             // Basic Fields
             Section("Basic Information") {
                 TextField("Title", text: $title)
+                    .accessibilityLabel("Task title")
 
                 Picker("Priority", selection: $priority) {
                     ForEach(RalphTaskPriority.allCases, id: \.self) { p in
@@ -285,17 +303,21 @@ struct TaskCreationView: View {
                             Circle()
                                 .fill(priorityColor(p))
                                 .frame(width: 8, height: 8)
+                                .accessibilityLabel("Priority: \(p.displayName)")
                             Text(p.displayName)
                         }
                         .tag(p)
                     }
                 }
+                .accessibilityLabel("Task priority")
             }
 
             // Description
             Section("Description") {
                 TextEditor(text: $description)
                     .frame(minHeight: 60)
+                    .accessibilityLabel("Task description")
+                    .accessibilityHint("Enter a description for the task")
             }
 
             // Tags

@@ -38,6 +38,13 @@ struct PriorityDistributionCard: View {
                     AxisMarks(position: .leading)
                 }
                 .frame(height: 100)
+                .accessibilityLabel("Priority distribution chart")
+                .accessibilityHint("Bar chart showing tasks by priority")
+                .accessibilityHidden(true)
+                
+                // Accessible alternative
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(priorityDistributionAccessibilityText(data: data))
             } else {
                 Text("No tasks")
                     .font(.caption)
@@ -57,5 +64,10 @@ struct PriorityDistributionCard: View {
         case .medium: return .yellow
         case .low: return .green
         }
+    }
+    
+    private func priorityDistributionAccessibilityText(data: [(priority: RalphTaskPriority, count: Int)]) -> String {
+        let items = data.filter { $0.count > 0 }.map { "\($0.priority.displayName): \($0.count)" }.joined(separator: ", ")
+        return "Priority distribution: \(items)"
     }
 }

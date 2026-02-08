@@ -13,6 +13,7 @@
  */
 
 import SwiftUI
+import Accessibility
 
 struct StringArrayEditor: View {
     @Binding var items: [String]
@@ -32,19 +33,24 @@ struct StringArrayEditor: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .frame(width: 24, alignment: .trailing)
+                                .accessibilityLabel("Item \(index + 1)")
                             
                             TextField(placeholder, text: $items[index])
                                 .textFieldStyle(.plain)
+                                .accessibilityLabel("Item \(index + 1)")
                             
                             Button(action: { removeItem(at: index) }) {
                                 Image(systemName: "minus.circle.fill")
                                     .foregroundStyle(.red.opacity(0.7))
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("Remove item \(index + 1)")
+                            .accessibilityHint("Removes this item from the list")
                         }
                         .padding(.vertical, 2)
                     }
                 }
+                .accessibilityLabel("\(items.count) items in list")
             }
             
             // Add new item
@@ -60,6 +66,8 @@ struct StringArrayEditor: View {
                     .onSubmit {
                         addItem()
                     }
+                    .accessibilityLabel("New item input")
+                    .accessibilityHint("Type an item and press Enter to add")
                 
                 Button(action: addItem) {
                     Image(systemName: "plus.circle.fill")
@@ -67,6 +75,8 @@ struct StringArrayEditor: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
                 .disabled(newItemText.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityLabel("Add item")
+                .accessibilityHint("Add the typed item to the list")
             }
             .padding(.top, items.isEmpty ? 0 : 4)
         }
@@ -78,11 +88,13 @@ struct StringArrayEditor: View {
         items.append(trimmed)
         newItemText = ""
         isInputFocused = true
+        AccessibilityNotification.announce("Item \(trimmed) added")
     }
     
     private func removeItem(at index: Int) {
         guard index >= 0 && index < items.count else { return }
         items.remove(at: index)
+        AccessibilityNotification.announce("Item removed")
     }
 }
 

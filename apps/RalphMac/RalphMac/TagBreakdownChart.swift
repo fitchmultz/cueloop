@@ -33,6 +33,9 @@ struct TagBreakdownChart: View {
                     }
                     .frame(width: 200, height: 200)
                     .chartLegend(position: .trailing, alignment: .center)
+                    .accessibilityLabel("Tag distribution chart")
+                    .accessibilityHint("Donut chart showing task distribution by tags")
+                    .accessibilityHidden(true)
                     
                     // Legend/List
                     VStack(alignment: .leading, spacing: 8) {
@@ -53,10 +56,19 @@ struct TagBreakdownChart: View {
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
+                
+                // Accessible alternative for VoiceOver
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(tagBreakdownAccessibilityText(tagBreakdown: tagBreakdown))
             } else {
                 emptyStateView(message: "No tagged tasks")
             }
         }
+    }
+    
+    private func tagBreakdownAccessibilityText(tagBreakdown: [TagBreakdown]) -> String {
+        let topTags = tagBreakdown.prefix(3).map { "\($0.tag): \($0.count)" }.joined(separator: ", ")
+        return "Tag distribution: \(topTags)"
     }
     
     @ViewBuilder

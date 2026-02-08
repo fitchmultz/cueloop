@@ -42,9 +42,13 @@ struct TaskAgingCard: View {
             let counts = agingCounts
             VStack(spacing: 8) {
                 AgingRow(label: "Fresh", count: counts.fresh, color: .green, threshold: "≤7d")
+                    .accessibilityLabel("Fresh: \(counts.fresh) tasks, ≤7d")
                 AgingRow(label: "Warning", count: counts.warning, color: .yellow, threshold: "8-14d")
+                    .accessibilityLabel("Warning: \(counts.warning) tasks, 8-14d")
                 AgingRow(label: "Stale", count: counts.stale, color: .orange, threshold: "15-30d")
+                    .accessibilityLabel("Stale: \(counts.stale) tasks, 15-30d")
                 AgingRow(label: "Rotten", count: counts.rotten, color: .red, threshold: ">30d")
+                    .accessibilityLabel("Rotten: \(counts.rotten) tasks, >30d")
             }
         }
         .padding()
@@ -80,5 +84,6 @@ struct AgingRow: View {
                 .fontWeight(.semibold)
                 .frame(width: 30, alignment: .trailing)
         }
+        .accessibilityElement(children: .combine)
     }
 }

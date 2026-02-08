@@ -33,6 +33,7 @@ struct TaskRelationshipPicker: View {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("\(label) relationships")
             
             // Selected relationships
             if relatedTaskIDs.isEmpty {
@@ -40,15 +41,18 @@ struct TaskRelationshipPicker: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .italic()
+                    .accessibilityLabel("No \(label) relationships set")
             } else {
                 // Use FlowLayout for relationship chips
                 FlowLayout(spacing: 6) {
-                    ForEach(relatedTaskIDs, id: \.self) { taskID in
+                    ForEach(Array(relatedTaskIDs.enumerated()), id: \.element) { index, taskID in
                         RelationshipChip(taskID: taskID) {
                             removeRelationship(taskID)
                         }
+                        .accessibilitySortPriority(Double(relatedTaskIDs.count - index))
                     }
                 }
+                .accessibilityLabel("\(relatedTaskIDs.count) \(label) relationships: \(relatedTaskIDs.joined(separator: ", "))")
             }
             
             // Add relationship picker
@@ -64,6 +68,7 @@ struct TaskRelationshipPicker: View {
                     }
                     .pickerStyle(.menu)
                     .frame(maxWidth: 200)
+                    .accessibilityLabel("Select a task to add as \(label)")
                     
                     Button(action: addRelationship) {
                         Image(systemName: "plus.circle.fill")
@@ -71,6 +76,8 @@ struct TaskRelationshipPicker: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.accentColor)
                     .disabled(selectedTaskID.isEmpty)
+                    .accessibilityLabel("Add selected task as \(label)")
+                    .accessibilityHint("Adds the selected task to the \(label) relationship")
                 }
             }
         }
@@ -105,12 +112,16 @@ struct RelationshipChip: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
+            .accessibilityLabel("Remove relationship to \(taskID)")
+            .accessibilityHint("Removes this task relationship")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color.secondary.opacity(0.15))
         .foregroundStyle(.primary)
         .cornerRadius(6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Relationship to \(taskID)")
     }
 }
 

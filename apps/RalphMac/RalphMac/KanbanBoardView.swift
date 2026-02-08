@@ -47,10 +47,18 @@ struct KanbanBoardView: View {
                             selectedTaskID = taskID
                         }
                     )
+                    // MARK: - Accessibility
+                    // Column accessibility label with status and task count
+                    .accessibilityLabel("\(status.displayName) column, \(statusTasks.count) tasks")
                 }
             }
             .padding(20)
         }
+        // MARK: - Accessibility
+        // Board-level accessibility for VoiceOver users
+        // Provides context about the Kanban board layout and navigation
+        .accessibilityLabel("Kanban board")
+        .accessibilityHint("Horizontal scroll to view columns. Shows tasks grouped by status.")
         .background(.clear)
         .overlay {
             if isUpdating {

@@ -24,6 +24,7 @@ import RalphCore
 struct DependencyGraphView: View {
     @ObservedObject var workspace: Workspace
     @Binding var selectedTaskID: String?
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     
     // MARK: - Layout State
     @State private var nodes: [PositionedNode] = []
@@ -44,53 +45,18 @@ struct DependencyGraphView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                // Background
-                Color.clear
-                
-                // Graph Canvas
-                Canvas { context, size in
-                    drawGraph(in: &context, size: size)
+            Group {
+                if voiceOverEnabled {
+                    accessibleListView()
+                } else {
+                    canvasGraphView(in: geometry)
                 }
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            if let last = lastDragLocation {
-                                let delta = CGSize(
-                                    width: value.location.x - last.x,
-                                    height: value.location.y - last.y
-                                )
-                                offset.width += delta.width
-                                offset.height += delta.height
-                            }
-                            lastDragLocation = value.location
-                        }
-                        .onEnded { _ in
-                            lastDragLocation = nil
-                        }
-                )
-                .gesture(
-                    MagnificationGesture()
-                        .onChanged { value in
-                            scale = min(max(scale * value, 0.3), 3.0)
-                        }
-                )
-                .onTapGesture { location in
-                    handleCanvasTap(at: location, in: geometry)
-                }
-                
-                // Overlay Controls
-                VStack {
-                    HStack {
-                        Spacer()
-                        zoomControls()
-                    }
-                    Spacer()
-                    legendView()
-                }
-                .padding()
             }
         }
+        .accessibilityLabel("Task dependency graph")
+        .accessibilityHint(voiceOverEnabled ? 
+            "Showing list view of task relationships" : 
+            "Visual graph showing task dependencies. Enable VoiceOver for list view.")
         .task {
             await workspace.loadGraphData()
             initializeGraph()
@@ -110,6 +76,149 @@ struct DependencyGraphView: View {
         } message: {
             Text(workspace.graphDataErrorMessage ?? "")
         }
+    }
+    
+    @ViewBuilder
+    private func canvasGraphView(in geometry: GeometryProxy) -> some View {
+        ZStack {
+            // Background
+            Color.clear
+            
+            // Graph Canvas
+            Canvas { context, size in
+                drawGraph(in: &context, size: size)
+            }
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        if let last = lastDragLocation {
+                            let delta = CGSize(
+                                width: value.location.x - last.x,
+                                height: value.location.y - last.y
+                            )
+                            offset.width += delta.width
+                            offset.height += delta.height
+                        }
+                        lastDragLocation = value.location
+                    }
+                    .onEnded { _ in
+                        lastDragLocation = nil
+                    }
+            )
+            .gesture(
+                MagnificationGesture()
+                    .onChanged { value in
+                        scale = min(max(scale * value, 0.3), 3.0)
+                    }
+            )
+            .onTapGesture { location in
+                handleCanvasTap(at: location, in: geometry)
+            }
+            
+            // Overlay Controls
+            VStack {
+                HStack {
+                    Spacer()
+                    zoomControls()
+                }
+                Spacer()
+                legendView()
+            }
+            .padding()
+        }
+    }
+    
+    @ViewBuilder
+    private func accessibleListView() -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Task Relationships")
+                    .font(.headline)
+                    .padding(.horizontal)
+                
+                if nodes.isEmpty {
+                    Text("No tasks to display")
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                } else {
+                    ForEach(nodes) { node in
+                        accessibleTaskCard(for: node)
+                    }
+                }
+            }
+            .padding(.vertical)
+        }
+    }
+    
+    @ViewBuilder
+    private func accessibleTaskCard(for node: PositionedNode) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: statusIcon(node.task.statusEnum))
+                    .foregroundStyle(statusColor(node.task.statusEnum))
+                    .accessibilityLabel("Status: \(node.task.statusEnum?.displayName ?? "Unknown")")
+                
+                Text(node.id)
+                    .font(.caption)
+                    .monospaced()
+                
+                Spacer()
+                
+                if node.task.isCritical {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                        .accessibilityLabel("Critical path task")
+                }
+            }
+            
+            Text(node.task.title)
+                .font(.headline)
+            
+            // Dependencies
+            if let deps = taskDependencies(for: node), !deps.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Depends on:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(deps, id: \.self) { dep in
+                        Text("• \(dep)")
+                            .font(.caption)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Depends on: \(deps.joined(separator: ", "))")
+            }
+            
+            // Blocked tasks
+            if let blocked = taskBlocked(for: node), !blocked.isEmpty {
+                Text("Blocks: \(blocked.joined(separator: ", "))")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel("Blocks: \(blocked.joined(separator: ", "))")
+            }
+            
+            // Related tasks
+            if let related = taskRelated(for: node), !related.isEmpty {
+                Text("Related: \(related.joined(separator: ", "))")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+                    .accessibilityLabel("Related to: \(related.joined(separator: ", "))")
+            }
+            
+            Button("Select Task") {
+                selectedTaskID = node.id
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Select \(node.id)")
+        }
+        .padding()
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(selectedTaskID == node.id ? Color.accentColor : Color.clear, lineWidth: 2)
+        )
+        .padding(.horizontal)
     }
     
     // MARK: - Initialization
@@ -405,16 +514,19 @@ struct DependencyGraphView: View {
                 Image(systemName: "plus.magnifyingglass")
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Zoom in")
             
             Button(action: { scale = 1.0; offset = .zero }) {
                 Image(systemName: "arrow.counterclockwise")
             }
             .buttonStyle(.bordered)
+            .accessibilityLabel("Reset zoom")
             
             Button(action: { scale = max(scale / 1.2, 0.3) }) {
                 Image(systemName: "minus.magnifyingglass")
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Zoom out")
         }
     }
     
@@ -423,15 +535,19 @@ struct DependencyGraphView: View {
             Label("Dependency", systemImage: "arrow.right")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Dependency relationship")
             Label("Blocks", systemImage: "line.diagonal")
                 .font(.caption)
                 .foregroundStyle(.orange)
+                .accessibilityLabel("Blocks relationship")
             Label("Relates To", systemImage: "line.diagonal")
                 .font(.caption)
                 .foregroundStyle(.blue.opacity(0.5))
+                .accessibilityLabel("Relates to relationship")
             Label("Critical Path", systemImage: "exclamationmark.triangle")
                 .font(.caption)
                 .foregroundStyle(.red)
+                .accessibilityLabel("Critical path indicator")
         }
         .padding(8)
         .background(.ultraThinMaterial)
@@ -448,6 +564,35 @@ struct DependencyGraphView: View {
         case .doing: return .orange
         case .done: return .green
         case .rejected: return .red
+        }
+    }
+    
+    private func taskDependencies(for node: PositionedNode) -> [String]? {
+        let deps = edges.filter { $0.from == node.id && $0.type == .dependency }
+            .map { $0.to }
+        return deps.isEmpty ? nil : deps
+    }
+    
+    private func taskBlocked(for node: PositionedNode) -> [String]? {
+        let blocked = edges.filter { $0.from == node.id && $0.type == .blocks }
+            .map { $0.to }
+        return blocked.isEmpty ? nil : blocked
+    }
+    
+    private func taskRelated(for node: PositionedNode) -> [String]? {
+        let related = edges.filter { ($0.from == node.id || $0.to == node.id) && $0.type == .relatesTo }
+            .map { $0.from == node.id ? $0.to : $0.from }
+        return related.isEmpty ? nil : related
+    }
+    
+    private func statusIcon(_ status: RalphTaskStatus?) -> String {
+        guard let status = status else { return "circle" }
+        switch status {
+        case .draft: return "pencil.circle"
+        case .todo: return "circle"
+        case .doing: return "arrow.triangle.2.circlepath"
+        case .done: return "checkmark.circle.fill"
+        case .rejected: return "xmark.circle"
         }
     }
 }

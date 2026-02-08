@@ -110,6 +110,8 @@ struct AnalyticsDashboardView: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 280)
+            .accessibilityLabel("Time range")
+            .accessibilityHint("Select the time period for analytics data")
             
             // Refresh Button
             Button(action: {
@@ -122,6 +124,8 @@ struct AnalyticsDashboardView: View {
             }
             .buttonStyle(.borderless)
             .disabled(workspace.analyticsLoading)
+            .accessibilityLabel("Refresh analytics")
+            .accessibilityHint("Reload analytics data for selected time range")
         }
     }
     
@@ -141,6 +145,7 @@ struct AnalyticsDashboardView: View {
                 icon: "checkmark.circle.fill",
                 color: .green
             )
+            .accessibilityLabel("Total Completed: \(String(workspace.analyticsData.productivitySummary?.totalCompleted ?? 0))")
             
             MetricCard(
                 title: "Current Streak",
@@ -148,6 +153,7 @@ struct AnalyticsDashboardView: View {
                 icon: "flame.fill",
                 color: .orange
             )
+            .accessibilityLabel("Current Streak: \(workspace.analyticsData.productivitySummary?.currentStreak ?? 0) days")
             
             MetricCard(
                 title: "Completion Rate",
@@ -155,6 +161,7 @@ struct AnalyticsDashboardView: View {
                 icon: "percent",
                 color: .blue
             )
+            .accessibilityLabel("Completion Rate: \(String(format: "%.1f%%", workspace.analyticsData.queueStats?.summary.terminalRate ?? 0))")
             
             MetricCard(
                 title: "Active Tasks",
@@ -162,6 +169,7 @@ struct AnalyticsDashboardView: View {
                 icon: "list.bullet",
                 color: .purple
             )
+            .accessibilityLabel("Active Tasks: \(String(workspace.analyticsData.queueStats?.summary.active ?? 0))")
         }
     }
     
@@ -175,6 +183,8 @@ struct AnalyticsDashboardView: View {
             }
         }
         .pickerStyle(.segmented)
+        .accessibilityLabel("Chart type")
+        .accessibilityHint("Select the type of chart to display")
     }
     
     // MARK: - Main Chart View
@@ -250,5 +260,6 @@ struct MetricCard: View {
         .padding()
         .background(.quaternary.opacity(0.15))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
     }
 }

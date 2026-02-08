@@ -38,6 +38,8 @@ struct RunControlConsoleView: View {
                 Toggle("Auto-scroll", isOn: $autoScroll)
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                    .accessibilityLabel("Auto-scroll console")
+                    .accessibilityHint("Automatically scroll to show latest output")
 
                 Divider()
                     .frame(height: 16)
@@ -49,6 +51,8 @@ struct RunControlConsoleView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("Copy all output")
+                .accessibilityLabel("Copy console output")
+                .accessibilityHint("Copies all console text to clipboard")
 
                 // Clear button (only when not running)
                 if !workspace.isRunning && !workspace.output.isEmpty {
@@ -58,6 +62,8 @@ struct RunControlConsoleView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
                     .help("Clear output")
+                    .accessibilityLabel("Clear console")
+                    .accessibilityHint("Clears all console output")
                 }
             }
 
@@ -92,6 +98,9 @@ struct RunControlConsoleView: View {
                         }
                     }
                 }
+                .accessibilityLabel("Console output area")
+                .accessibilityValue(consoleAccessibilityValue())
+                .accessibilityHint("Shows command output. Use copy button to access full text.")
             }
 
             // Status bar
@@ -105,6 +114,8 @@ struct RunControlConsoleView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Command is running")
                 } else if let status = workspace.lastExitStatus {
                     HStack(spacing: 6) {
                         Image(systemName: status.code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -113,6 +124,8 @@ struct RunControlConsoleView: View {
                             .font(.caption)
                             .foregroundStyle(status.code == 0 ? .green : .red)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Command finished with exit code \(status.code), \(status.code == 0 ? "success" : "failure")")
                 }
 
                 Spacer()
@@ -121,8 +134,17 @@ struct RunControlConsoleView: View {
                 Text("\(workspace.output.count) chars")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel("Console contains \(workspace.output.count) characters")
             }
         }
+    }
+
+    private func consoleAccessibilityValue() -> String {
+        if workspace.output.isEmpty {
+            return "Console is empty"
+        }
+        let lines = workspace.output.split(separator: "\n", omittingEmptySubsequences: false)
+        return "Console has \(lines.count) lines, \(workspace.output.count) characters"
     }
 
     @ViewBuilder
@@ -145,11 +167,13 @@ struct RunControlConsoleView: View {
     private func copyOutput() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(workspace.output, forType: .string)
+        AccessibilityNotification.announce("Console output copied to clipboard")
     }
 
     private func clearOutput() {
         workspace.output = ""
         workspace.attributedOutput = []
+        AccessibilityNotification.announce("Console cleared")
     }
 }
 

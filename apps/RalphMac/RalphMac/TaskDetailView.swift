@@ -74,6 +74,8 @@ struct TaskDetailView: View {
                     }
                     .disabled(!hasChanges() || isSaving)
                     .keyboardShortcut("s", modifiers: .command)
+                    .accessibilityLabel("Save changes")
+                    .accessibilityHint("Save all changes to this task")
                 }
             }
 
@@ -84,6 +86,8 @@ struct TaskDetailView: View {
                     }
                 }
                 .disabled(!hasChanges())
+                .accessibilityLabel("Reset changes")
+                .accessibilityHint("Discard all changes and revert to saved version")
             }
         }
         .alert("Discard Changes?", isPresented: $showingUnsavedChangesAlert) {
@@ -121,6 +125,8 @@ struct TaskDetailView: View {
                         .foregroundStyle(.secondary)
                     TextField("Task title", text: $draftTask.title)
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Task title")
+                        .accessibilityHint("Enter the task title")
                 }
 
                 // Description
@@ -137,6 +143,8 @@ struct TaskDetailView: View {
                     .padding(4)
                     .background(Color(NSColor.textBackgroundColor))
                     .cornerRadius(6)
+                    .accessibilityLabel("Task description")
+                    .accessibilityHint("Enter a detailed description of the task")
                 }
             }
         }
@@ -157,6 +165,7 @@ struct TaskDetailView: View {
                                 Circle()
                                     .fill(statusColor(status))
                                     .frame(width: 8, height: 8)
+                                    .accessibilityLabel("Status: \(status.displayName)")
                                 Text(status.displayName)
                             }
                             .tag(status)
@@ -164,6 +173,7 @@ struct TaskDetailView: View {
                     }
                     .pickerStyle(.menu)
                     .frame(width: 140)
+                    .accessibilityLabel("Task status")
                 }
 
                 // Priority Picker
@@ -177,6 +187,7 @@ struct TaskDetailView: View {
                                 Circle()
                                     .fill(priorityColor(priority))
                                     .frame(width: 8, height: 8)
+                                    .accessibilityLabel("Priority: \(priority.displayName)")
                                 Text(priority.displayName)
                             }
                             .tag(priority)
@@ -184,6 +195,7 @@ struct TaskDetailView: View {
                     }
                     .pickerStyle(.menu)
                     .frame(width: 140)
+                    .accessibilityLabel("Task priority")
                 }
 
                 Spacer()
@@ -366,6 +378,7 @@ struct TaskDetailView: View {
 
             Spacer()
         }
+        .accessibilityLabel("\(label): \(date != nil ? formatDateForAccessibility(date!) : "Not set")")
     }
 
     @ViewBuilder
@@ -377,6 +390,7 @@ struct TaskDetailView: View {
                 .padding(.vertical, 4)
         }
         .buttonStyle(GlassButtonStyle())
+        .accessibilityLabel("Add \(title) field")
     }
 
     // MARK: - Helper Methods
@@ -393,6 +407,7 @@ struct TaskDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .underPageBackground(cornerRadius: 10, isEmphasized: false)
         }
+        .accessibilityLabel("\(title) section")
     }
 
     private func hasChanges() -> Bool {
@@ -457,6 +472,13 @@ struct TaskDetailView: View {
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func formatDateForAccessibility(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }

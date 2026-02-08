@@ -58,10 +58,26 @@ struct BurndownChartView: View {
                     AxisMarks(position: .leading)
                 }
                 .padding()
+                .accessibilityLabel("Burndown chart")
+                .accessibilityHint("Line chart showing remaining tasks over time")
+                .accessibilityHidden(true)
+                
+                // Accessible alternative for VoiceOver
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(burndownAccessibilityText(burndown: burndown))
             } else {
                 emptyStateView(message: "No burndown data available")
             }
         }
+    }
+    
+    private func burndownAccessibilityText(burndown: BurndownReport) -> String {
+        guard let first = burndown.dailyCounts.first,
+              let last = burndown.dailyCounts.last else {
+            return "No burndown data available"
+        }
+        let completed = first.remaining - last.remaining
+        return "Burndown: Started with \(first.remaining) tasks, now at \(last.remaining). \(completed) tasks completed over \(burndown.dailyCounts.count) days."
     }
     
     private func formatDate(_ dateString: String) -> String {

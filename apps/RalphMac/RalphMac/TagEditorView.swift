@@ -23,12 +23,14 @@ struct TagEditorView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Tag chips in a FlowLayout
             FlowLayout(spacing: 6) {
-                ForEach(tags, id: \.self) { tag in
+                ForEach(Array(tags.enumerated()), id: \.element) { index, tag in
                     TagChip(tag: tag) {
                         removeTag(tag)
                     }
+                    .accessibilitySortPriority(Double(tags.count - index))
                 }
             }
+            .accessibilityLabel("Current tags: \(tags.isEmpty ? "None" : tags.joined(separator: ", "))")
             
             // Add new tag input
             HStack {
@@ -38,6 +40,8 @@ struct TagEditorView: View {
                     .onSubmit {
                         addTag()
                     }
+                    .accessibilityLabel("New tag input")
+                    .accessibilityHint("Type a tag name and press Enter to add")
                 
                 Button(action: addTag) {
                     Image(systemName: "plus.circle.fill")
@@ -45,6 +49,8 @@ struct TagEditorView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
                 .disabled(newTagText.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityLabel("Add tag")
+                .accessibilityHint("Add the typed tag to the list")
             }
         }
     }
@@ -82,12 +88,17 @@ struct TagChip: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
+            .accessibilityLabel("Remove tag \(tag)")
+            .accessibilityHint("Removes this tag from the task")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color.accentColor.opacity(0.15))
         .foregroundStyle(.primary)
         .cornerRadius(6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Tag: \(tag)")
+        .accessibilityHint("Double click to remove")
     }
 }
 
