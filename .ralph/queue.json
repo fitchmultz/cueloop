@@ -2,6 +2,395 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0735",
+      "status": "todo",
+      "title": "Add comprehensive accessibility support for VoiceOver compatibility",
+      "description": "The macOS app has zero accessibility labels, hints, or values. It is completely unusable with VoiceOver and fails macOS accessibility standards. All interactive elements need proper accessibility attributes to support users with visual impairments.",
+      "priority": "critical",
+      "tags": [
+        "maintenance",
+        "macos",
+        "accessibility",
+        "a11y",
+        "voiceover"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/TaskListView.swift",
+        "apps/RalphMac/RalphMac/TaskDetailView.swift",
+        "apps/RalphMac/RalphMac/KanbanBoardView.swift",
+        "apps/RalphMac/RalphMac/WorkspaceView.swift",
+        "apps/RalphMac/RalphMac/RunControlConsoleView.swift"
+      ],
+      "evidence": [
+        "grep -r 'accessibilityLabel\\|accessibilityHint\\|accessibilityValue' returned 0 results",
+        "No Accessibility Inspector annotations found in any view files",
+        "Custom views (KanbanCard, graph nodes) lack accessibility representation"
+      ],
+      "plan": [
+        "Audit all views with Accessibility Inspector tool",
+        "Add .accessibilityLabel() to all buttons and interactive elements",
+        "Add .accessibilityHint() where action purpose isn't obvious",
+        "Implement NSAccessibility protocols for custom views (Kanban cards, graph nodes)",
+        "Add accessibility identifiers for UI testing",
+        "Ensure proper accessibility sort order and focus management",
+        "Test full app navigation with VoiceOver enabled",
+        "Verify by: enable VoiceOver, verify all elements are announced correctly"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0734",
+      "status": "todo",
+      "title": "Fix @unchecked Sendable data race risks in core classes",
+      "description": "Workspace, RalphCLIRun, and QueueFileWatcher use @unchecked Sendable to suppress Swift concurrency warnings. This is unsafe as these classes have mutable shared state that could cause data races. Proper concurrency isolation with @MainActor or actors should be implemented.",
+      "priority": "critical",
+      "tags": [
+        "maintenance",
+        "macos",
+        "concurrency",
+        "data-race",
+        "swift-6"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/Workspace.swift",
+        "apps/RalphMac/RalphCore/RalphCLIClient.swift",
+        "apps/RalphMac/RalphCore/QueueFileWatcher.swift"
+      ],
+      "evidence": [
+        "Workspace.swift line 24: 'public final class Workspace: @unchecked Sendable'",
+        "RalphCLIClient.swift line 67: 'public final class RalphCLIRun: @unchecked Sendable'",
+        "QueueFileWatcher.swift line 23: 'public final class QueueFileWatcher: @unchecked Sendable'",
+        "These suppress concurrency safety without proper isolation"
+      ],
+      "plan": [
+        "Enable strict concurrency checking in Xcode build settings",
+        "Refactor Workspace to use @MainActor for all @Published properties",
+        "Convert RalphCLIRun to use actor isolation for mutable state",
+        "Apply @MainActor to QueueFileWatcher callback handlers",
+        "Replace NSLock usage with actor or Sendable constructs where appropriate",
+        "Run Thread Sanitizer to verify no data races remain",
+        "Fix all compiler warnings for concurrency",
+        "Verify by: build with SWIFT_STRICT_CONCURRENCY=complete, no warnings"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0733",
+      "status": "todo",
+      "title": "Add CLI version compatibility check on app launch",
+      "description": "The macOS app does not verify the bundled ralph CLI version on launch. If the CLI is incompatible (wrong version, corrupted, or missing), the app will fail unpredictably during operations instead of showing a clear error at startup. Version checking should happen early with actionable guidance.",
+      "priority": "critical",
+      "tags": [
+        "maintenance",
+        "macos",
+        "version-check",
+        "compatibility",
+        "reliability"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/RalphMacApp.swift",
+        "apps/RalphMac/RalphCore/RalphCLIClient.swift",
+        "apps/RalphMac/RalphCore/WorkspaceManager.swift"
+      ],
+      "evidence": [
+        "RalphMacApp.swift lines 215-221: Creates workspace without CLI validation",
+        "No version parsing or compatibility matrix implemented",
+        "E2E test only checks version exists, not compatibility"
+      ],
+      "plan": [
+        "Define supported CLI version range (e.g., 0.1.0 - 0.2.0)",
+        "Add version check in WorkspaceManager initialization",
+        "Parse 'ralph --version' output and compare against supported range",
+        "Show blocking alert if CLI is incompatible with download/reinstall options",
+        "Add 'Check for Updates' menu item for manual version check",
+        "Cache version check result to avoid repeated calls",
+        "Write tests for version parsing and compatibility logic",
+        "Verify by: launch app with incompatible CLI version, verify warning appears"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0732",
+      "status": "todo",
+      "title": "Implement ANSI escape code parsing for colored console output",
+      "description": "Workspace.parseANSICodes() is completely stubbed - it just returns the raw text without parsing any ANSI escape sequences. The console shows raw escape codes (e.g., '[32m') instead of colored text, making output hard to read. A proper ANSI parser needs to be implemented.",
+      "priority": "critical",
+      "tags": [
+        "maintenance",
+        "macos",
+        "ansi",
+        "console",
+        "ui"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "Workspace.swift lines 1000-1029: parseANSICodes() creates single unstyled segment",
+        "Line 1005-1012: Comment says 'For now, create a single segment with default styling'",
+        "Console output shows raw ANSI codes like '[32m' instead of green text"
+      ],
+      "plan": [
+        "Implement ANSI escape sequence parser supporting SGR codes (colors, bold, italic)",
+        "Support 8 standard colors, bright variants, and 256-color codes",
+        "Handle reset codes (0m) properly",
+        "Support cursor movement codes for progress bars (or strip them)",
+        "Update ANSISegment struct to support all parsed attributes",
+        "Write unit tests for various ANSI sequences",
+        "Test with actual ralph CLI output containing colors",
+        "Verify by: run 'ralph run one', verify console shows colored output not raw codes"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0740",
+      "status": "todo",
+      "title": "Fix O(N\u00b2) task comparison performance issue in change detection",
+      "description": "Workspace.detectTaskChanges() uses nested loops with first(where:) lookups resulting in O(N\u00b2) time complexity. For large task lists (500+ tasks), this causes UI stutter when file watching detects changes. The method should use Dictionary-based lookups for O(N) performance.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "macos",
+        "performance",
+        "optimization"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "Workspace.swift lines 464-485: detectTaskChanges uses nested loops with first(where:)",
+        "Line 474: previous.first(where:) inside loop over current = O(N\u00b2)",
+        "File watcher triggers this on every queue.json change - performance degrades with task count"
+      ],
+      "plan": [
+        "Refactor detectTaskChanges to use Dictionary for O(1) lookups",
+        "Create [String: RalphTask] maps for both previous and current tasks",
+        "Compare using dictionary lookups instead of array scanning",
+        "Add performance test with 1000+ tasks to verify O(N) behavior",
+        "Consider adding @MainActor isolation to prevent concurrent modifications",
+        "Profile with Instruments to verify performance improvement",
+        "Verify by: create 1000 tasks, modify externally, verify UI updates without stutter"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0739",
+      "status": "todo",
+      "title": "Add console output size limit to prevent memory exhaustion",
+      "description": "RunControlConsoleView accumulates all CLI output in memory without any size limit. Long-running tasks or tasks with verbose output can consume excessive memory, potentially causing the app to crash or be killed by the system. The console should implement a rolling buffer with configurable limits.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "macos",
+        "memory",
+        "performance",
+        "reliability"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/RunControlConsoleView.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "Workspace.swift line 30: @Published public var output: String - grows unbounded",
+        "RunControlConsoleView.swift lines 67-80: All output accumulated in workspace.output",
+        "No truncation or rolling buffer implemented for long-running processes"
+      ],
+      "plan": [
+        "Implement CircularOutputBuffer with configurable max lines (default 10,000)",
+        "Add max total characters limit (default 10MB) with overflow indicator",
+        "Add 'Clear Output' button to manually free memory",
+        "Optionally save overflow to temp file for full log access",
+        "Add visual indicator when output is truncated",
+        "Write tests for buffer overflow behavior",
+        "Verify by: run task with massive output, verify memory stays bounded"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0738",
+      "status": "todo",
+      "title": "Add retry logic with exponential backoff for transient CLI failures",
+      "description": "CLI operations that fail due to transient issues (file locking, temporary IO errors) are not retried, causing operations to fail unnecessarily. The app should implement automatic retry with exponential backoff for recoverable errors, improving reliability without user intervention.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "macos",
+        "reliability",
+        "retry-logic",
+        "error-handling"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/RalphCLIClient.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "RalphCLIClient.swift lines 340-364: runAndCollect fails immediately on any error",
+        "Workspace.swift updateTaskStatus (lines 622-653): No retry for transient failures",
+        "Queue file locking conflicts cause immediate failures without retry"
+      ],
+      "plan": [
+        "Define retryable error types (file locked, IO timeout, temporary unavailable)",
+        "Implement retry helper with exponential backoff (100ms, 200ms, 400ms, 800ms, 1600ms)",
+        "Add max retry count (default 3) with user-visible progress",
+        "Apply retry to critical operations: loadTasks, updateTaskStatus, createTask",
+        "Add jitter to prevent thundering herd in multi-instance scenarios",
+        "Write tests simulating transient failures",
+        "Verify by: simulate file lock during operation, verify automatic retry succeeds"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0737",
+      "status": "todo",
+      "title": "Add XCUITest coverage for critical user flows",
+      "description": "The macOS app has only 3 unit tests and 0 XCUITests. Critical user flows (task creation, editing, status changes, execution control) have no automated UI testing. This allows regressions to go undetected and requires manual testing for every release.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "macos",
+        "testing",
+        "quality",
+        "automation"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMacUITests/",
+        "apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
+      ],
+      "evidence": [
+        "Only 3 test files exist: RalphCLIClientTests, RalphModelsTests, RalphE2ESmokeTests",
+        "0 XCUITest files - no UI automation coverage",
+        "Critical flows (create task, edit task, run task, kanban drag-drop) untested"
+      ],
+      "plan": [
+        "Create RalphMacUITests target with XCUITest bundle",
+        "Add test: Create new task via UI and verify it appears in list",
+        "Add test: Edit task title and verify change persists",
+        "Add test: Change task status via Kanban drag-drop",
+        "Add test: Run next task and verify console output appears",
+        "Add test: Switch between view modes (list, kanban, graph)",
+        "Add test: Create and switch between multiple workspaces",
+        "Integrate UI tests into make macos-ci target",
+        "Verify by: run make macos-ci, all UI tests pass"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0736",
+      "status": "todo",
+      "title": "Replace print statements with structured logging and add crash reporting",
+      "description": "The macOS app uses print() for debug output which is lost in production and not visible to users. There is no structured logging system or crash reporting mechanism, making it impossible to diagnose issues in the field. This should be replaced with os.log and a crash reporter.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "macos",
+        "logging",
+        "crash-reporting",
+        "observability"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/QueueFileWatcher.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift",
+        "apps/RalphMac/RalphMac/"
+      ],
+      "evidence": [
+        "QueueFileWatcher.swift lines 103, 111, 118: Uses print() for logging",
+        "No os.log or Logger usage found in the codebase",
+        "No crash reporting framework or custom crash handler implemented"
+      ],
+      "plan": [
+        "Replace all print() statements with os.Logger appropriate categories",
+        "Create RalphLogger helper with subsystem 'com.mitchfultz.ralph'",
+        "Implement log levels: debug, info, error, fault",
+        "Add crash reporter (PLCrashReporter or Sentry) for release builds",
+        "Add 'Export Logs' feature in Help menu for user support",
+        "Ensure logs don't contain sensitive data (redact paths if needed)",
+        "Write tests verifying logs are created at appropriate levels",
+        "Verify by: run app, check Console.app for structured Ralph logs"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
       "id": "RQ-0731",
       "status": "todo",
       "title": "Implement workspace directory passing from CLI to macOS app",
@@ -51,6 +440,266 @@
         "ipc_mechanism": "custom URL scheme",
         "url_format": "ralph://open?workspace=<encoded_path>"
       }
+    },
+    {
+      "id": "RQ-0746",
+      "status": "todo",
+      "title": "Fix window state not restored on app relaunch",
+      "description": "The macOS app does not restore window state (workspace directories, selected tabs, navigation state) when the app is quit and relaunched. WindowState persistence exists but is not being applied on app startup. This degrades user experience as users must manually reopen their workspaces each time.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "macos",
+        "state-restoration",
+        "ux"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/RalphMacApp.swift",
+        "apps/RalphMac/RalphMac/WindowView.swift",
+        "apps/RalphMac/RalphCore/WindowState.swift",
+        "apps/RalphMac/RalphCore/WorkspaceManager.swift"
+      ],
+      "evidence": [
+        "WindowState.swift exists for persistence but WindowViewContainer always creates fresh state",
+        "RalphMacApp.swift lines 199-223: WindowViewContainer creates new workspace on every launch",
+        "No NSWindowRestoration or SwiftUI window restoration implemented"
+      ],
+      "plan": [
+        "Implement window restoration using NSWindowRestoration protocol",
+        "Modify WindowViewContainer to load saved WindowState from UserDefaults on launch",
+        "Save window state (size, position, workspace directories) on app termination",
+        "Add restoration for NavigationViewModel state (selected section, view mode)",
+        "Ensure state is saved when workspaces are added/removed/renamed",
+        "Write unit tests for state save/load round-trip",
+        "Verify by: open app, open multiple workspaces, quit, relaunch - state should restore"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0745",
+      "status": "todo",
+      "title": "Add keyboard navigation support in task lists and Kanban board",
+      "description": "The task list and Kanban board views lack full keyboard navigation support. Users cannot navigate between tasks using arrow keys, select tasks with Enter/Space, or perform actions via keyboard shortcuts. This makes the app inaccessible to keyboard-only users and reduces productivity for power users.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "macos",
+        "accessibility",
+        "keyboard",
+        "ux"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/TaskListView.swift",
+        "apps/RalphMac/RalphMac/KanbanBoardView.swift",
+        "apps/RalphMac/RalphMac/KanbanColumnView.swift",
+        "apps/RalphMac/RalphMac/KanbanCardView.swift"
+      ],
+      "evidence": [
+        "TaskListView.swift (507 lines): No keyboard event handling for arrow keys",
+        "KanbanBoardView.swift (143 lines): No keyboard navigation between columns or cards",
+        "No focus management or onKeyPress handlers in list/card views"
+      ],
+      "plan": [
+        "Add FocusState management to track currently focused task",
+        "Implement arrow key navigation (\u2191\u2193) in TaskListView",
+        "Implement arrow key navigation (\u2190\u2192\u2191\u2193) between Kanban columns and cards",
+        "Add Enter key to open selected task detail",
+        "Add Space key for quick preview (if applicable)",
+        "Add Cmd+Enter to start work on selected task",
+        "Ensure focus ring is visible for all interactive elements",
+        "Write XCUITest to verify keyboard navigation works",
+        "Verify by: use Tab to enter list, arrow keys to navigate, Enter to select"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0744",
+      "status": "todo",
+      "title": "Add dependency cycle detection warning in graph view",
+      "description": "The DependencyGraphView does not detect or warn users about circular dependencies (e.g., Task A depends on B, B depends on C, C depends on A). Cycles can cause infinite loops in task processing and make the queue state invalid. The graph should visually highlight cycles and show a warning.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "macos",
+        "graph",
+        "validation",
+        "bug-prevention"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/DependencyGraphView.swift",
+        "apps/RalphMac/RalphCore/GraphModels.swift"
+      ],
+      "evidence": [
+        "DependencyGraphView.swift lines 133-150: Creates edges without cycle detection",
+        "No cycle detection algorithm implemented in graph handling",
+        "Circular dependencies would cause undefined behavior in task execution order"
+      ],
+      "plan": [
+        "Implement cycle detection using DFS (Tarjan's algorithm or simple visited set)",
+        "Add cycle visualization - highlight edges involved in cycle in red",
+        "Add warning banner when cycles are detected",
+        "Add cycle details showing the chain of dependencies forming the cycle",
+        "Consider blocking status changes that would create cycles",
+        "Write unit tests for cycle detection with various graph shapes",
+        "Verify by: create tasks with circular dependencies, open graph view, verify warning shows"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0743",
+      "status": "todo",
+      "title": "Add conflict detection for external task changes during editing",
+      "description": "TaskDetailView does not detect when a task has been modified externally (via CLI or another app instance) while the user is editing it. This can lead to data loss when the user saves, overwriting the external changes. The app should warn users about conflicts and offer merge options.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "macos",
+        "data-integrity",
+        "conflict-resolution"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/TaskDetailView.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "TaskDetailView.swift lines 31-42: Draft task created from initial task, no update tracking",
+        "File watching triggers reload but doesn't check if user is currently editing",
+        "No mechanism to compare task version at save time vs. edit start time"
+      ],
+      "plan": [
+        "Store original task checksum/version when editing begins",
+        "On file change notification, compare current task with draft",
+        "Show conflict alert if task changed externally with options: overwrite, discard changes, or merge",
+        "Implement merge view showing diff between local and external changes",
+        "Add 'modified externally' indicator in UI when conflict detected",
+        "Write tests for conflict detection scenarios",
+        "Verify by: open task in app, modify via CLI, attempt save in app - conflict should appear"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0742",
+      "status": "todo",
+      "title": "Add error recovery UI for failed CLI operations",
+      "description": "When CLI operations fail (network issues, corrupted queue, permission errors), the app shows a simple error message but offers no recovery options. Users cannot retry, view detailed error logs, or get guidance on fixing the issue. This leaves users stuck when errors occur.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "macos",
+        "error-handling",
+        "ux",
+        "reliability"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/WorkspaceView.swift",
+        "apps/RalphMac/RalphMac/TaskListView.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "WorkspaceView.swift lines 284-290: Simple error display with no recovery actions",
+        "TaskListView.swift lines 225-232: Error shown but no retry mechanism",
+        "All error handling shows static text without actionable recovery steps"
+      ],
+      "plan": [
+        "Create reusable ErrorRecoveryView with retry, diagnose, and dismiss actions",
+        "Add detailed error logging with 'Copy Error Details' button",
+        "Implement retry with exponential backoff for transient failures",
+        "Add 'Diagnose' button that runs ralph queue validate and shows results",
+        "Show contextual help based on error type (permission, parse, network)",
+        "Add 'Open in Terminal' button to debug CLI issues manually",
+        "Write tests for error recovery flows",
+        "Verify by: induce CLI error (bad permissions), verify recovery UI appears with retry option"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
+    },
+    {
+      "id": "RQ-0741",
+      "status": "todo",
+      "title": "Add offline mode detection and graceful degradation",
+      "description": "The macOS app does not detect when the bundled ralph CLI is unavailable or when the workspace directory is inaccessible. The app shows loading spinners indefinitely or crashes without clear feedback. The app should detect offline/unavailable state and show appropriate UI.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "macos",
+        "offline",
+        "error-handling",
+        "reliability"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/RalphMacApp.swift",
+        "apps/RalphMac/RalphCore/RalphCLIClient.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "RalphCLIClient.swift lines 265-278: Validates executable but no ongoing availability checks",
+        "Workspace.swift loadTasks() hangs indefinitely if CLI fails to respond",
+        "No timeout handling for CLI operations in the UI layer"
+      ],
+      "plan": [
+        "Implement CLI health check on app launch and workspace switch",
+        "Add timeout (30s) for all CLI operations with user-cancelable progress",
+        "Create OfflineBannerView to show when CLI is unavailable",
+        "Add 'Retry Connection' button with visual feedback",
+        "Cache last known task list for offline viewing (read-only mode)",
+        "Show appropriate messages for different failure modes (no CLI, no workspace, permission denied)",
+        "Write tests for offline behavior simulation",
+        "Verify by: remove/move ralph binary, launch app - should show offline state with retry"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "created_at": "2026-02-08T19:37:03Z",
+      "updated_at": "2026-02-08T19:37:03Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": []
     },
     {
       "id": "RQ-0728",
