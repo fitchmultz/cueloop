@@ -26,6 +26,9 @@ struct TaskListView: View {
     @ObservedObject var workspace: Workspace
     @Binding var selectedTaskID: String?
     @State private var showingTaskCreation = false
+    @State private var isRefreshingFromExternalChange = false
+    @State private var recentlyChangedTaskIDs: Set<String> = []
+    @State private var showExternalUpdateBanner = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,6 +45,11 @@ struct TaskListView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
 
+            // External update banner
+            externalUpdateBanner()
+                .padding(.horizontal, 16)
+                .padding(.top, showExternalUpdateBanner ? 8 : 0)
+            
             // Task list
             taskList()
                 .padding(.horizontal, 16)
@@ -63,6 +71,9 @@ struct TaskListView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .showTaskCreation)) { _ in
             showingTaskCreation = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .queueFilesExternallyChanged)) { notification in
+            handleExternalChange(notification)
         }
     }
 
@@ -236,8 +247,16 @@ struct TaskListView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(filteredTasks, selection: $selectedTaskID) { task in
-                    TaskRow(task: task)
+                    TaskRow(
+                        task: task,
+                        isHighlighted: recentlyChangedTaskIDs.contains(task.id)
+                    )
                         .tag(task.id)
+                        // Add slide-in animation for new tasks
+                        .transition(.asymmetric(
+                            insertion: .slide.combined(with: .opacity),
+                            removal: .opacity
+                        ))
                         .listRowSeparator(.visible)
                         .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                         .contentShape(Rectangle())
@@ -324,12 +343,86 @@ struct TaskListView: View {
             return .gray
         }
     }
+    
+    // MARK: - External Change Handling
+    
+    private func handleExternalChange(_ notification: Notification) {
+        // Show banner notification
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showExternalUpdateBanner = true
+        }
+        
+        // Hide banner after delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showExternalUpdateBanner = false
+            }
+        }
+        
+        // Track changed tasks for animation
+        if let userInfo = notification.userInfo,
+           let previousTasks = userInfo["previousTasks"] as? [RalphTask],
+           let currentTasks = userInfo["currentTasks"] as? [RalphTask] {
+            let changes = workspace.detectTaskChanges(previous: previousTasks, current: currentTasks)
+            
+            // Mark changed tasks for visual feedback
+            var changedIDs = Set(changes.changed.map { $0.id })
+            changedIDs.formUnion(changes.added.map { $0.id })
+            
+            withAnimation(.easeInOut(duration: 0.3)) {
+                recentlyChangedTaskIDs = changedIDs
+            }
+            
+            // Clear highlight after animation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    recentlyChangedTaskIDs.removeAll()
+                }
+            }
+        }
+        
+        // Pulse animation effect
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isRefreshingFromExternalChange = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isRefreshingFromExternalChange = false
+            }
+        }
+    }
+    
+    // MARK: - External Update Banner
+    
+    @ViewBuilder
+    private func externalUpdateBanner() -> some View {
+        if showExternalUpdateBanner {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .foregroundStyle(.blue)
+                Text("Queue updated externally")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.blue.opacity(0.1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(.blue.opacity(0.3), lineWidth: 1)
+            )
+            .cornerRadius(6)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
 }
 
 // MARK: - Task Row
 
 struct TaskRow: View {
     let task: RalphTask
+    var isHighlighted: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -380,6 +473,8 @@ struct TaskRow: View {
                 .monospaced()
         }
         .padding(.vertical, 4)
+        .background(isHighlighted ? Color.accentColor.opacity(0.15) : Color.clear)
+        .animation(.easeInOut(duration: 0.3), value: isHighlighted)
     }
 
     private func statusColor(_ status: RalphTaskStatus) -> Color {

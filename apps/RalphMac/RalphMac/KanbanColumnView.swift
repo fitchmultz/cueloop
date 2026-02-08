@@ -27,6 +27,7 @@ struct KanbanColumnView: View {
     let isTaskOverdue: (RalphTask) -> Bool
     let onTaskDrop: (String) -> Void
     let onTaskSelect: (String) -> Void
+    var highlightedTaskIDs: Set<String> = []
 
     @State private var isTargeted = false
 
@@ -111,7 +112,8 @@ struct KanbanColumnView: View {
             isBlocked: isTaskBlocked(task),
             isOverdue: isTaskOverdue(task),
             hasDependencies: task.dependsOn?.isEmpty == false,
-            blockedCount: task.dependsOn?.count ?? 0
+            blockedCount: task.dependsOn?.count ?? 0,
+            isHighlighted: highlightedTaskIDs.contains(task.id)
         )
         .contentShape(Rectangle())
         .onTapGesture {

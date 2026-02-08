@@ -75,6 +75,10 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
     private var client: RalphCLIClient?
     private var currentRun: RalphCLIRun?
     private var cancellables = Set<AnyCancellable>()
+    private var fileWatcher: QueueFileWatcher?
+    
+    // Track last known task state for detecting specific changes
+    @Published public var lastTasksSnapshot: [RalphTask] = []
 
     // MARK: - Initialization
 
@@ -93,6 +97,9 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         self.client = client
 
         loadState()
+        
+        // Start file watching after initialization
+        startFileWatching()
     }
 
     // MARK: - Persistence Keys
@@ -152,6 +159,12 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         recentWorkingDirectories = newRecents
 
         persistState()
+        
+        // Restart file watching for new directory
+        startFileWatching()
+        
+        // Clear last snapshot
+        lastTasksSnapshot.removeAll()
     }
 
     public func chooseWorkingDirectory() {
@@ -225,6 +238,83 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
         }
 
         tasksLoading = false
+    }
+    
+    // MARK: - File Watching
+
+    /// Start watching queue files for external changes
+    private func startFileWatching() {
+        // Stop existing watcher
+        fileWatcher?.stop()
+        
+        // Create and configure new watcher
+        let watcher = QueueFileWatcher(workingDirectoryURL: workingDirectoryURL)
+        watcher.onFileChanged = { [weak self] in
+            Task { @MainActor [weak self] in
+                await self?.handleExternalFileChange()
+            }
+        }
+        watcher.start()
+        fileWatcher = watcher
+    }
+    
+    /// Stop file watching (call when workspace is being deallocated)
+    public func stopFileWatching() {
+        fileWatcher?.stop()
+        fileWatcher = nil
+    }
+    
+    /// Handle external file changes by reloading tasks
+    private func handleExternalFileChange() async {
+        // Store current tasks for comparison
+        lastTasksSnapshot = tasks
+        
+        // Reload tasks
+        await loadTasks()
+        
+        // Post notification for UI to animate changes
+        NotificationCenter.default.post(
+            name: .queueFilesExternallyChanged,
+            object: self,
+            userInfo: [
+                "previousTasks": lastTasksSnapshot,
+                "currentTasks": tasks
+            ]
+        )
+    }
+    
+    /// Compare two task arrays to detect what changed
+    public func detectTaskChanges(previous: [RalphTask], current: [RalphTask]) -> TaskChanges {
+        let previousIDs = Set(previous.map { $0.id })
+        let currentIDs = Set(current.map { $0.id })
+        
+        let added = current.filter { !previousIDs.contains($0.id) }
+        let removed = previous.filter { !currentIDs.contains($0.id) }
+        
+        var changed: [RalphTask] = []
+        for task in current {
+            if let previousTask = previous.first(where: { $0.id == task.id }) {
+                if task.status != previousTask.status ||
+                   task.title != previousTask.title ||
+                   task.priority != previousTask.priority ||
+                   task.tags != previousTask.tags {
+                    changed.append(task)
+                }
+            }
+        }
+        
+        return TaskChanges(added: added, removed: removed, changed: changed)
+    }
+    
+    /// Represents detected changes between two task snapshots
+    public struct TaskChanges {
+        public let added: [RalphTask]
+        public let removed: [RalphTask]
+        public let changed: [RalphTask]
+        
+        public var hasChanges: Bool {
+            !added.isEmpty || !removed.isEmpty || !changed.isEmpty
+        }
     }
 
     // MARK: - Graph Data Loading
@@ -766,4 +856,11 @@ public final class Workspace: ObservableObject, Identifiable, Codable, @unchecke
 
         loadState()
     }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    /// Posted when queue files are changed externally (via CLI or another process)
+    public static let queueFilesExternallyChanged = Notification.Name("queueFilesExternallyChanged")
 }

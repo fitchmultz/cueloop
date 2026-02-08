@@ -177,4 +177,5 @@ extension Notification.Name {
     static let workspaceTasksUpdated = Notification.Name("workspaceTasksUpdated")
     static let toggleTaskViewMode = Notification.Name("toggleTaskViewMode")
     static let showGraphView = Notification.Name("showGraphView")
+    static let queueFilesExternallyChanged = Notification.Name("queueFilesExternallyChanged")
 }

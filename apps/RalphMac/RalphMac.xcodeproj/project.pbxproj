@@ -19,6 +19,7 @@
 		558F4EFD40ED4813905A6B0A /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6127F94DFD1B404CB5CC190B /* VisualEffectView.swift */; };
 		5B9E3F2A9C4D5E67B8F90123 /* WorkspaceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C52C942A1CA040208A1757FF /* WorkspaceManager.swift */; };
 		6CAF4A3B0D5E6F78C9012345 /* WindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4501A6DA17EA418787F9BC9C /* WindowState.swift */; };
+		A1234567890ABCDEF1234567 /* QueueFileWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890ABCDEF1234567 /* QueueFileWatcher.swift */; };
 		70B7D56D286A4C04AAA8F09B /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5CF4286D31194E8ABD65BF48 /* XCTest.framework */; };
 		7D1B5B4C1E6F708D01234567 /* WorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B65E12FC434490D9A617CEB /* WorkspaceView.swift */; };
 		8E2C6C5D2F70819234567890 /* WindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21132B9951449F09254F84C /* WindowView.swift */; };
@@ -80,6 +81,7 @@
 		3ABCA66572BF4FE381DD0476 /* RalphCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RalphCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B65E12FC434490D9A617CEB /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
 		4501A6DA17EA418787F9BC9C /* WindowState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowState.swift; sourceTree = "<group>"; };
+		B1234567890ABCDEF1234567 /* QueueFileWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueFileWatcher.swift; sourceTree = "<group>"; };
 		5CF4286D31194E8ABD65BF48 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
 		5EE8951D88274919856E798A /* RalphCLIExecutableLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCLIExecutableLocator.swift; sourceTree = "<group>"; };
 		6127F94DFD1B404CB5CC190B /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
@@ -150,6 +152,7 @@
 				0B651F8A746C4387B1F9D42A /* Workspace.swift */,
 				C52C942A1CA040208A1757FF /* WorkspaceManager.swift */,
 				4501A6DA17EA418787F9BC9C /* WindowState.swift */,
+				B1234567890ABCDEF1234567 /* QueueFileWatcher.swift */,
 			);
 			path = RalphCore;
 			sourceTree = "<group>";
@@ -340,6 +343,7 @@
 				4A8D2E1F8B3C4D56A7E8F901 /* Workspace.swift in Sources */,
 				5B9E3F2A9C4D5E67B8F90123 /* WorkspaceManager.swift in Sources */,
 				6CAF4A3B0D5E6F78C9012345 /* WindowState.swift in Sources */,
+				A1234567890ABCDEF1234567 /* QueueFileWatcher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

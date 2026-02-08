@@ -25,6 +25,7 @@ struct KanbanCardView: View {
     let isOverdue: Bool
     let hasDependencies: Bool
     let blockedCount: Int
+    var isHighlighted: Bool = false
 
     @State private var isDragging = false
 
@@ -107,6 +108,11 @@ struct KanbanCardView: View {
         .opacity(isDragging ? 0.5 : 1.0)
         .scaleEffect(isDragging ? 0.95 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isDragging)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(isHighlighted ? Color.accentColor.opacity(0.6) : Color.clear, lineWidth: 2)
+                .animation(.easeInOut(duration: 0.3), value: isHighlighted)
+        )
     }
 
     private func priorityColor(_ priority: RalphTaskPriority) -> Color {

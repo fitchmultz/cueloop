@@ -27,6 +27,7 @@ struct KanbanBoardView: View {
 
     @State private var isUpdating = false
     @State private var updateError: String?
+    @State private var recentlyChangedTaskIDs: Set<String> = []
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: true) {
@@ -66,6 +67,26 @@ struct KanbanBoardView: View {
         }
         .task {
             await workspace.loadTasks()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .queueFilesExternallyChanged)) { notification in
+            if let userInfo = notification.userInfo,
+               let previousTasks = userInfo["previousTasks"] as? [RalphTask],
+               let currentTasks = userInfo["currentTasks"] as? [RalphTask] {
+                let changes = workspace.detectTaskChanges(previous: previousTasks, current: currentTasks)
+                
+                var changedIDs = Set(changes.changed.map { $0.id })
+                changedIDs.formUnion(changes.added.map { $0.id })
+                
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    recentlyChangedTaskIDs = changedIDs
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        recentlyChangedTaskIDs.removeAll()
+                    }
+                }
+            }
         }
     }
 
