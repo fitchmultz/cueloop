@@ -579,12 +579,35 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
         }
     }
 
-    // Handle kimi tool results: role="tool" with tool_name added during tracking
+    // Handle kimi tool results: role="tool" with content array
     if let Some(role) = json.get("role").and_then(|r| r.as_str())
         && role == "tool"
-        && let Some(tool_name) = json.get("tool_name").and_then(|t| t.as_str())
     {
-        lines.push(outpututil::format_tool_call(tool_name, Some("(completed)")));
+        // Get tool name (with "Tool" as default)
+        let tool_name = json
+            .get("tool_name")
+            .and_then(|t| t.as_str())
+            .unwrap_or("Tool");
+
+        // Track if we found any content to display
+        let mut found_content = false;
+
+        // Extract content from the content array (kimi format)
+        if let Some(content) = json.get("content").and_then(|c| c.as_array()) {
+            for part in content {
+                if let Some(text) = part.get("text").and_then(|t| t.as_str())
+                    && !text.is_empty()
+                {
+                    lines.push(outpututil::format_tool_call(tool_name, Some(text)));
+                    found_content = true;
+                }
+            }
+        }
+
+        // Fallback to "(completed)" if no content was found
+        if !found_content {
+            lines.push(outpututil::format_tool_call(tool_name, Some("(completed)")));
+        }
     }
 
     lines

@@ -565,3 +565,102 @@ fn spawn_json_reader_handles_partial_line_at_eof() {
     let guard = buffer.lock().unwrap();
     assert!(guard.contains("partial"));
 }
+
+#[test]
+fn extract_display_lines_kimi_tool_result_with_content() {
+    let payload = json!({
+        "role": "tool",
+        "content": [{"type": "text", "text": "file contents here"}],
+        "tool_call_id": "call_1",
+        "tool_name": "read_file"
+    });
+    let result = extract_display_lines(&payload);
+    assert_eq!(result.len(), 1);
+    // format_tool_call produces "[Tool] tool_name content" format
+    assert!(result[0].contains("[Tool]"));
+    assert!(result[0].contains("read_file"));
+    assert!(result[0].contains("file contents here"));
+}
+
+#[test]
+fn extract_display_lines_kimi_tool_result_without_tool_name() {
+    let payload = json!({
+        "role": "tool",
+        "content": [{"type": "text", "text": "output data"}],
+        "tool_call_id": "call_1"
+    });
+    let result = extract_display_lines(&payload);
+    assert_eq!(result.len(), 1);
+    // format_tool_call produces "[Tool] Tool content" format when tool_name is missing
+    assert!(result[0].contains("[Tool]"));
+    assert!(result[0].contains("output data"));
+}
+
+#[test]
+fn extract_display_lines_kimi_tool_result_empty_content() {
+    let payload = json!({
+        "role": "tool",
+        "content": [],
+        "tool_call_id": "call_1",
+        "tool_name": "search"
+    });
+    let result = extract_display_lines(&payload);
+    assert_eq!(result.len(), 1);
+    // format_tool_call produces "[Tool] tool_name (completed)" format
+    assert!(result[0].contains("[Tool]"));
+    assert!(result[0].contains("search"));
+    assert!(result[0].contains("(completed)"));
+}
+
+#[test]
+fn extract_display_lines_kimi_tool_result_no_content_field() {
+    let payload = json!({
+        "role": "tool",
+        "tool_call_id": "call_1",
+        "tool_name": "list_files"
+    });
+    let result = extract_display_lines(&payload);
+    assert_eq!(result.len(), 1);
+    // format_tool_call produces "[Tool] tool_name (completed)" format
+    assert!(result[0].contains("[Tool]"));
+    assert!(result[0].contains("list_files"));
+    assert!(result[0].contains("(completed)"));
+}
+
+#[test]
+fn extract_display_lines_kimi_assistant_with_mixed_content() {
+    // Test assistant message with both text and think parts
+    let payload = json!({
+        "role": "assistant",
+        "content": [
+            {"type": "think", "think": "Let me analyze this"},
+            {"type": "text", "text": "Here's the answer"}
+        ]
+    });
+    let result = extract_display_lines(&payload);
+    assert_eq!(result.len(), 2);
+    assert!(result[0].contains("Let me analyze this"));
+    assert_eq!(result[1], "Here's the answer");
+}
+
+#[test]
+fn extract_display_lines_kimi_tool_result_multiple_content_parts() {
+    let payload = json!({
+        "role": "tool",
+        "content": [
+            {"type": "text", "text": "First part"},
+            {"type": "text", "text": "Second part"}
+        ],
+        "tool_call_id": "call_1",
+        "tool_name": "bash"
+    });
+    let result = extract_display_lines(&payload);
+    assert_eq!(result.len(), 2);
+    // format_tool_call produces "[Tool] tool_name content" format
+    assert!(result[0].contains("[Tool]"));
+    assert!(result[0].contains("bash"));
+    assert!(result[0].contains("First part"));
+    assert!(result[1].contains("[Tool]"));
+    assert!(result[1].contains("bash"));
+    assert!(result[1].contains("Second part"));
+}
