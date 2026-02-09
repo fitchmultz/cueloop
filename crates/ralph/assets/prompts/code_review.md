@@ -5,7 +5,9 @@ Use agent swarms, parallel agents, and sub-agents aggressively. Spawn sub-agents
 
 ## TASK
 Task ID: {{TASK_ID}}
-Plan: .ralph/cache/plans/{{TASK_ID}}.md
+Plan Phase 2 was supposed to execute: .ralph/cache/plans/{{TASK_ID}}.md
+
+If Phase 2 did not fully complete the plan you should assume responsibility for completion.
 
 ## PENDING GIT CHANGES (FROM PHASE 2)
 - Execute the git diff command of your choice to view all changed files
