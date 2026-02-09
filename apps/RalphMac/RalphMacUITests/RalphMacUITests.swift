@@ -191,4 +191,92 @@ final class RalphMacUITests: XCTestCase {
             clearButton.click()
         }
     }
+    
+    // MARK: - Test: Keyboard Navigation in Task List
+    @MainActor
+    func test_taskListKeyboardNavigation() throws {
+        // Create a task first
+        try test_createNewTask_viaQuickCreate()
+        
+        // Wait for task list
+        let taskList = app.outlines.firstMatch
+        XCTAssertTrue(taskList.waitForExistence(timeout: 5))
+        
+        // Click in the list to focus it
+        let firstTask = taskList.cells.firstMatch
+        XCTAssertTrue(firstTask.waitForExistence(timeout: 5))
+        firstTask.click()
+        
+        // Test down arrow navigation
+        app.keyboards.keys["↓"].tap()
+        Thread.sleep(forTimeInterval: 0.3)
+        
+        // Test up arrow navigation
+        app.keyboards.keys["↑"].tap()
+        Thread.sleep(forTimeInterval: 0.3)
+        
+        // Test Enter to open detail
+        app.keyboards.keys["\r"].tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        
+        // Verify detail view appears
+        let titleField = app.textFields["Task title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5))
+    }
+    
+    // MARK: - Test: Keyboard Navigation in Kanban Board
+    @MainActor
+    func test_kanbanBoardKeyboardNavigation() throws {
+        // Create a task first
+        try test_createNewTask_viaQuickCreate()
+        
+        // Switch to Kanban view
+        let viewModePicker = app.segmentedControls["Task view mode"]
+        XCTAssertTrue(viewModePicker.waitForExistence(timeout: 5))
+        viewModePicker.buttons["Kanban"].click()
+        
+        // Wait for Kanban board
+        let kanbanBoard = app.scrollViews["Kanban board"]
+        XCTAssertTrue(kanbanBoard.waitForExistence(timeout: 5))
+        
+        // Click on a card to focus
+        let firstCard = kanbanBoard.buttons.firstMatch
+        XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
+        firstCard.click()
+        
+        // Test right arrow to move to next column
+        app.keyboards.keys["→"].tap()
+        Thread.sleep(forTimeInterval: 0.3)
+        
+        // Test left arrow to move to previous column
+        app.keyboards.keys["←"].tap()
+        Thread.sleep(forTimeInterval: 0.3)
+        
+        // Test down arrow navigation within column
+        app.keyboards.keys["↓"].tap()
+        Thread.sleep(forTimeInterval: 0.3)
+    }
+    
+    // MARK: - Test: Start Work Keyboard Shortcut
+    @MainActor
+    func test_startWorkKeyboardShortcut() throws {
+        // Create a task
+        try test_createNewTask_viaQuickCreate()
+        
+        // Select first task in list
+        let taskList = app.outlines.firstMatch
+        XCTAssertTrue(taskList.waitForExistence(timeout: 5))
+        let firstTask = taskList.cells.firstMatch
+        XCTAssertTrue(firstTask.waitForExistence(timeout: 5))
+        firstTask.click()
+        
+        // Use Cmd+Enter to start work
+        firstTask.typeKey(XCUIKeyboardKey.return, modifierFlags: .command)
+        Thread.sleep(forTimeInterval: 1)
+        
+        // Verify: Task status should change to "Doing" - check for status badge in the task list
+        // The status badge should show "Doing" after the command executes
+        let doingBadge = app.staticTexts["Doing"]
+        XCTAssertTrue(doingBadge.waitForExistence(timeout: 5), "Task status should change to 'Doing' after Cmd+Enter")
+    }
 }

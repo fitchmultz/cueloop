@@ -244,4 +244,5 @@ extension Notification.Name {
     static let toggleTaskViewMode = Notification.Name("toggleTaskViewMode")
     static let showGraphView = Notification.Name("showGraphView")
     static let queueFilesExternallyChanged = Notification.Name("queueFilesExternallyChanged")
+    static let showTaskDetail = Notification.Name("showTaskDetail")
 }

@@ -26,6 +26,8 @@ struct KanbanCardView: View {
     let hasDependencies: Bool
     let blockedCount: Int
     var isHighlighted: Bool = false
+    var isFocused: Bool = false
+    var isSelected: Bool = false
 
     @State private var isDragging = false
 
@@ -169,8 +171,13 @@ struct KanbanCardView: View {
 
     private var highlightOverlay: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .stroke(isHighlighted ? Color.accentColor.opacity(0.6) : Color.clear, lineWidth: 2)
+            .stroke(
+                isFocused ? Color.accentColor.opacity(0.8) :
+                isHighlighted ? Color.accentColor.opacity(0.6) : Color.clear,
+                lineWidth: isFocused ? 3 : 2
+            )
             .animation(.easeInOut(duration: 0.3), value: isHighlighted)
+            .animation(.easeInOut(duration: 0.15), value: isFocused)
     }
 
     // MARK: - Accessibility

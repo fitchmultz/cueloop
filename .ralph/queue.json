@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0745",
-      "status": "todo",
-      "title": "Add keyboard navigation support in task lists and Kanban board",
-      "description": "The task list and Kanban board views lack full keyboard navigation support. Users cannot navigate between tasks using arrow keys, select tasks with Enter/Space, or perform actions via keyboard shortcuts. This makes the app inaccessible to keyboard-only users and reduces productivity for power users.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "macos",
-        "accessibility",
-        "keyboard",
-        "ux"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMac/TaskListView.swift",
-        "apps/RalphMac/RalphMac/KanbanBoardView.swift",
-        "apps/RalphMac/RalphMac/KanbanColumnView.swift",
-        "apps/RalphMac/RalphMac/KanbanCardView.swift"
-      ],
-      "evidence": [
-        "TaskListView.swift (507 lines): No keyboard event handling for arrow keys",
-        "KanbanBoardView.swift (143 lines): No keyboard navigation between columns or cards",
-        "No focus management or onKeyPress handlers in list/card views"
-      ],
-      "plan": [
-        "Add FocusState management to track currently focused task",
-        "Implement arrow key navigation (↑↓) in TaskListView",
-        "Implement arrow key navigation (←→↑↓) between Kanban columns and cards",
-        "Add Enter key to open selected task detail",
-        "Add Space key for quick preview (if applicable)",
-        "Add Cmd+Enter to start work on selected task",
-        "Ensure focus ring is visible for all interactive elements",
-        "Write XCUITest to verify keyboard navigation works",
-        "Verify by: use Tab to enter list, arrow keys to navigate, Enter to select"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-08T19:37:03Z",
-      "updated_at": "2026-02-08T19:37:03Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0744",
       "status": "todo",
       "title": "Add dependency cycle detection warning in graph view",

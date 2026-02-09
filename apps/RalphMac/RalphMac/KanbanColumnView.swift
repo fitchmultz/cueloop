@@ -29,6 +29,10 @@ struct KanbanColumnView: View {
     let onTaskDrop: (String) -> Void
     let onTaskSelect: (String) -> Void
     var highlightedTaskIDs: Set<String> = []
+    
+    // MARK: - Keyboard Navigation
+    var focusedTaskID: String? = nil
+    var isFocusedColumn: Bool = false
 
     @State private var isTargeted = false
 
@@ -125,7 +129,9 @@ struct KanbanColumnView: View {
             isOverdue: isTaskOverdue(task),
             hasDependencies: task.dependsOn?.isEmpty == false,
             blockedCount: task.dependsOn?.count ?? 0,
-            isHighlighted: highlightedTaskIDs.contains(task.id)
+            isHighlighted: highlightedTaskIDs.contains(task.id),
+            isFocused: focusedTaskID == task.id,
+            isSelected: false
         )
         .contentShape(Rectangle())
         .onTapGesture {

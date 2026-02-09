@@ -49,6 +49,30 @@ struct WorkspaceView: View {
         }
         .frame(minWidth: 1200, minHeight: 640)
         .background(.clear)
+        // MARK: - Keyboard Navigation Notification Handlers
+        .onReceive(NotificationCenter.default.publisher(for: .startWorkOnSelectedTask)) { _ in
+            handleStartWork()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showTaskDetail)) { notification in
+            if let taskID = notification.object as? String {
+                navigation.selectedTaskID = taskID
+            }
+        }
+    }
+    
+    // MARK: - Keyboard Navigation Actions
+    
+    private func handleStartWork() {
+        guard let taskID = navigation.selectedTaskID else { return }
+        
+        Task {
+            do {
+                try await workspace.updateTaskStatus(taskID: taskID, to: .doing)
+            } catch {
+                // Error handling - could show an alert here
+                RalphLogger.shared.error("Failed to start work on task: \(error)", category: .workspace)
+            }
+        }
     }
 
     // MARK: - Sidebar Column

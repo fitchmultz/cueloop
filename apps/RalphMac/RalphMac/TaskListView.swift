@@ -29,6 +29,9 @@ struct TaskListView: View {
     @State private var isRefreshingFromExternalChange = false
     @State private var recentlyChangedTaskIDs: Set<String> = []
     @State private var showExternalUpdateBanner = false
+    
+    // MARK: - Keyboard Navigation State
+    @FocusState private var focusedTaskID: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -259,9 +262,16 @@ struct TaskListView: View {
                 List(filteredTasks, selection: $selectedTaskID) { task in
                     TaskRow(
                         task: task,
-                        isHighlighted: recentlyChangedTaskIDs.contains(task.id)
+                        isHighlighted: recentlyChangedTaskIDs.contains(task.id),
+                        isSelected: selectedTaskID == task.id,
+                        isFocused: focusedTaskID == task.id
                     )
                         .tag(task.id)
+                        .focused($focusedTaskID, equals: task.id)
+                        .onTapGesture {
+                            selectedTaskID = task.id
+                            focusedTaskID = task.id
+                        }
                         // Add slide-in animation for new tasks
                         .transition(.asymmetric(
                             insertion: .slide.combined(with: .opacity),
@@ -275,6 +285,36 @@ struct TaskListView: View {
                 #if swift(>=5.9)
                 .alternatingRowBackgrounds(.automatic)
                 #endif
+                // MARK: - Keyboard Navigation Handlers
+                .onKeyPress(.upArrow) {
+                    navigateTask(direction: -1, tasks: filteredTasks)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    navigateTask(direction: 1, tasks: filteredTasks)
+                    return .handled
+                }
+                .onKeyPress(.return) {
+                    if let taskID = focusedTaskID ?? selectedTaskID {
+                        selectedTaskID = taskID
+                        NotificationCenter.default.post(
+                            name: .showTaskDetail,
+                            object: taskID
+                        )
+                    }
+                    return .handled
+                }
+                .onKeyPress(.space) {
+                    // Space key opens task detail (same as Enter for quick access)
+                    if let taskID = focusedTaskID ?? selectedTaskID {
+                        selectedTaskID = taskID
+                        NotificationCenter.default.post(
+                            name: .showTaskDetail,
+                            object: taskID
+                        )
+                    }
+                    return .handled
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -352,6 +392,32 @@ struct TaskListView: View {
             return .yellow
         case .low:
             return .gray
+        }
+    }
+    
+    // MARK: - Keyboard Navigation
+    
+    private func navigateTask(direction: Int, tasks: [RalphTask]) {
+        let currentID = focusedTaskID ?? selectedTaskID
+        
+        guard let currentIndex = tasks.firstIndex(where: { $0.id == currentID }) else {
+            // No selection, select first task
+            if let first = tasks.first {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    focusedTaskID = first.id
+                    selectedTaskID = first.id
+                }
+            }
+            return
+        }
+        
+        let newIndex = currentIndex + direction
+        guard newIndex >= 0 && newIndex < tasks.count else { return }
+        
+        let newTask = tasks[newIndex]
+        withAnimation(.easeInOut(duration: 0.15)) {
+            focusedTaskID = newTask.id
+            selectedTaskID = newTask.id
         }
     }
     
@@ -435,6 +501,8 @@ struct TaskListView: View {
 struct TaskRow: View {
     let task: RalphTask
     var isHighlighted: Bool = false
+    var isSelected: Bool = false
+    var isFocused: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -489,13 +557,27 @@ struct TaskRow: View {
                 .accessibilityLabel("Task ID: \(task.id)")
         }
         .padding(.vertical, 4)
-        .background(isHighlighted ? Color.accentColor.opacity(0.15) : Color.clear)
-        .animation(.easeInOut(duration: 0.3), value: isHighlighted)
+        .padding(.horizontal, 8)
+        .background(backgroundColor)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isFocused ? Color.accentColor : Color.clear, lineWidth: 2)
+        )
+        .cornerRadius(6)
+        .animation(.easeInOut(duration: 0.2), value: isHighlighted)
+        .animation(.easeInOut(duration: 0.15), value: isFocused)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(task.id): \(task.title)")
         .accessibilityValue("Priority \(task.priority.displayName), Status \(task.status.displayName), Tags: \(task.tags.joined(separator: ", "))")
-        .accessibilityHint("Select to view task details")
+        .accessibilityHint("Select to view task details. Use arrow keys to navigate.")
         .accessibilityAddTraits(.isButton)
+    }
+    
+    private var backgroundColor: Color {
+        if isHighlighted { return Color.accentColor.opacity(0.15) }
+        if isSelected { return Color.accentColor.opacity(0.1) }
+        return Color.clear
     }
 
     private func statusColor(_ status: RalphTaskStatus) -> Color {

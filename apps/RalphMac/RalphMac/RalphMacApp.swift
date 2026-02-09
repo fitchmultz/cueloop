@@ -255,6 +255,17 @@ struct RalphMacApp: App {
             
             Divider()
             
+            Button("Start Work") {
+                NotificationCenter.default.post(
+                    name: .startWorkOnSelectedTask,
+                    object: nil
+                )
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            .help("Change selected task status to Doing (⌘Enter)")
+            
+            Divider()
+            
             Button("Check for CLI Updates") {
                 NotificationCenter.default.post(
                     name: .checkForCLIUpdates,
@@ -393,6 +404,7 @@ extension Notification.Name {
     static let duplicateActiveTabRequested = Notification.Name("duplicateActiveTabRequested")
     static let showTaskCreation = Notification.Name("showTaskCreation")
     static let checkForCLIUpdates = Notification.Name("checkForCLIUpdates")
+    static let startWorkOnSelectedTask = Notification.Name("startWorkOnSelectedTask")
     // New notifications for URL handling
     static let activateWorkspace = Notification.Name("activateWorkspace")
     static let workspaceOpenedFromURL = Notification.Name("workspaceOpenedFromURL")
