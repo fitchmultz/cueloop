@@ -53,6 +53,8 @@
 		EF9F001157144DB59DB782FF /* RalphModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3014AC133794F7F8AF0E753 /* RalphModels.swift */; };
 		F0991C52FCDBA422BDD86604 /* VersionValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D9B54003005176B3196572 /* VersionValidator.swift */; };
 		FF6677889900AA11BB22CC33DD44EE55 /* TagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */; };
+		UITESTSBB0012345678901234 /* RalphMacUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF1123456789012345 /* RalphMacUITests.swift */; };
+		UITESTSBB2234567890123456 /* RalphMacUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF3345678901234567 /* RalphMacUITestsLaunchTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +71,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 5C9AA60D62CB4EBFBF02ACA1;
 			remoteInfo = RalphCore;
+		};
+		UITESTSCP0012345678901234 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 138EF11C500E42C3A51D87DA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E19EB015790F40D39E28D0AC;
+			remoteInfo = RalphMac;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -134,6 +143,9 @@
 		EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TagEditorView.swift; path = RalphMac/TagEditorView.swift; sourceTree = "<group>"; };
 		F3014AC133794F7F8AF0E753 /* RalphModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphModels.swift; sourceTree = "<group>"; };
 		F7044ECE073A4355A364CD631452E561 /* KanbanBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KanbanBoardView.swift; path = RalphMac/KanbanBoardView.swift; sourceTree = "<group>"; };
+		UITESTSFF0012345678901234 /* RalphMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RalphMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		UITESTSFF1123456789012345 /* RalphMacUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUITests.swift; sourceTree = "<group>"; };
+		UITESTSFF3345678901234567 /* RalphMacUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUITestsLaunchTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +167,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AA0EAF6CA14742A9B622F7AE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		UITESTSFP7789012345678901 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -202,12 +221,22 @@
 			path = RalphCoreTests;
 			sourceTree = "<group>";
 		};
+		UITESTSGR4456789012345678 /* RalphMacUITests */ = {
+			isa = PBXGroup;
+			children = (
+				UITESTSFF1123456789012345 /* RalphMacUITests.swift */,
+				UITESTSFF3345678901234567 /* RalphMacUITestsLaunchTests.swift */,
+			);
+			path = RalphMacUITests;
+			sourceTree = "<group>";
+		};
 		B332EF4AA9D545C698B8C719 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				B371E519DA1D4EB09E67EF01 /* RalphMac.app */,
 				16591EC6C1744AC5AF4189A4 /* RalphCore.framework */,
 				3ABCA66572BF4FE381DD0476 /* RalphCoreTests.xctest */,
+				UITESTSFF0012345678901234 /* RalphMacUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -218,6 +247,7 @@
 				BD789869732744B880AE31D4 /* RalphMac */,
 				37CDBC33081942368A3B78AC /* RalphCore */,
 				7A3A0175AD6F45B3B27E6283 /* RalphCoreTests */,
+				UITESTSGR4456789012345678 /* RalphMacUITests */,
 				2E41E8A437924074BBD351E1 /* Frameworks */,
 				B332EF4AA9D545C698B8C719 /* Products */,
 			);
@@ -303,6 +333,24 @@
 			productReference = B371E519DA1D4EB09E67EF01 /* RalphMac.app */;
 			productType = "com.apple.product-type.application";
 		};
+		UITESTSTR4456789012345678 /* RalphMacUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = UITESTSCL5567890123456789 /* Build configuration list for PBXNativeTarget "RalphMacUITests" */;
+			buildPhases = (
+				UITESTSSP6678901234567890 /* Sources */,
+				UITESTSFP7789012345678901 /* Frameworks */,
+				UITESTSRP8890123456789012 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				UITESTSTD9901234567890123 /* PBXTargetDependency */,
+			);
+			name = RalphMacUITests;
+			productName = RalphMacUITests;
+			productReference = UITESTSFF0012345678901234 /* RalphMacUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -340,6 +388,7 @@
 				E19EB015790F40D39E28D0AC /* RalphMac */,
 				5C9AA60D62CB4EBFBF02ACA1 /* RalphCore */,
 				4818E090529D4C259376427E /* RalphCoreTests */,
+				UITESTSTR4456789012345678 /* RalphMacUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -350,6 +399,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				51F423D7B6694FD1BBF01DDA /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		UITESTSRP8890123456789012 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -439,6 +495,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		UITESTSSP6678901234567890 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				UITESTSBB0012345678901234 /* RalphMacUITests.swift in Sources */,
+				UITESTSBB2234567890123456 /* RalphMacUITestsLaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -451,6 +516,11 @@
 			isa = PBXTargetDependency;
 			target = 5C9AA60D62CB4EBFBF02ACA1 /* RalphCore */;
 			targetProxy = 6CED8CCC14D740F9B798C3E1 /* PBXContainerItemProxy */;
+		};
+		UITESTSTD9901234567890123 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E19EB015790F40D39E28D0AC /* RalphMac */;
+			targetProxy = UITESTSCP0012345678901234 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -618,6 +688,40 @@
 			};
 			name = Debug;
 		};
+		UITESTSCD1123456789012345 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.uitests;
+				PRODUCT_NAME = RalphMacUITests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.2;
+				TEST_TARGET_NAME = RalphMac;
+			};
+			name = Debug;
+		};
+		UITESTSCD2234567890123456 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.uitests;
+				PRODUCT_NAME = RalphMacUITests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.2;
+				TEST_TARGET_NAME = RalphMac;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -653,6 +757,15 @@
 			buildConfigurations = (
 				4C9BEF10EB2A41DF8CB316A6 /* Debug */,
 				EB912F7622194A36AF87AB62 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		UITESTSCL5567890123456789 /* Build configuration list for PBXNativeTarget "RalphMacUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				UITESTSCD1123456789012345 /* Debug */,
+				UITESTSCD2234567890123456 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

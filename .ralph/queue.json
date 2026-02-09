@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0737",
-      "status": "todo",
-      "title": "Add XCUITest coverage for critical user flows",
-      "description": "The macOS app has only 3 unit tests and 0 XCUITests. Critical user flows (task creation, editing, status changes, execution control) have no automated UI testing. This allows regressions to go undetected and requires manual testing for every release.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "macos",
-        "testing",
-        "quality",
-        "automation"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMacUITests/",
-        "apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
-      ],
-      "evidence": [
-        "Only 3 test files exist: RalphCLIClientTests, RalphModelsTests, RalphE2ESmokeTests",
-        "0 XCUITest files - no UI automation coverage",
-        "Critical flows (create task, edit task, run task, kanban drag-drop) untested"
-      ],
-      "plan": [
-        "Create RalphMacUITests target with XCUITest bundle",
-        "Add test: Create new task via UI and verify it appears in list",
-        "Add test: Edit task title and verify change persists",
-        "Add test: Change task status via Kanban drag-drop",
-        "Add test: Run next task and verify console output appears",
-        "Add test: Switch between view modes (list, kanban, graph)",
-        "Add test: Create and switch between multiple workspaces",
-        "Integrate UI tests into make macos-ci target",
-        "Verify by: run make macos-ci, all UI tests pass"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-08T19:37:03Z",
-      "updated_at": "2026-02-08T19:37:03Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0739",
       "status": "todo",
       "title": "Add console output size limit to prevent memory exhaustion",
@@ -220,8 +176,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "url_format": "ralph://open?workspace=<encoded_path>",
-        "ipc_mechanism": "custom URL scheme"
+        "ipc_mechanism": "custom URL scheme",
+        "url_format": "ralph://open?workspace=<encoded_path>"
       }
     },
     {

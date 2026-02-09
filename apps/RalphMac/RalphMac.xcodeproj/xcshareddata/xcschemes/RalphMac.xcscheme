@@ -52,6 +52,16 @@
                ReferencedContainer = "container:RalphMac.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "UITESTSTR4456789012345678"
+               BuildableName = "RalphMacUITests.xctest"
+               BlueprintName = "RalphMacUITests"
+               ReferencedContainer = "container:RalphMac.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <MacroExpansion>
          <BuildableReference
