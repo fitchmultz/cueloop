@@ -14,7 +14,7 @@
  - Dates are ISO8601 format.
  */
 
-public import Foundation
+import Foundation
 
 // MARK: - Productivity Models
 
@@ -79,13 +79,13 @@ public struct BestDay: Codable, Sendable, Equatable {
     public let date: String
     public let count: Int
     
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         var container = try decoder.unkeyedContainer()
         date = try container.decode(String.self)
         count = try container.decode(Int.self)
     }
     
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.unkeyedContainer()
         try container.encode(date)
         try container.encode(count)

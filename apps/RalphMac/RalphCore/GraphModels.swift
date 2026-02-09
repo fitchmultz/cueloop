@@ -107,4 +107,4 @@ public struct PositionedNode: Identifiable, Equatable, Sendable {
 /// Using @unchecked Sendable for retroactive conformance since CoreGraphics may declare
 /// this in a future SDK version. This is safe because CGPoint contains no reference types
 /// and has no mutable shared state.
-extension CGPoint: @unchecked Sendable {}
+extension CGPoint: @retroactive @unchecked Sendable {}

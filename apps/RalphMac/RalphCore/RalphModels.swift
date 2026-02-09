@@ -30,7 +30,7 @@ public enum RalphJSONValue: Codable, Equatable, Sendable {
     case array([RalphJSONValue])
     case object([String: RalphJSONValue])
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
 
         if container.decodeNil() {
@@ -67,7 +67,7 @@ public enum RalphJSONValue: Codable, Equatable, Sendable {
         )
     }
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
 
         switch self {
@@ -123,11 +123,11 @@ public struct RalphCLISpec: Codable, Equatable, Sendable {
         self.raw = raw
     }
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         self.raw = try RalphJSONValue(from: decoder)
     }
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         try raw.encode(to: encoder)
     }
 }

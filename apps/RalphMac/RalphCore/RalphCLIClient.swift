@@ -135,7 +135,7 @@ public actor RalphCLIRun {
         ioQueue.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self else { return }
             Task {
-                let isRunning = await self.process.isRunning
+                let isRunning = self.process.isRunning
                 guard isRunning else { return }
                 _ = kill(pid, SIGKILL)
             }
@@ -431,7 +431,7 @@ public extension RalphCLIClient {
             },
             shouldRetry: { error in
                 // Also check stderr for retryable patterns in process errors
-                if let processError = error as? RalphCLIClientError {
+                if error is RalphCLIClientError {
                     // Client errors (executable not found, etc.) are not retryable
                     return false
                 }

@@ -211,7 +211,7 @@ final class NavigationViewModel: ObservableObject {
         // Handle clear task selection when workspace changes
         NotificationCenter.default.publisher(for: .workspaceTasksUpdated)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { _ in
                 // Validate selected task still exists
                 // This is handled by the view, but we could add validation here
             }

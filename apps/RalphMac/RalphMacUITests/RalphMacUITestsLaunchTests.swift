@@ -11,6 +11,7 @@
 
 import XCTest
 
+@MainActor
 final class RalphMacUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {

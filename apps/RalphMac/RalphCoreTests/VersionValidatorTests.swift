@@ -11,8 +11,8 @@
  - UI integration (covered by E2E tests).
  */
 
-public import Foundation
-public import XCTest
+import Foundation
+import XCTest
 
 @testable import RalphCore
 

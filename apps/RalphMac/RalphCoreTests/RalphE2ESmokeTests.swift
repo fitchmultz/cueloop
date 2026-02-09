@@ -19,8 +19,8 @@
  - Tests must not rely on network access.
  */
 
-public import Foundation
-public import XCTest
+import Foundation
+import XCTest
 
 @testable import RalphCore
 
@@ -196,8 +196,8 @@ final class RalphE2ESmokeTests: XCTestCase {
         timeoutSeconds: TimeInterval
     ) async -> Collected {
         await withTaskGroup(of: Collected?.self) { group in
-            // Track which task produced the result for proper cleanup
-            let mainTask = group.addTask {
+            // Start main collection task
+            group.addTask {
                 var stdout = ""
                 var stderr = ""
                 for await event in await run.events {

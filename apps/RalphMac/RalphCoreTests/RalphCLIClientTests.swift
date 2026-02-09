@@ -13,8 +13,8 @@
  - Tests run on macOS with `/bin/sh` and `/bin/echo` available.
  */
 
-public import Foundation
-public import XCTest
+import Foundation
+import XCTest
 
 @testable import RalphCore
 

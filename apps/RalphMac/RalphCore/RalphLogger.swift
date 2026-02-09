@@ -18,7 +18,7 @@
  - Categories are fixed enums - do not create dynamic category strings.
  */
 
-public import Foundation
+import Foundation
 public import OSLog
 
 /// Centralized logging system for Ralph macOS app

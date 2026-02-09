@@ -192,6 +192,9 @@ public final class CrashReporter: @unchecked Sendable {
         sysctlbyname("hw.model", nil, &size, nil, 0)
         var machine = [CChar](repeating: 0, count: size)
         sysctlbyname("hw.model", &machine, &size, nil, 0)
-        return String(cString: machine)
+        // Remove null terminator and convert CChar (Int8) to UInt8 for UTF8 decoding
+        let trimmed = machine.prefix { $0 != 0 }
+        let bytes = trimmed.map { UInt8(bitPattern: $0) }
+        return String(decoding: bytes, as: UTF8.self)
     }
 }

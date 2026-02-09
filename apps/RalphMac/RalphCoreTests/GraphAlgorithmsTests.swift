@@ -15,8 +15,8 @@
  - Cycle detection excludes relatesTo edges by design.
  */
 
-public import Foundation
-public import XCTest
+import Foundation
+import XCTest
 @testable import RalphCore
 
 final class GraphAlgorithmsTests: XCTestCase {

@@ -1741,7 +1741,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     /// Encodes the workspace to an encoder.
     /// Note: This accesses mutable properties but is safe because Workspace
     /// is always used from the main actor.
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
@@ -1752,7 +1752,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     /// Required initializer for Codable conformance.
     /// Note: This is called during decoding. The workspace should only be used
     /// from the main actor after creation.
-    public required init(from decoder: Decoder) throws {
+    public required init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)

@@ -12,8 +12,8 @@
  - JSON fixtures used in tests are representative enough to catch regressions in generic decoding.
  */
 
-public import Foundation
-public import XCTest
+import Foundation
+import XCTest
 
 @testable import RalphCore
 

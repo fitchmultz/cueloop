@@ -55,7 +55,9 @@ struct ElapsedTimeView: View {
 
         // Then update every second
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            currentTime = Date()
+            Task { @MainActor in
+                currentTime = Date()
+            }
         }
     }
 

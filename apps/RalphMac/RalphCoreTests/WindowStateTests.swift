@@ -12,8 +12,8 @@
  - Actual macOS window lifecycle
  */
 
-public import Foundation
-public import XCTest
+import Foundation
+import XCTest
 @testable import RalphCore
 
 @MainActor

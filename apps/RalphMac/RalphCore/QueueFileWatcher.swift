@@ -246,7 +246,7 @@ public final class QueueFileWatcher: Sendable {
 
             if isModified || isCreated || isRenamed || isRemoved {
                 hasRelevantChange = true
-                lock.withLock {
+                _ = lock.withLock {
                     pendingChanges.insert(path)
                 }
             }

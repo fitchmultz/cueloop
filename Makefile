@@ -161,6 +161,7 @@ macos-build:
 		-destination 'platform=macOS' \
 		-derivedDataPath "$$derived_data_path" \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		build
 
 macos-test:
@@ -185,6 +186,7 @@ macos-test:
 		-destination 'platform=macOS' \
 		-derivedDataPath "$$derived_data_path" \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		$$skipped_tests \
 		test
 

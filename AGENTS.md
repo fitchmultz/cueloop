@@ -43,7 +43,7 @@ scripts/              # Maintenance + release helper scripts
 
 | Command | Purpose |
 |---------|---------|
-| `make macos-ci` | **Local CI gate — must pass before committing** |
+| `make macos-ci` | **Local CI gate — must pass before committing** (Rust + Xcode; warnings are errors) |
 | `make install` | Install `ralph` to `~/.local/bin/ralph` (or writable fallback) |
 | `make test` | Run workspace unit + doc tests in isolated temp dirs |
 | `make lint` | Run Clippy with `-D warnings` (warnings are errors) |
@@ -87,7 +87,7 @@ cargo run -p ralph -- queue validate
 
 ### Rust Conventions
 
-- **Formatting**: `cargo fmt` + Clippy with `-D warnings` (CI treats warnings as errors)
+- **Formatting**: `cargo fmt` + Clippy with `-D warnings`; Xcode with `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES` (CI treats warnings as errors for both Rust and Swift)
 - **Visibility**: Keep APIs small; default to private, prefer `pub(crate)` over `pub`
 - **Cohesion**: Keep modules/files focused; split large files rather than growing grab-bags
 

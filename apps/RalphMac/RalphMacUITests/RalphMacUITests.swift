@@ -23,7 +23,9 @@ import XCTest
 final class RalphMacUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    @MainActor
+    override func setUp() async throws {
+        try await super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
         // Use a temp directory for workspace to avoid polluting real projects
@@ -31,9 +33,11 @@ final class RalphMacUITests: XCTestCase {
         app.launch()
     }
 
-    override func tearDownWithError() throws {
+    @MainActor
+    override func tearDown() async throws {
         app.terminate()
         app = nil
+        try await super.tearDown()
     }
 
     // MARK: - Test: App Launch

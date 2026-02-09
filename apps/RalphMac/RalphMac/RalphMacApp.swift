@@ -17,7 +17,7 @@
  - Navigation notifications are sent via NotificationCenter.
  */
 
-public import SwiftUI
+import SwiftUI
 import RalphCore
 import OSLog
 
@@ -301,7 +301,9 @@ struct RalphMacApp: App {
         
         RalphLogger.shared.exportLogs(hours: 24) { logContent in
             guard let logContent = logContent else {
-                showAlert(title: "Export Failed", message: "Could not retrieve logs.")
+                Task { @MainActor in
+                    showAlert(title: "Export Failed", message: "Could not retrieve logs.")
+                }
                 return
             }
             
