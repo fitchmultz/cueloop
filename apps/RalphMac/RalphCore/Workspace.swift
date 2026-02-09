@@ -521,9 +521,12 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         let added = current.filter { !previousIDs.contains($0.id) }
         let removed = previous.filter { !currentIDs.contains($0.id) }
         
+        // Build dictionary for O(1) lookups instead of O(N) linear search
+        let previousByID = Dictionary(uniqueKeysWithValues: previous.map { ($0.id, $0) })
+        
         var changed: [RalphTask] = []
         for task in current {
-            if let previousTask = previous.first(where: { $0.id == task.id }) {
+            if let previousTask = previousByID[task.id] {
                 if task.status != previousTask.status ||
                    task.title != previousTask.title ||
                    task.priority != previousTask.priority ||
@@ -648,9 +651,12 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
             return false
         }
 
+        // Build dictionary for O(1) lookups instead of O(N) linear search
+        let tasksByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+
         // Task is blocked if any dependency is not in "done" status
         for dependencyID in dependsOn {
-            if let dependency = tasks.first(where: { $0.id == dependencyID }) {
+            if let dependency = tasksByID[dependencyID] {
                 if dependency.status != .done {
                     return true
                 }

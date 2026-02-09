@@ -2,33 +2,37 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0740",
+      "id": "RQ-0737",
       "status": "todo",
-      "title": "Fix O(N²) task comparison performance issue in change detection",
-      "description": "Workspace.detectTaskChanges() uses nested loops with first(where:) lookups resulting in O(N²) time complexity. For large task lists (500+ tasks), this causes UI stutter when file watching detects changes. The method should use Dictionary-based lookups for O(N) performance.",
+      "title": "Add XCUITest coverage for critical user flows",
+      "description": "The macOS app has only 3 unit tests and 0 XCUITests. Critical user flows (task creation, editing, status changes, execution control) have no automated UI testing. This allows regressions to go undetected and requires manual testing for every release.",
       "priority": "high",
       "tags": [
         "maintenance",
         "macos",
-        "performance",
-        "optimization"
+        "testing",
+        "quality",
+        "automation"
       ],
       "scope": [
-        "apps/RalphMac/RalphCore/Workspace.swift"
+        "apps/RalphMac/RalphMacUITests/",
+        "apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
       ],
       "evidence": [
-        "Workspace.swift lines 464-485: detectTaskChanges uses nested loops with first(where:)",
-        "Line 474: previous.first(where:) inside loop over current = O(N²)",
-        "File watcher triggers this on every queue.json change - performance degrades with task count"
+        "Only 3 test files exist: RalphCLIClientTests, RalphModelsTests, RalphE2ESmokeTests",
+        "0 XCUITest files - no UI automation coverage",
+        "Critical flows (create task, edit task, run task, kanban drag-drop) untested"
       ],
       "plan": [
-        "Refactor detectTaskChanges to use Dictionary for O(1) lookups",
-        "Create [String: RalphTask] maps for both previous and current tasks",
-        "Compare using dictionary lookups instead of array scanning",
-        "Add performance test with 1000+ tasks to verify O(N) behavior",
-        "Consider adding @MainActor isolation to prevent concurrent modifications",
-        "Profile with Instruments to verify performance improvement",
-        "Verify by: create 1000 tasks, modify externally, verify UI updates without stutter"
+        "Create RalphMacUITests target with XCUITest bundle",
+        "Add test: Create new task via UI and verify it appears in list",
+        "Add test: Edit task title and verify change persists",
+        "Add test: Change task status via Kanban drag-drop",
+        "Add test: Run next task and verify console output appears",
+        "Add test: Switch between view modes (list, kanban, graph)",
+        "Add test: Create and switch between multiple workspaces",
+        "Integrate UI tests into make macos-ci target",
+        "Verify by: run make macos-ci, all UI tests pass"
       ],
       "notes": [],
       "request": "maintenance scan finding",
@@ -113,50 +117,6 @@
         "Add jitter to prevent thundering herd in multi-instance scenarios",
         "Write tests simulating transient failures",
         "Verify by: simulate file lock during operation, verify automatic retry succeeds"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-08T19:37:03Z",
-      "updated_at": "2026-02-08T19:37:03Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
-      "id": "RQ-0737",
-      "status": "todo",
-      "title": "Add XCUITest coverage for critical user flows",
-      "description": "The macOS app has only 3 unit tests and 0 XCUITests. Critical user flows (task creation, editing, status changes, execution control) have no automated UI testing. This allows regressions to go undetected and requires manual testing for every release.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "macos",
-        "testing",
-        "quality",
-        "automation"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMacUITests/",
-        "apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
-      ],
-      "evidence": [
-        "Only 3 test files exist: RalphCLIClientTests, RalphModelsTests, RalphE2ESmokeTests",
-        "0 XCUITest files - no UI automation coverage",
-        "Critical flows (create task, edit task, run task, kanban drag-drop) untested"
-      ],
-      "plan": [
-        "Create RalphMacUITests target with XCUITest bundle",
-        "Add test: Create new task via UI and verify it appears in list",
-        "Add test: Edit task title and verify change persists",
-        "Add test: Change task status via Kanban drag-drop",
-        "Add test: Run next task and verify console output appears",
-        "Add test: Switch between view modes (list, kanban, graph)",
-        "Add test: Create and switch between multiple workspaces",
-        "Integrate UI tests into make macos-ci target",
-        "Verify by: run make macos-ci, all UI tests pass"
       ],
       "notes": [],
       "request": "maintenance scan finding",
@@ -260,8 +220,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "ipc_mechanism": "custom URL scheme",
-        "url_format": "ralph://open?workspace=<encoded_path>"
+        "url_format": "ralph://open?workspace=<encoded_path>",
+        "ipc_mechanism": "custom URL scheme"
       }
     },
     {
