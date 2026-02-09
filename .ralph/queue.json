@@ -61,6 +61,46 @@
       }
     },
     {
+      "id": "RQ-0802",
+      "status": "todo",
+      "title": "Fix race condition in RetryHelperTests.test_delayCalculation_withBackoff",
+      "description": "The test test_delayCalculation_withBackoff fails with 'Index out of range' when accessing delays[0]. The root cause is a race condition: the onProgress callback uses `Task { await tracker.record(delay) }` which spawns detached async tasks. When the execute() method finishes (after all retries), the test immediately reads `await tracker.delays`, but the detached tasks may not have completed recording the delays yet, resulting in an empty array. The fix is to remove the Task wrapper and directly call `await tracker.record(delay)` in the onProgress callback.",
+      "priority": "critical",
+      "tags": [
+        "bug",
+        "swift",
+        "test",
+        "race-condition",
+        "macos-ci"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCoreTests/RetryHelperTests.swift"
+      ],
+      "evidence": [
+        "Test failure: '💣 Swift runtime failure: Index out of range' at RetryHelperTests.swift:287",
+        "Line 287 crashes on `XCTAssertEqual(delays[0], 0.1, accuracy: 0.01)` because delays array is empty",
+        "onProgress callback uses `Task { await tracker.record(delay) }` which spawns detached async tasks",
+        "Detached tasks may not complete before `let delays = await tracker.delays` is executed",
+        "Same pattern exists in test_delayCalculation_respectsMaxDelay and test_progressCallbackCalledOnRetry"
+      ],
+      "plan": [
+        "Fix test_delayCalculation_withBackoff: Change `Task { await tracker.record(delay) }` to `await tracker.record(delay)`",
+        "Fix test_delayCalculation_respectsMaxDelay: Change `Task { await tracker.record(delay) }` to `await tracker.record(delay)`",
+        "Fix test_progressCallbackCalledOnRetry: Change `Task { await tracker.record(attempt: attempt, maxAttempts: maxAttempts) }` to `await tracker.record(attempt: attempt, maxAttempts: maxAttempts)`",
+        "Verify all three tests pass consistently",
+        "Run make macos-ci to verify CI passes"
+      ],
+      "request": "There is something in the make macos-ci gate that is either broken or misocnfigured. This looks like a failure and issue. If it isnt then it still shouldnt be holding up CI for 15 fucking seconds. FIX THE ROOT FUCKING CAUSE.",
+      "created_at": "2026-02-09T22:28:00Z",
+      "updated_at": "2026-02-09T22:28:00Z",
+      "depends_on": [],
+      "custom_fields": {
+        "source": "user-request",
+        "affected_test": "test_delayCalculation_withBackoff",
+        "failure_type": "Index out of range"
+      }
+    },
+    {
       "id": "RQ-0801",
       "status": "todo",
       "title": "Fix session resume to handle dirty repo check before retry loop",
