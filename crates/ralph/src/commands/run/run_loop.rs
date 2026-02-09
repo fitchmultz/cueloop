@@ -336,6 +336,14 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                         return Err(err);
                     }
 
+                    // Dirty repository errors are non-retriable - return immediately
+                    // to prevent the 50-failure abort loop on deterministic dirty repo errors.
+                    // A dirty repo cannot self-resolve; user intervention is required.
+                    if runutil::is_dirty_repo_error(&err) {
+                        log::error!("RunLoop: aborting due to dirty repository");
+                        return Err(err);
+                    }
+
                     completed += 1;
                     tasks_attempted += 1;
                     tasks_failed += 1;

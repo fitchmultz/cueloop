@@ -49,3 +49,15 @@ pub(crate) fn abort_reason(err: &anyhow::Error) -> Option<RunAbortReason> {
     err.chain()
         .find_map(|cause| cause.downcast_ref::<RunAbort>().map(RunAbort::reason))
 }
+
+/// Check if an error is a dirty repository error.
+///
+/// This is used to detect non-retryable errors when the repository has
+/// uncommitted changes that prevent the run loop from proceeding.
+pub(crate) fn is_dirty_repo_error(err: &anyhow::Error) -> bool {
+    err.chain().any(|cause| {
+        cause
+            .downcast_ref::<crate::git::GitError>()
+            .is_some_and(|e| matches!(e, crate::git::GitError::DirtyRepo { .. }))
+    })
+}
