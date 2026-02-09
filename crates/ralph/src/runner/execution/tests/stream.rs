@@ -567,7 +567,8 @@ fn spawn_json_reader_handles_partial_line_at_eof() {
 }
 
 #[test]
-fn extract_display_lines_kimi_tool_result_with_content() {
+fn extract_display_lines_kimi_tool_result_shows_completed() {
+    // Tool results show "(completed)" rather than content to avoid verbose output
     let payload = json!({
         "role": "tool",
         "content": [{"type": "text", "text": "file contents here"}],
@@ -576,32 +577,17 @@ fn extract_display_lines_kimi_tool_result_with_content() {
     });
     let result = extract_display_lines(&payload);
     assert_eq!(result.len(), 1);
-    // format_tool_call produces "[Tool] tool_name content" format
+    // format_tool_call produces "[Tool] tool_name (completed)" format
     assert!(result[0].contains("[Tool]"));
     assert!(result[0].contains("read_file"));
-    assert!(result[0].contains("file contents here"));
-}
-
-#[test]
-fn extract_display_lines_kimi_tool_result_content_truncated() {
-    // Test that long tool output gets truncated to 200 chars
-    let long_content = "a".repeat(500);
-    let payload = json!({
-        "role": "tool",
-        "content": [{"type": "text", "text": &long_content}],
-        "tool_call_id": "call_1",
-        "tool_name": "read_file"
-    });
-    let result = extract_display_lines(&payload);
-    assert_eq!(result.len(), 1);
-    // Should contain truncated indicator
-    assert!(result[0].contains("... (truncated)"));
-    // Should not contain the full content
-    assert!(!result[0].contains(&"a".repeat(250)));
+    assert!(result[0].contains("(completed)"));
+    // Should NOT contain the actual content
+    assert!(!result[0].contains("file contents here"));
 }
 
 #[test]
 fn extract_display_lines_kimi_tool_result_without_tool_name() {
+    // Without tool_name, defaults to "Tool"
     let payload = json!({
         "role": "tool",
         "content": [{"type": "text", "text": "output data"}],
@@ -609,13 +595,15 @@ fn extract_display_lines_kimi_tool_result_without_tool_name() {
     });
     let result = extract_display_lines(&payload);
     assert_eq!(result.len(), 1);
-    // format_tool_call produces "[Tool] Tool content" format when tool_name is missing
+    // format_tool_call produces "[Tool] Tool (completed)" format when tool_name is missing
     assert!(result[0].contains("[Tool]"));
-    assert!(result[0].contains("output data"));
+    assert!(result[0].contains("Tool"));
+    assert!(result[0].contains("(completed)"));
 }
 
 #[test]
 fn extract_display_lines_kimi_tool_result_empty_content() {
+    // Empty content still shows (completed)
     let payload = json!({
         "role": "tool",
         "content": [],
@@ -632,6 +620,7 @@ fn extract_display_lines_kimi_tool_result_empty_content() {
 
 #[test]
 fn extract_display_lines_kimi_tool_result_no_content_field() {
+    // No content field still shows (completed)
     let payload = json!({
         "role": "tool",
         "tool_call_id": "call_1",
@@ -663,6 +652,7 @@ fn extract_display_lines_kimi_assistant_with_mixed_content() {
 
 #[test]
 fn extract_display_lines_kimi_tool_result_multiple_content_parts() {
+    // Multiple content parts still just show single (completed) line
     let payload = json!({
         "role": "tool",
         "content": [
@@ -673,12 +663,9 @@ fn extract_display_lines_kimi_tool_result_multiple_content_parts() {
         "tool_name": "bash"
     });
     let result = extract_display_lines(&payload);
-    assert_eq!(result.len(), 2);
-    // format_tool_call produces "[Tool] tool_name content" format
+    assert_eq!(result.len(), 1);
+    // format_tool_call produces "[Tool] tool_name (completed)" format
     assert!(result[0].contains("[Tool]"));
     assert!(result[0].contains("bash"));
-    assert!(result[0].contains("First part"));
-    assert!(result[1].contains("[Tool]"));
-    assert!(result[1].contains("bash"));
-    assert!(result[1].contains("Second part"));
+    assert!(result[0].contains("(completed)"));
 }

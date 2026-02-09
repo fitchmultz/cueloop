@@ -580,6 +580,9 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
     }
 
     // Handle kimi tool results: role="tool" with content array
+    // Note: We intentionally don't display the full tool output content here
+    // because it's often verbose (file contents, search results, etc.).
+    // The tool arguments were already displayed when the assistant made the tool call.
     if let Some(role) = json.get("role").and_then(|r| r.as_str())
         && role == "tool"
     {
@@ -589,32 +592,7 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
             .and_then(|t| t.as_str())
             .unwrap_or("Tool");
 
-        // Track if we found any content to display
-        let mut found_content = false;
-
-        // Extract content from the content array (kimi format)
-        if let Some(content) = json.get("content").and_then(|c| c.as_array()) {
-            for part in content {
-                if let Some(text) = part.get("text").and_then(|t| t.as_str())
-                    && !text.is_empty()
-                {
-                    // Truncate long tool outputs to keep display readable
-                    const MAX_TOOL_OUTPUT_LEN: usize = 200;
-                    let display_text = if text.len() > MAX_TOOL_OUTPUT_LEN {
-                        format!("{}... (truncated)", &text[..MAX_TOOL_OUTPUT_LEN])
-                    } else {
-                        text.to_string()
-                    };
-                    lines.push(outpututil::format_tool_call(tool_name, Some(&display_text)));
-                    found_content = true;
-                }
-            }
-        }
-
-        // Fallback to "(completed)" if no content was found
-        if !found_content {
-            lines.push(outpututil::format_tool_call(tool_name, Some("(completed)")));
-        }
+        lines.push(outpututil::format_tool_call(tool_name, Some("(completed)")));
     }
 
     lines
