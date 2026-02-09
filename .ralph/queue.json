@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0741",
-      "status": "todo",
-      "title": "Add offline mode detection and graceful degradation",
-      "description": "The macOS app does not detect when the bundled ralph CLI is unavailable or when the workspace directory is inaccessible. The app shows loading spinners indefinitely or crashes without clear feedback. The app should detect offline/unavailable state and show appropriate UI.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "macos",
-        "offline",
-        "error-handling",
-        "reliability"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMac/RalphMacApp.swift",
-        "apps/RalphMac/RalphCore/RalphCLIClient.swift",
-        "apps/RalphMac/RalphCore/Workspace.swift"
-      ],
-      "evidence": [
-        "RalphCLIClient.swift lines 265-278: Validates executable but no ongoing availability checks",
-        "Workspace.swift loadTasks() hangs indefinitely if CLI fails to respond",
-        "No timeout handling for CLI operations in the UI layer"
-      ],
-      "plan": [
-        "Implement CLI health check on app launch and workspace switch",
-        "Add timeout (30s) for all CLI operations with user-cancelable progress",
-        "Create OfflineBannerView to show when CLI is unavailable",
-        "Add 'Retry Connection' button with visual feedback",
-        "Cache last known task list for offline viewing (read-only mode)",
-        "Show appropriate messages for different failure modes (no CLI, no workspace, permission denied)",
-        "Write tests for offline behavior simulation",
-        "Verify by: remove/move ralph binary, launch app - should show offline state with retry"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-08T19:37:03Z",
-      "updated_at": "2026-02-08T19:37:03Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0728",
       "status": "todo",
       "title": "Add menu bar extra for quick task access and status",

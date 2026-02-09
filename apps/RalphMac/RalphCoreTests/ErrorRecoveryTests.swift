@@ -289,4 +289,232 @@ final class ErrorRecoveryTests: XCTestCase {
         let corruptionActions = ErrorCategory.queueCorrupted.suggestedActions
         XCTAssertTrue(corruptionActions.contains(.validateQueue))
     }
+    
+    // MARK: - Offline Guidance Tests
+    
+    func testOfflineGuidanceForCLIUnavailable() {
+        let guidance = ErrorCategory.cliUnavailable.offlineGuidance
+        XCTAssertNotNil(guidance)
+        XCTAssertTrue(guidance?.contains("app bundle") ?? false)
+        XCTAssertTrue(guidance?.contains("Antivirus") ?? false)
+    }
+    
+    func testOfflineGuidanceForPermissionDenied() {
+        let guidance = ErrorCategory.permissionDenied.offlineGuidance
+        XCTAssertNotNil(guidance)
+        XCTAssertTrue(guidance?.contains("directory was moved") ?? false)
+        XCTAssertTrue(guidance?.contains("permissions") ?? false)
+    }
+    
+    func testOfflineGuidanceForNetworkError() {
+        let guidance = ErrorCategory.networkError.offlineGuidance
+        XCTAssertNotNil(guidance)
+        XCTAssertTrue(guidance?.contains("timed out") ?? false)
+    }
+    
+    func testOfflineGuidanceFallbackToGuidanceMessage() {
+        // For categories without specific offline guidance, should fallback to regular guidance
+        let guidance = ErrorCategory.parseError.offlineGuidance
+        XCTAssertEqual(guidance, ErrorCategory.parseError.guidanceMessage)
+    }
+}
+
+// MARK: - CLIHealthChecker Tests
+
+final class CLIHealthCheckerTests: XCTestCase {
+    
+    func testHealthStatusAvailable() {
+        let status = CLIHealthStatus(
+            availability: .available,
+            lastChecked: Date(),
+            workspaceURL: URL(fileURLWithPath: "/tmp")
+        )
+        
+        XCTAssertTrue(status.isAvailable)
+    }
+    
+    func testHealthStatusUnavailableCLI() {
+        let status = CLIHealthStatus(
+            availability: .unavailable(reason: .cliNotFound),
+            lastChecked: Date(),
+            workspaceURL: URL(fileURLWithPath: "/tmp")
+        )
+        
+        XCTAssertFalse(status.isAvailable)
+    }
+    
+    func testHealthStatusUnknown() {
+        let status = CLIHealthStatus(
+            availability: .unknown,
+            lastChecked: Date(),
+            workspaceURL: URL(fileURLWithPath: "/tmp")
+        )
+        
+        XCTAssertFalse(status.isAvailable)
+    }
+    
+    func testUnavailabilityReasonErrorCategory() {
+        XCTAssertEqual(
+            CLIHealthStatus.UnavailabilityReason.cliNotFound.errorCategory,
+            .cliUnavailable
+        )
+        XCTAssertEqual(
+            CLIHealthStatus.UnavailabilityReason.permissionDenied.errorCategory,
+            .permissionDenied
+        )
+        XCTAssertEqual(
+            CLIHealthStatus.UnavailabilityReason.timeout.errorCategory,
+            .networkError
+        )
+    }
+    
+    func testIsCLIUnavailableError() {
+        let notFoundError = RalphCLIClientError.executableNotFound(
+            URL(fileURLWithPath: "/nonexistent")
+        )
+        XCTAssertTrue(CLIHealthChecker.isCLIUnavailableError(notFoundError))
+        
+        let notExecError = RalphCLIClientError.executableNotExecutable(
+            URL(fileURLWithPath: "/tmp")
+        )
+        XCTAssertTrue(CLIHealthChecker.isCLIUnavailableError(notExecError))
+        
+        let genericError = NSError(domain: "Test", code: 1)
+        XCTAssertFalse(CLIHealthChecker.isCLIUnavailableError(genericError))
+    }
+    
+    func testDefaultTimeoutValue() {
+        XCTAssertEqual(CLIHealthChecker.defaultTimeout, 30)
+    }
+}
+
+// MARK: - TimeoutConfiguration Tests
+
+final class TimeoutConfigurationTests: XCTestCase {
+    
+    func testDefaultConfiguration() {
+        let config = TimeoutConfiguration.default
+        XCTAssertEqual(config.timeout, 30)
+        XCTAssertEqual(config.terminationGracePeriod, 2)
+    }
+    
+    func testLongRunningConfiguration() {
+        let config = TimeoutConfiguration.longRunning
+        XCTAssertEqual(config.timeout, 300)
+        XCTAssertEqual(config.terminationGracePeriod, 2)
+    }
+    
+    func testCustomConfiguration() {
+        let config = TimeoutConfiguration(timeout: 60, terminationGracePeriod: 5)
+        XCTAssertEqual(config.timeout, 60)
+        XCTAssertEqual(config.terminationGracePeriod, 5)
+    }
+}
+
+// MARK: - Workspace Caching Tests
+
+@MainActor
+final class WorkspaceCachingTests: XCTestCase {
+    
+    func testShowOfflineBannerWhenUnavailable() {
+        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        
+        // Initially no status, should not show banner
+        XCTAssertFalse(workspace.showOfflineBanner)
+        
+        // Set unavailable status
+        workspace.cliHealthStatus = CLIHealthStatus(
+            availability: .unavailable(reason: .cliNotFound),
+            lastChecked: Date(),
+            workspaceURL: URL(fileURLWithPath: "/tmp")
+        )
+        
+        XCTAssertTrue(workspace.showOfflineBanner)
+    }
+    
+    func testShowOfflineBannerWhenAvailable() {
+        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        
+        workspace.cliHealthStatus = CLIHealthStatus(
+            availability: .available,
+            lastChecked: Date(),
+            workspaceURL: URL(fileURLWithPath: "/tmp")
+        )
+        
+        XCTAssertFalse(workspace.showOfflineBanner)
+    }
+    
+    func testIsShowingCachedTasks() {
+        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        
+        // Initially no cached tasks
+        XCTAssertFalse(workspace.isShowingCachedTasks)
+        
+        // Set offline status with cached tasks
+        workspace.cliHealthStatus = CLIHealthStatus(
+            availability: .unavailable(reason: .cliNotFound),
+            lastChecked: Date(),
+            workspaceURL: URL(fileURLWithPath: "/tmp")
+        )
+        workspace.cachedTasks = [
+            RalphTask(id: "RQ-TEST", status: .todo, title: "Test", priority: .medium)
+        ]
+        
+        XCTAssertTrue(workspace.isShowingCachedTasks)
+    }
+    
+    func testDisplayTasksWhenOffline() {
+        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        
+        let onlineTask = RalphTask(id: "RQ-ONLINE", status: .todo, title: "Online", priority: .medium)
+        let cachedTask = RalphTask(id: "RQ-CACHED", status: .done, title: "Cached", priority: .low)
+        
+        workspace.tasks = [onlineTask]
+        workspace.cachedTasks = [cachedTask]
+        
+        // Simulate offline status
+        workspace.cliHealthStatus = CLIHealthStatus(
+            availability: .unavailable(reason: .cliNotFound),
+            lastChecked: Date(),
+            workspaceURL: URL(fileURLWithPath: "/tmp")
+        )
+        
+        // Should return cached tasks when offline
+        let displayTasks = workspace.displayTasks()
+        XCTAssertEqual(displayTasks.count, 1)
+        XCTAssertEqual(displayTasks.first?.id, "RQ-CACHED")
+    }
+    
+    func testDisplayTasksWhenOnline() {
+        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        
+        let onlineTask = RalphTask(id: "RQ-ONLINE", status: .todo, title: "Online", priority: .medium)
+        
+        workspace.tasks = [onlineTask]
+        workspace.cachedTasks = []
+        
+        // Simulate online status
+        workspace.cliHealthStatus = CLIHealthStatus(
+            availability: .available,
+            lastChecked: Date(),
+            workspaceURL: URL(fileURLWithPath: "/tmp")
+        )
+        
+        // Should return current tasks when online
+        let displayTasks = workspace.displayTasks()
+        XCTAssertEqual(displayTasks.count, 1)
+        XCTAssertEqual(displayTasks.first?.id, "RQ-ONLINE")
+    }
+    
+    func testClearCachedTasks() {
+        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        
+        workspace.cachedTasks = [
+            RalphTask(id: "RQ-TEST", status: .todo, title: "Test", priority: .medium)
+        ]
+        
+        workspace.clearCachedTasks()
+        
+        XCTAssertTrue(workspace.cachedTasks.isEmpty)
+    }
 }

@@ -40,8 +40,27 @@ struct WorkspaceView: View {
                 .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
         } content: {
             // MARK: Column 2: Content List
-            contentColumn()
-                .navigationSplitViewColumnWidth(min: 320, ideal: 400, max: 600)
+            VStack(spacing: 0) {
+                // Offline status banner (shown when CLI unavailable)
+                if workspace.showOfflineBanner, let status = workspace.cliHealthStatus {
+                    OfflineStatusView(
+                        status: status,
+                        onRetry: {
+                            Task { @MainActor in
+                                _ = await workspace.checkHealth()
+                                if let newStatus = workspace.cliHealthStatus, newStatus.isAvailable {
+                                    await workspace.loadTasks()
+                                }
+                            }
+                        },
+                        onDismiss: nil
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                
+                contentColumn()
+            }
+            .navigationSplitViewColumnWidth(min: 320, ideal: 400, max: 600)
         } detail: {
             // MARK: Column 3: Detail/Inspector
             detailColumn()
@@ -122,16 +141,45 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private func sidebarContent() -> some View {
-        List(SidebarSection.allCases, selection: $navigation.selectedSection) { section in
-            Label(section.rawValue, systemImage: section.icon)
-                .tag(section)
-                .accessibilityHint("Navigate to \(section.rawValue)")
+        VStack(spacing: 0) {
+            List(SidebarSection.allCases, selection: $navigation.selectedSection) { section in
+                Label(section.rawValue, systemImage: section.icon)
+                    .tag(section)
+                    .accessibilityHint("Navigate to \(section.rawValue)")
+            }
+            .accessibilityLabel("Main navigation")
+            .listStyle(.sidebar)
+            #if swift(>=5.9)
+            .sidebarBackground()
+            #endif
+            
+            // Connection status footer
+            if let status = workspace.cliHealthStatus {
+                Divider()
+                HStack {
+                    ConnectionStatusIndicator(
+                        isAvailable: status.isAvailable,
+                        onTap: {
+                            if !status.isAvailable {
+                                workspace.showErrorRecovery = true
+                            }
+                        }
+                    )
+                    
+                    Spacer()
+                    
+                    if workspace.isShowingCachedTasks {
+                        Label("Cached", systemImage: "archivebox")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .help("Showing cached task list")
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial)
+            }
         }
-        .accessibilityLabel("Main navigation")
-        .listStyle(.sidebar)
-        #if swift(>=5.9)
-        .sidebarBackground()
-        #endif
         .navigationTitle("Ralph")
     }
 
@@ -1268,5 +1316,199 @@ private extension RalphCLICommandSpec {
             return name
         }
         return segs.joined(separator: " ")
+    }
+}
+
+// MARK: - Offline Status Views
+
+/// Inline banner when CLI is unavailable or workspace is inaccessible
+struct OfflineStatusView: View {
+    let status: CLIHealthStatus
+    let onRetry: () -> Void
+    let onDismiss: (() -> Void)?
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon based on reason
+            Image(systemName: iconName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(iconColor)
+            
+            // Message
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer()
+            
+            // Retry button
+            Button(action: onRetry) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .buttonStyle(.borderless)
+            .help("Retry connection")
+            
+            // Dismiss button (if provided)
+            if let onDismiss = onDismiss {
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .buttonStyle(.borderless)
+                .help("Dismiss")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(backgroundView)
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundStyle(borderColor.opacity(0.3)),
+            alignment: .bottom
+        )
+    }
+    
+    @ViewBuilder
+    private var backgroundView: some View {
+        RoundedRectangle(cornerRadius: 0)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        backgroundColor.opacity(0.15),
+                        backgroundColor.opacity(0.05)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+    }
+    
+    private var iconName: String {
+        switch status.availability {
+        case .available:
+            return "checkmark.circle.fill"
+        case .unavailable(let reason):
+            switch reason {
+            case .cliNotFound, .cliNotExecutable:
+                return "terminal.fill"
+            case .workspaceInaccessible:
+                return "folder.badge.questionmark"
+            case .permissionDenied:
+                return "lock.fill"
+            case .timeout:
+                return "clock.badge.exclamationmark.fill"
+            case .unknown:
+                return "exclamationmark.triangle.fill"
+            }
+        case .unknown:
+            return "questionmark.circle.fill"
+        }
+    }
+    
+    private var iconColor: Color {
+        switch status.availability {
+        case .available:
+            return .green
+        case .unavailable(let reason):
+            switch reason {
+            case .cliNotFound, .cliNotExecutable:
+                return .orange
+            case .workspaceInaccessible, .permissionDenied:
+                return .red
+            case .timeout:
+                return .yellow
+            case .unknown:
+                return .gray
+            }
+        case .unknown:
+            return .gray
+        }
+    }
+    
+    private var backgroundColor: Color {
+        iconColor
+    }
+    
+    private var borderColor: Color {
+        iconColor
+    }
+    
+    private var title: String {
+        switch status.availability {
+        case .available:
+            return "Connected"
+        case .unavailable(let reason):
+            switch reason {
+            case .cliNotFound, .cliNotExecutable:
+                return "Ralph CLI Unavailable"
+            case .workspaceInaccessible:
+                return "Workspace Inaccessible"
+            case .permissionDenied:
+                return "Permission Denied"
+            case .timeout:
+                return "Connection Timed Out"
+            case .unknown:
+                return "Connection Issue"
+            }
+        case .unknown:
+            return "Checking Connection..."
+        }
+    }
+    
+    private var subtitle: String? {
+        switch status.availability {
+        case .available:
+            return "All systems operational"
+        case .unavailable(let reason):
+            switch reason {
+            case .cliNotFound:
+                return "The ralph executable could not be found"
+            case .cliNotExecutable:
+                return "The ralph executable is not runnable"
+            case .workspaceInaccessible:
+                return "Cannot access the workspace directory"
+            case .permissionDenied:
+                return "Check file permissions for this workspace"
+            case .timeout:
+                return "The operation took too long to respond"
+            case .unknown(let description):
+                return description
+            }
+        case .unknown:
+            return nil
+        }
+    }
+}
+
+/// Smaller inline indicator for use in sidebars/toolbars
+struct ConnectionStatusIndicator: View {
+    let isAvailable: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(isAvailable ? Color.green : Color.orange)
+                    .frame(width: 8, height: 8)
+                
+                Text(isAvailable ? "Connected" : "Offline")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .help(isAvailable ? "CLI is available" : "CLI is unavailable - click for details")
     }
 }

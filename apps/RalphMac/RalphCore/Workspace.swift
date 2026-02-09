@@ -86,6 +86,24 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     @Published public var showErrorRecovery: Bool = false
     @Published public var retryState: RetryState?
 
+    // MARK: - Offline Mode State
+    @Published public var cliHealthStatus: CLIHealthStatus?
+    @Published public var isCheckingHealth: Bool = false
+
+    /// Cached tasks for offline viewing
+    @Published public var cachedTasks: [RalphTask] = []
+
+    /// Whether to show the offline banner
+    public var showOfflineBanner: Bool {
+        guard let status = cliHealthStatus else { return false }
+        return !status.isAvailable
+    }
+
+    /// Whether tasks are being shown from cache
+    public var isShowingCachedTasks: Bool {
+        showOfflineBanner && !cachedTasks.isEmpty
+    }
+
     // MARK: - Execution State (for Run Control Panel)
 
     /// The ID of the currently running task (if known)
@@ -1908,5 +1926,95 @@ extension Workspace {
         lastRecoveryError = nil
         showErrorRecovery = false
         retryState = nil
+    }
+}
+
+// MARK: - Health Checking
+
+extension Workspace {
+    /// Perform a health check for this workspace
+    /// - Parameter timeout: Maximum time to wait (default: 30s)
+    /// - Returns: The health status
+    @MainActor
+    public func checkHealth(timeout: TimeInterval = CLIHealthChecker.defaultTimeout) async -> CLIHealthStatus {
+        isCheckingHealth = true
+        defer { isCheckingHealth = false }
+        
+        let checker = CLIHealthChecker()
+        let status = await checker.checkHealth(
+            workspaceID: id,
+            workspaceURL: workingDirectoryURL,
+            timeout: timeout
+        )
+        cliHealthStatus = status
+        
+        // If healthy, refresh cached tasks
+        if status.isAvailable {
+            refreshCachedTasks()
+        }
+        
+        return status
+    }
+    
+    /// Quick health check using cached result if available
+    @MainActor
+    public func checkHealthIfNeeded() async {
+        // If we have a recent check (< 30 seconds), use cached
+        if let status = cliHealthStatus,
+           Date().timeIntervalSince(status.lastChecked) < 30 {
+            return
+        }
+        
+        _ = await checkHealth()
+    }
+}
+
+// MARK: - Task Caching
+
+extension Workspace {
+    /// Save current tasks to UserDefaults cache
+    @MainActor
+    public func refreshCachedTasks() {
+        cachedTasks = tasks
+        
+        // Persist to UserDefaults
+        do {
+            let data = try JSONEncoder().encode(tasks)
+            UserDefaults.standard.set(data, forKey: defaultsKey("cachedTasks"))
+        } catch {
+            RalphLogger.shared.error("Failed to cache tasks: \(error)", category: .workspace)
+        }
+    }
+    
+    /// Load cached tasks from UserDefaults
+    @MainActor
+    public func loadCachedTasks() {
+        guard let data = UserDefaults.standard.data(forKey: defaultsKey("cachedTasks")) else {
+            cachedTasks = []
+            return
+        }
+        
+        do {
+            cachedTasks = try JSONDecoder().decode([RalphTask].self, from: data)
+        } catch {
+            RalphLogger.shared.error("Failed to load cached tasks: \(error)", category: .workspace)
+            cachedTasks = []
+        }
+    }
+    
+    /// Get tasks to display (cached if offline, current if online)
+    @MainActor
+    public func displayTasks() -> [RalphTask] {
+        if showOfflineBanner && !cachedTasks.isEmpty {
+            return cachedTasks
+        }
+        return tasks
+    }
+    
+    /// Clear cached tasks for this workspace
+    @MainActor
+    public func clearCachedTasks() {
+        cachedTasks = []
+        UserDefaults.standard.removeObject(forKey: defaultsKey("cachedTasks"))
     }
 }

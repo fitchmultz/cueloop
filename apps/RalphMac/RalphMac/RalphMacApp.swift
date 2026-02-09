@@ -389,6 +389,18 @@ struct WindowViewContainer: View {
                     let workspace = manager.createWorkspace()
                     windowState = WindowState(workspaceIDs: [workspace.id])
                 }
+                
+                // Perform health check after workspace is set up
+                if let firstWorkspaceID = windowState?.workspaceIDs.first,
+                   let workspace = manager.workspaces.first(where: { $0.id == firstWorkspaceID }) {
+                    Task { @MainActor in
+                        _ = await workspace.checkHealth()
+                        // Load cached tasks if CLI is unavailable
+                        if workspace.showOfflineBanner {
+                            workspace.loadCachedTasks()
+                        }
+                    }
+                }
             }
         }
     }

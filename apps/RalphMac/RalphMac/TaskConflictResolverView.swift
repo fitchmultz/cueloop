@@ -17,7 +17,7 @@
  */
 
 import SwiftUI
-import RalphCore
+public import RalphCore
 
 struct TaskConflictResolverView: View {
     let localTask: RalphTask
@@ -397,6 +397,44 @@ struct TaskConflictResolverView: View {
 
 // MARK: - Error Recovery Views
 
+/// Extended guidance for offline scenarios
+extension ErrorCategory {
+    /// Extended guidance message for offline scenarios with specific troubleshooting steps
+    public var offlineGuidance: String? {
+        switch self {
+        case .cliUnavailable:
+            return """
+            The Ralph CLI is not available. This can happen when:
+            • The app bundle is damaged or incomplete
+            • The ralph binary was moved or deleted
+            • Antivirus software quarantined the binary
+            
+            Try reinstalling Ralph or checking your security software.
+            """
+        case .permissionDenied:
+            return """
+            Ralph cannot access the workspace directory. This can happen when:
+            • The directory was moved or deleted
+            • File permissions changed
+            • The workspace is on a disconnected drive
+            
+            Check that the workspace path is still valid and accessible.
+            """
+        case .networkError:
+            return """
+            A network-related operation timed out. This can happen when:
+            • The CLI took too long to respond
+            • The system is under heavy load
+            • There's a resource deadlock
+            
+            Try again in a moment.
+            """
+        default:
+            return guidanceMessage
+        }
+    }
+}
+
 /// SwiftUI color extension for ErrorCategory
 extension ErrorCategory {
     var swiftUIColor: Color {
@@ -465,8 +503,8 @@ struct ErrorRecoveryView: View {
                     .foregroundStyle(.primary)
             }
 
-            // Guidance message if available
-            if let guidance = error.category.guidanceMessage {
+            // Guidance message if available (use offline guidance if applicable)
+            if let guidance = error.category.offlineGuidance ?? error.category.guidanceMessage {
                 Text(guidance)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

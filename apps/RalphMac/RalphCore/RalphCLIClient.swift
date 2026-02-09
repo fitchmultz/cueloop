@@ -600,6 +600,24 @@ public actor RalphCLIRun {
     }
 }
 
+// MARK: - Timeout Configuration
+
+public struct TimeoutConfiguration: Sendable {
+    public let timeout: TimeInterval
+    public let terminationGracePeriod: TimeInterval
+    
+    public init(
+        timeout: TimeInterval = 30,
+        terminationGracePeriod: TimeInterval = 2
+    ) {
+        self.timeout = timeout
+        self.terminationGracePeriod = terminationGracePeriod
+    }
+    
+    public static let `default` = TimeoutConfiguration()
+    public static let longRunning = TimeoutConfiguration(timeout: 300) // 5 minutes
+}
+
 public struct RalphCLIClient: Sendable {
     public let executableURL: URL
 
@@ -685,11 +703,13 @@ public struct RalphCLIClient: Sendable {
     ///   - currentDirectoryURL: Working directory for the subprocess
     ///   - environment: Additional environment variables
     ///   - maxOutputSize: Optional maximum size in characters before truncation (default: nil = unlimited)
+    ///   - timeoutConfiguration: Timeout configuration for the operation (default: 30s)
     public func runAndCollect(
         arguments: [String],
         currentDirectoryURL: URL? = nil,
         environment: [String: String] = [:],
-        maxOutputSize: Int? = nil
+        maxOutputSize: Int? = nil,
+        timeoutConfiguration: TimeoutConfiguration = .default
     ) async throws -> CollectedOutput {
         let run = try start(
             arguments: arguments,
@@ -697,37 +717,72 @@ public struct RalphCLIClient: Sendable {
             environment: environment
         )
 
-        var stdout = ""
-        var stderr = ""
-        var isTruncated = false
+        // Use withTimeout to enforce timeout
+        return try await withTimeout(
+            configuration: timeoutConfiguration,
+            run: run
+        ) {
+            var stdout = ""
+            var stderr = ""
+            var isTruncated = false
 
-        for await event in run.events {
-            // Check if we've exceeded the max size
-            if let maxSize = maxOutputSize, !isTruncated {
-                let currentSize = stdout.count + stderr.count
-                if currentSize >= maxSize {
-                    isTruncated = true
-                    // Continue consuming events but don't accumulate more
-                    continue
+            for await event in run.events {
+                // Check if we've exceeded the max size
+                if let maxSize = maxOutputSize, !isTruncated {
+                    let currentSize = stdout.count + stderr.count
+                    if currentSize >= maxSize {
+                        isTruncated = true
+                        // Continue consuming events but don't accumulate more
+                        continue
+                    }
+                }
+
+                switch event.stream {
+                case .stdout:
+                    stdout.append(event.text)
+                case .stderr:
+                    stderr.append(event.text)
                 }
             }
 
-            switch event.stream {
-            case .stdout:
-                stdout.append(event.text)
-            case .stderr:
-                stderr.append(event.text)
+            let status = await run.waitUntilExit()
+
+            // If truncated, add indicator to stderr
+            if isTruncated {
+                stderr = "\n[warning: output exceeded maximum size and was truncated]\n" + stderr
             }
+
+            return CollectedOutput(status: status, stdout: stdout, stderr: stderr)
         }
-
-        let status = await run.waitUntilExit()
-
-        // If truncated, add indicator to stderr
-        if isTruncated {
-            stderr = "\n[warning: output exceeded maximum size and was truncated]\n" + stderr
+    }
+    
+    // MARK: - Timeout Support
+    
+    private func withTimeout<T: Sendable>(
+        configuration: TimeoutConfiguration,
+        run: RalphCLIRun,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            // Add the operation task
+            group.addTask {
+                try await operation()
+            }
+            
+            // Add timeout task
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(configuration.timeout * 1_000_000_000))
+                // Cancel the CLI run before throwing
+                await run.cancel()
+                try await Task.sleep(nanoseconds: UInt64(configuration.terminationGracePeriod * 1_000_000_000))
+                throw TimeoutError()
+            }
+            
+            // Return first to complete, cancel the other
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
-
-        return CollectedOutput(status: status, stdout: stdout, stderr: stderr)
     }
 }
 
@@ -777,6 +832,212 @@ public extension RalphCLIClient {
             },
             onProgress: onRetry
         )
+    }
+}
+
+/// Error thrown when an operation times out
+public struct TimeoutError: Error, Sendable {}
+
+// MARK: - CLI Health Checking
+
+/// Represents the health status of the CLI for a workspace
+public struct CLIHealthStatus: Sendable, Equatable {
+    public enum Availability: Sendable, Equatable {
+        case available
+        case unavailable(reason: UnavailabilityReason)
+        case unknown
+    }
+    
+    public enum UnavailabilityReason: Sendable, Equatable {
+        case cliNotFound
+        case cliNotExecutable
+        case workspaceInaccessible
+        case timeout
+        case permissionDenied
+        case unknown(String)
+        
+        public var errorCategory: ErrorCategory {
+            switch self {
+            case .cliNotFound, .cliNotExecutable:
+                return .cliUnavailable
+            case .workspaceInaccessible, .permissionDenied:
+                return .permissionDenied
+            case .timeout:
+                return .networkError
+            case .unknown:
+                return .unknown
+            }
+        }
+    }
+    
+    public let availability: Availability
+    public let lastChecked: Date
+    public let workspaceURL: URL
+    
+    public var isAvailable: Bool {
+        if case .available = availability { return true }
+        return false
+    }
+}
+
+/// Actor that manages CLI health checking
+public actor CLIHealthChecker {
+    private var cachedStatus: [UUID: CLIHealthStatus] = [:]
+    private var checkTasks: [UUID: Task<CLIHealthStatus, Never>] = [:]
+    
+    /// Default timeout for health checks (30 seconds)
+    public static let defaultTimeout: TimeInterval = 30
+    
+    /// Perform a health check for a workspace
+    /// - Parameters:
+    ///   - workspaceID: The unique identifier for the workspace
+    ///   - workspaceURL: The working directory URL of the workspace
+    ///   - timeout: Maximum time to wait for check (default: 30s)
+    /// - Returns: The health status
+    public func checkHealth(
+        workspaceID: UUID,
+        workspaceURL: URL,
+        timeout: TimeInterval = defaultTimeout
+    ) async -> CLIHealthStatus {
+        // Cancel any in-flight check for this workspace
+        checkTasks[workspaceID]?.cancel()
+        
+        let task = Task {
+            return await performHealthCheck(
+                workspaceID: workspaceID,
+                workspaceURL: workspaceURL,
+                timeout: timeout
+            )
+        }
+        
+        checkTasks[workspaceID] = task
+        let status = await task.value
+        checkTasks[workspaceID] = nil
+        
+        cachedStatus[workspaceID] = status
+        return status
+    }
+    
+    /// Get cached health status without performing a new check
+    public func cachedHealth(for workspaceID: UUID) -> CLIHealthStatus? {
+        cachedStatus[workspaceID]
+    }
+    
+    /// Invalidate cached status for a workspace
+    public func invalidateCache(for workspaceID: UUID) {
+        cachedStatus.removeValue(forKey: workspaceID)
+    }
+    
+    /// Check if a specific error represents a CLI unavailability issue
+    public static func isCLIUnavailableError(_ error: any Error) -> Bool {
+        if let cliError = error as? RalphCLIClientError {
+            switch cliError {
+            case .executableNotFound, .executableNotExecutable:
+                return true
+            }
+        }
+        
+        let description = error.localizedDescription.lowercased()
+        return description.contains("executable") ||
+               description.contains("not found") ||
+               description.contains("permission denied")
+    }
+    
+    // MARK: - Private
+    
+    private func performHealthCheck(
+        workspaceID: UUID,
+        workspaceURL: URL,
+        timeout: TimeInterval
+    ) async -> CLIHealthStatus {
+        // Check 1: Workspace directory exists and is accessible
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(
+            atPath: workspaceURL.path,
+            isDirectory: &isDir
+        )
+        
+        guard exists && isDir.boolValue else {
+            return CLIHealthStatus(
+                availability: .unavailable(reason: .workspaceInaccessible),
+                lastChecked: Date(),
+                workspaceURL: workspaceURL
+            )
+        }
+        
+        // Check 2: Can list directory contents (permission check)
+        do {
+            _ = try FileManager.default.contentsOfDirectory(
+                at: workspaceURL,
+                includingPropertiesForKeys: nil
+            )
+        } catch {
+            return CLIHealthStatus(
+                availability: .unavailable(reason: .permissionDenied),
+                lastChecked: Date(),
+                workspaceURL: workspaceURL
+            )
+        }
+        
+        // Check 3: CLI is available and executable (with timeout)
+        do {
+            let client = try RalphCLIClient.bundled()
+            
+            // Run version check with timeout
+            let result = try await withThrowingTaskGroup(of: RalphCLIClient.CollectedOutput.self) { group in
+                group.addTask {
+                    try await client.runAndCollect(arguments: ["--version"])
+                }
+                
+                group.addTask {
+                    try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                    throw TimeoutError()
+                }
+                
+                let result = try await group.next()!
+                group.cancelAll()
+                return result
+            }
+            
+            guard result.status.code == 0 else {
+                return CLIHealthStatus(
+                    availability: .unavailable(reason: .cliNotExecutable),
+                    lastChecked: Date(),
+                    workspaceURL: workspaceURL
+                )
+            }
+            
+            return CLIHealthStatus(
+                availability: .available,
+                lastChecked: Date(),
+                workspaceURL: workspaceURL
+            )
+            
+        } catch is TimeoutError {
+            return CLIHealthStatus(
+                availability: .unavailable(reason: .timeout),
+                lastChecked: Date(),
+                workspaceURL: workspaceURL
+            )
+        } catch RalphCLIClientError.executableNotFound {
+            return CLIHealthStatus(
+                availability: .unavailable(reason: .cliNotFound),
+                lastChecked: Date(),
+                workspaceURL: workspaceURL
+            )
+        } catch RalphCLIClientError.executableNotExecutable {
+            return CLIHealthStatus(
+                availability: .unavailable(reason: .cliNotExecutable),
+                lastChecked: Date(),
+                workspaceURL: workspaceURL
+            )
+        } catch {
+            return CLIHealthStatus(
+                availability: .unavailable(reason: .unknown(error.localizedDescription)),
+                lastChecked: Date(),
+                workspaceURL: workspaceURL
+            )
+        }
     }
 }
 
