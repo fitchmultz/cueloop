@@ -107,6 +107,18 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     /// Parsed ANSI-colored output segments for rich console display
     @Published public var attributedOutput: [ANSISegment] = []
 
+    /// Size-limited buffer for console output to prevent memory exhaustion
+    @Published public var outputBuffer: ConsoleOutputBuffer
+
+    /// Maximum number of ANSI segments to retain (to limit attributed output memory)
+    @Published public var maxANSISegments: Int = 1000 {
+        didSet {
+            if maxANSISegments != oldValue {
+                enforceANSISegmentLimit()
+            }
+        }
+    }
+
     public enum TaskSortOption: String, CaseIterable {
         case priority = "Priority"
         case created = "Created"
@@ -323,6 +335,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         self.name = name ?? workingDirectoryURL.lastPathComponent
         self.recentWorkingDirectories = []
         self.output = ""
+        self.outputBuffer = ConsoleOutputBuffer.loadFromUserDefaults()
         self.isRunning = false
         self.client = client
 
@@ -906,6 +919,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         guard !isRunning else { return }
 
         output = ""
+        outputBuffer.clear()
         attributedOutput = []
         lastExitStatus = nil
         errorMessage = nil
@@ -919,17 +933,21 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
                     currentDirectoryURL: workingDirectoryURL
                 )
 
-                // Update output
-                output = collected.stdout
+                // Update output with size limiting via outputBuffer
+                outputBuffer.setContent(collected.stdout)
                 if !collected.stderr.isEmpty {
-                    output += "\n[stderr] " + collected.stderr
+                    outputBuffer.append("\n[stderr] " + collected.stderr)
                 }
+
+                // Keep legacy output property in sync for backwards compatibility
+                output = outputBuffer.content
 
                 // Parse phase information from output
                 detectPhase(from: output)
 
-                // Parse ANSI codes for rich display
+                // Parse ANSI codes for rich display (with segment limiting)
                 parseANSICodes(from: output)
+                enforceANSISegmentLimit()
 
                 lastExitStatus = collected.status
                 isRunning = false
@@ -1024,6 +1042,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         executionStartTime = nil
         currentTaskID = nil
         attributedOutput = []
+        // Note: outputBuffer is intentionally preserved for inspection after completion
     }
 
     /// Add execution record to history (keeps last 50)
@@ -1322,6 +1341,27 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         return merged
     }
 
+    /// Enforce maximum number of ANSI segments to limit memory usage.
+    /// Keeps the most recent segments and prepends an indicator when truncated.
+    public func enforceANSISegmentLimit() {
+        guard attributedOutput.count > maxANSISegments else { return }
+
+        // Keep the most recent segments (trailing end of output)
+        attributedOutput = Array(attributedOutput.suffix(maxANSISegments))
+
+        // Prepend a default-colored indicator segment if not already present
+        let indicatorText = "\n... [console output truncated due to length] ...\n"
+        if !attributedOutput.isEmpty && attributedOutput[0].text != indicatorText {
+            let indicator = ANSISegment(
+                text: indicatorText,
+                color: .yellow,
+                isBold: false,
+                isItalic: true
+            )
+            attributedOutput.insert(indicator, at: 0)
+        }
+    }
+
     // MARK: - CLI Spec Loading
 
     public func loadCLISpec() async {
@@ -1588,6 +1628,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
 
         // Initialize runtime state
         output = ""
+        outputBuffer = ConsoleOutputBuffer.loadFromUserDefaults()
         isRunning = false
 
         loadState()

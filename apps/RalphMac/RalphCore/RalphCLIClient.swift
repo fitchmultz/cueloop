@@ -338,10 +338,16 @@ public struct RalphCLIClient: Sendable {
     /// required. For long-running commands, prefer `start(...)` and consume `events`.
     ///
     /// - Note: Non-zero exit codes are returned in `CollectedOutput.status`; they do not throw.
+    /// - Parameters:
+    ///   - arguments: Command-line arguments to pass to the executable
+    ///   - currentDirectoryURL: Working directory for the subprocess
+    ///   - environment: Additional environment variables
+    ///   - maxOutputSize: Optional maximum size in characters before truncation (default: nil = unlimited)
     public func runAndCollect(
         arguments: [String],
         currentDirectoryURL: URL? = nil,
-        environment: [String: String] = [:]
+        environment: [String: String] = [:],
+        maxOutputSize: Int? = nil
     ) async throws -> CollectedOutput {
         let run = try start(
             arguments: arguments,
@@ -351,7 +357,19 @@ public struct RalphCLIClient: Sendable {
 
         var stdout = ""
         var stderr = ""
+        var isTruncated = false
+
         for await event in run.events {
+            // Check if we've exceeded the max size
+            if let maxSize = maxOutputSize, !isTruncated {
+                let currentSize = stdout.count + stderr.count
+                if currentSize >= maxSize {
+                    isTruncated = true
+                    // Continue consuming events but don't accumulate more
+                    continue
+                }
+            }
+
             switch event.stream {
             case .stdout:
                 stdout.append(event.text)
@@ -361,6 +379,12 @@ public struct RalphCLIClient: Sendable {
         }
 
         let status = await run.waitUntilExit()
+
+        // If truncated, add indicator to stderr
+        if isTruncated {
+            stderr = "\n[warning: output exceeded maximum size and was truncated]\n" + stderr
+        }
+
         return CollectedOutput(status: status, stdout: stdout, stderr: stderr)
     }
 }

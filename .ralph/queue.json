@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0739",
-      "status": "todo",
-      "title": "Add console output size limit to prevent memory exhaustion",
-      "description": "RunControlConsoleView accumulates all CLI output in memory without any size limit. Long-running tasks or tasks with verbose output can consume excessive memory, potentially causing the app to crash or be killed by the system. The console should implement a rolling buffer with configurable limits.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "macos",
-        "memory",
-        "performance",
-        "reliability"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMac/RunControlConsoleView.swift",
-        "apps/RalphMac/RalphCore/Workspace.swift"
-      ],
-      "evidence": [
-        "Workspace.swift line 30: @Published public var output: String - grows unbounded",
-        "RunControlConsoleView.swift lines 67-80: All output accumulated in workspace.output",
-        "No truncation or rolling buffer implemented for long-running processes"
-      ],
-      "plan": [
-        "Implement CircularOutputBuffer with configurable max lines (default 10,000)",
-        "Add max total characters limit (default 10MB) with overflow indicator",
-        "Add 'Clear Output' button to manually free memory",
-        "Optionally save overflow to temp file for full log access",
-        "Add visual indicator when output is truncated",
-        "Write tests for buffer overflow behavior",
-        "Verify by: run task with massive output, verify memory stays bounded"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-08T19:37:03Z",
-      "updated_at": "2026-02-08T19:37:03Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0738",
       "status": "todo",
       "title": "Add retry logic with exponential backoff for transient CLI failures",

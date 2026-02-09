@@ -130,11 +130,20 @@ struct RunControlConsoleView: View {
 
                 Spacer()
 
-                // Character count
-                Text("\(workspace.output.count) chars")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Console contains \(workspace.output.count) characters")
+                // Character count with truncation indicator
+                HStack(spacing: 4) {
+                    if workspace.outputBuffer.isTruncated {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .help("Output has been truncated to prevent memory exhaustion")
+                    }
+                    Text("\(workspace.output.count) chars")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityLabel(workspace.outputBuffer.isTruncated
+                    ? "Console contains \(workspace.output.count) characters, content truncated"
+                    : "Console contains \(workspace.output.count) characters")
             }
         }
     }
@@ -172,6 +181,7 @@ struct RunControlConsoleView: View {
 
     private func clearOutput() {
         workspace.output = ""
+        workspace.outputBuffer.clear()
         workspace.attributedOutput = []
         announceForAccessibility("Console cleared")
     }

@@ -50,6 +50,7 @@
 		E1FE4FE54CB8402D84A8607625CC6BB5 /* TaskCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D09515AC14F94350B766E15468824B53 /* TaskCreationView.swift */; };
 		E4635AF24A810EE76495C30B /* VersionValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0944A9447A23AA1748EC80A /* VersionValidatorTests.swift */; };
 		EE9BBA22346A4F6089F70335 /* RalphCLIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B301E8A7CC431E930E7539 /* RalphCLIClient.swift */; };
+		CC99AA88BB77DD66EE55FF44 /* ConsoleOutputBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1122AABBCCDDEEFF99887766 /* ConsoleOutputBuffer.swift */; };
 		EF9F001157144DB59DB782FF /* RalphModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3014AC133794F7F8AF0E753 /* RalphModels.swift */; };
 		F0991C52FCDBA422BDD86604 /* VersionValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D9B54003005176B3196572 /* VersionValidator.swift */; };
 		FF6677889900AA11BB22CC33DD44EE55 /* TagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */; };
@@ -97,6 +98,7 @@
 
 /* Begin PBXFileReference section */
 		0B651F8A746C4387B1F9D42A /* Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workspace.swift; sourceTree = "<group>"; };
+		1122AABBCCDDEEFF99887766 /* ConsoleOutputBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConsoleOutputBuffer.swift; path = RalphCore/ConsoleOutputBuffer.swift; sourceTree = "<group>"; };
 		11223344556677889900AABBCCDDEEFF /* TaskRelationshipPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskRelationshipPicker.swift; path = RalphMac/TaskRelationshipPicker.swift; sourceTree = "<group>"; };
 		1144436E84A467CACB42516A /* NavigationViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationViewModel.swift; path = NavigationViewModel.swift; sourceTree = "<group>"; };
 		16591EC6C1744AC5AF4189A4 /* RalphCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = RalphCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -447,6 +449,7 @@
 				6CAF4A3B0D5E6F78C9012345 /* WindowState.swift in Sources */,
 				A1234567890ABCDEF1234567 /* QueueFileWatcher.swift in Sources */,
 				F0991C52FCDBA422BDD86604 /* VersionValidator.swift in Sources */,
+				CC99AA88BB77DD66EE55FF44 /* ConsoleOutputBuffer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

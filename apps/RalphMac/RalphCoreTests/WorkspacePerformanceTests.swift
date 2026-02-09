@@ -63,8 +63,141 @@ final class WorkspacePerformanceTests: XCTestCase {
         }
     }
     
+    // MARK: - Output Buffer Tests
+
+    func test_outputBuffer_enforcesMaxCharacters() {
+        let buffer = ConsoleOutputBuffer(maxCharacters: 100)
+
+        // Add 150 characters
+        buffer.append(String(repeating: "a", count: 150))
+
+        // Should be truncated to ~100 (accounting for indicator)
+        XCTAssertLessThanOrEqual(buffer.content.count, 110)
+        XCTAssertTrue(buffer.isTruncated)
+    }
+
+    func test_outputBuffer_preservesTrailingContent() {
+        let buffer = ConsoleOutputBuffer(maxCharacters: 50)
+
+        buffer.append("START_")
+        buffer.append(String(repeating: "x", count: 100))
+        buffer.append("_END")
+
+        // Should contain the END marker, not the START marker
+        XCTAssertTrue(buffer.content.contains("END"))
+        XCTAssertFalse(buffer.content.contains("START"))
+    }
+
+    func test_outputBuffer_tracksOriginalLength() {
+        let buffer = ConsoleOutputBuffer(maxCharacters: 10)
+
+        buffer.append("12345")
+        XCTAssertEqual(buffer.originalLength, 5)
+        XCTAssertFalse(buffer.isTruncated)
+
+        buffer.append("6789012345")
+        XCTAssertEqual(buffer.originalLength, 15)
+        XCTAssertTrue(buffer.isTruncated)
+    }
+
+    func test_outputBuffer_setContent_enforcesLimit() {
+        let buffer = ConsoleOutputBuffer(maxCharacters: 20)
+
+        buffer.setContent(String(repeating: "x", count: 100))
+
+        XCTAssertTrue(buffer.isTruncated)
+        XCTAssertEqual(buffer.originalLength, 100)
+        XCTAssertLessThanOrEqual(buffer.content.count, 30) // 20 + indicator
+    }
+
+    func test_outputBuffer_clear_resetsState() {
+        let buffer = ConsoleOutputBuffer(maxCharacters: 10)
+
+        buffer.append("12345678901") // 11 chars
+        XCTAssertTrue(buffer.isTruncated)
+
+        buffer.clear()
+        XCTAssertEqual(buffer.content, "")
+        XCTAssertEqual(buffer.originalLength, 0)
+        XCTAssertFalse(buffer.isTruncated)
+    }
+
+    func test_outputBuffer_dynamicLimitChange() {
+        let buffer = ConsoleOutputBuffer(maxCharacters: 100)
+
+        buffer.append(String(repeating: "x", count: 80))
+        XCTAssertFalse(buffer.isTruncated)
+
+        // Lower the limit
+        buffer.maxCharacters = 50
+        XCTAssertTrue(buffer.isTruncated)
+        XCTAssertLessThanOrEqual(buffer.content.count, 70) // 50 + indicator
+    }
+
+    // MARK: - ANSI Segment Limit Tests
+
+    func test_ansiSegmentLimit_enforced() {
+        // Generate output that creates many segments
+        var ansiOutput = ""
+        for i in 0..<200 {
+            ansiOutput += "\u{001B}[3\(i % 8)mtext\(i)\u{001B}[0m "
+        }
+
+        workspace.maxANSISegments = 50
+        workspace.parseANSICodes(from: ansiOutput)
+        workspace.enforceANSISegmentLimit()
+
+        // Should be limited to max + 1 (for indicator)
+        XCTAssertLessThanOrEqual(workspace.attributedOutput.count, 51)
+    }
+
+    func test_ansiSegmentLimit_indicatorAdded() {
+        // Generate output that creates many segments
+        var ansiOutput = ""
+        for i in 0..<100 {
+            ansiOutput += "\u{001B}[3\(i % 8)mtext\(i)\u{001B}[0m "
+        }
+
+        workspace.maxANSISegments = 20
+        workspace.parseANSICodes(from: ansiOutput)
+        workspace.enforceANSISegmentLimit()
+
+        // Should have indicator segment at the beginning
+        XCTAssertEqual(workspace.attributedOutput.first?.text, "\n... [console output truncated due to length] ...\n")
+        XCTAssertEqual(workspace.attributedOutput.first?.color, .yellow)
+        XCTAssertTrue(workspace.attributedOutput.first?.isItalic ?? false)
+    }
+
+    func test_ansiSegmentLimit_dynamicChange() {
+        // Generate output with many segments
+        var ansiOutput = ""
+        for i in 0..<100 {
+            ansiOutput += "\u{001B}[3\(i % 8)mtext\(i)\u{001B}[0m "
+        }
+
+        workspace.maxANSISegments = 200
+        workspace.parseANSICodes(from: ansiOutput)
+        workspace.enforceANSISegmentLimit()
+
+        let initialCount = workspace.attributedOutput.count
+        XCTAssertGreaterThan(initialCount, 0)
+
+        // Lower the limit
+        workspace.maxANSISegments = 10
+        XCTAssertLessThanOrEqual(workspace.attributedOutput.count, 11) // 10 + indicator
+    }
+
+    func test_ansiSegmentLimit_noTruncationWhenUnderLimit() {
+        // Small output shouldn't be truncated
+        workspace.parseANSICodes(from: "Simple text without ANSI codes")
+        workspace.enforceANSISegmentLimit()
+
+        XCTAssertEqual(workspace.attributedOutput.count, 1)
+        XCTAssertEqual(workspace.attributedOutput.first?.text, "Simple text without ANSI codes")
+    }
+
     // MARK: - Helpers
-    
+
     private func generateTasks(count: Int) -> [RalphTask] {
         return (1...count).map { index in
             RalphTask(
