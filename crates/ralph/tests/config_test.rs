@@ -29,11 +29,45 @@ fn create_queue_json(dir: &TempDir, content: &str) -> PathBuf {
     queue_path
 }
 
+// Helper to create a queue.jsonc file
+fn create_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
+    let ralph_dir = setup_ralph_dir(dir);
+    let queue_path = ralph_dir.join("queue.jsonc");
+    fs::write(&queue_path, content).expect("write queue.jsonc");
+    queue_path
+}
+
+// Helper to create a done.json file
+#[allow(dead_code)]
+fn create_done_json(dir: &TempDir, content: &str) -> PathBuf {
+    let ralph_dir = setup_ralph_dir(dir);
+    let done_path = ralph_dir.join("done.json");
+    fs::write(&done_path, content).expect("write done.json");
+    done_path
+}
+
+// Helper to create a done.jsonc file
+#[allow(dead_code)]
+fn create_done_jsonc(dir: &TempDir, content: &str) -> PathBuf {
+    let ralph_dir = setup_ralph_dir(dir);
+    let done_path = ralph_dir.join("done.jsonc");
+    fs::write(&done_path, content).expect("write done.jsonc");
+    done_path
+}
+
 // Helper to create a config.json file
 fn create_config_json(dir: &TempDir, content: &str) -> PathBuf {
     let ralph_dir = setup_ralph_dir(dir);
     let config_path = ralph_dir.join("config.json");
     fs::write(&config_path, content).expect("write config.json");
+    config_path
+}
+
+// Helper to create a config.jsonc file
+fn create_config_jsonc(dir: &TempDir, content: &str) -> PathBuf {
+    let ralph_dir = setup_ralph_dir(dir);
+    let config_path = ralph_dir.join("config.jsonc");
+    fs::write(&config_path, content).expect("write config.jsonc");
     config_path
 }
 
@@ -693,6 +727,213 @@ fn test_resolve_queue_path_expands_tilde_to_home() {
         Some(v) => unsafe { env::set_var("HOME", v) },
         None => unsafe { env::remove_var("HOME") },
     }
+}
+
+// Tests for .jsonc file format support (RQ-0807)
+
+#[test]
+fn test_find_repo_root_via_ralph_queue_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    create_queue_jsonc(&dir, r#"{"version":1,"tasks":[]}"#);
+
+    let repo_root = config::find_repo_root(dir.path());
+    assert_eq!(repo_root, dir.path());
+}
+
+#[test]
+fn test_find_repo_root_via_ralph_config_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    create_config_jsonc(&dir, r#"{"version":1}"#);
+
+    let repo_root = config::find_repo_root(dir.path());
+    assert_eq!(repo_root, dir.path());
+}
+
+#[test]
+fn test_resolve_queue_path_prefers_json_over_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create both .json and .jsonc files
+    fs::write(ralph_dir.join("queue.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
+    fs::write(ralph_dir.join("queue.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
+
+    let cfg = Config::default();
+    let queue_path = config::resolve_queue_path(dir.path(), &cfg).unwrap();
+
+    // Should prefer .json over .jsonc
+    assert_eq!(queue_path, ralph_dir.join("queue.json"));
+}
+
+#[test]
+fn test_resolve_queue_path_falls_back_to_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create only .jsonc file
+    fs::write(ralph_dir.join("queue.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
+
+    let cfg = Config::default();
+    let queue_path = config::resolve_queue_path(dir.path(), &cfg).unwrap();
+
+    // Should fall back to .jsonc when .json doesn't exist
+    assert_eq!(queue_path, ralph_dir.join("queue.jsonc"));
+}
+
+#[test]
+fn test_resolve_done_path_prefers_json_over_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create both .json and .jsonc files
+    fs::write(ralph_dir.join("done.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
+    fs::write(ralph_dir.join("done.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
+
+    let cfg = Config::default();
+    let done_path = config::resolve_done_path(dir.path(), &cfg).unwrap();
+
+    // Should prefer .json over .jsonc
+    assert_eq!(done_path, ralph_dir.join("done.json"));
+}
+
+#[test]
+fn test_resolve_done_path_falls_back_to_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create only .jsonc file
+    fs::write(ralph_dir.join("done.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
+
+    let cfg = Config::default();
+    let done_path = config::resolve_done_path(dir.path(), &cfg).unwrap();
+
+    // Should fall back to .jsonc when .json doesn't exist
+    assert_eq!(done_path, ralph_dir.join("done.jsonc"));
+}
+
+#[test]
+fn test_project_config_path_prefers_json_over_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create both .json and .jsonc files
+    fs::write(ralph_dir.join("config.json"), r#"{"version":1}"#).unwrap();
+    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
+
+    let config_path = config::project_config_path(dir.path());
+
+    // Should prefer .json over .jsonc
+    assert_eq!(config_path, ralph_dir.join("config.json"));
+}
+
+#[test]
+fn test_project_config_path_falls_back_to_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create only .jsonc file
+    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
+
+    let config_path = config::project_config_path(dir.path());
+
+    // Should fall back to .jsonc when .json doesn't exist
+    assert_eq!(config_path, ralph_dir.join("config.jsonc"));
+}
+
+#[test]
+#[serial]
+fn test_global_config_path_falls_back_to_jsonc() {
+    let _guard = env_lock().lock().expect("env lock");
+    let dir = TempDir::new().expect("create temp dir");
+    let xdg_config = dir.path().join(".config");
+    let ralph_dir = xdg_config.join("ralph");
+    fs::create_dir_all(&ralph_dir).expect("create xdg config dir");
+
+    // Create only config.jsonc (no config.json)
+    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
+
+    unsafe { env::set_var("XDG_CONFIG_HOME", &xdg_config) };
+    let config_path = config::global_config_path();
+    unsafe { env::remove_var("XDG_CONFIG_HOME") };
+
+    assert!(config_path.is_some());
+    assert_eq!(config_path.unwrap(), ralph_dir.join("config.jsonc"));
+}
+
+#[test]
+#[serial]
+fn test_global_config_path_prefers_json_over_jsonc() {
+    let _guard = env_lock().lock().expect("env lock");
+    let dir = TempDir::new().expect("create temp dir");
+    let xdg_config = dir.path().join(".config");
+    let ralph_dir = xdg_config.join("ralph");
+    fs::create_dir_all(&ralph_dir).expect("create xdg config dir");
+
+    // Create both .json and .jsonc files
+    fs::write(ralph_dir.join("config.json"), r#"{"version":1}"#).unwrap();
+    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
+
+    unsafe { env::set_var("XDG_CONFIG_HOME", &xdg_config) };
+    let config_path = config::global_config_path();
+    unsafe { env::remove_var("XDG_CONFIG_HOME") };
+
+    assert!(config_path.is_some());
+    // Should prefer .json over .jsonc
+    assert_eq!(config_path.unwrap(), ralph_dir.join("config.json"));
+}
+
+#[test]
+fn test_load_layer_accepts_jsonc_with_comments() {
+    let dir = TempDir::new().expect("create temp dir");
+    let config_path = dir.path().join("config.jsonc");
+
+    // Write JSONC with comments
+    let jsonc_content = r#"{
+        // This is a single-line comment
+        "version": 1,
+        "agent": {
+            /* Multi-line
+               comment */
+            "runner": "claude"
+        }
+    }"#;
+    fs::write(&config_path, jsonc_content).expect("write config.jsonc");
+
+    let layer = config::load_layer(&config_path).unwrap();
+    assert_eq!(layer.version, Some(1));
+    assert_eq!(layer.agent.runner, Some(Runner::Claude));
+}
+
+#[test]
+fn test_load_queue_accepts_jsonc_with_comments() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+    let queue_path = ralph_dir.join("queue.jsonc");
+
+    // Write JSONC with comments
+    let jsonc_content = r#"{
+        // Queue file with comments
+        "version": 1,
+        "tasks": [
+            /* Task entry */
+            {
+                "id": "RQ-0001",
+                "title": "Test task",
+                "status": "todo",
+                "tags": [],
+                "scope": [],
+                "evidence": [],
+                "plan": [],
+                "created_at": "2026-01-18T00:00:00Z",
+                "updated_at": "2026-01-18T00:00:00Z"
+            }
+        ]
+    }"#;
+    fs::write(&queue_path, jsonc_content).expect("write queue.jsonc");
+
+    let queue = ralph::queue::load_queue(&queue_path).unwrap();
+    assert_eq!(queue.tasks.len(), 1);
+    assert_eq!(queue.tasks[0].id, "RQ-0001");
 }
 
 #[test]

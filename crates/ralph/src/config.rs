@@ -302,6 +302,21 @@ fn apply_profile_patch(cfg: &mut Config, name: &str) -> Result<()> {
     Ok(())
 }
 
+/// Resolve a JSON path with .jsonc fallback.
+///
+/// Checks if the .json path exists; if not, checks for .jsonc variant.
+/// Returns the original path if neither exists (to preserve error messages).
+pub fn prefer_json_then_jsonc(json_path: PathBuf) -> PathBuf {
+    if json_path.is_file() {
+        return json_path;
+    }
+    let jsonc_path = json_path.with_extension("jsonc");
+    if jsonc_path.is_file() {
+        return jsonc_path;
+    }
+    json_path
+}
+
 pub fn validate_config(cfg: &Config) -> Result<()> {
     if cfg.version != 1 {
         bail!(
@@ -594,32 +609,60 @@ pub fn resolve_id_width(cfg: &Config) -> Result<usize> {
 
 pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
     validate_queue_file_override(cfg.queue.file.as_deref())?;
+
+    // Get the raw path, using default if not specified
     let raw = cfg
         .queue
         .file
         .clone()
         .unwrap_or_else(|| PathBuf::from(".ralph/queue.json"));
 
+    // Check if this is the default path (we'll apply .jsonc fallback to defaults)
+    let is_default = raw.as_os_str() == ".ralph/queue.json";
+
     let value = fsutil::expand_tilde(&raw);
-    if value.is_absolute() {
-        return Ok(value);
+    let resolved = if value.is_absolute() {
+        value
+    } else {
+        repo_root.join(value)
+    };
+
+    if is_default {
+        // For default path, check .json first, then fall back to .jsonc
+        Ok(prefer_json_then_jsonc(resolved))
+    } else {
+        // For explicit user overrides, use the path as-is
+        Ok(resolved)
     }
-    Ok(repo_root.join(value))
 }
 
 pub fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
     validate_queue_done_file_override(cfg.queue.done_file.as_deref())?;
+
+    // Get the raw path, using default if not specified
     let raw = cfg
         .queue
         .done_file
         .clone()
         .unwrap_or_else(|| PathBuf::from(".ralph/done.json"));
 
+    // Check if this is the default path (we'll apply .jsonc fallback to defaults)
+    let is_default = raw.as_os_str() == ".ralph/done.json";
+
     let value = fsutil::expand_tilde(&raw);
-    if value.is_absolute() {
-        return Ok(value);
+    let resolved = if value.is_absolute() {
+        value
+    } else {
+        repo_root.join(value)
+    };
+
+    if is_default {
+        // For default path, check .json first, then fall back to .jsonc
+        Ok(prefer_json_then_jsonc(resolved))
+    } else {
+        // For explicit user overrides, use the path as-is
+        Ok(resolved)
     }
-    Ok(repo_root.join(value))
 }
 
 pub fn global_config_path() -> Option<PathBuf> {
@@ -631,12 +674,12 @@ pub fn global_config_path() -> Option<PathBuf> {
     };
     let ralph_dir = base.join("ralph");
     let json_path = ralph_dir.join("config.json");
-    Some(json_path)
+    Some(prefer_json_then_jsonc(json_path))
 }
 
 pub fn project_config_path(repo_root: &Path) -> PathBuf {
     let ralph_dir = repo_root.join(".ralph");
-    ralph_dir.join("config.json")
+    prefer_json_then_jsonc(ralph_dir.join("config.json"))
 }
 
 pub fn find_repo_root(start: &Path) -> PathBuf {
@@ -645,9 +688,10 @@ pub fn find_repo_root(start: &Path) -> PathBuf {
         log::debug!("checking directory: {}", dir.display());
         let ralph_dir = dir.join(".ralph");
         if ralph_dir.is_dir() {
-            let has_json =
-                ralph_dir.join("queue.json").is_file() || ralph_dir.join("config.json").is_file();
-            if has_json {
+            let has_ralph_marker = ["queue.json", "queue.jsonc", "config.json", "config.jsonc"]
+                .iter()
+                .any(|name| ralph_dir.join(name).is_file());
+            if has_ralph_marker {
                 log::debug!("found repo root at: {} (via .ralph/)", dir.display());
                 return dir.to_path_buf();
             }

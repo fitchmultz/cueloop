@@ -24,7 +24,9 @@ Ralph supports JSONC (JSON with Comments) for configuration and queue files. Thi
 - `.json` - Standard JSON (default, backward compatible)
 - `.jsonc` - JSON with Comments support
 
-Ralph can read both `.json` and `.jsonc` files regardless of extension. When writing files, Ralph always outputs standard JSON format (comments are not preserved on rewrite).
+Ralph can read both `.json` and `.jsonc` files regardless of extension. When both files exist, `.json` takes precedence over `.jsonc` (e.g., `config.json` is used instead of `config.jsonc` if both are present).
+
+When writing files, Ralph always outputs standard JSON format (comments are not preserved on rewrite).
 
 ### Example JSONC Config
 
