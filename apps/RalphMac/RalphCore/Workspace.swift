@@ -126,6 +126,14 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
 
     /// Current runner configuration (parsed from output or config)
     @Published public var currentRunnerConfig: RunnerConfig?
+    @Published public var runnerConfigLoading: Bool = false
+    @Published public var runnerConfigErrorMessage: String?
+
+    /// Optional task selection for Run Control. `nil` means "auto next runnable task".
+    @Published public var runControlSelectedTaskID: String?
+
+    /// When enabled, Run Control passes `--force` to `ralph run one`.
+    @Published public var runControlForceDirtyRepo: Bool = false
 
     /// Parsed ANSI-colored output segments for rich console display
     @Published public var attributedOutput: [ANSISegment] = []
@@ -535,8 +543,13 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     /// This mirrors CLI precedence (flags > project config > global config > defaults)
     /// because resolution happens inside the CLI itself.
     public func loadRunnerConfiguration(retryConfiguration: RetryConfiguration = .minimal) async {
+        runnerConfigLoading = true
+        runnerConfigErrorMessage = nil
+
         guard let client else {
             currentRunnerConfig = nil
+            runnerConfigErrorMessage = "CLI client not available."
+            runnerConfigLoading = false
             return
         }
 
@@ -562,13 +575,17 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
                 phases: decoded.agent?.phases,
                 maxIterations: decoded.agent?.iterations
             )
+            runnerConfigErrorMessage = nil
         } catch {
             currentRunnerConfig = nil
+            runnerConfigErrorMessage = "Failed to load resolved runner configuration."
             RalphLogger.shared.error(
                 "Failed to load runner configuration: \(error)",
                 category: .workspace
             )
         }
+
+        runnerConfigLoading = false
     }
 
     public func loadTasks(retryConfiguration: RetryConfiguration = .default) async {
@@ -626,6 +643,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
             decoder.dateDecodingStrategy = .iso8601
             let document = try decoder.decode(RalphTaskQueueDocument.self, from: data)
             tasks = document.tasks
+            sanitizeRunControlSelection()
             tasksErrorMessage = nil
         } catch {
             let recoveryError = RecoveryError.classify(
@@ -897,6 +915,28 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     /// Returns the next task that should be worked on (first todo)
     public func nextTask() -> RalphTask? {
         tasks.first { $0.status == .todo }
+    }
+
+    /// Returns todo tasks in queue order for Run Control task selection.
+    public var runControlTodoTasks: [RalphTask] {
+        tasks.filter { $0.status == .todo }
+    }
+
+    /// Returns the currently selected run-control task when it is still runnable.
+    public var selectedRunControlTask: RalphTask? {
+        guard let selectedID = runControlSelectedTaskID else { return nil }
+        return runControlTodoTasks.first { $0.id == selectedID }
+    }
+
+    /// Returns the task Run Control would execute if "Run Next Task" is pressed now.
+    public var runControlPreviewTask: RalphTask? {
+        selectedRunControlTask ?? nextTask()
+    }
+
+    /// Refresh queue + resolved runner configuration for Run Control panel.
+    public func refreshRunControlData() async {
+        await loadTasks(retryConfiguration: .minimal)
+        await loadRunnerConfiguration(retryConfiguration: .minimal)
     }
 
     // MARK: - Task Status Helpers
@@ -1298,7 +1338,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
                     if isLoopMode && !stopAfterCurrent && !cancelRequested {
                         activeRun = nil
                         cancelRequested = false
-                        runNextTask()
+                        runNextTask(forceDirtyRepo: runControlForceDirtyRepo)
                         return  // Don't reset state, we're continuing
                     }
                 }
@@ -1375,8 +1415,8 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         return nextTask()?.id
     }
 
-    /// Run the next task in the queue (ralph run one)
-    public func runNextTask() {
+    /// Run a task from the queue (defaults to the next runnable task).
+    public func runNextTask(taskIDOverride: String? = nil, forceDirtyRepo: Bool = false) {
         guard !isRunning else { return }
 
         Task { @MainActor [weak self] in
@@ -1384,10 +1424,20 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
 
             resetExecutionState()
 
-            let resolvedTaskID = await resolveNextRunnableTaskID()
+            let requestedTaskID = taskIDOverride?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let selectedTaskID = requestedTaskID.flatMap { $0.isEmpty ? nil : $0 }
+            let resolvedTaskID: String?
+            if let selectedTaskID {
+                resolvedTaskID = selectedTaskID
+            } else {
+                resolvedTaskID = await resolveNextRunnableTaskID()
+            }
             currentTaskID = resolvedTaskID
 
             var arguments = ["--no-color", "run", "one"]
+            if forceDirtyRepo {
+                arguments.append("--force")
+            }
             if let resolvedTaskID {
                 arguments.append(contentsOf: ["--id", resolvedTaskID])
             }
@@ -1397,10 +1447,11 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     }
 
     /// Start loop mode (continuously run tasks)
-    public func startLoop() {
+    public func startLoop(forceDirtyRepo: Bool? = nil) {
         isLoopMode = true
         stopAfterCurrent = false
-        runNextTask()
+        let shouldForceDirtyRepo = forceDirtyRepo ?? runControlForceDirtyRepo
+        runNextTask(forceDirtyRepo: shouldForceDirtyRepo)
     }
 
     /// Stop loop mode (finish current task then stop)
@@ -1416,6 +1467,14 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         currentTaskID = nil
         attributedOutput = []
         // Note: outputBuffer is intentionally preserved for inspection after completion
+    }
+
+    private func sanitizeRunControlSelection() {
+        guard let selectedID = runControlSelectedTaskID else { return }
+        let isRunnable = runControlTodoTasks.contains { $0.id == selectedID }
+        if !isRunnable {
+            runControlSelectedTaskID = nil
+        }
     }
 
     /// Add execution record to history (keeps last 50)

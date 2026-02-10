@@ -442,6 +442,74 @@ final class WorkspacePerformanceTests: XCTestCase {
         XCTAssertEqual(workspace.executionHistory.first?.wasCancelled, false)
     }
 
+    func test_runNextTask_withExplicitIDAndForce_usesExpectedArguments() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-run-explicit-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let script = """
+            #!/bin/sh
+            if [ "$2" = "config" ] && [ "$3" = "show" ]; then
+              echo '{"agent":{"model":"model-test","iterations":1}}'
+              exit 0
+            fi
+            if [ "$2" = "run" ] && [ "$3" = "one" ]; then
+              case "$*" in
+                *"--no-color run one --force --id RQ-5555"*)
+                  echo "running explicit"
+                  exit 0
+                  ;;
+              esac
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph-run-explicit",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+
+        workspace.runNextTask(taskIDOverride: "RQ-5555", forceDirtyRepo: true)
+
+        await Self.waitFor(timeout: 2.0) {
+            workspace.currentTaskID == "RQ-5555" && workspace.isRunning
+        }
+        await Self.waitFor(timeout: 3.0) {
+            !workspace.isRunning
+        }
+
+        XCTAssertEqual(workspace.currentTaskID, nil)
+        XCTAssertEqual(workspace.lastExitStatus?.code, 0)
+        XCTAssertEqual(workspace.executionHistory.first?.taskID, "RQ-5555")
+        XCTAssertTrue(workspace.output.contains("running explicit"))
+    }
+
+    func test_runControlPreviewTask_prefersSelectedTodoTask() {
+        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        workspace.tasks = [
+            RalphTask(
+                id: "RQ-1001",
+                status: .todo,
+                title: "First",
+                priority: .medium
+            ),
+            RalphTask(
+                id: "RQ-1002",
+                status: .todo,
+                title: "Second",
+                priority: .high
+            )
+        ]
+
+        workspace.runControlSelectedTaskID = "RQ-1002"
+        XCTAssertEqual(workspace.runControlPreviewTask?.id, "RQ-1002")
+
+        workspace.runControlSelectedTaskID = "RQ-9999"
+        XCTAssertEqual(workspace.runControlPreviewTask?.id, "RQ-1001")
+    }
+
     func test_cancel_stopsActiveRun_andRecordsCancellation() async throws {
         let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-run-cancel-")
         defer { try? FileManager.default.removeItem(at: tempDir) }

@@ -490,6 +490,9 @@ struct WorkspaceView: View {
                     phaseProgressSection()
                 }
 
+                // Up-next preview and run targeting controls
+                runTargetSection()
+
                 // Runner Configuration
                 runnerConfigSection()
 
@@ -505,6 +508,9 @@ struct WorkspaceView: View {
         }
         .background(.clear)
         .navigationTitle(navTitle("Run Control"))
+        .task(id: workspace.workingDirectoryURL.path) {
+            await workspace.refreshRunControlData()
+        }
     }
 
     @ViewBuilder
@@ -607,15 +613,99 @@ struct WorkspaceView: View {
     }
 
     @ViewBuilder
+    private func runTargetSection() -> some View {
+        glassGroupBox("Up Next") {
+            VStack(alignment: .leading, spacing: 12) {
+                if let previewTask = workspace.runControlPreviewTask {
+                    HStack(alignment: .top, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(previewTask.id)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                            Text(previewTask.title)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(2)
+                        }
+
+                        Spacer()
+
+                        priorityBadge(priority: previewTask.priority)
+                    }
+                } else {
+                    Text("No todo tasks in this workspace queue.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Picker("Task", selection: $workspace.runControlSelectedTaskID) {
+                        Text("Auto (next runnable)")
+                            .tag(Optional<String>.none)
+                        ForEach(workspace.runControlTodoTasks, id: \.id) { task in
+                            Text("\(task.id) · \(task.title)")
+                                .lineLimit(1)
+                                .tag(Optional(task.id))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: 420, alignment: .leading)
+
+                    Toggle("Force", isOn: $workspace.runControlForceDirtyRepo)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .help("Pass --force to run commands when repo is dirty.")
+
+                    Spacer()
+
+                    Button {
+                        Task { @MainActor in
+                            await workspace.refreshRunControlData()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(.plain)
+                    .help("Refresh queue + config")
+                }
+
+                if workspace.runControlSelectedTaskID != nil {
+                    Text("Loop mode still follows queue order; selected task applies to one-off run.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
     private func runnerConfigSection() -> some View {
         glassGroupBox("Runner Configuration") {
             VStack(alignment: .leading, spacing: 8) {
+                if workspace.runnerConfigLoading {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Loading resolved config...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 configRow(icon: "cpu", label: "Model", value: workspace.currentRunnerConfig?.model ?? "Default")
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Model: \(workspace.currentRunnerConfig?.model ?? "Default")")
+                configRow(icon: "square.split.2x1", label: "Phases", value: workspace.currentRunnerConfig?.phases.map(String.init) ?? "Auto")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Phases: \(workspace.currentRunnerConfig?.phases.map(String.init) ?? "Auto")")
                 configRow(icon: "number", label: "Max Iterations", value: workspace.currentRunnerConfig?.maxIterations.map(String.init) ?? "Auto")
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Max Iterations: \(workspace.currentRunnerConfig?.maxIterations.map(String.init) ?? "Auto")")
+
+                if let configError = workspace.runnerConfigErrorMessage {
+                    Text(configError)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -624,6 +714,9 @@ struct WorkspaceView: View {
     private func executionControlsSection() -> some View {
         glassGroupBox("Controls") {
             VStack(spacing: 12) {
+                let previewTask = workspace.runControlPreviewTask
+                let hasSelectedTask = workspace.selectedRunControlTask != nil
+
                 // Primary action row
                 HStack(spacing: 12) {
                     if workspace.isRunning {
@@ -643,14 +736,20 @@ struct WorkspaceView: View {
                             .buttonStyle(GlassButtonStyle())
                         }
                     } else {
-                        Button(action: { workspace.runNextTask() }) {
-                            Label("Run Next Task", systemImage: "play.circle.fill")
+                        Button(action: {
+                            workspace.runNextTask(
+                                taskIDOverride: workspace.runControlSelectedTaskID,
+                                forceDirtyRepo: workspace.runControlForceDirtyRepo
+                            )
+                        }) {
+                            Label(hasSelectedTask ? "Run Selected Task" : "Run Next Task", systemImage: "play.circle.fill")
                         }
                         .buttonStyle(GlassButtonStyle())
+                        .disabled(previewTask == nil)
                         .accessibilityLabel("Run next task")
-                        .accessibilityHint("Starts execution of the next task in the queue")
+                        .accessibilityHint("Starts execution of the selected task or next task in the queue")
 
-                        Button(action: { workspace.startLoop() }) {
+                        Button(action: { workspace.startLoop(forceDirtyRepo: workspace.runControlForceDirtyRepo) }) {
                             Label("Start Loop", systemImage: "repeat.circle")
                         }
                         .buttonStyle(GlassButtonStyle())
