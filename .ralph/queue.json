@@ -1,4 +1,144 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0808",
+      "status": "todo",
+      "title": "Merge update_task_before_run functionality into Phase 1 planning",
+      "description": "Merge the task updater functionality currently enabled via the 'update_task_before_run' config key directly into the Phase 1 (planning) phase. This functionality updates task fields (scope, evidence, plan, notes, tags, depends_on) from the current repository state before execution. The separate config parameter should be removed as this becomes default behavior integrated into Phase 1. Also remove the related 'fail_on_prerun_update_error' config key and the --update-task/--no-update-task CLI flags.",
+      "priority": "medium",
+      "tags": [
+        "refactoring",
+        "config",
+        "phase1",
+        "task-update"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/run_one/orchestration.rs",
+        "crates/ralph/src/commands/run/phases/phase1.rs",
+        "crates/ralph/src/commands/run/phases/mod.rs",
+        "crates/ralph/src/contracts/config.rs",
+        "crates/ralph/src/agent/resolve.rs",
+        "crates/ralph/src/cli.rs",
+        "crates/ralph/src/commands/task/",
+        "crates/ralph/tests/config_test.rs",
+        "crates/ralph/src/commands/run/tests.rs",
+        "crates/ralph/src/commands/run/parallel/args.rs",
+        "crates/ralph/src/migration/"
+      ],
+      "evidence": [
+        "User request: Merge the task updater functionality enabled via the config key 'update_task_before_run' into the Phase 1 plan phase. It does not make sense to have this run separately. The config parameter can go away as this is enabled by default.",
+        "Current implementation in orchestration.rs (lines 303-399) runs ralph task update before marking task as doing",
+        "Task update updates fields: scope, evidence, plan, notes, tags, depends_on from current repo state",
+        "Phase 1 is the planning phase which already prepares task context - natural fit for task update",
+        "Config key 'update_task_before_run' in AgentConfig (contracts/config.rs lines 267-271)",
+        "Related 'fail_on_prerun_update_error' config key should also be removed",
+        "CLI flags --update-task and --no-update-task need to be removed from cli.rs"
+      ],
+      "plan": [
+        "Move task update logic from orchestration.rs into Phase 1 execution:",
+        "  - Extract the task update call from orchestration.rs (around lines 321-399)",
+        "  - Integrate it into phase1.rs at the start of execute_phase1_planning()",
+        "  - Ensure it runs before planning prompt generation",
+        "Remove update_task_before_run config key from AgentConfig:",
+        "  - Remove field from AgentConfig struct in contracts/config.rs",
+        "  - Remove merge logic in AgentConfig::merge_from()",
+        "  - Remove from Default impl for AgentConfig",
+        "Remove fail_on_prerun_update_error config key from AgentConfig:",
+        "  - Same files as above - remove this related config key",
+        "Remove CLI flags --update-task and --no-update-task:",
+        "  - Remove from cli.rs run command arguments",
+        "  - Remove from agent/resolve.rs (resolve_run_agent_overrides function)",
+        "  - Remove from parallel/args.rs (build_worker_args function)",
+        "Update tests that reference these config keys:",
+        "  - Update config_test.rs to remove references",
+        "  - Update run/tests.rs test data structures",
+        "  - Update agent/resolve.rs tests",
+        "  - Update parallel/args.rs tests",
+        "Create migration for removed config keys:",
+        "  - Add ConfigKeyRename or removal migration for update_task_before_run",
+        "  - Add migration for fail_on_prerun_update_error",
+        "  - Register migrations in migration/registry.rs",
+        "Update documentation:",
+        "  - Update docs/configuration.md to remove references to these keys",
+        "  - Update any other docs mentioning these options",
+        "Regenerate JSON schema:",
+        "  - Run 'make generate' to update schemas/config.schema.json",
+        "Run full CI gate:",
+        "  - Run 'make macos-ci' to ensure all tests pass"
+      ],
+      "notes": [],
+      "request": "Merge the task updater functionality enabled via the config key 'update_task_before_run' into the Phase 1 plan phase. It does not make sense to have this run separately. The config parameter can go away as this is enabled by default.",
+      "created_at": "2026-02-10T15:30:01Z",
+      "updated_at": "2026-02-10T15:30:01Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "affected_config_keys": "update_task_before_run, fail_on_prerun_update_error",
+        "estimated_files_modified": "12",
+        "affected_cli_flags": "--update-task, --no-update-task"
+      }
+    },
+    {
+      "id": "RQ-0807",
+      "status": "todo",
+      "title": "Add .jsonc (JSON with Comments) file format support",
+      "description": "Audit all existing files that utilize .json format and add support for .jsonc (JSON with Comments) format. When both .json and .jsonc versions of a file exist, the .json file takes precedence. Files must be checked in precedence order: first for .json, then fallback to .jsonc if .json is not present. This applies to queue files (queue.json/queue.jsonc), done files (done.json/done.jsonc), and config files (config.json/config.jsonc).",
+      "priority": "medium",
+      "tags": [
+        "enhancement",
+        "json",
+        "jsonc",
+        "config",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/queue.rs",
+        "crates/ralph/src/config.rs",
+        "crates/ralph/src/fsutil.rs",
+        "crates/ralph/src/jsonc.rs",
+        "crates/ralph/src/contracts/config.rs"
+      ],
+      "evidence": [
+        "User request: Audit all existing files that utilize .json format. Add support for .jsonc (JSON comments) format.",
+        "Precedence rule: .json files take precedence over .jsonc files (e.g. config.json takes precedence over config.jsonc if both are present)",
+        "Existing jsonc.rs module provides parse_jsonc() function for parsing JSONC with comments",
+        "Current queue.json and done.json loading uses jsonc::parse_jsonc() which already supports comments",
+        "Config files currently only look for .json extension - need to add .jsonc fallback"
+      ],
+      "plan": [
+        "Audit all JSON file usage in the codebase:",
+        "  - queue.json / done.json in queue.rs (already uses parse_jsonc)",
+        "  - config.json in config.rs (global and project config)",
+        "  - Any other JSON files (session, cache, migration files)",
+        "Modify config loading to support .jsonc files with .json precedence:",
+        "  - Update global_config_path() to check for config.jsonc if config.json doesn't exist",
+        "  - Update project_config_path() or load_layer() to check for .jsonc fallback",
+        "  - Ensure .json takes precedence when both exist",
+        "Update file path resolution helpers in config.rs:",
+        "  - Modify resolve_queue_path() to support queue.jsonc fallback",
+        "  - Modify resolve_done_path() to support done.jsonc fallback",
+        "Add helper function for JSON/JSONC file discovery:",
+        "  - Create resolve_json_path() or similar that checks .json then .jsonc",
+        "Update find_repo_root() to also check for .jsonc files when detecting repo root",
+        "Add tests for .jsonc support:",
+        "  - Test that .json takes precedence over .jsonc when both exist",
+        "  - Test that .jsonc is used when .json doesn't exist",
+        "  - Test parsing of comments in .jsonc files",
+        "Update documentation if needed (config.md, queue-and-tasks.md)",
+        "Run make macos-ci to ensure all tests pass"
+      ],
+      "notes": [],
+      "request": "Audit all existing files that utilize .json format. Add support for .jsonc (JSON comments) format. .json files take precedence over .jsonc files (e.g. config.json takes precedence over config.jsonc if both are present) but both are supported.",
+      "created_at": "2026-02-10T15:00:50Z",
+      "updated_at": "2026-02-10T15:00:50Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "affected_areas": "config loading, queue loading, repo root detection"
+      }
+    }
+  ]
 }
