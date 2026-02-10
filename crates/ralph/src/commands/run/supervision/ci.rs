@@ -60,9 +60,10 @@ pub(crate) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<()> {
         }
 
         bail!(
-            "CI failed: '{}' exited with code {:?}. Fix the linting, type-checking, or test failures before proceeding.",
+            "CI failed: '{}' exited with code {:?}. Run '{}' again to identify the issues and fix.",
             command,
-            status.code()
+            status.code(),
+            command
         )
     })
 }
@@ -70,8 +71,8 @@ pub(crate) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<()> {
 fn strict_ci_gate_compliance_message(resolved: &crate::config::Resolved) -> String {
     let cmd = ci_gate_command_label(resolved);
     format!(
-        r#"CI gate ({}): error: CI failed: '{}' exited with an error code. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of."#,
-        cmd, cmd
+        r#"CI gate ({}): error: CI failed: '{}' exited with an error code. Run '{}' again to identify the issues and fix. You MUST see the CI gate pass before this turn can end and proceed further. NO skipping tests, half-assed patches, or sloppy shortcuts. Flaky tests should be investigated and patched. Failures unrelated to your work are in scope and your responsibility. Implement fixes your mother would be proud of."#,
+        cmd, cmd, cmd
     )
 }
 

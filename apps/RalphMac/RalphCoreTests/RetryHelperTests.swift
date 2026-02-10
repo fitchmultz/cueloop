@@ -171,6 +171,14 @@ final class RetryHelperTests: XCTestCase {
         )
         XCTAssertTrue(RetryHelper.defaultShouldRetry(lockedError))
     }
+
+    func test_retryableProcessError_localizedDescriptionIncludesExitCodeAndStderr() {
+        let error = RetryableError.processError(exitCode: 7, stderr: "queue read failed")
+        XCTAssertEqual(
+            error.localizedDescription,
+            "CLI command failed with exit code 7: queue read failed"
+        )
+    }
     
     func test_isRetryableFailure_detectsRetryablePatterns() {
         let lockedOutput = RalphCLIClient.CollectedOutput(

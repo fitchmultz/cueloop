@@ -23,8 +23,8 @@ import RalphCore
 
 /// Main content view for the menu bar extra dropdown menu.
 struct MenuBarContentView: View {
-    @StateObject private var manager = WorkspaceManager.shared
-    @StateObject private var menuBarManager = MenuBarManager.shared
+    @ObservedObject private var manager = WorkspaceManager.shared
+    @ObservedObject private var menuBarManager = MenuBarManager.shared
     
     var body: some View {
         if let workspace = manager.workspaces.first {

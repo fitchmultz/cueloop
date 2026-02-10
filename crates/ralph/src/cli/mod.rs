@@ -45,6 +45,7 @@ pub use color::ColorArg;
 #[derive(Parser)]
 #[command(name = "ralph")]
 #[command(about = "Ralph")]
+#[command(version)]
 #[command(after_long_help = r#"Runner selection:
   - CLI flags override project config, which overrides global config, which overrides built-in defaults.
   - Default runner/model come from config files: project config (.ralph/config.json) > global config (~/.config/ralph/config.json) > built-in.
@@ -241,6 +242,7 @@ mod tests {
     use super::{Cli, Command, run};
     use crate::cli::{queue, task};
     use clap::Parser;
+    use clap::error::ErrorKind;
 
     #[test]
     fn cli_parses_queue_list_smoke() {
@@ -528,5 +530,27 @@ mod tests {
             msg.contains("unexpected") || msg.contains("unrecognized") || msg.contains("unknown"),
             "unexpected error: {msg}"
         );
+    }
+
+    #[test]
+    fn cli_supports_top_level_version_flag_long() {
+        let err = Cli::try_parse_from(["ralph", "--version"])
+            .err()
+            .expect("expected clap to render version and exit");
+        assert_eq!(err.kind(), ErrorKind::DisplayVersion);
+        let rendered = err.to_string();
+        assert!(rendered.contains(env!("CARGO_PKG_NAME")));
+        assert!(rendered.contains(env!("CARGO_PKG_VERSION")));
+    }
+
+    #[test]
+    fn cli_supports_top_level_version_flag_short() {
+        let err = Cli::try_parse_from(["ralph", "-V"])
+            .err()
+            .expect("expected clap to render version and exit");
+        assert_eq!(err.kind(), ErrorKind::DisplayVersion);
+        let rendered = err.to_string();
+        assert!(rendered.contains(env!("CARGO_PKG_NAME")));
+        assert!(rendered.contains(env!("CARGO_PKG_VERSION")));
     }
 }

@@ -228,7 +228,100 @@ public struct RecoveryError: Error, Sendable {
 /// Extension to classify errors from various sources
 extension RecoveryError {
     public static func classify(error: any Error, operation: String, workspaceURL: URL? = nil) -> RecoveryError {
+        if let retryable = error as? RetryableError {
+            switch retryable {
+            case .fileLocked, .resourceBusy, .resourceTemporarilyUnavailable:
+                return RecoveryError(
+                    category: .resourceBusy,
+                    message: "Resource temporarily unavailable",
+                    underlyingError: retryable.localizedDescription,
+                    operation: operation,
+                    suggestions: [
+                        "Wait a moment and retry",
+                        "Check if another process is using Ralph",
+                        "Close other Ralph windows that may be using the same workspace"
+                    ],
+                    workspaceURL: workspaceURL
+                )
+            case .ioTimeout:
+                return RecoveryError(
+                    category: .networkError,
+                    message: "Operation timed out",
+                    underlyingError: retryable.localizedDescription,
+                    operation: operation,
+                    suggestions: [
+                        "Try the operation again",
+                        "Check system load and available resources",
+                        "If this persists, inspect logs for blocked operations"
+                    ],
+                    workspaceURL: workspaceURL
+                )
+            case .underlying(let underlying):
+                return classify(error: underlying, operation: operation, workspaceURL: workspaceURL)
+            case .processError(let exitCode, let stderr):
+                let trimmed = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                let description = trimmed.isEmpty
+                    ? "CLI command failed with exit code \(exitCode)"
+                    : trimmed
+                let wrappedError = NSError(
+                    domain: "RalphCore.CLIProcess",
+                    code: Int(exitCode),
+                    userInfo: [NSLocalizedDescriptionKey: description]
+                )
+                let wrappedClassified = classify(error: wrappedError, operation: operation, workspaceURL: workspaceURL)
+                if wrappedClassified.category == .unknown {
+                    return RecoveryError(
+                        category: .unknown,
+                        message: description,
+                        underlyingError: "CLI exit code: \(exitCode)",
+                        operation: operation,
+                        suggestions: [
+                            "Check the logs for more details",
+                            "Try the operation again",
+                            "If the problem persists, consider reporting the issue"
+                        ],
+                        workspaceURL: workspaceURL
+                    )
+                }
+                return wrappedClassified
+            }
+        }
+
         let errorString = error.localizedDescription.lowercased()
+
+        // Missing queue file should be explicit and actionable, not unknown.
+        if operation == "loadTasks" &&
+            errorString.contains("queue") &&
+            errorString.contains("no such file") {
+            return RecoveryError(
+                category: .queueCorrupted,
+                message: "No Ralph queue file found in this workspace",
+                underlyingError: error.localizedDescription,
+                operation: operation,
+                suggestions: [
+                    "Run `ralph init --non-interactive` in this workspace",
+                    "Switch to a directory that contains `.ralph/queue.json`",
+                    "Use Queue > Refresh after initializing"
+                ],
+                workspaceURL: workspaceURL
+            )
+        }
+
+        // Strong signal for parse/format failures even when localizedDescription is vague.
+        if error is DecodingError || error is EncodingError {
+            return RecoveryError(
+                category: .parseError,
+                message: "Failed to parse data",
+                underlyingError: error.localizedDescription,
+                operation: operation,
+                suggestions: [
+                    "Validate the queue file format",
+                    "Check for manual edits to queue files",
+                    "Run 'ralph queue validate' to check for corruption"
+                ],
+                workspaceURL: workspaceURL
+            )
+        }
 
         // Check for CLI availability issues
         if let cliError = error as? RalphCLIClientError {
@@ -472,14 +565,19 @@ public actor RalphCLIRun {
         let pid = process.processIdentifier
         ioQueue.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self else { return }
-            Task {
-                let isRunning = self.process.isRunning
-                guard isRunning else { return }
-                _ = kill(pid, SIGKILL)
+            Task { [weak self] in
+                await self?.killIfStillRunning(pid: pid)
             }
         }
         #endif
     }
+
+    #if canImport(Darwin)
+    private func killIfStillRunning(pid: pid_t) {
+        guard process.isRunning else { return }
+        _ = kill(pid, SIGKILL)
+    }
+    #endif
 
     public func waitUntilExit() async -> RalphCLIExitStatus {
         if let existing = exitStatus {
@@ -779,7 +877,10 @@ public struct RalphCLIClient: Sendable {
             }
             
             // Return first to complete, cancel the other
-            let result = try await group.next()!
+            guard let result = try await group.next() else {
+                group.cancelAll()
+                throw CancellationError()
+            }
             group.cancelAll()
             return result
         }
@@ -897,7 +998,8 @@ public actor CLIHealthChecker {
     public func checkHealth(
         workspaceID: UUID,
         workspaceURL: URL,
-        timeout: TimeInterval = defaultTimeout
+        timeout: TimeInterval = defaultTimeout,
+        executableURL: URL? = nil
     ) async -> CLIHealthStatus {
         // Cancel any in-flight check for this workspace
         checkTasks[workspaceID]?.cancel()
@@ -906,7 +1008,8 @@ public actor CLIHealthChecker {
             return await performHealthCheck(
                 workspaceID: workspaceID,
                 workspaceURL: workspaceURL,
-                timeout: timeout
+                timeout: timeout,
+                executableURL: executableURL
             )
         }
         
@@ -948,7 +1051,8 @@ public actor CLIHealthChecker {
     private func performHealthCheck(
         workspaceID: UUID,
         workspaceURL: URL,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        executableURL: URL?
     ) async -> CLIHealthStatus {
         // Check 1: Workspace directory exists and is accessible
         var isDir: ObjCBool = false
@@ -981,25 +1085,15 @@ public actor CLIHealthChecker {
         
         // Check 3: CLI is available and executable (with timeout)
         do {
-            let client = try RalphCLIClient.bundled()
-            
-            // Run version check with timeout
-            let result = try await withThrowingTaskGroup(of: RalphCLIClient.CollectedOutput.self) { group in
-                group.addTask {
-                    try await client.runAndCollect(arguments: ["--version"])
-                }
-                
-                group.addTask {
-                    try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                    throw TimeoutError()
-                }
-                
-                let result = try await group.next()!
-                group.cancelAll()
-                return result
+            let client: RalphCLIClient
+            if let executableURL {
+                client = try RalphCLIClient(executableURL: executableURL)
+            } else {
+                client = try RalphCLIClient.bundled()
             }
-            
-            guard result.status.code == 0 else {
+
+            let supportsVersion = try await checkVersionCommandHealth(client: client, timeout: timeout)
+            guard supportsVersion else {
                 return CLIHealthStatus(
                     availability: .unavailable(reason: .cliNotExecutable),
                     lastChecked: Date(),
@@ -1037,6 +1131,51 @@ public actor CLIHealthChecker {
                 lastChecked: Date(),
                 workspaceURL: workspaceURL
             )
+        }
+    }
+
+    private func checkVersionCommandHealth(
+        client: RalphCLIClient,
+        timeout: TimeInterval
+    ) async throws -> Bool {
+        let dashVersionResult = try await runHealthCommand(
+            client: client,
+            arguments: ["--version"],
+            timeout: timeout
+        )
+        if dashVersionResult.status.code == 0 {
+            return true
+        }
+
+        let subcommandResult = try await runHealthCommand(
+            client: client,
+            arguments: ["version"],
+            timeout: timeout
+        )
+        return subcommandResult.status.code == 0
+    }
+
+    private func runHealthCommand(
+        client: RalphCLIClient,
+        arguments: [String],
+        timeout: TimeInterval
+    ) async throws -> RalphCLIClient.CollectedOutput {
+        try await withThrowingTaskGroup(of: RalphCLIClient.CollectedOutput.self) { group in
+            group.addTask {
+                try await client.runAndCollect(arguments: arguments)
+            }
+
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw TimeoutError()
+            }
+
+            guard let result = try await group.next() else {
+                group.cancelAll()
+                throw CancellationError()
+            }
+            group.cancelAll()
+            return result
         }
     }
 }

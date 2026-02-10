@@ -19,6 +19,7 @@
 import SwiftUI
 import RalphCore
 
+@MainActor
 struct RunControlConsoleView: View {
     @ObservedObject var workspace: Workspace
     @State private var autoScroll = true

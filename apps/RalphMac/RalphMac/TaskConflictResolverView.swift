@@ -19,6 +19,7 @@
 import SwiftUI
 public import RalphCore
 
+@MainActor
 struct TaskConflictResolverView: View {
     let localTask: RalphTask
     let externalTask: RalphTask
@@ -471,6 +472,7 @@ extension ErrorCategory {
  - View is displayed within a valid SwiftUI view hierarchy
  - Workspace is available for diagnostic operations
  */
+@MainActor
 struct ErrorRecoveryView: View {
     let error: RecoveryError
     let workspace: Workspace?
@@ -612,7 +614,7 @@ struct ErrorRecoveryView: View {
         isDiagnosing = true
         showingDiagnoseSheet = true
 
-        Task {
+        Task { @MainActor in
             diagnoseOutput = await runQueueValidation()
             isDiagnosing = false
         }
@@ -623,7 +625,7 @@ struct ErrorRecoveryView: View {
         isLoadingLogs = true
 
         if RalphLogger.shared.canExportLogs {
-            RalphLogger.shared.exportLogs(hours: 24) { logs in
+            RalphLogger.shared.exportLogs(hours: 2) { logs in
                 DispatchQueue.main.async {
                     logsContent = logs ?? "No logs available"
                     isLoadingLogs = false
@@ -652,8 +654,17 @@ struct ErrorRecoveryView: View {
             return "Error: No workspace available for validation"
         }
 
+        guard workspace.hasRalphQueueFile else {
+            return "⚠️ Queue validation skipped\n\nNo `.ralph/queue.json` found in \(workspace.workingDirectoryURL.path).\nRun `ralph init --non-interactive` in this directory first."
+        }
+
         do {
-            let client = try RalphCLIClient.bundled()
+            let client: RalphCLIClient
+            if let managerClient = WorkspaceManager.shared.client {
+                client = managerClient
+            } else {
+                client = try RalphCLIClient.bundled()
+            }
             let result = try await client.runAndCollect(
                 arguments: ["--no-color", "queue", "validate"],
                 currentDirectoryURL: workspace.workingDirectoryURL
@@ -672,6 +683,7 @@ struct ErrorRecoveryView: View {
 
 // MARK: - Supporting Views
 
+@MainActor
 struct DiagnoseResultView: View {
     let output: String
     let isLoading: Bool
@@ -711,6 +723,7 @@ struct DiagnoseResultView: View {
     }
 }
 
+@MainActor
 struct LogsView: View {
     let logs: String
     let isLoading: Bool
@@ -752,6 +765,7 @@ struct LogsView: View {
 
 // MARK: - Error Recovery Sheet
 
+@MainActor
 struct ErrorRecoverySheet: View {
     let error: RecoveryError
     let workspace: Workspace?

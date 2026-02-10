@@ -22,6 +22,7 @@
 import SwiftUI
 import RalphCore
 
+@MainActor
 struct TaskDetailView: View {
     @ObservedObject var workspace: Workspace
     let task: RalphTask
@@ -378,7 +379,7 @@ struct TaskDetailView: View {
 
             Spacer()
         }
-        .accessibilityLabel("\(label): \(date != nil ? formatDateForAccessibility(date!) : "Not set")")
+        .accessibilityLabel("\(label): \(date.map(formatDateForAccessibility) ?? "Not set")")
     }
 
     @ViewBuilder
@@ -425,7 +426,7 @@ struct TaskDetailView: View {
         saveError = nil
         saveSuccess = false
 
-        Task {
+        Task { @MainActor in
             do {
                 // Pass originalUpdatedAt for optimistic locking check
                 try await workspace.updateTask(
@@ -433,36 +434,30 @@ struct TaskDetailView: View {
                     to: draftTask,
                     originalUpdatedAt: force ? nil : originalUpdatedAt
                 )
-                await MainActor.run {
-                    isSaving = false
-                    saveSuccess = true
-                    hasConflict = false
-                    onTaskUpdated?(draftTask)
-                    
-                    // Update original timestamp after successful save
-                    originalUpdatedAt = draftTask.updatedAt
-                    
-                    // Clear success indicator after 2 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        saveSuccess = false
-                    }
+                isSaving = false
+                saveSuccess = true
+                hasConflict = false
+                onTaskUpdated?(draftTask)
+                
+                // Update original timestamp after successful save
+                originalUpdatedAt = draftTask.updatedAt
+                
+                // Clear success indicator after 2 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    saveSuccess = false
                 }
             } catch let error as Workspace.WorkspaceError {
-                await MainActor.run {
-                    isSaving = false
-                    if case .taskConflict(let currentTask) = error {
-                        hasConflict = true
-                        conflictedExternalTask = currentTask
-                        showingConflictAlert = true
-                    } else {
-                        saveError = error.localizedDescription
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    isSaving = false
+                isSaving = false
+                if case .taskConflict(let currentTask) = error {
+                    hasConflict = true
+                    conflictedExternalTask = currentTask
+                    showingConflictAlert = true
+                } else {
                     saveError = error.localizedDescription
                 }
+            } catch {
+                isSaving = false
+                saveError = error.localizedDescription
             }
         }
     }

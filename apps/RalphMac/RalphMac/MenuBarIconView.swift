@@ -20,7 +20,7 @@ import RalphCore
 
 /// View for the menu bar icon that changes based on workspace state.
 struct MenuBarIconView: View {
-    @StateObject private var manager = WorkspaceManager.shared
+    @ObservedObject private var manager = WorkspaceManager.shared
     
     var body: some View {
         if let workspace = manager.workspaces.first {

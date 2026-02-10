@@ -4,6 +4,8 @@
  Responsibilities:
  - Validate performance characteristics of Workspace methods with large datasets.
  - Ensure detectTaskChanges and isTaskBlocked maintain O(N) time complexity.
+ - Verify key async loaders can be called from detached tasks without actor-isolation crashes.
+ - Cover regression-sensitive run-control and CLI-adoption behaviors.
 
  Does not handle:
  - Functional correctness (covered by other tests).
@@ -196,7 +198,317 @@ final class WorkspacePerformanceTests: XCTestCase {
         XCTAssertEqual(workspace.attributedOutput.first?.text, "Simple text without ANSI codes")
     }
 
+    // MARK: - MainActor Isolation Regression Tests
+
+    func test_loadTasks_fromDetachedTask_reportsMissingClientError() async {
+        let workspace = self.workspace!
+
+        await Task.detached(priority: .userInitiated) {
+            await workspace.loadTasks(retryConfiguration: .minimal)
+        }.value
+
+        XCTAssertEqual(workspace.tasksErrorMessage, "CLI client not available.")
+        XCTAssertFalse(workspace.tasksLoading)
+    }
+
+    func test_loadCLISpec_fromDetachedTask_reportsMissingClientError() async {
+        let workspace = self.workspace!
+
+        await Task.detached(priority: .userInitiated) {
+            await workspace.loadCLISpec(retryConfiguration: .minimal)
+        }.value
+
+        XCTAssertEqual(workspace.cliSpecErrorMessage, "CLI client not available.")
+        XCTAssertFalse(workspace.cliSpecIsLoading)
+    }
+
+    // MARK: - Runner Config Loading Tests
+
+    func test_loadRunnerConfiguration_setsCurrentRunnerConfig() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-config-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let script = """
+            #!/bin/sh
+            if [ "$1" = "--no-color" ] && [ "$2" = "config" ] && [ "$3" = "show" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
+              cat <<'JSON'
+            {"agent":{"model":"kimi-code/kimi-for-coding","iterations":3}}
+            JSON
+              exit 0
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+
+        XCTAssertEqual(workspace.currentRunnerConfig?.model, "kimi-code/kimi-for-coding")
+        XCTAssertEqual(workspace.currentRunnerConfig?.maxIterations, 3)
+    }
+
+    func test_loadRunnerConfiguration_onFailure_clearsCurrentRunnerConfig() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-config-failure-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let successScript = """
+            #!/bin/sh
+            if [ "$2" = "config" ] && [ "$3" = "show" ]; then
+              echo '{"agent":{"model":"kimi-initial","iterations":2}}'
+              exit 0
+            fi
+            exit 64
+            """
+        let successScriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph-success",
+            body: successScript
+        )
+        let successClient = try RalphCLIClient(executableURL: successScriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: successClient)
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+        XCTAssertEqual(workspace.currentRunnerConfig?.model, "kimi-initial")
+        XCTAssertEqual(workspace.currentRunnerConfig?.maxIterations, 2)
+
+        let failScript = """
+            #!/bin/sh
+            echo "config failed" 1>&2
+            exit 1
+            """
+        let failScriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph-fail",
+            body: failScript
+        )
+        let failClient = try RalphCLIClient(executableURL: failScriptURL)
+        workspace.injectClient(failClient)
+
+        await Self.waitFor(timeout: 2.0) {
+            workspace.currentRunnerConfig == nil
+        }
+
+        XCTAssertNil(workspace.currentRunnerConfig)
+    }
+
+    func test_setWorkingDirectory_refreshesRunnerConfiguration() async throws {
+        let rootDir = try Self.makeTempDir(prefix: "ralph-workspace-config-switch-")
+        defer { try? FileManager.default.removeItem(at: rootDir) }
+        let workspaceADir = rootDir.appendingPathComponent("workspace-a", isDirectory: true)
+        let workspaceBDir = rootDir.appendingPathComponent("workspace-b", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspaceADir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: workspaceBDir, withIntermediateDirectories: true)
+
+        let switchScript = """
+            #!/bin/sh
+            if [ "$2" = "config" ] && [ "$3" = "show" ]; then
+              case "$PWD" in
+              */workspace-a)
+                echo '{"agent":{"model":"model-a","iterations":1}}'
+                ;;
+              */workspace-b)
+                echo '{"agent":{"model":"model-b","iterations":4}}'
+                ;;
+              *)
+                echo '{"agent":{"model":"model-unknown","iterations":9}}'
+                ;;
+              esac
+              exit 0
+            fi
+            exit 64
+            """
+        let scriptURL = try Self.makeExecutableScript(
+            in: rootDir,
+            name: "mock-ralph-switch",
+            body: switchScript
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: workspaceADir, client: client)
+
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+        XCTAssertEqual(workspace.currentRunnerConfig?.model, "model-a")
+        XCTAssertEqual(workspace.currentRunnerConfig?.maxIterations, 1)
+
+        workspace.setWorkingDirectory(workspaceBDir)
+
+        await Self.waitFor(timeout: 2.0) {
+            workspace.currentRunnerConfig?.model == "model-b"
+                && workspace.currentRunnerConfig?.maxIterations == 4
+        }
+
+        XCTAssertEqual(workspace.currentRunnerConfig?.model, "model-b")
+        XCTAssertEqual(workspace.currentRunnerConfig?.maxIterations, 4)
+    }
+
+    // MARK: - WorkspaceManager CLI Adoption Tests
+
+    func test_workspaceManager_adoptCLIExecutable_updatesClientWithValidPath() {
+        let manager = WorkspaceManager.shared
+        let originalPath = manager.client?.executableURL.path
+        let overridePath = "/bin/echo"
+
+        manager.adoptCLIExecutable(path: overridePath)
+
+        XCTAssertEqual(
+            manager.client?.executableURL.standardizedFileURL.resolvingSymlinksInPath().path,
+            URL(fileURLWithPath: overridePath).standardizedFileURL.resolvingSymlinksInPath().path
+        )
+        XCTAssertNil(manager.errorMessage)
+
+        if let originalPath {
+            manager.adoptCLIExecutable(path: originalPath)
+        }
+    }
+
+    func test_workspaceManager_adoptCLIExecutable_preservesClientOnInvalidPath() {
+        let manager = WorkspaceManager.shared
+        let baselinePath = manager.client?.executableURL.standardizedFileURL.resolvingSymlinksInPath().path
+
+        manager.adoptCLIExecutable(path: "/definitely/not/a/real/ralph-binary")
+
+        if let baselinePath {
+            XCTAssertEqual(
+                manager.client?.executableURL.standardizedFileURL.resolvingSymlinksInPath().path,
+                baselinePath
+            )
+        } else {
+            XCTAssertNotNil(manager.errorMessage)
+        }
+    }
+
+    // MARK: - Run Control Behavior Tests
+
+    func test_runNextTask_resolvesCLISelection_andStreamsOutput() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-run-stream-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let script = """
+            #!/bin/sh
+            if [ "$2" = "config" ] && [ "$3" = "show" ]; then
+              echo '{"agent":{"model":"model-test","iterations":2}}'
+              exit 0
+            fi
+            if [ "$2" = "run" ] && [ "$3" = "one" ] && [ "$4" = "--dry-run" ]; then
+              echo "Dry run: would run RQ-4242 (status: Todo)"
+              exit 0
+            fi
+            if [ "$2" = "run" ] && [ "$3" = "one" ] && [ "$4" = "--id" ] && [ "$5" = "RQ-4242" ]; then
+              echo "PHASE 1 starting"
+              sleep 1
+              echo "PHASE 2 running"
+              sleep 1
+              echo "done"
+              exit 0
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph-run-stream",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+
+        workspace.runNextTask()
+
+        await Self.waitFor(timeout: 2.0) {
+            workspace.currentTaskID == "RQ-4242" && workspace.output.contains("PHASE 1")
+        }
+
+        XCTAssertEqual(workspace.currentTaskID, "RQ-4242")
+        XCTAssertTrue(workspace.output.contains("PHASE 1"))
+        XCTAssertTrue(workspace.isRunning)
+
+        await Self.waitFor(timeout: 4.0) {
+            !workspace.isRunning
+        }
+
+        XCTAssertFalse(workspace.isRunning)
+        XCTAssertEqual(workspace.lastExitStatus?.code, 0)
+        XCTAssertTrue(workspace.output.contains("PHASE 2"))
+        XCTAssertEqual(workspace.executionHistory.first?.taskID, "RQ-4242")
+        XCTAssertEqual(workspace.executionHistory.first?.wasCancelled, false)
+    }
+
+    func test_cancel_stopsActiveRun_andRecordsCancellation() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-run-cancel-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let script = """
+            #!/bin/sh
+            if [ "$2" = "config" ] && [ "$3" = "show" ]; then
+              echo '{"agent":{"model":"model-test","iterations":2}}'
+              exit 0
+            fi
+            exec /bin/sleep "$@"
+            """
+        let scriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph-run-cancel",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+
+        workspace.run(arguments: ["60"])
+
+        await Self.waitFor(timeout: 1.0) {
+            workspace.isRunning
+        }
+        XCTAssertTrue(workspace.isRunning)
+        try await Task.sleep(nanoseconds: 150_000_000)
+
+        workspace.cancel()
+
+        await Self.waitFor(timeout: 6.0) {
+            !workspace.isRunning
+        }
+
+        XCTAssertFalse(workspace.isRunning)
+        XCTAssertEqual(workspace.executionHistory.first?.wasCancelled, true)
+        XCTAssertNil(workspace.executionHistory.first?.exitCode)
+        XCTAssertEqual(workspace.isLoopMode, false)
+        XCTAssertEqual(workspace.stopAfterCurrent, true)
+    }
+
     // MARK: - Helpers
+
+    private static func makeTempDir(prefix: String) throws -> URL {
+        let base = FileManager.default.temporaryDirectory
+        let dir = base.appendingPathComponent("\(prefix)\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    private static func makeExecutableScript(in directory: URL, name: String, body: String) throws -> URL {
+        let scriptURL = directory.appendingPathComponent(name, isDirectory: false)
+        try body.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: NSNumber(value: Int16(0o755))],
+            ofItemAtPath: scriptURL.path
+        )
+        return scriptURL
+    }
+
+    private static func waitFor(
+        timeout: TimeInterval,
+        pollIntervalNanoseconds: UInt64 = 50_000_000,
+        condition: @escaping @MainActor () -> Bool
+    ) async {
+        let start = Date()
+        while !(await MainActor.run { condition() }) {
+            if Date().timeIntervalSince(start) >= timeout {
+                break
+            }
+            try? await Task.sleep(nanoseconds: pollIntervalNanoseconds)
+        }
+    }
 
     private func generateTasks(count: Int) -> [RalphTask] {
         return (1...count).map { index in

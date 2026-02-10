@@ -524,4 +524,40 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
 public struct RalphTaskQueueDocument: Codable, Sendable, Equatable {
     public let version: Int
     public let tasks: [RalphTask]
+
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case tasks
+    }
+
+    public init(version: Int = 1, tasks: [RalphTask]) {
+        self.version = version
+        self.tasks = tasks
+    }
+
+    /// Supports both legacy object output (`{"version":...,"tasks":[...]}`)
+    /// and current CLI array output (`[...]`) from `queue list --format json`.
+    public init(from decoder: any Decoder) throws {
+        if let keyed = try? decoder.container(keyedBy: CodingKeys.self),
+           keyed.contains(.tasks) {
+            self.version = try keyed.decodeIfPresent(Int.self, forKey: .version) ?? 1
+            self.tasks = try keyed.decode([RalphTask].self, forKey: .tasks)
+            return
+        }
+
+        let singleValue = try decoder.singleValueContainer()
+        if let taskArray = try? singleValue.decode([RalphTask].self) {
+            self.version = 1
+            self.tasks = taskArray
+            return
+        }
+
+        throw DecodingError.typeMismatch(
+            RalphTaskQueueDocument.self,
+            DecodingError.Context(
+                codingPath: decoder.codingPath,
+                debugDescription: "Expected queue document object with tasks key or top-level task array"
+            )
+        )
+    }
 }

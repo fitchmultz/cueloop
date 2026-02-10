@@ -159,6 +159,56 @@ final class ErrorRecoveryTests: XCTestCase {
         XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("validate") })
     }
 
+    func testClassifyDecodingErrorAsParseError() {
+        let payload = Data("{\"invalid\":true}".utf8)
+
+        do {
+            _ = try JSONDecoder().decode(RalphTaskQueueDocument.self, from: payload)
+            XCTFail("Expected decode to fail for invalid fixture shape")
+        } catch {
+            let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
+            XCTAssertEqual(recoveryError.category, .parseError)
+            XCTAssertTrue(recoveryError.message.localizedCaseInsensitiveContains("parse"))
+        }
+    }
+
+    func testClassifyRetryableProcessErrorUsesStderr() {
+        let error = RetryableError.processError(
+            exitCode: 2,
+            stderr: "Error: read queue file /tmp/.ralph/queue.json: No such file or directory (os error 2)"
+        )
+
+        let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
+
+        XCTAssertEqual(recoveryError.category, .queueCorrupted)
+        XCTAssertTrue(recoveryError.message.localizedCaseInsensitiveContains("queue"))
+    }
+
+    func testClassifyMissingQueueFileIsActionable() {
+        let error = NSError(
+            domain: "RalphCore.CLIProcess",
+            code: 2,
+            userInfo: [
+                NSLocalizedDescriptionKey: "Error: read queue file /Users/test/.ralph/queue.json: No such file or directory (os error 2)"
+            ]
+        )
+
+        let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
+
+        XCTAssertEqual(recoveryError.category, .queueCorrupted)
+        XCTAssertTrue(recoveryError.message.contains("No Ralph queue file found"))
+        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("ralph init --non-interactive") })
+    }
+
+    func testClassifyRetryableProcessErrorWithoutStderrIncludesExitCode() {
+        let error = RetryableError.processError(exitCode: 42, stderr: "")
+
+        let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
+
+        XCTAssertEqual(recoveryError.category, .unknown)
+        XCTAssertTrue(recoveryError.message.contains("exit code 42"))
+    }
+
     func testClassifyResourceBusyError() {
         let error = NSError(domain: NSPOSIXErrorDomain, code: Int(EAGAIN), userInfo: [
             NSLocalizedDescriptionKey: "Resource temporarily unavailable"
@@ -385,6 +435,92 @@ final class CLIHealthCheckerTests: XCTestCase {
     
     func testDefaultTimeoutValue() {
         XCTAssertEqual(CLIHealthChecker.defaultTimeout, 30)
+    }
+
+    func testCheckHealth_usesProvidedExecutableOverride() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-health-override")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
+        let script = """
+        #!/bin/sh
+        if [ "$1" = "--version" ]; then
+          echo "ralph 9.9.9"
+          exit 0
+        fi
+        exit 1
+        """
+        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: NSNumber(value: Int16(0o755))],
+            ofItemAtPath: scriptURL.path
+        )
+
+        let checker = CLIHealthChecker()
+        let status = await checker.checkHealth(
+            workspaceID: UUID(),
+            workspaceURL: tempDir,
+            timeout: 2,
+            executableURL: scriptURL
+        )
+
+        XCTAssertEqual(status.availability, .available)
+    }
+
+    func testCheckHealth_fallsBackToVersionSubcommandWhenDashVersionUnsupported() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-health-fallback")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
+        let script = """
+        #!/bin/sh
+        if [ "$1" = "--version" ]; then
+          echo "error: unexpected argument '--version' found" >&2
+          exit 2
+        fi
+        if [ "$1" = "version" ]; then
+          echo "ralph 9.9.9"
+          exit 0
+        fi
+        exit 1
+        """
+        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: NSNumber(value: Int16(0o755))],
+            ofItemAtPath: scriptURL.path
+        )
+
+        let checker = CLIHealthChecker()
+        let status = await checker.checkHealth(
+            workspaceID: UUID(),
+            workspaceURL: tempDir,
+            timeout: 2,
+            executableURL: scriptURL
+        )
+
+        XCTAssertEqual(status.availability, .available)
+    }
+
+    func testCheckHealth_invalidProvidedExecutableReportsCliNotFound() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-health-missing")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let checker = CLIHealthChecker()
+        let status = await checker.checkHealth(
+            workspaceID: UUID(),
+            workspaceURL: tempDir,
+            timeout: 2,
+            executableURL: URL(fileURLWithPath: "/definitely/not/a/real/ralph-binary")
+        )
+
+        XCTAssertEqual(status.availability, .unavailable(reason: .cliNotFound))
+    }
+
+    private static func makeTempDir(prefix: String) throws -> URL {
+        let tempRoot = FileManager.default.temporaryDirectory
+        let directory = tempRoot.appendingPathComponent("\(prefix)-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 }
 

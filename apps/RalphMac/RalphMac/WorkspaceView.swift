@@ -14,7 +14,7 @@
  - Direct navigation state persistence (see NavigationViewModel).
 
  Invariants/assumptions callers must respect:
- - Workspace is injected via @StateObject or @ObservedObject.
+ - Workspace is injected via @ObservedObject.
  - NavigationViewModel manages sidebar state.
  - View updates when workspace state changes.
  */
@@ -22,16 +22,17 @@
 import SwiftUI
 import RalphCore
 
+@MainActor
 struct WorkspaceView: View {
-    @StateObject var workspace: Workspace
-    @StateObject var navigation: NavigationViewModel
+    @ObservedObject var workspace: Workspace
+    @StateObject private var navigation: NavigationViewModel
     @State private var showingCommandPalette: Bool = false
 
-    init(workspace: Workspace, navigation: NavigationViewModel? = nil) {
-        self._workspace = StateObject(wrappedValue: workspace)
-        // Use provided navigation view model or create one specific to this workspace
-        let navVM = navigation ?? NavigationViewModel(workspaceID: workspace.id)
-        self._navigation = StateObject(wrappedValue: navVM)
+    init(workspace: Workspace) {
+        self._workspace = ObservedObject(wrappedValue: workspace)
+        self._navigation = StateObject(
+            wrappedValue: NavigationViewModel(workspaceID: workspace.id)
+        )
     }
 
     var body: some View {
@@ -123,11 +124,11 @@ struct WorkspaceView: View {
 
         switch operation {
         case "loadTasks":
-            Task { await workspace.loadTasks() }
+            Task { @MainActor in await workspace.loadTasks() }
         case "loadGraphData":
-            Task { await workspace.loadGraphData() }
+            Task { @MainActor in await workspace.loadGraphData() }
         case "loadCLISpec":
-            Task { await workspace.loadCLISpec() }
+            Task { @MainActor in await workspace.loadCLISpec() }
         case "run", "runVersion", "runInit":
             // For general run operations, we need to re-trigger based on context
             // In quick actions context, re-run the last command if available
@@ -140,7 +141,7 @@ struct WorkspaceView: View {
             }
         default:
             // For unknown operations, try to reload tasks as a general refresh
-            Task { await workspace.loadTasks() }
+            Task { @MainActor in await workspace.loadTasks() }
         }
     }
     
@@ -149,7 +150,7 @@ struct WorkspaceView: View {
     private func handleStartWork() {
         guard let taskID = navigation.selectedTaskID else { return }
         
-        Task {
+        Task { @MainActor in
             do {
                 try await workspace.updateTaskStatus(taskID: taskID, to: .doing)
             } catch {

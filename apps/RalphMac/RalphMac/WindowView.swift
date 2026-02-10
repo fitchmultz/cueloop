@@ -19,9 +19,10 @@
 import SwiftUI
 import RalphCore
 
+@MainActor
 struct WindowView: View {
     @State var windowState: WindowState
-    @StateObject private var manager = WorkspaceManager.shared
+    @ObservedObject private var manager = WorkspaceManager.shared
 
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
@@ -30,8 +31,7 @@ struct WindowView: View {
         TabView(selection: $windowState.selectedTabIndex) {
             ForEach(Array(windowState.workspaceIDs.enumerated()), id: \.element) { index, workspaceID in
                 if let workspace = manager.workspaces.first(where: { $0.id == workspaceID }) {
-                    // Create NavigationViewModel with workspace-specific persistence
-                    WorkspaceView(workspace: workspace, navigation: NavigationViewModel(workspaceID: workspace.id))
+                    WorkspaceView(workspace: workspace)
                         .tabItem {
                             Label(workspace.name, systemImage: "folder")
                         }
@@ -92,7 +92,8 @@ struct WindowView: View {
     // MARK: - Tab Management
 
     private func addNewTab() {
-        let newWorkspace = manager.createWorkspace()
+        let preferredDirectory = activeWorkspace()?.workingDirectoryURL ?? manager.workspaces.last?.workingDirectoryURL
+        let newWorkspace = manager.createWorkspace(workingDirectory: preferredDirectory)
         windowState.workspaceIDs.append(newWorkspace.id)
         windowState.selectedTabIndex = windowState.workspaceIDs.count - 1
         persistState()
@@ -105,9 +106,11 @@ struct WindowView: View {
         guard index < windowState.workspaceIDs.count else { return }
 
         let workspaceID = windowState.workspaceIDs[index]
+        var fallbackDirectory: URL?
 
         // Check if workspace has running operations
         if let workspace = manager.workspaces.first(where: { $0.id == workspaceID }) {
+            fallbackDirectory = workspace.workingDirectoryURL
             if workspace.isRunning {
                 // Show alert before closing - for now, just cancel
                 workspace.cancel()
@@ -120,7 +123,7 @@ struct WindowView: View {
         // Adjust selection
         if windowState.workspaceIDs.isEmpty {
             // Create new workspace if none left
-            let newWorkspace = manager.createWorkspace()
+            let newWorkspace = manager.createWorkspace(workingDirectory: fallbackDirectory)
             windowState.workspaceIDs.append(newWorkspace.id)
             windowState.selectedTabIndex = 0
         } else {
@@ -192,11 +195,18 @@ struct WindowView: View {
 
             // If no workspaces left, create a new one
             if windowState.workspaceIDs.isEmpty {
-                let newWorkspace = manager.createWorkspace()
+                let newWorkspace = manager.createWorkspace(workingDirectory: manager.workspaces.last?.workingDirectoryURL)
                 windowState.workspaceIDs.append(newWorkspace.id)
                 windowState.selectedTabIndex = 0
                 persistState()
             }
         }
+    }
+
+    private func activeWorkspace() -> Workspace? {
+        guard !windowState.workspaceIDs.isEmpty else { return nil }
+        guard windowState.selectedTabIndex < windowState.workspaceIDs.count else { return nil }
+        let workspaceID = windowState.workspaceIDs[windowState.selectedTabIndex]
+        return manager.workspaces.first(where: { $0.id == workspaceID })
     }
 }

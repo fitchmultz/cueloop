@@ -51,7 +51,7 @@ public struct RetryConfiguration: Sendable {
 }
 
 /// Errors that can trigger a retry
-public enum RetryableError: Error, Sendable, Equatable {
+public enum RetryableError: Error, Sendable, Equatable, LocalizedError {
     case fileLocked
     case resourceBusy
     case ioTimeout
@@ -73,6 +73,27 @@ public enum RetryableError: Error, Sendable, Equatable {
             return false
         default:
             return false
+        }
+    }
+
+    public var errorDescription: String? {
+        switch self {
+        case .fileLocked:
+            return "File is locked"
+        case .resourceBusy:
+            return "Resource busy"
+        case .ioTimeout:
+            return "I/O timeout"
+        case .resourceTemporarilyUnavailable:
+            return "Resource temporarily unavailable"
+        case .processError(let exitCode, let stderr):
+            let trimmed = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                return "CLI command failed with exit code \(exitCode)"
+            }
+            return "CLI command failed with exit code \(exitCode): \(trimmed)"
+        case .underlying(let error):
+            return error.localizedDescription
         }
     }
 }

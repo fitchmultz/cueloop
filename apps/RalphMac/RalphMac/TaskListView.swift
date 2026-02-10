@@ -22,6 +22,7 @@
 import SwiftUI
 import RalphCore
 
+@MainActor
 struct TaskListView: View {
     @ObservedObject var workspace: Workspace
     @Binding var selectedTaskID: String?
@@ -59,7 +60,7 @@ struct TaskListView: View {
                 .padding(.bottom, 16)
         }
         .background(.clear)
-        .task {
+        .task { @MainActor in
             await workspace.loadTasks()
         }
         .toolbar {

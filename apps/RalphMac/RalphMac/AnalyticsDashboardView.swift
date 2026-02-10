@@ -19,6 +19,7 @@ import SwiftUI
 import Charts
 import RalphCore
 
+@MainActor
 struct AnalyticsDashboardView: View {
     @ObservedObject var workspace: Workspace
     @State private var selectedTimeRange: TimeRange = .sevenDays
@@ -74,12 +75,12 @@ struct AnalyticsDashboardView: View {
         }
         .onAppear {
             let range = selectedTimeRange
-            Task {
+            Task { @MainActor in
                 await workspace.loadAnalytics(timeRange: range)
             }
         }
         .onChange(of: selectedTimeRange) { _, newRange in
-            Task {
+            Task { @MainActor in
                 await workspace.loadAnalytics(timeRange: newRange)
             }
         }
@@ -116,7 +117,7 @@ struct AnalyticsDashboardView: View {
             // Refresh Button
             Button(action: {
                 let range = selectedTimeRange
-                Task {
+                Task { @MainActor in
                     await workspace.loadAnalytics(timeRange: range)
                 }
             }) {

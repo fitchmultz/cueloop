@@ -229,6 +229,16 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         }
     }
 
+    /// Minimal shape of `ralph config show --format json` needed by Run Control.
+    private struct ResolvedRunnerConfigDocument: Decodable, Sendable {
+        let agent: AgentConfig?
+
+        struct AgentConfig: Decodable, Sendable {
+            let model: String?
+            let iterations: Int?
+        }
+    }
+
     /// Represents a segment of ANSI-parsed console output
     public struct ANSISegment: Identifiable, Sendable {
         public let id = UUID()
@@ -341,6 +351,8 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     private var client: RalphCLIClient?
     private var cancellables = Set<AnyCancellable>()
     private var fileWatcher: QueueFileWatcher?
+    private var activeRun: RalphCLIRun?
+    private var cancelRequested: Bool = false
     
     // Track last known task state for detecting specific changes
     @Published public var lastTasksSnapshot: [RalphTask] = []
@@ -363,9 +375,18 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         self.client = client
 
         loadState()
+
+        // Persist initial state so restoration can resolve this workspace ID on next launch.
+        persistState()
         
         // Start file watching after initialization
         startFileWatching()
+
+        if client != nil {
+            Task { @MainActor [weak self] in
+                await self?.loadRunnerConfiguration(retryConfiguration: .minimal)
+            }
+        }
     }
 
     // MARK: - Persistence Keys
@@ -392,7 +413,9 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         // Load working directory if valid
         if let stored = defaults.string(forKey: defaultsKey("workingPath")) {
             let url = URL(fileURLWithPath: stored, isDirectory: true)
-            if FileManager.default.fileExists(atPath: url.path) {
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
+               isDirectory.boolValue {
                 workingDirectoryURL = url
             }
         }
@@ -431,6 +454,21 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         
         // Clear last snapshot
         lastTasksSnapshot.removeAll()
+
+        if client != nil {
+            Task { @MainActor [weak self] in
+                await self?.loadRunnerConfiguration(retryConfiguration: .minimal)
+            }
+        }
+    }
+
+    /// True when the workspace has a queue file the app can read/write.
+    public var hasRalphQueueFile: Bool {
+        FileManager.default.fileExists(atPath: queueFileURL.path)
+    }
+
+    private var queueFileURL: URL {
+        workingDirectoryURL.appendingPathComponent(".ralph/queue.json", isDirectory: false)
     }
 
     public func chooseWorkingDirectory() {
@@ -454,8 +492,9 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
 
     public func injectClient(_ client: RalphCLIClient) {
         self.client = client
-        Task {
+        Task { @MainActor in
             await loadCLISpec()
+            await loadRunnerConfiguration(retryConfiguration: .minimal)
         }
     }
 
@@ -471,10 +510,62 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         run(arguments: ["--no-color", "queue", "list", "--format", "json"])
     }
 
+    /// Load resolved runner settings from `ralph config show --format json`.
+    ///
+    /// This mirrors CLI precedence (flags > project config > global config > defaults)
+    /// because resolution happens inside the CLI itself.
+    public func loadRunnerConfiguration(retryConfiguration: RetryConfiguration = .minimal) async {
+        guard let client else {
+            currentRunnerConfig = nil
+            return
+        }
+
+        do {
+            let helper = RetryHelper(configuration: retryConfiguration)
+            let collected = try await helper.execute(
+                operation: { [self] in
+                    let result = try await client.runAndCollect(
+                        arguments: ["--no-color", "config", "show", "--format", "json"],
+                        currentDirectoryURL: workingDirectoryURL
+                    )
+                    if result.status.code != 0 {
+                        throw result.toError()
+                    }
+                    return result
+                }
+            )
+
+            let data = Data(collected.stdout.utf8)
+            let decoded = try JSONDecoder().decode(ResolvedRunnerConfigDocument.self, from: data)
+            currentRunnerConfig = RunnerConfig(
+                model: decoded.agent?.model,
+                maxIterations: decoded.agent?.iterations
+            )
+        } catch {
+            currentRunnerConfig = nil
+            RalphLogger.shared.error(
+                "Failed to load runner configuration: \(error)",
+                category: .workspace
+            )
+        }
+    }
+
     public func loadTasks(retryConfiguration: RetryConfiguration = .default) async {
         guard let client else {
             tasksErrorMessage = "CLI client not available."
             return
+        }
+
+        guard hasRalphQueueFile else {
+            tasks = []
+            tasksErrorMessage = "No Ralph queue found in this directory. Run `ralph init --non-interactive` in \(workingDirectoryURL.path)."
+            showErrorRecovery = false
+            lastRecoveryError = nil
+            return
+        }
+
+        if fileWatcher == nil {
+            startFileWatching()
         }
 
         tasksLoading = true
@@ -535,11 +626,15 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     private func startFileWatching() {
         // Stop existing watcher
         fileWatcher?.stop()
+        fileWatcher = nil
+
+        // Only watch initialized Ralph workspaces.
+        guard hasRalphQueueFile else { return }
         
         // Create and configure new watcher
         let watcher = QueueFileWatcher(workingDirectoryURL: workingDirectoryURL)
         watcher.onFileChanged = { [weak self] in
-            Task { [weak self] in
+            Task { @MainActor [weak self] in
                 await self?.handleExternalFileChange()
             }
         }
@@ -560,6 +655,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         
         // Reload tasks
         await loadTasks()
+        await loadRunnerConfiguration(retryConfiguration: .minimal)
         
         // Post notification for UI to animate changes
         NotificationCenter.default.post(
@@ -1114,32 +1210,34 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         lastExitStatus = nil
         errorMessage = nil
         isRunning = true
+        cancelRequested = false
         executionStartTime = Date()
 
-        Task {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+
             do {
-                let collected = try await client.runAndCollect(
+                let run = try client.start(
                     arguments: arguments,
                     currentDirectoryURL: workingDirectoryURL
                 )
+                activeRun = run
 
-                // Update output with size limiting via outputBuffer
-                outputBuffer.setContent(collected.stdout)
-                if !collected.stderr.isEmpty {
-                    outputBuffer.append("\n[stderr] " + collected.stderr)
+                for await event in run.events {
+                    outputBuffer.append(event.text)
+                    output = outputBuffer.content
+
+                    // Parse phase information incrementally
+                    detectPhase(from: output)
+
+                    // Parse ANSI codes for rich display (with segment limiting)
+                    parseANSICodes(from: output)
+                    enforceANSISegmentLimit()
                 }
 
-                // Keep legacy output property in sync for backwards compatibility
-                output = outputBuffer.content
+                let status = await run.waitUntilExit()
 
-                // Parse phase information from output
-                detectPhase(from: output)
-
-                // Parse ANSI codes for rich display (with segment limiting)
-                parseANSICodes(from: output)
-                enforceANSISegmentLimit()
-
-                lastExitStatus = collected.status
+                lastExitStatus = status
                 isRunning = false
 
                 // Record execution history
@@ -1149,22 +1247,30 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
                         taskID: currentTaskID,
                         startTime: startTime,
                         endTime: Date(),
-                        exitCode: Int(collected.status.code),
-                        wasCancelled: false
+                        exitCode: cancelRequested ? nil : Int(status.code),
+                        wasCancelled: cancelRequested
                     )
                     addToHistory(record)
                 }
 
                 // Handle loop mode - run next task if enabled and not stopping
-                if isLoopMode && !stopAfterCurrent && collected.status.code == 0 {
+                if isLoopMode && !stopAfterCurrent && !cancelRequested && status.code == 0 {
                     // Small delay before next task
                     try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                    if isLoopMode && !stopAfterCurrent {
+                    if isLoopMode && !stopAfterCurrent && !cancelRequested {
+                        activeRun = nil
+                        cancelRequested = false
                         runNextTask()
                         return  // Don't reset state, we're continuing
                     }
                 }
 
+                if status.code != 0 {
+                    isLoopMode = false
+                }
+
+                activeRun = nil
+                cancelRequested = false
                 resetExecutionState()
             } catch {
                 let recoveryError = RecoveryError.classify(
@@ -1176,48 +1282,80 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
                 lastRecoveryError = recoveryError
                 showErrorRecovery = true
                 isRunning = false
+                activeRun = nil
+                cancelRequested = false
                 resetExecutionState()
             }
         }
     }
 
     public func cancel() {
-        // Note: With runAndCollect, we can't easily cancel mid-execution.
-        // The task will complete but loop mode can be stopped.
-
-        // Record cancelled execution
-        if let startTime = executionStartTime {
-            let record = ExecutionRecord(
-                id: UUID(),
-                taskID: currentTaskID,
-                startTime: startTime,
-                endTime: Date(),
-                exitCode: nil,
-                wasCancelled: true
-            )
-            addToHistory(record)
+        guard isRunning else {
+            isLoopMode = false
+            stopAfterCurrent = true
+            return
         }
 
+        cancelRequested = true
         isLoopMode = false
         stopAfterCurrent = true
-        isRunning = false
-        resetExecutionState()
+
+        guard let run = activeRun else { return }
+        Task {
+            await run.cancel()
+        }
     }
 
     // MARK: - Execution Control
 
-    /// Run the next task in the queue (ralph run one)
-    public func runNextTask() {
-        // Reset execution state
-        resetExecutionState()
+    private static func extractTaskID(from text: String) -> String? {
+        for token in text.split(whereSeparator: { $0.isWhitespace || $0 == "(" || $0 == ")" || $0 == ":" || $0 == "," }) {
+            let candidate = String(token)
+            if candidate.hasPrefix("RQ-") {
+                return candidate
+            }
+        }
+        return nil
+    }
 
-        // Get the next task before starting
-        if let next = nextTask() {
-            currentTaskID = next.id
+    private func resolveNextRunnableTaskID() async -> String? {
+        guard let client else { return nextTask()?.id }
+
+        do {
+            let dryRun = try await client.runAndCollect(
+                arguments: ["--no-color", "run", "one", "--dry-run", "--non-interactive"],
+                currentDirectoryURL: workingDirectoryURL
+            )
+            let combined = dryRun.stdout + "\n" + dryRun.stderr
+            if let id = Self.extractTaskID(from: combined) {
+                return id
+            }
+        } catch {
+            RalphLogger.shared.debug("Failed to resolve runnable task ID: \(error)", category: .workspace)
         }
 
-        executionStartTime = Date()
-        run(arguments: ["--no-color", "run", "one"])
+        return nextTask()?.id
+    }
+
+    /// Run the next task in the queue (ralph run one)
+    public func runNextTask() {
+        guard !isRunning else { return }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            resetExecutionState()
+
+            let resolvedTaskID = await resolveNextRunnableTaskID()
+            currentTaskID = resolvedTaskID
+
+            var arguments = ["--no-color", "run", "one"]
+            if let resolvedTaskID {
+                arguments.append(contentsOf: ["--id", resolvedTaskID])
+            }
+
+            run(arguments: arguments)
+        }
     }
 
     /// Start loop mode (continuously run tasks)
@@ -1944,7 +2082,8 @@ extension Workspace {
         let status = await checker.checkHealth(
             workspaceID: id,
             workspaceURL: workingDirectoryURL,
-            timeout: timeout
+            timeout: timeout,
+            executableURL: client?.executableURL
         )
         cliHealthStatus = status
         

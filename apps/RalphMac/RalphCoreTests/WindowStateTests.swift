@@ -25,12 +25,18 @@ final class WindowStateTests: XCTestCase {
     override func setUp() {
         super.setUp()
         manager = WorkspaceManager.shared
+        for workspace in manager.workspaces {
+            manager.closeWorkspace(workspace)
+        }
         // Clear any existing test state
         UserDefaults.standard.removeObject(forKey: testRestorationKey)
         cleanupNavigationState()
     }
 
     override func tearDown() {
+        for workspace in manager.workspaces {
+            manager.closeWorkspace(workspace)
+        }
         UserDefaults.standard.removeObject(forKey: testRestorationKey)
         cleanupNavigationState()
         super.tearDown()
@@ -152,6 +158,30 @@ final class WindowStateTests: XCTestCase {
         // Should create a default window with new workspace
         XCTAssertEqual(restored.count, 1)
         XCTAssertEqual(restored.first?.workspaceIDs.count, 1)
+    }
+
+    func test_restoreWindows_withNoSavedState_usesExistingWorkspace() {
+        UserDefaults.standard.removeObject(forKey: testRestorationKey)
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        let workspace = manager.createWorkspace(workingDirectory: temp)
+        let restored = manager.restoreWindows()
+
+        XCTAssertEqual(restored.count, 1)
+        XCTAssertEqual(restored.first?.workspaceIDs, [workspace.id])
+    }
+
+    func test_createWorkspace_persistsInitialWorkingDirectory() {
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        let workspace = manager.createWorkspace(workingDirectory: temp)
+        let key = "com.mitchfultz.ralph.workspace.\(workspace.id.uuidString).workingPath"
+
+        XCTAssertEqual(UserDefaults.standard.string(forKey: key), temp.path)
     }
 
     func test_restoreWindows_withValidSavedState_restoresCorrectly() {

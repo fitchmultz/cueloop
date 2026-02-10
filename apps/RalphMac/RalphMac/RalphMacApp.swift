@@ -12,7 +12,7 @@
  - Sidebar navigation state (see NavigationViewModel).
 
  Invariants/assumptions callers must respect:
- - The app bundle includes an executable named `ralph` placed alongside the app binary.
+ - The app can use either the bundled `ralph` binary or a launcher-provided override.
  - Window restoration state is stored in UserDefaults.
  - Navigation notifications are sent via NotificationCenter.
  */
@@ -21,10 +21,11 @@ import SwiftUI
 import RalphCore
 import OSLog
 
+@MainActor
 @main
 struct RalphMacApp: App {
-    @StateObject private var manager = WorkspaceManager.shared
-    @StateObject private var menuBarManager = MenuBarManager.shared
+    private let manager = WorkspaceManager.shared
+    @ObservedObject private var menuBarManager = MenuBarManager.shared
     @Environment(\.scenePhase) private var scenePhase
     
     init() {
@@ -39,6 +40,7 @@ struct RalphMacApp: App {
                     VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
                         .ignoresSafeArea()
                 )
+                .onOpenURL(perform: handleOpenURL)
                 .onReceive(NotificationCenter.default.publisher(for: .showMainAppFromMenuBar)) { _ in
                     // Bring app to front when requested from menu bar
                     NSApp.activate(ignoringOtherApps: true)
@@ -91,7 +93,13 @@ struct RalphMacApp: App {
             return
         }
 
+        if let cliPath = queryItems.first(where: { $0.name == "cli" })?.value?.removingPercentEncoding {
+            manager.adoptCLIExecutable(path: cliPath)
+        }
+
         let workspaceURL = URL(fileURLWithPath: path, isDirectory: true)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
 
         // Validate the path exists and is a directory
         var isDir: ObjCBool = false
@@ -104,7 +112,10 @@ struct RalphMacApp: App {
 
         // Check if we already have a workspace for this directory
         if let existingWorkspace = manager.workspaces.first(where: {
-            $0.workingDirectoryURL.path == workspaceURL.path
+            $0.workingDirectoryURL
+                .standardizedFileURL
+                .resolvingSymlinksInPath()
+                .path == workspaceURL.path
         }) {
             // Activate existing workspace - post notification for WindowView to handle
             NotificationCenter.default.post(
@@ -113,6 +124,17 @@ struct RalphMacApp: App {
             )
             RalphLogger.shared.info("Activated existing workspace: \(path)", category: .workspace)
         } else {
+            // If this launch bootstrapped a default home workspace, repurpose it for the URL.
+            if let bootstrapWorkspace = bootstrapWorkspaceForURLOpen() {
+                bootstrapWorkspace.setWorkingDirectory(workspaceURL)
+                NotificationCenter.default.post(
+                    name: .activateWorkspace,
+                    object: bootstrapWorkspace.id
+                )
+                RalphLogger.shared.info("Repurposed bootstrap workspace for URL: \(path)", category: .workspace)
+                return
+            }
+
             // Create new workspace with the specified directory
             let workspace = manager.createWorkspace(workingDirectory: workspaceURL)
             NotificationCenter.default.post(
@@ -121,6 +143,23 @@ struct RalphMacApp: App {
             )
             RalphLogger.shared.info("Created new workspace from URL: \(path)", category: .workspace)
         }
+    }
+
+    private func bootstrapWorkspaceForURLOpen() -> Workspace? {
+        guard manager.workspaces.count == 1, let workspace = manager.workspaces.first else { return nil }
+
+        let homePath = FileManager.default.homeDirectoryForCurrentUser
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+            .path
+        let workspacePath = workspace.workingDirectoryURL
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+            .path
+        guard workspacePath == homePath else { return nil }
+        guard !workspace.hasRalphQueueFile else { return nil }
+
+        return workspace
     }
 
     private var workspaceCommands: some Commands {
@@ -320,8 +359,10 @@ struct RalphMacApp: App {
             .keyboardShortcut("r", modifiers: [.command, .shift])
             
             Divider()
-            
-            Link("Ralph Documentation", destination: URL(string: "https://github.com/mitchfultz/ralph")!)
+
+            if let docsURL = URL(string: "https://github.com/mitchfultz/ralph") {
+                Link("Ralph Documentation", destination: docsURL)
+            }
         }
     }
 
@@ -395,8 +436,9 @@ struct RalphMacApp: App {
 /// Container view that handles workspace initialization to avoid state mutation during view init.
 /// On app launch, attempts to restore saved window state via WorkspaceManager.restoreWindows().
 /// Falls back to creating a fresh workspace with default state if no saved state exists.
+@MainActor
 struct WindowViewContainer: View {
-    @StateObject private var manager = WorkspaceManager.shared
+    private let manager = WorkspaceManager.shared
     @State private var windowState: WindowState?
 
     var body: some View {
@@ -406,32 +448,41 @@ struct WindowViewContainer: View {
             } else {
                 ProgressView("Initializing...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onAppear {
+                        initializeWindowStateIfNeeded()
+                    }
+                    .task { @MainActor in
+                        initializeWindowStateIfNeeded()
+                    }
             }
         }
-        .task {
-            // Defer workspace creation to avoid mutating state during view initialization
-            if windowState == nil {
-                let restoredStates = manager.restoreWindows()
-                // For now, use the first restored window state
-                // Multi-window support can be added later
-                if let firstState = restoredStates.first {
-                    windowState = firstState
-                } else {
-                    // No saved state - create fresh workspace
-                    let workspace = manager.createWorkspace()
-                    windowState = WindowState(workspaceIDs: [workspace.id])
-                }
-                
-                // Perform health check after workspace is set up
-                if let firstWorkspaceID = windowState?.workspaceIDs.first,
-                   let workspace = manager.workspaces.first(where: { $0.id == firstWorkspaceID }) {
-                    Task { @MainActor in
-                        _ = await workspace.checkHealth()
-                        // Load cached tasks if CLI is unavailable
-                        if workspace.showOfflineBanner {
-                            workspace.loadCachedTasks()
-                        }
-                    }
+        .onAppear {
+            initializeWindowStateIfNeeded()
+        }
+    }
+
+    private func initializeWindowStateIfNeeded() {
+        guard windowState == nil else { return }
+
+        let restoredStates = manager.restoreWindows()
+        // For now, use the first restored window state.
+        // Multi-window support can be added later.
+        if let firstState = restoredStates.first {
+            windowState = firstState
+        } else {
+            // No saved state - create fresh workspace.
+            let workspace = manager.createWorkspace()
+            windowState = WindowState(workspaceIDs: [workspace.id])
+        }
+
+        // Perform health check after workspace is set up.
+        if let firstWorkspaceID = windowState?.workspaceIDs.first,
+           let workspace = manager.workspaces.first(where: { $0.id == firstWorkspaceID }) {
+            Task { @MainActor in
+                _ = await workspace.checkHealth()
+                // Load cached tasks if CLI is unavailable.
+                if workspace.showOfflineBanner {
+                    workspace.loadCachedTasks()
                 }
             }
         }

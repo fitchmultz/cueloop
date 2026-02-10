@@ -7,6 +7,7 @@
  - Handle window/tab restoration on app relaunch.
  - Coordinate workspace creation, duplication, and closure.
  - Perform CLI version compatibility check on initialization.
+ - Resolve CLI executable from runtime override (`RALPH_BIN_PATH`) or bundled binary.
 
  Does not handle:
  - Per-workspace UI rendering (see WorkspaceView).
@@ -28,6 +29,7 @@ import OSLog
 @MainActor
 public final class WorkspaceManager: ObservableObject {
     public static let shared = WorkspaceManager()
+    public static let cliBinaryOverrideEnvKey = "RALPH_BIN_PATH"
 
     @Published public private(set) var workspaces: [Workspace] = []
     @Published public var errorMessage: String?
@@ -39,10 +41,7 @@ public final class WorkspaceManager: ObservableObject {
     private let versionCheckCacheKey = "com.mitchfultz.ralph.versionCheckCache"
 
     private init() {
-        do {
-            client = try RalphCLIClient.bundled()
-        } catch {
-            errorMessage = "Failed to locate bundled ralph executable: \(error)"
+        if !configureInitialClient() {
             return
         }
 
@@ -55,14 +54,112 @@ public final class WorkspaceManager: ObservableObject {
         migrateLegacyStateIfNeeded()
     }
 
+    @discardableResult
+    private func configureInitialClient() -> Bool {
+        let environment = ProcessInfo.processInfo.environment
+        if let overridePath = environment[Self.cliBinaryOverrideEnvKey],
+           !overridePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let overrideURL = URL(fileURLWithPath: overridePath, isDirectory: false)
+                .standardizedFileURL
+                .resolvingSymlinksInPath()
+            do {
+                client = try RalphCLIClient(executableURL: overrideURL)
+                errorMessage = nil
+                RalphLogger.shared.info(
+                    "Using CLI override from environment: \(overrideURL.path)",
+                    category: .cli
+                )
+                return true
+            } catch {
+                RalphLogger.shared.error(
+                    "Ignoring invalid CLI override '\(overridePath)': \(error)",
+                    category: .cli
+                )
+            }
+        }
+
+        do {
+            client = try RalphCLIClient.bundled()
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = "Failed to locate bundled ralph executable: \(error)"
+            return false
+        }
+    }
+
+    /// Adopt a CLI executable path provided by URL/launcher context and refresh all workspaces.
+    ///
+    /// If the override is invalid and there is already a working client, this method logs and
+    /// preserves the existing client. If no client exists, the error is surfaced in `errorMessage`.
+    public func adoptCLIExecutable(path: String) {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let executableURL = URL(fileURLWithPath: trimmed, isDirectory: false)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+
+        if let existing = client?.executableURL
+            .standardizedFileURL
+            .resolvingSymlinksInPath(),
+           existing.path == executableURL.path {
+            return
+        }
+
+        do {
+            let newClient = try RalphCLIClient(executableURL: executableURL)
+            client = newClient
+            errorMessage = nil
+
+            RalphLogger.shared.info(
+                "Adopted CLI executable from URL context: \(executableURL.path)",
+                category: .cli
+            )
+
+            for workspace in workspaces {
+                workspace.injectClient(newClient)
+                Task { @MainActor [weak workspace] in
+                    guard let workspace else { return }
+                    _ = await workspace.checkHealth()
+                    if workspace.hasRalphQueueFile {
+                        await workspace.loadTasks(retryConfiguration: .minimal)
+                    }
+                }
+            }
+
+            Task { @MainActor [weak self] in
+                await self?.performVersionCheck()
+            }
+        } catch {
+            RalphLogger.shared.error(
+                "Failed to adopt CLI executable '\(executableURL.path)': \(error)",
+                category: .cli
+            )
+            if client == nil {
+                errorMessage = "Failed to use CLI executable override: \(error)"
+            }
+        }
+    }
+
     // MARK: - Workspace Lifecycle
 
     @discardableResult
     public func createWorkspace(workingDirectory: URL? = nil) -> Workspace {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let directory = workingDirectory ?? home
+        createWorkspace(id: UUID(), workingDirectory: workingDirectory)
+    }
 
-        let workspace = Workspace(workingDirectoryURL: directory, client: client)
+    @discardableResult
+    public func createWorkspace(id: UUID, workingDirectory: URL? = nil) -> Workspace {
+        if let existing = workspaces.first(where: { $0.id == id }) {
+            return existing
+        }
+
+        let defaultDirectory = workspaces.last?.workingDirectoryURL
+            ?? FileManager.default.homeDirectoryForCurrentUser
+        let directory = workingDirectory ?? defaultDirectory
+
+        let workspace = Workspace(id: id, workingDirectoryURL: directory, client: client)
         workspaces.append(workspace)
 
         // Load CLI spec for the new workspace
@@ -124,24 +221,44 @@ public final class WorkspaceManager: ObservableObject {
     public func restoreWindows() -> [WindowState] {
         let states = loadAllWindowStates()
 
-        // Validate and clean up any states with invalid directories
-        let validStates = states.filter { state in
-            state.workspaceIDs.contains { workspaceID in
-                // Check if we can find a valid working directory for this workspace
-                if let workspace = workspaces.first(where: { $0.id == workspaceID }) {
-                    return FileManager.default.fileExists(atPath: workspace.workingDirectoryURL.path)
-                }
-                return false
+        // No persisted window states: prefer already-created workspaces (e.g. URL-open launch path).
+        if states.isEmpty {
+            let restorableExisting = workspaces.filter { workspaceIsRestorable($0.workingDirectoryURL) }
+            if !restorableExisting.isEmpty {
+                return [
+                    WindowState(
+                        workspaceIDs: restorableExisting.map(\.id),
+                        selectedTabIndex: 0
+                    )
+                ]
             }
-        }
 
-        // If no valid states, create a default window with a new workspace
-        if validStates.isEmpty {
             let workspace = createWorkspace()
             return [WindowState(workspaceIDs: [workspace.id])]
         }
 
-        return validStates
+        var restoredStates: [WindowState] = []
+        for state in states {
+            var rebuiltState = state
+            rebuiltState.workspaceIDs = state.workspaceIDs.filter { workspaceID in
+                if let existing = workspaces.first(where: { $0.id == workspaceID }) {
+                    return workspaceIsRestorable(existing.workingDirectoryURL)
+                }
+                guard let restored = restoreWorkspace(id: workspaceID) else { return false }
+                return workspaceIsRestorable(restored.workingDirectoryURL)
+            }
+            rebuiltState.validateSelection()
+            if !rebuiltState.workspaceIDs.isEmpty {
+                restoredStates.append(rebuiltState)
+            }
+        }
+
+        if restoredStates.isEmpty {
+            let workspace = createWorkspace()
+            return [WindowState(workspaceIDs: [workspace.id])]
+        }
+
+        return restoredStates
     }
 
     // MARK: - Legacy Migration
@@ -182,6 +299,35 @@ public final class WorkspaceManager: ObservableObject {
         for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
             defaults.removeObject(forKey: key)
         }
+    }
+
+    private func workspaceWorkingDirectory(_ workspaceID: UUID) -> URL? {
+        let key = "com.mitchfultz.ralph.workspace.\(workspaceID.uuidString).workingPath"
+        guard let path = UserDefaults.standard.string(forKey: key) else {
+            return nil
+        }
+        let url = URL(fileURLWithPath: path, isDirectory: true)
+        return workspaceIsRestorable(url) ? url : nil
+    }
+
+    @discardableResult
+    private func restoreWorkspace(id: UUID) -> Workspace? {
+        if let existing = workspaces.first(where: { $0.id == id }) {
+            return workspaceIsRestorable(existing.workingDirectoryURL) ? existing : nil
+        }
+        guard let directory = workspaceWorkingDirectory(id) else { return nil }
+        return createWorkspace(id: id, workingDirectory: directory)
+    }
+
+    private func workspaceDirectoryExists(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    private func workspaceIsRestorable(_ url: URL) -> Bool {
+        guard workspaceDirectoryExists(url) else { return false }
+        let queueFile = url.appendingPathComponent(".ralph/queue.json", isDirectory: false)
+        return FileManager.default.fileExists(atPath: queueFile.path)
     }
 
     // MARK: - Version Compatibility

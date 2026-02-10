@@ -87,8 +87,7 @@ public final class CrashReporter: @unchecked Sendable {
     
     /// Returns the crash reports directory URL
     private func crashReportsDirectory() -> URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return appSupport.appendingPathComponent("Ralph/CrashReports", isDirectory: true)
+        Self.crashReportsDirectoryStatic()
     }
     
     /// Install crash handlers. Call this early in app launch.
@@ -133,7 +132,8 @@ public final class CrashReporter: @unchecked Sendable {
     
     /// Static version for nonisolated contexts
     private static func crashReportsDirectoryStatic() -> URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return appSupport.appendingPathComponent("Ralph/CrashReports", isDirectory: true)
     }
     

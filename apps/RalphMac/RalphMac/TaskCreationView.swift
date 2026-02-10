@@ -41,6 +41,7 @@ struct TemplateInfo: Identifiable, Equatable {
 }
 
 // MARK: - View
+@MainActor
 struct TaskCreationView: View {
     @ObservedObject var workspace: Workspace
     @Environment(\.dismiss) private var dismiss
@@ -367,7 +368,7 @@ struct TaskCreationView: View {
     private func createTask() {
         isCreating = true
 
-        Task {
+        Task { @MainActor in
             do {
                 try await workspace.createTask(
                     title: title,
@@ -379,21 +380,17 @@ struct TaskCreationView: View {
                     target: target.isEmpty ? nil : target
                 )
 
-                await MainActor.run {
-                    isCreating = false
-                    dismiss()
-                }
+                isCreating = false
+                dismiss()
             } catch {
-                await MainActor.run {
-                    isCreating = false
-                    let classifiedError = RecoveryError.classify(
-                        error: error,
-                        operation: "createTask",
-                        workspaceURL: workspace.workingDirectoryURL
-                    )
-                    recoveryError = classifiedError
-                    showingRecoverySheet = true
-                }
+                isCreating = false
+                let classifiedError = RecoveryError.classify(
+                    error: error,
+                    operation: "createTask",
+                    workspaceURL: workspace.workingDirectoryURL
+                )
+                recoveryError = classifiedError
+                showingRecoverySheet = true
             }
         }
     }

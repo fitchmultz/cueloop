@@ -25,12 +25,12 @@ import OSLog
 public final class MenuBarManager: ObservableObject {
     public static let shared = MenuBarManager()
     
+    private var _isMenuBarExtraVisible: Bool
+
     /// Whether the menu bar extra is visible (persisted to UserDefaults)
-    @Published public var isMenuBarExtraVisible: Bool {
-        didSet {
-            UserDefaults.standard.set(isMenuBarExtraVisible, forKey: Self.visibilityKey)
-            RalphLogger.shared.debug("Menu bar extra visibility changed to: \(isMenuBarExtraVisible)", category: .lifecycle)
-        }
+    public var isMenuBarExtraVisible: Bool {
+        get { _isMenuBarExtraVisible }
+        set { setMenuBarExtraVisibility(newValue) }
     }
     
     /// Whether to show task status notifications (persisted to UserDefaults)
@@ -65,7 +65,7 @@ public final class MenuBarManager: ObservableObject {
     
     private init() {
         // Initialize from UserDefaults with sensible defaults
-        self.isMenuBarExtraVisible = UserDefaults.standard.object(forKey: Self.visibilityKey) as? Bool ?? true
+        self._isMenuBarExtraVisible = UserDefaults.standard.object(forKey: Self.visibilityKey) as? Bool ?? true
         self.showStatusNotifications = UserDefaults.standard.object(forKey: Self.notificationsKey) as? Bool ?? false
         self.showRecentTasks = UserDefaults.standard.object(forKey: Self.recentTasksKey) as? Bool ?? true
         self.maxRecentTasks = UserDefaults.standard.object(forKey: Self.maxRecentTasksKey) as? Int ?? 5
@@ -77,7 +77,7 @@ public final class MenuBarManager: ObservableObject {
     
     /// Reset all menu bar preferences to defaults
     public func resetToDefaults() {
-        isMenuBarExtraVisible = true
+        setMenuBarExtraVisibility(true)
         showStatusNotifications = false
         showRecentTasks = true
         maxRecentTasks = 5
@@ -87,7 +87,16 @@ public final class MenuBarManager: ObservableObject {
     
     /// Toggle menu bar extra visibility
     public func toggleVisibility() {
-        isMenuBarExtraVisible.toggle()
+        setMenuBarExtraVisibility(!_isMenuBarExtraVisible)
+    }
+
+    /// Update menu bar visibility while suppressing no-op publishes.
+    public func setMenuBarExtraVisibility(_ newValue: Bool) {
+        guard _isMenuBarExtraVisible != newValue else { return }
+        objectWillChange.send()
+        _isMenuBarExtraVisible = newValue
+        UserDefaults.standard.set(newValue, forKey: Self.visibilityKey)
+        RalphLogger.shared.debug("Menu bar extra visibility changed to: \(newValue)", category: .lifecycle)
     }
 }
 

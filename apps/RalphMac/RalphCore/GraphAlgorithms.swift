@@ -3,7 +3,7 @@
 
  Responsibilities:
  - Provide graph algorithms for dependency analysis (cycle detection, etc.).
- - Detect circular dependencies using DFS with recursion stack.
+ - Detect circular dependencies using path-aware DFS from each node.
  - Support prevention of cycle creation during editing.
 
  Does not handle:
@@ -38,8 +38,7 @@ public enum GraphAlgorithms {
     /// Edge types that participate in cycle detection
     private static let cycleEdgeTypes: [GraphEdge.EdgeType] = [.dependency, .blocks]
 
-    /// Detects cycles in a directed graph using DFS with recursion stack.
-    /// Mirrors the algorithm in validation.rs has_cycle() function.
+    /// Detects cycles in a directed graph using path-aware DFS.
     ///
     /// Only considers `.dependency` and `.blocks` edge types.
     /// `.relatesTo` edges are excluded as they are inherently bidirectional.
@@ -63,22 +62,21 @@ public enum GraphAlgorithms {
             allNodes.insert(edge.to)
         }
 
-        var visited = Set<String>()
-        var recStack = Set<String>()
         var foundCycles: [[String]] = []
+        var foundCycleKeys = Set<String>()
 
-        for node in allNodes {
-            if !visited.contains(node) {
-                var currentPath: [String] = []
-                findCyclesDFS(
-                    node: node,
-                    adjacencyList: adjacencyList,
-                    visited: &visited,
-                    recStack: &recStack,
-                    currentPath: &currentPath,
-                    foundCycles: &foundCycles
-                )
-            }
+        for node in allNodes.sorted() {
+            var currentPath: [String] = [node]
+            var currentPathSet: Set<String> = [node]
+            findCyclesDFS(
+                startNode: node,
+                currentNode: node,
+                adjacencyList: adjacencyList,
+                currentPath: &currentPath,
+                currentPathSet: &currentPathSet,
+                foundCycles: &foundCycles,
+                foundCycleKeys: &foundCycleKeys
+            )
         }
 
         return CycleDetectionResult(
@@ -87,52 +85,46 @@ public enum GraphAlgorithms {
         )
     }
 
-    /// Recursive DFS to find all cycles
+    /// Recursive DFS to find all simple cycles reachable from `startNode`.
     private static func findCyclesDFS(
-        node: String,
+        startNode: String,
+        currentNode: String,
         adjacencyList: [String: [String]],
-        visited: inout Set<String>,
-        recStack: inout Set<String>,
         currentPath: inout [String],
-        foundCycles: inout [[String]]
+        currentPathSet: inout Set<String>,
+        foundCycles: inout [[String]],
+        foundCycleKeys: inout Set<String>
     ) {
-        visited.insert(node)
-        recStack.insert(node)
-        currentPath.append(node)
-
-        if let neighbors = adjacencyList[node] {
+        if let neighbors = adjacencyList[currentNode] {
             for neighbor in neighbors {
                 // Self-loop is a cycle
-                if neighbor == node {
-                    foundCycles.append([node])
+                if neighbor == startNode {
+                    let normalizedCycle = normalizeCycle(currentPath)
+                    let cycleKey = normalizedCycle.joined(separator: "\u{1F}")
+                    if foundCycleKeys.insert(cycleKey).inserted {
+                        foundCycles.append(normalizedCycle)
+                    }
                     continue
                 }
 
-                if !visited.contains(neighbor) {
+                // Skip nodes already in the current path to avoid non-simple cycles.
+                if !currentPathSet.contains(neighbor) {
+                    currentPath.append(neighbor)
+                    currentPathSet.insert(neighbor)
                     findCyclesDFS(
-                        node: neighbor,
+                        startNode: startNode,
+                        currentNode: neighbor,
                         adjacencyList: adjacencyList,
-                        visited: &visited,
-                        recStack: &recStack,
                         currentPath: &currentPath,
-                        foundCycles: &foundCycles
+                        currentPathSet: &currentPathSet,
+                        foundCycles: &foundCycles,
+                        foundCycleKeys: &foundCycleKeys
                     )
-                } else if recStack.contains(neighbor) {
-                    // Found a cycle - extract the cycle from currentPath
-                    if let cycleStartIndex = currentPath.firstIndex(of: neighbor) {
-                        let cycle = Array(currentPath[cycleStartIndex...])
-                        // Normalize cycle: start from smallest element for consistent ordering
-                        let normalizedCycle = normalizeCycle(cycle)
-                        if !foundCycles.contains(normalizedCycle) {
-                            foundCycles.append(normalizedCycle)
-                        }
-                    }
+                    currentPathSet.remove(neighbor)
+                    currentPath.removeLast()
                 }
             }
         }
-
-        recStack.remove(node)
-        currentPath.removeLast()
     }
 
     /// Normalizes a cycle by rotating it to start from the smallest element

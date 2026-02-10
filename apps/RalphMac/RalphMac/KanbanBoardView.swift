@@ -21,6 +21,7 @@
 import SwiftUI
 import RalphCore
 
+@MainActor
 struct KanbanBoardView: View {
     @ObservedObject var workspace: Workspace
     @Binding var selectedTaskID: String?
@@ -120,7 +121,7 @@ struct KanbanBoardView: View {
         } message: {
             Text(updateError ?? "")
         }
-        .task {
+        .task { @MainActor in
             await workspace.loadTasks()
         }
         .onReceive(NotificationCenter.default.publisher(for: .queueFilesExternallyChanged)) { notification in
@@ -160,17 +161,13 @@ struct KanbanBoardView: View {
 
         isUpdating = true
 
-        Task {
+        Task { @MainActor in
             do {
                 try await workspace.updateTaskStatus(taskID: taskID, to: status)
-                await MainActor.run {
-                    isUpdating = false
-                }
+                isUpdating = false
             } catch {
-                await MainActor.run {
-                    isUpdating = false
-                    updateError = error.localizedDescription
-                }
+                isUpdating = false
+                updateError = error.localizedDescription
             }
         }
     }

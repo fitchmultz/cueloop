@@ -21,6 +21,7 @@
 import SwiftUI
 import RalphCore
 
+@MainActor
 struct DependencyGraphView: View {
     @ObservedObject var workspace: Workspace
     @Binding var selectedTaskID: String?
@@ -60,7 +61,7 @@ struct DependencyGraphView: View {
         .accessibilityHint(voiceOverEnabled ? 
             "Showing list view of task relationships" : 
             "Visual graph showing task dependencies. Enable VoiceOver for list view.")
-        .task {
+        .task { @MainActor in
             await workspace.loadGraphData()
             initializeGraph()
         }
@@ -321,7 +322,7 @@ struct DependencyGraphView: View {
         guard !simulationRunning else { return }
         simulationRunning = true
         
-        Task {
+        Task { @MainActor in
             for _ in 0..<100 {
                 runSimulationStep()
                 try? await Task.sleep(nanoseconds: 16_000_000) // ~60fps

@@ -215,4 +215,45 @@ final class RalphModelsTests: XCTestCase {
         let decoded = try JSONDecoder().decode(RalphCLISpec.self, from: data)
         XCTAssertEqual(decoded.raw, value)
     }
+
+    func test_decode_taskQueueDocument_objectShape() throws {
+        let json = #"""
+        {
+          "version": 3,
+          "tasks": [
+            {
+              "id": "RQ-1001",
+              "status": "todo",
+              "title": "Object shape task",
+              "priority": "medium",
+              "tags": ["ui"]
+            }
+          ]
+        }
+        """#
+
+        let document = try JSONDecoder().decode(RalphTaskQueueDocument.self, from: Data(json.utf8))
+        XCTAssertEqual(document.version, 3)
+        XCTAssertEqual(document.tasks.count, 1)
+        XCTAssertEqual(document.tasks[0].id, "RQ-1001")
+    }
+
+    func test_decode_taskQueueDocument_arrayShape() throws {
+        let json = #"""
+        [
+          {
+            "id": "RQ-2001",
+            "status": "doing",
+            "title": "Array shape task",
+            "priority": "high",
+            "tags": ["macos"]
+          }
+        ]
+        """#
+
+        let document = try JSONDecoder().decode(RalphTaskQueueDocument.self, from: Data(json.utf8))
+        XCTAssertEqual(document.version, 1)
+        XCTAssertEqual(document.tasks.count, 1)
+        XCTAssertEqual(document.tasks[0].id, "RQ-2001")
+    }
 }

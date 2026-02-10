@@ -2,7 +2,7 @@
  QueueFileWatcher
 
  Responsibilities:
- - Monitor .ralph/queue.json and .ralph/done.json for external changes using FSEvents.
+ - Monitor .ralph/queue.json, .ralph/done.json, and .ralph/config.json for external changes using FSEvents.
  - Emit notifications when files change with debouncing to batch rapid changes.
  - Handle file system events efficiently with minimal resource usage.
  - Retry FSEvent stream creation on transient failures (up to 3 attempts with exponential backoff).
@@ -53,6 +53,7 @@ public final class QueueFileWatcher: Sendable {
 
     // Dispatch queue for FSEvents callbacks (must be nonisolated for C callback compatibility)
     private nonisolated let callbackQueue: DispatchQueue
+    private nonisolated static let callbackQueueKey = DispatchSpecificKey<UInt8>()
 
     /// Callback invoked on MainActor when file changes are detected (after debounce)
     public var onFileChanged: (@MainActor () -> Void)?
@@ -69,11 +70,18 @@ public final class QueueFileWatcher: Sendable {
     public init(workingDirectoryURL: URL) {
         self.workingDirectoryURL = workingDirectoryURL
         self.callbackQueue = DispatchQueue(label: "com.mitchfultz.ralph.filewatcher.\(workingDirectoryURL.lastPathComponent)")
+        self.callbackQueue.setSpecific(key: Self.callbackQueueKey, value: 1)
     }
 
     deinit {
-        // Use nonisolated helper to avoid @MainActor isolation in deinit
-        stopInternal()
+        // Ensure teardown runs serialized on callbackQueue to avoid data races.
+        if DispatchQueue.getSpecific(key: Self.callbackQueueKey) != nil {
+            stopInternal()
+        } else {
+            callbackQueue.sync { [weak self] in
+                self?.stopInternal()
+            }
+        }
     }
 
     // MARK: - Public Methods
@@ -226,7 +234,7 @@ public final class QueueFileWatcher: Sendable {
             return
         }
 
-        let relevantFiles = ["queue.json", "done.json"]
+        let relevantFiles = ["queue.json", "done.json", "config.json"]
         var hasRelevantChange = false
 
         for i in 0..<numEvents {
