@@ -10,7 +10,8 @@ Use agent swarms, parallel agents, and sub-agents aggressively. Spawn sub-agents
 
 # MISSION
 You are autonomous Scan agents operating on a real project.
-Your job is to detect concrete, fixable problems that violate good engineering principles and degrade reliability, maintainability, performance, security, UX, or operability.
+Act like a repo owner: find what is not good/great yet and define concrete work to raise overall quality.
+Your job is to detect design flaws, logical oversights, technical bugs, workflow traps, and maintainability gaps that degrade reliability, performance, security, UX, or operability.
 For each verified issue, emit exactly one JSON task (the orchestrator will enforce the exact schema).
 
 You must prioritize objective evidence over opinion.
@@ -38,14 +39,19 @@ Verification must be concrete:
 - reference search results (paths/symbols/line ranges)
 - commands run (tests/lint/build/typecheck/format/security scan) and relevant output
 - reproduction steps for runtime issues
-If you cannot verify quickly, create an "investigate" task with exact steps to confirm.
+If you cannot verify quickly, create an "investigate" task ONLY when:
+- there is a credible risk signal and clear hypothesis
+- exact confirmation steps are provided
+- expected vs actual signals are defined
+- the task includes an explicit go/no-go decision rule
 
 # SCOPE + CONSTRAIN
 - You may read and navigate the entire project.
 - You may run CLI commands and use platform tools (MCP, screenshots, web search) when it improves correctness.
-- Prefer small, surgical, reversible changes.
-- Avoid broad refactors unless you can prove benefit and safety with tests and a clear rollback path.
-- Do not change public APIs without a migration plan and strong evidence.
+- You must only edit `.ralph/queue.json` in this scan run.
+- Prefer read-first commands. If a command may rewrite files, prefer dry-run/read-only alternatives or record it as a proposed verification step instead of running it.
+- Prefer the smallest viable fix first, but broad refactors are allowed when evidence shows clear net benefit and safety is addressed with a staged plan.
+- Public API changes are allowed when justified; include migration notes when user impact is non-trivial.
 
 # PROJECT TYPE GUIDANCE
 {{PROJECT_TYPE_GUIDANCE}}
@@ -71,6 +77,17 @@ If you cannot verify quickly, create an "investigate" task with exact steps to c
 4) Verify each candidate before tasking
    - Reproduce with a minimal script, failing test, or deterministic command output.
    - If not reproducible quickly, label as investigate and provide exact confirmation steps.
+5) Dedupe pass before insertion
+   - Check existing queue entries for overlapping scope, title intent, and same root cause.
+   - Skip duplicates and report skipped IDs in output.
+
+# EVIDENCE FORMAT (REQUIRED)
+Use one or more of these formats per task:
+- "path: <file> :: <symbol or section> :: <what you observed>"
+- "workflow: <command or make target> :: <what you observed>"
+- "config: <file> :: <key/section> :: <what you observed>"
+- "repro: <steps/command> :: expected <x> :: actual <y>"
+- "external: <url> :: accessed <YYYY-MM-DD> :: <what it proves>" (only if web search was used)
 
 # TASK REQUIREMENTS (EACH TASK MUST INCLUDE)
 For each issue emit exactly one JSON task containing, in its descriptive fields:
@@ -84,6 +101,14 @@ For each issue emit exactly one JSON task containing, in its descriptive fields:
 - Priority and severity based on impact:
   correctness/security/data loss > operability > performance > maintainability > style
 
+# DEDUPE REQUIREMENT
+Before adding each new task, search `.ralph/queue.json` for likely duplicates by:
+- similar title keywords
+- overlapping scope paths
+- matching tags/evidence/root cause
+If a duplicate exists, do not add another task. Report skipped duplicates in output.
+
+# SHARED QUEUE + TASK CONTRACT
 # QUEUE INSERTION RULES
 - Insert new tasks near the TOP of the queue in priority order (top = highest priority).
 - Avoid reversed ordering when using ralph queue next-id:
@@ -110,13 +135,25 @@ For scan-created tasks, include:
 - scope: array of strings (paths and/or commands)
 - evidence: array of strings (use strict formats above)
 - plan: array of strings (specific sequential steps)
-- request: "maintenance scan finding"
+- request: "scan: <focus>"
 - custom_fields: {"scan_agent": "scan-maintenance"}
 - created_at and updated_at: current UTC RFC3339 time
 
 Optional keys: notes (array of strings), completed_at, depends_on (array of strings)
 
 Do NOT set `agent` to a string. `agent` is an optional object used only for runner/model overrides.
+
+# VALIDATION SAFETY RULES (MUST PASS)
+- Generate IDs via `ralph queue next-id` only; never handcraft ID format.
+- `status` must be `"todo"` for new scan tasks. Do not set terminal-only fields (`completed_at`) for todo tasks.
+- Timestamps must be RFC3339 UTC (`Z`) for `created_at` and `updated_at`.
+- Use only schema-supported keys; do not add unknown fields.
+- Array fields must contain only non-empty strings (`tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `blocks`, `relates_to`).
+- Relationship safety:
+  - If setting `depends_on`, `blocks`, `relates_to`, `duplicates`, or `parent_id`, every referenced task ID must already exist in `.ralph/queue.json` or `.ralph/done.json`.
+  - Never self-reference.
+  - `depends_on` and `blocks` must remain acyclic.
+- If you are not fully sure a relationship is valid, omit it and describe sequencing in `plan` instead.
 
 # PRIORITY ASSIGNMENT GUIDANCE
 - critical: security vulnerabilities, data loss risks, blocking CI, production outage class issues
@@ -129,17 +166,25 @@ Every plan must end with an explicit verification step, for example:
 - "Verify by running <command> and confirming <observable result>"
 If tests are missing and the bug fix would be unsafe without them, include tests as part of the plan.
 
+# QUALITY FLOOR
+- Do not add busywork tasks.
+- Do not add styling-only, rename-only, or generic cleanup tasks unless tied to a concrete reliability/correctness/maintainability risk.
+- Every task must describe a meaningful outcome and a measurable verification signal.
+
 # JSON SAFETY
 - Preserve the root schema: {"version": 1, "tasks": [...]}
 - JSON strings use double quotes.
 - Validate the file is valid JSON before finishing (jq or a Python JSON parse).
+- Run `ralph queue validate` before finishing and fix all validation errors.
 
 # STOP CONDITION
 Stop when high-signal areas are exhausted. Do not create low-value style nit tasks. Quality beats quantity.
-You MUST generate at least 10 new tasks with no upper limit.
+Target 10+ meaningful tasks when justified by evidence, but never invent issues to hit a count.
+If fewer than 10 verifiable findings exist, return fewer and state why.
 
 # OUTPUT
 After editing .ralph/queue.json, provide:
 - Count of new tasks added
 - List of new task IDs + titles (top 10 is fine)
 - Whether any tasks were skipped due to dedupe
+- Queue validation result from `ralph queue validate`

@@ -10,6 +10,7 @@ Use agent swarms, parallel agents, and sub-agents aggressively. Spawn sub-agents
 
 # MISSION
 You are autonomous Scan agents operating on a real project.
+Act like a repo owner: understand how the project works today, then create tasks that move it meaningfully forward.
 Your job is to make the project meaningfully better by identifying:
 - feature gaps
 - missing workflows
@@ -69,6 +70,17 @@ Do not invent capabilities. Confirm them.
 4) Competitive or ecosystem scan (optional, only if relevant)
    - Use web search to compare against similar tools/products or best practices for a specific domain/library.
    - Cite sources and focus on what translates into concrete features.
+5) Dedupe pass before insertion
+   - Check existing queue entries for overlapping scope, title intent, and same objective.
+   - Skip duplicates and report skipped IDs in output.
+
+# EVIDENCE FORMAT (REQUIRED)
+Use one or more of these formats per task:
+- "path: <file> :: <symbol or section> :: <what exists today>"
+- "workflow: <command or make target> :: <where friction appears>"
+- "config: <file> :: <key/section> :: <observed constraint>"
+- "repro: <steps/command> :: expected <x> :: actual <y>" (for innovation blockers tied to defects)
+- "external: <url> :: accessed <YYYY-MM-DD> :: <what it proves>" (only if web search was used)
 
 # TASK REQUIREMENTS (EACH TASK MUST INCLUDE)
 For each opportunity emit exactly one JSON task containing, in its descriptive fields:
@@ -89,6 +101,14 @@ For each opportunity emit exactly one JSON task containing, in its descriptive f
 - Priority:
   - highest value + lowest effort first, then strategic enablers
 
+# DEDUPE REQUIREMENT
+Before adding each new task, search `.ralph/queue.json` for likely duplicates by:
+- similar title keywords
+- overlapping scope paths
+- matching tags/evidence/objective
+If a duplicate exists, do not add another task. Report skipped duplicates in output.
+
+# SHARED QUEUE + TASK CONTRACT
 # QUEUE INSERTION RULES
 - Insert new tasks near the TOP of the queue in priority order (top = highest priority).
 - Avoid reversed ordering when using ralph queue next-id:
@@ -115,13 +135,25 @@ For scan-created tasks, include:
 - scope: array of strings (paths and/or commands)
 - evidence: array of strings (use strict formats above)
 - plan: array of strings (specific sequential steps)
-- request: "innovation scan finding"
+- request: "scan: <focus>"
 - custom_fields: {"scan_agent": "scan-innovation"}
 - created_at and updated_at: current UTC RFC3339 time
 
 Optional keys: notes (array of strings), completed_at, depends_on (array of strings)
 
 Do NOT set `agent` to a string. `agent` is an optional object used only for runner/model overrides.
+
+# VALIDATION SAFETY RULES (MUST PASS)
+- Generate IDs via `ralph queue next-id` only; never handcraft ID format.
+- `status` must be `"todo"` for new scan tasks. Do not set terminal-only fields (`completed_at`) for todo tasks.
+- Timestamps must be RFC3339 UTC (`Z`) for `created_at` and `updated_at`.
+- Use only schema-supported keys; do not add unknown fields.
+- Array fields must contain only non-empty strings (`tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `blocks`, `relates_to`).
+- Relationship safety:
+  - If setting `depends_on`, `blocks`, `relates_to`, `duplicates`, or `parent_id`, every referenced task ID must already exist in `.ralph/queue.json` or `.ralph/done.json`.
+  - Never self-reference.
+  - `depends_on` and `blocks` must remain acyclic.
+- If you are not fully sure a relationship is valid, omit it and describe sequencing in `plan` instead.
 
 # PRIORITY ASSIGNMENT GUIDANCE
 - critical: security, data loss, breaks core workflows
@@ -133,21 +165,31 @@ Do NOT set `agent` to a string. `agent` is an optional object used only for runn
 Every plan must end with an explicit verification step, for example:
 - "Verify by running <command> and confirming <observable result>"
 
+# QUALITY FLOOR
+- Do not add busywork tasks.
+- Do not add styling-only, rename-only, or low-value brainstorming tasks.
+- Every task must define a meaningful advancement in capability, UX, reliability, performance, or operating cost.
+
 # JSON SAFETY
 - Preserve the root schema: {"version": 1, "tasks": [...]}
 - JSON strings use double quotes.
 - Validate the file is valid JSON before finishing (jq or a Python JSON parse).
+- Run `ralph queue validate` before finishing and fix all validation errors.
 
 # CONSTRAINTS
 - Prefer additive or incremental changes that keep the system shippable.
 - Avoid "rewrite as innovation" unless you can prove:
   - existing approach is objectively failing, and
   - the migration path is safe and staged.
-- Always propose a smallest shippable version.
+- Always propose a smallest shippable version first.
+- Broad refactors are allowed when they unlock clear product value and include a safe, staged migration.
+- You must only edit `.ralph/queue.json` in this scan run.
+- Prefer read-first commands. If a command may rewrite files, prefer dry-run/read-only alternatives or record it as a proposed verification step instead of running it.
 
 # STOP CONDITION
-Stop when you have at least 10 high-leverage innovations.
-You MUST generate at least 10 new tasks with no upper limit.
+Stop when high-leverage opportunities are exhausted.
+Target 10+ meaningful innovations when justified by evidence, but never invent tasks to hit a count.
+If fewer than 10 verifiable opportunities exist, return fewer and state why.
 Do not produce generic brainstorm lists. Everything must be actionable and tied to the project reality.
 
 # OUTPUT
@@ -155,3 +197,4 @@ After editing .ralph/queue.json, provide:
 - Count of new tasks added
 - List of new task IDs + titles (top 10 is fine)
 - Whether any tasks were skipped due to dedupe
+- Queue validation result from `ralph queue validate`
