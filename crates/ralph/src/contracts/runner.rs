@@ -14,6 +14,8 @@
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use crate::contracts::model::{Model, ReasoningEffort};
@@ -98,24 +100,22 @@ impl<'de> Deserialize<'de> for Runner {
 
 // Schema: treat as string; docs enumerate built-ins, but allow arbitrary plugin ids.
 impl JsonSchema for Runner {
-    fn schema_name() -> String {
-        "Runner".to_string()
+    fn schema_name() -> Cow<'static, str> {
+        "Runner".into()
     }
 
-    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
         let mut schema = <String as JsonSchema>::json_schema(generator);
-        if let schemars::schema::Schema::Object(obj) = &mut schema {
-            obj.metadata().description.get_or_insert_with(|| {
-                "Runner id (built-ins: codex, opencode, gemini, cursor, claude, kimi, pi; \
-                     plugin runners: any other non-empty string)"
-                    .to_string()
-            });
-            // Set examples for the schema
-            obj.metadata().examples = vec![
-                serde_json::Value::String("claude".to_string()),
-                serde_json::Value::String("acme.super_runner".to_string()),
-            ];
-        }
+        let obj = schema.ensure_object();
+        obj.entry("description".to_string()).or_insert_with(|| {
+            json!(
+                "Runner id (built-ins: codex, opencode, gemini, cursor, claude, kimi, pi; plugin runners: any other non-empty string)"
+            )
+        });
+        obj.insert(
+            "examples".to_string(),
+            json!(["claude", "acme.super_runner"]),
+        );
         schema
     }
 }

@@ -10,6 +10,7 @@
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Model {
@@ -75,16 +76,14 @@ impl std::str::FromStr for Model {
 
 // Manual JsonSchema implementation for Model since it has custom Serialize/Deserialize
 impl schemars::JsonSchema for Model {
-    fn schema_name() -> String {
-        "Model".to_string()
+    fn schema_name() -> Cow<'static, str> {
+        "Model".into()
     }
 
-    fn json_schema(_: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
-        schemars::schema::SchemaObject {
-            instance_type: Some(schemars::schema::InstanceType::String.into()),
-            ..Default::default()
-        }
-        .into()
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "string"
+        })
     }
 }
 

@@ -1,38 +1,38 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "QueueFile",
   "type": "object",
-  "required": [
-    "version"
-  ],
   "properties": {
     "tasks": {
-      "default": [],
       "type": "array",
+      "default": [],
       "items": {
-        "$ref": "#/definitions/Task"
+        "$ref": "#/$defs/Task"
       }
     },
     "version": {
       "type": "integer",
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 0
     }
   },
   "additionalProperties": false,
-  "definitions": {
+  "required": [
+    "version"
+  ],
+  "$defs": {
     "Model": {
       "type": "string"
     },
     "PhaseOverrideConfig": {
-      "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging: - `Some(value)` overrides the parent config - `None` means \"inherit from parent\"",
+      "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
       "type": "object",
       "properties": {
         "model": {
           "description": "Model to use for this phase (overrides global agent.model)",
           "anyOf": [
             {
-              "$ref": "#/definitions/Model"
+              "$ref": "#/$defs/Model"
             },
             {
               "type": "null"
@@ -43,7 +43,7 @@
           "description": "Reasoning effort for this phase (overrides global agent.reasoning_effort)",
           "anyOf": [
             {
-              "$ref": "#/definitions/ReasoningEffort"
+              "$ref": "#/$defs/ReasoningEffort"
             },
             {
               "type": "null"
@@ -54,7 +54,7 @@
           "description": "Runner to use for this phase (overrides global agent.runner)",
           "anyOf": [
             {
-              "$ref": "#/definitions/Runner"
+              "$ref": "#/$defs/Runner"
             },
             {
               "type": "null"
@@ -65,14 +65,14 @@
       "additionalProperties": false
     },
     "PhaseOverrides": {
-      "description": "Phase overrides container for Phase 1/2/3 execution.\n\nPer-phase configuration for Phase 1/2/3 execution.\n\nInvariants/assumptions: - Overrides are defined per phase only; there is no shared `defaults` layer inside `agent.phase_overrides`. Use global `agent.runner` / `agent.model` / `agent.reasoning_effort` for shared defaults. - Merging is leaf-wise: `Some(value)` overrides, `None` inherits.",
+      "description": "Phase overrides container for Phase 1/2/3 execution.\n\nPer-phase configuration for Phase 1/2/3 execution.\n\nInvariants/assumptions:\n- Overrides are defined per phase only; there is no shared `defaults` layer inside\n  `agent.phase_overrides`. Use global `agent.runner` / `agent.model` /\n  `agent.reasoning_effort` for shared defaults.\n- Merging is leaf-wise: `Some(value)` overrides, `None` inherits.",
       "type": "object",
       "properties": {
         "phase1": {
           "description": "Phase 1 specific overrides",
           "anyOf": [
             {
-              "$ref": "#/definitions/PhaseOverrideConfig"
+              "$ref": "#/$defs/PhaseOverrideConfig"
             },
             {
               "type": "null"
@@ -83,7 +83,7 @@
           "description": "Phase 2 specific overrides",
           "anyOf": [
             {
-              "$ref": "#/definitions/PhaseOverrideConfig"
+              "$ref": "#/$defs/PhaseOverrideConfig"
             },
             {
               "type": "null"
@@ -94,7 +94,7 @@
           "description": "Phase 3 specific overrides",
           "anyOf": [
             {
-              "$ref": "#/definitions/PhaseOverrideConfig"
+              "$ref": "#/$defs/PhaseOverrideConfig"
             },
             {
               "type": "null"
@@ -115,41 +115,33 @@
     },
     "Runner": {
       "description": "Runner id (built-ins: codex, opencode, gemini, cursor, claude, kimi, pi; plugin runners: any other non-empty string)",
+      "type": "string",
       "examples": [
         "claude",
         "acme.super_runner"
-      ],
-      "type": "string"
+      ]
     },
     "RunnerApprovalMode": {
       "oneOf": [
         {
           "description": "Do not apply any approval flags; runner defaults apply.",
           "type": "string",
-          "enum": [
-            "default"
-          ]
+          "const": "default"
         },
         {
           "description": "Attempt to auto-approve edits but not all tool actions (runner-specific).",
           "type": "string",
-          "enum": [
-            "auto_edits"
-          ]
+          "const": "auto_edits"
         },
         {
           "description": "Bypass approvals / run headless (runner-specific).",
           "type": "string",
-          "enum": [
-            "yolo"
-          ]
+          "const": "yolo"
         },
         {
           "description": "Strict safety mode. Warning: some runners may become interactive and hang.",
           "type": "string",
-          "enum": [
-            "safe"
-          ]
+          "const": "safe"
         }
       ]
     },
@@ -158,75 +150,75 @@
       "properties": {
         "approval_mode": {
           "description": "Desired approval/permission behavior.",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/RunnerApprovalMode"
+              "$ref": "#/$defs/RunnerApprovalMode"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         },
         "output_format": {
           "description": "Desired output format for runner execution.",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/RunnerOutputFormat"
+              "$ref": "#/$defs/RunnerOutputFormat"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         },
         "plan_mode": {
           "description": "Desired plan/read-only behavior (when supported by the runner).",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/RunnerPlanMode"
+              "$ref": "#/$defs/RunnerPlanMode"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         },
         "sandbox": {
           "description": "Desired sandbox behavior (when supported by the runner).",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/RunnerSandboxMode"
+              "$ref": "#/$defs/RunnerSandboxMode"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         },
         "unsupported_option_policy": {
           "description": "Policy for unsupported options (warn/error/ignore).",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/UnsupportedOptionPolicy"
+              "$ref": "#/$defs/UnsupportedOptionPolicy"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         },
         "verbosity": {
           "description": "Desired verbosity (when supported by the runner).",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/RunnerVerbosity"
+              "$ref": "#/$defs/RunnerVerbosity"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         }
       },
       "additionalProperties": false
@@ -236,23 +228,17 @@
         {
           "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
           "type": "string",
-          "enum": [
-            "stream_json"
-          ]
+          "const": "stream_json"
         },
         {
           "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
           "type": "string",
-          "enum": [
-            "json"
-          ]
+          "const": "json"
         },
         {
           "description": "Plain text output (currently treated as unsupported by Ralph execution).",
           "type": "string",
-          "enum": [
-            "text"
-          ]
+          "const": "text"
         }
       ]
     },
@@ -282,18 +268,12 @@
     },
     "Task": {
       "type": "object",
-      "required": [
-        "created_at",
-        "id",
-        "title",
-        "updated_at"
-      ],
       "properties": {
         "agent": {
           "description": "Optional per-task agent override (runner/model/model_effort/phases/iterations/phase_overrides).",
           "anyOf": [
             {
-              "$ref": "#/definitions/TaskAgent"
+              "$ref": "#/$defs/TaskAgent"
             },
             {
               "type": "null"
@@ -301,9 +281,9 @@
           ]
         },
         "blocks": {
-          "description": "Task IDs that this task blocks (must be Done/Rejected before blocked tasks can run). Semantically different from depends_on: blocks is \"I prevent X\" vs depends_on \"I need X\".",
-          "default": [],
+          "description": "Task IDs that this task blocks (must be Done/Rejected before blocked tasks can run).\nSemantically different from depends_on: blocks is \"I prevent X\" vs depends_on \"I need X\".",
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -319,8 +299,7 @@
           "type": "string"
         },
         "custom_fields": {
-          "description": "Custom user-defined fields (key-value pairs for extensibility). Values may be written as string/number/boolean; Ralph coerces them to strings when loading.",
-          "default": {},
+          "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; Ralph coerces them to strings when loading.",
           "type": "object",
           "additionalProperties": {
             "anyOf": [
@@ -334,12 +313,13 @@
                 "type": "boolean"
               }
             ]
-          }
+          },
+          "default": {}
         },
         "depends_on": {
           "description": "Task IDs that this task depends on (must be Done or Rejected before this task can run).",
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -352,15 +332,15 @@
           ]
         },
         "duplicates": {
-          "description": "Task ID that this task duplicates (if any). Singular reference, not a list.",
+          "description": "Task ID that this task duplicates (if any).\nSingular reference, not a list.",
           "type": [
             "string",
             "null"
           ]
         },
         "evidence": {
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -369,8 +349,8 @@
           "type": "string"
         },
         "notes": {
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -383,24 +363,20 @@
           ]
         },
         "plan": {
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
         },
         "priority": {
-          "default": "medium",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TaskPriority"
-            }
-          ]
+          "$ref": "#/$defs/TaskPriority",
+          "default": "medium"
         },
         "relates_to": {
-          "description": "Task IDs that this task relates to (loose coupling, no execution constraint). Bidirectional awareness but no execution constraint.",
-          "default": [],
+          "description": "Task IDs that this task relates to (loose coupling, no execution constraint).\nBidirectional awareness but no execution constraint.",
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -420,30 +396,26 @@
           ]
         },
         "scope": {
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
         },
         "started_at": {
-          "description": "RFC3339 UTC timestamp when work on this task actually started.\n\nInvariants: - Must be RFC3339 UTC (Z) if set. - Should be set when transitioning into `doing` (see status policy).",
+          "description": "RFC3339 UTC timestamp when work on this task actually started.\n\nInvariants:\n- Must be RFC3339 UTC (Z) if set.\n- Should be set when transitioning into `doing` (see status policy).",
           "type": [
             "string",
             "null"
           ]
         },
         "status": {
-          "default": "todo",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TaskStatus"
-            }
-          ]
+          "$ref": "#/$defs/TaskStatus",
+          "default": "todo"
         },
         "tags": {
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -455,7 +427,13 @@
           "type": "string"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "created_at",
+        "updated_at"
+      ]
     },
     "TaskAgent": {
       "type": "object",
@@ -464,7 +442,7 @@
           "description": "Reasoning effort override for follow-up iterations (iterations > 1).",
           "anyOf": [
             {
-              "$ref": "#/definitions/ReasoningEffort"
+              "$ref": "#/$defs/ReasoningEffort"
             },
             {
               "type": "null"
@@ -478,12 +456,13 @@
             "null"
           ],
           "format": "uint8",
-          "minimum": 1.0
+          "maximum": 255,
+          "minimum": 1
         },
         "model": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Model"
+              "$ref": "#/$defs/Model"
             },
             {
               "type": "null"
@@ -492,8 +471,8 @@
         },
         "model_effort": {
           "description": "Per-task reasoning effort override for Codex models. Default falls back to config.",
-          "default": "default",
           "type": "string",
+          "default": "default",
           "enum": [
             "default",
             "low",
@@ -506,7 +485,7 @@
           "description": "Optional per-phase runner/model/effort overrides for this task.",
           "anyOf": [
             {
-              "$ref": "#/definitions/PhaseOverrides"
+              "$ref": "#/$defs/PhaseOverrides"
             },
             {
               "type": "null"
@@ -520,13 +499,13 @@
             "null"
           ],
           "format": "uint8",
-          "maximum": 3.0,
-          "minimum": 1.0
+          "maximum": 3,
+          "minimum": 1
         },
         "runner": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Runner"
+              "$ref": "#/$defs/Runner"
             },
             {
               "type": "null"
@@ -534,10 +513,10 @@
           ]
         },
         "runner_cli": {
-          "description": "Optional normalized runner CLI overrides for this task.\n\nThis is intended to express runner behavior intent (output/approval/sandbox/etc) without embedding runner-specific flag syntax into the queue.",
+          "description": "Optional normalized runner CLI overrides for this task.\n\nThis is intended to express runner behavior intent (output/approval/sandbox/etc)\nwithout embedding runner-specific flag syntax into the queue.",
           "anyOf": [
             {
-              "$ref": "#/definitions/RunnerCliOptionsPatch"
+              "$ref": "#/$defs/RunnerCliOptionsPatch"
             },
             {
               "type": "null"

@@ -278,13 +278,11 @@ fn model_effort_is_default(value: &ModelEffort) -> bool {
     matches!(value, ModelEffort::Default)
 }
 
-fn model_effort_schema(
-    generator: &mut schemars::r#gen::SchemaGenerator,
-) -> schemars::schema::Schema {
+fn model_effort_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
     let mut schema = <ModelEffort as JsonSchema>::json_schema(generator);
-    if let schemars::schema::Schema::Object(ref mut schema_object) = schema {
-        schema_object.metadata().default = Some(json!("default"));
-    }
+    schema
+        .ensure_object()
+        .insert("default".to_string(), json!("default"));
     schema
 }
 
@@ -341,51 +339,18 @@ where
 }
 
 /// Schema generator for `custom_fields` that accepts string/number/boolean values.
-fn custom_fields_schema(
-    _generator: &mut schemars::r#gen::SchemaGenerator,
-) -> schemars::schema::Schema {
-    use schemars::schema::{
-        InstanceType, Metadata, ObjectValidation, Schema, SchemaObject, SingleOrVec,
-        SubschemaValidation,
-    };
-
-    let scalar_any_of = SchemaObject {
-        subschemas: Some(Box::new(SubschemaValidation {
-            any_of: Some(vec![
-                Schema::Object(SchemaObject {
-                    instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
-                    ..Default::default()
-                }),
-                Schema::Object(SchemaObject {
-                    instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Number))),
-                    ..Default::default()
-                }),
-                Schema::Object(SchemaObject {
-                    instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Boolean))),
-                    ..Default::default()
-                }),
-            ]),
-            ..Default::default()
-        })),
-        ..Default::default()
-    };
-
-    let obj = SchemaObject {
-        instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Object))),
-        metadata: Some(Box::new(Metadata {
-            description: Some(
-                "Custom user-defined fields. Values may be written as string/number/boolean; Ralph coerces them to strings when loading the queue.".to_string(),
-            ),
-            ..Default::default()
-        })),
-        object: Some(Box::new(ObjectValidation {
-            additional_properties: Some(Box::new(Schema::Object(scalar_any_of))),
-            ..Default::default()
-        })),
-        ..Default::default()
-    };
-
-    Schema::Object(obj)
+fn custom_fields_schema(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({
+        "type": "object",
+        "description": "Custom user-defined fields. Values may be written as string/number/boolean; Ralph coerces them to strings when loading the queue.",
+        "additionalProperties": {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "number"},
+                {"type": "boolean"}
+            ]
+        }
+    })
 }
 
 #[cfg(test)]

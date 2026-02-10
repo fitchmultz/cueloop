@@ -474,17 +474,24 @@ fn check_unknown_keys(
 /// This extracts keys dynamically from the schemars-generated schema,
 /// ensuring the key list stays in sync with the actual Config struct.
 fn get_known_config_keys() -> std::collections::HashSet<String> {
-    use schemars::schema::RootSchema;
+    use serde_json::Value;
     use std::collections::HashSet;
 
-    let schema: RootSchema = schemars::schema_for!(crate::contracts::Config);
+    let schema = schemars::schema_for!(crate::contracts::Config);
     let mut keys = HashSet::new();
+    let Some(root) = schema.as_object() else {
+        return keys;
+    };
 
     // Add top-level keys and recurse into their schemas to resolve refs.
-    if let Some(object) = &schema.schema.object {
-        for (key, subschema) in &object.properties {
+    if let Some(properties) = root.get("properties").and_then(Value::as_object) {
+        let definitions = root
+            .get("$defs")
+            .and_then(Value::as_object)
+            .or_else(|| root.get("definitions").and_then(Value::as_object));
+        for (key, subschema) in properties {
             keys.insert(key.clone());
-            extract_keys_from_schema(subschema, key, &mut keys, &schema.definitions);
+            extract_keys_from_schema(subschema, key, &mut keys, definitions);
         }
     }
 
@@ -493,52 +500,44 @@ fn get_known_config_keys() -> std::collections::HashSet<String> {
 
 /// Recursively extract dot-notation keys from a schema.
 fn extract_keys_from_schema(
-    schema: &schemars::schema::Schema,
+    schema: &serde_json::Value,
     prefix: &str,
     keys: &mut std::collections::HashSet<String>,
-    definitions: &schemars::Map<String, schemars::schema::Schema>,
+    definitions: Option<&serde_json::Map<String, serde_json::Value>>,
 ) {
-    use schemars::schema::Schema;
+    use serde_json::Value;
 
-    // Unwrap the schema object (skip boolean schemas)
-    let obj = match schema {
-        Schema::Object(obj) => obj,
-        Schema::Bool(_) => return,
+    // Unwrap schema object (skip boolean schemas).
+    let Some(obj) = schema.as_object() else {
+        return;
     };
 
-    // Follow references to definitions (e.g., "#/definitions/NotificationConfig")
-    if let Some(ref_path) = &obj.reference {
-        if let Some(def_name) = ref_path.strip_prefix("#/definitions/")
+    // Follow references to definitions.
+    if let Some(ref_path) = obj.get("$ref").and_then(Value::as_str) {
+        if let Some(definitions) = definitions
+            && let Some(def_name) = ref_path
+                .strip_prefix("#/$defs/")
+                .or_else(|| ref_path.strip_prefix("#/definitions/"))
             && let Some(def_schema) = definitions.get(def_name)
         {
-            extract_keys_from_schema(def_schema, prefix, keys, definitions);
+            extract_keys_from_schema(def_schema, prefix, keys, Some(definitions));
         }
         return;
     }
 
     // Process object properties
-    if let Some(object) = &obj.object {
-        for (key, subschema) in &object.properties {
+    if let Some(properties) = obj.get("properties").and_then(Value::as_object) {
+        for (key, subschema) in properties {
             let full_key = format!("{}.{}", prefix, key);
             keys.insert(full_key.clone());
             extract_keys_from_schema(subschema, &full_key, keys, definitions);
         }
     }
 
-    // Process subschemas (allOf, anyOf, oneOf)
-    if let Some(subschemas) = &obj.subschemas {
-        if let Some(all_of) = &subschemas.all_of {
-            for sub in all_of {
-                extract_keys_from_schema(sub, prefix, keys, definitions);
-            }
-        }
-        if let Some(any_of) = &subschemas.any_of {
-            for sub in any_of {
-                extract_keys_from_schema(sub, prefix, keys, definitions);
-            }
-        }
-        if let Some(one_of) = &subschemas.one_of {
-            for sub in one_of {
+    // Process compositional subschemas (allOf, anyOf, oneOf).
+    for keyword in ["allOf", "anyOf", "oneOf"] {
+        if let Some(subschemas) = obj.get(keyword).and_then(Value::as_array) {
+            for sub in subschemas {
                 extract_keys_from_schema(sub, prefix, keys, definitions);
             }
         }
