@@ -24,6 +24,7 @@ import OSLog
 @main
 struct RalphMacApp: App {
     @StateObject private var manager = WorkspaceManager.shared
+    @StateObject private var menuBarManager = MenuBarManager.shared
     @Environment(\.scenePhase) private var scenePhase
     
     init() {
@@ -38,6 +39,10 @@ struct RalphMacApp: App {
                     VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
                         .ignoresSafeArea()
                 )
+                .onReceive(NotificationCenter.default.publisher(for: .showMainAppFromMenuBar)) { _ in
+                    // Bring app to front when requested from menu bar
+                    NSApp.activate(ignoringOtherApps: true)
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))
@@ -49,6 +54,18 @@ struct RalphMacApp: App {
             taskCommands
             helpCommands
         }
+        
+        // Menu Bar Extra for quick access
+        MenuBarExtra(
+            isInserted: $menuBarManager.isMenuBarExtraVisible,
+            content: {
+                MenuBarContentView()
+            },
+            label: {
+                MenuBarIconView()
+            }
+        )
+        .menuBarExtraStyle(.menu)
     }
 
     /// Handle incoming URL from CLI or external source

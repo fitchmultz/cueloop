@@ -90,7 +90,17 @@ struct WorkspaceView: View {
         .onReceive(NotificationCenter.default.publisher(for: .showTaskDetail)) { notification in
             if let taskID = notification.object as? String {
                 navigation.selectedTaskID = taskID
+                navigation.selectedSection = .queue
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showTaskDetailFromMenuBar)) { notification in
+            if let taskID = notification.object as? String {
+                navigation.selectedTaskID = taskID
+                navigation.selectedSection = .queue
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .quickAddTaskFromMenuBar)) { _ in
+            navigation.selectedSection = .queue
         }
     }
 

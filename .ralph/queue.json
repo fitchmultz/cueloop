@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0728",
-      "status": "todo",
-      "title": "Add menu bar extra for quick task access and status",
-      "description": "Implement a menu bar extra (status bar item) that provides quick access to Ralph without opening the full app. Show current task status, next task title, and quick actions (run next, add quick task, open full app). This enables lightweight interaction for users who want to monitor and control Ralph from anywhere.",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "macos",
-        "menu-bar",
-        "quick-access",
-        "ux"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMac/",
-        "apps/RalphMac/RalphMac/RalphMacApp.swift"
-      ],
-      "evidence": [
-        "No menu bar integration exists - app must be open to see status",
-        "Menu bar extras are standard for background/utility apps on macOS",
-        "Users may want quick status without full app window",
-        "Menu bar provides always-available access"
-      ],
-      "plan": [
-        "Create MenuBarExtra using App protocol or NSStatusBar",
-        "Add Ralph icon to menu bar with status indicator",
-        "Show current/next task title in menu",
-        "Add 'Run Next Task' menu item with keyboard shortcut",
-        "Add 'Quick Add Task' menu item that opens input dialog",
-        "Show task counts by status (Todo: 5, Doing: 1, Done: 12)",
-        "Add 'Open Full App' menu item",
-        "Implement preferences toggle to enable/disable menu bar extra",
-        "Show notifications for task completion via menu bar",
-        "Add recent tasks submenu for quick access",
-        "Verify by clicking menu bar icon and testing all menu items"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-08T02:39:17Z",
-      "updated_at": "2026-02-08T02:39:17Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0729",
       "status": "todo",
       "title": "Implement global keyboard shortcuts and command palette",
