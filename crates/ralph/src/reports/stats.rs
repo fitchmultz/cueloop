@@ -683,9 +683,11 @@ mod tests {
             runner: Some(crate::contracts::Runner::Claude),
             model: None,
             model_effort: crate::contracts::ModelEffort::Default,
+            phases: None,
             iterations: None,
             followup_reasoning_effort: None,
             runner_cli: None,
+            phase_overrides: None,
         });
 
         assert_eq!(task_runner_group_key(&task), Some("codex".to_string()));
@@ -698,9 +700,11 @@ mod tests {
             runner: Some(crate::contracts::Runner::Claude),
             model: None,
             model_effort: crate::contracts::ModelEffort::Default,
+            phases: None,
             iterations: None,
             followup_reasoning_effort: None,
             runner_cli: None,
+            phase_overrides: None,
         });
 
         assert_eq!(task_runner_group_key(&task), Some("claude".to_string()));

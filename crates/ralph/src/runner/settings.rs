@@ -127,6 +127,7 @@ pub(crate) fn resolve_phase_settings_matrix(
     phases: u8,
 ) -> Result<(PhaseSettingsMatrix, ResolutionWarnings)> {
     let cli_phase_overrides = overrides.phase_overrides.as_ref();
+    let task_phase_overrides = task_agent.and_then(|agent| agent.phase_overrides.as_ref());
     let config_phase_overrides = config_agent.phase_overrides.as_ref();
 
     let mut warnings = ResolutionWarnings::default();
@@ -134,6 +135,11 @@ pub(crate) fn resolve_phase_settings_matrix(
     if phases < 3 {
         if let Some(cli) = cli_phase_overrides
             && cli.phase3.is_some()
+        {
+            warnings.unused_phase3 = true;
+        }
+        if let Some(task) = task_phase_overrides
+            && task.phase3.is_some()
         {
             warnings.unused_phase3 = true;
         }
@@ -149,6 +155,11 @@ pub(crate) fn resolve_phase_settings_matrix(
         {
             warnings.unused_phase1 = true;
         }
+        if let Some(task) = task_phase_overrides
+            && task.phase1.is_some()
+        {
+            warnings.unused_phase1 = true;
+        }
         if let Some(config) = config_phase_overrides
             && config.phase1.is_some()
         {
@@ -159,6 +170,7 @@ pub(crate) fn resolve_phase_settings_matrix(
     let phase1 = resolve_single_phase(
         1,
         cli_phase_overrides.and_then(|p| p.phase1.as_ref()),
+        task_phase_overrides.and_then(|p| p.phase1.as_ref()),
         config_phase_overrides.and_then(|p| p.phase1.as_ref()),
         overrides,
         task_agent,
@@ -169,6 +181,7 @@ pub(crate) fn resolve_phase_settings_matrix(
     let phase2 = resolve_single_phase(
         2,
         cli_phase_overrides.and_then(|p| p.phase2.as_ref()),
+        task_phase_overrides.and_then(|p| p.phase2.as_ref()),
         config_phase_overrides.and_then(|p| p.phase2.as_ref()),
         overrides,
         task_agent,
@@ -179,6 +192,7 @@ pub(crate) fn resolve_phase_settings_matrix(
     let phase3 = resolve_single_phase(
         3,
         cli_phase_overrides.and_then(|p| p.phase3.as_ref()),
+        task_phase_overrides.and_then(|p| p.phase3.as_ref()),
         config_phase_overrides.and_then(|p| p.phase3.as_ref()),
         overrides,
         task_agent,
@@ -199,18 +213,21 @@ pub(crate) fn resolve_phase_settings_matrix(
 fn resolve_single_phase(
     phase: u8,
     cli_phase_override: Option<&crate::contracts::PhaseOverrideConfig>,
+    task_phase_override: Option<&crate::contracts::PhaseOverrideConfig>,
     config_phase_override: Option<&crate::contracts::PhaseOverrideConfig>,
     global_overrides: &crate::agent::AgentOverrides,
     task_agent: Option<&TaskAgent>,
     config_agent: &AgentConfig,
 ) -> Result<ResolvedPhaseSettings> {
     let runner_overridden_at_phase = cli_phase_override.and_then(|p| p.runner.clone()).is_some()
+        || task_phase_override.and_then(|p| p.runner.clone()).is_some()
         || config_phase_override
             .and_then(|p| p.runner.clone())
             .is_some();
 
     let runner = cli_phase_override
         .and_then(|p| p.runner.clone())
+        .or(task_phase_override.and_then(|p| p.runner.clone()))
         .or(config_phase_override.and_then(|p| p.runner.clone()))
         .or(global_overrides.runner.clone())
         .or(task_agent.and_then(|a| a.runner.clone()))
@@ -220,6 +237,7 @@ fn resolve_single_phase(
     let model_value = model::resolve_model_for_phase(
         &runner,
         cli_phase_override.and_then(|p| p.model.clone()),
+        task_phase_override.and_then(|p| p.model.clone()),
         config_phase_override.and_then(|p| p.model.clone()),
         global_overrides.model.clone(),
         task_agent.and_then(|a| a.model.clone()),
@@ -239,6 +257,7 @@ fn resolve_single_phase(
     let reasoning_effort = resolve_phase_reasoning_effort(
         &runner,
         cli_phase_override.and_then(|p| p.reasoning_effort),
+        task_phase_override.and_then(|p| p.reasoning_effort),
         config_phase_override.and_then(|p| p.reasoning_effort),
         global_overrides.reasoning_effort,
         task_agent,
@@ -270,6 +289,7 @@ fn resolve_single_phase(
 fn resolve_phase_reasoning_effort(
     runner: &Runner,
     cli_phase_effort: Option<ReasoningEffort>,
+    task_phase_effort: Option<ReasoningEffort>,
     config_phase_effort: Option<ReasoningEffort>,
     cli_global_effort: Option<ReasoningEffort>,
     task_agent: Option<&TaskAgent>,
@@ -280,6 +300,7 @@ fn resolve_phase_reasoning_effort(
     }
 
     let effort = cli_phase_effort
+        .or(task_phase_effort)
         .or(config_phase_effort)
         .or(cli_global_effort)
         .or(task_agent.and_then(|a| a.model_effort.as_reasoning_effort()))

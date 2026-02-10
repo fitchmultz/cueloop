@@ -118,9 +118,11 @@ fn validate_rejects_zero_agent_iterations() {
         runner: None,
         model: None,
         model_effort: crate::contracts::ModelEffort::Default,
+        phases: None,
         iterations: Some(0),
         followup_reasoning_effort: None,
         runner_cli: None,
+        phase_overrides: None,
     });
     let queue = QueueFile {
         version: 1,
@@ -128,6 +130,27 @@ fn validate_rejects_zero_agent_iterations() {
     };
     let err = validate_queue(&queue, "RQ", 4).unwrap_err();
     assert!(format!("{err}").contains("agent.iterations"));
+}
+
+#[test]
+fn validate_rejects_invalid_agent_phases() {
+    let mut task = task("RQ-0001");
+    task.agent = Some(TaskAgent {
+        runner: None,
+        model: None,
+        model_effort: crate::contracts::ModelEffort::Default,
+        phases: Some(4),
+        iterations: None,
+        followup_reasoning_effort: None,
+        runner_cli: None,
+        phase_overrides: None,
+    });
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![task],
+    };
+    let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+    assert!(format!("{err}").contains("agent.phases"));
 }
 
 #[test]

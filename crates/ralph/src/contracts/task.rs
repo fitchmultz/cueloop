@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use super::RunnerCliOptionsPatch;
-use super::{Model, ModelEffort, ReasoningEffort, Runner};
+use super::{Model, ModelEffort, PhaseOverrides, ReasoningEffort, Runner};
 
 /* ------------------------------ Task (JSON) ------------------------------ */
 
@@ -61,7 +61,7 @@ pub struct Task {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request: Option<String>,
 
-    /// Optional per-task agent override (runner/model/model_effort/iterations).
+    /// Optional per-task agent override (runner/model/model_effort/phases/iterations/phase_overrides).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<TaskAgent>,
 
@@ -234,7 +234,7 @@ impl std::fmt::Display for TaskStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 #[serde(deny_unknown_fields)]
 pub struct TaskAgent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -247,6 +247,11 @@ pub struct TaskAgent {
     #[serde(default, skip_serializing_if = "model_effort_is_default")]
     #[schemars(schema_with = "model_effort_schema")]
     pub model_effort: ModelEffort,
+
+    /// Number of execution phases for this task (1, 2, or 3), overriding config defaults.
+    #[schemars(range(min = 1, max = 3))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phases: Option<u8>,
 
     /// Number of iterations to run for this task (overrides config).
     #[schemars(range(min = 1))]
@@ -263,6 +268,10 @@ pub struct TaskAgent {
     /// without embedding runner-specific flag syntax into the queue.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runner_cli: Option<RunnerCliOptionsPatch>,
+
+    /// Optional per-phase runner/model/effort overrides for this task.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase_overrides: Option<PhaseOverrides>,
 }
 
 fn model_effort_is_default(value: &ModelEffort) -> bool {
@@ -382,6 +391,7 @@ fn custom_fields_schema(
 #[cfg(test)]
 mod tests {
     use super::{Task, TaskPriority};
+    use crate::contracts::{Model, PhaseOverrideConfig, PhaseOverrides, ReasoningEffort, Runner};
     use std::collections::HashMap;
 
     #[test]
@@ -543,5 +553,75 @@ mod tests {
         let json = serde_json::to_string(&task).expect("serialize");
         assert!(json.contains("\"count\":\"42\""));
         assert!(json.contains("\"enabled\":\"true\""));
+    }
+
+    #[test]
+    fn task_agent_deserializes_phases_and_phase_overrides() {
+        let raw = r#"{
+            "id":"RQ-0001",
+            "title":"Task with agent overrides",
+            "agent":{
+                "runner":"codex",
+                "model":"gpt-5.3-codex",
+                "model_effort":"high",
+                "phases":2,
+                "iterations":1,
+                "phase_overrides":{
+                    "phase1":{"runner":"codex","model":"gpt-5.3-codex","reasoning_effort":"high"},
+                    "phase2":{"runner":"kimi","model":"kimi-code/kimi-for-coding"}
+                }
+            }
+        }"#;
+
+        let task: Task = serde_json::from_str(raw).expect("deserialize");
+        let agent = task.agent.expect("agent should be set");
+        assert_eq!(agent.runner, Some(Runner::Codex));
+        assert_eq!(agent.model, Some(Model::Gpt53Codex));
+        assert_eq!(agent.phases, Some(2));
+        assert_eq!(agent.iterations, Some(1));
+
+        let phase_overrides = agent
+            .phase_overrides
+            .expect("phase overrides should be set");
+        let phase1 = phase_overrides.phase1.expect("phase1 should be set");
+        assert_eq!(phase1.runner, Some(Runner::Codex));
+        assert_eq!(phase1.reasoning_effort, Some(ReasoningEffort::High));
+        let phase2 = phase_overrides.phase2.expect("phase2 should be set");
+        assert_eq!(phase2.runner, Some(Runner::Kimi));
+    }
+
+    #[test]
+    fn task_agent_omits_default_phase_and_effort_fields_when_serializing() {
+        let task = Task {
+            id: "RQ-0001".to_string(),
+            title: "Serialize defaults".to_string(),
+            agent: Some(crate::contracts::TaskAgent {
+                runner: Some(Runner::Codex),
+                model: Some(Model::Gpt53Codex),
+                model_effort: crate::contracts::ModelEffort::Default,
+                phases: None,
+                iterations: None,
+                followup_reasoning_effort: None,
+                runner_cli: None,
+                phase_overrides: Some(PhaseOverrides {
+                    phase1: Some(PhaseOverrideConfig {
+                        runner: Some(Runner::Codex),
+                        model: Some(Model::Gpt53Codex),
+                        reasoning_effort: Some(ReasoningEffort::Medium),
+                    }),
+                    ..Default::default()
+                }),
+            }),
+            ..Default::default()
+        };
+
+        let value = serde_json::to_value(task).expect("serialize");
+        let agent = value
+            .get("agent")
+            .and_then(|v| v.as_object())
+            .expect("agent object should exist");
+        assert!(!agent.contains_key("model_effort"));
+        assert!(!agent.contains_key("phases"));
+        assert!(agent.contains_key("phase_overrides"));
     }
 }

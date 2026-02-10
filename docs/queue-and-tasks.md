@@ -47,15 +47,20 @@ Common optional fields:
     - These fields are observational (what actually ran) and should not be confused with `agent.runner`/`agent.model` which express intent/override.
 
 Per-task agent overrides:
-- `agent.runner`: `codex`, `opencode`, `gemini`, `claude`, or `cursor`.
+- `agent.runner`: `codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, or `pi` (plugin runners are also supported).
 - `agent.model`: model id string.
 - `agent.model_effort`: `default`, `low`, `medium`, `high`, `xhigh` (Codex only).
+- `agent.phases`: number of phases for this task (`1`, `2`, or `3`).
 - `agent.iterations`: number of iterations for this task (default: 1).
 - `agent.followup_reasoning_effort`: reasoning effort for iterations after the first (Codex only).
+- `agent.phase_overrides.phase1|phase2|phase3.runner`: per-phase runner override.
+- `agent.phase_overrides.phase1|phase2|phase3.model`: per-phase model override.
+- `agent.phase_overrides.phase1|phase2|phase3.reasoning_effort`: per-phase reasoning effort override (Codex only).
 
 Notes:
 - `agent.model_effort: default` (or omitting the field) uses the configured `agent.reasoning_effort`.
 - `agent.followup_reasoning_effort` is ignored for non-Codex runners.
+- Phase resolution precedence is: CLI phase overrides > task phase overrides > config phase overrides > CLI global overrides > task global overrides > config defaults.
 - Breaking change: `agent.reasoning_effort` in task entries is replaced by `agent.model_effort`.
 
 ## Example Task
@@ -79,8 +84,15 @@ Notes:
     "runner": "codex",
     "model": "gpt-5.3-codex",
     "model_effort": "high",
+    "phases": 2,
     "iterations": 2,
-    "followup_reasoning_effort": "low"
+    "followup_reasoning_effort": "low",
+    "phase_overrides": {
+      "phase2": {
+        "runner": "kimi",
+        "model": "kimi-code/kimi-for-coding"
+      }
+    }
   }
 }
 ```

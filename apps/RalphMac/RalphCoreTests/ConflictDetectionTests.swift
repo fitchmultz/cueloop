@@ -254,6 +254,39 @@ final class ConflictDetectionTests: XCTestCase {
         XCTAssertTrue(fields.contains("description"))
         XCTAssertTrue(fields.contains("scope"))
     }
+
+    func testDetectConflictedFields_AgentOverrides() {
+        let local = RalphTask(
+            id: "RQ-TEST-009A",
+            status: .todo,
+            title: "Test",
+            priority: .medium,
+            agent: RalphTaskAgent(
+                runner: "codex",
+                model: "gpt-5.3-codex",
+                phases: 2,
+                iterations: 1
+            ),
+            updatedAt: Date()
+        )
+
+        let external = RalphTask(
+            id: "RQ-TEST-009A",
+            status: .todo,
+            title: "Test",
+            priority: .medium,
+            agent: RalphTaskAgent(
+                runner: "kimi",
+                model: "kimi-code/kimi-for-coding",
+                phases: 3,
+                iterations: 1
+            ),
+            updatedAt: Date()
+        )
+
+        let fields = workspace.detectConflictedFields(local: local, external: external)
+        XCTAssertTrue(fields.contains("agent"))
+    }
     
     // MARK: - TaskConflict Struct Tests
     

@@ -56,6 +56,7 @@ struct TaskConflictResolverView: View {
         if localTask.dependsOn != externalTask.dependsOn { initialSelections["dependsOn"] = .external }
         if localTask.blocks != externalTask.blocks { initialSelections["blocks"] = .external }
         if localTask.relatesTo != externalTask.relatesTo { initialSelections["relatesTo"] = .external }
+        if localTask.agent != externalTask.agent { initialSelections["agent"] = .external }
         _fieldSelections = State(initialValue: initialSelections)
     }
     
@@ -216,6 +217,17 @@ struct TaskConflictResolverView: View {
                         }
                     }
                 }
+
+                if localTask.agent != externalTask.agent {
+                    Section("Execution Overrides") {
+                        mergeRow(
+                            field: "agent",
+                            label: "Agent Overrides",
+                            localValue: formatAgent(localTask.agent),
+                            externalValue: formatAgent(externalTask.agent)
+                        )
+                    }
+                }
             }
         }
         .frame(minWidth: 650, minHeight: 500)
@@ -362,6 +374,8 @@ struct TaskConflictResolverView: View {
                     newTask.blocks = localTask.blocks
                 case "relatesTo":
                     newTask.relatesTo = localTask.relatesTo
+                case "agent":
+                    newTask.agent = localTask.agent
                 default:
                     break
                 }
@@ -387,6 +401,22 @@ struct TaskConflictResolverView: View {
     private func formatArray(_ array: [String]?) -> String {
         guard let array = array, !array.isEmpty else { return "(none)" }
         return array.joined(separator: ", ")
+    }
+
+    private func formatAgent(_ agent: RalphTaskAgent?) -> String {
+        guard let agent else { return "(none)" }
+
+        var parts: [String] = []
+        if let runner = agent.runner, !runner.isEmpty { parts.append("runner=\(runner)") }
+        if let model = agent.model, !model.isEmpty { parts.append("model=\(model)") }
+        if let effort = agent.modelEffort, !effort.isEmpty { parts.append("effort=\(effort)") }
+        if let phases = agent.phases { parts.append("phases=\(phases)") }
+        if let iterations = agent.iterations { parts.append("iterations=\(iterations)") }
+        if let phaseOverrides = agent.phaseOverrides, !phaseOverrides.isEmpty {
+            parts.append("phase_overrides=yes")
+        }
+        if parts.isEmpty { return "(none)" }
+        return parts.joined(separator: ", ")
     }
     
     private func formatDate(_ date: Date) -> String {

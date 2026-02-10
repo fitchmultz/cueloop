@@ -94,6 +94,7 @@ struct TaskDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 basicInfoSection()
                 statusSection()
+                executionOverridesSection()
                 tagsSection()
                 contentSections()
                 relationshipsSection()
@@ -201,6 +202,97 @@ struct TaskDetailView: View {
     private func tagsSection() -> some View {
         glassGroupBox("Tags") {
             TagEditorView(tags: $draftTask.tags)
+        }
+    }
+
+    private static let runnerOptions = ["codex", "opencode", "gemini", "claude", "cursor", "kimi", "pi"]
+    private static let effortOptions = ["low", "medium", "high", "xhigh"]
+
+    @ViewBuilder
+    private func executionOverridesSection() -> some View {
+        glassGroupBox("Execution Overrides") {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 16) {
+                    Picker("Runner", selection: taskRunnerBinding) {
+                        Text("Inherit").tag("inherit")
+                        ForEach(Self.runnerOptions, id: \.self) { runner in
+                            Text(runner).tag(runner)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 170)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Model")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("Inherit from config", text: taskModelBinding)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(minWidth: 220)
+                    }
+
+                    Spacer()
+                }
+
+                HStack(spacing: 16) {
+                    Picker("Reasoning Effort", selection: taskEffortBinding) {
+                        Text("Inherit").tag("inherit")
+                        ForEach(Self.effortOptions, id: \.self) { effort in
+                            Text(effort).tag(effort)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 170)
+                    .disabled(taskEffortDisabled)
+
+                    Picker("Phases", selection: taskPhasesBinding) {
+                        Text("Inherit").tag(0)
+                        Text("1").tag(1)
+                        Text("2").tag(2)
+                        Text("3").tag(3)
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 130)
+
+                    Picker("Iterations", selection: taskIterationsBinding) {
+                        Text("Inherit").tag(0)
+                        ForEach(1...10, id: \.self) { iteration in
+                            Text(String(iteration)).tag(iteration)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 130)
+
+                    Spacer()
+                }
+
+                Text(taskEffortDisabled
+                    ? "Reasoning effort is ignored unless runner is codex. Set runner to codex or inherit."
+                    : "Reasoning effort is only used when the resolved runner is codex."
+                )
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+
+                Text("Per-Phase Overrides")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                phaseOverrideEditor(title: "Phase 1 (Planning)", phase: 1)
+                phaseOverrideEditor(title: "Phase 2 (Implementation)", phase: 2)
+                phaseOverrideEditor(title: "Phase 3 (Review)", phase: 3)
+
+                HStack {
+                    Spacer()
+                    Button("Clear Execution Overrides") {
+                        draftTask.agent = nil
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(draftTask.agent == nil)
+                }
+            }
         }
     }
 
@@ -392,6 +484,208 @@ struct TaskDetailView: View {
         }
         .buttonStyle(GlassButtonStyle())
         .accessibilityLabel("Add \(title) field")
+    }
+
+    @ViewBuilder
+    private func phaseOverrideEditor(title: String, phase: Int) -> some View {
+        let effortDisabled = phaseEffortDisabled(phase: phase)
+
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Clear") {
+                    setPhaseOverride(nil, phase: phase)
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .disabled(phaseOverride(for: phase) == nil)
+            }
+
+            HStack(spacing: 12) {
+                Picker("Runner", selection: phaseRunnerBinding(phase: phase)) {
+                    Text("Inherit").tag("inherit")
+                    ForEach(Self.runnerOptions, id: \.self) { runner in
+                        Text(runner).tag(runner)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 160)
+
+                TextField("Model (inherit if empty)", text: phaseModelBinding(phase: phase))
+                    .textFieldStyle(.roundedBorder)
+
+                Picker("Effort", selection: phaseEffortBinding(phase: phase)) {
+                    Text("Inherit").tag("inherit")
+                    ForEach(Self.effortOptions, id: \.self) { effort in
+                        Text(effort).tag(effort)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 140)
+                .disabled(effortDisabled)
+            }
+
+            if effortDisabled {
+                Text("Reasoning effort applies only when the effective runner is codex.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(8)
+        .background(Color(NSColor.windowBackgroundColor).opacity(0.35))
+        .cornerRadius(8)
+    }
+
+    private var taskRunnerBinding: Binding<String> {
+        Binding(
+            get: { draftTask.agent?.runner ?? "inherit" },
+            set: { value in
+                mutateTaskAgent { agent in
+                    agent.runner = value == "inherit" ? nil : value
+                }
+            }
+        )
+    }
+
+    private var taskModelBinding: Binding<String> {
+        Binding(
+            get: { draftTask.agent?.model ?? "" },
+            set: { value in
+                mutateTaskAgent { agent in
+                    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    agent.model = trimmed.isEmpty ? nil : trimmed
+                }
+            }
+        )
+    }
+
+    private var taskEffortBinding: Binding<String> {
+        Binding(
+            get: { draftTask.agent?.modelEffort ?? "inherit" },
+            set: { value in
+                mutateTaskAgent { agent in
+                    agent.modelEffort = value == "inherit" ? nil : value
+                }
+            }
+        )
+    }
+
+    private var taskEffortDisabled: Bool {
+        guard let runner = normalizedRunnerName(draftTask.agent?.runner) else { return false }
+        return runner != "codex"
+    }
+
+    private var taskPhasesBinding: Binding<Int> {
+        Binding(
+            get: { draftTask.agent?.phases ?? 0 },
+            set: { value in
+                mutateTaskAgent { agent in
+                    agent.phases = value == 0 ? nil : value
+                }
+            }
+        )
+    }
+
+    private var taskIterationsBinding: Binding<Int> {
+        Binding(
+            get: { draftTask.agent?.iterations ?? 0 },
+            set: { value in
+                mutateTaskAgent { agent in
+                    agent.iterations = value == 0 ? nil : value
+                }
+            }
+        )
+    }
+
+    private func phaseOverride(for phase: Int) -> RalphTaskPhaseOverride? {
+        switch phase {
+        case 1: return draftTask.agent?.phaseOverrides?.phase1
+        case 2: return draftTask.agent?.phaseOverrides?.phase2
+        case 3: return draftTask.agent?.phaseOverrides?.phase3
+        default: return nil
+        }
+    }
+
+    private func setPhaseOverride(_ value: RalphTaskPhaseOverride?, phase: Int) {
+        mutateTaskAgent { agent in
+            var overrides = agent.phaseOverrides ?? RalphTaskPhaseOverrides()
+            switch phase {
+            case 1: overrides.phase1 = value
+            case 2: overrides.phase2 = value
+            case 3: overrides.phase3 = value
+            default: break
+            }
+            agent.phaseOverrides = overrides.isEmpty ? nil : overrides
+        }
+    }
+
+    private func phaseRunnerBinding(phase: Int) -> Binding<String> {
+        Binding(
+            get: { phaseOverride(for: phase)?.runner ?? "inherit" },
+            set: { value in
+                var updated = phaseOverride(for: phase) ?? RalphTaskPhaseOverride()
+                updated.runner = value == "inherit" ? nil : value
+                setPhaseOverride(updated.isEmpty ? nil : updated, phase: phase)
+            }
+        )
+    }
+
+    private func phaseModelBinding(phase: Int) -> Binding<String> {
+        Binding(
+            get: { phaseOverride(for: phase)?.model ?? "" },
+            set: { value in
+                var updated = phaseOverride(for: phase) ?? RalphTaskPhaseOverride()
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                updated.model = trimmed.isEmpty ? nil : trimmed
+                setPhaseOverride(updated.isEmpty ? nil : updated, phase: phase)
+            }
+        )
+    }
+
+    private func phaseEffortBinding(phase: Int) -> Binding<String> {
+        Binding(
+            get: { phaseOverride(for: phase)?.reasoningEffort ?? "inherit" },
+            set: { value in
+                var updated = phaseOverride(for: phase) ?? RalphTaskPhaseOverride()
+                updated.reasoningEffort = value == "inherit" ? nil : value
+                setPhaseOverride(updated.isEmpty ? nil : updated, phase: phase)
+            }
+        )
+    }
+
+    private func phaseEffortDisabled(phase: Int) -> Bool {
+        let phaseRunner = normalizedRunnerName(phaseOverride(for: phase)?.runner)
+        let taskRunner = normalizedRunnerName(draftTask.agent?.runner)
+        guard let effectiveRunner = phaseRunner ?? taskRunner else { return false }
+        return effectiveRunner != "codex"
+    }
+
+    private func normalizedRunnerName(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalized.isEmpty ? nil : normalized
+    }
+
+    private func mutateTaskAgent(_ mutate: (inout RalphTaskAgent) -> Void) {
+        var agent = draftTask.agent ?? RalphTaskAgent()
+        mutate(&agent)
+        if let effort = agent.modelEffort?.trimmingCharacters(in: .whitespacesAndNewlines),
+           effort.lowercased() == "default" {
+            agent.modelEffort = nil
+        }
+        if let phases = agent.phases, !(1...3).contains(phases) {
+            agent.phases = nil
+        }
+        if let iterations = agent.iterations, iterations < 1 {
+            agent.iterations = nil
+        }
+        if let overrides = agent.phaseOverrides, overrides.isEmpty {
+            agent.phaseOverrides = nil
+        }
+        draftTask.agent = agent.isEmpty ? nil : agent
     }
 
     // MARK: - Helper Methods

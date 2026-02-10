@@ -13,7 +13,7 @@
 //! - Task IDs are matched after trimming and are case-sensitive.
 
 use super::validate::{ensure_task_id, parse_custom_fields_with_context, parse_rfc3339_utc};
-use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskAgent, TaskPriority, TaskStatus};
 use crate::queue;
 use crate::queue::ValidationWarning;
 use crate::timeutil;
@@ -36,6 +36,7 @@ pub enum TaskEditKey {
     RelatesTo,
     Duplicates,
     CustomFields,
+    Agent,
     CreatedAt,
     UpdatedAt,
     CompletedAt,
@@ -60,6 +61,7 @@ impl TaskEditKey {
             TaskEditKey::RelatesTo => "relates_to",
             TaskEditKey::Duplicates => "duplicates",
             TaskEditKey::CustomFields => "custom_fields",
+            TaskEditKey::Agent => "agent",
             TaskEditKey::CreatedAt => "created_at",
             TaskEditKey::UpdatedAt => "updated_at",
             TaskEditKey::CompletedAt => "completed_at",
@@ -110,6 +112,11 @@ impl TaskEditKey {
                     .collect();
                 pairs.join(list_sep)
             }
+            TaskEditKey::Agent => task
+                .agent
+                .as_ref()
+                .and_then(|agent| serde_json::to_string(agent).ok())
+                .unwrap_or_default(),
             TaskEditKey::CreatedAt => task.created_at.clone().unwrap_or_default(),
             TaskEditKey::UpdatedAt => task.updated_at.clone().unwrap_or_default(),
             TaskEditKey::CompletedAt => task.completed_at.clone().unwrap_or_default(),
@@ -139,13 +146,14 @@ impl std::str::FromStr for TaskEditKey {
             "relates_to" => Ok(TaskEditKey::RelatesTo),
             "duplicates" => Ok(TaskEditKey::Duplicates),
             "custom_fields" => Ok(TaskEditKey::CustomFields),
+            "agent" => Ok(TaskEditKey::Agent),
             "created_at" => Ok(TaskEditKey::CreatedAt),
             "updated_at" => Ok(TaskEditKey::UpdatedAt),
             "completed_at" => Ok(TaskEditKey::CompletedAt),
             "started_at" => Ok(TaskEditKey::StartedAt),
             "scheduled_start" => Ok(TaskEditKey::ScheduledStart),
             _ => bail!(
-                "Unknown task field: '{}'. Expected one of: title, status, priority, tags, scope, evidence, plan, notes, request, depends_on, blocks, relates_to, duplicates, custom_fields, created_at, updated_at, completed_at, started_at, scheduled_start.",
+                "Unknown task field: '{}'. Expected one of: title, status, priority, tags, scope, evidence, plan, notes, request, depends_on, blocks, relates_to, duplicates, custom_fields, agent, created_at, updated_at, completed_at, started_at, scheduled_start.",
                 value
             ),
         }
@@ -265,6 +273,10 @@ pub fn apply_task_edit(
         TaskEditKey::CustomFields => {
             task.custom_fields = parse_custom_fields_with_context(needle, trimmed, operation)?;
         }
+        TaskEditKey::Agent => {
+            task.agent = parse_task_agent_override(trimmed)
+                .with_context(|| format!("Queue edit failed (task_id={}, field=agent)", needle))?;
+        }
         TaskEditKey::CreatedAt => {
             let normalized = normalize_rfc3339_input("created_at", trimmed).with_context(|| {
                 format!("Queue edit failed (task_id={}, field=created_at)", needle)
@@ -354,6 +366,28 @@ fn parse_list(input: &str) -> Vec<String> {
         .map(|item| item.trim().to_string())
         .filter(|item| !item.is_empty())
         .collect()
+}
+
+fn parse_task_agent_override(input: &str) -> Result<Option<TaskAgent>> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let parsed: TaskAgent = serde_json::from_str(trimmed)
+        .context("agent must be a valid JSON object matching the task.agent contract")?;
+    if let Some(iterations) = parsed.iterations
+        && iterations == 0
+    {
+        bail!("agent.iterations must be >= 1");
+    }
+    if let Some(phases) = parsed.phases
+        && !(1..=3).contains(&phases)
+    {
+        bail!("agent.phases must be one of: 1, 2, 3");
+    }
+
+    Ok(Some(parsed))
 }
 
 fn normalize_rfc3339_input(label: &str, value: &str) -> Result<Option<String>> {
@@ -515,6 +549,14 @@ pub fn preview_task_edit(
             preview_task.custom_fields =
                 parse_custom_fields_with_context(needle, trimmed, operation)?;
         }
+        TaskEditKey::Agent => {
+            preview_task.agent = parse_task_agent_override(trimmed).with_context(|| {
+                format!(
+                    "Queue edit preview failed (task_id={}, field=agent)",
+                    needle
+                )
+            })?;
+        }
         TaskEditKey::CreatedAt => {
             let normalized = normalize_rfc3339_input_for_preview("created_at", trimmed)
                 .with_context(|| {
@@ -640,7 +682,7 @@ fn format_field_value(task: &Task, key: TaskEditKey) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+    use crate::contracts::{QueueFile, Task, TaskAgent, TaskPriority, TaskStatus};
     use std::collections::HashMap;
 
     fn test_task() -> Task {
@@ -896,6 +938,59 @@ mod tests {
             "new_value should contain owner=ralph: {}",
             preview.new_value
         );
+    }
+
+    #[test]
+    fn preview_task_edit_shows_agent_override_change() {
+        let queue = test_queue();
+        let now = "2026-01-21T12:00:00Z".to_string();
+        let input = r#"{"runner":"codex","model":"gpt-5.3-codex","phases":2,"iterations":1}"#;
+
+        let preview = preview_task_edit(
+            &queue,
+            None,
+            "RQ-0001",
+            TaskEditKey::Agent,
+            input,
+            &now,
+            "RQ",
+            4,
+            10,
+        )
+        .expect("preview should succeed");
+
+        assert_eq!(preview.field, "agent");
+        assert_eq!(preview.old_value, "");
+        assert!(preview.new_value.contains("\"runner\":\"codex\""));
+        assert!(preview.new_value.contains("\"phases\":2"));
+    }
+
+    #[test]
+    fn apply_task_edit_clears_agent_override_with_empty_value() {
+        let mut queue = test_queue();
+        queue.tasks[0].agent = Some(TaskAgent {
+            runner: Some(crate::contracts::Runner::Codex),
+            model: Some(crate::contracts::Model::Gpt53Codex),
+            phases: Some(2),
+            iterations: Some(1),
+            ..Default::default()
+        });
+        let now = "2026-01-21T12:00:00Z".to_string();
+
+        apply_task_edit(
+            &mut queue,
+            None,
+            "RQ-0001",
+            TaskEditKey::Agent,
+            "",
+            &now,
+            "RQ",
+            4,
+            10,
+        )
+        .expect("apply should succeed");
+
+        assert!(queue.tasks[0].agent.is_none());
     }
 
     #[test]

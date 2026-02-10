@@ -669,6 +669,7 @@ pub enum TaskEditFieldArg {
     RelatesTo,
     Duplicates,
     CustomFields,
+    Agent,
     CreatedAt,
     UpdatedAt,
     CompletedAt,
@@ -693,6 +694,7 @@ impl TaskEditFieldArg {
             TaskEditFieldArg::RelatesTo => "relates_to",
             TaskEditFieldArg::Duplicates => "duplicates",
             TaskEditFieldArg::CustomFields => "custom_fields",
+            TaskEditFieldArg::Agent => "agent",
             TaskEditFieldArg::CreatedAt => "created_at",
             TaskEditFieldArg::UpdatedAt => "updated_at",
             TaskEditFieldArg::CompletedAt => "completed_at",
@@ -719,6 +721,7 @@ impl From<TaskEditFieldArg> for TaskEditKey {
             TaskEditFieldArg::RelatesTo => TaskEditKey::RelatesTo,
             TaskEditFieldArg::Duplicates => TaskEditKey::Duplicates,
             TaskEditFieldArg::CustomFields => TaskEditKey::CustomFields,
+            TaskEditFieldArg::Agent => TaskEditKey::Agent,
             TaskEditFieldArg::CreatedAt => TaskEditKey::CreatedAt,
             TaskEditFieldArg::UpdatedAt => TaskEditKey::UpdatedAt,
             TaskEditFieldArg::CompletedAt => TaskEditKey::CompletedAt,
@@ -925,7 +928,7 @@ pub enum TaskCommand {
 
     /// Edit any task field (default or custom).
     #[command(
-        after_long_help = "Examples:\n ralph task edit title \"Clarify CLI edit\" RQ-0001\n ralph task edit status doing RQ-0001\n ralph task edit priority high RQ-0001\n ralph task edit tags \"cli, rust\" RQ-0001\n ralph task edit custom_fields \"severity=high, owner=ralph\" RQ-0001\n ralph task edit request \"\" RQ-0001\n ralph task edit completed_at \"2026-01-20T12:00:00Z\" RQ-0001\n ralph task edit --dry-run title \"Preview change\" RQ-0001"
+        after_long_help = "Examples:\n ralph task edit title \"Clarify CLI edit\" RQ-0001\n ralph task edit status doing RQ-0001\n ralph task edit priority high RQ-0001\n ralph task edit tags \"cli, rust\" RQ-0001\n ralph task edit custom_fields \"severity=high, owner=ralph\" RQ-0001\n ralph task edit agent '{\"runner\":\"codex\",\"model\":\"gpt-5.3-codex\",\"phases\":2}' RQ-0001\n ralph task edit request \"\" RQ-0001\n ralph task edit completed_at \"2026-01-20T12:00:00Z\" RQ-0001\n ralph task edit --dry-run title \"Preview change\" RQ-0001"
     )]
     Edit(TaskEditArgs),
 

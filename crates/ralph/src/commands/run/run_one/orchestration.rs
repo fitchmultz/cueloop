@@ -17,7 +17,9 @@ use std::cell::RefCell;
 use crate::agent::AgentOverrides;
 use crate::commands::task as task_cmd;
 use crate::config;
-use crate::contracts::{GitRevertMode, ProjectType, RunnerCliOptionsPatch, TaskStatus};
+use crate::contracts::{
+    AgentConfig, GitRevertMode, ProjectType, RunnerCliOptionsPatch, Task, TaskStatus,
+};
 use crate::promptflow;
 use crate::queue::RunnableSelectionOptions;
 use crate::session::{self};
@@ -93,15 +95,6 @@ pub fn run_one_impl(
         max_depth,
     )?;
     queue::log_warnings(&warnings);
-
-    // Determine execution shape and policy
-    let phases: u8 = agent_overrides
-        .phases
-        .or(resolved.config.agent.phases)
-        .unwrap_or(2);
-    if !(1..=3).contains(&phases) {
-        bail!("Invalid phases value: {} (expected 1, 2, or 3)", phases);
-    }
 
     let repoprompt_flags =
         crate::agent::resolve_repoprompt_flags_from_overrides(agent_overrides, resolved);
@@ -239,6 +232,7 @@ pub fn run_one_impl(
 
     let mut task = queue_file.tasks[task_idx].clone();
     let task_id = task.id.trim().to_string();
+    let phases = resolve_task_phase_count(agent_overrides, &task, &resolved.config.agent)?;
 
     let iteration_settings = resolve_iteration_settings(&task, &resolved.config.agent)?;
     log::info!(
@@ -987,5 +981,93 @@ pub fn run_one_impl(
 
             Err(err)
         }
+    }
+}
+
+fn resolve_task_phase_count(
+    agent_overrides: &AgentOverrides,
+    task: &Task,
+    config_agent: &AgentConfig,
+) -> Result<u8> {
+    let phases = agent_overrides
+        .phases
+        .or(task.agent.as_ref().and_then(|agent| agent.phases))
+        .or(config_agent.phases)
+        .unwrap_or(2);
+
+    if !(1..=3).contains(&phases) {
+        bail!("Invalid phases value: {} (expected 1, 2, or 3)", phases);
+    }
+
+    Ok(phases)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_task_phase_count;
+    use crate::agent::AgentOverrides;
+    use crate::contracts::{AgentConfig, Task, TaskAgent};
+
+    #[test]
+    fn resolve_task_phase_count_uses_cli_over_task_and_config() {
+        let mut task = Task {
+            id: "RQ-0001".to_string(),
+            title: "test".to_string(),
+            ..Default::default()
+        };
+        task.agent = Some(TaskAgent {
+            phases: Some(2),
+            ..Default::default()
+        });
+        let config = AgentConfig {
+            phases: Some(3),
+            ..Default::default()
+        };
+        let overrides = AgentOverrides {
+            phases: Some(1),
+            ..Default::default()
+        };
+
+        let phases = resolve_task_phase_count(&overrides, &task, &config).expect("phases");
+        assert_eq!(phases, 1);
+    }
+
+    #[test]
+    fn resolve_task_phase_count_uses_task_when_cli_not_set() {
+        let mut task = Task {
+            id: "RQ-0001".to_string(),
+            title: "test".to_string(),
+            ..Default::default()
+        };
+        task.agent = Some(TaskAgent {
+            phases: Some(2),
+            ..Default::default()
+        });
+        let config = AgentConfig {
+            phases: Some(3),
+            ..Default::default()
+        };
+
+        let phases =
+            resolve_task_phase_count(&AgentOverrides::default(), &task, &config).expect("phases");
+        assert_eq!(phases, 2);
+    }
+
+    #[test]
+    fn resolve_task_phase_count_rejects_invalid_task_phase_value() {
+        let mut task = Task {
+            id: "RQ-0001".to_string(),
+            title: "test".to_string(),
+            ..Default::default()
+        };
+        task.agent = Some(TaskAgent {
+            phases: Some(4),
+            ..Default::default()
+        });
+
+        let err =
+            resolve_task_phase_count(&AgentOverrides::default(), &task, &AgentConfig::default())
+                .expect_err("expected invalid phases error");
+        assert!(err.to_string().contains("Invalid phases value: 4"));
     }
 }

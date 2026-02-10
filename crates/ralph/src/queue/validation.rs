@@ -97,15 +97,26 @@ pub fn validate_queue(queue: &QueueFile, id_prefix: &str, id_width: usize) -> Re
 }
 
 fn validate_task_agent_fields(index: usize, task: &Task) -> Result<()> {
-    if let Some(agent) = task.agent.as_ref()
-        && let Some(iterations) = agent.iterations
-        && iterations == 0
-    {
-        bail!(
-            "Invalid agent.iterations: task {} (index {}) must specify iterations >= 1.",
-            task.id,
-            index
-        );
+    if let Some(agent) = task.agent.as_ref() {
+        if let Some(iterations) = agent.iterations
+            && iterations == 0
+        {
+            bail!(
+                "Invalid agent.iterations: task {} (index {}) must specify iterations >= 1.",
+                task.id,
+                index
+            );
+        }
+
+        if let Some(phases) = agent.phases
+            && !(1..=3).contains(&phases)
+        {
+            bail!(
+                "Invalid agent.phases: task {} (index {}) must specify phases in [1, 2, 3].",
+                task.id,
+                index
+            );
+        }
     }
     Ok(())
 }

@@ -11,7 +11,7 @@
 //! - CLI option resolution (see `runner/execution/cli_options.rs`).
 //!
 //! Assumptions/invariants:
-//! - Codex runner only supports `gpt-5.2-codex` and `gpt-5.2`.
+//! - Codex runner only supports `gpt-5.3-codex`, `gpt-5.3`, `gpt-5.2-codex`, and `gpt-5.2`.
 //! - Non-Codex runners must never "inherit" Codex-only defaults.
 
 use anyhow::{Result, anyhow, bail};
@@ -58,9 +58,11 @@ pub(crate) fn resolve_model_for_runner(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn resolve_model_for_phase(
     runner: &Runner,
     cli_phase_model: Option<Model>,
+    task_phase_model: Option<Model>,
     config_phase_model: Option<Model>,
     cli_global_model: Option<Model>,
     task_model: Option<Model>,
@@ -69,6 +71,9 @@ pub(super) fn resolve_model_for_phase(
 ) -> Model {
     if let Some(model) = cli_phase_model {
         return model;
+    }
+    if let Some(model) = task_phase_model {
+        return normalize_model_for_runner(runner, model);
     }
     if let Some(model) = config_phase_model {
         return normalize_model_for_runner(runner, model);

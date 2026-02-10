@@ -256,4 +256,84 @@ final class RalphModelsTests: XCTestCase {
         XCTAssertEqual(document.tasks.count, 1)
         XCTAssertEqual(document.tasks[0].id, "RQ-2001")
     }
+
+    func test_decode_taskQueueDocument_withAgentOverrides() throws {
+        let json = #"""
+        {
+          "version": 1,
+          "tasks": [
+            {
+              "id": "RQ-3001",
+              "status": "todo",
+              "title": "Task with overrides",
+              "priority": "high",
+              "tags": [],
+              "agent": {
+                "runner": "codex",
+                "model": "gpt-5.3-codex",
+                "model_effort": "high",
+                "phases": 2,
+                "iterations": 1,
+                "phase_overrides": {
+                  "phase1": {
+                    "runner": "codex",
+                    "model": "gpt-5.3-codex",
+                    "reasoning_effort": "high"
+                  },
+                  "phase2": {
+                    "runner": "kimi",
+                    "model": "kimi-code/kimi-for-coding"
+                  }
+                }
+              }
+            }
+          ]
+        }
+        """#
+
+        let document = try JSONDecoder().decode(RalphTaskQueueDocument.self, from: Data(json.utf8))
+        XCTAssertEqual(document.tasks.count, 1)
+        let agent = try XCTUnwrap(document.tasks[0].agent)
+        XCTAssertEqual(agent.runner, "codex")
+        XCTAssertEqual(agent.model, "gpt-5.3-codex")
+        XCTAssertEqual(agent.modelEffort, "high")
+        XCTAssertEqual(agent.phases, 2)
+        XCTAssertEqual(agent.iterations, 1)
+        XCTAssertEqual(agent.phaseOverrides?.phase2?.runner, "kimi")
+    }
+
+    func test_encode_task_preservesAgentOverrides() throws {
+        let task = RalphTask(
+            id: "RQ-3002",
+            status: .todo,
+            title: "Encode overrides",
+            priority: .medium,
+            tags: [],
+            agent: RalphTaskAgent(
+                runner: "codex",
+                model: "gpt-5.3-codex",
+                modelEffort: "high",
+                phases: 2,
+                iterations: 1,
+                phaseOverrides: RalphTaskPhaseOverrides(
+                    phase1: RalphTaskPhaseOverride(
+                        runner: "codex",
+                        model: "gpt-5.3-codex",
+                        reasoningEffort: "high"
+                    ),
+                    phase2: RalphTaskPhaseOverride(
+                        runner: "kimi",
+                        model: "kimi-code/kimi-for-coding",
+                        reasoningEffort: nil
+                    )
+                )
+            )
+        )
+
+        let data = try JSONEncoder().encode(task)
+        let decoded = try JSONDecoder().decode(RalphTask.self, from: data)
+        XCTAssertEqual(decoded.agent?.runner, "codex")
+        XCTAssertEqual(decoded.agent?.phases, 2)
+        XCTAssertEqual(decoded.agent?.phaseOverrides?.phase2?.runner, "kimi")
+    }
 }

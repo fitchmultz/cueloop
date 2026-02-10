@@ -685,7 +685,8 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
                 if task.status != previousTask.status ||
                    task.title != previousTask.title ||
                    task.priority != previousTask.priority ||
-                   task.tags != previousTask.tags {
+                   task.tags != previousTask.tags ||
+                   task.agent != previousTask.agent {
                     changed.append(task)
                 }
             }
@@ -747,6 +748,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         if local.dependsOn != external.dependsOn { fields.append("dependsOn") }
         if local.blocks != external.blocks { fields.append("blocks") }
         if local.relatesTo != external.relatesTo { fields.append("relatesTo") }
+        if local.agent != external.agent { fields.append("agent") }
         
         return fields
     }
@@ -1070,6 +1072,13 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
             editCommands.append(("relates_to", value))
         }
 
+        let originalAgent = Self.normalizedTaskAgent(original.agent)
+        let updatedAgent = Self.normalizedTaskAgent(updated.agent)
+        if originalAgent != updatedAgent {
+            let value = try Self.encodeTaskAgentFieldValue(updatedAgent)
+            editCommands.append(("agent", value))
+        }
+
         // Execute each edit command with retry
         let helper = RetryHelper(configuration: .default)
         
@@ -1101,6 +1110,58 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
 
         // Reload tasks to get updated state
         await loadTasks()
+    }
+
+    private static func encodeTaskAgentFieldValue(_ agent: RalphTaskAgent?) throws -> String {
+        guard let agent else { return "" }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let data = try encoder.encode(agent)
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    private static func normalizeOptionalString(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func normalizedPhaseOverride(
+        _ overrideValue: RalphTaskPhaseOverride?
+    ) -> RalphTaskPhaseOverride? {
+        guard var overrideValue else { return nil }
+        overrideValue.runner = normalizeOptionalString(overrideValue.runner)
+        overrideValue.model = normalizeOptionalString(overrideValue.model)
+        overrideValue.reasoningEffort = normalizeOptionalString(overrideValue.reasoningEffort)
+        return overrideValue.isEmpty ? nil : overrideValue
+    }
+
+    private static func normalizedTaskAgent(_ agent: RalphTaskAgent?) -> RalphTaskAgent? {
+        guard var agent else { return nil }
+
+        agent.runner = normalizeOptionalString(agent.runner)
+        agent.model = normalizeOptionalString(agent.model)
+        agent.modelEffort = normalizeOptionalString(agent.modelEffort)
+        if agent.modelEffort?.lowercased() == "default" {
+            agent.modelEffort = nil
+        }
+        agent.followupReasoningEffort = normalizeOptionalString(agent.followupReasoningEffort)
+
+        if let phases = agent.phases, !(1...3).contains(phases) {
+            agent.phases = nil
+        }
+        if let iterations = agent.iterations, iterations < 1 {
+            agent.iterations = nil
+        }
+
+        if var phaseOverrides = agent.phaseOverrides {
+            phaseOverrides.phase1 = normalizedPhaseOverride(phaseOverrides.phase1)
+            phaseOverrides.phase2 = normalizedPhaseOverride(phaseOverrides.phase2)
+            phaseOverrides.phase3 = normalizedPhaseOverride(phaseOverrides.phase3)
+            agent.phaseOverrides = phaseOverrides.isEmpty ? nil : phaseOverrides
+        }
+
+        return agent.isEmpty ? nil : agent
     }
 
     // MARK: - Task Creation

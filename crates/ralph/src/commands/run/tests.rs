@@ -508,9 +508,11 @@ fn resolve_run_agent_settings_task_agent_overrides_config() -> anyhow::Result<()
         runner: Some(Runner::Opencode),
         model: Some(Model::Gpt52),
         model_effort: ModelEffort::High,
+        phases: None,
         iterations: None,
         followup_reasoning_effort: None,
         runner_cli: None,
+        phase_overrides: None,
     });
 
     let overrides = super::AgentOverrides::default();
@@ -534,9 +536,11 @@ fn resolve_run_agent_settings_cli_overrides_task_agent_and_config() -> anyhow::R
         runner: Some(Runner::Opencode),
         model: Some(Model::Gpt52),
         model_effort: ModelEffort::Low,
+        phases: None,
         iterations: None,
         followup_reasoning_effort: None,
         runner_cli: None,
+        phase_overrides: None,
     });
 
     let overrides = super::AgentOverrides {
@@ -677,9 +681,11 @@ fn resolve_run_agent_settings_model_effort_default_uses_config() -> anyhow::Resu
         runner: Some(Runner::Codex),
         model: Some(Model::Gpt52Codex),
         model_effort: ModelEffort::Default,
+        phases: None,
         iterations: None,
         followup_reasoning_effort: None,
         runner_cli: None,
+        phase_overrides: None,
     });
 
     let overrides = super::AgentOverrides::default();
@@ -701,9 +707,11 @@ fn resolve_run_agent_settings_model_effort_overrides_config_for_codex() -> anyho
         runner: Some(Runner::Codex),
         model: Some(Model::Gpt52Codex),
         model_effort: ModelEffort::XHigh,
+        phases: None,
         iterations: None,
         followup_reasoning_effort: None,
         runner_cli: None,
+        phase_overrides: None,
     });
 
     let overrides = super::AgentOverrides::default();
@@ -725,9 +733,11 @@ fn resolve_run_agent_settings_effort_is_ignored_for_opencode() -> anyhow::Result
         runner: Some(Runner::Opencode),
         model: Some(Model::Gpt52),
         model_effort: ModelEffort::High,
+        phases: None,
         iterations: None,
         followup_reasoning_effort: None,
         runner_cli: None,
+        phase_overrides: None,
     });
     let overrides = super::AgentOverrides {
         profile: None,
@@ -781,9 +791,11 @@ fn resolve_iteration_settings_prefers_task_over_config() -> anyhow::Result<()> {
         runner: None,
         model: None,
         model_effort: ModelEffort::Default,
+        phases: None,
         iterations: Some(2),
         followup_reasoning_effort: Some(ReasoningEffort::High),
         runner_cli: None,
+        phase_overrides: None,
     });
 
     let settings = resolve_iteration_settings(&task, &resolved.config.agent)?;
@@ -1796,9 +1808,11 @@ fn test_task_agent(runner: Option<Runner>, model: Option<Model>, effort: ModelEf
         runner,
         model,
         model_effort: effort,
+        phases: None,
         iterations: None,
         followup_reasoning_effort: None,
         runner_cli: None,
+        phase_overrides: None,
     }
 }
 
@@ -1893,6 +1907,86 @@ fn resolve_phase_settings_config_phase_override_beats_global() {
     // Phase 2 should use config phase override
     assert_eq!(matrix.phase2.runner, Runner::Gemini);
     assert_eq!(matrix.phase2.model.as_str(), "gemini-pro");
+}
+
+#[test]
+fn resolve_phase_settings_task_phase_override_beats_config_phase_override() {
+    let mut config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    config_agent.phase_overrides = Some(PhaseOverrides {
+        phase1: Some(PhaseOverrideConfig {
+            runner: Some(Runner::Codex),
+            model: Some(Model::Gpt52Codex),
+            reasoning_effort: Some(ReasoningEffort::Low),
+        }),
+        ..Default::default()
+    });
+
+    let task_agent = TaskAgent {
+        runner: None,
+        model: None,
+        model_effort: ModelEffort::Default,
+        phases: None,
+        iterations: None,
+        followup_reasoning_effort: None,
+        runner_cli: None,
+        phase_overrides: Some(PhaseOverrides {
+            phase1: Some(PhaseOverrideConfig {
+                runner: Some(Runner::Kimi),
+                model: Some(Model::Custom("kimi-code/kimi-for-coding".to_string())),
+                reasoning_effort: Some(ReasoningEffort::High),
+            }),
+            ..Default::default()
+        }),
+    };
+
+    let overrides = AgentOverrides::default();
+    let (matrix, _warnings) =
+        resolve_phase_settings_matrix(&overrides, &config_agent, Some(&task_agent), 3).unwrap();
+
+    assert_eq!(matrix.phase1.runner, Runner::Kimi);
+    assert_eq!(matrix.phase1.model.as_str(), "kimi-code/kimi-for-coding");
+}
+
+#[test]
+fn resolve_phase_settings_cli_phase_override_beats_task_phase_override() {
+    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    let task_agent = TaskAgent {
+        runner: None,
+        model: None,
+        model_effort: ModelEffort::Default,
+        phases: None,
+        iterations: None,
+        followup_reasoning_effort: None,
+        runner_cli: None,
+        phase_overrides: Some(PhaseOverrides {
+            phase1: Some(PhaseOverrideConfig {
+                runner: Some(Runner::Kimi),
+                model: Some(Model::Custom("kimi-code/kimi-for-coding".to_string())),
+                reasoning_effort: None,
+            }),
+            ..Default::default()
+        }),
+    };
+    let overrides = test_overrides_with_phases(
+        None,
+        None,
+        None,
+        Some(PhaseOverrides {
+            phase1: Some(PhaseOverrideConfig {
+                runner: Some(Runner::Codex),
+                model: Some(Model::Gpt52Codex),
+                reasoning_effort: Some(ReasoningEffort::High),
+            }),
+            ..Default::default()
+        }),
+    );
+
+    let (matrix, _warnings) =
+        resolve_phase_settings_matrix(&overrides, &config_agent, Some(&task_agent), 3).unwrap();
+
+    assert_eq!(matrix.phase1.runner, Runner::Codex);
+    assert_eq!(matrix.phase1.model, Model::Gpt52Codex);
+    assert_eq!(matrix.phase1.reasoning_effort, Some(ReasoningEffort::High));
 }
 
 #[test]
@@ -2264,6 +2358,38 @@ fn resolve_phase_settings_warns_unused_phase3_when_phases_is_2() {
     assert!(warnings.unused_phase3);
     assert!(!warnings.unused_phase1);
     assert!(!warnings.unused_phase2);
+}
+
+#[test]
+fn resolve_phase_settings_warns_unused_task_phase3_override_when_phases_is_2() {
+    let config_agent = test_config_agent(Some(Runner::Claude), None, None);
+    let task_agent = TaskAgent {
+        runner: None,
+        model: None,
+        model_effort: ModelEffort::Default,
+        phases: None,
+        iterations: None,
+        followup_reasoning_effort: None,
+        runner_cli: None,
+        phase_overrides: Some(PhaseOverrides {
+            phase3: Some(PhaseOverrideConfig {
+                runner: Some(Runner::Gemini),
+                model: Some(Model::Custom("gemini-3-pro-preview".to_string())),
+                reasoning_effort: None,
+            }),
+            ..Default::default()
+        }),
+    };
+
+    let (_matrix, warnings) = resolve_phase_settings_matrix(
+        &AgentOverrides::default(),
+        &config_agent,
+        Some(&task_agent),
+        2,
+    )
+    .unwrap();
+
+    assert!(warnings.unused_phase3);
 }
 
 #[test]

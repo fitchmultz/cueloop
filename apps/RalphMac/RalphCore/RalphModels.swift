@@ -446,6 +446,111 @@ public enum RalphTaskPriority: String, Codable, Sendable, Equatable, CaseIterabl
 }
 
 /// Represents a single task in the Ralph queue.
+public struct RalphTaskPhaseOverride: Codable, Sendable, Equatable {
+    public var runner: String?
+    public var model: String?
+    public var reasoningEffort: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case runner
+        case model
+        case reasoningEffort = "reasoning_effort"
+    }
+
+    public init(
+        runner: String? = nil,
+        model: String? = nil,
+        reasoningEffort: String? = nil
+    ) {
+        self.runner = runner
+        self.model = model
+        self.reasoningEffort = reasoningEffort
+    }
+
+    public var isEmpty: Bool {
+        (runner?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            && (model?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            && (reasoningEffort?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+}
+
+public struct RalphTaskPhaseOverrides: Codable, Sendable, Equatable {
+    public var phase1: RalphTaskPhaseOverride?
+    public var phase2: RalphTaskPhaseOverride?
+    public var phase3: RalphTaskPhaseOverride?
+
+    public init(
+        phase1: RalphTaskPhaseOverride? = nil,
+        phase2: RalphTaskPhaseOverride? = nil,
+        phase3: RalphTaskPhaseOverride? = nil
+    ) {
+        self.phase1 = phase1
+        self.phase2 = phase2
+        self.phase3 = phase3
+    }
+
+    public var isEmpty: Bool {
+        (phase1?.isEmpty ?? true) && (phase2?.isEmpty ?? true) && (phase3?.isEmpty ?? true)
+    }
+}
+
+public struct RalphTaskAgent: Codable, Sendable, Equatable {
+    public var runner: String?
+    public var model: String?
+    public var modelEffort: String?
+    public var phases: Int?
+    public var iterations: Int?
+    public var followupReasoningEffort: String?
+    public var runnerCLI: RalphJSONValue?
+    public var phaseOverrides: RalphTaskPhaseOverrides?
+
+    private enum CodingKeys: String, CodingKey {
+        case runner
+        case model
+        case modelEffort = "model_effort"
+        case phases
+        case iterations
+        case followupReasoningEffort = "followup_reasoning_effort"
+        case runnerCLI = "runner_cli"
+        case phaseOverrides = "phase_overrides"
+    }
+
+    public init(
+        runner: String? = nil,
+        model: String? = nil,
+        modelEffort: String? = nil,
+        phases: Int? = nil,
+        iterations: Int? = nil,
+        followupReasoningEffort: String? = nil,
+        runnerCLI: RalphJSONValue? = nil,
+        phaseOverrides: RalphTaskPhaseOverrides? = nil
+    ) {
+        self.runner = runner
+        self.model = model
+        self.modelEffort = modelEffort
+        self.phases = phases
+        self.iterations = iterations
+        self.followupReasoningEffort = followupReasoningEffort
+        self.runnerCLI = runnerCLI
+        self.phaseOverrides = phaseOverrides
+    }
+
+    public var isEmpty: Bool {
+        let runnerEmpty = runner?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+        let modelEmpty = model?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+        let modelEffortEmpty = modelEffort?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+        let followupEmpty = followupReasoningEffort?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+        return runnerEmpty
+            && modelEmpty
+            && modelEffortEmpty
+            && phases == nil
+            && iterations == nil
+            && followupEmpty
+            && runnerCLI == nil
+            && (phaseOverrides?.isEmpty ?? true)
+    }
+}
+
 public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
     public let id: String
     public var status: RalphTaskStatus
@@ -458,6 +563,7 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
     public var plan: [String]?
     public var notes: [String]?
     public var request: String?
+    public var agent: RalphTaskAgent?
     public var createdAt: Date?
     public var updatedAt: Date?
     public var startedAt: Date?
@@ -469,7 +575,7 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
 
     private enum CodingKeys: String, CodingKey {
         case id, status, title, description, priority, tags, scope, evidence, plan, notes
-        case request, dependsOn = "depends_on", blocks, relatesTo = "relates_to"
+        case request, agent, dependsOn = "depends_on", blocks, relatesTo = "relates_to"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case startedAt = "started_at"
@@ -489,6 +595,7 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
         plan: [String]? = nil,
         notes: [String]? = nil,
         request: String? = nil,
+        agent: RalphTaskAgent? = nil,
         createdAt: Date? = nil,
         updatedAt: Date? = nil,
         startedAt: Date? = nil,
@@ -509,6 +616,7 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
         self.plan = plan
         self.notes = notes
         self.request = request
+        self.agent = agent
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.startedAt = startedAt

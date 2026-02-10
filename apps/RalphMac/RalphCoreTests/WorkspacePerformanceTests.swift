@@ -477,6 +477,240 @@ final class WorkspacePerformanceTests: XCTestCase {
         XCTAssertEqual(workspace.stopAfterCurrent, true)
     }
 
+    // MARK: - Task Edit Agent Override Tests
+
+    func test_updateTask_agentOverride_emitsAgentEditCommand() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-agent-edit-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        try Self.writeEmptyQueueFile(in: tempDir)
+        let logURL = tempDir.appendingPathComponent("commands.log")
+
+        let script = """
+            #!/bin/sh
+            log_file="\(logURL.path)"
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "__cli-spec" ] && [ "$3" = "--format" ] && [ "$4" = "json" ]; then
+              echo '{"version":2,"root":{"name":"ralph","about":"mock","subcommands":[]}}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "config" ] && [ "$3" = "show" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
+              echo '{"agent":{"model":"gpt-5.3-codex","iterations":1}}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "queue" ] && [ "$3" = "list" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              echo '{"version":1,"tasks":[]}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "task" ] && [ "$3" = "edit" ]; then
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              exit 0
+            fi
+
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph-task-edit-agent",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+
+        let original = RalphTask(
+            id: "RQ-9001",
+            status: .todo,
+            title: "Task",
+            priority: .medium
+        )
+        var updated = original
+        updated.agent = RalphTaskAgent(
+            runner: "codex",
+            model: "gpt-5.3-codex",
+            modelEffort: "high",
+            phases: 2,
+            iterations: 1,
+            phaseOverrides: RalphTaskPhaseOverrides(
+                phase2: RalphTaskPhaseOverride(
+                    runner: "kimi",
+                    model: "kimi-code/kimi-for-coding",
+                    reasoningEffort: nil
+                )
+            )
+        )
+
+        try await workspace.updateTask(from: original, to: updated)
+
+        let log = try String(contentsOf: logURL, encoding: .utf8)
+        let lines = log.split(separator: "\n").map(String.init)
+        let agentEditLine = lines.first { $0.contains("<task><edit><agent><") }
+
+        XCTAssertNotNil(agentEditLine)
+        XCTAssertTrue(agentEditLine?.contains("\"runner\":\"codex\"") == true)
+        XCTAssertTrue(agentEditLine?.contains("\"model\":\"gpt-5.3-codex\"") == true)
+        XCTAssertTrue(agentEditLine?.contains("\"model_effort\":\"high\"") == true)
+        XCTAssertTrue(agentEditLine?.contains("\"phases\":2") == true)
+        XCTAssertTrue(agentEditLine?.contains("\"iterations\":1") == true)
+        XCTAssertTrue(agentEditLine?.contains("\"phase_overrides\":{\"phase2\"") == true)
+        XCTAssertTrue(lines.contains { $0.contains("<--no-color><queue><list><--format><json>") })
+    }
+
+    func test_updateTask_clearingAgentOverride_emitsEmptyAgentValue() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-agent-clear-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        try Self.writeEmptyQueueFile(in: tempDir)
+        let logURL = tempDir.appendingPathComponent("commands.log")
+
+        let script = """
+            #!/bin/sh
+            log_file="\(logURL.path)"
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "__cli-spec" ] && [ "$3" = "--format" ] && [ "$4" = "json" ]; then
+              echo '{"version":2,"root":{"name":"ralph","about":"mock","subcommands":[]}}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "config" ] && [ "$3" = "show" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
+              echo '{"agent":{"model":"gpt-5.3-codex","iterations":1}}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "queue" ] && [ "$3" = "list" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              echo '{"version":1,"tasks":[]}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "task" ] && [ "$3" = "edit" ]; then
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              exit 0
+            fi
+
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph-task-edit-agent-clear",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+
+        let original = RalphTask(
+            id: "RQ-9002",
+            status: .todo,
+            title: "Task",
+            priority: .medium,
+            agent: RalphTaskAgent(
+                runner: "codex",
+                model: "gpt-5.3-codex",
+                phases: 2
+            )
+        )
+        var updated = original
+        updated.agent = nil
+
+        try await workspace.updateTask(from: original, to: updated)
+
+        let log = try String(contentsOf: logURL, encoding: .utf8)
+        let lines = log.split(separator: "\n").map(String.init)
+        let agentEditLine = lines.first { $0.contains("<--no-color><task><edit><agent><") }
+
+        XCTAssertNotNil(agentEditLine)
+        XCTAssertTrue(
+            agentEditLine == "<--no-color><task><edit><agent><><RQ-9002>"
+                || agentEditLine == "<--no-color><task><edit><agent><RQ-9002>"
+        )
+    }
+
+    func test_updateTask_semanticallyEmptyAgentOverride_doesNotEmitAgentEdit() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-agent-noop-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        try Self.writeEmptyQueueFile(in: tempDir)
+        let logURL = tempDir.appendingPathComponent("commands.log")
+
+        let script = """
+            #!/bin/sh
+            log_file="\(logURL.path)"
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "__cli-spec" ] && [ "$3" = "--format" ] && [ "$4" = "json" ]; then
+              echo '{"version":2,"root":{"name":"ralph","about":"mock","subcommands":[]}}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "config" ] && [ "$3" = "show" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
+              echo '{"agent":{"model":"gpt-5.3-codex","iterations":1}}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "queue" ] && [ "$3" = "list" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              echo '{"version":1,"tasks":[]}'
+              exit 0
+            fi
+
+            if [ "$1" = "--no-color" ] && [ "$2" = "task" ] && [ "$3" = "edit" ]; then
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              exit 0
+            fi
+
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try Self.makeExecutableScript(
+            in: tempDir,
+            name: "mock-ralph-task-edit-agent-noop",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+
+        let original = RalphTask(
+            id: "RQ-9003",
+            status: .todo,
+            title: "Task",
+            priority: .medium
+        )
+        var updated = original
+        updated.agent = RalphTaskAgent(
+            runner: "   ",
+            model: "  ",
+            modelEffort: "default",
+            phases: 8,
+            iterations: 0
+        )
+
+        try await workspace.updateTask(from: original, to: updated)
+
+        let log = try String(contentsOf: logURL, encoding: .utf8)
+        let lines = log.split(separator: "\n").map(String.init)
+        XCTAssertFalse(lines.contains { $0.contains("<--no-color><task><edit><agent><") })
+        XCTAssertTrue(lines.contains { $0.contains("<--no-color><queue><list><--format><json>") })
+    }
+
     // MARK: - Helpers
 
     private static func makeTempDir(prefix: String) throws -> URL {
@@ -494,6 +728,13 @@ final class WorkspacePerformanceTests: XCTestCase {
             ofItemAtPath: scriptURL.path
         )
         return scriptURL
+    }
+
+    private static func writeEmptyQueueFile(in workspaceDir: URL) throws {
+        let ralphDir = workspaceDir.appendingPathComponent(".ralph", isDirectory: true)
+        try FileManager.default.createDirectory(at: ralphDir, withIntermediateDirectories: true)
+        let queueFile = ralphDir.appendingPathComponent("queue.json", isDirectory: false)
+        try #"{"version":1,"tasks":[]}"#.write(to: queueFile, atomically: true, encoding: .utf8)
     }
 
     private static func waitFor(

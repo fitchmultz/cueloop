@@ -253,7 +253,7 @@ Each phase config can specify:
 }
 ```
 
-**Precedence (per phase):** CLI phase flags > config phase override (`agent.phase_overrides.phaseN.*`) > CLI global overrides > task overrides (`task.agent.*`) > config defaults (`agent.*`) > code defaults
+**Precedence (per phase):** CLI phase flags > task phase override (`task.agent.phase_overrides.phaseN.*`) > config phase override (`agent.phase_overrides.phaseN.*`) > CLI global overrides > task global overrides (`task.agent.*`) > config defaults (`agent.*`) > code defaults
 
 ## Parallel Configuration
 

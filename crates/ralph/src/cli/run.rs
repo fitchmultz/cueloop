@@ -146,10 +146,11 @@ Phase-specific overrides:\n\
  \n\
   Precedence per phase (highest to lowest):\n\
     1) CLI phase override (--runner-phaseN, --model-phaseN, --effort-phaseN)\n\
-    2) Config phase override (agent.phase_overrides.phaseN.*)\n\
-    3) CLI global override (--runner, --model, --effort)\n\
-    4) Task override (task.agent.*)\n\
-    5) Config defaults (agent.*)\n\
+    2) Task phase override (task.agent.phase_overrides.phaseN.*)\n\
+    3) Config phase override (agent.phase_overrides.phaseN.*)\n\
+    4) CLI global override (--runner, --model, --effort)\n\
+    5) Task global override (task.agent.runner/model/model_effort)\n\
+    6) Config defaults (agent.*)\n\
  \n\
  To change defaults for this repo, edit .ralph/config.json:\n\
   version: 1\n\
