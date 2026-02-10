@@ -136,7 +136,6 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
 	     - `--parallel` runs loop tasks concurrently in workspaces (clone-based).\n\
 	     - Parallel workers do not modify `.ralph/queue.json` or `.ralph/done.json`; they commit completion signals in `.ralph/cache/completions/<TASK_ID>.json`.\n\
 	     - After merge, the coordinator applies completion signals to update queue/done (errors if missing).\n\
-	  - `--update-task` runs `ralph task update <TASK_ID>` once per task immediately before task is marked `doing`.\n\
 	  - Clean-repo checks allow changes to `.ralph/config.json` (plus `.ralph/queue.json` and `.ralph/done.json`); use `--force` to bypass entirely.\n\
 	 \n\
 Phase-specific overrides:\n\
@@ -172,12 +171,10 @@ Examples:\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode disabled\n\
  ralph run one --git-commit-push-off\n\
- ralph run one --update-task\n\
  ralph run one --lfs-check\n\
  ralph run loop --max-tasks 0\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
  ralph run loop --include-draft --max-tasks 1\n\
- ralph run loop --update-task --max-tasks 1\n\
  ralph run loop --git-revert-mode ask --max-tasks 1\n\
  ralph run loop --git-commit-push-on --max-tasks 1\n\
  ralph run loop --lfs-check --max-tasks 1\n\
@@ -229,7 +226,6 @@ Examples:\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode enabled\n\
  ralph run one --git-commit-push-off\n\
- ralph run one --update-task\n\
  ralph run one --lfs-check\n\
  ralph run one --repo-prompt plan\n\
  ralph run one --repo-prompt off\n\
@@ -257,7 +253,6 @@ Examples:\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode disabled --max-tasks 1\n\
  ralph run loop --git-commit-push-off --max-tasks 1\n\
- ralph run loop --update-task --max-tasks 1\n\
  ralph run loop --repo-prompt tools --max-tasks 1\n\
  ralph run loop --repo-prompt off --max-tasks 1\n\
 	 ralph run loop --lfs-check --max-tasks 1\n\

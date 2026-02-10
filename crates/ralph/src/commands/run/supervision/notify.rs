@@ -94,8 +94,6 @@ mod tests {
                 claude_permission_mode: Some(
                     crate::contracts::ClaudePermissionMode::BypassPermissions,
                 ),
-                update_task_before_run: None,
-                fail_on_prerun_update_error: None,
                 runner_cli: None,
                 phase_overrides: None,
                 instruction_files: None,

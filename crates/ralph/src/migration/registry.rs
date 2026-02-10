@@ -37,14 +37,30 @@ use super::{Migration, MigrationType};
 ///     },
 /// ];
 /// ```
-pub static MIGRATIONS: &[Migration] = &[Migration {
-    id: "config_key_rename_parallel_worktree_root_2026_02",
-    description: "Rename parallel.worktree_root to parallel.workspace_root",
-    migration_type: MigrationType::ConfigKeyRename {
-        old_key: "parallel.worktree_root",
-        new_key: "parallel.workspace_root",
+pub static MIGRATIONS: &[Migration] = &[
+    Migration {
+        id: "config_key_rename_parallel_worktree_root_2026_02",
+        description: "Rename parallel.worktree_root to parallel.workspace_root",
+        migration_type: MigrationType::ConfigKeyRename {
+            old_key: "parallel.worktree_root",
+            new_key: "parallel.workspace_root",
+        },
     },
-}];
+    Migration {
+        id: "config_key_remove_agent_update_task_before_run_2026_02",
+        description: "Remove deprecated agent.update_task_before_run key",
+        migration_type: MigrationType::ConfigKeyRemove {
+            key: "agent.update_task_before_run",
+        },
+    },
+    Migration {
+        id: "config_key_remove_agent_fail_on_prerun_update_error_2026_02",
+        description: "Remove deprecated agent.fail_on_prerun_update_error key",
+        migration_type: MigrationType::ConfigKeyRemove {
+            key: "agent.fail_on_prerun_update_error",
+        },
+    },
+];
 
 /// Get a migration by its ID.
 pub fn get_migration_by_id(id: &str) -> Option<&'static Migration> {

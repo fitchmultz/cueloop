@@ -283,13 +283,6 @@ Paths can be:
 }
 ```
 
-### Task Update Settings
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `update_task_before_run` | `boolean` | `false` | Auto-update task before execution |
-| `fail_on_prerun_update_error` | `boolean` | `false` | Fail run if pre-run update fails |
-
 ### Session & Recovery
 
 | Field | Type | Default | Description |
@@ -321,8 +314,7 @@ Paths can be:
     "repoprompt_plan_required": false,
     "instruction_files": ["AGENTS.md"],
     "session_timeout_hours": 24,
-    "scan_prompt_version": "v2",
-    "update_task_before_run": false
+    "scan_prompt_version": "v2"
   }
 }
 ```

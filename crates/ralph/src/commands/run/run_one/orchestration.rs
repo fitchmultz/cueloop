@@ -1,7 +1,7 @@
 //! Core run-one orchestration.
 //!
 //! Responsibilities:
-//! - Implement `run_one_impl`: lock, load/validate queues, select task, pre-run update,
+//! - Implement `run_one_impl`: lock, load/validate queues, select task,
 //!   prompt assembly, iteration loop, phase execution, and post-run bookkeeping.
 //!
 //! Not handled here:
@@ -15,11 +15,8 @@
 use std::cell::RefCell;
 
 use crate::agent::AgentOverrides;
-use crate::commands::task as task_cmd;
 use crate::config;
-use crate::contracts::{
-    AgentConfig, GitRevertMode, ProjectType, RunnerCliOptionsPatch, Task, TaskStatus,
-};
+use crate::contracts::{AgentConfig, GitRevertMode, ProjectType, Task, TaskStatus};
 use crate::promptflow;
 use crate::queue::RunnableSelectionOptions;
 use crate::session::{self};
@@ -294,102 +291,19 @@ pub fn run_one_impl(
         git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
     )?;
 
-    // Optional pre-run task update: run once per task ID, immediately before we mark the task as doing.
-    let mut update_task_before_run = agent_overrides
-        .update_task_before_run
-        .or(resolved.config.agent.update_task_before_run)
-        .unwrap_or(false);
-
-    let fail_on_prerun_update_error = agent_overrides
-        .fail_on_prerun_update_error
-        .or(resolved.config.agent.fail_on_prerun_update_error)
-        .unwrap_or(false);
-
-    if matches!(post_run_mode, PostRunMode::ParallelWorker) && update_task_before_run {
-        log::info!(
-            "Task {task_id}: parallel worker mode skips pre-run task update to avoid queue writes"
-        );
-        update_task_before_run = false;
-    }
-
-    if update_task_before_run {
-        log::info!("Task {task_id}: pre-run update enabled; running task updater");
-        // Determine which phase settings to use for pre-run update:
-        // - Multi-phase (phases >= 2): use Phase 1 (planning) settings
-        // - Single-phase (phases = 1): use Phase 2 (implementation) settings
-        let update_phase_settings = if phases >= 2 {
-            &phase_matrix.phase1
-        } else {
-            &phase_matrix.phase2
-        };
-        let runner_cli_overrides = RunnerCliOptionsPatch {
-            output_format: Some(update_phase_settings.runner_cli.output_format),
-            verbosity: Some(update_phase_settings.runner_cli.verbosity),
-            approval_mode: Some(update_phase_settings.runner_cli.approval_mode),
-            sandbox: Some(update_phase_settings.runner_cli.sandbox),
-            plan_mode: Some(update_phase_settings.runner_cli.plan_mode),
-            unsupported_option_policy: Some(
-                update_phase_settings.runner_cli.unsupported_option_policy,
-            ),
-        };
-        let update_settings = task_cmd::TaskUpdateSettings {
-            fields: "scope,evidence,plan,notes,tags,depends_on".to_string(),
-            runner_override: Some(update_phase_settings.runner.clone()),
-            model_override: Some(update_phase_settings.model.clone()),
-            reasoning_effort_override: update_phase_settings.reasoning_effort,
-            runner_cli_overrides,
+    // Refresh task metadata once for plan-oriented workflows (Phase 1 ownership).
+    if phases >= 2 {
+        let phase1_settings = phase_matrix.phase1.to_agent_settings();
+        if let Some(updated_task) = phases::refresh_task_before_phase1(
+            resolved,
+            &task_id,
+            &phase1_settings,
+            &policy,
+            post_run_mode,
             force,
-            repoprompt_tool_injection: policy.repoprompt_tool_injection,
-            dry_run: false,
-        };
-
-        // Run pre-run task update, but don't fail if it errors - log warning and continue
-        match task_cmd::update_task_without_lock(resolved, &task_id, &update_settings) {
-            Ok(()) => {
-                log::info!("Task {task_id}: pre-run update completed successfully");
-            }
-            Err(err) => {
-                if runutil::abort_reason(&err).is_some() {
-                    return Err(err);
-                }
-                if fail_on_prerun_update_error {
-                    return Err(anyhow::anyhow!(
-                        "Pre-run task update failed for {}: {}\n\n\
-                         Troubleshooting:\
-                         - Check runner configuration (agent.runner, agent.model)\n\
-                         - Verify runner binary is on PATH\n\
-                         - Run with --force to skip this check\n\
-                         - Or set fail_on_prerun_update_error: false in config to warn only",
-                        task_id,
-                        err
-                    ));
-                }
-                log::warn!(
-                    "Task {task_id}: pre-run update failed (continuing with original task): {:#}",
-                    err
-                );
-                log::debug!("Pre-run update error details: {:?}", err);
-                // Continue with original task - don't fail the run
-            }
+        )? {
+            task = updated_task;
         }
-
-        // Reload the task so the execution prompt includes updated fields.
-        // Use repair mechanism in case the update left malformed JSON.
-        // Validate after repair to catch semantic errors early.
-        let (updated_queue_file, validation_warnings) = queue::load_queue_with_repair_and_validate(
-            &resolved.queue_path,
-            done_ref,
-            &resolved.id_prefix,
-            resolved.id_width,
-            max_depth,
-        )
-        .context("validate repaired queue after pre-run update")?;
-        queue::log_warnings(&validation_warnings);
-        task = updated_queue_file
-            .tasks
-            .into_iter()
-            .find(|t| t.id.trim() == task_id)
-            .context("reload selected task after pre-run update")?;
     }
 
     // Load plugin registry for processor hook invocation

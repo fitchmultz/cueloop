@@ -1,7 +1,8 @@
-//! Config key migration utilities with JSONC comment preservation.
+//! Config key migration utilities for rename/remove operations.
 //!
 //! Responsibilities:
 //! - Rename config keys while preserving JSONC comments and formatting.
+//! - Remove deprecated config keys from project/global config files.
 //! - Check if config keys exist in project or global config files.
 //! - Apply key renames safely with backup capability.
 //!
@@ -15,6 +16,7 @@
 //! - Both project and global configs are checked/updated.
 //! - Key renames are scoped to their parent object (e.g., "parallel.worktree_root"
 //!   only renames "worktree_root" keys that appear within a "parallel" object).
+//! - Key removals rewrite parsed JSON values and may normalize formatting/comments.
 
 use anyhow::{Context, Result};
 use std::fs;
@@ -92,6 +94,25 @@ pub fn apply_key_rename(ctx: &MigrationContext, old_key: &str, new_key: &str) ->
     Ok(())
 }
 
+/// Apply a key removal to both project and global configs.
+pub fn apply_key_remove(ctx: &MigrationContext, key: &str) -> Result<()> {
+    // Update project config if it has the key
+    if config_file_has_key(&ctx.project_config_path, key)? {
+        remove_key_in_file(&ctx.project_config_path, key)
+            .with_context(|| "remove key in project config".to_string())?;
+    }
+
+    // Update global config if it has the key
+    if let Some(global_path) = &ctx.global_config_path
+        && config_file_has_key(global_path, key)?
+    {
+        remove_key_in_file(global_path, key)
+            .with_context(|| "remove key in global config".to_string())?;
+    }
+
+    Ok(())
+}
+
 /// Rename a key in a specific config file while preserving comments.
 /// Uses scoped text-based replacement to only rename within the specified parent object.
 /// For "parallel.worktree_root", only renames "worktree_root" inside "parallel" objects.
@@ -139,6 +160,24 @@ fn rename_key_in_file(path: &Path, old_key: &str, new_key: &str) -> Result<()> {
         path.display()
     );
 
+    Ok(())
+}
+
+/// Remove a key from a specific config file.
+fn remove_key_in_file(path: &Path, key: &str) -> Result<()> {
+    let raw =
+        fs::read_to_string(path).with_context(|| format!("read config file {}", path.display()))?;
+
+    let mut value = jsonc_parser::parse_to_serde_value(&raw, &Default::default())?
+        .ok_or_else(|| anyhow::anyhow!("parse config file {}", path.display()))?;
+
+    remove_key_from_value(&mut value, key);
+
+    let modified = serde_json::to_string_pretty(&value).context("serialize config")?;
+    crate::fsutil::write_atomic(path, modified.as_bytes())
+        .with_context(|| format!("write modified config to {}", path.display()))?;
+
+    log::info!("Removed config key '{}' in {}", key, path.display());
     Ok(())
 }
 
@@ -334,6 +373,32 @@ fn rename_key_in_object_scope(
     result.push_str(&raw[last_end..]);
 
     Ok(result)
+}
+
+/// Remove a key from a serde_json value using dot notation (e.g., "agent.runner").
+fn remove_key_from_value(value: &mut serde_json::Value, key: &str) {
+    let parts: Vec<&str> = key.split('.').collect();
+    if parts.is_empty() {
+        return;
+    }
+
+    let mut current = value;
+    for part in &parts[..parts.len() - 1] {
+        match current {
+            serde_json::Value::Object(map) => {
+                if let Some(next) = map.get_mut(*part) {
+                    current = next;
+                } else {
+                    return;
+                }
+            }
+            _ => return,
+        }
+    }
+
+    if let serde_json::Value::Object(map) = current {
+        map.remove(parts[parts.len() - 1]);
+    }
 }
 
 /// Get the value of a config key from the context's resolved config.
@@ -571,5 +636,35 @@ mod tests {
         // Comments should be preserved
         assert!(content.contains("// Parallel execution settings"));
         assert!(content.contains("/* old setting name */"));
+    }
+
+    #[test]
+    fn remove_key_in_file_removes_nested_key() {
+        let dir = TempDir::new().unwrap();
+        let config_path = dir.path().join("config.json");
+
+        fs::write(
+            &config_path,
+            r#"{
+                "version": 1,
+                "agent": {
+                    "runner": "claude",
+                    "update_task_before_run": true
+                }
+            }"#,
+        )
+        .unwrap();
+
+        remove_key_in_file(&config_path, "agent.update_task_before_run").unwrap();
+
+        let value = jsonc_parser::parse_to_serde_value(
+            &fs::read_to_string(&config_path).unwrap(),
+            &Default::default(),
+        )
+        .unwrap()
+        .unwrap();
+        let agent = value.get("agent").unwrap();
+        assert!(agent.get("update_task_before_run").is_none());
+        assert_eq!(agent.get("runner").and_then(|v| v.as_str()), Some("claude"));
     }
 }

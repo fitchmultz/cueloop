@@ -12,7 +12,6 @@
         "claude_permission_mode": "bypass_permissions",
         "codex_bin": "codex",
         "cursor_bin": "agent",
-        "fail_on_prerun_update_error": false,
         "followup_reasoning_effort": null,
         "gemini_bin": "gemini",
         "git_commit_push_enabled": true,
@@ -92,7 +91,6 @@
         },
         "scan_prompt_version": "v2",
         "session_timeout_hours": 24,
-        "update_task_before_run": false,
         "webhook": {
           "enabled": null,
           "events": null,
@@ -251,14 +249,6 @@
           "default": null,
           "type": [
             "string",
-            "null"
-          ]
-        },
-        "fail_on_prerun_update_error": {
-          "description": "If true, fail the run when pre-run task update fails. If false (default), log a warning and continue with original task data.",
-          "default": null,
-          "type": [
-            "boolean",
             "null"
           ]
         },
@@ -488,14 +478,6 @@
           ],
           "format": "uint64",
           "minimum": 1.0
-        },
-        "update_task_before_run": {
-          "description": "If true, automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution.\n\nDefault: false (opt-in).",
-          "default": null,
-          "type": [
-            "boolean",
-            "null"
-          ]
         },
         "webhook": {
           "description": "Webhook configuration for HTTP task event notifications.",

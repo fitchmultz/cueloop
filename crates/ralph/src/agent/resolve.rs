@@ -44,8 +44,6 @@ pub struct AgentOverrides {
     /// - 2 => two-pass execution (plan then implement)
     /// - 3 => three-pass execution (plan, implement+CI, review+complete)
     pub phases: Option<u8>,
-    pub update_task_before_run: Option<bool>,
-    pub fail_on_prerun_update_error: Option<bool>,
     pub repoprompt_plan_required: Option<bool>,
     pub repoprompt_tool_injection: Option<bool>,
     pub git_revert_mode: Option<GitRevertMode>,
@@ -111,14 +109,6 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
     };
 
     let include_draft = if args.include_draft { Some(true) } else { None };
-
-    let update_task_before_run = if args.update_task {
-        Some(true)
-    } else if args.no_update_task {
-        Some(false)
-    } else {
-        None
-    };
 
     // Handle --quick flag: when set, override phases to 1 (single-pass execution)
     let phases = if args.quick { Some(1) } else { args.phases };
@@ -227,8 +217,6 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         reasoning_effort,
         runner_cli,
         phases,
-        update_task_before_run,
-        fail_on_prerun_update_error: None,
         repoprompt_plan_required: repoprompt_override.map(|flags| flags.plan_required),
         repoprompt_tool_injection: repoprompt_override.map(|flags| flags.tool_injection),
         git_revert_mode,
@@ -279,8 +267,6 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
         reasoning_effort,
         runner_cli,
         phases: None,
-        update_task_before_run: None,
-        fail_on_prerun_update_error: None,
         repoprompt_plan_required: repoprompt_override.map(|flags| flags.plan_required),
         repoprompt_tool_injection: repoprompt_override.map(|flags| flags.tool_injection),
         git_revert_mode: None,
@@ -429,8 +415,6 @@ mod tests {
             git_commit_push_on: false,
             git_commit_push_off: true,
             include_draft: true,
-            update_task: true,
-            no_update_task: false,
             notify: false,
             no_notify: false,
             notify_fail: false,
@@ -454,7 +438,6 @@ mod tests {
         assert_eq!(overrides.model, Some(Model::Gpt52Codex));
         assert_eq!(overrides.reasoning_effort, Some(ReasoningEffort::High));
         assert_eq!(overrides.phases, Some(2));
-        assert_eq!(overrides.update_task_before_run, Some(true));
         assert_eq!(overrides.git_revert_mode, Some(GitRevertMode::Enabled));
         assert_eq!(overrides.git_commit_push_enabled, Some(false));
         assert_eq!(overrides.include_draft, Some(true));
@@ -479,8 +462,6 @@ mod tests {
             git_commit_push_on: false,
             git_commit_push_off: false,
             include_draft: false,
-            update_task: false,
-            no_update_task: false,
             notify: false,
             no_notify: false,
             notify_fail: false,
@@ -511,45 +492,6 @@ mod tests {
     }
 
     #[test]
-    fn resolve_run_agent_overrides_can_disable_update_task_via_cli() {
-        let args = RunAgentArgs {
-            profile: None,
-            runner: None,
-            model: None,
-            effort: None,
-            runner_cli: RunnerCliArgs::default(),
-            phases: None,
-            quick: false,
-            repo_prompt: None,
-            git_revert_mode: None,
-            git_commit_push_on: false,
-            git_commit_push_off: false,
-            include_draft: false,
-            update_task: false,
-            no_update_task: true,
-            notify: false,
-            no_notify: false,
-            notify_fail: false,
-            no_notify_fail: false,
-            notify_sound: false,
-            lfs_check: false,
-            no_progress: false,
-            runner_phase1: None,
-            model_phase1: None,
-            effort_phase1: None,
-            runner_phase2: None,
-            model_phase2: None,
-            effort_phase2: None,
-            runner_phase3: None,
-            model_phase3: None,
-            effort_phase3: None,
-        };
-
-        let overrides = resolve_run_agent_overrides(&args).unwrap();
-        assert_eq!(overrides.update_task_before_run, Some(false));
-    }
-
-    #[test]
     fn resolve_run_agent_overrides_quick_flag_sets_phases_to_one() {
         let args = RunAgentArgs {
             profile: None,
@@ -564,8 +506,6 @@ mod tests {
             git_commit_push_on: false,
             git_commit_push_off: false,
             include_draft: false,
-            update_task: false,
-            no_update_task: false,
             notify: false,
             no_notify: false,
             notify_fail: false,
@@ -603,8 +543,6 @@ mod tests {
             git_commit_push_on: false,
             git_commit_push_off: false,
             include_draft: false,
-            update_task: false,
-            no_update_task: false,
             notify: false,
             no_notify: false,
             notify_fail: false,
@@ -642,8 +580,6 @@ mod tests {
             git_commit_push_on: false,
             git_commit_push_off: false,
             include_draft: false,
-            update_task: false,
-            no_update_task: false,
             notify: false,
             no_notify: false,
             notify_fail: false,
@@ -708,8 +644,6 @@ mod tests {
             git_commit_push_on: false,
             git_commit_push_off: false,
             include_draft: false,
-            update_task: false,
-            no_update_task: false,
             notify: false,
             no_notify: false,
             notify_fail: false,
@@ -761,8 +695,6 @@ mod tests {
             git_commit_push_on: false,
             git_commit_push_off: false,
             include_draft: false,
-            update_task: false,
-            no_update_task: false,
             notify: false,
             no_notify: false,
             notify_fail: false,
@@ -801,8 +733,6 @@ mod tests {
             git_commit_push_on: false,
             git_commit_push_off: false,
             include_draft: false,
-            update_task: false,
-            no_update_task: false,
             notify: false,
             no_notify: false,
             notify_fail: false,

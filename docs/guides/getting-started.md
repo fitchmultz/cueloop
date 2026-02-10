@@ -454,8 +454,7 @@ A minimal effective configuration:
     "ci_gate_enabled": true,      // Run make ci before completion
     "ci_gate_command": "make ci", // CI command to run
     "git_commit_push_enabled": false,  // Auto-commit/push on completion
-    "git_revert_mode": "ask",     // ask/enabled/disabled
-    "update_task_before_run": false    // Auto-update task before run
+    "git_revert_mode": "ask"      // ask/enabled/disabled
   }
 }
 ```

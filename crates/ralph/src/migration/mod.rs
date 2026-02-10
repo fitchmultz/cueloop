@@ -1,7 +1,7 @@
 //! Migration system for config and project file changes.
 //!
 //! Responsibilities:
-//! - Track and apply migrations for config key renames, file format changes, and README updates.
+//! - Track and apply migrations for config key renames/removals, file format changes, and README updates.
 //! - Provide a registry-based system for defining migrations with unique IDs.
 //! - Support safe migration with backup/rollback capability.
 //! - Preserve JSONC comments when modifying config files.
@@ -54,6 +54,11 @@ pub enum MigrationType {
         old_key: &'static str,
         /// Dot-separated path to the new key (e.g., "agent.runner_options").
         new_key: &'static str,
+    },
+    /// Remove a deprecated config key.
+    ConfigKeyRemove {
+        /// Dot-separated path to the key to remove (e.g., "agent.legacy_flag").
+        key: &'static str,
     },
     /// Rename/move a file.
     FileRename {
@@ -143,6 +148,7 @@ fn is_migration_applicable(ctx: &MigrationContext, migration: &Migration) -> boo
         MigrationType::ConfigKeyRename { old_key, .. } => {
             config_migrations::config_has_key(ctx, old_key)
         }
+        MigrationType::ConfigKeyRemove { key } => config_migrations::config_has_key(ctx, key),
         MigrationType::FileRename { old_path, new_path } => {
             ctx.file_exists(old_path) && !ctx.file_exists(new_path)
         }
@@ -186,6 +192,10 @@ pub fn apply_migration(ctx: &mut MigrationContext, migration: &Migration) -> Res
         MigrationType::ConfigKeyRename { old_key, new_key } => {
             config_migrations::apply_key_rename(ctx, old_key, new_key)
                 .with_context(|| format!("apply config key rename for {}", migration.id))?;
+        }
+        MigrationType::ConfigKeyRemove { key } => {
+            config_migrations::apply_key_remove(ctx, key)
+                .with_context(|| format!("apply config key removal for {}", migration.id))?;
         }
         MigrationType::FileRename { old_path, new_path } => {
             file_migrations::apply_file_rename(ctx, old_path, new_path)

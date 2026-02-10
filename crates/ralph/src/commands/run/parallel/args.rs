@@ -62,14 +62,6 @@ pub(crate) fn build_override_args(overrides: &AgentOverrides) -> Vec<String> {
         args.push("--include-draft".to_string());
     }
 
-    if let Some(update) = overrides.update_task_before_run {
-        if update {
-            args.push("--update-task".to_string());
-        } else {
-            args.push("--no-update-task".to_string());
-        }
-    }
-
     if let Some(value) = overrides.notify_on_complete {
         args.push(if value {
             "--notify".to_string()
@@ -288,7 +280,6 @@ mod tests {
             git_revert_mode: Some(crate::contracts::GitRevertMode::Disabled),
             git_commit_push_enabled: Some(true),
             include_draft: Some(true),
-            update_task_before_run: Some(false),
             notify_on_complete: Some(true),
             notify_on_fail: Some(false),
             notify_sound: Some(true),
@@ -312,7 +303,6 @@ mod tests {
             "disabled",
             "--git-commit-push-on",
             "--include-draft",
-            "--no-update-task",
             "--notify",
             "--no-notify-fail",
             "--notify-sound",

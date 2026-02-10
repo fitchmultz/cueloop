@@ -136,16 +136,6 @@ pub struct RunAgentArgs {
     #[arg(long)]
     pub include_draft: bool,
 
-    /// Automatically update the selected task immediately before running it.
-    ///
-    /// This runs the equivalent of: `ralph task update <TASK_ID>` once per task.
-    #[arg(long, conflicts_with = "no_update_task")]
-    pub update_task: bool,
-
-    /// Disable automatic pre-run task update (overrides config).
-    #[arg(long, conflicts_with = "update_task")]
-    pub no_update_task: bool,
-
     /// Enable desktop notification on task completion (overrides config).
     #[arg(long, conflicts_with = "no_notify")]
     pub notify: bool,

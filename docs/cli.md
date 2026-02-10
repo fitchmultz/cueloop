@@ -934,11 +934,6 @@ ralph run loop --parallel --max-tasks 4
 ralph run loop --parallel 4 --max-tasks 8
 ```
 
-### Pre-run task update
-
-* `--update-task`: Automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution. This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. This runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via config: `agent.update_task_before_run: true`.
-* `--no-update-task`: Disable automatic pre-run task update (overrides config).
-
 ### Normalized runner CLI options
 
 These flags configure a normalized runner CLI behavior surface across Codex/OpenCode/Gemini/Claude/Cursor/Kimi/Pi. Unsupported options are dropped by default with a warning (see `--unsupported-option-policy`).
@@ -1014,14 +1009,12 @@ ralph run one --phases 2
 ralph run one --phases 1
 ralph run one --quick
 ralph run one --include-draft
-ralph run one --update-task
 ralph run loop --max-tasks 0
 ralph run loop --profile quick --max-tasks 5
 ralph run loop --profile thorough --max-tasks 3
 ralph run loop --phases 3 --max-tasks 0
 ralph run loop --quick --max-tasks 1
 ralph run loop --include-draft --max-tasks 1
-ralph run loop --update-task --max-tasks 1
 ralph run loop --repo-prompt tools --max-tasks 1
 ralph run loop --repo-prompt off --max-tasks 1
 ralph run loop --parallel --max-tasks 4
@@ -3072,8 +3065,7 @@ The `run one` and `run loop` commands also support:
 * `--include-draft`: Include draft tasks (`status: draft`) when selecting what to run.
 * `--non-interactive`: Skip interactive prompts for sanity checks and session recovery. Useful for CI environments where TTY is not available.
 * `--parallel [N]` (run loop only): Run tasks concurrently in isolated git workspace clones. Defaults to `2` when provided without a value. Parallel workers do not modify `.ralph/queue.json` or `.ralph/done.json`; they commit completion signals in `.ralph/cache/completions/<TASK_ID>.json`, and the coordinator applies them after merge (errors if missing). Parallel workers force RepoPrompt mode to `off` to keep edits inside workspace clones. Parallel workers honor `--git-commit-push-on/off` and `agent.git_commit_push_enabled`; when commit/push is disabled, parallel PR automation is skipped.
-* `--update-task`: Automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution. This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. Runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via config: `agent.update_task_before_run: true`.
-* `--no-update-task`: Disable automatic pre-run task update for this invocation (overrides config).
+* Multi-phase runs (`--phases 2` or `--phases 3`) automatically refresh task fields (`scope,evidence,plan,notes,tags,depends_on`) once before Phase 1 planning.
 * `--notify`: Enable desktop notification on task completion (overrides config).
 * `--no-notify`: Disable desktop notification on task completion (overrides config).
 * `--notify-fail`: Enable desktop notification on task failure (overrides config).
@@ -3087,8 +3079,6 @@ Examples:
 
 ```bash
 ralph run one --include-draft
-ralph run one --update-task
-ralph run one --no-update-task
 ralph run one --notify
 ralph run one --notify --notify-sound
 ralph run one --no-notify
@@ -3099,7 +3089,6 @@ ralph run one --git-commit-push-off
 ralph run loop --include-draft --max-tasks 1
 ralph run loop --parallel --max-tasks 4
 ralph run loop --parallel 4 --max-tasks 8
-ralph run loop --update-task --max-tasks 1
 ralph run loop --max-tasks 1 --debug
 ```
 

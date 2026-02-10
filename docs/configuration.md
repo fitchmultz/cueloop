@@ -61,7 +61,6 @@ Supported fields:
 - `runner`: `codex`, `opencode`, `gemini`, `claude`, or `cursor`.
 - `model`: default model id (string).
 - `phases`: number of phases (1, 2, or 3).
-- `update_task_before_run`: if `true`, Ralph runs `ralph task update <TASK-ID>` once per task immediately before execution begins (default: `false`). This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. Runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via CLI flag: `--update-task`.
 - `reasoning_effort`: `low`, `medium`, `high`, `xhigh` (Codex only).
 - `iterations`: number of iterations to run per task (default: 1).
 - `followup_reasoning_effort`: reasoning effort for iterations after the first (Codex only).
@@ -93,6 +92,7 @@ Supported fields:
   ```
 
 Notes:
+- Multi-phase runs (`phases >= 2`) always refresh task fields (`scope,evidence,plan,notes,tags,depends_on`) before Phase 1 planning. This behavior is built in and not configurable.
 - `followup_reasoning_effort` is ignored for non-Codex runners.
 - Breaking change: `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
 - CI gate auto-retry: When enabled, Ralph automatically sends a strict compliance message and retries up to 2 times on CI failure during Phase 2, Phase 3, or single-phase execution. This behavior is not configurable; after 2 automatic retries, the user is prompted via the configured `git_revert_mode`. Post-run supervision prompts immediately on CI failure.

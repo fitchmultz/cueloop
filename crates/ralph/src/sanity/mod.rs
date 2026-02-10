@@ -261,6 +261,9 @@ fn check_and_handle_migrations(
                             old_key, new_key
                         )
                     }
+                    MigrationType::ConfigKeyRemove { key } => {
+                        format!("Config uses removed key '{}', delete it", key)
+                    }
                     MigrationType::FileRename { old_path, new_path } => {
                         format!("Rename file '{}' to '{}'", old_path, new_path)
                     }
@@ -886,8 +889,6 @@ mod tests {
         assert!(keys.contains("agent.phases"));
         assert!(keys.contains("agent.codex_bin"));
         // Extended agent keys that were previously missing
-        assert!(keys.contains("agent.update_task_before_run"));
-        assert!(keys.contains("agent.fail_on_prerun_update_error"));
         assert!(keys.contains("agent.followup_reasoning_effort"));
         assert!(keys.contains("agent.claude_permission_mode"));
         assert!(keys.contains("agent.runner_cli"));

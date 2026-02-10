@@ -340,7 +340,7 @@ See `docs/workflow.md` for more details.
 When making breaking changes to config keys or file formats, use the migration system:
 
 - **Migration registry**: `crates/ralph/src/migration/registry.rs`
-- **Migration types**: `ConfigKeyRename`, `FileRename`, `ReadmeUpdate`
+- **Migration types**: `ConfigKeyRename`, `ConfigKeyRemove`, `FileRename`, `ReadmeUpdate`
 - **History tracking**: `.ralph/cache/migrations.json` (auto-generated)
 - **CLI command**: `ralph migrate` (check/list/apply)
 

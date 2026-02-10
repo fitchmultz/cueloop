@@ -264,16 +264,6 @@ pub struct AgentConfig {
     #[schemars(range(min = 1, max = 3))]
     pub phases: Option<u8>,
 
-    /// If true, automatically run `ralph task update <TASK_ID>` once per task
-    /// immediately before the supervisor marks the task as `doing` and starts execution.
-    ///
-    /// Default: false (opt-in).
-    pub update_task_before_run: Option<bool>,
-
-    /// If true, fail the run when pre-run task update fails.
-    /// If false (default), log a warning and continue with original task data.
-    pub fail_on_prerun_update_error: Option<bool>,
-
     /// Desktop notification configuration for task completion.
     pub notification: NotificationConfig,
 
@@ -485,12 +475,6 @@ impl AgentConfig {
         }
         if other.git_commit_push_enabled.is_some() {
             self.git_commit_push_enabled = other.git_commit_push_enabled;
-        }
-        if other.update_task_before_run.is_some() {
-            self.update_task_before_run = other.update_task_before_run;
-        }
-        if other.fail_on_prerun_update_error.is_some() {
-            self.fail_on_prerun_update_error = other.fail_on_prerun_update_error;
         }
         self.notification.merge_from(other.notification);
         self.webhook.merge_from(other.webhook);
@@ -1036,8 +1020,6 @@ impl Default for Config {
                 ci_gate_enabled: Some(true),
                 git_revert_mode: Some(GitRevertMode::Ask),
                 git_commit_push_enabled: Some(true),
-                update_task_before_run: Some(false),
-                fail_on_prerun_update_error: Some(false),
                 notification: NotificationConfig {
                     enabled: Some(true),
                     notify_on_complete: Some(true),
@@ -1104,46 +1086,6 @@ mod tests {
     fn git_revert_mode_from_str_rejects_invalid() {
         let err = "wat".parse::<GitRevertMode>().expect_err("invalid");
         assert!(err.contains("git_revert_mode"));
-    }
-
-    #[test]
-    fn agent_config_merge_from_merges_update_task_before_run_leafwise() {
-        let mut base = AgentConfig {
-            update_task_before_run: Some(false),
-            ..Default::default()
-        };
-
-        let other = AgentConfig {
-            update_task_before_run: Some(true),
-            ..Default::default()
-        };
-
-        base.merge_from(other);
-        assert_eq!(base.update_task_before_run, Some(true));
-
-        // None should not override an already-set value.
-        base.merge_from(AgentConfig::default());
-        assert_eq!(base.update_task_before_run, Some(true));
-    }
-
-    #[test]
-    fn agent_config_merge_from_merges_fail_on_prerun_update_error_leafwise() {
-        let mut base = AgentConfig {
-            fail_on_prerun_update_error: Some(false),
-            ..Default::default()
-        };
-
-        let other = AgentConfig {
-            fail_on_prerun_update_error: Some(true),
-            ..Default::default()
-        };
-
-        base.merge_from(other);
-        assert_eq!(base.fail_on_prerun_update_error, Some(true));
-
-        // None should not override an already-set value.
-        base.merge_from(AgentConfig::default());
-        assert_eq!(base.fail_on_prerun_update_error, Some(true));
     }
 
     #[test]
@@ -1243,8 +1185,6 @@ mod tests {
             ci_gate_enabled: None,
             git_revert_mode: None,
             git_commit_push_enabled: None,
-            update_task_before_run: None,
-            fail_on_prerun_update_error: None,
             notification: NotificationConfig::default(),
             webhook: WebhookConfig::default(),
             runner_retry: RunnerRetryConfig::default(),
@@ -1284,8 +1224,6 @@ mod tests {
             ci_gate_enabled: None,
             git_revert_mode: None,
             git_commit_push_enabled: None,
-            update_task_before_run: None,
-            fail_on_prerun_update_error: None,
             notification: NotificationConfig::default(),
             webhook: WebhookConfig::default(),
             runner_retry: RunnerRetryConfig::default(),
