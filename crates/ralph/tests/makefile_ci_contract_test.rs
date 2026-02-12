@@ -4,6 +4,47 @@ use anyhow::{Context, Result};
 use std::process::Command;
 use tempfile::TempDir;
 
+fn resolve_make_command() -> Result<String> {
+    fn is_gnu_make_at_least_4(cmd: &str) -> bool {
+        let output = Command::new(cmd).arg("--version").output();
+        let Ok(output) = output else {
+            return false;
+        };
+        if !output.status.success() {
+            return false;
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let first_line = stdout.lines().next().unwrap_or("");
+        // Typical: "GNU Make 4.4.1"
+        let mut parts = first_line.split_whitespace();
+        if parts.next() != Some("GNU") || parts.next() != Some("Make") {
+            return false;
+        }
+        let Some(version) = parts.next() else {
+            return false;
+        };
+        let Some(major_str) = version.split('.').next() else {
+            return false;
+        };
+        let Ok(major) = major_str.parse::<u32>() else {
+            return false;
+        };
+        major >= 4
+    }
+
+    if is_gnu_make_at_least_4("make") {
+        return Ok("make".to_string());
+    }
+    if is_gnu_make_at_least_4("gmake") {
+        return Ok("gmake".to_string());
+    }
+
+    anyhow::bail!(
+        "GNU Make >= 4 is required for this repo. Install a newer GNU Make (on macOS: `brew install make`) and ensure `make` or `gmake` resolves to it."
+    )
+}
+
 #[test]
 fn test_make_clean_removes_temp_artifacts() -> Result<()> {
     let temp_dir = TempDir::new().context("create temp dir")?;
@@ -64,12 +105,13 @@ members = []
     std::fs::write(ralph_dir.join("README.md"), "# Ralph").context("write README")?;
 
     // Run make clean
-    let status = Command::new("make")
+    let make_cmd = resolve_make_command().context("resolve make command")?;
+    let status = Command::new(&make_cmd)
         .arg("clean")
         .current_dir(repo_root)
         .status()
-        .context("run make clean")?;
-    assert!(status.success(), "make clean should succeed");
+        .with_context(|| format!("run {make_cmd} clean"))?;
+    assert!(status.success(), "{make_cmd} clean should succeed");
 
     // Verify temp directories removed (except completion signals)
     assert!(

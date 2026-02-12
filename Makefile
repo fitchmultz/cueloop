@@ -10,8 +10,30 @@ XCODE_DESTINATION ?= platform=macOS,arch=$(shell uname -m)
 # UI tests: Set to 1 to include UI tests (headed, mouse-interactive), 0 to skip (default for CI)
 RALPH_UI_TESTS ?= 0
 
-.PHONY: install update lint lint-fix format type-check clean clean-temp test generate build ci deps \
+.DELETE_ON_ERROR:
+.ONESHELL:
+SHELL := bash
+.SHELLFLAGS := -eu -o pipefail -c
+
+# Require GNU Make >= 4.x (Homebrew `make` provides `gmake`, plus a `make` shim under `.../gnubin`).
+ifeq ($(filter 4.% 5.%,$(MAKE_VERSION)),)
+$(error GNU Make >= 4 is required (found: $(MAKE_VERSION)). On macOS: `brew install make` then run `gmake <target>` or add `$(HOME)/.zshrc`: export PATH="/opt/homebrew/opt/make/libexec/gnubin:$$PATH")
+endif
+
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
+
+.PHONY: help install update lint lint-fix format type-check clean clean-temp test generate build ci deps \
 	check-env-safety check-backup-artifacts macos-preflight macos-build macos-test macos-ci macos-test-ui
+
+help:
+	@echo "Common targets:"
+	@echo "  make ci          # Rust-only local CI gate (formats code, builds+installs release)"
+	@echo "  make macos-ci     # Rust gate + macOS app build+test (requires Xcode)"
+	@echo "  make test         # Cargo tests (workspace unit + doc tests)"
+	@echo "  make lint         # Clippy with -D warnings"
+	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
+	@echo "  make install      # Install release binary to BIN_DIR"
 
 # Optional but cheap: fail fast if lockfile or network access is busted
 deps:
@@ -39,7 +61,7 @@ format:
 
 type-check:
 	@echo "→ Type-checking..."
-	@cargo check --workspace --all-targets
+	@cargo check --workspace --all-targets --all-features --locked
 	@echo "  ✓ Type-checking complete"
 
 lint:
@@ -54,45 +76,48 @@ lint-fix:
 
 test:
 	@echo "→ Running tests..."
-	@bash -lc 'set -euo pipefail; \
-		repo_root="$$(pwd -P)"; \
-		system_tmp="$${TMPDIR:-/tmp}"; \
-		system_tmp="$${system_tmp%/}"; \
-		legacy_tmp_base="$$system_tmp/ralph-ci-tmp"; \
-		if [ "$${RALPH_CI_KEEP_TMP:-0}" != "1" ]; then rm -rf "$$legacy_tmp_base" 2>/dev/null || true; fi; \
-		tmp_base="$$repo_root/target/tmp/ralph-ci-tmp"; \
-		if [ "$${RALPH_CI_KEEP_TMP:-0}" != "1" ]; then rm -rf "$$tmp_base" 2>/dev/null || true; fi; \
-		mkdir -p "$$tmp_base"; \
-		run_dir="$$(mktemp -d "$$tmp_base/ralph-ci.XXXXXX")"; \
-		cleanup() { \
-			if [ "$${RALPH_CI_KEEP_TMP:-0}" = "1" ]; then \
-				echo "  ℹ Keeping CI temp dir: $$run_dir"; \
-				return 0; \
-			fi; \
-			rm -rf "$$run_dir" 2>/dev/null || true; \
-			rm -rf "$$tmp_base" 2>/dev/null || true; \
-		}; \
-		trap cleanup EXIT INT TERM; \
-		export TMPDIR="$$run_dir"; \
-		export TEMP="$$run_dir"; \
-		export TMP="$$run_dir"; \
-		unit_test_output=$$(cargo test --workspace --all-targets --locked -- --include-ignored 2>&1) || { \
-			echo "  ✗ Unit tests failed!"; \
-			echo ""; \
-			echo "=== Full test output ==="; \
-			echo "$$unit_test_output"; \
-			exit 1; \
-		}; \
-		echo "$$unit_test_output" | grep -E "^(test result:|running|     Running)" || true; \
-		doc_test_output=$$(cargo test --workspace --doc --locked -- --include-ignored 2>&1) || { \
-			echo "  ✗ Doc tests failed!"; \
-			echo ""; \
-			echo "=== Full test output ==="; \
-			echo "$$doc_test_output"; \
-			exit 1; \
-		}; \
-		echo "$$doc_test_output" | grep -E "^(test result:|running|     Running)" || true; \
-		echo "  ✓ Tests passed"'
+	@repo_root="$$(pwd -P)"; \
+	system_tmp="$${TMPDIR:-/tmp}"; \
+	system_tmp="$${system_tmp%/}"; \
+	legacy_tmp_base="$$system_tmp/ralph-ci-tmp"; \
+	if [ "$${RALPH_CI_KEEP_TMP:-0}" != "1" ]; then rm -rf "$$legacy_tmp_base" 2>/dev/null || true; fi; \
+	tmp_base="$$repo_root/target/tmp/ralph-ci-tmp"; \
+	if [ "$${RALPH_CI_KEEP_TMP:-0}" != "1" ]; then rm -rf "$$tmp_base" 2>/dev/null || true; fi; \
+	mkdir -p "$$tmp_base"; \
+	run_dir="$$(mktemp -d "$$tmp_base/ralph-ci.XXXXXX")"; \
+	cleanup() { \
+		if [ "$${RALPH_CI_KEEP_TMP:-0}" = "1" ]; then \
+			echo "  ℹ Keeping CI temp dir: $$run_dir"; \
+			return 0; \
+		fi; \
+		rm -rf "$$run_dir" 2>/dev/null || true; \
+		rm -rf "$$tmp_base" 2>/dev/null || true; \
+	}; \
+	trap cleanup EXIT INT TERM; \
+	export TMPDIR="$$run_dir"; \
+	export TEMP="$$run_dir"; \
+	export TMP="$$run_dir"; \
+	unit_log="$$run_dir/unit-tests.log"; \
+	doc_log="$$run_dir/doc-tests.log"; \
+	if cargo test --workspace --all-targets --locked -- --include-ignored >"$$unit_log" 2>&1; then \
+		grep -E "^(test result:|running|     Running)" "$$unit_log" || true; \
+	else \
+		echo "  ✗ Unit tests failed!"; \
+		echo ""; \
+		echo "=== Full test output ==="; \
+		cat "$$unit_log"; \
+		exit 1; \
+	fi; \
+	if cargo test --workspace --doc --locked -- --include-ignored >"$$doc_log" 2>&1; then \
+		grep -E "^(test result:|running|     Running)" "$$doc_log" || true; \
+	else \
+		echo "  ✗ Doc tests failed!"; \
+		echo ""; \
+		echo "=== Full test output ==="; \
+		cat "$$doc_log"; \
+		exit 1; \
+	fi; \
+	echo "  ✓ Tests passed"
 
 # Required every time
 build:
@@ -126,7 +151,7 @@ check-env-safety:
 	fi
 
 check-backup-artifacts:
-	@bak_files=$$(find crates/ralph/src/ -name '*.bak' -type f 2>/dev/null); \
+	@bak_files="$$(find crates/ralph/src/ -name '*.bak' -type f 2>/dev/null || true)"; \
 	if [ -n "$$bak_files" ]; then \
 		echo "ERROR: Backup artifacts found in crates/ralph/src/:"; \
 		echo "$$bak_files"; \
@@ -181,8 +206,7 @@ macos-test:
 		skipped_tests="-skip-testing RalphMacUITests"; \
 	fi; \
 	rm -rf "$$derived_data_path" 2>/dev/null || true; \
-	RALPH_BIN_PATH="$$ralph_bin_path" \
-	xcodebuild \
+	RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
 		-project apps/RalphMac/RalphMac.xcodeproj \
 		-scheme RalphMac \
 		-configuration Debug \
