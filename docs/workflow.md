@@ -134,13 +134,18 @@ ralph daemon start
 # Check status
 ralph daemon status
 
+# View logs
+ralph daemon logs
+# Live follow
+ralph daemon logs --follow
+
 # Stop daemon
 ralph daemon stop
 ```
 
 The daemon is a thin wrapper around `ralph run loop --continuous --wait-when-blocked` that:
 - Detaches from the terminal
-- Logs to `.ralph/logs/daemon.log`
+- View logs with `ralph daemon logs`
 - Manages PID/state files in `.ralph/cache/`
 - Responds to `ralph daemon stop` and `ralph queue stop`
 

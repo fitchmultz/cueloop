@@ -251,4 +251,5 @@ fn daemon_help_mentions_subcommands() {
     assert_contains(&combined, "start");
     assert_contains(&combined, "stop");
     assert_contains(&combined, "status");
+    assert_contains(&combined, "logs");
 }

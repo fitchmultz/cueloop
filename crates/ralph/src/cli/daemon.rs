@@ -13,7 +13,7 @@
 //! - Daemon uses a dedicated lock separate from the queue lock.
 
 use anyhow::Result;
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, builder::PossibleValuesParser};
 
 use crate::{commands::daemon as daemon_cmd, config};
 
@@ -24,6 +24,7 @@ pub fn handle_daemon(cmd: DaemonCommand) -> Result<()> {
         DaemonCommand::Stop => daemon_cmd::stop(&resolved),
         DaemonCommand::Status => daemon_cmd::status(&resolved),
         DaemonCommand::Serve(args) => daemon_cmd::serve(&resolved, args),
+        DaemonCommand::Logs(args) => daemon_cmd::logs(&resolved, args),
     }
 }
 
@@ -61,6 +62,18 @@ pub enum DaemonCommand {
     /// Internal: Run the daemon serve loop (do not use directly).
     #[command(hide = true)]
     Serve(DaemonServeArgs),
+    /// Inspect daemon logs with filtering and follow mode.
+    #[command(
+        about = "Inspect daemon logs",
+        after_long_help = "Examples:
+ ralph daemon logs
+ ralph daemon logs --tail 50
+ ralph daemon logs --follow --tail 200
+ ralph daemon logs --since 'in 10 minutes'
+ ralph daemon logs --level error --contains \"webhook\"
+ ralph daemon logs --json --since 2026-02-01T00:00:00Z"
+    )]
+    Logs(DaemonLogsArgs),
 }
 
 #[derive(Args)]
@@ -93,4 +106,44 @@ pub struct DaemonServeArgs {
     /// Notify when queue becomes unblocked (desktop + webhook).
     #[arg(long)]
     pub notify_when_unblocked: bool,
+}
+
+#[derive(Args)]
+pub struct DaemonLogsArgs {
+    /// Show the last N lines from the daemon log.
+    #[arg(short = 'n', long = "tail", default_value_t = 100)]
+    pub tail: usize,
+
+    /// Follow daemon log output as lines are appended.
+    #[arg(short, long)]
+    pub follow: bool,
+
+    /// Only show lines at or after this timestamp (RFC3339) or relative expression.
+    #[arg(long, value_name = "DURATION_OR_TIMESTAMP", value_parser = parse_daemon_log_since)]
+    pub since: Option<time::OffsetDateTime>,
+
+    /// Filter by level (trace, debug, info, warn, error, fatal, critical).
+    #[arg(long = "level", value_name = "LEVEL", value_parser = PossibleValuesParser::new([
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal",
+        "critical"
+    ]))]
+    pub level: Option<String>,
+
+    /// Show only lines containing this substring.
+    #[arg(long)]
+    pub contains: Option<String>,
+
+    /// Emit machine-readable JSON objects, one per output line.
+    #[arg(long)]
+    pub json: bool,
+}
+
+fn parse_daemon_log_since(raw: &str) -> anyhow::Result<time::OffsetDateTime> {
+    crate::timeutil::parse_relative_time(raw)
+        .and_then(|value| crate::timeutil::parse_rfc3339(&value))
 }

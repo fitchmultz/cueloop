@@ -185,10 +185,11 @@ Manage Ralph as a background daemon (continuous execution mode). The daemon runs
 * `ralph daemon start`: Start the daemon in the background.
 * `ralph daemon stop`: Stop the daemon gracefully.
 * `ralph daemon status`: Show daemon status (running, stopped, or stale).
+* `ralph daemon logs`: Stream daemon logs and runtime output.
 
 ### `ralph daemon start`
 
-Start Ralph as a background daemon. The daemon detaches from the terminal and logs to `.ralph/logs/daemon.log`.
+Start Ralph as a background daemon. The daemon detaches from the terminal and writes logs to `.ralph/logs/daemon.log`.
 
 #### Flags
 
@@ -200,7 +201,7 @@ Start Ralph as a background daemon. The daemon detaches from the terminal and lo
 
 - Acquires a dedicated daemon lock at `.ralph/cache/daemon.lock`
 - Writes daemon state to `.ralph/cache/daemon.json`
-- Redirects stdout/stderr to `.ralph/logs/daemon.log`
+- Redirects stdout/stderr to `.ralph/logs/daemon.log` (viewable with `ralph daemon logs`)
 - Runs until stopped via `ralph daemon stop` or `ralph queue stop`
 - Uses continuous mode: waits for new tasks when queue is empty
 - Uses wait-when-blocked: waits for dependencies/schedules to resolve
@@ -216,6 +217,31 @@ ralph daemon start --empty-poll-ms 5000
 
 # Start with notifications when unblocked
 ralph daemon start --notify-when-unblocked
+```
+
+### `ralph daemon logs`
+
+Inspect daemon log output from `.ralph/logs/daemon.log` with optional filtering.
+
+#### Flags
+
+* `--tail <N>`: show the last `N` lines from the log before any follow stream (default: `100`).
+* `--follow`, `-f`: stream appended lines as they arrive (`follow` mode).
+* `--since <DURATION_OR_TIMESTAMP>`: show lines at or after the provided timestamp (supports RFC3339 and relative values accepted by `timeutil::parse_relative_time`).
+* `--level <trace|debug|info|warn|error|fatal|critical>`: filter by log level.
+* `--contains <TEXT>`: include only lines containing the substring.
+* `--json`: emit one JSON object per matching line.
+
+#### Examples
+
+```bash
+ralph daemon logs
+ralph daemon logs --tail 50
+ralph daemon logs --follow
+ralph daemon logs --follow --tail 200
+ralph daemon logs --since 'in 30 minutes'
+ralph daemon logs --level error --contains webhook
+ralph daemon logs --json --level warn
 ```
 
 #### Service Templates

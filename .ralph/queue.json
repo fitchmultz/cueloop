@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0812",
-      "status": "todo",
-      "title": "Add `ralph daemon logs` for integrated tail/follow and recent-error views",
-      "description": "Opportunity type: UX improvement and reliability.\n\nWhy it matters:\n- Daemon users currently have to leave Ralph and manually tail log files, which slows recovery when queue execution stalls or webhook notifications fail.\n\nProposed approach (minimal slice first):\n- Add `ralph daemon logs` subcommand with `--tail`, `--follow`, and `--since` options against `.ralph/logs/daemon.log`.\n\nExpansion:\n- Add structured filtering (`--level`, `--contains`) and a `--json` mode for automation.\n\nRisks and mitigations:\n- Risk: platform/path differences for log locations.\n- Mitigation: resolve paths from existing config/runtime conventions and add cross-platform tests.",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "ux",
-        "daemon",
-        "observability"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/daemon.rs",
-        "crates/ralph/src/commands/daemon/mod.rs",
-        "docs/cli.md",
-        "docs/workflow.md",
-        "docs/guides/advanced.md",
-        "cargo run -p ralph -- daemon --help"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/cli/daemon.rs :: DaemonCommand :: exposes only Start/Stop/Status (plus hidden Serve), no log inspection command.",
-        "workflow: cargo run -q -p ralph -- daemon --help :: no built-in way to stream daemon logs.",
-        "workflow: docs/guides/advanced.md :: recommends manual `tail -f .ralph/logs/daemon.log` for log access.",
-        "path: docs/workflow.md :: Daemon Mode :: documents daemon.log output but no CLI affordance to inspect it."
-      ],
-      "plan": [
-        "Add a `logs` daemon subcommand with options for tail count, follow mode, and time window filtering.",
-        "Implement robust log-path resolution and file-not-found guidance for uninitialized workspaces.",
-        "Add CLI tests for help output and command behavior in empty/log-populated scenarios.",
-        "Update docs/examples to prefer `ralph daemon logs` over manual shell tail where appropriate.",
-        "Verify by running `cargo run -p ralph -- daemon logs --help` and `cargo test -p ralph daemon`, then manually confirm follow mode against `.ralph/logs/daemon.log`."
-      ],
-      "notes": [],
-      "request": "scan: none",
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0813",
       "status": "todo",
       "title": "Add bulk GitHub issue sync for queue publishing workflows",
