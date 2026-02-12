@@ -2,50 +2,51 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0818",
+      "id": "RQ-0819",
       "status": "todo",
+      "title": "Harden Makefile CI contract tests to enforce full required gate sequence",
+      "description": "Opportunity type: reliability and modernization.\n\nWhy it matters:\n- CI contract tests check selected ordering and doc sync, but can still miss accidental removal of critical steps from the `ci` recipe if docs are updated to match drift.\n\nProposed approach (minimal slice first):\n- Add explicit invariant tests requiring exact presence/order of the mandatory `ci` dependency chain (`check-env-safety` through `install`).\n\nExpansion:\n- Add assertions for `macos-ci` composition and expected non-interactive defaults where appropriate.\n\nRisks and mitigations:\n- Risk: over-constraining intentional future CI redesigns.\n- Mitigation: keep expected sequence centralized in one test constant and update intentionally with rationale.",
       "priority": "medium",
-      "title": "Adopt `cargo nextest` in local CI gate to reduce test cycle time",
-      "description": "Opportunity type: performance and developer throughput.\n\nWhy it matters:\n- Current `make test` performs separate full `cargo test` invocations for all-target and doc tests, increasing repeated work and slowing the mandatory local CI loop.\n\nProposed approach (minimal slice first):\n- Add `cargo-nextest` integration behind `make test` (or `make test-fast`) with equivalent coverage guarantees and clear fallback.\n\nExpansion:\n- Standardize test reporting artifacts for faster flaky-test triage and shard-friendly future scaling.\n\nRisks and mitigations:\n- Risk: coverage mismatches between legacy and nextest runs.\n- Mitigation: parallel trial period comparing pass/fail parity and retaining doc-test coverage explicitly.",
       "tags": [
         "innovation",
-        "performance",
+        "reliability",
         "ci",
-        "developer-experience"
+        "tests"
       ],
       "scope": [
-        "Makefile",
         "crates/ralph/tests/makefile_ci_contract_test.rs",
-        "docs/cli.md",
-        "make test",
-        "make macos-ci"
+        "Makefile",
+        "cargo test -p ralph makefile_ci_contract_test"
       ],
       "evidence": [
-        "path: Makefile :: test target :: runs `cargo test --workspace --all-targets --locked` and then a second `cargo test --workspace --doc --locked` pass.",
-        "workflow: make test :: duplicate cargo test invocations increase local CI runtime.",
-        "workflow: rg -n \"nextest\" Makefile crates docs :: no existing nextest integration found.",
-        "external: https://nexte.st/ :: accessed 2026-02-12 :: cargo-nextest is purpose-built for faster Rust test execution and richer failure output."
+        "path: crates/ralph/tests/makefile_ci_contract_test.rs :: existing tests focus on subset ordering and docs parity, not strict full required-step invariants.",
+        "path: Makefile :: ci target :: defines a long mandatory sequence (check-env-safety through install) that must remain intact.",
+        "workflow: make ci :: local CI gate is mandatory; missing one dependency step can silently weaken quality protections."
       ],
       "plan": [
-        "Prototype nextest invocation for workspace tests and document expected coverage parity with current flow.",
-        "Update Makefile targets to use nextest in CI path with explicit doc-test handling.",
-        "Add/adjust contract tests guarding CI recipe expectations after target changes.",
-        "Record migration notes and fallback instructions in docs for contributors.",
-        "Verify by running `make test` and `make macos-ci`, confirming equivalent pass/fail outcomes and reduced test wall-clock time."
+        "Define canonical required ci-step sequence in the contract test module.",
+        "Add tests that fail on missing, duplicated, or reordered mandatory steps.",
+        "Optionally mirror strict checks for macos-ci composition where applicable.",
+        "Keep CONTRIBUTING/GEMINI references aligned to the canonical sequence.",
+        "Verify by running `cargo test -p ralph makefile_ci_contract_test` and confirming failures on intentional sequence perturbations."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0809",
       "status": "todo",
-      "priority": "critical",
       "title": "Treat indeterminate PID liveness as lock-owned to prevent concurrent supervisors",
       "description": "Opportunity type: reliability.\n\nWhy it matters:\n- PID liveness checks are used to gate queue/daemon ownership; treating indeterminate checks as \"not running\" can allow competing supervisors to proceed, risking conflicting writes and hard-to-debug run-loop behavior.\n\nProposed approach (minimal slice first):\n- Introduce an explicit liveness state (running, not_running, indeterminate) and update lock/daemon call sites to treat indeterminate as conservatively owned.\n- Keep current behavior only where explicitly safe and tested.\n\nExpansion:\n- Add operator-facing diagnostics when liveness is indeterminate so users can resolve stale/permission issues without unsafe unlocks.\n\nRisks and mitigations:\n- Risk: conservative behavior can leave locks in place longer.\n- Mitigation: improve error messaging and retain explicit --force override paths.",
+      "priority": "critical",
       "tags": [
         "innovation",
         "reliability",
@@ -72,19 +73,23 @@
         "Update CLI error/help text to explain indeterminate PID handling and safe recovery options.",
         "Verify by running `cargo test -p ralph lock` and `cargo test -p ralph daemon` and confirming indeterminate PID paths are conservative and explicit."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0810",
       "status": "todo",
-      "priority": "high",
       "title": "Cache queue JSON-repair regexes to reduce hot-path CPU in parallel selection",
       "description": "Opportunity type: performance and cost.\n\nWhy it matters:\n- Queue selection in parallel mode repeatedly triggers JSON repair/validation paths; recompiling regex patterns each invocation burns CPU and increases lock-hold time.\n\nProposed approach (minimal slice first):\n- Hoist repair regexes in queue repair logic to static lazy-initialized values and keep behavior identical.\n\nExpansion:\n- Add a lightweight benchmark harness for queue-load hot paths to prevent regressions.\n\nRisks and mitigations:\n- Risk: subtle behavior changes in replacement order.\n- Mitigation: retain existing repair tests and add targeted ordering regression tests.",
+      "priority": "high",
       "tags": [
         "innovation",
         "performance",
@@ -110,19 +115,23 @@
         "Optionally add a micro-benchmark or timing assertion in non-CI tooling for queue load path visibility.",
         "Verify by running `cargo test -p ralph queue::tests` and `cargo test -p ralph commands::run::parallel::worker` and confirming identical repair behavior with reduced repeated regex compilation."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0811",
       "status": "todo",
-      "priority": "high",
       "title": "Rework `ralph task --help` into workflow-oriented command groups",
       "description": "Opportunity type: UX improvement.\n\nWhy it matters:\n- `ralph task` is a primary entry point, but current help output presents a long flat command list that increases onboarding friction and misfires on adjacent commands (`field` vs `edit`, `status` vs `done`).\n\nProposed approach (minimal slice first):\n- Reorganize task subcommands into explicit groups (create/build, lifecycle, edit, relationships, batch/template) with concise one-line intent labels.\n\nExpansion:\n- Add short \"common journeys\" section (create task, start task, complete task, split task) and keep docs aligned.\n\nRisks and mitigations:\n- Risk: help contract tests may fail due to wording drift.\n- Mitigation: update contract tests and docs in the same change.",
+      "priority": "high",
       "tags": [
         "innovation",
         "ux",
@@ -147,19 +156,23 @@
         "Refresh CLI docs to mirror the grouped command model.",
         "Verify by running `cargo run -p ralph -- task --help` and confirming grouped sections plus updated examples, then run `cargo test -p ralph` for help contract coverage."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0812",
       "status": "todo",
-      "priority": "high",
       "title": "Add `ralph daemon logs` for integrated tail/follow and recent-error views",
       "description": "Opportunity type: UX improvement and reliability.\n\nWhy it matters:\n- Daemon users currently have to leave Ralph and manually tail log files, which slows recovery when queue execution stalls or webhook notifications fail.\n\nProposed approach (minimal slice first):\n- Add `ralph daemon logs` subcommand with `--tail`, `--follow`, and `--since` options against `.ralph/logs/daemon.log`.\n\nExpansion:\n- Add structured filtering (`--level`, `--contains`) and a `--json` mode for automation.\n\nRisks and mitigations:\n- Risk: platform/path differences for log locations.\n- Mitigation: resolve paths from existing config/runtime conventions and add cross-platform tests.",
+      "priority": "high",
       "tags": [
         "innovation",
         "ux",
@@ -187,19 +200,23 @@
         "Update docs/examples to prefer `ralph daemon logs` over manual shell tail where appropriate.",
         "Verify by running `cargo run -p ralph -- daemon logs --help` and `cargo test -p ralph daemon`, then manually confirm follow mode against `.ralph/logs/daemon.log`."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0813",
       "status": "todo",
-      "priority": "high",
       "title": "Add bulk GitHub issue sync for queue publishing workflows",
       "description": "Opportunity type: integration and workflow coverage.\n\nWhy it matters:\n- Publishing tasks to GitHub currently requires one command per task, creating high toil for backlog seeding and recurring synchronization.\n\nProposed approach (minimal slice first):\n- Extend `ralph queue issue` with bulk mode (`publish-many` or flags on `publish`) supporting filters (`--status`, `--tag`, `--id-pattern`) and dry-run preview.\n\nExpansion:\n- Add incremental sync mode that updates only changed tasks and reports summary counts.\n\nRisks and mitigations:\n- Risk: accidental mass issue edits.\n- Mitigation: default dry-run summaries, explicit confirmation in interactive mode, and idempotency checks via stored issue URL/number.",
+      "priority": "high",
       "tags": [
         "innovation",
         "integration",
@@ -224,19 +241,23 @@
         "Add integration tests using dry-run and mocked gh interactions for create/update paths.",
         "Verify by running `cargo run -p ralph -- queue issue publish --help` and bulk dry-run commands, then `cargo test -p ralph queue::issue`."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0814",
       "status": "todo",
-      "priority": "high",
       "title": "Add webhook delivery diagnostics and replay controls",
       "description": "Opportunity type: reliability and integration.\n\nWhy it matters:\n- Ralph supports asynchronous webhooks with retry/backpressure, but operators lack first-class tooling to inspect queue depth, failure counts, and replay failed events. This blocks confident production integrations.\n\nProposed approach (minimal slice first):\n- Add `ralph webhook status` with delivery queue metrics and recent failures, plus `ralph webhook replay` for controlled retries from persisted failure records.\n\nExpansion:\n- Add JSON export for observability pipelines and per-event latency histograms.\n\nRisks and mitigations:\n- Risk: replaying malformed payloads repeatedly.\n- Mitigation: bounded replay attempts, explicit event/id targeting, and safe dry-run preview.",
+      "priority": "high",
       "tags": [
         "innovation",
         "reliability",
@@ -262,19 +283,23 @@
         "Add tests for status output formats and replay safety limits.",
         "Verify by running `cargo run -p ralph -- webhook status --format json` and `cargo test -p ralph webhook`, confirming inspectable metrics and bounded replay behavior."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0815",
       "status": "todo",
-      "priority": "high",
       "title": "Parse queue changes directly in RalphMac watcher path to reduce CLI churn",
       "description": "Opportunity type: performance and UX improvement.\n\nWhy it matters:\n- The macOS app already watches `.ralph` files, but each change still triggers CLI subprocesses (`queue list`, `config show`) for reloads. Rapid edits produce avoidable process overhead, slower UI updates, and extra contention.\n\nProposed approach (minimal slice first):\n- On queue/done file change, parse local JSON first in-app and update task state directly; keep CLI fallback on parse errors or schema mismatch.\n\nExpansion:\n- Add incremental diff application for large queues to minimize full-array replacements and UI recompute.\n\nRisks and mitigations:\n- Risk: app parser drift from CLI schema behavior.\n- Mitigation: share schema-derived models/tests and fallback to CLI on decode failure.",
+      "priority": "high",
       "tags": [
         "innovation",
         "performance",
@@ -300,19 +325,23 @@
         "Instrument refresh latency before/after to ensure measurable improvement.",
         "Verify by running `make macos-test` and manually editing `.ralph/queue.json`, confirming low-latency UI refresh without repeated CLI invocation on valid changes."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0816",
       "status": "todo",
-      "priority": "medium",
       "title": "Add aggregated analytics CLI endpoint to cut RalphMac process fan-out",
       "description": "Opportunity type: performance and cost.\n\nWhy it matters:\n- The analytics screen launches multiple CLI processes in parallel for summary/velocity/burndown/stats/history, which increases latency and battery usage and multiplies failure points.\n\nProposed approach (minimal slice first):\n- Add a single aggregated analytics command (for example `ralph queue dashboard --format json --days N`) that returns all currently-needed dashboard payloads in one invocation.\n\nExpansion:\n- Add cached snapshots and optional per-section toggles for lightweight polling.\n\nRisks and mitigations:\n- Risk: larger payload may fail whole response when one section errors.\n- Mitigation: section-level error envelopes in the aggregated response.",
+      "priority": "medium",
       "tags": [
         "innovation",
         "performance",
@@ -337,19 +366,23 @@
         "Add CLI + app tests validating payload compatibility and graceful partial failures.",
         "Verify by running `cargo run -p ralph -- queue dashboard --format json --days 30` and `make macos-test`, confirming the app reduces subprocess count while preserving analytics content."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0817",
       "status": "todo",
-      "priority": "high",
       "title": "Introduce queue snapshot caching for parallel scheduler selection",
       "description": "Opportunity type: performance and reliability.\n\nWhy it matters:\n- Parallel scheduling repeatedly reloads and revalidates queue+done files while holding coordination locks. This inflates scheduling overhead and reduces throughput as worker count grows.\n\nProposed approach (minimal slice first):\n- Add an in-process queue snapshot cache keyed by file metadata/hash in the orchestration loop, invalidated only when queue/done change.\n\nExpansion:\n- Add adaptive polling intervals based on cache staleness and blocker types.\n\nRisks and mitigations:\n- Risk: stale snapshot selecting outdated tasks.\n- Mitigation: strict invalidation on mtime/hash changes and lock-bound refresh before committing selection.",
+      "priority": "high",
       "tags": [
         "innovation",
         "performance",
@@ -374,55 +407,23 @@
         "Add regression tests for cache hit/miss behavior and stale-invalidation correctness.",
         "Verify by running `cargo test -p ralph parallel` and confirming correct task selection with fewer queue reloads under repeated scheduling cycles."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
-    },
-    {
-      "id": "RQ-0819",
-      "status": "todo",
-      "priority": "medium",
-      "title": "Harden Makefile CI contract tests to enforce full required gate sequence",
-      "description": "Opportunity type: reliability and modernization.\n\nWhy it matters:\n- CI contract tests check selected ordering and doc sync, but can still miss accidental removal of critical steps from the `ci` recipe if docs are updated to match drift.\n\nProposed approach (minimal slice first):\n- Add explicit invariant tests requiring exact presence/order of the mandatory `ci` dependency chain (`check-env-safety` through `install`).\n\nExpansion:\n- Add assertions for `macos-ci` composition and expected non-interactive defaults where appropriate.\n\nRisks and mitigations:\n- Risk: over-constraining intentional future CI redesigns.\n- Mitigation: keep expected sequence centralized in one test constant and update intentionally with rationale.",
-      "tags": [
-        "innovation",
-        "reliability",
-        "ci",
-        "tests"
-      ],
-      "scope": [
-        "crates/ralph/tests/makefile_ci_contract_test.rs",
-        "Makefile",
-        "cargo test -p ralph makefile_ci_contract_test"
-      ],
-      "evidence": [
-        "path: crates/ralph/tests/makefile_ci_contract_test.rs :: existing tests focus on subset ordering and docs parity, not strict full required-step invariants.",
-        "path: Makefile :: ci target :: defines a long mandatory sequence (check-env-safety through install) that must remain intact.",
-        "workflow: make ci :: local CI gate is mandatory; missing one dependency step can silently weaken quality protections."
-      ],
-      "plan": [
-        "Define canonical required ci-step sequence in the contract test module.",
-        "Add tests that fail on missing, duplicated, or reordered mandatory steps.",
-        "Optionally mirror strict checks for macos-ci composition where applicable.",
-        "Keep CONTRIBUTING/GEMINI references aligned to the canonical sequence.",
-        "Verify by running `cargo test -p ralph makefile_ci_contract_test` and confirming failures on intentional sequence perturbations."
-      ],
-      "request": "scan: none",
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0820",
       "status": "todo",
-      "priority": "high",
       "title": "Add shared worktree pool for parallel execution to cut clone overhead",
       "description": "Opportunity type: performance and cost.\n\nWhy it matters:\n- Parallel execution currently relies on per-task workspace clone provisioning and reset logic, which increases disk churn and setup latency at higher worker counts.\n\nProposed approach (minimal slice first):\n- Introduce optional worktree-backed workspace provisioning for parallel runs while keeping existing clone strategy as fallback.\n\nExpansion:\n- Add adaptive workspace reuse and cleanup policies based on run volume and branch lifecycle.\n\nRisks and mitigations:\n- Risk: worktree lifecycle edge cases can leak branches/directories.\n- Mitigation: explicit cleanup guards, idempotent removal, and integration tests covering interruption/failure cases.",
+      "priority": "high",
       "tags": [
         "innovation",
         "performance",
@@ -447,19 +448,23 @@
         "Add integration tests for normal completion, interruption, and stale-worktree recovery.",
         "Verify by running `cargo test -p ralph parallel` and confirming parallel runs complete with reduced workspace provisioning overhead under worktree mode."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     },
     {
       "id": "RQ-0821",
       "status": "todo",
-      "priority": "medium",
       "title": "Split oversized `queue.rs` into focused modules to accelerate safe feature work",
       "description": "Opportunity type: modernization and reliability.\n\nWhy it matters:\n- `queue.rs` centralizes loading, repair, validation, locking helpers, and large test sections in a 1000+ LOC file, increasing change risk and slowing targeted improvements in queue hot paths.\n\nProposed approach (minimal slice first):\n- Extract cohesive modules (`queue/io`, `queue/repair`, `queue/validation_entry`, `queue/locking_helpers`) while preserving public behavior and existing tests.\n\nExpansion:\n- Establish clear ownership boundaries and module-level performance tests for queue read/repair/validate paths.\n\nRisks and mitigations:\n- Risk: refactor churn introduces subtle regressions.\n- Mitigation: move code with minimal semantic changes first, then optimize behind existing regression coverage.",
+      "priority": "medium",
       "tags": [
         "innovation",
         "modernization",
@@ -484,12 +489,16 @@
         "Document module responsibilities/invariants at top-of-file for each extracted module.",
         "Verify by running `cargo test -p ralph queue::` and `make test`, confirming behavior parity after decomposition."
       ],
+      "notes": [],
       "request": "scan: none",
+      "created_at": "2026-02-12T20:13:33Z",
+      "updated_at": "2026-02-12T20:13:33Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-innovation"
-      },
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z"
+      }
     }
   ]
 }

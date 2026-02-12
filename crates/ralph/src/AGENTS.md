@@ -111,7 +111,7 @@ The CI gate runs: `check-env-safety → check-backup-artifacts → deps → form
 | `make ci` | Local CI gate — **must pass before committing** |
 | `make macos-ci` | macOS-only ship gate (Rust CI + Xcode build + Xcode tests) |
 | `make install` | Install `ralph` to `~/.local/bin/ralph` (or writable fallback) |
-| `make test` | Run workspace unit + doc tests in isolated temp dirs |
+| `make test` | Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing) |
 | `make lint` | Run Clippy with `-D warnings` (warnings are errors) |
 | `make format` | Run `cargo fmt --all` |
 | `make type-check` | Run `cargo check --workspace --all-targets` |
@@ -148,7 +148,7 @@ make type-check
 ### Test
 
 ```bash
-# Full test suite (runs in isolated temp directories)
+# Full test suite (nextest workspace tests with fallback + cargo doc tests in isolated temp dirs)
 make test
 
 # Quick unit tests only

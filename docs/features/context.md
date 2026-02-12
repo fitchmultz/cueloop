@@ -163,7 +163,7 @@ Brief project description.
 ## Build, Test, and CI
 
 - `make ci`: local CI gate
-- `make test`: run all tests
+- `make test`: run all tests (for Rust repos this is commonly nextest workspace tests + explicit doc tests)
 - `make build`: build the project
 
 ## Testing

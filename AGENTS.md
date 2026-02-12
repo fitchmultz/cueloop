@@ -62,7 +62,7 @@ scripts/              # Maintenance + release helper scripts
 |---------|---------|
 | `make macos-ci` | **Local CI gate — must pass before committing** (Rust + Xcode; warnings are errors) |
 | `make install` | Install `ralph` to `~/.local/bin/ralph` (or writable fallback) |
-| `make test` | Run workspace unit + doc tests in isolated temp dirs |
+| `make test` | Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing) |
 | `make lint` | Run Clippy with `-D warnings` (warnings are errors) |
 | `make format` | Run `cargo fmt --all` |
 | `make type-check` | Run `cargo check --workspace --all-targets` |

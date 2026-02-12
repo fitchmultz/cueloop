@@ -379,6 +379,41 @@ fn test_lint_is_non_mutating_and_lint_fix_is_opt_in() -> Result<()> {
 }
 
 #[test]
+fn test_makefile_test_target_uses_nextest_and_keeps_doc_tests() -> Result<()> {
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir
+        .parent()
+        .and_then(|p| p.parent())
+        .context("resolve repo root")?;
+    let makefile = std::fs::read_to_string(repo_root.join("Makefile")).context("read Makefile")?;
+
+    let test_block = extract_target_block(&makefile, "test").context("extract test block")?;
+    assert!(
+        test_block
+            .contains("cargo nextest run --workspace --all-targets --locked -- --include-ignored"),
+        "test target should run cargo-nextest for non-doc tests"
+    );
+    assert!(
+        test_block.contains("cargo test --workspace --doc --locked -- --include-ignored"),
+        "test target should keep explicit doc test coverage"
+    );
+    assert!(
+        test_block.contains("cargo nextest --version >/dev/null 2>&1"),
+        "test target should check for nextest availability"
+    );
+    assert!(
+        test_block.contains("cargo test --workspace --all-targets --locked -- --include-ignored"),
+        "test target should keep cargo test fallback coverage when nextest is unavailable"
+    );
+    assert!(
+        test_block.contains("cargo install cargo-nextest --locked"),
+        "test target should provide install guidance when nextest is missing"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn test_macos_targets_gate_with_preflight_and_isolate_derived_data() -> Result<()> {
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let repo_root = manifest_dir

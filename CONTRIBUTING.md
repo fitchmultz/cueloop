@@ -105,7 +105,7 @@ All new or changed behavior must be covered by tests:
 Example:
 
 ```bash
-# Run all tests
+# Run all tests (nextest workspace tests with cargo-test fallback, then doc tests)
 make test
 
 # Run tests for just the ralph crate

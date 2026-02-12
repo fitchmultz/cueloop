@@ -30,7 +30,7 @@ help:
 	@echo "Common targets:"
 	@echo "  make ci          # Rust-only local CI gate (formats code, builds+installs release)"
 	@echo "  make macos-ci     # Rust gate + macOS app build+test (requires Xcode)"
-	@echo "  make test         # Cargo tests (workspace unit + doc tests)"
+	@echo "  make test         # Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing)"
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
 	@echo "  make install      # Install release binary to BIN_DIR"
@@ -99,23 +99,26 @@ test:
 	export TMP="$$run_dir"; \
 	unit_log="$$run_dir/unit-tests.log"; \
 	doc_log="$$run_dir/doc-tests.log"; \
-	if cargo test --workspace --all-targets --locked -- --include-ignored >"$$unit_log" 2>&1; then \
-		grep -E "^(test result:|running|     Running)" "$$unit_log" || true; \
+	if cargo nextest --version >/dev/null 2>&1; then \
+		echo "  → Using cargo-nextest for non-doc tests"; \
+		if cargo nextest run --workspace --all-targets --locked -- --include-ignored >"$$unit_log" 2>&1; then \
+			grep -E "^(test result:|running|     Running|Summary|PASS|FAIL)" "$$unit_log" | tail -5 || true; \
+		else \
+			echo "  ✗ Workspace tests failed!"; echo ""; echo "=== Full test output ==="; cat "$$unit_log"; exit 1; \
+		fi; \
 	else \
-		echo "  ✗ Unit tests failed!"; \
-		echo ""; \
-		echo "=== Full test output ==="; \
-		cat "$$unit_log"; \
-		exit 1; \
+		echo "  ⚠ cargo-nextest not found; falling back to cargo test --workspace --all-targets"; \
+		echo "    Install with: cargo install cargo-nextest --locked"; \
+		if cargo test --workspace --all-targets --locked -- --include-ignored >"$$unit_log" 2>&1; then \
+			grep -E "^(test result:|running|     Running)" "$$unit_log" || true; \
+		else \
+			echo "  ✗ Workspace tests failed!"; echo ""; echo "=== Full test output ==="; cat "$$unit_log"; exit 1; \
+		fi; \
 	fi; \
 	if cargo test --workspace --doc --locked -- --include-ignored >"$$doc_log" 2>&1; then \
 		grep -E "^(test result:|running|     Running)" "$$doc_log" || true; \
 	else \
-		echo "  ✗ Doc tests failed!"; \
-		echo ""; \
-		echo "=== Full test output ==="; \
-		cat "$$doc_log"; \
-		exit 1; \
+		echo "  ✗ Doc tests failed!"; echo ""; echo "=== Full test output ==="; cat "$$doc_log"; exit 1; \
 	fi; \
 	echo "  ✓ Tests passed"
 

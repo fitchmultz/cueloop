@@ -44,7 +44,7 @@ The Makefile is the contract; keep these targets working:
 
 - `make macos-ci`: local CI gate (see the `ci:` target in `Makefile` for exact ordering). Do not remove `install`.
 - `make install`: install `ralph` to `~/.local/bin/ralph` (or a writable fallback) and sanity-check `ralph --help`.
-- `make test`: runs workspace unit + doc tests in isolated temp dirs (under `target/tmp/ralph-ci-tmp/`).
+- `make test`: runs `cargo nextest run` for workspace tests (with fallback to `cargo test` if nextest missing), then `cargo test --doc` for doctests.
 - `make lint`: `cargo clippy --workspace --all-targets -- -D warnings`
 - `make format`: `cargo fmt --all`
 - `make type-check`: `cargo check --workspace --all-targets`
