@@ -66,7 +66,7 @@ Config example (.ralph/config.json):
 
 Notes:
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi
-  - Allowed models: gpt-5.3-codex, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.3-codex + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
+  - Allowed models: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
   - On macOS: use `ralph app open` to launch the GUI (requires an installed Ralph.app)
 
 Examples:

@@ -208,6 +208,7 @@ fn select_model(runner: &Runner) -> Result<String> {
         ],
         Runner::Codex => vec![
             ("gpt-5.3-codex", "Codex optimized for coding (recommended)"),
+            ("gpt-5.3-codex-spark", "Codex Spark variant for coding"),
             ("gpt-5.3", "General GPT-5.3"),
             ("gpt-5.2-codex", "Codex optimized for coding (legacy)"),
             ("gpt-5.2", "General GPT-5.2 (legacy)"),

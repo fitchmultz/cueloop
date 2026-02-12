@@ -230,7 +230,7 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
 ```
 
 **Allowed models by runner:**
-- **Codex**: `gpt-5.3-codex`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` (only these four)
+- **Codex**: `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` (restricted list)
 - **OpenCode**: arbitrary model IDs (e.g., `zai-coding-plan/glm-4.7`)
 - **Gemini**: `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs
 - **Claude**: `sonnet` (default), `opus`, or arbitrary model IDs

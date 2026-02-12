@@ -129,7 +129,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
  \n\
  Notes:\n\
 	  - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
-	  - Allowed models: gpt-5.3-codex, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.3-codex + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
+	  - Allowed models: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
 	  - `--effort` is codex-only and is ignored for other runners.\n\
 	  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
 	  - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\

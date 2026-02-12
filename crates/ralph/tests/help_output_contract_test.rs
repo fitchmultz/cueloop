@@ -53,6 +53,7 @@ fn root_help_mentions_runner_and_models_and_precedence() {
 
     assert_contains(&combined, "Allowed models:");
     assert_contains(&combined, "gpt-5.3-codex");
+    assert_contains(&combined, "gpt-5.3-codex-spark");
     assert_contains(&combined, "gpt-5.3");
     assert_contains(&combined, "gpt-5.2-codex");
     assert_contains(&combined, "gpt-5.2");

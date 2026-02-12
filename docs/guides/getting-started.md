@@ -331,7 +331,7 @@ Ralph supports multiple AI runners. Choose based on your needs:
 | Runner | Best For | Model Options | Speed | Reasoning |
 |--------|----------|---------------|-------|-----------|
 | **Claude** | General purpose, complex reasoning | `sonnet` (default), `opus` | Medium | ⭐⭐⭐ Excellent |
-| **Codex** | Code generation, OpenAI fans | `gpt-5.3-codex`, `gpt-5.2-codex` | Fast | ⭐⭐⭐ Excellent |
+| **Codex** | Code generation, OpenAI fans | `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2-codex` | Fast | ⭐⭐⭐ Excellent |
 | **Gemini** | Cost efficiency, speed | `gemini-3-pro-preview`, `gemini-3-flash-preview` | ⚡ Fast | ⭐⭐ Good |
 | **OpenCode** | Flexible/custom endpoints | Arbitrary model IDs | Varies | Varies |
 | **Cursor** | Cursor IDE users | Uses Cursor's `agent` binary | Medium | ⭐⭐⭐ Excellent |
@@ -346,6 +346,7 @@ Ralph supports multiple AI runners. Choose based on your needs:
 
 **Codex:**
 - `gpt-5.3-codex` - Latest and most capable
+- `gpt-5.3-codex-spark` - Spark variant for coding workflows
 - `gpt-5.2-codex` - Good balance, slightly faster
 
 **Gemini:**
