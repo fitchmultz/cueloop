@@ -334,11 +334,13 @@ ralph daemon status
 
 ## `ralph webhook`
 
-Test webhook configuration and inspect webhook payloads.
+Manage webhook delivery operations.
 
 ### Subcommands
 
 * `ralph webhook test`: Send a test webhook event.
+* `ralph webhook status`: Inspect delivery queue counters and recent failures.
+* `ralph webhook replay`: Replay persisted failure records with explicit targeting.
 
 ### `ralph webhook test`
 
@@ -377,6 +379,60 @@ ralph webhook test --event task_created --print-json --pretty false
 
 # Test with custom URL
 ralph webhook test --url https://example.com/webhook
+```
+
+### `ralph webhook status`
+
+Show live webhook delivery counters and recent persisted failures.
+
+#### Flags
+
+* `--format <FORMAT>`: Output format (`text` or `json`, default: `text`).
+* `--recent <N>`: Number of recent failures to include (default: `20`).
+
+#### Examples
+
+```bash
+# Human-readable diagnostics
+ralph webhook status
+
+# Machine-readable diagnostics for automation
+ralph webhook status --format json
+
+# Include only the 5 most recent failures
+ralph webhook status --recent 5
+```
+
+### `ralph webhook replay`
+
+Replay failed deliveries from `.ralph/cache/webhooks/failures.json`.
+
+Safety constraints:
+* Replay requires explicit targeting (`--id`, `--event`, or `--task-id`).
+* Replay enforces per-record attempt caps (`--max-replay-attempts`).
+* `--dry-run` previews replay candidates without modifying state.
+* Non-dry-run replay requires `agent.webhook.enabled=true` and `agent.webhook.url` to be configured.
+
+#### Flags
+
+* `--id <ID>`: Replay a specific failure record ID (repeatable).
+* `--event <EVENT>`: Replay failures matching an event.
+* `--task-id <TASK_ID>`: Replay failures matching a task.
+* `--limit <N>`: Maximum matched failure records to consider (default: `20`).
+* `--max-replay-attempts <N>`: Maximum replay attempts per record (default: `3`).
+* `--dry-run`: Preview candidates without enqueueing.
+
+#### Examples
+
+```bash
+# Preview replay for one failed record
+ralph webhook replay --dry-run --id wf-1700000000-1
+
+# Replay the latest 5 failed task_completed events
+ralph webhook replay --event task_completed --limit 5
+
+# Replay failures for one task with explicit replay cap
+ralph webhook replay --task-id RQ-0814 --max-replay-attempts 3
 ```
 
 ## `ralph config`

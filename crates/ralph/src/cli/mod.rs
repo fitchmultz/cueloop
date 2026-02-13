@@ -172,7 +172,7 @@ pub enum Command {
     Watch(watch::WatchArgs),
     /// Webhook management commands.
     #[command(
-        after_long_help = "Examples:\n  ralph webhook test\n  ralph webhook test --event task_completed\n  ralph webhook test --url https://example.com/webhook"
+        after_long_help = "Examples:\n  ralph webhook test\n  ralph webhook test --event task_completed\n  ralph webhook status --format json\n  ralph webhook replay --dry-run --id wf-1700000000-1"
     )]
     Webhook(webhook::WebhookArgs),
 

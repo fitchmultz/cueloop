@@ -13,6 +13,47 @@
 
 use super::*;
 
+fn sample_failure_record(
+    id: &str,
+    event: &str,
+    task_id: Option<&str>,
+    replay_count: u32,
+) -> WebhookFailureRecord {
+    WebhookFailureRecord {
+        id: id.to_string(),
+        failed_at: "2026-02-13T00:00:00Z".to_string(),
+        event: event.to_string(),
+        task_id: task_id.map(std::string::ToString::to_string),
+        error: "HTTP 500: endpoint failed".to_string(),
+        attempts: 3,
+        replay_count,
+        payload: WebhookPayload {
+            event: event.to_string(),
+            timestamp: "2026-02-13T00:00:00Z".to_string(),
+            task_id: task_id.map(std::string::ToString::to_string),
+            task_title: Some("Test task".to_string()),
+            previous_status: None,
+            current_status: None,
+            note: None,
+            context: WebhookContext::default(),
+        },
+    }
+}
+
+fn webhook_test_config() -> WebhookConfig {
+    WebhookConfig {
+        enabled: Some(true),
+        url: Some("http://127.0.0.1:9/webhook".to_string()),
+        secret: None,
+        events: Some(vec!["*".to_string()]),
+        timeout_secs: Some(1),
+        retry_count: Some(0),
+        retry_backoff_ms: Some(1),
+        queue_capacity: Some(100),
+        queue_policy: Some(WebhookQueuePolicy::DropNew),
+    }
+}
+
 #[test]
 fn webhook_event_type_as_str() {
     assert_eq!(WebhookEventType::TaskCreated.as_str(), "task_created");
@@ -27,6 +68,7 @@ fn webhook_event_type_as_str() {
     assert_eq!(WebhookEventType::LoopStopped.as_str(), "loop_stopped");
     assert_eq!(WebhookEventType::PhaseStarted.as_str(), "phase_started");
     assert_eq!(WebhookEventType::PhaseCompleted.as_str(), "phase_completed");
+    assert_eq!(WebhookEventType::QueueUnblocked.as_str(), "queue_unblocked");
 }
 
 #[test]
@@ -68,6 +110,10 @@ fn webhook_event_type_from_str() {
     assert_eq!(
         WebhookEventType::from_str("phase_completed").unwrap(),
         WebhookEventType::PhaseCompleted
+    );
+    assert_eq!(
+        WebhookEventType::from_str("queue_unblocked").unwrap(),
+        WebhookEventType::QueueUnblocked
     );
 
     // Unknown event should error
@@ -376,4 +422,195 @@ fn webhook_queue_capacity_bounds_check() {
         .map(|c| c.clamp(1, 10000))
         .unwrap_or(100);
     assert_eq!(capacity, 500, "Normal capacity should be preserved");
+}
+
+#[test]
+fn diagnostics_snapshot_includes_metrics_and_recent_failures() {
+    super::diagnostics::reset_webhook_metrics_for_tests();
+    let repo_root = tempfile::tempdir().expect("tempdir");
+    let config = webhook_test_config();
+
+    super::diagnostics::set_queue_capacity(64);
+    super::diagnostics::note_enqueue_success();
+    super::diagnostics::note_enqueue_success();
+    super::diagnostics::note_queue_dequeue();
+    super::diagnostics::note_delivery_success();
+    super::diagnostics::note_retry_attempt();
+    super::diagnostics::note_dropped_message();
+
+    super::diagnostics::write_failure_records_for_tests(
+        repo_root.path(),
+        &[sample_failure_record(
+            "wf-1",
+            "task_completed",
+            Some("RQ-0814"),
+            0,
+        )],
+    )
+    .expect("write failure store");
+
+    let snapshot = diagnostics_snapshot(repo_root.path(), &config, 10).expect("status snapshot");
+
+    assert_eq!(snapshot.queue_depth, 1);
+    assert_eq!(snapshot.queue_capacity, 64);
+    assert_eq!(snapshot.queue_policy, WebhookQueuePolicy::DropNew);
+    assert_eq!(snapshot.enqueued_total, 2);
+    assert_eq!(snapshot.delivered_total, 1);
+    assert_eq!(snapshot.dropped_total, 1);
+    assert_eq!(snapshot.retry_attempts_total, 1);
+    assert_eq!(snapshot.recent_failures.len(), 1);
+    assert_eq!(snapshot.recent_failures[0].id, "wf-1");
+}
+
+#[test]
+fn failure_store_retention_is_bounded_to_200_records() {
+    super::diagnostics::reset_webhook_metrics_for_tests();
+    let repo_root = tempfile::tempdir().expect("tempdir");
+
+    let msg = WebhookMessage {
+        payload: WebhookPayload {
+            event: "task_failed".to_string(),
+            timestamp: "2026-02-13T00:00:00Z".to_string(),
+            task_id: Some("RQ-0814".to_string()),
+            task_title: Some("Retention test".to_string()),
+            previous_status: None,
+            current_status: None,
+            note: None,
+            context: WebhookContext::default(),
+        },
+        config: ResolvedWebhookConfig::from_config(&webhook_test_config()),
+    };
+
+    for _ in 0..205 {
+        super::diagnostics::persist_failed_delivery_for_tests(
+            repo_root.path(),
+            &msg,
+            &anyhow::anyhow!("simulated failure"),
+            1,
+        )
+        .expect("persist failed delivery");
+    }
+
+    let records = super::diagnostics::load_failure_records_for_tests(repo_root.path())
+        .expect("load failure records");
+    assert_eq!(records.len(), 200);
+}
+
+#[test]
+fn replay_selector_filtering_and_cap_behavior() {
+    let repo_root = tempfile::tempdir().expect("tempdir");
+    let config = webhook_test_config();
+
+    super::diagnostics::write_failure_records_for_tests(
+        repo_root.path(),
+        &[
+            sample_failure_record("wf-a", "task_completed", Some("RQ-0814"), 0),
+            sample_failure_record("wf-b", "task_completed", Some("RQ-0815"), 2),
+            sample_failure_record("wf-c", "task_failed", Some("RQ-0814"), 0),
+        ],
+    )
+    .expect("write failure records");
+
+    let report = replay_failed_deliveries(
+        repo_root.path(),
+        &config,
+        &ReplaySelector {
+            ids: Vec::new(),
+            event: Some("task_completed".to_string()),
+            task_id: None,
+            limit: 10,
+            max_replay_attempts: 2,
+        },
+        true,
+    )
+    .expect("replay dry-run report");
+
+    assert!(report.dry_run);
+    assert_eq!(report.matched_count, 2);
+    assert_eq!(report.eligible_count, 1);
+    assert_eq!(report.skipped_max_replay_attempts, 1);
+}
+
+#[test]
+fn replay_dry_run_does_not_mutate_replay_counts() {
+    let repo_root = tempfile::tempdir().expect("tempdir");
+    let config = webhook_test_config();
+    super::diagnostics::write_failure_records_for_tests(
+        repo_root.path(),
+        &[sample_failure_record(
+            "wf-dry",
+            "task_completed",
+            Some("RQ-0814"),
+            0,
+        )],
+    )
+    .expect("write failure records");
+
+    let report = replay_failed_deliveries(
+        repo_root.path(),
+        &config,
+        &ReplaySelector {
+            ids: vec!["wf-dry".to_string()],
+            event: None,
+            task_id: None,
+            limit: 10,
+            max_replay_attempts: 3,
+        },
+        true,
+    )
+    .expect("dry-run replay");
+    assert_eq!(report.matched_count, 1);
+    assert_eq!(report.replayed_count, 0);
+
+    let records = super::diagnostics::load_failure_records_for_tests(repo_root.path())
+        .expect("reload failure records");
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].replay_count, 0);
+}
+
+#[test]
+fn replay_execute_only_increments_eligible_records() {
+    let repo_root = tempfile::tempdir().expect("tempdir");
+    let config = webhook_test_config();
+    super::diagnostics::write_failure_records_for_tests(
+        repo_root.path(),
+        &[
+            sample_failure_record("wf-live", "task_completed", Some("RQ-0814"), 0),
+            sample_failure_record("wf-capped", "task_completed", Some("RQ-0814"), 3),
+        ],
+    )
+    .expect("write failure records");
+
+    let report = replay_failed_deliveries(
+        repo_root.path(),
+        &config,
+        &ReplaySelector {
+            ids: Vec::new(),
+            event: Some("task_completed".to_string()),
+            task_id: None,
+            limit: 10,
+            max_replay_attempts: 3,
+        },
+        false,
+    )
+    .expect("replay execution report");
+
+    assert!(!report.dry_run);
+    assert_eq!(report.matched_count, 2);
+    assert_eq!(report.eligible_count, 1);
+    assert_eq!(report.replayed_count, 1);
+    assert_eq!(report.skipped_max_replay_attempts, 1);
+
+    let records = super::diagnostics::load_failure_records_for_tests(repo_root.path())
+        .expect("reload failure records");
+    let live = records
+        .iter()
+        .find(|record| record.id == "wf-live")
+        .expect("wf-live record should exist");
+    assert_eq!(live.replay_count, 1);
+    let capped = records
+        .iter()
+        .find(|record| record.id == "wf-capped")
+        .expect("wf-capped record should exist");
+    assert_eq!(capped.replay_count, 3);
 }

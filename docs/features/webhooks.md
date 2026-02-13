@@ -453,7 +453,7 @@ Ralph's webhook system follows **best-effort delivery semantics**:
 - **Non-blocking**: Webhook calls return immediately after enqueueing
 - **Async processing**: A background worker handles HTTP delivery
 - **FIFO ordering**: Webhooks are delivered in order (within queue policy constraints)
-- **No persistence**: Undelivered webhooks are lost on process exit
+- **Bounded failure persistence**: Final delivery failures are written to `.ralph/cache/webhooks/failures.json` (latest 200 records)
 
 ### Retry Behavior
 
@@ -550,6 +550,27 @@ ralph webhook test --event task_completed \
 | `--task-title` | Custom task title (default: `Test webhook notification`) |
 | `--print-json` | Print payload without sending |
 | `--pretty` | Pretty-print JSON (default: `true`) |
+
+### Delivery Diagnostics and Replay
+
+Use built-in diagnostics/replay commands to inspect delivery health and recover failed events:
+
+```bash
+# Inspect counters + recent failure records
+ralph webhook status
+ralph webhook status --format json
+
+# Replay specific failures safely
+ralph webhook replay --dry-run --id wf-1700000000-1
+ralph webhook replay --event task_completed --limit 5
+ralph webhook replay --task-id RQ-0814 --max-replay-attempts 3
+```
+
+Replay safety defaults:
+- Replay requires explicit targeting (`--id`, `--event`, or `--task-id`).
+- `--dry-run` previews candidates without enqueueing.
+- Replay attempts are capped per failure record (`--max-replay-attempts`).
+- Non-dry-run replay requires `agent.webhook.enabled=true` and a configured `agent.webhook.url`.
 
 ---
 

@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0814",
-      "status": "todo",
-      "title": "Add webhook delivery diagnostics and replay controls",
-      "description": "Opportunity type: reliability and integration.\n\nWhy it matters:\n- Ralph supports asynchronous webhooks with retry/backpressure, but operators lack first-class tooling to inspect queue depth, failure counts, and replay failed events. This blocks confident production integrations.\n\nProposed approach (minimal slice first):\n- Add `ralph webhook status` with delivery queue metrics and recent failures, plus `ralph webhook replay` for controlled retries from persisted failure records.\n\nExpansion:\n- Add JSON export for observability pipelines and per-event latency histograms.\n\nRisks and mitigations:\n- Risk: replaying malformed payloads repeatedly.\n- Mitigation: bounded replay attempts, explicit event/id targeting, and safe dry-run preview.",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "reliability",
-        "webhook",
-        "integration"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/webhook.rs",
-        "crates/ralph/src/webhook.rs",
-        "docs/configuration.md",
-        "docs/cli.md",
-        "cargo run -p ralph -- webhook --help"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/cli/webhook.rs :: module responsibilities :: only `webhook test` is implemented; persistent webhook state is not handled.",
-        "workflow: cargo run -q -p ralph -- webhook --help :: command surface has only `test` subcommand.",
-        "config: docs/configuration.md :: agent.webhook includes retry_count/retry_backoff_ms/queue_capacity/queue_policy but no built-in CLI diagnostics workflow."
-      ],
-      "plan": [
-        "Define webhook diagnostics data model (queue depth, dropped count, retry/failure stats, recent failed events).",
-        "Add CLI subcommands for status and replay with dry-run and event/task filters.",
-        "Persist enough failure metadata for deterministic replay without exposing secrets.",
-        "Add tests for status output formats and replay safety limits.",
-        "Verify by running `cargo run -p ralph -- webhook status --format json` and `cargo test -p ralph webhook`, confirming inspectable metrics and bounded replay behavior."
-      ],
-      "notes": [],
-      "request": "scan: none",
-      "created_at": "2026-02-12T20:13:33Z",
-      "updated_at": "2026-02-12T20:13:33Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0815",
       "status": "todo",
       "title": "Parse queue changes directly in RalphMac watcher path to reduce CLI churn",

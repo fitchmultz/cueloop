@@ -228,7 +228,7 @@ Complete reference documentation:
 | [ralph doctor](cli.md#ralph-doctor) | Environment verification |
 | [ralph daemon](cli.md#ralph-daemon) | Background daemon management |
 | [ralph context](cli.md#ralph-context) | AGENTS.md management |
-| [ralph webhook](cli.md#ralph-webhook) | Webhook testing |
+| [ralph webhook](cli.md#ralph-webhook) | Webhook testing, diagnostics, and replay |
 | [ralph completions](cli.md#ralph-completions) | Shell completions |
 
 ### Configuration Reference

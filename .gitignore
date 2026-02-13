@@ -15,6 +15,7 @@ target/
 .ralph/cache/queue.json.backup*
 .ralph/cache/parallel/state.json
 .ralph/cache/session.json
+.ralph/cache/webhooks/
 .ralph/workspaces/
 .learnings
 debug/

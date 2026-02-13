@@ -458,6 +458,7 @@ Supported fields:
   - **Task events**: `task_created`, `task_started`, `task_completed`, `task_failed`, `task_status_changed`
   - **Loop events**: `loop_started`, `loop_stopped` (opt-in)
   - **Phase events**: `phase_started`, `phase_completed` (opt-in)
+  - **Queue event**: `queue_unblocked` (opt-in)
   - Use `["*"]` to subscribe to all events including new ones
 - `timeout_secs`: request timeout in seconds (default: `30`, max: `300`).
 - `retry_count`: number of retry attempts for failed deliveries (default: `3`, max: `10`).
@@ -498,6 +499,7 @@ Webhooks are delivered **asynchronously** by a background worker thread:
 - **Non-blocking**: The `send_webhook` call returns immediately after enqueueing.
 - **Order preservation**: Webhooks are delivered in FIFO order within the constraints of the backpressure policy.
 - **Failure handling**: Failed deliveries are retried (per `retry_count` and `retry_backoff_ms`).
+- **Failure persistence**: Final delivery failures are persisted to `.ralph/cache/webhooks/failures.json` (bounded to the most recent 200 records).
 - **Worker lifecycle**: The background worker starts on first webhook send and shuts down when the process exits.
 
 Example:
@@ -623,7 +625,19 @@ ralph webhook test --event task_created --print-json --pretty
 
 # Test with custom URL
 ralph webhook test --url https://example.com/webhook
+
+# Inspect queue/failure diagnostics
+ralph webhook status
+ralph webhook status --format json
+
+# Replay failed deliveries safely
+ralph webhook replay --dry-run --id wf-1700000000-1
+ralph webhook replay --event task_completed --limit 5
 ```
+
+Non-dry-run replay (`ralph webhook replay` without `--dry-run`) requires:
+- `agent.webhook.enabled: true`
+- `agent.webhook.url` set to a non-empty endpoint URL
 
 - **Windows**: Uses toast notifications; custom sounds play via `winmm.dll` PlaySound for `.wav` files, PowerShell MediaPlayer fallback for other formats.
 
