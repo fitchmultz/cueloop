@@ -187,9 +187,9 @@ public enum TimeRange: String, CaseIterable, Identifiable {
     case thirtyDays = "30d"
     case ninetyDays = "90d"
     case allTime = "all"
-    
+
     public var id: String { rawValue }
-    
+
     public var displayName: String {
         switch self {
         case .sevenDays: return "7 Days"
@@ -198,7 +198,7 @@ public enum TimeRange: String, CaseIterable, Identifiable {
         case .allTime: return "All Time"
         }
     }
-    
+
     public var days: Int? {
         switch self {
         case .sevenDays: return 7
@@ -206,5 +206,57 @@ public enum TimeRange: String, CaseIterable, Identifiable {
         case .ninetyDays: return 90
         case .allTime: return nil
         }
+    }
+}
+
+// MARK: - Aggregated Dashboard Models
+
+/// Status of an individual dashboard section.
+public enum SectionStatus: String, Codable, Sendable, Equatable {
+    case ok
+    case error
+    case unavailable
+}
+
+/// Wrapper for a section that may have succeeded or failed.
+public struct SectionResult<T: Codable & Sendable & Equatable>: Codable, Sendable, Equatable {
+    public let status: SectionStatus
+    public let data: T?
+    public let errorMessage: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case status
+        case data
+        case errorMessage = "error_message"
+    }
+}
+
+/// All dashboard sections with status wrappers.
+public struct DashboardSections: Codable, Sendable, Equatable {
+    public let productivitySummary: SectionResult<ProductivitySummaryReport>
+    public let productivityVelocity: SectionResult<ProductivityVelocityReport>
+    public let burndown: SectionResult<BurndownReport>
+    public let queueStats: SectionResult<QueueStatsReport>
+    public let history: SectionResult<HistoryReport>
+
+    private enum CodingKeys: String, CodingKey {
+        case productivitySummary = "productivity_summary"
+        case productivityVelocity = "productivity_velocity"
+        case burndown
+        case queueStats = "queue_stats"
+        case history
+    }
+}
+
+/// Aggregated dashboard response from `ralph queue dashboard`.
+public struct DashboardReport: Codable, Sendable, Equatable {
+    public let windowDays: Int
+    public let generatedAt: String
+    public let sections: DashboardSections
+
+    private enum CodingKeys: String, CodingKey {
+        case windowDays = "window_days"
+        case generatedAt = "generated_at"
+        case sections
     }
 }

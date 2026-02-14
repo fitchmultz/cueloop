@@ -1597,6 +1597,78 @@ ralph queue tree --include-done
 ralph queue tree --max-depth 5
 ```
 
+### `ralph queue dashboard`
+
+Aggregated analytics endpoint for GUI clients. Returns all dashboard data in a single JSON payload, reducing process fan-out when loading analytics views.
+
+This command combines data from:
+- `ralph productivity summary` - streaks, milestones, recent completions
+- `ralph productivity velocity` - tasks per day over the window
+- `ralph queue burndown` - remaining tasks over time
+- `ralph queue stats` - completion rates, tag breakdown
+- `ralph queue history` - task creation/completion events by day
+
+Each section includes a `status` field (`ok`, `error`, or `unavailable`) for graceful partial failure handling.
+
+Flags:
+
+* `--days <N>`: time window in days for velocity, burndown, and history (default: 30).
+
+```bash
+# 30-day window (default)
+ralph queue dashboard
+
+# 7-day window
+ralph queue dashboard --days 7
+
+# 90-day window
+ralph queue dashboard --days 90
+```
+
+Output format (JSON only):
+
+```json
+{
+  "window_days": 30,
+  "generated_at": "2026-02-14T18:57:47Z",
+  "sections": {
+    "productivity_summary": {
+      "status": "ok",
+      "data": { ... }
+    },
+    "productivity_velocity": {
+      "status": "ok",
+      "data": { ... }
+    },
+    "burndown": {
+      "status": "ok",
+      "data": { ... }
+    },
+    "queue_stats": {
+      "status": "ok",
+      "data": { ... }
+    },
+    "history": {
+      "status": "ok",
+      "data": { ... }
+    }
+  }
+}
+```
+
+When a section is unavailable (e.g., no productivity stats for new projects), the response includes an error message:
+
+```json
+{
+  "sections": {
+    "productivity_summary": {
+      "status": "unavailable",
+      "error_message": "productivity stats not available"
+    }
+  }
+}
+```
+
 ### `ralph queue export`
 
 Export task data to various formats for external analysis, reporting, and sharing.

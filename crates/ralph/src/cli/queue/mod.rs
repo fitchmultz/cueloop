@@ -16,6 +16,7 @@
 mod aging;
 mod archive;
 mod burndown;
+mod dashboard;
 mod explain;
 mod export;
 mod graph;
@@ -45,6 +46,7 @@ use crate::config;
 
 pub use aging::QueueAgingArgs;
 pub use burndown::QueueBurndownArgs;
+pub use dashboard::QueueDashboardArgs;
 pub use explain::QueueExplainArgs;
 pub use export::QueueExportArgs;
 pub use graph::QueueGraphArgs;
@@ -92,6 +94,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Stop => stop::handle(&resolved),
         QueueCommand::Explain(args) => explain::handle(&resolved, args),
         QueueCommand::Tree(args) => tree::handle(&resolved, args),
+        QueueCommand::Dashboard(args) => dashboard::handle(&resolved, args),
         QueueCommand::Issue(args) => issue::handle(&resolved, force, args),
     }
 }
@@ -223,6 +226,14 @@ pub enum QueueCommand {
         after_long_help = "Examples:\n  ralph queue tree\n  ralph queue tree --include-done\n  ralph queue tree --root RQ-0001\n  ralph queue tree --max-depth 25"
     )]
     Tree(QueueTreeArgs),
+
+    /// Aggregated dashboard for analytics UI (combines stats, burndown, history, productivity).
+    #[command(
+        after_long_help = "Examples:\n  ralph queue dashboard\n  ralph queue dashboard --days 30\n  ralph queue dashboard --days 7\n\n\
+The dashboard command returns all analytics data in a single JSON payload for GUI clients.\n\
+Each section includes a 'status' field ('ok', 'error', or 'unavailable') for graceful partial failure handling."
+    )]
+    Dashboard(QueueDashboardArgs),
 
     /// Publish tasks to GitHub Issues.
     #[command(

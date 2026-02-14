@@ -2001,39 +2001,96 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
 
     // MARK: - Analytics Data Loading
 
-    /// Load all analytics data for the dashboard
+    /// Load all analytics data for the dashboard using the aggregated endpoint.
     public func loadAnalytics(timeRange: TimeRange = .sevenDays) async {
         guard let client else {
             analyticsErrorMessage = "CLI client not available."
             return
         }
-        
+
         analyticsLoading = true
         analyticsErrorMessage = nil
-        
-        // Capture days value to avoid data race warnings with async let
+
+        // Capture days value
         let days = timeRange.days ?? 30
-        
+
+        // Try the aggregated dashboard endpoint first (single process invocation)
+        if let dashboard = await loadDashboardAggregated(client: client, days: days) {
+            var newData = AnalyticsData()
+
+            // Extract sections that succeeded
+            if dashboard.sections.productivitySummary.status == .ok,
+               let data = dashboard.sections.productivitySummary.data {
+                newData.productivitySummary = data
+            }
+            if dashboard.sections.productivityVelocity.status == .ok,
+               let data = dashboard.sections.productivityVelocity.data {
+                newData.velocity = data
+            }
+            if dashboard.sections.burndown.status == .ok,
+               let data = dashboard.sections.burndown.data {
+                newData.burndown = data
+            }
+            if dashboard.sections.queueStats.status == .ok,
+               let data = dashboard.sections.queueStats.data {
+                newData.queueStats = data
+            }
+            if dashboard.sections.history.status == .ok,
+               let data = dashboard.sections.history.data {
+                newData.history = data
+            }
+
+            analyticsData = newData
+            analyticsLoading = false
+            return
+        }
+
+        // Fallback to legacy parallel loading if aggregated endpoint fails
         // Load all data in parallel
         async let summaryTask = loadProductivitySummary(client: client)
         async let velocityTask = loadVelocity(client: client, days: days)
         async let burndownTask = loadBurndown(client: client, days: days)
         async let statsTask = loadQueueStats(client: client)
         async let historyTask = loadHistory(client: client, days: days)
-        
+
         let (summary, velocity, burndown, stats, history) = await (
             summaryTask, velocityTask, burndownTask, statsTask, historyTask
         )
-        
+
         var newData = AnalyticsData()
         newData.productivitySummary = summary
         newData.velocity = velocity
         newData.burndown = burndown
         newData.queueStats = stats
         newData.history = history
-        
+
         analyticsData = newData
         analyticsLoading = false
+    }
+
+    /// Load all analytics data via single aggregated endpoint.
+    private func loadDashboardAggregated(client: RalphCLIClient, days: Int) async -> DashboardReport? {
+        let helper = RetryHelper(configuration: .minimal)
+        do {
+            let collected = try await helper.execute(
+                operation: { [self] in
+                    let result = try await client.runAndCollect(
+                        arguments: ["--no-color", "queue", "dashboard", "--days", String(days)],
+                        currentDirectoryURL: workingDirectoryURL
+                    )
+                    if result.status.code != 0 {
+                        throw result.toError()
+                    }
+                    return result
+                }
+            )
+            guard collected.status.code == 0 else { return nil }
+            let data = Data(collected.stdout.utf8)
+            let decoder = JSONDecoder()
+            return try decoder.decode(DashboardReport.self, from: data)
+        } catch {
+            return nil
+        }
     }
 
     private func loadProductivitySummary(client: RalphCLIClient) async -> ProductivitySummaryReport? {

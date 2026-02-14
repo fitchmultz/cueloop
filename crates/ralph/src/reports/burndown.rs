@@ -21,29 +21,29 @@ use crate::timeutil;
 use super::shared::{ReportFormat, format_date_key, print_json};
 
 #[derive(Debug, Serialize)]
-struct BurndownWindow {
-    days: i64,
-    start_date: String,
-    end_date: String,
+pub(crate) struct BurndownWindow {
+    pub days: i64,
+    pub start_date: String,
+    pub end_date: String,
 }
 
 #[derive(Debug, Serialize)]
-struct BurndownDay {
-    date: String,
-    remaining: usize,
+pub(crate) struct BurndownDay {
+    pub date: String,
+    pub remaining: usize,
 }
 
 #[derive(Debug, Serialize)]
-struct BurndownLegend {
-    scale_per_block: usize,
+pub(crate) struct BurndownLegend {
+    pub scale_per_block: usize,
 }
 
 #[derive(Debug, Serialize)]
-struct BurndownReport {
-    window: BurndownWindow,
-    daily_counts: Vec<BurndownDay>,
-    max_count: usize,
-    legend: Option<BurndownLegend>,
+pub(crate) struct BurndownReport {
+    pub window: BurndownWindow,
+    pub daily_counts: Vec<BurndownDay>,
+    pub max_count: usize,
+    pub legend: Option<BurndownLegend>,
 }
 
 fn start_of_window(now: OffsetDateTime, days_to_show: i64) -> OffsetDateTime {
@@ -60,7 +60,11 @@ fn start_of_window(now: OffsetDateTime, days_to_show: i64) -> OffsetDateTime {
         .expect("nanosecond 0 is always valid")
 }
 
-fn build_burndown_report(queue: &QueueFile, done: Option<&QueueFile>, days: u32) -> BurndownReport {
+pub(crate) fn build_burndown_report(
+    queue: &QueueFile,
+    done: Option<&QueueFile>,
+    days: u32,
+) -> BurndownReport {
     let days_to_show = days.max(1) as i64;
     let now = OffsetDateTime::now_utc();
     let start_of_day = start_of_window(now, days_to_show);

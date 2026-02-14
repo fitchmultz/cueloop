@@ -12,6 +12,7 @@
 
 mod aging;
 mod burndown;
+mod dashboard;
 mod history;
 mod shared;
 mod stats;
@@ -20,6 +21,7 @@ pub(crate) use shared::ReportFormat;
 
 pub(crate) use aging::print_aging;
 pub(crate) use burndown::print_burndown;
+pub(crate) use dashboard::{build_dashboard_report, print_dashboard};
 pub(crate) use history::print_history;
 pub(crate) use stats::print_stats;
 
