@@ -26,6 +26,17 @@ use crate::timeutil;
 /// Handle the `field` command (set custom fields).
 pub fn handle_field(args: &TaskFieldArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task field", force)?;
+
+    // Create undo snapshot before mutation
+    let task_ids_preview = args.task_ids.join(", ");
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!(
+            "task field {}={} [{}]",
+            args.key, args.value, task_ids_preview
+        ),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
 
@@ -108,6 +119,14 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
 
     // Normal mode: acquire lock and apply
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task edit", force)?;
+
+    // Create undo snapshot before mutation
+    let task_ids_preview = task_ids.join(", ");
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!("task edit {} [{}]", args.field.as_str(), task_ids_preview),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
 

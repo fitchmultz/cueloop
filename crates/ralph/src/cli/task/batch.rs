@@ -100,6 +100,12 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
 
                     let _queue_lock =
                         queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+                    // Create undo snapshot before mutation
+                    crate::undo::create_undo_snapshot(
+                        resolved,
+                        &format!("batch status {} [{} tasks]", status, task_ids.len()),
+                    )?;
                     let mut results = Vec::new();
                     let mut succeeded = 0;
                     let mut failed = 0;
@@ -187,6 +193,12 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
 
                     let _queue_lock =
                         queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+                    // Create undo snapshot before mutation
+                    crate::undo::create_undo_snapshot(
+                        resolved,
+                        &format!("batch status {} [{} tasks]", status, task_ids.len()),
+                    )?;
                     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
                     let result = queue::operations::batch_set_status(
@@ -228,6 +240,18 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
             }
 
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+            // Create undo snapshot before mutation
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!(
+                    "batch set {}={} [{} tasks]",
+                    field_args.key,
+                    field_args.value,
+                    task_ids.len()
+                ),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
             let result = queue::operations::batch_set_field(
@@ -282,6 +306,17 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
             }
 
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+            // Create undo snapshot before mutation
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!(
+                    "batch edit {} [{} tasks]",
+                    edit_args.field.as_str(),
+                    task_ids.len()
+                ),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
             let result = queue::operations::batch_apply_edit(
@@ -323,6 +358,13 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
             }
 
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+            // Create undo snapshot before mutation
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!("batch delete [{} tasks]", task_ids.len()),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
             let result = queue::operations::batch_delete_tasks(
@@ -367,6 +409,13 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
             }
 
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+            // Create undo snapshot before mutation
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!("batch archive [{} tasks]", task_ids.len()),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
             let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
 
@@ -412,6 +461,13 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
             }
 
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+            // Create undo snapshot before mutation
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!("batch clone [{} tasks]", task_ids.len()),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
             let result = queue::operations::batch_clone_tasks(
@@ -461,6 +517,13 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
             }
 
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+            // Create undo snapshot before mutation
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!("batch split [{} tasks]", task_ids.len()),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
             let result = queue::operations::batch_split_tasks(
@@ -505,6 +568,13 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
             }
 
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+            // Create undo snapshot before mutation
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!("batch plan-append [{} tasks]", task_ids.len()),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
             let result = queue::operations::batch_plan_append(
@@ -543,6 +613,13 @@ pub fn handle(args: &TaskBatchArgs, force: bool, resolved: &config::Resolved) ->
             }
 
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task batch", force)?;
+
+            // Create undo snapshot before mutation
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!("batch plan-prepend [{} tasks]", task_ids.len()),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
             let result = queue::operations::batch_plan_prepend(

@@ -128,6 +128,7 @@ fn run() -> Result<()> {
         },
         cli::Command::Daemon(args) => cli::daemon::handle_daemon(args.command),
         cli::Command::Tutorial(args) => cli::tutorial::handle_tutorial(args),
+        cli::Command::Undo(args) => cli::undo::handle(args, cli.force),
         cli::Command::CliSpec(args) => cli::handle_cli_spec(args),
     }
 }

@@ -36,6 +36,10 @@ pub struct QueueSortArgs {
 
 pub(crate) fn handle(resolved: &Resolved, force: bool, args: QueueSortArgs) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue sort", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(resolved, &format!("queue sort by {}", args.sort_by))?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
     match args.sort_by {

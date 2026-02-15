@@ -21,6 +21,10 @@ use anyhow::{Result, bail};
 
 pub fn handle(args: &TaskStartArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task start", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(resolved, &format!("task start {}", args.task_id))?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
 

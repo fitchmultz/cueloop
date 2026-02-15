@@ -31,6 +31,10 @@ use std::collections::HashMap;
 /// Handle the `ready` command (promote draft to todo).
 pub fn handle_ready(args: &TaskReadyArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task ready", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(resolved, &format!("task ready {}", args.task_id))?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
 
@@ -73,6 +77,20 @@ pub fn handle_status(
             // For terminal statuses, we need to handle each task individually
             // because complete_task involves moving tasks to done.json
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task status", force)?;
+
+            // Create undo snapshot before mutation
+            // Note: for batch operations, we create one snapshot for the whole batch
+            let task_ids_preview = args.task_ids.join(", ");
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!(
+                    "task status {} -> {} [{} tasks]",
+                    task_ids_preview,
+                    status,
+                    args.task_ids.len()
+                ),
+            )?;
+
             let queue_file = queue::load_queue(&resolved.queue_path)?;
             let now = timeutil::now_utc_rfc3339()?;
             let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
@@ -148,6 +166,19 @@ pub fn handle_status(
         }
         TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing => {
             let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task status", force)?;
+
+            // Create undo snapshot before mutation
+            let task_ids_preview = args.task_ids.join(", ");
+            crate::undo::create_undo_snapshot(
+                resolved,
+                &format!(
+                    "task status {} -> {} [{} tasks]",
+                    task_ids_preview,
+                    status,
+                    args.task_ids.len()
+                ),
+            )?;
+
             let mut queue_file = queue::load_queue(&resolved.queue_path)?;
             let now = timeutil::now_utc_rfc3339()?;
 
@@ -292,6 +323,10 @@ fn complete_task_or_signal(
     // concurrently with a supervising process (like `ralph run loop`).
     // This matches the behavior of `ralph task build`.
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(resolved, &format!("task {} {}", status, task_id))?;
+
     let now = timeutil::now_utc_rfc3339()?;
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
 

@@ -173,6 +173,9 @@ pub(crate) fn handle_publish(
     let _lock =
         crate::queue::acquire_queue_lock(&resolved.repo_root, "queue issue publish", force)?;
 
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(resolved, &format!("queue issue publish {}", task_id))?;
+
     let (mut queue_file, _done_file) = load_and_validate_queues(resolved, false)?;
     let result = publish_task(
         resolved,
@@ -271,6 +274,9 @@ pub(crate) fn handle_publish_many(
     check_gh_available()?;
     let _lock =
         crate::queue::acquire_queue_lock(&resolved.repo_root, "queue issue publish-many", force)?;
+
+    // Create undo snapshot BEFORE any mutations
+    crate::undo::create_undo_snapshot(resolved, "queue issue publish-many")?;
 
     let (mut queue_file, _done_file) = load_and_validate_queues(resolved, false)?;
     let mut final_summary = PublishManySummary {

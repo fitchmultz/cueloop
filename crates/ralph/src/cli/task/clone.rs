@@ -75,6 +75,13 @@ pub fn handle(args: &TaskCloneArgs, force: bool, resolved: &config::Resolved) ->
 
     // Acquire lock and perform actual clone
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task clone", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!("task clone {} -> {}", args.task_id, new_id),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
     let (new_id, cloned_task) =

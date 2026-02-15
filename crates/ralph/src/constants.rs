@@ -74,6 +74,9 @@ pub mod limits {
 
     /// Maximum number of queue backup files to retain in `.ralph/cache`.
     pub const MAX_QUEUE_BACKUP_FILES: usize = 50;
+
+    /// Maximum number of undo snapshots to retain in `.ralph/cache/undo`.
+    pub const MAX_UNDO_SNAPSHOTS: usize = 20;
 }
 
 /// Timeout and interval durations.

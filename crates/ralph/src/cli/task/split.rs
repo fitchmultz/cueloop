@@ -85,6 +85,13 @@ pub fn handle(args: &TaskSplitArgs, force: bool, resolved: &config::Resolved) ->
 
     // Acquire lock and perform actual split
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task split", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!("task split {} into {} tasks", args.task_id, args.number),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
     let (updated_source, child_tasks) =

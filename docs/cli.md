@@ -72,6 +72,7 @@ ralph --no-sanity-checks run loop
 * `ralph runner <subcommand>`: inspect runner capabilities and list available runners.
 * `ralph version`: display version information.
 * `ralph tutorial`: run interactive tutorial for onboarding.
+* `ralph undo`: undo the most recent queue-modifying operation.
 
 ## `ralph tutorial`
 
@@ -100,6 +101,51 @@ ralph tutorial --non-interactive
 
 - `--keep-sandbox`: Preserve the sandbox directory after tutorial completion
 - `--non-interactive`: Skip interactive prompts (for automated testing)
+
+## `ralph undo`
+
+Undo the most recent queue-modifying operation by restoring from an automatic snapshot.
+
+Snapshots are created automatically before operations that modify the queue:
+- `ralph task done/reject` - completing tasks
+- `ralph task start` - starting work on a task
+- `ralph task ready` - promoting draft tasks
+- `ralph task edit/field` - editing tasks
+- `ralph task clone` - cloning tasks
+- `ralph task split` - splitting tasks
+- `ralph task schedule` - scheduling tasks
+- `ralph task relate/blocks/mark-duplicate` - managing task relationships
+- `ralph task batch` - batch operations
+- `ralph queue archive` - archiving terminal tasks
+- `ralph queue prune` - pruning old tasks
+- `ralph queue sort` - sorting the queue
+- `ralph queue import` - importing tasks
+- `ralph queue issue publish/publish-many` - publishing tasks as GitHub issues
+
+Undo snapshots are stored in `.ralph/cache/undo/` with a retention limit (default: 20 snapshots). When you undo an operation, the snapshot is removed to prevent redo cycles.
+
+### Examples
+
+```bash
+# List available undo snapshots
+ralph undo --list
+
+# Preview undo without applying
+ralph undo --dry-run
+
+# Undo the most recent operation
+ralph undo
+
+# Undo a specific operation by ID
+ralph undo --id undo-20260215073000000000
+```
+
+### Options
+
+- `--list`: List available snapshots instead of restoring
+- `--dry-run`: Preview restore without modifying files
+- `--id <ID>`: Restore a specific snapshot by ID (defaults to most recent)
+- `-v, --verbose`: Show verbose output
 
 ## `ralph completions`
 

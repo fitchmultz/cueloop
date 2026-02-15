@@ -31,6 +31,7 @@ pub mod commands;
 pub mod migration;
 pub mod plugins;
 pub mod sanity;
+pub mod undo;
 
 // --- Utils -------------------------------------------------------------------
 

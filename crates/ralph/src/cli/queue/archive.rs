@@ -7,6 +7,10 @@ use crate::queue;
 
 pub(crate) fn handle(resolved: &Resolved, force: bool) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue archive", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(resolved, "queue archive")?;
+
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
     let report = queue::archive_terminal_tasks(
         &resolved.queue_path,

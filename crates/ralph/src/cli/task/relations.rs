@@ -29,6 +29,16 @@ pub fn handle_relate(
     resolved: &config::Resolved,
 ) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task relate", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!(
+            "task relate {} {} {}",
+            args.task_id, args.relation, args.other_task_id
+        ),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
@@ -111,6 +121,17 @@ pub fn handle_blocks(
     resolved: &config::Resolved,
 ) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task blocks", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!(
+            "task blocks {} -> {}",
+            args.task_id,
+            args.blocked_task_ids.join(", ")
+        ),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
@@ -166,6 +187,16 @@ pub fn handle_mark_duplicate(
     resolved: &config::Resolved,
 ) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task duplicate", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!(
+            "task mark-duplicate {} -> {}",
+            args.task_id, args.original_task_id
+        ),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);

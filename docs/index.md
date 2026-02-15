@@ -226,6 +226,7 @@ Complete reference documentation:
 | [ralph scan](cli.md#ralph-scan) | Repository scanning |
 | [ralph config](cli.md#ralph-config) | Configuration inspection |
 | [ralph doctor](cli.md#ralph-doctor) | Environment verification |
+| [ralph undo](cli.md#ralph-undo) | Undo queue operations |
 | [ralph daemon](cli.md#ralph-daemon) | Background daemon management |
 | [ralph context](cli.md#ralph-context) | AGENTS.md management |
 | [ralph webhook](cli.md#ralph-webhook) | Webhook testing, diagnostics, and replay |

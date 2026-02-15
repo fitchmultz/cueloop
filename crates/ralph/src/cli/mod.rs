@@ -33,6 +33,7 @@ pub mod runner;
 pub mod scan;
 pub mod task;
 pub mod tutorial;
+pub mod undo;
 pub mod version;
 pub mod watch;
 pub mod webhook;
@@ -201,6 +202,12 @@ pub enum Command {
         after_long_help = "Examples:\n  ralph tutorial\n  ralph tutorial --keep-sandbox\n  ralph tutorial --non-interactive"
     )]
     Tutorial(tutorial::TutorialArgs),
+
+    /// Undo the most recent queue-modifying operation.
+    #[command(
+        after_long_help = "Examples:\n  ralph undo\n  ralph undo --list\n  ralph undo --dry-run\n  ralph undo --id undo-20260215073000000000\n\nSnapshots are created automatically before queue mutations such as:\n  - ralph task done/reject/start/ready/schedule\n  - ralph task edit/field/clone/split\n  - ralph task relate/blocks/mark-duplicate\n  - ralph queue archive/prune/sort/import\n  - ralph queue issue publish/publish-many\n  - ralph task batch operations"
+    )]
+    Undo(undo::UndoArgs),
 
     /// Internal: Emit a machine-readable CLI specification (JSON) for tooling and GUI clients.
     #[command(name = "cli-spec", hide = true, alias = "__cli-spec")]
