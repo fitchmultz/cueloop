@@ -19,8 +19,10 @@
 import SwiftUI
 
 struct CommandPaletteView: View {
+    let windowActions: WorkspaceWindowActions?
     @StateObject private var viewModel = CommandPaletteViewModel()
     @FocusState private var isSearchFieldFocused: Bool
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         VStack(spacing: 0) {
@@ -60,11 +62,13 @@ struct CommandPaletteView: View {
             return .handled
         }
         .onKeyPress(.return) {
-            viewModel.executeSelectedCommand()
+            viewModel.executeSelectedCommand(windowActions: windowActions)
+            dismiss()
             return .handled
         }
         .onKeyPress(.escape) {
             viewModel.hide()
+            dismiss()
             return .handled
         }
     }
@@ -153,9 +157,10 @@ struct CommandPaletteView: View {
     
     private func commandRow(_ command: CommandPaletteCommand) -> some View {
         let isSelected = isCommandSelected(command)
-        
+
         return Button(action: {
-            viewModel.execute(command: command)
+            viewModel.execute(command: command, windowActions: windowActions)
+            dismiss()
         }) {
             HStack(spacing: 12) {
                 // Icon
@@ -249,6 +254,6 @@ fileprivate extension Array {
         Color.black.opacity(0.3)
             .ignoresSafeArea()
         
-        CommandPaletteView()
+        CommandPaletteView(windowActions: nil)
     }
 }

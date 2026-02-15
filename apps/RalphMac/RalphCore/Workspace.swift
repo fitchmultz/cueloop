@@ -2251,9 +2251,9 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
 
 // MARK: - Notification Names
 
-extension Notification.Name {
+public extension Notification.Name {
     /// Posted when queue files are changed externally (via CLI or another process)
-    public static let queueFilesExternallyChanged = Notification.Name("queueFilesExternallyChanged")
+    static let queueFilesExternallyChanged = Notification.Name("queueFilesExternallyChanged")
 }
 
 // MARK: - Error Recovery Support

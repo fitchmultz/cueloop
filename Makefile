@@ -24,13 +24,15 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
 .PHONY: help install update lint lint-fix format type-check clean clean-temp test generate build ci deps \
-	check-env-safety check-backup-artifacts macos-preflight macos-build macos-test macos-ci macos-test-ui
+	check-env-safety check-backup-artifacts macos-preflight macos-build macos-test macos-ci macos-test-ui \
+	macos-test-window-shortcuts
 
 help:
 	@echo "Common targets:"
 	@echo "  make ci          # Rust-only local CI gate (formats code, builds+installs release)"
 	@echo "  make macos-ci     # Rust gate + macOS app build+test (requires Xcode)"
 	@echo "  make test         # Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing)"
+	@echo "  make macos-test-window-shortcuts # Run focused multi-window shortcut UI regressions"
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
 	@echo "  make install      # Install release binary to BIN_DIR"
@@ -224,6 +226,27 @@ macos-test:
 macos-test-ui:
 	@$(MAKE) --no-print-directory macos-test RALPH_UI_TESTS=1
 
+# Run targeted UI regressions for window/tab shortcut scoping.
+macos-test-window-shortcuts:
+	@$(MAKE) --no-print-directory macos-preflight
+	@$(MAKE) --no-print-directory build
+	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui-shortcuts"; \
+	ralph_bin_path="$$(pwd)/target/release/ralph"; \
+	echo "→ macOS UI shortcut regressions (focused window/tab behavior)..."; \
+	rm -rf "$$derived_data_path" 2>/dev/null || true; \
+	RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
+		-project apps/RalphMac/RalphMac.xcodeproj \
+		-scheme RalphMac \
+		-configuration Debug \
+		-destination '$(XCODE_DESTINATION)' \
+		-derivedDataPath "$$derived_data_path" \
+		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
+		-only-testing:RalphMacUITests/RalphMacUITests/test_windowShortcuts_affectOnlyFocusedWindow \
+		-only-testing:RalphMacUITests/RalphMacUITests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
+		test
+
 macos-ci: macos-preflight ci macos-build macos-test
 	@echo "→ macOS ship gate (Rust CI + macOS app build+test)..."
+	@echo "  ℹ UI automation is intentionally excluded from macos-ci (use make macos-test-ui or make macos-test-window-shortcuts when idle)."
 	@echo "  ✓ macOS CI completed"

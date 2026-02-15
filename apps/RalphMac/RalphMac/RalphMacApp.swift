@@ -18,23 +18,27 @@
  */
 
 import SwiftUI
+import AppKit
 import RalphCore
-import OSLog
 
 @MainActor
 @main
 struct RalphMacApp: App {
+    // Connect AppDelegate for AppKit-level lifecycle handling
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     private let manager = WorkspaceManager.shared
     @State private var menuBarManager = MenuBarManager.shared
-    @Environment(\.scenePhase) private var scenePhase
-    
+    @State private var uiTestingMenuBarVisible = false
+    private let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
+
     init() {
         // Initialize crash reporter early in app lifecycle to catch launch crashes
         CrashReporter.shared.install()
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             WindowViewContainer()
                 .background(
                     VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
@@ -46,29 +50,33 @@ struct RalphMacApp: App {
                     NSApp.activate(ignoringOtherApps: true)
                 }
         }
+        // Limit external event matching to the Ralph URL scheme route.
+        .handlesExternalEvents(matching: ["ralph"])
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))
         .defaultSize(width: 1400, height: 900)
         .defaultPosition(.center)
         .commands {
-            workspaceCommands
+            WorkspaceCommands()
             navigationCommands
             taskCommands
-            commandPaletteCommands
+            CommandPaletteCommands()
             helpCommands
         }
         
-        // Menu Bar Extra for quick access
         MenuBarExtra(
-            isInserted: $menuBarManager.isMenuBarExtraVisible,
-            content: {
-                MenuBarContentView()
-            },
-            label: {
-                MenuBarIconView()
-            }
+            isInserted: menuBarVisibilityBinding,
+            content: { MenuBarContentView() },
+            label: { MenuBarIconView() }
         )
         .menuBarExtraStyle(.menu)
+    }
+
+    private var menuBarVisibilityBinding: Binding<Bool> {
+        if isUITesting {
+            return $uiTestingMenuBarVisible
+        }
+        return $menuBarManager.isMenuBarExtraVisible
     }
 
     /// Handle incoming URL from CLI or external source
@@ -160,72 +168,6 @@ struct RalphMacApp: App {
         guard !workspace.hasRalphQueueFile else { return nil }
 
         return workspace
-    }
-
-    private var workspaceCommands: some Commands {
-        CommandMenu("Workspace") {
-            Button("New Tab") {
-                NotificationCenter.default.post(
-                    name: .newWorkspaceTabRequested,
-                    object: nil
-                )
-            }
-            .keyboardShortcut("t", modifiers: .command)
-
-            Button("New Window") {
-                NotificationCenter.default.post(
-                    name: .newWindowRequested,
-                    object: nil
-                )
-            }
-            .keyboardShortcut("n", modifiers: [.command, .shift])
-
-            Divider()
-
-            Button("Close Tab") {
-                NotificationCenter.default.post(
-                    name: .closeActiveTabRequested,
-                    object: nil
-                )
-            }
-            .keyboardShortcut("w", modifiers: .command)
-
-            Button("Close Window") {
-                NotificationCenter.default.post(
-                    name: .closeActiveWindowRequested,
-                    object: nil
-                )
-            }
-            .keyboardShortcut("w", modifiers: [.command, .shift])
-
-            Divider()
-
-            Button("Next Tab") {
-                NotificationCenter.default.post(
-                    name: .selectNextTabRequested,
-                    object: nil
-                )
-            }
-            .keyboardShortcut("]", modifiers: [.command, .shift])
-
-            Button("Previous Tab") {
-                NotificationCenter.default.post(
-                    name: .selectPreviousTabRequested,
-                    object: nil
-                )
-            }
-            .keyboardShortcut("[", modifiers: [.command, .shift])
-
-            Divider()
-
-            Button("Duplicate Tab") {
-                NotificationCenter.default.post(
-                    name: .duplicateActiveTabRequested,
-                    object: nil
-                )
-            }
-            .keyboardShortcut("d", modifiers: .command)
-        }
     }
 
     private var navigationCommands: some Commands {
@@ -332,20 +274,6 @@ struct RalphMacApp: App {
         }
     }
 
-    private var commandPaletteCommands: some Commands {
-        CommandMenu("Tools") {
-            Button("Command Palette...") {
-                NotificationCenter.default.post(name: .showCommandPalette, object: nil)
-            }
-            .keyboardShortcut("p", modifiers: [.command, .shift])
-            
-            Button("Quick Command...") {
-                NotificationCenter.default.post(name: .showCommandPalette, object: nil)
-            }
-            .keyboardShortcut("k", modifiers: .command)
-        }
-    }
-
     private var helpCommands: some Commands {
         CommandGroup(replacing: .help) {
             Button("Export Logs...") {
@@ -429,6 +357,98 @@ struct RalphMacApp: App {
     }
 }
 
+// MARK: - Workspace Commands
+
+/// Window and tab management commands routed through focused workspace window actions.
+@MainActor
+private struct WorkspaceCommands: Commands {
+    @FocusedValue(\.workspaceWindowActions) private var workspaceWindowActions
+
+    private func routeWindowCommand(_ command: WindowCommandRoute) {
+        workspaceWindowActions?.perform(command)
+    }
+
+    var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Divider()
+
+            Button("Close Tab") {
+                routeWindowCommand(.closeTab)
+            }
+            .keyboardShortcut("w", modifiers: .command)
+
+            Button("Close Window") {
+                routeWindowCommand(.closeWindow)
+            }
+            .keyboardShortcut("w", modifiers: [.command, .shift])
+        }
+
+        CommandMenu("Workspace") {
+            Button("New Tab") {
+                routeWindowCommand(.newTab)
+            }
+            .keyboardShortcut("t", modifiers: .command)
+
+            Divider()
+
+            Button("Close Tab") {
+                routeWindowCommand(.closeTab)
+            }
+
+            Button("Close Window") {
+                routeWindowCommand(.closeWindow)
+            }
+
+            Divider()
+
+            Button("Next Tab") {
+                routeWindowCommand(.nextTab)
+            }
+            .keyboardShortcut("]", modifiers: [.command, .shift])
+
+            Button("Previous Tab") {
+                routeWindowCommand(.previousTab)
+            }
+            .keyboardShortcut("[", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Duplicate Tab") {
+                routeWindowCommand(.duplicateTab)
+            }
+            .keyboardShortcut("d", modifiers: .command)
+        }
+    }
+}
+
+// MARK: - Command Palette Commands
+
+/// Command palette commands routed through focused workspace UI actions.
+@MainActor
+private struct CommandPaletteCommands: Commands {
+    @FocusedValue(\.workspaceUIActions) private var workspaceUIActions
+
+    private var hasFocusedWorkspace: Bool {
+        workspaceUIActions != nil
+    }
+
+    var body: some Commands {
+        CommandMenu("Tools") {
+            Button("Command Palette...") {
+                workspaceUIActions?.showCommandPalette()
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+            .disabled(!hasFocusedWorkspace)
+
+            Button("Quick Command...") {
+                workspaceUIActions?.showCommandPalette()
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .disabled(!hasFocusedWorkspace)
+        }
+    }
+}
+
 // MARK: - Window View Container
 
 /// Container view that handles workspace initialization to avoid state mutation during view init.
@@ -440,6 +460,7 @@ struct WindowViewContainer: View {
     @State private var windowState: WindowState?
     @State private var didResolveSceneWindowState = false
     @SceneStorage("windowStateID") private var persistedWindowStateID: String = ""
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Group {
@@ -448,16 +469,11 @@ struct WindowViewContainer: View {
             } else {
                 ProgressView("Initializing...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .onAppear {
-                        initializeWindowStateIfNeeded()
-                    }
-                    .task { @MainActor in
-                        initializeWindowStateIfNeeded()
-                    }
             }
         }
-        .onAppear {
+        .task { @MainActor in
             initializeWindowStateIfNeeded()
+            openAdditionalWindowForUITestingIfNeeded()
         }
     }
 
@@ -483,24 +499,21 @@ struct WindowViewContainer: View {
             }
         }
     }
+
+    private func openAdditionalWindowForUITestingIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("--uitesting-multiwindow") else {
+            return
+        }
+        guard !UITestingWindowBootstrap.didOpenSecondaryWindow else {
+            return
+        }
+
+        UITestingWindowBootstrap.didOpenSecondaryWindow = true
+        openWindow(id: "main")
+    }
 }
 
-// MARK: - Notification Names
-
-extension Notification.Name {
-    static let newWorkspaceTabRequested = Notification.Name("newWorkspaceTabRequested")
-    static let newWindowRequested = Notification.Name("newWindowRequested")
-    static let closeActiveTabRequested = Notification.Name("closeActiveTabRequested")
-    static let closeActiveWindowRequested = Notification.Name("closeActiveWindowRequested")
-    static let selectNextTabRequested = Notification.Name("selectNextTabRequested")
-    static let selectPreviousTabRequested = Notification.Name("selectPreviousTabRequested")
-    static let duplicateActiveTabRequested = Notification.Name("duplicateActiveTabRequested")
-    static let showTaskCreation = Notification.Name("showTaskCreation")
-    static let checkForCLIUpdates = Notification.Name("checkForCLIUpdates")
-    static let startWorkOnSelectedTask = Notification.Name("startWorkOnSelectedTask")
-    // New notifications for URL handling
-    static let activateWorkspace = Notification.Name("activateWorkspace")
-    static let workspaceOpenedFromURL = Notification.Name("workspaceOpenedFromURL")
-    static let saveAllWindowStatesRequested = Notification.Name("saveAllWindowStatesRequested")
-    static let showCommandPalette = Notification.Name("showCommandPalette")
+@MainActor
+private enum UITestingWindowBootstrap {
+    static var didOpenSecondaryWindow = false
 }

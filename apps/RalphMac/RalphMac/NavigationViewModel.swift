@@ -243,16 +243,3 @@ final class NavigationViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 }
-
-// MARK: - Notification Names
-
-extension Notification.Name {
-    static let showSidebarSection = Notification.Name("showSidebarSection")
-    static let toggleSidebar = Notification.Name("toggleSidebar")
-    static let workspaceTasksUpdated = Notification.Name("workspaceTasksUpdated")
-    static let toggleTaskViewMode = Notification.Name("toggleTaskViewMode")
-    static let setTaskViewMode = Notification.Name("setTaskViewMode")
-    static let showGraphView = Notification.Name("showGraphView")
-    static let queueFilesExternallyChanged = Notification.Name("queueFilesExternallyChanged")
-    static let showTaskDetail = Notification.Name("showTaskDetail")
-}

@@ -4,12 +4,13 @@
  Responsibilities:
  - Manage the tab-based interface for a single window.
  - Handle workspace tab creation, closure, and switching.
- - Integrate with native macOS tab bar for tear-off support.
+ - Expose focused window actions so menu/keyboard commands mutate only the active window.
  - Persist window state for restoration.
 
  Does not handle:
  - Workspace content rendering (see WorkspaceView).
- - Cross-window operations.
+ - Cross-window command fan-out (handled by focused scene routing).
+ - Window tabbing mode configuration (handled by AppDelegate).
 
  Invariants/assumptions callers must respect:
  - windowState is managed by the parent and updated on changes.
@@ -40,6 +41,10 @@ struct WindowView: View {
                 }
             }
         }
+        .overlay(alignment: .topLeading) {
+            WindowTabCountAccessibilityProbe(tabCount: windowState.workspaceIDs.count)
+        }
+        .focusedSceneValue(\.workspaceWindowActions, focusedWindowActions)
         .onChange(of: windowState.workspaceIDs) { _, _ in
             validateAndPersistState()
         }
@@ -47,47 +52,27 @@ struct WindowView: View {
             persistState()
         }
         .onReceive(manager.$workspaces) { _ in
-            // Defer cleanup to avoid state mutation during view update
+            // Defer cleanup to avoid state mutation during view update.
             Task { @MainActor in
                 cleanupClosedWorkspaces()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .newWorkspaceTabRequested)) { _ in
-            addNewTab()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .closeActiveTabRequested)) { _ in
-            closeActiveTab()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .duplicateActiveTabRequested)) { _ in
-            duplicateActiveTab()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .selectNextTabRequested)) { _ in
-            selectNextTab()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .selectPreviousTabRequested)) { _ in
-            selectPreviousTab()
-        }
-        // Handle URL scheme activation for existing workspaces
-        .onReceive(NotificationCenter.default.publisher(for: .activateWorkspace)) { notification in
-            if let workspaceID = notification.object as? UUID,
-               let index = windowState.workspaceIDs.firstIndex(of: workspaceID) {
-                windowState.selectedTabIndex = index
-                persistState()
-            }
-        }
-        // Handle URL scheme creation of new workspaces
-        .onReceive(NotificationCenter.default.publisher(for: .workspaceOpenedFromURL)) { notification in
-            if let workspaceID = notification.object as? UUID,
-               !windowState.workspaceIDs.contains(workspaceID) {
-                windowState.workspaceIDs.append(workspaceID)
-                windowState.selectedTabIndex = windowState.workspaceIDs.count - 1
-                persistState()
-            }
-        }
-        // Handle app background/termination - force save all state
-        .onReceive(NotificationCenter.default.publisher(for: .saveAllWindowStatesRequested)) { _ in
-            persistState()
-        }
+        .modifier(WindowStateNotificationHandlers(
+            windowState: $windowState,
+            persistState: persistState
+        ))
+    }
+
+    private var focusedWindowActions: WorkspaceWindowActions {
+        WorkspaceWindowActions(
+            newWindow: { openWindow(id: "main") },
+            newTab: addNewTab,
+            closeTab: closeActiveTab,
+            closeWindow: closeActiveWindow,
+            nextTab: selectNextTab,
+            previousTab: selectPreviousTab,
+            duplicateTab: duplicateActiveTab
+        )
     }
 
     // MARK: - Tab Management
@@ -109,11 +94,11 @@ struct WindowView: View {
         let workspaceID = windowState.workspaceIDs[index]
         var fallbackDirectory: URL?
 
-        // Check if workspace has running operations
+        // Check if workspace has running operations.
         if let workspace = manager.workspaces.first(where: { $0.id == workspaceID }) {
             fallbackDirectory = workspace.workingDirectoryURL
             if workspace.isRunning {
-                // Show alert before closing - for now, just cancel
+                // Show alert before closing - for now, just cancel.
                 workspace.cancel()
             }
             manager.closeWorkspace(workspace)
@@ -121,9 +106,9 @@ struct WindowView: View {
 
         windowState.workspaceIDs.remove(at: index)
 
-        // Adjust selection
+        // Adjust selection.
         if windowState.workspaceIDs.isEmpty {
-            // Create new workspace if none left
+            // Create new workspace if none left.
             let newWorkspace = manager.createWorkspace(workingDirectory: fallbackDirectory)
             windowState.workspaceIDs.append(newWorkspace.id)
             windowState.selectedTabIndex = 0
@@ -165,6 +150,10 @@ struct WindowView: View {
         persistState()
     }
 
+    private func closeActiveWindow() {
+        dismissWindow()
+    }
+
     // MARK: - State Persistence
 
     private func persistState() {
@@ -182,19 +171,19 @@ struct WindowView: View {
     private func cleanupClosedWorkspaces() {
         let validIDs = Set(manager.workspaces.map(\.id))
         let originalCount = windowState.workspaceIDs.count
-        
-        // Only modify if there are actually closed workspaces
+
+        // Only modify if there are actually closed workspaces.
         let invalidIDs = windowState.workspaceIDs.filter { !validIDs.contains($0) }
         guard !invalidIDs.isEmpty else { return }
-        
+
         windowState.workspaceIDs.removeAll { !validIDs.contains($0) }
 
-        // If we removed workspaces, ensure selection is valid
+        // If we removed workspaces, ensure selection is valid.
         if windowState.workspaceIDs.count != originalCount {
             windowState.validateSelection()
             persistState()
 
-            // If no workspaces left, create a new one
+            // If no workspaces left, create a new one.
             if windowState.workspaceIDs.isEmpty {
                 let newWorkspace = manager.createWorkspace(workingDirectory: manager.workspaces.last?.workingDirectoryURL)
                 windowState.workspaceIDs.append(newWorkspace.id)
@@ -209,5 +198,51 @@ struct WindowView: View {
         guard windowState.selectedTabIndex < windowState.workspaceIDs.count else { return nil }
         let workspaceID = windowState.workspaceIDs[windowState.selectedTabIndex]
         return manager.workspaces.first(where: { $0.id == workspaceID })
+    }
+}
+
+/// Exposes per-window tab metadata to UI tests without changing visible UI.
+private struct WindowTabCountAccessibilityProbe: View {
+    let tabCount: Int
+
+    var body: some View {
+        Color.clear
+            .frame(width: 1, height: 1)
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityIdentifier("window-tab-count-probe")
+            .accessibilityLabel("window-tab-count-\(tabCount)")
+            .accessibilityValue("\(tabCount)")
+    }
+}
+
+// MARK: - State Notifications
+
+/// Notification handlers for global events that are not active-window command dispatch.
+@MainActor
+struct WindowStateNotificationHandlers: ViewModifier {
+    @Binding var windowState: WindowState
+    let persistState: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: .activateWorkspace)) { notification in
+                if let workspaceID = notification.object as? UUID,
+                   let index = windowState.workspaceIDs.firstIndex(of: workspaceID) {
+                    windowState.selectedTabIndex = index
+                    persistState()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .workspaceOpenedFromURL)) { notification in
+                if let workspaceID = notification.object as? UUID,
+                   !windowState.workspaceIDs.contains(workspaceID) {
+                    windowState.workspaceIDs.append(workspaceID)
+                    windowState.selectedTabIndex = windowState.workspaceIDs.count - 1
+                    persistState()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .saveAllWindowStatesRequested)) { _ in
+                persistState()
+            }
     }
 }

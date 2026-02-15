@@ -3,7 +3,7 @@
  
  Responsibilities:
  - Manage the command palette's search query and filtered results.
- - Handle command execution via NotificationCenter.
+ - Handle command execution via notifications and focused window actions.
  - Track selected command index for keyboard navigation.
  - Provide fuzzy search algorithm for command matching.
  
@@ -90,21 +90,20 @@ final class CommandPaletteViewModel: ObservableObject {
     func hide() {
         isVisible = false
         searchQuery = ""
-        NotificationCenter.default.post(name: .hideCommandPalette, object: nil)
     }
     
     /// Executes the selected command
-    func executeSelectedCommand() {
+    func executeSelectedCommand(windowActions: WorkspaceWindowActions?) {
         let commands = filteredCommands
         guard selectedIndex >= 0 && selectedIndex < commands.count else { return }
         
         let command = commands[selectedIndex]
-        execute(command: command)
+        execute(command: command, windowActions: windowActions)
     }
     
     /// Executes a specific command
-    func execute(command: CommandPaletteCommand) {
-        performAction(command.action)
+    func execute(command: CommandPaletteCommand, windowActions: WorkspaceWindowActions?) {
+        performAction(command.action, windowActions: windowActions)
         hide()
     }
     
@@ -135,8 +134,8 @@ final class CommandPaletteViewModel: ObservableObject {
     
     // MARK: - Private Methods
     
-    /// Performs the actual action via NotificationCenter
-    private func performAction(_ action: CommandAction) {
+    /// Performs the actual action via NotificationCenter and focused window actions.
+    private func performAction(_ action: CommandAction, windowActions: WorkspaceWindowActions?) {
         switch action {
         case .navigateToSection(let section):
             NotificationCenter.default.post(
@@ -165,26 +164,26 @@ final class CommandPaletteViewModel: ObservableObject {
         case .startWork:
             NotificationCenter.default.post(name: .startWorkOnSelectedTask, object: nil)
             
+        case .newWindow:
+            windowActions?.perform(.newWindow)
+
         case .newTab:
-            NotificationCenter.default.post(name: .newWorkspaceTabRequested, object: nil)
+            windowActions?.perform(.newTab)
             
         case .closeTab:
-            NotificationCenter.default.post(name: .closeActiveTabRequested, object: nil)
+            windowActions?.perform(.closeTab)
             
         case .duplicateTab:
-            NotificationCenter.default.post(name: .duplicateActiveTabRequested, object: nil)
+            windowActions?.perform(.duplicateTab)
             
         case .nextTab:
-            NotificationCenter.default.post(name: .selectNextTabRequested, object: nil)
+            windowActions?.perform(.nextTab)
             
         case .previousTab:
-            NotificationCenter.default.post(name: .selectPreviousTabRequested, object: nil)
-            
-        case .newWindow:
-            NotificationCenter.default.post(name: .newWindowRequested, object: nil)
+            windowActions?.perform(.previousTab)
             
         case .closeWindow:
-            NotificationCenter.default.post(name: .closeActiveWindowRequested, object: nil)
+            windowActions?.perform(.closeWindow)
             
         case .showCommandPaletteHelp:
             // Could open a help window or show an alert with shortcuts
@@ -234,11 +233,4 @@ final class CommandPaletteViewModel: ObservableObject {
         let normalizedScore = totalMatchScore / Double(queryChars.count)
         return min(normalizedScore, 1.0)
     }
-}
-
-// MARK: - Additional Notifications
-
-extension Notification.Name {
-    /// Notification to hide the command palette
-    static let hideCommandPalette = Notification.Name("hideCommandPalette")
 }

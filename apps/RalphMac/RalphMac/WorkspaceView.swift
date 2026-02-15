@@ -27,6 +27,7 @@ struct WorkspaceView: View {
     @ObservedObject var workspace: Workspace
     @StateObject private var navigation: NavigationViewModel
     @State private var showingCommandPalette: Bool = false
+    @FocusedValue(\.workspaceWindowActions) private var workspaceWindowActions
 
     init(workspace: Workspace) {
         self._workspace = ObservedObject(wrappedValue: workspace)
@@ -74,6 +75,7 @@ struct WorkspaceView: View {
         }
         .frame(minWidth: 1200, minHeight: 640)
         .background(.clear)
+        .focusedSceneValue(\.workspaceUIActions, focusedWorkspaceUIActions)
         // MARK: - Error Recovery Sheet
         .sheet(isPresented: $workspace.showErrorRecovery) {
             if let error = workspace.lastRecoveryError {
@@ -110,15 +112,15 @@ struct WorkspaceView: View {
         }
         // MARK: - Command Palette
         .sheet(isPresented: $showingCommandPalette) {
-            CommandPaletteView()
+            CommandPaletteView(windowActions: workspaceWindowActions)
                 .frame(minWidth: 640, minHeight: 300)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .showCommandPalette)) { _ in
-            showingCommandPalette = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .hideCommandPalette)) { _ in
-            showingCommandPalette = false
-        }
+    }
+
+    private var focusedWorkspaceUIActions: WorkspaceUIActions {
+        WorkspaceUIActions(
+            showCommandPalette: { showingCommandPalette = true }
+        )
     }
 
     // MARK: - Error Recovery Retry Handler

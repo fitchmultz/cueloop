@@ -30,6 +30,9 @@ final class RalphMacUITests: XCTestCase {
         app = XCUIApplication()
         // Use a temp directory for workspace to avoid polluting real projects
         app.launchArguments = ["--uitesting"]
+        if name.contains("windowShortcuts") || name.contains("commandPaletteNewTab") {
+            app.launchArguments.append("--uitesting-multiwindow")
+        }
         app.launch()
     }
 
@@ -144,17 +147,116 @@ final class RalphMacUITests: XCTestCase {
     // MARK: - Test: New Tab Creation
     @MainActor
     func test_createNewTab_andSwitchBetweenTabs() throws {
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 5))
+        let before = tabCount(in: window)
+
         // Use menu to create new tab
         app.menuBars.menuBarItems["Workspace"].click()
         app.menuBars.menuItems["New Tab"].click()
-        
-        // Verify new tab appears
-        let tabBar = app.tabs.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
-        
-        // Should have at least 2 tabs now
-        let tabs = app.tabs
-        XCTAssertGreaterThanOrEqual(tabs.count, 2)
+
+        XCTAssertTrue(
+            waitUntil { tabCount(in: window) == before + 1 },
+            "New Tab menu action should increase tab count in the active window"
+        )
+    }
+
+    // MARK: - Test: Window-Scoped Shortcuts
+    @MainActor
+    func test_windowShortcuts_affectOnlyFocusedWindow() throws {
+        ensureSecondWindow()
+
+        let windows = workspaceWindows()
+        XCTAssertGreaterThanOrEqual(windows.count, 2, "Expected at least two workspace windows")
+        let firstWindow = windows[0]
+        let secondWindow = windows[1]
+        XCTAssertTrue(firstWindow.exists)
+        XCTAssertTrue(secondWindow.exists)
+
+        firstWindow.click()
+        let firstBefore = tabCount(in: firstWindow)
+        let secondBefore = tabCount(in: secondWindow)
+        let windowsBefore = workspaceWindowCount()
+
+        firstWindow.typeKey("t", modifierFlags: .command)
+        XCTAssertTrue(
+            waitUntil { tabCount(in: firstWindow) == firstBefore + 1 },
+            "Cmd+T should add a tab only in the focused window"
+        )
+        XCTAssertEqual(
+            tabCount(in: secondWindow),
+            secondBefore,
+            "Cmd+T should not add tabs in unfocused windows"
+        )
+        XCTAssertEqual(
+            workspaceWindowCount(),
+            windowsBefore,
+            "Cmd+T should not create or close windows"
+        )
+
+        firstWindow.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(
+            waitUntil { tabCount(in: firstWindow) == firstBefore },
+            "Cmd+W should close a tab only in the focused window"
+        )
+        XCTAssertEqual(
+            tabCount(in: secondWindow),
+            secondBefore,
+            "Cmd+W should not close tabs in unfocused windows"
+        )
+        XCTAssertEqual(
+            workspaceWindowCount(),
+            windowsBefore,
+            "Cmd+W should not close the entire window"
+        )
+
+        secondWindow.click()
+        secondWindow.typeKey("w", modifierFlags: [.command, .shift])
+        XCTAssertTrue(
+            waitUntil { workspaceWindowCount() == windowsBefore - 1 },
+            "Cmd+Shift+W should close only the focused window (expected \(windowsBefore - 1), got \(workspaceWindowCount()))"
+        )
+    }
+
+    // MARK: - Test: Command Palette Workspace Action Scoping
+    @MainActor
+    func test_commandPaletteNewTab_affectsOnlyFocusedWindow() throws {
+        ensureSecondWindow()
+
+        let windows = workspaceWindows()
+        XCTAssertGreaterThanOrEqual(windows.count, 2, "Expected at least two workspace windows")
+        let firstWindow = windows[0]
+        let secondWindow = windows[1]
+        XCTAssertTrue(firstWindow.exists)
+        XCTAssertTrue(secondWindow.exists)
+
+        firstWindow.click()
+        let firstBefore = tabCount(in: firstWindow)
+        let secondBefore = tabCount(in: secondWindow)
+        let windowsBefore = workspaceWindowCount()
+
+        firstWindow.typeKey("k", modifierFlags: .command)
+
+        let searchField = app.textFields["Type a command or search..."]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Command palette should appear")
+        searchField.click()
+        searchField.typeText("New Tab")
+        searchField.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
+
+        XCTAssertTrue(
+            waitUntil { tabCount(in: firstWindow) == firstBefore + 1 },
+            "Command palette 'New Tab' should affect only the focused window"
+        )
+        XCTAssertEqual(
+            tabCount(in: secondWindow),
+            secondBefore,
+            "Command palette 'New Tab' should not affect unfocused windows"
+        )
+        XCTAssertEqual(
+            workspaceWindowCount(),
+            windowsBefore,
+            "Command palette 'New Tab' should not create or close windows"
+        )
     }
 
     // MARK: - Test: Navigation Sections
@@ -341,5 +443,64 @@ final class RalphMacUITests: XCTestCase {
         // Verify we have unsaved changes indicator would work
         // (actual conflict requires external modification)
         XCTAssertTrue(titleField.exists)
+    }
+
+    // MARK: - Helpers
+
+    @MainActor
+    private func ensureSecondWindow() {
+        guard workspaceWindowCount() < 2 else { return }
+        if waitUntil(timeout: 6, condition: { workspaceWindowCount() >= 2 }) {
+            return
+        }
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(
+            waitUntil(timeout: 8) { workspaceWindowCount() >= 2 },
+            "Expected a second window to open for multi-window shortcut tests"
+        )
+    }
+
+    @MainActor
+    private func workspaceWindows() -> [XCUIElement] {
+        app.windows.allElementsBoundByIndex.filter {
+            $0.otherElements["window-tab-count-probe"].exists
+        }
+    }
+
+    @MainActor
+    private func workspaceWindowCount() -> Int {
+        workspaceWindows().count
+    }
+
+    @MainActor
+    private func tabCount(in window: XCUIElement) -> Int {
+        let probe = window.otherElements["window-tab-count-probe"]
+        if probe.waitForExistence(timeout: 2) {
+            if let value = probe.value as? NSNumber {
+                return value.intValue
+            }
+            if let value = probe.value as? String, let count = Int(value) {
+                return count
+            }
+            let prefix = "window-tab-count-"
+            if probe.label.hasPrefix(prefix),
+               let count = Int(probe.label.dropFirst(prefix.count)) {
+                return count
+            }
+        }
+        return window.tabs.count
+    }
+
+    @MainActor
+    @discardableResult
+    private func waitUntil(timeout: TimeInterval = 5, interval: TimeInterval = 0.1, condition: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(interval))
+        }
+        return condition()
     }
 }

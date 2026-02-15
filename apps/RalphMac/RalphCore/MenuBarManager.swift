@@ -99,16 +99,3 @@ public final class MenuBarManager: ObservableObject {
         RalphLogger.shared.debug("Menu bar extra visibility changed to: \(newValue)", category: .lifecycle)
     }
 }
-
-// MARK: - Notification Names
-
-public extension Notification.Name {
-    /// Posted when the menu bar extra should show the main app
-    static let showMainAppFromMenuBar = Notification.Name("showMainAppFromMenuBar")
-    
-    /// Posted when a specific task should be shown from the menu bar
-    static let showTaskDetailFromMenuBar = Notification.Name("showTaskDetailFromMenuBar")
-    
-    /// Posted when a quick add task is requested from the menu bar
-    static let quickAddTaskFromMenuBar = Notification.Name("quickAddTaskFromMenuBar")
-}
