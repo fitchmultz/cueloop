@@ -261,7 +261,8 @@ struct WorkspaceView: View {
             case .list:
                 TaskListView(
                     workspace: workspace,
-                    selectedTaskID: $navigation.selectedTaskID
+                    selectedTaskID: $navigation.selectedTaskID,
+                    selectedTaskIDs: $navigation.selectedTaskIDs
                 )
             case .kanban:
                 KanbanBoardView(

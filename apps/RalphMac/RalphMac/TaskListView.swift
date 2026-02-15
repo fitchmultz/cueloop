@@ -26,7 +26,9 @@ import RalphCore
 struct TaskListView: View {
     @ObservedObject var workspace: Workspace
     @Binding var selectedTaskID: String?
+    @Binding var selectedTaskIDs: Set<String>
     @State private var showingTaskCreation = false
+    @State private var showingBulkActions = false
     @State private var isRefreshingFromExternalChange = false
     @State private var recentlyChangedTaskIDs: Set<String> = []
     @State private var showExternalUpdateBanner = false
@@ -69,9 +71,30 @@ struct TaskListView: View {
                     Label("New Task", systemImage: "plus")
                 }
             }
+            
+            // Add bulk actions button when multi-select is active
+            if selectedTaskIDs.count > 1 {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: { showingBulkActions = true }) {
+                        Label("Bulk Actions", systemImage: "rectangle.stack")
+                    }
+                    .help("Perform bulk actions on \(selectedTaskIDs.count) selected tasks")
+                }
+            }
         }
         .sheet(isPresented: $showingTaskCreation) {
             TaskCreationView(workspace: workspace)
+        }
+        .sheet(isPresented: $showingBulkActions) {
+            BulkActionsView(
+                workspace: workspace,
+                selectedTaskIDs: selectedTaskIDs,
+                onCompletion: {
+                    // Clear selection after successful bulk operation
+                    selectedTaskIDs.removeAll()
+                    selectedTaskID = nil
+                }
+            )
         }
         .onReceive(NotificationCenter.default.publisher(for: .showTaskCreation)) { _ in
             showingTaskCreation = true
@@ -124,7 +147,7 @@ struct TaskListView: View {
         .clipShape(.rect(cornerRadius: 10))
         .contentShape(Rectangle())
         .onTapGesture {
-            selectedTaskID = task.id
+            handleTaskSelection(taskID: task.id, modifierFlags: NSEvent.modifierFlags)
         }
         .accessibilityLabel("What's Next: \(task.title)")
         .accessibilityHint("Double click to open task details")
@@ -277,17 +300,17 @@ struct TaskListView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(filteredTasks, selection: $selectedTaskID) { task in
+                List(filteredTasks, selection: $selectedTaskIDs) { task in
                     TaskRow(
                         task: task,
                         isHighlighted: recentlyChangedTaskIDs.contains(task.id),
-                        isSelected: selectedTaskID == task.id,
+                        isSelected: selectedTaskIDs.contains(task.id),
                         isFocused: focusedTaskID == task.id
                     )
                         .tag(task.id)
                         .focused($focusedTaskID, equals: task.id)
                         .onTapGesture {
-                            selectedTaskID = task.id
+                            handleTaskSelection(taskID: task.id, modifierFlags: NSEvent.modifierFlags)
                             focusedTaskID = task.id
                         }
                         // Add slide-in animation for new tasks
@@ -315,6 +338,7 @@ struct TaskListView: View {
                 .onKeyPress(.return) {
                     if let taskID = focusedTaskID ?? selectedTaskID {
                         selectedTaskID = taskID
+                        selectedTaskIDs = [taskID]
                         NotificationCenter.default.post(
                             name: .showTaskDetail,
                             object: taskID
@@ -326,6 +350,7 @@ struct TaskListView: View {
                     // Space key opens task detail (same as Enter for quick access)
                     if let taskID = focusedTaskID ?? selectedTaskID {
                         selectedTaskID = taskID
+                        selectedTaskIDs = [taskID]
                         NotificationCenter.default.post(
                             name: .showTaskDetail,
                             object: taskID
@@ -413,6 +438,36 @@ struct TaskListView: View {
         }
     }
     
+    // MARK: - Task Selection
+    
+    /// Handle task selection with support for Cmd+click multi-select
+    /// - Parameters:
+    ///   - taskID: The task ID being selected
+    ///   - modifierFlags: The modifier flags from the click event
+    private func handleTaskSelection(taskID: String, modifierFlags: NSEvent.ModifierFlags) {
+        if modifierFlags.contains(.command) {
+            // Cmd+click: toggle selection in multi-select set
+            if selectedTaskIDs.contains(taskID) {
+                selectedTaskIDs.remove(taskID)
+                // Only update selectedTaskID if we deselected the current primary
+                if selectedTaskID == taskID {
+                    selectedTaskID = selectedTaskIDs.first
+                }
+                // If we removed the last selected task, clear selectedTaskID too
+                if selectedTaskIDs.isEmpty {
+                    selectedTaskID = nil
+                }
+            } else {
+                selectedTaskIDs.insert(taskID)
+                selectedTaskID = taskID
+            }
+        } else {
+            // Normal click: single selection
+            selectedTaskID = taskID
+            selectedTaskIDs = [taskID]
+        }
+    }
+    
     // MARK: - Keyboard Navigation
     
     private func navigateTask(direction: Int, tasks: [RalphTask]) {
@@ -424,6 +479,7 @@ struct TaskListView: View {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     focusedTaskID = first.id
                     selectedTaskID = first.id
+                    selectedTaskIDs = [first.id]
                 }
             }
             return
@@ -436,6 +492,7 @@ struct TaskListView: View {
         withAnimation(.easeInOut(duration: 0.15)) {
             focusedTaskID = newTask.id
             selectedTaskID = newTask.id
+            selectedTaskIDs = [newTask.id]
         }
     }
     

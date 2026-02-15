@@ -31,6 +31,7 @@ struct NavigationState: Codable {
     let selectedSection: SidebarSection
     let taskViewMode: TaskViewMode
     let selectedTaskID: String?
+    let selectedTaskIDs: [String]?
 }
 
 /// Represents the main sidebar navigation sections
@@ -91,9 +92,24 @@ final class NavigationViewModel: ObservableObject {
     @Published var selectedTaskID: String? = nil {
         didSet { saveNavigationState() }
     }
+    /// Set of task IDs for multi-select mode (Cmd+click selection)
+    @Published var selectedTaskIDs: Set<String> = [] {
+        didSet { saveNavigationState() }
+    }
     @Published var sidebarVisibility: NavigationSplitViewVisibility = .automatic
     @Published var taskViewMode: TaskViewMode = .list {
         didSet { saveNavigationState() }
+    }
+    
+    /// Whether multi-select mode is active (has more than one selection)
+    public var isMultiSelectActive: Bool {
+        selectedTaskIDs.count > 1
+    }
+    
+    /// Clear all task selections
+    public func clearAllTaskSelections() {
+        selectedTaskID = nil
+        selectedTaskIDs.removeAll()
     }
 
     // MARK: - Private Properties
@@ -131,6 +147,7 @@ final class NavigationViewModel: ObservableObject {
     /// Clear the current task selection
     func clearTaskSelection() {
         selectedTaskID = nil
+        selectedTaskIDs.removeAll()
     }
 
     /// Toggle between list, kanban, and graph view modes
@@ -166,7 +183,8 @@ final class NavigationViewModel: ObservableObject {
                 version: navigationStateVersion,
                 selectedSection: selectedSection,
                 taskViewMode: taskViewMode,
-                selectedTaskID: selectedTaskID
+                selectedTaskID: selectedTaskID,
+                selectedTaskIDs: Array(selectedTaskIDs)
             )
 
             if let data = try? JSONEncoder().encode(state) {
@@ -186,6 +204,9 @@ final class NavigationViewModel: ObservableObject {
         selectedSection = state.selectedSection
         taskViewMode = state.taskViewMode
         selectedTaskID = state.selectedTaskID
+        if let taskIDs = state.selectedTaskIDs {
+            selectedTaskIDs = Set(taskIDs)
+        }
     }
 
     // MARK: - Private Methods

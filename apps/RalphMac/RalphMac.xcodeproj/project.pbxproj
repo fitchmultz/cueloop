@@ -37,6 +37,7 @@
 		8E2C6C5D2F70819234567890 /* WindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21132B9951449F09254F84C /* WindowView.swift */; };
 		99887766554433221100AABB /* AnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA99887766554433221100 /* AnalyticsModels.swift */; };
 		9A3B7C4E5D6E7F8A901B2C3D /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718G9H0I1J2 /* TaskListView.swift */; };
+		9B4C5D6E7F8A901B2C3D4E5F /* BulkActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718G9H0I1J2K3 /* BulkActionsView.swift */; };
 		A1234567890ABCDEF1234567 /* QueueFileWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890ABCDEF1234567 /* QueueFileWatcher.swift */; };
 		A1B2C3D4E5F6789012345678 /* ANSIParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F678901234567890 /* ANSIParserTests.swift */; };
 		A2AF6EF569D7C2ADDD8414C5 /* MenuBarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0787D37F56E4D3F3585C3CAE /* MenuBarManager.swift */; };
@@ -144,6 +145,7 @@
 		98182BE943CBB8B4EFCD01DG /* NotificationNames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationNames.swift; sourceTree = "<group>"; };
 		WCROUTEFREF1234567890ABC /* WindowCommandRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCommandRouting.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718G9H0I1J2 /* TaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskListView.swift; path = RalphMac/TaskListView.swift; sourceTree = "<group>"; };
+		B2C3D4E5F60718G9H0I1J2K3 /* BulkActionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BulkActionsView.swift; path = RalphMac/BulkActionsView.swift; sourceTree = "<group>"; };
 		A24E80C16889B4FDE88205DC /* CrashReporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CrashReporter.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF6677889900 /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskDetailView.swift; path = RalphMac/TaskDetailView.swift; sourceTree = "<group>"; };
 		AABBCCDDEEFF001122334455 /* GraphModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphModels.swift; sourceTree = "<group>"; };
@@ -561,6 +563,7 @@
 				FF6677889900AA11BB22CC33DD44EE55 /* TagEditorView.swift in Sources */,
 				223344556677889900AABBCCDDEEFF11 /* TaskRelationshipPicker.swift in Sources */,
 				9A3B7C4E5D6E7F8A901B2C3D /* TaskListView.swift in Sources */,
+				9B4C5D6E7F8A901B2C3D4E5F /* BulkActionsView.swift in Sources */,
 				D21470E978C03EA41E8C185E /* NavigationViewModel.swift in Sources */,
 				E1FE4FE54CB8402D84A8607625CC6BB5 /* TaskCreationView.swift in Sources */,
 				81B3129D1A9B4ACBB70F0BDD4D0F049B /* KanbanBoardView.swift in Sources */,

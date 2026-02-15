@@ -1232,6 +1232,194 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
         await loadTasks()
     }
 
+    // MARK: - Bulk Task Operations
+
+    /// Formats a list of failures into a truncated error message.
+    /// Shows up to `maxShown` failures with a count summary if truncated.
+    private func formatBulkFailureMessage(_ failures: [(String, String)], operation: String, maxShown: Int = 5) -> String {
+        let shown = failures.prefix(maxShown)
+        let failureList = shown.map { "\($0.0): \($0.1)" }.joined(separator: "; ")
+        if failures.count > maxShown {
+            return "Partial failure updating \(operation): \(failureList); and \(failures.count - maxShown) more"
+        }
+        return "Partial failure updating \(operation): \(failureList)"
+    }
+
+    /// Update status for multiple tasks in bulk.
+    /// Executes CLI commands for each task sequentially with retry logic.
+    /// - Parameters:
+    ///   - taskIDs: Array of task IDs to update
+    ///   - newStatus: The new status to apply
+    ///   - skipReload: If true, skips calling `loadTasks()` after completion (useful when combining multiple bulk operations)
+    /// - Returns: Array of (taskID, error) tuples for any failures (empty if all succeeded)
+    @discardableResult
+    public func bulkUpdateStatus(taskIDs: [String], to newStatus: RalphTaskStatus, skipReload: Bool = false) async throws -> [(String, String)] {
+        guard let client else {
+            throw WorkspaceError.cliClientUnavailable
+        }
+
+        let helper = RetryHelper(configuration: .default)
+        var failures: [(String, String)] = []
+
+        for taskID in taskIDs {
+            let arguments = ["--no-color", "task", "edit", "status", newStatus.rawValue, taskID]
+
+            do {
+                _ = try await helper.execute(
+                    operation: { [self] in
+                        let result = try await client.runAndCollect(
+                            arguments: arguments,
+                            currentDirectoryURL: workingDirectoryURL
+                        )
+                        if result.status.code != 0 {
+                            throw result.toError()
+                        }
+                        return result
+                    }
+                )
+
+                // If moving to "doing", also set startedAt timestamp with retry
+                if newStatus == .doing {
+                    let dateFormatter = ISO8601DateFormatter()
+                    let startedAt = dateFormatter.string(from: Date())
+                    _ = try? await helper.execute(
+                        operation: { [self] in
+                            let result = try await client.runAndCollect(
+                                arguments: ["--no-color", "task", "edit", "started_at", startedAt, taskID],
+                                currentDirectoryURL: workingDirectoryURL
+                            )
+                            return result
+                        }
+                    )
+                }
+            } catch {
+                failures.append((taskID, error.localizedDescription))
+            }
+        }
+
+        if !skipReload {
+            await loadTasks()
+        }
+
+        if !failures.isEmpty {
+            throw WorkspaceError.cliError(formatBulkFailureMessage(failures, operation: "status"))
+        }
+        return failures
+    }
+
+    /// Update priority for multiple tasks in bulk.
+    /// - Parameters:
+    ///   - taskIDs: Array of task IDs to update
+    ///   - newPriority: The new priority to apply
+    ///   - skipReload: If true, skips calling `loadTasks()` after completion
+    /// - Returns: Array of (taskID, error) tuples for any failures (empty if all succeeded)
+    @discardableResult
+    public func bulkUpdatePriority(taskIDs: [String], to newPriority: RalphTaskPriority, skipReload: Bool = false) async throws -> [(String, String)] {
+        guard let client else {
+            throw WorkspaceError.cliClientUnavailable
+        }
+
+        let helper = RetryHelper(configuration: .default)
+        var failures: [(String, String)] = []
+
+        for taskID in taskIDs {
+            let arguments = ["--no-color", "task", "edit", "priority", newPriority.rawValue, taskID]
+
+            do {
+                _ = try await helper.execute(
+                    operation: { [self] in
+                        let result = try await client.runAndCollect(
+                            arguments: arguments,
+                            currentDirectoryURL: workingDirectoryURL
+                        )
+                        if result.status.code != 0 {
+                            throw result.toError()
+                        }
+                        return result
+                    }
+                )
+            } catch {
+                failures.append((taskID, error.localizedDescription))
+            }
+        }
+
+        if !skipReload {
+            await loadTasks()
+        }
+
+        if !failures.isEmpty {
+            throw WorkspaceError.cliError(formatBulkFailureMessage(failures, operation: "priority"))
+        }
+        return failures
+    }
+
+    /// Update tags for multiple tasks in bulk.
+    /// - Parameters:
+    ///   - taskIDs: Array of task IDs to update
+    ///   - addTags: Tags to add to each task
+    ///   - removeTags: Tags to remove from each task
+    ///   - skipReload: If true, skips calling `loadTasks()` after completion
+    /// - Returns: Array of (taskID, error) tuples for any failures (empty if all succeeded)
+    @discardableResult
+    public func bulkUpdateTags(taskIDs: [String], addTags: [String], removeTags: [String], skipReload: Bool = false) async throws -> [(String, String)] {
+        guard let client else {
+            throw WorkspaceError.cliClientUnavailable
+        }
+
+        guard !addTags.isEmpty || !removeTags.isEmpty else { return [] }
+
+        let helper = RetryHelper(configuration: .default)
+        var failures: [(String, String)] = []
+
+        for taskID in taskIDs {
+            // Get current task to modify tags
+            guard let task = tasks.first(where: { $0.id == taskID }) else {
+                failures.append((taskID, "Task not found"))
+                continue
+            }
+
+            var newTags = task.tags
+
+            // Remove specified tags
+            newTags.removeAll { removeTags.contains($0) }
+
+            // Add new tags (avoiding duplicates)
+            for tag in addTags where !newTags.contains(tag) {
+                newTags.append(tag)
+            }
+
+            // Update via CLI
+            let value = newTags.joined(separator: ", ")
+            let arguments = ["--no-color", "task", "edit", "tags", value, taskID]
+
+            do {
+                _ = try await helper.execute(
+                    operation: { [self] in
+                        let result = try await client.runAndCollect(
+                            arguments: arguments,
+                            currentDirectoryURL: workingDirectoryURL
+                        )
+                        if result.status.code != 0 {
+                            throw result.toError()
+                        }
+                        return result
+                    }
+                )
+            } catch {
+                failures.append((taskID, error.localizedDescription))
+            }
+        }
+
+        if !skipReload {
+            await loadTasks()
+        }
+
+        if !failures.isEmpty {
+            throw WorkspaceError.cliError(formatBulkFailureMessage(failures, operation: "tags"))
+        }
+        return failures
+    }
+
     private static func encodeTaskAgentFieldValue(_ agent: RalphTaskAgent?) throws -> String {
         guard let agent else { return "" }
         let encoder = JSONEncoder()
