@@ -74,6 +74,7 @@ pub fn handle(resolved: &config::Resolved, args: &TaskFromTemplateArgs, force: b
         template_hint: Some(args.template.clone()),
         template_target: target,
         strict_templates: args.strict_templates,
+        estimated_minutes: None,
     };
 
     if args.dry_run {

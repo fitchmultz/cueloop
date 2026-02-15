@@ -269,6 +269,15 @@
     "Task": {
       "type": "object",
       "properties": {
+        "actual_minutes": {
+          "description": "Actual time spent on this task in minutes.\nOptional; set manually or computed from started_at to completed_at.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
         "agent": {
           "description": "Optional per-task agent override (runner/model/model_effort/phases/iterations/phase_overrides).",
           "anyOf": [
@@ -337,6 +346,15 @@
             "string",
             "null"
           ]
+        },
+        "estimated_minutes": {
+          "description": "Estimated time to complete this task in minutes.\nOptional; used for planning and estimation accuracy tracking.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
         },
         "evidence": {
           "type": "array",

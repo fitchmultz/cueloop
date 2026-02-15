@@ -93,6 +93,8 @@ pub fn make_test_task(id: &str, title: &str, status: TaskStatus) -> Task {
         duplicates: None,
         custom_fields: std::collections::HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     }
 }
 

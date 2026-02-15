@@ -184,6 +184,8 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
         duplicates: None,
         custom_fields: std::collections::HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     };
 
     queue::save_queue(

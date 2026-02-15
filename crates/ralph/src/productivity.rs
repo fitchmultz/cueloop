@@ -119,6 +119,32 @@ pub struct VelocityMetrics {
     pub best_day: Option<(String, u32)>,
 }
 
+/// Estimation accuracy metrics for tasks with both estimated and actual minutes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EstimationMetrics {
+    /// Number of tasks analyzed (have both estimated and actual minutes).
+    pub tasks_analyzed: u32,
+    /// Average estimation accuracy ratio (actual/estimated).
+    /// 1.0 = perfect estimation, <1.0 = overestimated, >1.0 = underestimated.
+    pub average_accuracy_ratio: f64,
+    /// Median estimation accuracy ratio.
+    pub median_accuracy_ratio: f64,
+    /// Percentage of tasks estimated within 25% of actual.
+    pub within_25_percent: f64,
+    /// Average absolute error in minutes.
+    pub average_absolute_error_minutes: f64,
+}
+
+/// Single task estimation data point.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskEstimationPoint {
+    pub task_id: String,
+    pub task_title: String,
+    pub estimated_minutes: u32,
+    pub actual_minutes: u32,
+    pub accuracy_ratio: f64,
+}
+
 /// Session summary for display after run loop
 #[derive(Debug, Clone)]
 pub struct SessionSummary {
@@ -372,6 +398,72 @@ pub fn calculate_velocity(stats: &ProductivityStats, days: u32) -> VelocityMetri
     calculate_velocity_for_today(stats, days, &today)
 }
 
+/// Calculate estimation accuracy metrics from completed tasks.
+/// Only includes tasks that have both estimated_minutes and actual_minutes set.
+pub fn calculate_estimation_metrics(tasks: &[Task]) -> EstimationMetrics {
+    let estimation_points: Vec<TaskEstimationPoint> = tasks
+        .iter()
+        .filter_map(|task| {
+            let estimated = task.estimated_minutes?;
+            let actual = task.actual_minutes?;
+            if estimated == 0 {
+                return None;
+            }
+            let ratio = actual as f64 / estimated as f64;
+            Some(TaskEstimationPoint {
+                task_id: task.id.clone(),
+                task_title: task.title.clone(),
+                estimated_minutes: estimated,
+                actual_minutes: actual,
+                accuracy_ratio: ratio,
+            })
+        })
+        .collect();
+
+    let count = estimation_points.len();
+    if count == 0 {
+        return EstimationMetrics {
+            tasks_analyzed: 0,
+            average_accuracy_ratio: 0.0,
+            median_accuracy_ratio: 0.0,
+            within_25_percent: 0.0,
+            average_absolute_error_minutes: 0.0,
+        };
+    }
+
+    let ratios: Vec<f64> = estimation_points.iter().map(|p| p.accuracy_ratio).collect();
+    let average_ratio = ratios.iter().sum::<f64>() / count as f64;
+
+    let mut sorted_ratios = ratios.clone();
+    sorted_ratios.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let median_ratio = if count % 2 == 1 {
+        sorted_ratios[count / 2]
+    } else {
+        (sorted_ratios[count / 2 - 1] + sorted_ratios[count / 2]) / 2.0
+    };
+
+    let within_25 = estimation_points
+        .iter()
+        .filter(|p| p.accuracy_ratio >= 0.75 && p.accuracy_ratio <= 1.25)
+        .count() as f64
+        / count as f64
+        * 100.0;
+
+    let avg_abs_error = estimation_points
+        .iter()
+        .map(|p| (p.actual_minutes as f64 - p.estimated_minutes as f64).abs())
+        .sum::<f64>()
+        / count as f64;
+
+    EstimationMetrics {
+        tasks_analyzed: count as u32,
+        average_accuracy_ratio: average_ratio,
+        median_accuracy_ratio: median_ratio,
+        within_25_percent: within_25,
+        average_absolute_error_minutes: avg_abs_error,
+    }
+}
+
 fn calculate_velocity_for_today(
     stats: &ProductivityStats,
     days: u32,
@@ -451,6 +543,16 @@ pub struct ProductivityVelocityReport {
     pub best_day: Option<(String, u32)>,
 }
 
+/// Productivity estimation report
+#[derive(Debug, Clone, Serialize)]
+pub struct ProductivityEstimationReport {
+    pub tasks_analyzed: u32,
+    pub average_accuracy_ratio: f64,
+    pub median_accuracy_ratio: f64,
+    pub within_25_percent: f64,
+    pub average_absolute_error_minutes: f64,
+}
+
 /// Build a summary report
 pub fn build_summary_report(stats: &ProductivityStats, recent: usize) -> ProductivitySummaryReport {
     let recent_completions = recent_completed_tasks(stats, recent);
@@ -482,6 +584,18 @@ pub fn build_velocity_report(stats: &ProductivityStats, days: u32) -> Productivi
         total_completed: metrics.total_completed,
         average_per_day: metrics.average_per_day,
         best_day: metrics.best_day,
+    }
+}
+
+/// Build an estimation report from tasks
+pub fn build_estimation_report(tasks: &[Task]) -> ProductivityEstimationReport {
+    let metrics = calculate_estimation_metrics(tasks);
+    ProductivityEstimationReport {
+        tasks_analyzed: metrics.tasks_analyzed,
+        average_accuracy_ratio: metrics.average_accuracy_ratio,
+        median_accuracy_ratio: metrics.median_accuracy_ratio,
+        within_25_percent: metrics.within_25_percent,
+        average_absolute_error_minutes: metrics.average_absolute_error_minutes,
     }
 }
 
@@ -561,6 +675,44 @@ pub fn print_streak_report_text(report: &ProductivityStreakReport) {
     );
 }
 
+/// Print estimation report in text format
+pub fn print_estimation_report_text(report: &ProductivityEstimationReport) {
+    println!("Estimation Accuracy");
+    println!("===================");
+    println!();
+
+    if report.tasks_analyzed == 0 {
+        println!("No tasks with both estimated and actual minutes found.");
+        println!("Complete tasks with estimation data to see accuracy metrics.");
+        return;
+    }
+
+    println!("Tasks analyzed: {}", report.tasks_analyzed);
+    println!();
+    println!(
+        "Average accuracy: {:.2}x (1.0 = perfect)",
+        report.average_accuracy_ratio
+    );
+    println!("Median accuracy:  {:.2}x", report.median_accuracy_ratio);
+    println!();
+    println!("Within 25%: {:.1}% of estimates", report.within_25_percent);
+    println!();
+    println!(
+        "Average absolute error: {:.1} minutes",
+        report.average_absolute_error_minutes
+    );
+    println!();
+
+    // Interpretation
+    if report.average_accuracy_ratio < 0.9 {
+        println!("Trend: Tend to overestimate (actual < estimated)");
+    } else if report.average_accuracy_ratio > 1.1 {
+        println!("Trend: Tend to underestimate (actual > estimated)");
+    } else {
+        println!("Trend: Good calibration");
+    }
+}
+
 /// Format a duration in seconds to a human-readable string
 pub fn format_duration(seconds: i64) -> String {
     if seconds < 60 {
@@ -607,6 +759,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         }
     }
 

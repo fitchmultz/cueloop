@@ -109,6 +109,7 @@ struct TaskDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 basicInfoSection()
                 statusSection()
+                timeTrackingSection()
                 executionOverridesSection()
                 tagsSection()
                 contentSections()
@@ -210,6 +211,81 @@ struct TaskDetailView: View {
 
                 Spacer()
             }
+        }
+    }
+
+    @ViewBuilder
+    private func timeTrackingSection() -> some View {
+        // Only show if either field is set or we're in edit mode (always show)
+        glassGroupBox("Time Tracking") {
+            HStack(spacing: 20) {
+                // Estimated Minutes
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Estimated (min)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("Minutes", value: $draftTask.estimatedMinutes, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 100)
+                        .accessibilityLabel("Estimated minutes")
+                }
+
+                // Actual Minutes
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Actual (min)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("Minutes", value: $draftTask.actualMinutes, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 100)
+                        .accessibilityLabel("Actual minutes")
+                }
+
+                // Accuracy indicator (if both are set)
+                if let estimated = draftTask.estimatedMinutes,
+                   let actual = draftTask.actualMinutes,
+                   estimated > 0 {
+                    let ratio = Double(actual) / Double(estimated)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Accuracy")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(accuracyColor(ratio: ratio))
+                                .frame(width: 8, height: 8)
+                            Text(accuracyLabel(ratio: ratio))
+                                .font(.caption)
+                        }
+                    }
+                }
+
+                Spacer()
+            }
+        }
+    }
+
+    private func accuracyColor(ratio: Double) -> Color {
+        if ratio >= 0.75 && ratio <= 1.25 {
+            return .green
+        } else if ratio >= 0.5 && ratio <= 1.5 {
+            return .yellow
+        } else {
+            return .red
+        }
+    }
+
+    private func accuracyLabel(ratio: Double) -> String {
+        if ratio >= 0.75 && ratio <= 1.25 {
+            return "On target"
+        } else if ratio >= 0.5 && ratio < 0.75 {
+            return "Overestimated"
+        } else if ratio > 1.25 && ratio <= 1.5 {
+            return "Underestimated"
+        } else if ratio < 0.5 {
+            return "Way over"
+        } else {
+            return "Way under"
         }
     }
 

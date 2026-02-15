@@ -45,6 +45,8 @@ pub fn task_with(id: &str, status: TaskStatus, tags: Vec<String>) -> Task {
         duplicates: None,
         custom_fields: HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     }
 }
 

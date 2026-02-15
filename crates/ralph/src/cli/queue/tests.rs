@@ -65,6 +65,8 @@ fn write_queue(path: &Path) -> Result<()> {
         duplicates: None,
         custom_fields: HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     };
     let queue = QueueFile {
         version: 1,
@@ -308,6 +310,8 @@ fn queue_list_scheduled_filter_excludes_unscheduled() -> Result<()> {
             duplicates: None,
             custom_fields: HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         },
         Task {
             id: "RQ-0002".to_string(),
@@ -333,6 +337,8 @@ fn queue_list_scheduled_filter_excludes_unscheduled() -> Result<()> {
             duplicates: None,
             custom_fields: HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         },
     ];
     let queue = QueueFile { version: 1, tasks };
@@ -379,6 +385,8 @@ fn queue_list_include_done_outputs_done_tasks() -> Result<()> {
         duplicates: None,
         custom_fields: std::collections::HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     };
     let queue = QueueFile {
         version: 1,
@@ -411,6 +419,8 @@ fn queue_list_include_done_outputs_done_tasks() -> Result<()> {
         duplicates: None,
         custom_fields: HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     };
     let done = QueueFile {
         version: 1,
@@ -981,6 +991,8 @@ fn issue_task(
         duplicates: None,
         custom_fields: fields,
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     }
 }
 

@@ -715,6 +715,8 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
     public var updatedAt: Date?
     public var startedAt: Date?
     public var completedAt: Date?
+    public var estimatedMinutes: Int?
+    public var actualMinutes: Int?
     public var dependsOn: [String]?
     public var blocks: [String]?
     public var relatesTo: [String]?
@@ -727,6 +729,8 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
         case updatedAt = "updated_at"
         case startedAt = "started_at"
         case completedAt = "completed_at"
+        case estimatedMinutes = "estimated_minutes"
+        case actualMinutes = "actual_minutes"
         case customFields = "custom_fields"
     }
 
@@ -747,6 +751,8 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
         updatedAt: Date? = nil,
         startedAt: Date? = nil,
         completedAt: Date? = nil,
+        estimatedMinutes: Int? = nil,
+        actualMinutes: Int? = nil,
         dependsOn: [String]? = nil,
         blocks: [String]? = nil,
         relatesTo: [String]? = nil,
@@ -768,6 +774,8 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
         self.updatedAt = updatedAt
         self.startedAt = startedAt
         self.completedAt = completedAt
+        self.estimatedMinutes = estimatedMinutes
+        self.actualMinutes = actualMinutes
         self.dependsOn = dependsOn
         self.blocks = blocks
         self.relatesTo = relatesTo

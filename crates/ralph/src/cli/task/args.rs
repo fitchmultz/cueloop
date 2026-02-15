@@ -305,6 +305,11 @@ pub struct TaskBuildArgs {
     #[arg(long, value_name = "PATH")]
     pub target: Option<String>,
 
+    /// Estimated time to complete (e.g., "30m", "2h", "1h30m").
+    /// Stored as minutes in the task's estimated_minutes field.
+    #[arg(long, value_name = "DURATION")]
+    pub estimate: Option<String>,
+
     /// Fail on unknown template variables (default: warn only).
     /// When enabled, template loading fails if the template contains unknown {{variables}}.
     /// When disabled (default), unknown variables are left as-is with a warning.
@@ -675,6 +680,8 @@ pub enum TaskEditFieldArg {
     CompletedAt,
     StartedAt,
     ScheduledStart,
+    EstimatedMinutes,
+    ActualMinutes,
 }
 
 impl TaskEditFieldArg {
@@ -700,6 +707,8 @@ impl TaskEditFieldArg {
             TaskEditFieldArg::CompletedAt => "completed_at",
             TaskEditFieldArg::StartedAt => "started_at",
             TaskEditFieldArg::ScheduledStart => "scheduled_start",
+            TaskEditFieldArg::EstimatedMinutes => "estimated_minutes",
+            TaskEditFieldArg::ActualMinutes => "actual_minutes",
         }
     }
 }
@@ -727,6 +736,8 @@ impl From<TaskEditFieldArg> for TaskEditKey {
             TaskEditFieldArg::CompletedAt => TaskEditKey::CompletedAt,
             TaskEditFieldArg::StartedAt => TaskEditKey::StartedAt,
             TaskEditFieldArg::ScheduledStart => TaskEditKey::ScheduledStart,
+            TaskEditFieldArg::EstimatedMinutes => TaskEditKey::EstimatedMinutes,
+            TaskEditFieldArg::ActualMinutes => TaskEditKey::ActualMinutes,
         }
     }
 }

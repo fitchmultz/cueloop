@@ -83,6 +83,16 @@ pub struct Task {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub started_at: Option<String>,
 
+    /// Estimated time to complete this task in minutes.
+    /// Optional; used for planning and estimation accuracy tracking.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub estimated_minutes: Option<u32>,
+
+    /// Actual time spent on this task in minutes.
+    /// Optional; set manually or computed from started_at to completed_at.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actual_minutes: Option<u32>,
+
     /// RFC3339 timestamp when the task should become runnable (optional scheduling).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scheduled_start: Option<String>,

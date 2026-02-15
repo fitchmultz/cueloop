@@ -401,6 +401,8 @@ mod tests {
             duplicates: None,
             custom_fields: Default::default(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         }
     }
 

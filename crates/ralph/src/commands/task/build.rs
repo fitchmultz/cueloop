@@ -218,6 +218,16 @@ fn build_task_impl(
         let now = timeutil::now_utc_rfc3339_or_fallback();
         let default_request = opts.request.clone();
         queue::backfill_missing_fields(&mut after, &added_ids, &default_request, &now);
+
+        // Apply estimated_minutes if provided via --estimate flag
+        if let Some(estimated) = opts.estimated_minutes {
+            for task in &mut after.tasks {
+                if added_ids.contains(&task.id) {
+                    task.estimated_minutes = Some(estimated);
+                }
+            }
+        }
+
         queue::save_queue(&resolved.queue_path, &after)
             .context("save queue with backfilled fields")?;
     }

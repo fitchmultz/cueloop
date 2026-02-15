@@ -777,6 +777,8 @@ mod tests {
             relates_to: vec![],
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         }
     }

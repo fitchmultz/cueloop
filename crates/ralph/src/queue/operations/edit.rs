@@ -42,6 +42,8 @@ pub enum TaskEditKey {
     CompletedAt,
     StartedAt,
     ScheduledStart,
+    EstimatedMinutes,
+    ActualMinutes,
 }
 
 impl TaskEditKey {
@@ -67,6 +69,8 @@ impl TaskEditKey {
             TaskEditKey::CompletedAt => "completed_at",
             TaskEditKey::StartedAt => "started_at",
             TaskEditKey::ScheduledStart => "scheduled_start",
+            TaskEditKey::EstimatedMinutes => "estimated_minutes",
+            TaskEditKey::ActualMinutes => "actual_minutes",
         }
     }
 
@@ -122,6 +126,14 @@ impl TaskEditKey {
             TaskEditKey::CompletedAt => task.completed_at.clone().unwrap_or_default(),
             TaskEditKey::StartedAt => task.started_at.clone().unwrap_or_default(),
             TaskEditKey::ScheduledStart => task.scheduled_start.clone().unwrap_or_default(),
+            TaskEditKey::EstimatedMinutes => task
+                .estimated_minutes
+                .map(|m| m.to_string())
+                .unwrap_or_default(),
+            TaskEditKey::ActualMinutes => task
+                .actual_minutes
+                .map(|m| m.to_string())
+                .unwrap_or_default(),
         }
     }
 }
@@ -152,8 +164,10 @@ impl std::str::FromStr for TaskEditKey {
             "completed_at" => Ok(TaskEditKey::CompletedAt),
             "started_at" => Ok(TaskEditKey::StartedAt),
             "scheduled_start" => Ok(TaskEditKey::ScheduledStart),
+            "estimated_minutes" => Ok(TaskEditKey::EstimatedMinutes),
+            "actual_minutes" => Ok(TaskEditKey::ActualMinutes),
             _ => bail!(
-                "Unknown task field: '{}'. Expected one of: title, status, priority, tags, scope, evidence, plan, notes, request, depends_on, blocks, relates_to, duplicates, custom_fields, agent, created_at, updated_at, completed_at, started_at, scheduled_start.",
+                "Unknown task field: '{}'. Expected one of: title, status, priority, tags, scope, evidence, plan, notes, request, depends_on, blocks, relates_to, duplicates, custom_fields, agent, created_at, updated_at, completed_at, started_at, scheduled_start, estimated_minutes, actual_minutes.",
                 value
             ),
         }
@@ -311,6 +325,32 @@ pub fn apply_task_edit(
                     )
                 })?;
             task.scheduled_start = normalized;
+        }
+        TaskEditKey::EstimatedMinutes => {
+            let minutes = if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.parse::<u32>().with_context(|| {
+                    format!(
+                        "Queue edit failed (task_id={}, field=estimated_minutes): must be a non-negative integer",
+                        needle
+                    )
+                })?)
+            };
+            task.estimated_minutes = minutes;
+        }
+        TaskEditKey::ActualMinutes => {
+            let minutes = if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.parse::<u32>().with_context(|| {
+                    format!(
+                        "Queue edit failed (task_id={}, field=actual_minutes): must be a non-negative integer",
+                        needle
+                    )
+                })?)
+            };
+            task.actual_minutes = minutes;
         }
     }
 
@@ -607,6 +647,32 @@ pub fn preview_task_edit(
                 })?;
             preview_task.scheduled_start = normalized;
         }
+        TaskEditKey::EstimatedMinutes => {
+            let minutes = if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.parse::<u32>().with_context(|| {
+                    format!(
+                        "Queue edit preview failed (task_id={}, field=estimated_minutes): must be a non-negative integer",
+                        needle
+                    )
+                })?)
+            };
+            preview_task.estimated_minutes = minutes;
+        }
+        TaskEditKey::ActualMinutes => {
+            let minutes = if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.parse::<u32>().with_context(|| {
+                    format!(
+                        "Queue edit preview failed (task_id={}, field=actual_minutes): must be a non-negative integer",
+                        needle
+                    )
+                })?)
+            };
+            preview_task.actual_minutes = minutes;
+        }
     }
 
     // Update timestamp unless we're setting updated_at explicitly
@@ -703,6 +769,8 @@ mod tests {
             completed_at: None,
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],

@@ -16,11 +16,46 @@
 use std::io::IsTerminal;
 
 use anyhow::Result;
+use log::warn;
 
 use crate::agent;
 use crate::cli::task::args::TaskBuildArgs;
 use crate::commands::task as task_cmd;
 use crate::config;
+
+/// Parse duration string like "30m", "2h", "1h30m" into minutes.
+/// Returns None if the string is empty or invalid.
+fn parse_duration_minutes(s: &str) -> Option<u32> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+
+    let mut total_minutes: u32 = 0;
+    let mut current_number = String::new();
+
+    for ch in s.chars() {
+        if ch.is_ascii_digit() {
+            current_number.push(ch);
+        } else {
+            let value: u32 = current_number.parse().ok()?;
+            current_number.clear();
+            match ch {
+                'h' | 'H' => total_minutes = total_minutes.saturating_add(value.saturating_mul(60)),
+                'm' | 'M' => total_minutes = total_minutes.saturating_add(value),
+                _ => return None,
+            }
+        }
+    }
+
+    // Handle trailing number without unit (assume minutes)
+    if !current_number.is_empty() {
+        let value: u32 = current_number.parse().ok()?;
+        total_minutes = total_minutes.saturating_add(value);
+    }
+
+    Some(total_minutes).filter(|&m| m > 0)
+}
 
 /// Handle the build command (default when no subcommand given).
 pub fn handle(args: &TaskBuildArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
@@ -60,6 +95,13 @@ pub fn handle(args: &TaskBuildArgs, force: bool, resolved: &config::Resolved) ->
             template_hint,
             template_target,
             strict_templates: args.strict_templates,
+            estimated_minutes: args.estimate.as_ref().and_then(|s| {
+                let parsed = parse_duration_minutes(s);
+                if parsed.is_none() && !s.trim().is_empty() {
+                    warn!("Invalid duration format: '{}'. Expected format like '30m', '2h', or '1h30m'.", s);
+                }
+                parsed
+            }),
         },
     )
 }

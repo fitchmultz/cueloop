@@ -238,6 +238,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         }
     }
 

@@ -51,6 +51,8 @@ fn make_task(id: &str, status: TaskStatus, title: &str) -> Task {
         duplicates: None,
         custom_fields: HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     }
 }
 

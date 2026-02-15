@@ -33,6 +33,8 @@ fn task_with(id: &str, status: TaskStatus, tags: Vec<String>) -> Task {
         duplicates: None,
         custom_fields: HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     }
 }
 
@@ -333,6 +335,8 @@ fn task_with_deps(id: &str, status: TaskStatus, deps: Vec<String>) -> Task {
         completed_at: None,
         started_at: None,
         scheduled_start: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         depends_on: deps,
         blocks: vec![],
         relates_to: vec![],
@@ -563,6 +567,8 @@ fn task_with_relationships(
         completed_at: None,
         started_at: None,
         scheduled_start: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         depends_on: vec![],
         blocks,
         relates_to,
@@ -839,6 +845,8 @@ fn task_with_parent(id: &str, parent_id: Option<&str>) -> Task {
         completed_at: None,
         started_at: None,
         scheduled_start: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         depends_on: vec![],
         blocks: vec![],
         relates_to: vec![],

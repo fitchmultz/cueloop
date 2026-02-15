@@ -113,6 +113,7 @@ pub fn handle(resolved: &config::Resolved, args: &TaskTemplateArgs) -> Result<()
                     template_hint: Some(build_args.template.clone()),
                     template_target: build_args.target.clone(),
                     strict_templates: build_args.strict_templates,
+                    estimated_minutes: None,
                 },
             )
         }

@@ -77,6 +77,8 @@ pub fn write_queue(
             updated_at: Some(timestamp),
             completed_at: None,
             started_at: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             scheduled_start: None,
             depends_on: vec![],
             blocks: vec![],

@@ -242,6 +242,8 @@ fn run_loop_aborts_immediately_on_queue_lock_error() -> Result<()> {
             completed_at: None,
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],
@@ -352,6 +354,8 @@ fn run_loop_aborts_immediately_on_queue_validation_error() -> Result<()> {
             completed_at: None,
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec!["RQ-9999".to_string()], // Non-existent task

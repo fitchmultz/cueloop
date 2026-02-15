@@ -388,6 +388,8 @@ mod tests {
                 duplicates: None,
                 custom_fields: HashMap::new(),
                 parent_id: None,
+                estimated_minutes: None,
+                actual_minutes: None,
             }],
         };
 
@@ -448,6 +450,8 @@ mod tests {
                 duplicates: None,
                 custom_fields: HashMap::new(),
                 parent_id: None,
+                estimated_minutes: None,
+                actual_minutes: None,
             }],
         };
         save_queue(&resolved.done_path, &done).unwrap();
@@ -536,6 +540,8 @@ mod tests {
             duplicates: None,
             custom_fields: HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         });
         save_queue(&resolved.queue_path, &queue).unwrap();
 

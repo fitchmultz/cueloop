@@ -42,6 +42,8 @@ fn make_task_with_deps(
         completed_at: None,
         started_at: None,
         scheduled_start: scheduled.map(|s| s.to_string()),
+        estimated_minutes: None,
+        actual_minutes: None,
         depends_on: deps.into_iter().map(|s| s.to_string()).collect(),
         blocks: vec![],
         relates_to: vec![],

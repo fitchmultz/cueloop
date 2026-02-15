@@ -34,6 +34,9 @@ Common optional fields:
 - `priority`: `critical`, `high`, `medium`, `low` (default: `medium`).
 - `request`: original human request (string or null).
 - `completed_at`: RFC3339 UTC timestamp (required if status is `done` or `rejected`, otherwise optional).
+- `started_at`: RFC3339 UTC timestamp when work started (optional).
+- `estimated_minutes`: Estimated time to complete in minutes (optional, for planning).
+- `actual_minutes`: Actual time spent in minutes (optional, for tracking).
 - `agent`: per-task runner override (see below).
 - `depends_on` (list of task IDs, defaults to empty).
 - `blocks` (list of task IDs, defaults to empty): Tasks that this task blocks. Semantically different from `depends_on`: blocks is "I prevent X" vs depends_on "I need X".

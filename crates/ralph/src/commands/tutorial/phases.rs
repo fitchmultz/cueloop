@@ -171,6 +171,8 @@ fn add_tutorial_task(sandbox: &TutorialSandbox) -> Result<String> {
         updated_at: Some(crate::timeutil::now_utc_rfc3339_or_fallback()),
         completed_at: None,
         started_at: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         scheduled_start: None,
         depends_on: vec![],
         blocks: vec![],
