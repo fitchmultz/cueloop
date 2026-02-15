@@ -2,6 +2,615 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0822",
+      "status": "todo",
+      "title": "Add interactive `ralph tutorial` command for guided onboarding",
+      "description": "Opportunity type: UX improvement and feature gap.\n\nWhy it matters:\n- New users face onboarding friction despite excellent documentation. There is no interactive walkthrough that demonstrates core workflows with hands-on practice. Text-only docs don't serve all learning styles, and users must piece together the workflow from multiple documents.\n\nProposed approach (minimal slice first):\n- Add `ralph tutorial` command that creates a temporary sandbox project, runs through init/queue/run with guided prompts, and explains each step. Start with a single 'basic workflow' tutorial.\n\nExpansion:\n- Add tutorial modes: 'basic', 'parallel', 'webhooks', 'plugins'.\n- Track tutorial completion in config and suggest next steps.\n\nRisks and mitigations:\n- Risk: tutorial becomes stale as CLI evolves.\n- Mitigation: use actual CLI commands with validation hooks rather than hard-coded output.\n\nAcceptance criteria:\n- `ralph tutorial` runs a complete init → add task → run one → review workflow in temp directory.\n- Tutorial cleans up after itself or offers to keep the sandbox.\n- Help text links to tutorial for new users.",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "ux",
+        "onboarding",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/tutorial.rs",
+        "crates/ralph/src/commands/tutorial/",
+        "docs/cli.md",
+        "docs/quick-start.md"
+      ],
+      "evidence": [
+        "path: docs/index.md :: user-type navigation :: recommends quick-start but has no interactive option.",
+        "path: docs/guides/getting-started.md :: 750+ lines :: comprehensive but passive reading, no hands-on guided path.",
+        "workflow: new user onboarding :: requires reading multiple docs and manual experimentation to build mental model."
+      ],
+      "plan": [
+        "Design tutorial phases (welcome, init, add task, run, review, cleanup) with pause points.",
+        "Create temporary sandbox directory with git init and sample files.",
+        "Implement tutorial command that walks through each phase with prompts and validations.",
+        "Add --keep-sandbox flag to preserve the tutorial workspace for experimentation.",
+        "Verify by running `ralph tutorial` as a new user would and confirming complete walkthrough without errors."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0823",
+      "status": "todo",
+      "title": "Add runner capability discovery command for better runner selection",
+      "description": "Opportunity type: UX improvement and feature gap.\n\nWhy it matters:\n- Users cannot easily discover what each runner supports (reasoning effort, models, sandbox modes). Model auto-normalization happens silently, so users may not realize their configured model was replaced. The runner comparison table in docs requires reading and doesn't validate local environment.\n\nProposed approach (minimal slice first):\n- Add `ralph runner capabilities <runner>` command that reports: available models, reasoning support, sandbox options, and local binary status (installed/missing/version).\n\nExpansion:\n- Add `ralph runner compare` for side-by-side comparison.\n- Add `--json` output for scripting.\n- Detect and warn when configured settings are incompatible with selected runner.\n\nRisks and mitigations:\n- Risk: runner capabilities change over time.\n- Mitigation: fetch from runner --help when possible, with fallback to known capabilities.\n\nAcceptance criteria:\n- `ralph runner capabilities codex` shows supported models, reasoning effort support, and whether codex binary is installed.\n- Incompatible config warnings appear during `ralph run` preflight checks.",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "ux",
+        "runner",
+        "discovery"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/runner.rs",
+        "crates/ralph/src/commands/runner/",
+        "crates/ralph/src/contracts/runner.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/contracts/runner.rs :: RunnerCapabilities :: capabilities defined but no CLI exposure.",
+        "path: docs/features/runners.md :: runner comparison table :: requires doc lookup, no CLI equivalent.",
+        "workflow: ralph run one with incompatible model :: silent normalization occurs, user unaware of substitution."
+      ],
+      "plan": [
+        "Define capability schema (models, reasoning_effort, sandbox, plan_mode, etc.).",
+        "Add `ralph runner capabilities <runner>` command with formatted output.",
+        "Add binary detection (check PATH, version check).",
+        "Add preflight warning when config uses unsupported runner features.",
+        "Verify by running `ralph runner capabilities codex` and seeing all Codex-specific models and feature support."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0824",
+      "status": "todo",
+      "title": "Add `ralph undo` command for safe queue operation recovery",
+      "description": "Opportunity type: UX improvement and reliability.\n\nWhy it matters:\n- Queue operations like status changes, archival, and deletions are irreversible. Accidental `ralph task done` or `ralph queue prune` cannot be undone, causing potential data loss. The done.json archive exists but requires manual JSON editing to recover.\n\nProposed approach (minimal slice first):\n- Add `ralph undo` that reverses the most recent queue-modifying operation by restoring from automatic backup snapshots created before each mutation.\n\nExpansion:\n- Add `ralph undo --list` to show recent operations.\n- Add `ralph undo <operation-id>` for selective undo.\n- Configurable snapshot retention policy.\n\nRisks and mitigations:\n- Risk: undo snapshot storage grows unbounded.\n- Mitigation: configurable retention (default: last 20 operations) and cleanup on successful undo.\n\nAcceptance criteria:\n- `ralph undo` restores queue to state before last mutation.\n- Undo history survives process restart (persisted to .ralph/cache/undo/).",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "ux",
+        "reliability",
+        "queue"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/undo.rs",
+        "crates/ralph/src/commands/undo/",
+        "crates/ralph/src/queue/operations/",
+        ".ralph/cache/undo/"
+      ],
+      "evidence": [
+        "workflow: accidental `ralph task done RQ-0001` :: task moved to done.json, requires manual JSON edit to recover.",
+        "path: crates/ralph/src/queue/operations/status.rs :: complete_task :: atomically moves task but offers no recovery path.",
+        "workflow: `ralph queue prune` :: permanently deletes old tasks with no undo option."
+      ],
+      "plan": [
+        "Create snapshot before any queue-modifying operation (save to .ralph/cache/undo/<timestamp>.json).",
+        "Implement `ralph undo` to restore most recent snapshot.",
+        "Add `ralph undo --list` to show recent operations with timestamps.",
+        "Add `ralph undo --dry-run` to preview restore without applying.",
+        "Verify by running `ralph task done`, then `ralph undo`, and confirming task returns to todo status."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0825",
+      "status": "todo",
+      "title": "Add bulk task operations to RalphMac for multi-select workflows",
+      "description": "Opportunity type: UX improvement and feature gap.\n\nWhy it matters:\n- RalphMac currently supports only single-task selection and editing. Users cannot select multiple tasks to change status, priority, or tags in bulk. This creates friction when managing large queues or reorganizing work after a planning session.\n\nProposed approach (minimal slice first):\n- Add multi-select support to TaskListView with bulk status change and bulk tag assignment. Start with Cmd+click selection and a toolbar bulk action menu.\n\nExpansion:\n- Add bulk priority change.\n- Add bulk dependency assignment.\n- Add bulk export of selected tasks.\n\nRisks and mitigations:\n- Risk: bulk operations on large selections cause UI lag.\n- Mitigation: show operation count confirmation, implement cancellable operations.\n\nAcceptance criteria:\n- Cmd+click in TaskListView selects multiple tasks.\n- Bulk action menu offers status change to todo/doing/done/rejected.\n- Bulk operations update queue.json atomically.",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "ux",
+        "ralphmac",
+        "bulk-operations"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/TaskListView.swift",
+        "apps/RalphMac/RalphMac/BulkActionsView.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphMac/TaskListView.swift :: selection :: uses single-task selection model.",
+        "workflow: reorganizing 20+ tasks after planning :: requires 20+ individual clicks to change status.",
+        "path: apps/RalphMac/RalphCore/Workspace.swift :: updateTask :: single-task update only, no batch variant."
+      ],
+      "plan": [
+        "Add multi-select state to TaskListView (SelectionSet or similar).",
+        "Create BulkActionsView with status, priority, and tag options.",
+        "Add batch update methods to Workspace and RalphCLIClient.",
+        "Add confirmation dialog showing operation count.",
+        "Verify by selecting 5 tasks in TaskListView and bulk-changing status to done."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0826",
+      "status": "todo",
+      "title": "Add task templates system for reusable task patterns",
+      "description": "Opportunity type: feature gap and UX improvement.\n\nWhy it matters:\n- Creating similar tasks (bug fixes, features, refactors) requires repetitive field specification. While `ralph task template` exists, it is not well-integrated into common workflows. Users cannot quickly instantiate standard task patterns with pre-filled scope, evidence, and plan structure.\n\nProposed approach (minimal slice first):\n- Enhance `ralph task template` to support project-local templates in `.ralph/templates/` with variable substitution. Ship built-in templates for bug, feature, refactor, docs.\n\nExpansion:\n- Add template inheritance/composition.\n- Add `ralph task from template <name>` shortcut command.\n- RalphMac template gallery UI.\n\nRisks and mitigations:\n- Risk: templates become stale as project structure changes.\n- Mitigation: template versioning and validation warnings for outdated templates.\n\nAcceptance criteria:\n- `ralph task from template bug --title \"Fix X\"` creates task with bug template defaults.\n- `.ralph/templates/bug.md` template supports {{TITLE}}, {{SCOPE}}, {{COMPONENT}} variables.",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "ux",
+        "templates",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/task/template.rs",
+        "crates/ralph/assets/templates/",
+        ".ralph/templates/",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/cli/task/template.rs :: template command exists but limited to list/manage, no from-template creation.",
+        "workflow: creating similar feature tasks :: manual repetition of scope paths, evidence patterns, plan structure.",
+        "path: docs/cli.md :: template documentation :: mentions templates but doesn't show usage patterns."
+      ],
+      "plan": [
+        "Design template file format with frontmatter (priority, tags) and body (description template).",
+        "Create built-in templates (bug.md, feature.md, refactor.md, docs.md).",
+        "Add `ralph task from template <name>` command with variable substitution.",
+        "Add `.ralph/templates/` discovery path for project-specific templates.",
+        "Verify by running `ralph task from template bug --title \"Test\" --set COMPONENT=auth` and checking output."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0827",
+      "status": "todo",
+      "title": "Add code coverage reporting with `make coverage` target",
+      "description": "Opportunity type: reliability and modernization.\n\nWhy it matters:\n- Ralph has ~2300 tests but no coverage measurement. Changes may inadvertently reduce coverage in critical paths. There's no visibility into which modules lack test coverage, and no coverage trend tracking over time.\n\nProposed approach (minimal slice first):\n- Add cargo-llvm-cov integration with `make coverage` target that generates HTML and summary reports. Start with line coverage only.\n\nExpansion:\n- Add coverage thresholds that fail CI if coverage drops below threshold.\n- Add coverage trend tracking in .ralph/cache/coverage-history.json.\n- Add per-module coverage breakdown in report.\n\nRisks and mitigations:\n- Risk: coverage collection slows CI significantly.\n- Mitigation: make coverage optional in default CI, add `make ci-coverage` for full coverage runs.\n\nAcceptance criteria:\n- `make coverage` generates HTML report in target/coverage/html/.\n- Summary report shows total coverage percentage and per-crate breakdown.",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "reliability",
+        "testing",
+        "coverage"
+      ],
+      "scope": [
+        "Makefile",
+        "crates/ralph/Cargo.toml",
+        ".gitignore",
+        "docs/contributing.md"
+      ],
+      "evidence": [
+        "path: Makefile :: no coverage target exists, only test targets.",
+        "workflow: pull request review :: no coverage delta visible to reviewers.",
+        "path: crates/ralph/tests/ :: 63 test files but no coverage instrumentation."
+      ],
+      "plan": [
+        "Add cargo-llvm-cov to dev dependencies or install instructions.",
+        "Add `coverage` target to Makefile generating HTML and summary reports.",
+        "Add coverage output directory to .gitignore.",
+        "Document coverage workflow in CONTRIBUTING.md.",
+        "Verify by running `make coverage` and opening target/coverage/html/index.html."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0828",
+      "status": "todo",
+      "title": "Add webhook integration examples for Slack, Discord, and GitHub Actions",
+      "description": "Opportunity type: feature gap and integration.\n\nWhy it matters:\n- Webhook support exists but lacks concrete integration examples. Users must manually figure out payload formats for common services. The webhook documentation shows payload schemas but not how to wire them to actual endpoints.\n\nProposed approach (minimal slice first):\n- Add `docs/guides/webhook-integrations.md` with copy-paste examples for Slack webhook, Discord webhook, and GitHub Actions workflow trigger. Include curl commands and JSON payload templates.\n\nExpansion:\n- Add built-in webhook templates for common services.\n- Add `ralph webhook create-slack` helper command.\n- Add webhook payload transformation config.\n\nRisks and mitigations:\n- Risk: external API changes break examples.\n- Mitigation: use stable webhook patterns, note last-verified date in docs.\n\nAcceptance criteria:\n- Docs contain working Slack webhook example that posts task completion notification.\n- Docs contain Discord webhook example with rich embed formatting.",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "integration",
+        "webhooks",
+        "docs"
+      ],
+      "scope": [
+        "docs/guides/webhook-integrations.md",
+        "docs/features/webhooks.md",
+        "docs/index.md"
+      ],
+      "evidence": [
+        "path: docs/features/webhooks.md :: payload schema documented but no service-specific examples.",
+        "workflow: setting up Slack notification :: user must research Slack webhook format independently.",
+        "path: crates/ralph/src/webhook.rs :: supports custom payloads but no templates."
+      ],
+      "plan": [
+        "Create docs/guides/webhook-integrations.md with Slack, Discord, GitHub Actions examples.",
+        "Add curl commands for testing each integration.",
+        "Add example payload transformation configs.",
+        "Link from docs/features/webhooks.md and docs/index.md.",
+        "Verify by following Slack example and receiving notification on task completion."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0829",
+      "status": "todo",
+      "title": "Add Settings/Preferences UI to RalphMac",
+      "description": "Opportunity type: UX improvement and feature gap.\n\nWhy it matters:\n- RalphMac has no in-app settings screen. Users must edit config files directly or use CLI commands to change runner, model, phases, and notification settings. This creates a jarring experience for users who prefer GUI configuration.\n\nProposed approach (minimal slice first):\n- Add Settings window accessible via RalphMac → Settings (Cmd+,) with sections for Runner, Notifications, and Appearance. Read/write to .ralph/config.json via CLI.\n\nExpansion:\n- Add profile selection dropdown.\n- Add runner capability warnings in UI.\n- Add config import/export.\n\nRisks and mitigations:\n- Risk: config file edited externally causes UI desync.\n- Mitigation: file watcher already monitors config; add conflict resolution UI.\n\nAcceptance criteria:\n- Cmd+, opens Settings window with Runner, Notifications, Appearance sections.\n- Changes are persisted to .ralph/config.json and reflected immediately.",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "ux",
+        "ralphmac",
+        "settings"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/SettingsView.swift",
+        "apps/RalphMac/RalphMac/RalphMacApp.swift",
+        "apps/RalphMac/RalphCore/RalphCLIClient.swift"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphMac/RalphMacApp.swift :: no Settings scene or command defined.",
+        "workflow: changing runner in app :: requires terminal: `ralph config set agent.runner codex`.",
+        "path: apps/RalphMac/RalphCore/Workspace.swift :: loads config via CLI but no UI to modify."
+      ],
+      "plan": [
+        "Create SettingsView.swift with TabView for Runner, Notifications, Appearance sections.",
+        "Add Settings scene to RalphMacApp with Cmd+, keyboard shortcut.",
+        "Add config write methods to RalphCLIClient using `ralph config set`.",
+        "Wire Settings controls to config values with live preview.",
+        "Verify by opening Settings, changing runner, and confirming .ralph/config.json updates."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0830",
+      "status": "todo",
+      "title": "Add task time estimation and tracking fields",
+      "description": "Opportunity type: feature gap and productivity.\n\nWhy it matters:\n- Tasks have no time estimation field. Users cannot plan work based on expected effort, and there's no way to compare estimated vs actual time. The productivity analytics show velocity but not estimation accuracy.\n\nProposed approach (minimal slice first):\n- Add `estimated_minutes` and `actual_minutes` fields to task schema. Show in task detail UI. Add to `ralph task build` and `ralph productivity estimation` commands.\n\nExpansion:\n- Add estimation accuracy tracking to productivity analytics.\n- Add time-based queue prioritization.\n- Add burndown chart with estimated line.\n\nRisks and mitigations:\n- Risk: estimation fields add clutter for users who don't estimate.\n- Mitigation: fields are optional; UI hides empty values.\n\nAcceptance criteria:\n- `ralph task build --estimate 30m` sets estimated_minutes.\n- Task detail shows estimated vs actual when both are set.\n- `ralph productivity estimation` shows estimation accuracy metrics.",
+      "priority": "low",
+      "tags": [
+        "innovation",
+        "feature",
+        "productivity",
+        "estimation"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts/task.rs",
+        "schemas/task.schema.json",
+        "crates/ralph/src/cli/task/build.rs",
+        "crates/ralph/src/commands/productivity/",
+        "apps/RalphMac/RalphMac/TaskDetailView.swift"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/contracts/task.rs :: Task struct :: no time estimation fields.",
+        "path: docs/queue-and-tasks.md :: task schema :: no mention of time tracking.",
+        "workflow: sprint planning :: no way to estimate task complexity for prioritization."
+      ],
+      "plan": [
+        "Add estimated_minutes and actual_minutes optional fields to Task struct.",
+        "Update task schema and run make generate.",
+        "Add --estimate flag to ralph task build.",
+        "Add estimation accuracy to productivity summary.",
+        "Verify by running `ralph task build \"Test\" --estimate 30m` and checking estimated_minutes in queue.json."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0831",
+      "status": "todo",
+      "title": "Add `ralph queue explain <id>` for runnability diagnosis",
+      "description": "Opportunity type: UX improvement and reliability.\n\nWhy it matters:\n- When tasks are blocked or not running, users have no quick way to understand why. The runnability analysis exists internally but is not exposed as a user-facing diagnostic command. Users must manually check dependencies, schedules, and status.\n\nProposed approach (minimal slice first):\n- Add `ralph queue explain <id>` that outputs a human-readable explanation of why a task is or isn't runnable, including dependency status, schedule timing, and blocker chain.\n\nExpansion:\n- Add `--json` output for scripting.\n- Add `ralph queue explain --next` to explain why next task selection chose that task.\n- Add blocking task deep links.\n\nRisks and mitigations:\n- Risk: explanation output becomes verbose for deeply nested dependencies.\n- Mitigation: use tree visualization with expandable sections.\n\nAcceptance criteria:\n- `ralph queue explain RQ-0001` shows runnable status with reasons.\n- For blocked tasks, shows dependency chain with status of each blocker.",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "ux",
+        "queue",
+        "diagnostics"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue.rs",
+        "crates/ralph/src/commands/queue/explain.rs",
+        "crates/ralph/src/queue/operations/runnability.rs",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/queue/operations/runnability.rs :: queue_runnability_report :: exists but no CLI exposure.",
+        "workflow: task not running :: user must manually inspect depends_on, scheduled_start, status.",
+        "path: crates/ralph/src/queue/operations/runnability.rs :: NotRunnableReason :: detailed reasons exist but not surfaced to user."
+      ],
+      "plan": [
+        "Create explain.rs command using existing runnability analysis.",
+        "Add human-readable formatter for NotRunnableReason variants.",
+        "Add dependency chain visualization for blocked tasks.",
+        "Add --json output option.",
+        "Verify by running `ralph queue explain <blocked-task-id>` and seeing full blocker chain."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0832",
+      "status": "todo",
+      "title": "Add property-based testing for queue operations",
+      "description": "Opportunity type: reliability and modernization.\n\nWhy it matters:\n- Queue operations have many edge cases around dependencies, status transitions, and validation. Current unit tests cover happy paths and known edge cases, but property-based testing would discover unknown edge cases and invariants violations.\n\nProposed approach (minimal slice first):\n- Add proptest crate and write property tests for queue operations: task insertion preserves order, status transitions are valid, dependency cycles are detected, archive maintains invariants.\n\nExpansion:\n- Add property tests for config parsing and merging.\n- Add property tests for task builder prompt generation.\n- Add stateful property testing for multi-operation sequences.\n\nRisks and mitigations:\n- Risk: property tests run slowly in CI.\n- Mitigation: use proptest cases limit, run in separate `make test-property` target.\n\nAcceptance criteria:\n- Property tests cover: order preservation, status transitions, dependency validation, archive invariants.\n- All property tests pass with 1000 cases each.",
+      "priority": "low",
+      "tags": [
+        "innovation",
+        "reliability",
+        "testing",
+        "property-testing"
+      ],
+      "scope": [
+        "crates/ralph/Cargo.toml",
+        "crates/ralph/tests/queue_property_test.rs",
+        "crates/ralph/tests/config_property_test.rs",
+        "Makefile"
+      ],
+      "evidence": [
+        "path: crates/ralph/Cargo.toml :: no proptest or quickcheck dependency.",
+        "path: crates/ralph/src/queue/operations/validation.rs :: dependency validation :: complex logic with many branches, only example-based tests.",
+        "workflow: edge case discovery :: relies on manual bug reports rather than systematic exploration."
+      ],
+      "plan": [
+        "Add proptest to dev-dependencies in Cargo.toml.",
+        "Create queue_property_test.rs with properties for order, status, dependencies.",
+        "Create config_property_test.rs with properties for parsing and merging.",
+        "Add test-property target to Makefile.",
+        "Verify by running `cargo test --test queue_property_test` with all properties passing."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0833",
+      "status": "todo",
+      "title": "Add RalphMac desktop notifications for task events",
+      "description": "Opportunity type: UX improvement and feature gap.\n\nWhy it matters:\n- RalphMac has no desktop notification system. Users running long tasks must manually check the app to see completion. The CLI supports webhooks but the macOS app lacks native UserNotifications integration for local alerts.\n\nProposed approach (minimal slice first):\n- Add UserNotifications framework integration to RalphMac. Show notifications on task completion, failure, and when user input is needed. Respect notification settings from config.\n\nExpansion:\n- Add notification actions: Open Task, Mark Done, Retry.\n- Add notification grouping by workspace.\n- Add Do Not Disturb integration.\n\nRisks and mitigations:\n- Risk: notifications become noise for fast tasks.\n- Mitigation: minimum task duration threshold before notification; configurable.\n\nAcceptance criteria:\n- Task completion triggers macOS notification with task title and status.\n- Clicking notification opens RalphMac to that task.",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "ux",
+        "ralphmac",
+        "notifications"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/NotificationManager.swift",
+        "apps/RalphMac/RalphMac/RalphMacApp.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphCore/Workspace.swift :: notification config exists but no macOS notification integration.",
+        "path: crates/ralph/src/config.rs :: notification.{enabled,notify_on_complete,sound_enabled} :: settings exist, CLI uses them, macOS app doesn't.",
+        "workflow: long-running task :: user must keep checking app window to see completion."
+      ],
+      "plan": [
+        "Create NotificationManager.swift using UserNotifications framework.",
+        "Request notification permissions on app launch.",
+        "Wire Workspace execution completion to notification triggers.",
+        "Add notification tap handler to navigate to task.",
+        "Verify by running a task and confirming notification appears on completion."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0834",
+      "status": "todo",
+      "title": "Add `ralph best-practices` guide command for task structuring",
+      "description": "Opportunity type: UX improvement and documentation.\n\nWhy it matters:\n- Users have no guidance on how to structure tasks for maximum effectiveness. The docs explain schema but not strategy. Questions like 'how detailed should a plan be?' and 'when to use 1 vs 3 phases?' require experience to answer.\n\nProposed approach (minimal slice first):\n- Add `ralph best-practices` command that outputs guidance on task structuring, phase selection, scope definition, and common patterns. Start with text output, later add --format markdown/json.\n\nExpansion:\n- Add best-practices lint rules that warn on anti-patterns.\n- Add `ralph task lint <id>` command.\n- Add best-practices score to tasks.\n\nRisks and mitigations:\n- Risk: best practices become outdated as AI runners evolve.\n- Mitigation: version the guidance and update based on observed success rates.\n\nAcceptance criteria:\n- `ralph best-practices` outputs actionable guidance covering task titles, plans, phases, and scope.\n- Guidance includes examples of good vs bad task structure.",
+      "priority": "low",
+      "tags": [
+        "innovation",
+        "ux",
+        "documentation",
+        "cli"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/best_practices.rs",
+        "crates/ralph/assets/guides/best-practices.md",
+        "docs/cli.md"
+      ],
+      "evidence": [
+        "path: docs/guides/getting-started.md :: covers workflow but not task quality guidance.",
+        "workflow: new user task creation :: no feedback on whether task is well-structured for AI execution.",
+        "path: crates/ralph/src/prompts_internal/worker.rs :: worker prompt has guidance but not exposed to user."
+      ],
+      "plan": [
+        "Compile best-practices content from worker prompts and observed patterns.",
+        "Create best_practices.rs command with formatted output.",
+        "Add examples of good vs bad task structure for each category.",
+        "Link from docs/index.md and getting-started.md.",
+        "Verify by running `ralph best-practices` and reviewing actionable guidance output."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0835",
+      "status": "todo",
+      "title": "Add RalphMac git status integration with visual indicators",
+      "description": "Opportunity type: UX improvement and feature gap.\n\nWhy it matters:\n- RalphMac shows no git status despite the CLI's deep git integration. Users cannot see if the repo is dirty, which branch they're on, or whether there are uncommitted changes that might affect task execution. The CLI checks git status but the app is blind to it.\n\nProposed approach (minimal slice first):\n- Add git status bar to RalphMac showing branch, dirty/clean state, and uncommitted file count. Use `ralph git status` or direct git CLI call. Show warning indicator when repo is dirty.\n\nExpansion:\n- Add git log mini-view to task detail.\n- Add branch selector dropdown.\n- Add staged/unstaged file list viewer.\n\nRisks and mitigations:\n- Risk: frequent git status calls impact performance.\n- Mitigation: cache status with 5-second TTL, refresh on file watcher events.\n\nAcceptance criteria:\n- Status bar shows current branch name.\n- Dirty repo shows warning indicator with uncommitted file count.",
+      "priority": "low",
+      "tags": [
+        "innovation",
+        "ux",
+        "ralphmac",
+        "git"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/GitStatusBarView.swift",
+        "apps/RalphMac/RalphCore/GitClient.swift",
+        "apps/RalphMac/RalphMac/WindowView.swift"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphCore/ :: no GitClient or git status integration.",
+        "workflow: running task on dirty repo :: CLI warns, but app shows no indication.",
+        "path: crates/ralph/src/git/ :: extensive git integration exists in CLI, not exposed to app."
+      ],
+      "plan": [
+        "Create GitClient.swift wrapping `git status --porcelain` calls.",
+        "Create GitStatusBarView showing branch, dirty indicator, file count.",
+        "Add status bar to WindowView bottom or top area.",
+        "Wire file watcher to trigger git status refresh.",
+        "Verify by making a file change and seeing dirty indicator appear in status bar."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0836",
+      "status": "todo",
+      "title": "Add task export to RalphMac for reporting and sharing",
+      "description": "Opportunity type: feature gap and integration.\n\nWhy it matters:\n- RalphMac has no export functionality. Users cannot generate reports, share task lists, or create documentation from tasks. While the CLI has `ralph queue export`, the app lacks any export UI, forcing users to terminal for this common workflow.\n\nProposed approach (minimal slice first):\n- Add Export button to Queue section toolbar with format picker (Markdown, JSON, CSV). Export to file or clipboard. Start with full queue export.\n\nExpansion:\n- Add filtered export (by status, priority, tags).\n- Add selected tasks export (requires multi-select).\n- Add scheduled export (daily report generation).\n\nRisks and mitigations:\n- Risk: large queues generate huge exports.\n- Mitigation: show export preview with row count, add pagination for large exports.\n\nAcceptance criteria:\n- Export button in Queue toolbar opens format picker.\n- Markdown export includes task table with ID, title, status, priority.",
+      "priority": "low",
+      "tags": [
+        "innovation",
+        "feature",
+        "ralphmac",
+        "export"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/QueueExportView.swift",
+        "apps/RalphMac/RalphMac/TaskListView.swift",
+        "apps/RalphMac/RalphCore/RalphCLIClient.swift"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphMac/TaskListView.swift :: no export button or action.",
+        "path: crates/ralph/src/cli/queue/export.rs :: export command exists but not wired to app.",
+        "workflow: sharing task list with team :: requires terminal: `ralph queue export --format markdown`."
+      ],
+      "plan": [
+        "Create QueueExportView.swift with format picker (Markdown, JSON, CSV).",
+        "Add Export button to TaskListView toolbar.",
+        "Wire export to RalphCLIClient using `ralph queue export`.",
+        "Add save panel for file export, clipboard option for quick copy.",
+        "Verify by clicking Export, selecting Markdown, and saving file with correct task data."
+      ],
+      "notes": [],
+      "request": "scan: none",
+      "created_at": "2026-02-14T18:50:00Z",
+      "updated_at": "2026-02-14T18:50:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
       "id": "RQ-0817",
       "status": "todo",
       "title": "Introduce queue snapshot caching for parallel scheduler selection",
