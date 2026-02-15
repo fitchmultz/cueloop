@@ -16,6 +16,12 @@ Webhooks complement desktop notifications by providing a machine-readable, integ
 
 ---
 
+## Quick Start: Integration Examples
+
+For copy-paste ready examples with Slack, Discord, and GitHub Actions, see **[Webhook Integration Examples](../guides/webhook-integrations.md)**.
+
+---
+
 ## Configuration
 
 Webhooks are configured via the `agent.webhook` section in your config file (`.ralph/config.json` or `~/.config/ralph/config.json`).
@@ -575,6 +581,10 @@ Replay safety defaults:
 ---
 
 ## Integration Examples
+
+> **See the [Webhook Integration Guide](../guides/webhook-integrations.md) for complete, copy-paste ready examples with Slack, Discord, and GitHub Actions.**
+
+The examples below show conceptual patterns. For production-ready code, use the integration guide.
 
 ### Slack Integration
 

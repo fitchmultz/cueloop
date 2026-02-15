@@ -189,7 +189,7 @@ Step-by-step tutorials for common workflows:
 |-------|----------|
 | Parallel Execution | [features/parallel.md](features/parallel.md) |
 | Repository Scanning | [features/scan.md](features/scan.md) |
-| Webhook Integration | [features/webhooks.md](features/webhooks.md) |
+| Webhook Integration | [guides/webhook-integrations.md](guides/webhook-integrations.md) |
 | Plugin Development | [plugin-development.md](plugin-development.md) |
 
 ### Use Case Guides
@@ -199,7 +199,7 @@ Step-by-step tutorials for common workflows:
 | Get started quickly | [Quick Start](quick-start.md), [App](features/app.md) |
 | Configure my runner | [Runners](features/runners.md), [Configuration](configuration.md) |
 | Set up parallel execution | [Parallel](features/parallel.md) |
-| Integrate with Slack/Discord | [Webhooks](features/webhooks.md) |
+| Integrate with Slack/Discord | [Webhook Integrations](guides/webhook-integrations.md), [Webhooks](features/webhooks.md) |
 | Automate task detection | [Daemon and Watch](features/daemon-and-watch.md), [Scan](features/scan.md) |
 | Handle failures and recovery | [Session Management](features/session-management.md) |
 | Manage task dependencies | [Dependencies](features/dependencies.md) |
