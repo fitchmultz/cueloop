@@ -70,6 +70,35 @@ ralph --no-sanity-checks run loop
 * `ralph productivity <subcommand>`: view productivity analytics (streaks, velocity, milestones).
 * `ralph plugin <subcommand>`: manage plugins (list, validate, install, uninstall, init).
 * `ralph version`: display version information.
+* `ralph tutorial`: run interactive tutorial for onboarding.
+
+## `ralph tutorial`
+
+Run an interactive tutorial that guides you through Ralph's core workflow in a sandbox environment.
+
+The tutorial creates a temporary project and walks you through:
+1. Initializing Ralph (`ralph init`)
+2. Creating a task
+3. Previewing task execution (dry-run)
+4. Reviewing the results
+
+### Examples
+
+```bash
+# Run interactive tutorial
+ralph tutorial
+
+# Keep sandbox for experimentation after tutorial
+ralph tutorial --keep-sandbox
+
+# Non-interactive mode (for CI/testing)
+ralph tutorial --non-interactive
+```
+
+### Options
+
+- `--keep-sandbox`: Preserve the sandbox directory after tutorial completion
+- `--non-interactive`: Skip interactive prompts (for automated testing)
 
 ## `ralph completions`
 

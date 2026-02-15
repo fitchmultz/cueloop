@@ -31,6 +31,7 @@ pub mod queue;
 pub mod run;
 pub mod scan;
 pub mod task;
+pub mod tutorial;
 pub mod version;
 pub mod watch;
 pub mod webhook;
@@ -187,6 +188,12 @@ pub enum Command {
         after_long_help = "Examples:\n  ralph plugin init my.plugin\n  ralph plugin init my.plugin --scope global\n  ralph plugin list\n  ralph plugin validate\n  ralph plugin install ./my-plugin --scope project\n  ralph plugin uninstall my.plugin --scope project"
     )]
     Plugin(plugin::PluginArgs),
+
+    /// Run interactive tutorial for Ralph onboarding.
+    #[command(
+        after_long_help = "Examples:\n  ralph tutorial\n  ralph tutorial --keep-sandbox\n  ralph tutorial --non-interactive"
+    )]
+    Tutorial(tutorial::TutorialArgs),
 
     /// Internal: Emit a machine-readable CLI specification (JSON) for tooling and GUI clients.
     #[command(name = "cli-spec", hide = true, alias = "__cli-spec")]

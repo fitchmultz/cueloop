@@ -19,4 +19,5 @@ pub mod prompt;
 pub mod run;
 pub mod scan;
 pub mod task;
+pub mod tutorial;
 pub mod watch;

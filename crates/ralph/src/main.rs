@@ -119,6 +119,7 @@ fn run() -> Result<()> {
             ralph::commands::plugin::run(&args, &resolved)
         }
         cli::Command::Daemon(args) => cli::daemon::handle_daemon(args.command),
+        cli::Command::Tutorial(args) => cli::tutorial::handle_tutorial(args),
         cli::Command::CliSpec(args) => cli::handle_cli_spec(args),
     }
 }

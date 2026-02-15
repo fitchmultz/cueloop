@@ -27,6 +27,18 @@ make install
 
 This installs the `ralph` binary to `~/.local/bin/ralph` (or a writable fallback path).
 
+## Try the Interactive Tutorial
+
+New to Ralph? Run the interactive tutorial to get hands-on experience:
+
+```bash
+ralph tutorial
+```
+
+The tutorial creates a sandbox environment and guides you through the core workflow step by step.
+
+Use `ralph tutorial --keep-sandbox` to preserve the sandbox directory for further experimentation.
+
 ## Initialize Your Project
 
 Navigate to your project directory and run:
