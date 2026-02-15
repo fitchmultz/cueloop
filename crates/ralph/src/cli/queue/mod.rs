@@ -68,6 +68,7 @@ pub(crate) use show::show_task;
 pub use sort::QueueSortArgs;
 pub use stats::QueueStatsArgs;
 pub use tree::QueueTreeArgs;
+pub use unlock::QueueUnlockArgs;
 
 pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
@@ -80,7 +81,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Search(args) => search::handle(&resolved, args),
         QueueCommand::Archive => archive::handle(&resolved, force),
         QueueCommand::Repair(args) => repair::handle(&resolved, force, args),
-        QueueCommand::Unlock => unlock::handle(&resolved),
+        QueueCommand::Unlock(args) => unlock::handle(&resolved, args),
         QueueCommand::Sort(args) => sort::handle(&resolved, force, args),
         QueueCommand::Stats(args) => stats::handle(&resolved, args),
         QueueCommand::History(args) => history::handle(&resolved, args),
@@ -155,9 +156,11 @@ pub enum QueueCommand {
     #[command(after_long_help = "Example:\n ralph queue repair\n ralph queue repair --dry-run")]
     Repair(RepairArgs),
 
-    /// Remove the queue lock file.
-    #[command(after_long_help = "Example:\n ralph queue unlock")]
-    Unlock,
+    /// Safely remove the queue lock file with process detection.
+    #[command(after_long_help = "Safely remove the queue lock directory.\n\n\
+Safety:\n  - Checks if the lock holder process is still running\n  - Blocks if process is active (override with --force)\n  - Requires confirmation in interactive mode (bypass with --yes)\n\n\
+Examples:\n  ralph queue unlock --dry-run\n  ralph queue unlock --yes\n  ralph queue unlock --force --yes")]
+    Unlock(QueueUnlockArgs),
 
     /// Sort tasks by priority (reorders the queue file).
     #[command(

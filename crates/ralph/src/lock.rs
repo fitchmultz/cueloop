@@ -269,11 +269,17 @@ fn cleanup_lock_dir(lock_dir: &Path, owner_path: &Path, force: bool) -> Result<(
     ))
 }
 
-struct LockOwner {
-    pid: u32,
-    started_at: String,
-    command: String,
-    label: String,
+/// Lock owner metadata parsed from the owner file.
+#[derive(Debug, Clone)]
+pub struct LockOwner {
+    /// Process ID that holds the lock.
+    pub pid: u32,
+    /// ISO 8601 timestamp when the lock was acquired.
+    pub started_at: String,
+    /// Command line of the process that acquired the lock.
+    pub command: String,
+    /// Label describing the lock purpose (e.g., "run one", "task").
+    pub label: String,
 }
 
 impl LockOwner {
@@ -525,7 +531,11 @@ fn write_lock_owner(owner_path: &Path, owner: &LockOwner) -> Result<()> {
     Ok(())
 }
 
-fn read_lock_owner(lock_dir: &Path) -> Result<Option<LockOwner>> {
+/// Read the lock owner metadata from the lock directory.
+///
+/// Returns `Ok(None)` if no owner file exists, `Ok(Some(LockOwner))` if the
+/// owner file exists and is valid, or an error if the file cannot be read.
+pub fn read_lock_owner(lock_dir: &Path) -> Result<Option<LockOwner>> {
     let owner_path = lock_dir.join("owner");
     let raw = match fs::read_to_string(&owner_path) {
         Ok(raw) => raw,
