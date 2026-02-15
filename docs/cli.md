@@ -2293,11 +2293,13 @@ Command intent sections:
 
 - **Batch and templates**:
   - `ralph task template`
+  - `ralph task from`
   - `ralph task batch`
 - **Template workflow**:
   - `ralph task template list`
   - `ralph task template show <name>`
   - `ralph task template build <name> [target] <request>`
+  - `ralph task from template <name> --title "..." --set var=value`
 
 - **Lifecycle**:
   - `ralph task show` / `ralph task details`
@@ -2877,6 +2879,68 @@ Example custom template (`.ralph/templates/api-test.json`):
   ]
 }
 ```
+
+### ralph task from template
+
+Build a task from a template with variable substitution. This is a convenience command that combines template selection, variable substitution, and task creation in one step. It provides a more intuitive interface compared to `ralph task template build` for common workflows.
+
+**Usage:**
+```bash
+ralph task from template <TEMPLATE> --title "TITLE" [--set VAR=VALUE]...
+```
+
+**Arguments:**
+- `<TEMPLATE>` - Template name (use `ralph task template list` to see available)
+- `--title` - Task title/request (required)
+- `--set VAR=VALUE` - Set template variable (repeatable)
+- `--tags` - Additional tags (comma-separated)
+- `--runner`, `--model`, `--effort` (`-e`) - Runner overrides
+- `--repo-prompt <tools|plan|off>` (alias: `-rp`) - RepoPrompt mode
+- `--strict-templates` - Fail on unknown variables
+- `--dry-run` - Preview without adding to queue
+- Runner CLI overrides: `--approval-mode`, `--sandbox`, `--verbosity`, `--plan-mode`, `--output-format`, `--unsupported-option-policy`
+
+**Template Variables:**
+
+Templates support variable substitution using `{{variable}}` syntax:
+- `{{target}}` - The target file/path (set via `--set target=...`)
+- `{{module}}` - Module name derived from target (e.g., `src/cli/task.rs` → `cli::task`)
+- `{{file}}` - Filename only (e.g., `task.rs`)
+- `{{branch}}` - Current git branch name
+
+**Examples:**
+
+```bash
+# Create a bug fix task
+ralph task from template bug --title "Fix login timeout on slow connections"
+
+# Create a feature task with target variable
+ralph task from template feature --title "Add dark mode" --set target=src/ui/theme.rs
+
+# Create a test task for a specific module
+ralph task from template add-tests --title "Add auth tests" --set target=src/auth/mod.rs
+
+# Create a performance optimization task
+ralph task from template refactor-performance --title "Optimize parser" --set target=src/parser/
+
+# Create with custom component variable
+ralph task from template bug --title "Fix auth issue" --set target=src/auth.rs --set component=auth
+
+# Preview task without adding to queue
+ralph task from template bug --title "Test task" --dry-run
+
+# Create with runner overrides
+ralph task from template feature --title "Add API" --set target=src/api.rs --runner codex --effort high
+```
+
+**Comparison with `template build`:**
+
+| Command | Best For | Syntax |
+|---------|----------|--------|
+| `task from template` | Quick task creation with clear title | `--title "..." --set var=value` |
+| `task template build` | Full control with positional args | `[target] "request"` |
+
+The `from template` command is recommended for most use cases as it's more intuitive and requires less typing.
 
 ### ralph task build refactor
 
