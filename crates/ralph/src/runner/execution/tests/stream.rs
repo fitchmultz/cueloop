@@ -337,15 +337,15 @@ fn extract_display_lines_cursor_tool_call_shell() {
 }
 
 #[test]
-fn max_line_length_constant_is_10mb() {
-    // Verify the constant is set to expected 10MB value
-    assert_eq!(MAX_LINE_LENGTH, 10 * 1024 * 1024);
+fn max_line_length_constant_is_100mb() {
+    // Verify the constant is set to expected 100MB value
+    assert_eq!(MAX_LINE_LENGTH, 100 * 1024 * 1024);
 }
 
 #[test]
-fn max_buffer_size_constant_is_10mb() {
-    // Verify the constant is set to expected 10MB value
-    assert_eq!(MAX_BUFFER_SIZE, 10 * 1024 * 1024);
+fn max_buffer_size_constant_is_100mb() {
+    // Verify the constant is set to expected 100MB value
+    assert_eq!(MAX_BUFFER_SIZE, 100 * 1024 * 1024);
 }
 
 #[test]

@@ -18,14 +18,14 @@
 
 /// Buffer size limits for output handling and memory management.
 pub mod buffers {
-    /// Maximum size for ANSI buffer (10MB).
-    pub const MAX_ANSI_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+    /// Maximum size for ANSI buffer (100MB).
+    pub const MAX_ANSI_BUFFER_SIZE: usize = 100 * 1024 * 1024;
 
-    /// Maximum line length before truncation (10MB).
-    pub const MAX_LINE_LENGTH: usize = 10 * 1024 * 1024;
+    /// Maximum line length before truncation (100MB).
+    pub const MAX_LINE_LENGTH: usize = 100 * 1024 * 1024;
 
-    /// Maximum buffer size for stream processing (10MB).
-    pub const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+    /// Maximum buffer size for stream processing (100MB).
+    pub const MAX_BUFFER_SIZE: usize = 100 * 1024 * 1024;
 
     /// Maximum log lines to retain for interactive log viewers.
     pub const MAX_LOG_LINES: usize = 10_000;
