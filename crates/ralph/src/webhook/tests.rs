@@ -42,11 +42,12 @@ fn sample_failure_record(
 }
 
 fn webhook_test_config() -> WebhookConfig {
+    use crate::contracts::WebhookEventSubscription;
     WebhookConfig {
         enabled: Some(true),
         url: Some("http://127.0.0.1:9/webhook".to_string()),
         secret: None,
-        events: Some(vec!["*".to_string()]),
+        events: Some(vec![WebhookEventSubscription::Wildcard]),
         timeout_secs: Some(1),
         retry_count: Some(0),
         retry_backoff_ms: Some(1),
@@ -160,11 +161,12 @@ fn is_event_enabled_legacy_defaults_only() {
 
 #[test]
 fn is_event_enabled_with_specific_events() {
+    use crate::contracts::WebhookEventSubscription;
     let config = WebhookConfig {
         enabled: Some(true),
         events: Some(vec![
-            "task_created".to_string(),
-            "task_completed".to_string(),
+            WebhookEventSubscription::TaskCreated,
+            WebhookEventSubscription::TaskCompleted,
         ]),
         ..Default::default()
     };
@@ -176,10 +178,11 @@ fn is_event_enabled_with_specific_events() {
 
 #[test]
 fn is_event_enabled_wildcard_subscribes_to_all() {
+    use crate::contracts::WebhookEventSubscription;
     // Using ["*"] should enable all events including new ones
     let config = WebhookConfig {
         enabled: Some(true),
-        events: Some(vec!["*".to_string()]),
+        events: Some(vec![WebhookEventSubscription::Wildcard]),
         ..Default::default()
     };
 
@@ -201,13 +204,14 @@ fn is_event_enabled_wildcard_subscribes_to_all() {
 
 #[test]
 fn is_event_enabled_opt_in_new_events() {
+    use crate::contracts::WebhookEventSubscription;
     // Explicitly opt-in to new events
     let config = WebhookConfig {
         enabled: Some(true),
         events: Some(vec![
-            "task_completed".to_string(),
-            "phase_completed".to_string(),
-            "loop_started".to_string(),
+            WebhookEventSubscription::TaskCompleted,
+            WebhookEventSubscription::PhaseCompleted,
+            WebhookEventSubscription::LoopStarted,
         ]),
         ..Default::default()
     };
@@ -224,9 +228,10 @@ fn is_event_enabled_opt_in_new_events() {
 
 #[test]
 fn is_event_enabled_disabled_globally() {
+    use crate::contracts::WebhookEventSubscription;
     let config = WebhookConfig {
         enabled: Some(false),
-        events: Some(vec!["*".to_string()]),
+        events: Some(vec![WebhookEventSubscription::Wildcard]),
         ..Default::default()
     };
 

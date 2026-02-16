@@ -120,6 +120,7 @@ pub fn handle_webhook(args: &WebhookArgs, resolved: &crate::config::Resolved) ->
 }
 
 fn handle_test(args: &TestArgs, resolved: &crate::config::Resolved) -> Result<()> {
+    use crate::contracts::WebhookEventSubscription;
     use crate::timeutil;
     use crate::webhook::{WebhookContext, WebhookEventType, WebhookPayload, send_webhook_payload};
     use std::str::FromStr;
@@ -137,7 +138,11 @@ fn handle_test(args: &TestArgs, resolved: &crate::config::Resolved) -> Result<()
     // For non-task events, temporarily enable them for this test
     // This ensures new events can be tested without modifying config
     if config.events.is_none() {
-        config.events = Some(vec![args.event.clone()]);
+        // Parse the event string into WebhookEventSubscription
+        let event_sub: WebhookEventSubscription =
+            serde_json::from_str(&format!("\"{}\"", args.event))
+                .map_err(|e| anyhow::anyhow!("Invalid event type '{}': {}", args.event, e))?;
+        config.events = Some(vec![event_sub]);
     }
 
     // Parse event type using FromStr

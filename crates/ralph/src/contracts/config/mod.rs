@@ -54,7 +54,7 @@ pub use phase::{PhaseOverrideConfig, PhaseOverrides};
 pub use plugin::{PluginConfig, PluginProcessorConfig, PluginRunnerConfig, PluginsConfig};
 pub use queue::{QueueAgingThresholds, QueueConfig};
 pub use retry::RunnerRetryConfig;
-pub use webhook::{WebhookConfig, WebhookQueuePolicy};
+pub use webhook::{WebhookConfig, WebhookEventSubscription, WebhookQueuePolicy};
 
 /* ----------------------------- Config (JSON) ----------------------------- */
 /*

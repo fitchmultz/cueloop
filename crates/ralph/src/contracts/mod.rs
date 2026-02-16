@@ -29,7 +29,7 @@ pub use config::{
     ParallelConfig, ParallelMergeMethod, ParallelMergeWhen, PhaseOverrideConfig, PhaseOverrides,
     PluginConfig, PluginProcessorConfig, PluginRunnerConfig, PluginsConfig, ProjectType,
     QueueAgingThresholds, QueueConfig, RunnerRetryConfig, ScanPromptVersion, WebhookConfig,
-    WebhookQueuePolicy,
+    WebhookEventSubscription, WebhookQueuePolicy,
 };
 
 // Re-exports from cli_spec module (versioned; suitable for tooling consumption)

@@ -1430,14 +1430,14 @@
           "default": null
         },
         "events": {
-          "description": "Events to subscribe to (default: legacy task events only).\nSupported: task_created, task_started, task_completed, task_failed, task_status_changed,\n           loop_started, loop_stopped, phase_started, phase_completed\nNote: loop_* and phase_* events are opt-in and require explicit configuration.\nUse [\"*\"] to subscribe to all events.",
+          "description": "Events to subscribe to (default: legacy task events only).",
           "type": [
             "array",
             "null"
           ],
           "default": null,
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/WebhookEventSubscription"
           }
         },
         "queue_capacity": {
@@ -1514,6 +1514,66 @@
         }
       },
       "additionalProperties": false
+    },
+    "WebhookEventSubscription": {
+      "description": "Webhook event subscription type for config.\nEach variant corresponds to a WebhookEventType, plus Wildcard for \"all events\".",
+      "oneOf": [
+        {
+          "description": "Task was created/added to queue.",
+          "type": "string",
+          "const": "task_created"
+        },
+        {
+          "description": "Task status changed to Doing (execution started).",
+          "type": "string",
+          "const": "task_started"
+        },
+        {
+          "description": "Task completed successfully (status Done).",
+          "type": "string",
+          "const": "task_completed"
+        },
+        {
+          "description": "Task failed or was rejected.",
+          "type": "string",
+          "const": "task_failed"
+        },
+        {
+          "description": "Generic status change.",
+          "type": "string",
+          "const": "task_status_changed"
+        },
+        {
+          "description": "Run loop started.",
+          "type": "string",
+          "const": "loop_started"
+        },
+        {
+          "description": "Run loop stopped.",
+          "type": "string",
+          "const": "loop_stopped"
+        },
+        {
+          "description": "Phase started for a task.",
+          "type": "string",
+          "const": "phase_started"
+        },
+        {
+          "description": "Phase completed for a task.",
+          "type": "string",
+          "const": "phase_completed"
+        },
+        {
+          "description": "Queue became unblocked.",
+          "type": "string",
+          "const": "queue_unblocked"
+        },
+        {
+          "description": "Wildcard: subscribe to all events.",
+          "type": "string",
+          "const": "*"
+        }
+      ]
     },
     "WebhookQueuePolicy": {
       "description": "Backpressure policy for webhook delivery queue.",

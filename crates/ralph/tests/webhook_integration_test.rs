@@ -23,7 +23,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 // Import webhook types
-use ralph::contracts::{WebhookConfig, WebhookQueuePolicy};
+use ralph::contracts::{WebhookConfig, WebhookEventSubscription, WebhookQueuePolicy};
 use ralph::webhook;
 
 fn parse_http_json_body(request_bytes: &[u8]) -> Option<serde_json::Value> {
@@ -421,7 +421,7 @@ fn webhook_respects_event_filtering() {
         enabled: Some(true),
         url: Some(format!("http://127.0.0.1:{}/webhook", port)),
         secret: None,
-        events: Some(vec!["task_completed".to_string()]),
+        events: Some(vec![WebhookEventSubscription::TaskCompleted]),
         timeout_secs: Some(5),
         retry_count: Some(0),
         retry_backoff_ms: Some(10),
@@ -561,7 +561,7 @@ fn webhook_loop_event_payload_shape() {
         enabled: Some(true),
         url: Some(format!("http://127.0.0.1:{}/webhook", port)),
         secret: None,
-        events: Some(vec!["loop_started".to_string()]),
+        events: Some(vec![WebhookEventSubscription::LoopStarted]),
         timeout_secs: Some(5),
         retry_count: Some(0),
         retry_backoff_ms: Some(10),
@@ -634,7 +634,7 @@ fn webhook_phase_event_includes_context_fields() {
         enabled: Some(true),
         url: Some(format!("http://127.0.0.1:{}/webhook", port)),
         secret: None,
-        events: Some(vec!["phase_completed".to_string()]),
+        events: Some(vec![WebhookEventSubscription::PhaseCompleted]),
         timeout_secs: Some(5),
         retry_count: Some(0),
         retry_backoff_ms: Some(10),
