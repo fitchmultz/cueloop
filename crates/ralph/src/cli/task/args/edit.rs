@@ -51,6 +51,14 @@ pub struct TaskEditArgs {
     /// Preview changes without modifying the queue.
     #[arg(long)]
     pub dry_run: bool,
+
+    /// Disable auto-archive of terminal tasks during edit.
+    ///
+    /// By default, the edit command may auto-archive terminal tasks (Done/Rejected)
+    /// that are older than the configured `auto_archive_terminal_after_days`.
+    /// Use this flag to prevent this side effect.
+    #[arg(long)]
+    pub no_auto_archive: bool,
 }
 
 #[derive(Args)]

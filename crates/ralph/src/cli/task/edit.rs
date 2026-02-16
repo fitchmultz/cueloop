@@ -143,9 +143,11 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
         false, // continue_on_error - default to atomic for CLI
     )?;
 
-    // Run auto-archive sweep for terminal tasks if configured
-    let mut archived_count = 0;
-    if let Some(days) = resolved.config.queue.auto_archive_terminal_after_days {
+    // Run auto-archive sweep for terminal tasks if configured and not disabled
+    let mut archived_task_ids: Vec<String> = Vec::new();
+    if !args.no_auto_archive
+        && let Some(days) = resolved.config.queue.auto_archive_terminal_after_days
+    {
         match queue::maybe_archive_terminal_tasks_in_memory(
             &mut queue_file,
             &mut done_file,
@@ -153,7 +155,7 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
             Some(days),
         ) {
             Ok(report) => {
-                archived_count = report.moved_ids.len();
+                archived_task_ids = report.moved_ids;
             }
             Err(e) => {
                 log::warn!("Auto-archive sweep failed: {}", e);
@@ -162,7 +164,7 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
     }
 
     queue::save_queue(&resolved.queue_path, &queue_file)?;
-    if archived_count > 0 {
+    if !archived_task_ids.is_empty() {
         queue::save_queue(&resolved.done_path, &done_file)?;
     }
 
@@ -172,8 +174,15 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
         false,
     );
 
-    if archived_count > 0 {
-        println!("Auto-archived {} terminal task(s)", archived_count);
+    if !archived_task_ids.is_empty() {
+        // List specific archived task IDs
+        println!(
+            "Auto-archived {} terminal task(s):",
+            archived_task_ids.len()
+        );
+        for task_id in &archived_task_ids {
+            println!("  - {}", task_id);
+        }
     }
 
     Ok(())
