@@ -22,6 +22,8 @@
 //! - Timeout errors take precedence over Interrupted errors when both occur:
 //!   if a timeout triggers and then Ctrl-C is pressed during the grace period,
 //!   the Timeout error is returned to ensure safeguard dumps/revert are triggered.
+//! - After sending SIGKILL or child.kill(), reap_killed_child() MUST be called
+//!   to prevent zombie processes from accumulating in long-running systems.
 
 use std::io::Write;
 use std::process::{Command, ExitStatus, Stdio};
@@ -355,6 +357,11 @@ pub(crate) fn wait_for_child(
                     let _ = child.kill();
                     kill_requested = true;
                 }
+
+                // CRITICAL: Reap the killed child to prevent zombies.
+                // After SIGKILL (unix) or kill() (non-unix), the process WILL exit.
+                // We MUST call wait() to reap it from the process table.
+                reap_killed_child(child);
             }
         }
 
@@ -604,4 +611,54 @@ fn run_with_streaming_json_inner(
         stderr,
         session_id,
     })
+}
+
+/// Reap a killed child process to prevent zombies.
+///
+/// This MUST be called after `child.kill()` or sending SIGKILL to the process group.
+/// Uses a timeout to avoid blocking indefinitely if the process refuses to die.
+fn reap_killed_child(child: &mut std::process::Child) {
+    // Try a non-blocking wait first (process may already be dead)
+    match child.try_wait() {
+        Ok(Some(_)) => {
+            // Process already exited and reaped
+            return;
+        }
+        Ok(None) => {
+            // Process still running, need to block and wait
+        }
+        Err(e) => {
+            log::debug!("Failed to try_wait on killed child: {}", e);
+            return;
+        }
+    }
+
+    // Block and wait with timeout
+    let start = std::time::Instant::now();
+    let timeout = std::time::Duration::from_secs(5);
+
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                log::debug!("Reaped killed child with status: {:?}", status);
+                return;
+            }
+            Ok(None) => {
+                if start.elapsed() > timeout {
+                    log::warn!(
+                        "Timed out waiting for killed child to exit after {:?}; \
+                         zombie may remain (pid: {})",
+                        timeout,
+                        child.id()
+                    );
+                    return;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Err(e) => {
+                log::debug!("Error waiting for killed child: {}", e);
+                return;
+            }
+        }
+    }
 }
