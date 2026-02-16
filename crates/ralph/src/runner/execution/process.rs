@@ -72,12 +72,6 @@ impl<'a> ProcessCleanupGuard<'a> {
         }
     }
 
-    #[allow(dead_code)]
-    /// Mark cleanup as completed successfully (no error to report).
-    fn mark_completed(&mut self) {
-        self.completed = true;
-    }
-
     /// Run cleanup and return any error encountered.
     /// This is idempotent - safe to call multiple times.
     fn cleanup(&mut self) {

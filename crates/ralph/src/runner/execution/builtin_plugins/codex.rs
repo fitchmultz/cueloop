@@ -71,7 +71,6 @@ impl RunnerPlugin for CodexPlugin {
 /// Response parser for Codex's JSON format.
 pub struct CodexResponseParser;
 
-#[allow(dead_code)]
 impl CodexResponseParser {
     /// Parse Codex JSON response format.
     pub(crate) fn parse_json(&self, json: &JsonValue) -> Option<String> {

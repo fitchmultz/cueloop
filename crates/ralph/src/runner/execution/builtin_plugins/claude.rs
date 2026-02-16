@@ -72,7 +72,6 @@ impl RunnerPlugin for ClaudePlugin {
 /// Response parser for Claude's JSON format.
 pub struct ClaudeResponseParser;
 
-#[allow(dead_code)]
 impl ClaudeResponseParser {
     /// Parse Claude JSON response format.
     pub(crate) fn parse_json(&self, json: &JsonValue) -> Option<String> {

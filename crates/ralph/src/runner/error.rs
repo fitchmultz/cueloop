@@ -50,6 +50,7 @@ pub(crate) enum UserInputReason {
     /// Required binary is missing.
     MissingBinary,
     /// Setup required (configuration, installation, etc).
+    /// Preserved for future error classification extensions.
     #[allow(dead_code)]
     SetupRequired,
 }

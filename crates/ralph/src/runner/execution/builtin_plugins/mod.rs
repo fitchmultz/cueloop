@@ -57,7 +57,8 @@ pub enum BuiltInRunnerPlugin {
     Cursor,
 }
 
-#[allow(dead_code)]
+/// Test-only helpers for BuiltInRunnerPlugin.
+#[cfg(test)]
 impl BuiltInRunnerPlugin {
     /// Returns the Runner enum variant for this plugin.
     pub fn runner(&self) -> Runner {
@@ -195,7 +196,6 @@ pub(crate) fn apply_analytics_env(
 }
 
 /// Extract text content from a JSON value (string or array of text objects).
-#[allow(dead_code)]
 pub(crate) fn extract_text_content(content: &JsonValue) -> Option<String> {
     match content {
         JsonValue::String(text) => {

@@ -12,6 +12,10 @@
 //! Invariants:
 //! - All built-in runners MUST implement RunnerPlugin via BuiltInRunnerPlugin enum.
 //! - Trait methods are fallible; errors propagate to caller for handling.
+//!
+//! Note: Module-level dead_code allow is required because trait definitions and
+//! context structs define fields that may not all be used by every implementation,
+//! but are part of the public API contract for plugin implementors.
 
 #![allow(dead_code)]
 

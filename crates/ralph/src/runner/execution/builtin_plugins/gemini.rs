@@ -66,7 +66,6 @@ impl RunnerPlugin for GeminiPlugin {
 /// Response parser for Gemini's JSON format.
 pub struct GeminiResponseParser;
 
-#[allow(dead_code)]
 impl GeminiResponseParser {
     /// Parse Gemini JSON response format.
     pub(crate) fn parse_json(&self, json: &JsonValue) -> Option<String> {

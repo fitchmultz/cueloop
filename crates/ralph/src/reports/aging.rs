@@ -108,9 +108,11 @@ pub(crate) enum AgingBucket {
 pub(crate) struct TaskAging {
     pub bucket: AgingBucket,
     /// The timestamp field used as the anchor for age calculation.
+    /// Kept for debugging and detailed reporting extensions.
     #[allow(dead_code)]
     pub basis: &'static str,
     /// The raw anchor timestamp value (if available).
+    /// Kept for debugging and detailed reporting extensions.
     #[allow(dead_code)]
     pub anchor_ts: Option<String>,
     /// The computed age duration.

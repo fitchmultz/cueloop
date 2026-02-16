@@ -172,7 +172,6 @@ pub fn pi_session_dir_name(work_dir: &Path) -> String {
 /// Response parser for Pi's JSON format.
 pub struct PiResponseParser;
 
-#[allow(dead_code)]
 impl PiResponseParser {
     /// Parse Pi JSON response format.
     pub(crate) fn parse_json(&self, json: &JsonValue) -> Option<String> {

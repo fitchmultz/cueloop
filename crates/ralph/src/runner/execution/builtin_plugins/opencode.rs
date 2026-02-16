@@ -80,7 +80,6 @@ impl RunnerPlugin for OpencodePlugin {
 /// Response parser for Opencode's JSON format.
 pub struct OpencodeResponseParser;
 
-#[allow(dead_code)]
 impl OpencodeResponseParser {
     /// Parse Opencode JSON response format.
     pub(crate) fn parse_json(&self, json: &JsonValue, buffer: &mut String) -> Option<String> {

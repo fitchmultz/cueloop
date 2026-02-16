@@ -14,6 +14,8 @@
 /// These functions provide styled strings for CLI output.
 /// They automatically respect the NO_COLOR environment variable
 /// and any --color flag settings via colored::control.
+///
+/// Kept as public API for future CLI output extensions.
 #[allow(dead_code)]
 pub mod cli {
     use colored::{ColoredString, Colorize};
