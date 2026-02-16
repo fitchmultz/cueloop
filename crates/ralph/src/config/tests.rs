@@ -460,3 +460,116 @@ fn queue_done_file_error_is_consistent_between_validate_and_resolve() {
         ERR_EMPTY_QUEUE_DONE_FILE,
     );
 }
+
+// Tests for queue.aging_thresholds validation
+
+#[test]
+fn validate_config_accepts_valid_aging_thresholds() {
+    use crate::contracts::QueueAgingThresholds;
+
+    let mut cfg = Config::default();
+    cfg.queue.aging_thresholds = Some(QueueAgingThresholds {
+        warning_days: Some(5),
+        stale_days: Some(10),
+        rotten_days: Some(20),
+    });
+
+    validate_config(&cfg).expect("validation should pass with valid thresholds");
+}
+
+#[test]
+fn validate_config_accepts_default_aging_thresholds() {
+    let cfg = Config::default();
+    // aging_thresholds is None by default
+    validate_config(&cfg).expect("validation should pass with default (None) thresholds");
+}
+
+#[test]
+fn validate_config_accepts_partial_aging_thresholds() {
+    use crate::contracts::QueueAgingThresholds;
+
+    let mut cfg = Config::default();
+    // Only set warning_days
+    cfg.queue.aging_thresholds = Some(QueueAgingThresholds {
+        warning_days: Some(5),
+        stale_days: None,
+        rotten_days: None,
+    });
+
+    validate_config(&cfg).expect("validation should pass with partial thresholds");
+}
+
+#[test]
+fn validate_config_rejects_warning_greater_than_stale() {
+    use crate::contracts::QueueAgingThresholds;
+
+    let mut cfg = Config::default();
+    cfg.queue.aging_thresholds = Some(QueueAgingThresholds {
+        warning_days: Some(30),
+        stale_days: Some(14),
+        rotten_days: Some(7),
+    });
+
+    let err = validate_config(&cfg).expect_err("should fail with reversed ordering");
+    assert!(err.to_string().contains("aging_thresholds ordering"));
+}
+
+#[test]
+fn validate_config_rejects_equal_warning_and_stale() {
+    use crate::contracts::QueueAgingThresholds;
+
+    let mut cfg = Config::default();
+    cfg.queue.aging_thresholds = Some(QueueAgingThresholds {
+        warning_days: Some(7),
+        stale_days: Some(7),
+        rotten_days: Some(14),
+    });
+
+    let err = validate_config(&cfg).expect_err("should fail with equal values");
+    assert!(err.to_string().contains("aging_thresholds ordering"));
+}
+
+#[test]
+fn validate_config_rejects_stale_greater_than_rotten() {
+    use crate::contracts::QueueAgingThresholds;
+
+    let mut cfg = Config::default();
+    cfg.queue.aging_thresholds = Some(QueueAgingThresholds {
+        warning_days: Some(5),
+        stale_days: Some(20),
+        rotten_days: Some(10),
+    });
+
+    let err = validate_config(&cfg).expect_err("should fail with stale > rotten");
+    assert!(err.to_string().contains("aging_thresholds ordering"));
+}
+
+#[test]
+fn validate_config_rejects_warning_greater_than_rotten_transitive() {
+    use crate::contracts::QueueAgingThresholds;
+
+    let mut cfg = Config::default();
+    cfg.queue.aging_thresholds = Some(QueueAgingThresholds {
+        warning_days: Some(20),
+        stale_days: None, // Middle value unset, but still invalid
+        rotten_days: Some(10),
+    });
+
+    let err = validate_config(&cfg).expect_err("should fail with warning > rotten");
+    assert!(err.to_string().contains("aging_thresholds ordering"));
+}
+
+#[test]
+fn validate_config_rejects_equal_stale_and_rotten() {
+    use crate::contracts::QueueAgingThresholds;
+
+    let mut cfg = Config::default();
+    cfg.queue.aging_thresholds = Some(QueueAgingThresholds {
+        warning_days: Some(5),
+        stale_days: Some(14),
+        rotten_days: Some(14),
+    });
+
+    let err = validate_config(&cfg).expect_err("should fail with equal stale and rotten");
+    assert!(err.to_string().contains("aging_thresholds ordering"));
+}

@@ -15,7 +15,7 @@
 //! - Validation errors are returned as `anyhow::Error` with descriptive messages.
 //! - Queue validation uses shared error messages for consistency.
 
-use crate::contracts::{AgentConfig, Config, QueueConfig};
+use crate::contracts::{AgentConfig, Config, QueueAgingThresholds, QueueConfig};
 use anyhow::{Result, bail};
 use std::path::{Component, Path};
 
@@ -74,6 +74,65 @@ pub fn validate_queue_overrides(queue: &QueueConfig) -> Result<()> {
     Ok(())
 }
 
+/// Validate queue.aging_thresholds ordering (if specified).
+///
+/// When any thresholds are specified, validates that:
+/// - warning_days < stale_days (when both are set)
+/// - stale_days < rotten_days (when both are set)
+/// - warning_days < rotten_days (when both are set, transitive check)
+pub fn validate_queue_aging_thresholds(thresholds: &Option<QueueAgingThresholds>) -> Result<()> {
+    let Some(t) = thresholds else {
+        return Ok(());
+    };
+
+    let warning = t.warning_days;
+    let stale = t.stale_days;
+    let rotten = t.rotten_days;
+
+    // Check ordering when pairs are specified
+    if let (Some(w), Some(s)) = (warning, stale)
+        && w >= s
+    {
+        bail!(
+            "Invalid queue.aging_thresholds ordering: require warning_days < stale_days < rotten_days (got warning_days={}, stale_days={}, rotten_days={}). Update .ralph/config.json.",
+            w,
+            s,
+            rotten
+                .map(|r| r.to_string())
+                .unwrap_or_else(|| "unset".to_string())
+        );
+    }
+
+    if let (Some(s), Some(r)) = (stale, rotten)
+        && s >= r
+    {
+        bail!(
+            "Invalid queue.aging_thresholds ordering: require warning_days < stale_days < rotten_days (got warning_days={}, stale_days={}, rotten_days={}). Update .ralph/config.json.",
+            warning
+                .map(|w| w.to_string())
+                .unwrap_or_else(|| "unset".to_string()),
+            s,
+            r
+        );
+    }
+
+    // Transitive check for warning < rotten (catches cases where middle value is unset)
+    if let (Some(w), Some(r)) = (warning, rotten)
+        && w >= r
+    {
+        bail!(
+            "Invalid queue.aging_thresholds ordering: require warning_days < stale_days < rotten_days (got warning_days={}, stale_days={}, rotten_days={}). Update .ralph/config.json.",
+            w,
+            stale
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "unset".to_string()),
+            r
+        );
+    }
+
+    Ok(())
+}
+
 /// Validate that all configured binary paths are non-empty strings.
 ///
 /// Checks each binary path field in AgentConfig - if specified, it must be
@@ -121,6 +180,7 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
 
     // Validate queue overrides using shared validators (single source of truth)
     validate_queue_overrides(&cfg.queue)?;
+    validate_queue_aging_thresholds(&cfg.queue.aging_thresholds)?;
 
     if let Some(phases) = cfg.agent.phases
         && !(1..=3).contains(&phases)
