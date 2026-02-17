@@ -113,29 +113,33 @@ pub fn load_and_validate_queues(
 ) -> Result<(QueueFile, Option<QueueFile>)> {
     let queue_file = load_queue(&resolved.queue_path)?;
 
-    let done_file = if include_done {
-        Some(load_queue_or_default(&resolved.done_path)?)
+    // Always load done file for validation context (dependency checks need it)
+    let done_for_validation = load_queue_or_default(&resolved.done_path)?;
+
+    // Build reference for validation (same logic as before)
+    let done_ref = if !done_for_validation.tasks.is_empty() || resolved.done_path.exists() {
+        Some(&done_for_validation)
     } else {
         None
     };
 
-    let done_ref = done_file
-        .as_ref()
-        .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
-
+    // Always run full validation (includes dependency checks)
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
-    if let Some(d) = done_ref {
-        let warnings = validation::validate_queue_set(
-            &queue_file,
-            Some(d),
-            &resolved.id_prefix,
-            resolved.id_width,
-            max_depth,
-        )?;
-        validation::log_warnings(&warnings);
+    let warnings = validation::validate_queue_set(
+        &queue_file,
+        done_ref,
+        &resolved.id_prefix,
+        resolved.id_width,
+        max_depth,
+    )?;
+    validation::log_warnings(&warnings);
+
+    // Return done_file only if caller requested it (maintains API contract)
+    let done_file = if include_done {
+        Some(done_for_validation)
     } else {
-        validation::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
-    }
+        None
+    };
 
     Ok((queue_file, done_file))
 }
@@ -264,6 +268,53 @@ mod tests {
             err.to_string()
                 .contains("Duplicate task ID detected across queue and done")
         );
+        Ok(())
+    }
+
+    #[test]
+    fn load_and_validate_queues_rejects_invalid_deps_when_include_done_false() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+
+        // Queue with invalid dependency (depends on non-existent task)
+        let queue_path = ralph_dir.join("queue.json");
+        save_queue(
+            &queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![{
+                    let mut t = task("RQ-0001");
+                    t.depends_on = vec!["RQ-9999".to_string()]; // Non-existent task!
+                    t
+                }],
+            },
+        )?;
+
+        let done_path = ralph_dir.join("done.json");
+
+        let resolved = Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.to_path_buf(),
+            queue_path,
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        // With include_done=false, should STILL fail on invalid dependency
+        // This is the regression test for RQ-0881
+        let err = load_and_validate_queues(&resolved, false)
+            .expect_err("should fail on invalid dependency");
+        assert!(
+            err.to_string().contains("Invalid dependency"),
+            "Error should mention invalid dependency: {}",
+            err
+        );
+
         Ok(())
     }
 
