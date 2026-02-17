@@ -349,7 +349,12 @@ pub struct RunLoopArgs {
     pub wait_when_blocked: bool,
 
     /// Poll interval in milliseconds while waiting for unblocked tasks (default: 1000, min: 50).
-    #[arg(long, default_value_t = 1000, value_name = "MS")]
+    #[arg(
+        long,
+        default_value_t = 1000,
+        value_parser = clap::value_parser!(u64).range(50..),
+        value_name = "MS"
+    )]
     pub wait_poll_ms: u64,
 
     /// Timeout in seconds for waiting (0 = no timeout).
@@ -367,7 +372,12 @@ pub struct RunLoopArgs {
 
     /// Poll interval in milliseconds while waiting for new tasks when queue is empty
     /// (default: 30000, min: 50). Only used with --wait-when-empty.
-    #[arg(long, default_value_t = 30_000, value_name = "MS")]
+    #[arg(
+        long,
+        default_value_t = 30_000,
+        value_parser = clap::value_parser!(u64).range(50..),
+        value_name = "MS"
+    )]
     pub empty_poll_ms: u64,
 
     #[command(flatten)]
@@ -549,5 +559,43 @@ mod tests {
             help.contains("ralph run loop --dry-run"),
             "missing dry-run example: {help}"
         );
+    }
+
+    #[test]
+    fn run_loop_wait_poll_ms_rejects_below_minimum() {
+        let args = vec!["ralph", "run", "loop", "--wait-poll-ms", "10"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_err(),
+            "--wait-poll-ms should reject values below 50"
+        );
+    }
+
+    #[test]
+    fn run_loop_empty_poll_ms_rejects_below_minimum() {
+        let args = vec!["ralph", "run", "loop", "--empty-poll-ms", "10"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_err(),
+            "--empty-poll-ms should reject values below 50"
+        );
+    }
+
+    #[test]
+    fn run_loop_wait_poll_ms_accepts_minimum() {
+        let args = vec!["ralph", "run", "loop", "--wait-poll-ms", "50"];
+        let cli = Cli::try_parse_from(args);
+        assert!(cli.is_ok(), "--wait-poll-ms should accept 50");
+        if let Ok(cli) = cli {
+            match cli.command {
+                crate::cli::Command::Run(run_args) => match run_args.command {
+                    RunCommand::Loop(loop_args) => {
+                        assert_eq!(loop_args.wait_poll_ms, 50);
+                    }
+                    _ => panic!("expected RunCommand::Loop"),
+                },
+                _ => panic!("expected Command::Run"),
+            }
+        }
     }
 }
