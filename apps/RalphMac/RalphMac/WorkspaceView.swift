@@ -3,15 +3,16 @@
 
  Responsibilities:
  - Display the Ralph UI using a modern three-column NavigationSplitView layout.
- - Left sidebar: Navigation sections (Queue, Quick Actions, Advanced Runner)
- - Middle column: Content list (tasks, console output, command list)
- - Right column: Detail/inspector view (task editing, command configuration)
+ - Left sidebar: Navigation sections (Queue, Quick Actions, Run Control, Advanced Runner, Analytics)
+ - Middle column: Content list (delegated to section-specific content views)
+ - Right column: Detail/inspector view (delegated to section-specific detail views)
  - Bind to a specific Workspace instance for isolated state management.
 
  Does not handle:
  - Window-level tab management (see WindowView).
  - Cross-workspace operations.
  - Direct navigation state persistence (see NavigationViewModel).
+ - Section-specific UI (delegated to *Section views).
 
  Invariants/assumptions callers must respect:
  - Workspace is injected via @ObservedObject.
@@ -42,56 +43,20 @@ struct WorkspaceView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $navigation.sidebarVisibility) {
-            // MARK: Column 1: Sidebar
-            sidebarContent()
+            sidebarColumn()
                 .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
         } content: {
-            // MARK: Column 2: Content List
-            VStack(spacing: 0) {
-                // Offline status banner (shown when CLI unavailable)
-                if workspace.showOfflineBanner, let status = workspace.cliHealthStatus {
-                    OfflineStatusView(
-                        status: status,
-                        onRetry: {
-                            Task { @MainActor in
-                                _ = await workspace.checkHealth()
-                                if let newStatus = workspace.cliHealthStatus, newStatus.isAvailable {
-                                    await workspace.loadTasks()
-                                }
-                            }
-                        },
-                        onDismiss: nil
-                    )
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-                
-                contentColumn()
-            }
-            .navigationSplitViewColumnWidth(min: 320, ideal: 400, max: 600)
+            contentColumn()
+                .navigationSplitViewColumnWidth(min: 320, ideal: 400, max: 600)
         } detail: {
-            // MARK: Column 3: Detail/Inspector
             detailColumn()
                 .navigationSplitViewColumnWidth(min: 450, ideal: 550, max: .infinity)
         }
         .frame(minWidth: 1200, minHeight: 640)
         .background(.clear)
         .focusedSceneValue(\.workspaceUIActions, focusedWorkspaceUIActions)
-        // MARK: - Error Recovery Sheet
-        .sheet(isPresented: $workspace.showErrorRecovery) {
-            if let error = workspace.lastRecoveryError {
-                ErrorRecoverySheet(
-                    error: error,
-                    workspace: workspace,
-                    onRetry: {
-                        handleRetry(for: error.operation)
-                    },
-                    onDismiss: {
-                        workspace.clearErrorRecovery()
-                    }
-                )
-            }
-        }
-        // MARK: - Keyboard Navigation Notification Handlers
+        .sheet(isPresented: $workspace.showErrorRecovery) { errorRecoverySheet() }
+        .sheet(isPresented: $showingCommandPalette) { commandPaletteSheet() }
         .onReceive(NotificationCenter.default.publisher(for: .startWorkOnSelectedTask)) { _ in
             handleStartWork()
         }
@@ -110,66 +75,18 @@ struct WorkspaceView: View {
         .onReceive(NotificationCenter.default.publisher(for: .quickAddTaskFromMenuBar)) { _ in
             navigation.selectedSection = .queue
         }
-        // MARK: - Command Palette
-        .sheet(isPresented: $showingCommandPalette) {
-            CommandPaletteView(windowActions: workspaceWindowActions)
-                .frame(minWidth: 640, minHeight: 300)
-        }
     }
+
+    // MARK: - Focused Actions
 
     private var focusedWorkspaceUIActions: WorkspaceUIActions {
-        WorkspaceUIActions(
-            showCommandPalette: { showingCommandPalette = true }
-        )
+        WorkspaceUIActions(showCommandPalette: { showingCommandPalette = true })
     }
 
-    // MARK: - Error Recovery Retry Handler
-
-    private func handleRetry(for operation: String) {
-        workspace.clearErrorRecovery()
-
-        switch operation {
-        case "loadTasks":
-            Task { @MainActor in await workspace.loadTasks() }
-        case "loadGraphData":
-            Task { @MainActor in await workspace.loadGraphData() }
-        case "loadCLISpec":
-            Task { @MainActor in await workspace.loadCLISpec() }
-        case "run", "runVersion", "runInit":
-            // For general run operations, we need to re-trigger based on context
-            // In quick actions context, re-run the last command if available
-            if workspace.isRunning {
-                workspace.cancel()
-            }
-            // Re-run based on navigation context
-            if navigation.selectedSection == .quickActions {
-                workspace.runVersion()
-            }
-        default:
-            // For unknown operations, try to reload tasks as a general refresh
-            Task { @MainActor in await workspace.loadTasks() }
-        }
-    }
-    
-    // MARK: - Keyboard Navigation Actions
-    
-    private func handleStartWork() {
-        guard let taskID = navigation.selectedTaskID else { return }
-        
-        Task { @MainActor in
-            do {
-                try await workspace.updateTaskStatus(taskID: taskID, to: .doing)
-            } catch {
-                // Error handling - could show an alert here
-                RalphLogger.shared.error("Failed to start work on task: \(error)", category: .workspace)
-            }
-        }
-    }
-
-    // MARK: - Sidebar Column
+    // MARK: - Columns
 
     @ViewBuilder
-    private func sidebarContent() -> some View {
+    private func sidebarColumn() -> some View {
         VStack(spacing: 0) {
             List(SidebarSection.allCases, selection: $navigation.selectedSection) { section in
                 Label(section.rawValue, systemImage: section.icon)
@@ -178,85 +95,71 @@ struct WorkspaceView: View {
             }
             .accessibilityLabel("Main navigation")
             .listStyle(.sidebar)
-            #if swift(>=5.9)
-            .sidebarBackground()
-            #endif
-            
-            // Connection status footer
-            if let status = workspace.cliHealthStatus {
-                Divider()
-                HStack {
-                    ConnectionStatusIndicator(
-                        isAvailable: status.isAvailable,
-                        onTap: {
-                            if !status.isAvailable {
-                                workspace.showErrorRecovery = true
-                            }
-                        }
-                    )
-                    
-                    Spacer()
-                    
-                    if workspace.isShowingCachedTasks {
-                        Label("Cached", systemImage: "archivebox")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .help("Showing cached task list")
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.ultraThinMaterial)
-            }
+
+            connectionStatusFooter()
         }
         .navigationTitle(navTitle(navigation.selectedSection.rawValue))
     }
 
-    // MARK: - Content Column
-
     @ViewBuilder
     private func contentColumn() -> some View {
+        VStack(spacing: 0) {
+            if workspace.showOfflineBanner, let status = workspace.cliHealthStatus {
+                OfflineStatusView(
+                    status: status,
+                    onRetry: { handleRetryConnection() },
+                    onDismiss: nil
+                )
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
+            sectionContent()
+        }
+    }
+
+    @ViewBuilder
+    private func detailColumn() -> some View {
         switch navigation.selectedSection {
         case .queue:
-            queueContent()
+            queueDetailColumn()
         case .quickActions:
-            quickActionsContent()
+            QuickActionsDetailColumn(workspace: workspace, navTitle: navTitle)
         case .runControl:
-            runControlContent()
+            RunControlDetailColumn(workspace: workspace, navTitle: navTitle)
         case .advancedRunner:
-            advancedRunnerContent()
+            AdvancedRunnerDetailColumn(workspace: workspace, navTitle: navTitle)
+        case .analytics:
+            AnalyticsDetailColumn(workspace: workspace, navTitle: navTitle)
+        }
+    }
+
+    // MARK: - Section Content
+
+    @ViewBuilder
+    private func sectionContent() -> some View {
+        switch navigation.selectedSection {
+        case .queue:
+            queueContentColumn()
+        case .quickActions:
+            QuickActionsContentColumn(workspace: workspace, navTitle: navTitle)
+        case .runControl:
+            RunControlContentColumn(workspace: workspace, navTitle: navTitle)
+        case .advancedRunner:
+            AdvancedRunnerContentColumn(workspace: workspace, navTitle: navTitle)
         case .analytics:
             AnalyticsDashboardView(workspace: workspace)
         }
     }
 
-    // MARK: - Queue Content
-
     @ViewBuilder
-    private func queueContent() -> some View {
+    private func queueContentColumn() -> some View {
         VStack(spacing: 0) {
-            // View mode toggle toolbar
-            HStack {
-                Spacer()
-
-                Picker("View Mode", selection: $navigation.taskViewMode) {
-                    ForEach(TaskViewMode.allCases, id: \.self) { mode in
-                        Label(mode.rawValue, systemImage: mode.icon)
-                            .tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 240)
-                .help("Switch between List, Kanban, and Graph view (⌘⇧K)")
-                .accessibilityLabel("Task view mode")
-                .accessibilityHint("Switch between list, kanban board, and dependency graph views")
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            viewModeToolbar()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
 
             Divider()
 
-            // Content based on view mode
             switch navigation.taskViewMode {
             case .list:
                 TaskListView(
@@ -278,1077 +181,148 @@ struct WorkspaceView: View {
         }
     }
 
-    // MARK: - Detail Column
-
     @ViewBuilder
-    private func detailColumn() -> some View {
-        switch navigation.selectedSection {
-        case .queue:
-            if let taskID = navigation.selectedTaskID,
-               let task = workspace.tasks.first(where: { $0.id == taskID }) {
-                TaskDetailView(
-                    workspace: workspace,
-                    task: task,
-                    onTaskUpdated: { updatedTask in
-                        // Task was saved, refresh the task list
-                        Task { @MainActor in
-                            await workspace.loadTasks()
-                        }
-                    }
-                )
-            } else {
-                emptyDetailView(
-                    icon: "list.bullet.rectangle",
-                    title: "No Task Selected",
-                    message: "Select a task from the list to view and edit its details."
-                )
-            }
-
-        case .quickActions:
-            quickActionsDetailView()
-
-        case .runControl:
-            runControlDetailView()
-
-        case .advancedRunner:
-            advancedRunnerDetailView()
-        case .analytics:
-            analyticsDetailView()
-        }
-    }
-
-    // MARK: - Quick Actions Content Column
-
-    @ViewBuilder
-    private func quickActionsContent() -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            workingDirectoryHeader()
-                .padding(16)
-
-            Divider()
-
-            consoleView()
-                .padding(16)
-        }
-        .contentBackground(cornerRadius: 12)
-        .navigationTitle(navTitle("Quick Actions"))
-    }
-
-    // MARK: - Run Control Content Column
-
-    @ViewBuilder
-    private func runControlContent() -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            workingDirectoryHeader()
-                .padding(16)
-
-            Divider()
-
-            // Live console output
-            RunControlConsoleView(workspace: workspace)
-                .padding(16)
-        }
-        .contentBackground(cornerRadius: 12)
-        .navigationTitle(navTitle("Run Control"))
-    }
-
-    // MARK: - Quick Actions Detail Column
-
-    @ViewBuilder
-    private func quickActionsDetailView() -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Working Directory Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Working Directory")
-                        .font(.headline)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(workspace.name)
-                            .font(.subheadline)
-                        Text(workspace.workingDirectoryURL.path)
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-
-                    HStack {
-                        if !workspace.recentWorkingDirectories.isEmpty {
-                            Menu("Recents") {
-                                ForEach(workspace.recentWorkingDirectories, id: \.path) { url in
-                                    Button(url.path) {
-                                        workspace.selectRecentWorkingDirectory(url)
-                                    }
-                                }
-                            }
-                        }
-
-                        Button("Choose…") {
-                            workspace.chooseWorkingDirectory()
-                        }
-                        .buttonStyle(GlassButtonStyle())
-                    }
-                }
-
-                Divider()
-
-                // Quick Commands Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Quick Commands")
-                        .font(.headline)
-
-                    HStack(spacing: 12) {
-                        actionButton("Version", icon: "info.circle.fill", action: { workspace.runVersion() })
-                        actionButton("Init", icon: "folder.badge.plus", action: { workspace.runInit() })
-
-                        Spacer()
-
-                        if workspace.isRunning {
-                            Button(action: { workspace.cancel() }) {
-                                Label("Stop", systemImage: "stop.circle.fill")
-                                    .foregroundStyle(.red)
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                }
-
-                Divider()
-
-                // Status Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Status")
-                        .font(.headline)
-
-                    HStack(spacing: 16) {
-                        if let status = workspace.lastExitStatus {
-                            HStack(spacing: 6) {
-                                Image(systemName: status.code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                    .foregroundStyle(status.code == 0 ? .green : .red)
-                                Text("Exit: \(status.code) [\(status.reason.rawValue)]")
-                                    .font(.system(.body, design: .monospaced))
-                            }
-                        } else {
-                            Text("No commands run yet")
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-                    }
-                }
-
-                // Error display - shown inline for quick actions, detailed recovery via sheet
-                if let error = workspace.errorMessage {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
-                                .accessibilityLabel("Error")
-                            Text("Error")
-                                .font(.headline)
-                                .foregroundStyle(.red)
-
-                            Spacer()
-
-                            // Show recovery button if we have a recovery error
-                            if workspace.lastRecoveryError != nil {
-                                Button("Show Recovery Options") {
-                                    workspace.showErrorRecovery = true
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.small)
-                            }
-                        }
-
-                        Text(error)
-                            .foregroundStyle(.red)
-                            .font(.body)
-                    }
-                }
-            }
-            .padding(20)
-        }
-        .background(.clear)
-        .navigationTitle(navTitle("Quick Actions"))
-    }
-
-    // MARK: - Run Control Detail Column
-
-    @ViewBuilder
-    private func runControlDetailView() -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Current Task Card
-                if workspace.isRunning, let taskID = workspace.currentTaskID,
-                   let task = workspace.tasks.first(where: { $0.id == taskID }) {
-                    currentTaskCard(task: task)
-                } else if !workspace.isRunning && !workspace.executionHistory.isEmpty {
-                    lastRunSummary()
-                } else {
-                    noExecutionView()
-                }
-
-                // Phase Progress
-                if workspace.isRunning {
-                    phaseProgressSection()
-                }
-
-                // Up-next preview and run targeting controls
-                runTargetSection()
-
-                // Runner Configuration
-                runnerConfigSection()
-
-                // Execution Controls
-                executionControlsSection()
-
-                // Execution History
-                if !workspace.executionHistory.isEmpty {
-                    executionHistorySection()
-                }
-            }
-            .padding(20)
-        }
-        .background(.clear)
-        .navigationTitle(navTitle("Run Control"))
-        .task(id: workspace.workingDirectoryURL.path) {
-            await workspace.refreshRunControlData()
-        }
-    }
-
-    @ViewBuilder
-    private func currentTaskCard(task: RalphTask) -> some View {
-        glassGroupBox("Current Task") {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(task.id)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("Task ID: \(task.id)")
-
-                    Spacer()
-
-                    priorityBadge(priority: task.priority)
-                }
-
-                Text(task.title)
-                    .font(.headline)
-                    .lineLimit(2)
-
-                if let description = task.description, !description.isEmpty {
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
-                }
-
-                HStack {
-                    statusBadge(status: task.status)
-
-                    if !task.tags.isEmpty {
-                        tagChips(tags: Array(task.tags.prefix(3)))
-                    }
-
-                    Spacer()
-
-                    // Elapsed time
-                    if let startTime = workspace.executionStartTime {
-                        ElapsedTimeView(startTime: startTime)
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .accessibilityLabel("Elapsed time")
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func phaseProgressSection() -> some View {
-        glassGroupBox("Phase Progress") {
-            VStack(alignment: .leading, spacing: 16) {
-                // Progress bar
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        // Background
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(.quaternary.opacity(0.3))
-                            .frame(height: 12)
-
-                        // Progress fill
-                        if let phase = workspace.currentPhase {
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(phase.color)
-                                .frame(width: geo.size.width * phase.progressFraction, height: 12)
-                                .animation(.easeInOut(duration: 0.3), value: phase)
-                        }
-
-                        // Phase markers
-                        HStack(spacing: 0) {
-                            ForEach(Workspace.ExecutionPhase.allCases, id: \.self) { phase in
-                                Rectangle()
-                                    .fill(.separator.opacity(0.5))
-                                    .frame(width: 1, height: 12)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
-                            }
-                        }
-                    }
-                }
-                .frame(height: 12)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Phase progress: \(workspace.currentPhase?.displayName ?? "Not started")")
-
-                // Phase indicators
-                HStack(spacing: 0) {
-                    ForEach(Workspace.ExecutionPhase.allCases, id: \.self) { phase in
-                        HStack(spacing: 4) {
-                            Image(systemName: phase.icon)
-                                .font(.caption)
-                            Text(phase.displayName)
-                                .font(.caption)
-                        }
-                        .foregroundStyle(phase == workspace.currentPhase ? phase.color : .secondary)
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func runTargetSection() -> some View {
-        glassGroupBox("Up Next") {
-            VStack(alignment: .leading, spacing: 12) {
-                if let previewTask = workspace.runControlPreviewTask {
-                    HStack(alignment: .top, spacing: 10) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(previewTask.id)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                            Text(previewTask.title)
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(2)
-                        }
-
-                        Spacer()
-
-                        priorityBadge(priority: previewTask.priority)
-                    }
-                } else {
-                    Text("No todo tasks in this workspace queue.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Picker("Task", selection: $workspace.runControlSelectedTaskID) {
-                        Text("Auto (next runnable)")
-                            .tag(Optional<String>.none)
-                        ForEach(workspace.runControlTodoTasks, id: \.id) { task in
-                            Text("\(task.id) · \(task.title)")
-                                .lineLimit(1)
-                                .tag(Optional(task.id))
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: 420, alignment: .leading)
-
-                    Toggle("Force", isOn: $workspace.runControlForceDirtyRepo)
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .help("Pass --force to run commands when repo is dirty.")
-
-                    Spacer()
-
-                    Button {
-                        Task { @MainActor in
-                            await workspace.refreshRunControlData()
-                        }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .buttonStyle(.plain)
-                    .help("Refresh queue + config")
-                }
-
-                if workspace.runControlSelectedTaskID != nil {
-                    Text("Loop mode still follows queue order; selected task applies to one-off run.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func runnerConfigSection() -> some View {
-        glassGroupBox("Runner Configuration") {
-            VStack(alignment: .leading, spacing: 8) {
-                if workspace.runnerConfigLoading {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Loading resolved config...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                configRow(icon: "cpu", label: "Model", value: workspace.currentRunnerConfig?.model ?? "Default")
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Model: \(workspace.currentRunnerConfig?.model ?? "Default")")
-                configRow(icon: "square.split.2x1", label: "Phases", value: workspace.currentRunnerConfig?.phases.map(String.init) ?? "Auto")
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Phases: \(workspace.currentRunnerConfig?.phases.map(String.init) ?? "Auto")")
-                configRow(icon: "number", label: "Max Iterations", value: workspace.currentRunnerConfig?.maxIterations.map(String.init) ?? "Auto")
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Max Iterations: \(workspace.currentRunnerConfig?.maxIterations.map(String.init) ?? "Auto")")
-
-                if let configError = workspace.runnerConfigErrorMessage {
-                    Text(configError)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func executionControlsSection() -> some View {
-        glassGroupBox("Controls") {
-            VStack(spacing: 12) {
-                let previewTask = workspace.runControlPreviewTask
-                let hasSelectedTask = workspace.selectedRunControlTask != nil
-
-                // Primary action row
-                HStack(spacing: 12) {
-                    if workspace.isRunning {
-                        Button(action: { workspace.cancel() }) {
-                            Label("Stop", systemImage: "stop.circle.fill")
-                                .foregroundStyle(.red)
-                        }
-                        .buttonStyle(GlassButtonStyle())
-                        .accessibilityLabel("Stop execution")
-                        .accessibilityHint("Cancel the current task execution")
-
-                        if workspace.isLoopMode {
-                            Button(action: { workspace.stopLoop() }) {
-                                Label("Stop After Current", systemImage: "pause.circle")
-                                    .foregroundStyle(.orange)
-                            }
-                            .buttonStyle(GlassButtonStyle())
-                        }
-                    } else {
-                        Button(action: {
-                            workspace.runNextTask(
-                                taskIDOverride: workspace.runControlSelectedTaskID,
-                                forceDirtyRepo: workspace.runControlForceDirtyRepo
-                            )
-                        }) {
-                            Label(hasSelectedTask ? "Run Selected Task" : "Run Next Task", systemImage: "play.circle.fill")
-                        }
-                        .buttonStyle(GlassButtonStyle())
-                        .disabled(previewTask == nil)
-                        .accessibilityLabel("Run next task")
-                        .accessibilityHint("Starts execution of the selected task or next task in the queue")
-
-                        Button(action: { workspace.startLoop(forceDirtyRepo: workspace.runControlForceDirtyRepo) }) {
-                            Label("Start Loop", systemImage: "repeat.circle")
-                        }
-                        .buttonStyle(GlassButtonStyle())
-                        .disabled(workspace.nextTask() == nil)
-                        .accessibilityLabel("Start task loop")
-                        .accessibilityHint("Continuously run tasks until stopped")
-                    }
-
-                    Spacer()
-                }
-
-                // Loop mode indicator
-                if workspace.isLoopMode {
-                    HStack {
-                        Image(systemName: "repeat.circle.fill")
-                            .foregroundStyle(.blue)
-                        Text("Loop Mode Active")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        if workspace.stopAfterCurrent {
-                            Text("(Stopping after current)")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-
-                        Spacer()
-                    }
-                }
-
-                // Exit status
-                if let status = workspace.lastExitStatus, !workspace.isRunning {
-                    HStack {
-                        Image(systemName: status.code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundStyle(status.code == 0 ? .green : .red)
-                        Text("Exit: \(status.code)")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(status.code == 0 ? .green : .red)
-                        Spacer()
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func executionHistorySection() -> some View {
-        glassGroupBox("Recent History") {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(workspace.executionHistory.prefix(5)) { record in
-                    HStack {
-                        Image(systemName: recordIcon(record))
-                            .foregroundStyle(recordColor(record))
-
-                        if let taskID = record.taskID {
-                            Text(taskID)
-                                .font(.system(.caption, design: .monospaced))
-                        } else {
-                            Text("Unknown task")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        if let duration = record.duration {
-                            Text(formatDuration(duration))
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func noExecutionView() -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "play.circle")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-
-            Text("No Active Execution")
-                .font(.headline)
-
-            Text("Run a task to see execution progress and live output.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 300)
-        }
-        .frame(maxWidth: .infinity, minHeight: 200)
-    }
-
-    @ViewBuilder
-    private func lastRunSummary() -> some View {
-        if let lastRun = workspace.executionHistory.first {
-            glassGroupBox("Last Run") {
-                HStack {
-                    Image(systemName: recordIcon(lastRun))
-                        .foregroundStyle(recordColor(lastRun))
-
-                    if let taskID = lastRun.taskID {
-                        Text(taskID)
-                            .font(.system(.body, design: .monospaced))
-                    }
-
-                    Spacer()
-
-                    if let duration = lastRun.duration {
-                        Text(formatDuration(duration))
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Helper Views
-
-    @ViewBuilder
-    private func priorityBadge(priority: RalphTaskPriority) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(priorityColor(priority))
-                .frame(width: 8, height: 8)
-            Text(priority.displayName)
-                .font(.caption)
-        }
-        .accessibilityLabel("Priority: \(priority.displayName)")
-    }
-
-    @ViewBuilder
-    private func statusBadge(status: RalphTaskStatus) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(statusColor(status))
-                .frame(width: 8, height: 8)
-            Text(status.displayName)
-                .font(.caption)
-        }
-        .accessibilityLabel("Status: \(status.displayName)")
-    }
-
-    @ViewBuilder
-    private func tagChips(tags: [String]) -> some View {
-        HStack(spacing: 4) {
-            ForEach(tags, id: \.self) { tag in
-                Text(tag)
-                    .font(.caption2)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.quaternary.opacity(0.3))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func configRow(icon: String, label: String, value: String) -> some View {
+    private func viewModeToolbar() -> some View {
         HStack {
-            Image(systemName: icon)
-                .foregroundStyle(.secondary)
-                .frame(width: 20)
-            Text(label)
-                .foregroundStyle(.secondary)
             Spacer()
-            Text(value)
-                .font(.system(.body, design: .monospaced))
-        }
-    }
 
-    // MARK: - Helper Functions
-
-    private func recordIcon(_ record: Workspace.ExecutionRecord) -> String {
-        if record.wasCancelled {
-            return "xmark.octagon.fill"
-        }
-        return record.success ? "checkmark.circle.fill" : "xmark.circle.fill"
-    }
-
-    private func recordColor(_ record: Workspace.ExecutionRecord) -> Color {
-        if record.wasCancelled {
-            return .orange
-        }
-        return record.success ? .green : .red
-    }
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        if duration < 60 {
-            return String(format: "%.0fs", duration)
-        } else {
-            let minutes = Int(duration) / 60
-            let seconds = Int(duration) % 60
-            return String(format: "%d:%02d", minutes, seconds)
-        }
-    }
-
-    private func priorityColor(_ priority: RalphTaskPriority) -> Color {
-        switch priority {
-        case .critical: return .red
-        case .high: return .orange
-        case .medium: return .yellow
-        case .low: return .green
-        }
-    }
-
-    private func statusColor(_ status: RalphTaskStatus) -> Color {
-        switch status {
-        case .draft: return .gray
-        case .todo: return .blue
-        case .doing: return .orange
-        case .done: return .green
-        case .rejected: return .red
-        }
-    }
-
-    // MARK: - Advanced Runner Content Column
-
-    @ViewBuilder
-    private func advancedRunnerContent() -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header with controls
-            VStack(alignment: .leading, spacing: 12) {
-                workingDirectoryHeader()
-
-                HStack(spacing: 16) {
-                    Toggle("No Color", isOn: $workspace.advancedIncludeNoColor)
-                        .toggleStyle(.switch)
-
-                    Toggle("Show Hidden", isOn: $workspace.advancedShowHiddenCommands)
-                        .toggleStyle(.switch)
-
-                    Toggle("Hidden Args", isOn: $workspace.advancedShowHiddenArgs)
-                        .toggleStyle(.switch)
-
-                    Spacer()
-
-                    if workspace.cliSpecIsLoading {
-                        ProgressView()
-                            .scaleEffect(0.75)
-                            .controlSize(.small)
-                    }
-
-                    Button(action: {
-                        Task { @MainActor in
-                            await workspace.loadCLISpec()
-                        }
-                    }) {
-                        Label("Reload", systemImage: "arrow.clockwise")
-                    }
-                    .buttonStyle(GlassButtonStyle())
-                }
-
-                if let err = workspace.cliSpecErrorMessage {
-                    Text(err)
-                        .foregroundStyle(.red)
-                        .font(.system(.caption))
-                        .padding(.vertical, 4)
+            Picker("View Mode", selection: $navigation.taskViewMode) {
+                ForEach(TaskViewMode.allCases, id: \.self) { mode in
+                    Label(mode.rawValue, systemImage: mode.icon)
+                        .tag(mode)
                 }
             }
-            .padding(16)
-            .background(.clear)
+            .pickerStyle(.segmented)
+            .frame(width: 240)
+            .help("Switch between List, Kanban, and Graph view (⌘⇧K)")
+            .accessibilityLabel("Task view mode")
+        }
+    }
 
+    @ViewBuilder
+    private func queueDetailColumn() -> some View {
+        if let taskID = navigation.selectedTaskID,
+           let task = workspace.tasks.first(where: { $0.id == taskID }) {
+            TaskDetailView(
+                workspace: workspace,
+                task: task,
+                onTaskUpdated: { _ in
+                    Task { @MainActor in await workspace.loadTasks() }
+                }
+            )
+        } else {
+            EmptyDetailView(
+                icon: "list.bullet.rectangle",
+                title: "No Task Selected",
+                message: "Select a task from the list to view and edit its details."
+            )
+        }
+    }
+
+    // MARK: - Sidebar Footer
+
+    @ViewBuilder
+    private func connectionStatusFooter() -> some View {
+        if let status = workspace.cliHealthStatus {
             Divider()
-
-            // Command list
-            let commands = filteredAdvancedCommands()
-            List(commands, selection: $workspace.advancedSelectedCommandID) { cmd in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(cmd.displayPath)
-                        .font(.system(.body, design: .monospaced))
-                    if let about = cmd.about, !about.isEmpty {
-                        Text(about)
-                            .font(.system(.caption))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .tag(cmd.id)
-            }
-            .listStyle(.plain)
-            .searchable(text: $workspace.advancedSearchText, placement: .toolbar)
-            .navigationTitle(navTitle("Advanced Runner"))
-        }
-        .onChange(of: workspace.advancedSelectedCommandID) { _, _ in
-            workspace.resetAdvancedInputs()
-        }
-    }
-
-    // MARK: - Advanced Runner Detail Column
-
-    @ViewBuilder
-    private func advancedRunnerDetailView() -> some View {
-        if let cmd = workspace.selectedAdvancedCommand() {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Command Header
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(cmd.displayPath)
-                            .font(.system(.title3, design: .monospaced))
-                        if let about = cmd.about, !about.isEmpty {
-                            Text(about)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    let args = cmd.args.filter { workspace.advancedShowHiddenArgs || !$0.hidden }
-                    let (positional, options) = splitArgs(args)
-
-                    // Positional Arguments
-                    if !positional.isEmpty {
-                        glassGroupBox("Positionals") {
-                            VStack(alignment: .leading, spacing: 10) {
-                                ForEach(positional, id: \.id) { arg in
-                                    advancedArgRow(arg: arg)
-                                }
-                            }
-                        }
-                    }
-
-                    // Options
-                    if !options.isEmpty {
-                        glassGroupBox("Options") {
-                            VStack(alignment: .leading, spacing: 10) {
-                                ForEach(options, id: \.id) { arg in
-                                    advancedArgRow(arg: arg)
-                                }
-                            }
-                        }
-                    }
-
-                    // Command Preview and Run
-                    glassGroupBox("Command") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            let argv = workspace.buildAdvancedArguments()
-                            Text(shellPreview(argv: argv))
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
-                            HStack {
-                                Button("Run") {
-                                    let argv = workspace.buildAdvancedArguments()
-                                    if !argv.isEmpty {
-                                        workspace.run(arguments: argv)
-                                    }
-                                }
-                                .disabled(workspace.isRunning)
-                                .buttonStyle(GlassButtonStyle())
-
-                                if workspace.isRunning {
-                                    Button(action: { workspace.cancel() }) {
-                                        Label("Stop", systemImage: "stop.circle.fill")
-                                            .foregroundStyle(.red)
-                                    }
-                                    .buttonStyle(.borderless)
-                                }
-
-                                Spacer()
-
-                                exitStatusBadge()
-                            }
-                        }
-                    }
-
-                    // Console Output
-                    consoleView()
-                }
-                .padding(20)
-            }
-            .background(.clear)
-            .navigationTitle(navTitle(cmd.name))
-        } else {
-            emptyDetailView(
-                icon: "terminal.fill",
-                title: "No Command Selected",
-                message: "Select a command from the list to configure and run it."
-            )
-        }
-    }
-
-    // MARK: - Analytics Detail Column
-
-    @ViewBuilder
-    private func analyticsDetailView() -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if let summary = workspace.analyticsData.productivitySummary {
-                    glassGroupBox("Productivity Summary") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            DetailRow(label: "Total Completed", value: "\(summary.totalCompleted)")
-                            DetailRow(label: "Current Streak", value: "\(summary.currentStreak) days")
-                            DetailRow(label: "Longest Streak", value: "\(summary.longestStreak) days")
-                            
-                            if let nextMilestone = summary.nextMilestone {
-                                DetailRow(label: "Next Milestone", value: "\(nextMilestone) tasks")
-                            }
-                        }
-                    }
-                    
-                    if !summary.milestones.isEmpty {
-                        glassGroupBox("Milestones Achieved") {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(summary.milestones.prefix(5), id: \.threshold) { milestone in
-                                    HStack {
-                                        Image(systemName: milestone.celebrated ? "checkmark.circle.fill" : "circle")
-                                            .foregroundStyle(milestone.celebrated ? .green : .secondary)
-                                        Text("\(milestone.threshold) tasks")
-                                        Spacer()
-                                        Text(String(milestone.achievedAt.prefix(10)))
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .font(.caption)
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    emptyDetailView(
-                        icon: "chart.bar",
-                        title: "No Analytics Data",
-                        message: "Select a time range and refresh to load analytics."
-                    )
-                }
-            }
-            .padding(20)
-        }
-        .background(.clear)
-        .navigationTitle(navTitle("Analytics"))
-    }
-
-    private func filteredAdvancedCommands() -> [RalphCLICommandSpec] {
-        let commands = workspace.advancedCommands()
-        let q = workspace.advancedSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return commands }
-
-        return commands.filter { cmd in
-            cmd.displayPath.localizedCaseInsensitiveContains(q)
-                || (cmd.about?.localizedCaseInsensitiveContains(q) ?? false)
-        }
-    }
-
-    // MARK: - Common UI Components
-
-    @ViewBuilder
-    private func workingDirectoryHeader() -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(workspace.name)
-                    .font(.headline)
-                    .accessibilityLabel("Workspace: \(workspace.name)")
-                Text(workspace.workingDirectoryURL.path)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .accessibilityLabel("Working directory: \(workspace.workingDirectoryURL.path)")
-            }
-
-            Spacer()
-
-            if !workspace.recentWorkingDirectories.isEmpty {
-                Menu("Recents") {
-                    ForEach(workspace.recentWorkingDirectories, id: \.path) { url in
-                        Button(url.path) {
-                            workspace.selectRecentWorkingDirectory(url)
-                        }
-                    }
-                }
-            }
-
-            Button("Choose…") {
-                workspace.chooseWorkingDirectory()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func exitStatusBadge() -> some View {
-        if let status = workspace.lastExitStatus {
-            Text("Exit: \(status.code) [\(status.reason.rawValue)]")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(status.code == 0 ? Color.secondary : Color.red)
-        }
-    }
-
-    @ViewBuilder
-    private func consoleView() -> some View {
-        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Console Output")
-                    .font(.system(.caption, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                ConnectionStatusIndicator(
+                    isAvailable: status.isAvailable,
+                    onTap: {
+                        if !status.isAvailable {
+                            workspace.showErrorRecovery = true
+                        }
+                    }
+                )
 
                 Spacer()
 
-                if let error = workspace.errorMessage {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .font(.system(.caption))
+                if workspace.isShowingCachedTasks {
+                    Label("Cached", systemImage: "archivebox")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .help("Showing cached task list")
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial)
+        }
+    }
 
-            ScrollView {
-                Text(workspace.output.isEmpty ? "(no output yet)" : workspace.output)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.system(.body, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding(12)
-            }
-            .frame(minHeight: 200)
-            .underPageBackground(cornerRadius: 10, isEmphasized: false)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(.separator.opacity(0.3), lineWidth: 0.5)
+    // MARK: - Sheets
+
+    @ViewBuilder
+    private func errorRecoverySheet() -> some View {
+        if let error = workspace.lastRecoveryError {
+            ErrorRecoverySheet(
+                error: error,
+                workspace: workspace,
+                onRetry: { handleRetry(for: error.operation) },
+                onDismiss: { workspace.clearErrorRecovery() }
             )
         }
     }
 
     @ViewBuilder
-    private func advancedArgRow(arg: RalphCLIArgSpec) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(argDisplayName(arg))
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(arg.required ? Color.primary : Color.secondary)
+    private func commandPaletteSheet() -> some View {
+        CommandPaletteView(windowActions: workspaceWindowActions)
+            .frame(minWidth: 640, minHeight: 300)
+    }
 
-                if arg.required {
-                    Text("*")
-                        .foregroundStyle(.red)
-                }
+    // MARK: - Actions
 
-                Spacer()
-
-                if arg.isCountFlag {
-                    Stepper(
-                        value: Binding(
-                            get: { workspace.advancedCountValues[arg.id] ?? 0 },
-                            set: { workspace.advancedCountValues[arg.id] = $0 }
-                        ),
-                        in: 0...20
-                    ) {
-                        Text("\(workspace.advancedCountValues[arg.id] ?? 0)")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: 220)
-                } else if arg.isBooleanFlag {
-                    Toggle(
-                        "",
-                        isOn: Binding(
-                            get: { workspace.advancedBoolValues[arg.id] ?? false },
-                            set: { workspace.advancedBoolValues[arg.id] = $0 }
-                        )
-                    )
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                } else if arg.takesValue {
-                    if arg.allowsMultipleValues {
-                        TextEditor(
-                            text: Binding(
-                                get: { workspace.advancedMultiValues[arg.id] ?? "" },
-                                set: { workspace.advancedMultiValues[arg.id] = $0 }
-                            )
-                        )
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(minHeight: 48, maxHeight: 88)
-                    } else {
-                        TextField(
-                            "",
-                            text: Binding(
-                                get: { workspace.advancedSingleValues[arg.id] ?? "" },
-                                set: { workspace.advancedSingleValues[arg.id] = $0 }
-                            )
-                        )
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(maxWidth: 360)
-                    }
-                }
-            }
-
-            if let help = arg.help, !help.isEmpty {
-                Text(help)
-                    .font(.system(.caption))
-                    .foregroundStyle(.secondary)
+    private func handleRetryConnection() {
+        Task { @MainActor in
+            _ = await workspace.checkHealth()
+            if let newStatus = workspace.cliHealthStatus, newStatus.isAvailable {
+                await workspace.loadTasks()
             }
         }
     }
 
-    @ViewBuilder
-    private func emptyDetailView(icon: String, title: String, message: String) -> some View {
+    private func handleRetry(for operation: String) {
+        workspace.clearErrorRecovery()
+
+        switch operation {
+        case "loadTasks":
+            Task { @MainActor in await workspace.loadTasks() }
+        case "loadGraphData":
+            Task { @MainActor in await workspace.loadGraphData() }
+        case "loadCLISpec":
+            Task { @MainActor in await workspace.loadCLISpec() }
+        case "run", "runVersion", "runInit":
+            if workspace.isRunning { workspace.cancel() }
+            if navigation.selectedSection == .quickActions {
+                workspace.runVersion()
+            }
+        default:
+            Task { @MainActor in await workspace.loadTasks() }
+        }
+    }
+
+    private func handleStartWork() {
+        guard let taskID = navigation.selectedTaskID else { return }
+
+        Task { @MainActor in
+            do {
+                try await workspace.updateTaskStatus(taskID: taskID, to: .doing)
+            } catch {
+                RalphLogger.shared.error("Failed to start work on task: \(error)", category: .workspace)
+            }
+        }
+    }
+}
+
+// MARK: - Empty Detail View
+
+@MainActor
+struct EmptyDetailView: View {
+    let icon: String
+    let title: String
+    let message: String
+
+    var body: some View {
         VStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 48))
@@ -1368,276 +342,5 @@ struct WorkspaceView: View {
         .accessibilityLabel("\(title). \(message)")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.clear)
-    }
-
-    private func glassGroupBox<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(.caption, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-
-            content()
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .underPageBackground(cornerRadius: 10, isEmphasized: false)
-        }
-    }
-
-    private func actionButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: icon)
-        }
-        .buttonStyle(GlassButtonStyle())
-        .accessibilityLabel("\(title)")
-    }
-
-    // MARK: - Helpers
-
-    private func splitArgs(_ args: [RalphCLIArgSpec]) -> ([RalphCLIArgSpec], [RalphCLIArgSpec]) {
-        let positionals = args
-            .filter(\.positional)
-            .sorted { ($0.index ?? Int.max) < ($1.index ?? Int.max) }
-        let options = args
-            .filter { !$0.positional }
-            .sorted { $0.id < $1.id }
-        return (positionals, options)
-    }
-
-    private func argDisplayName(_ arg: RalphCLIArgSpec) -> String {
-        if arg.positional {
-            let idx = arg.index.map { "#\($0)" } ?? ""
-            return "<\(arg.id)>\(idx.isEmpty ? "" : " \(idx)")"
-        }
-
-        var parts: [String] = []
-        if let long = arg.long {
-            parts.append("--\(long)")
-        }
-        if let short = arg.short, !short.isEmpty {
-            parts.append("-\(short)")
-        }
-        if parts.isEmpty {
-            return arg.id
-        }
-        return parts.joined(separator: " ")
-    }
-
-    private func shellPreview(argv: [String]) -> String {
-        guard !argv.isEmpty else { return "" }
-        return (["ralph"] + argv).map(shellEscape).joined(separator: " ")
-    }
-
-    private func shellEscape(_ s: String) -> String {
-        let allowed = CharacterSet.alphanumerics
-            .union(CharacterSet(charactersIn: "._/-=:"))
-        if s.unicodeScalars.allSatisfy({ allowed.contains($0) }) {
-            return s
-        }
-        return "'" + s.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
-    }
-}
-
-private extension RalphCLICommandSpec {
-    var displayPath: String {
-        let segs = Array(path.dropFirst())
-        if segs.isEmpty {
-            return name
-        }
-        return segs.joined(separator: " ")
-    }
-}
-
-// MARK: - Offline Status Views
-
-/// Inline banner when CLI is unavailable or workspace is inaccessible
-struct OfflineStatusView: View {
-    let status: CLIHealthStatus
-    let onRetry: () -> Void
-    let onDismiss: (() -> Void)?
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            // Icon based on reason
-            Image(systemName: iconName)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(iconColor)
-            
-            // Message
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
-                
-                if let subtitle = subtitle {
-                    Text(subtitle)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            
-            Spacer()
-            
-            // Retry button
-            Button(action: onRetry) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .buttonStyle(.borderless)
-            .help("Retry connection")
-            
-            // Dismiss button (if provided)
-            if let onDismiss = onDismiss {
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .medium))
-                }
-                .buttonStyle(.borderless)
-                .help("Dismiss")
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(backgroundView)
-        .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundStyle(borderColor.opacity(0.3)),
-            alignment: .bottom
-        )
-    }
-    
-    @ViewBuilder
-    private var backgroundView: some View {
-        RoundedRectangle(cornerRadius: 0)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        backgroundColor.opacity(0.15),
-                        backgroundColor.opacity(0.05)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-    }
-    
-    private var iconName: String {
-        switch status.availability {
-        case .available:
-            return "checkmark.circle.fill"
-        case .unavailable(let reason):
-            switch reason {
-            case .cliNotFound, .cliNotExecutable:
-                return "terminal.fill"
-            case .workspaceInaccessible:
-                return "folder.badge.questionmark"
-            case .permissionDenied:
-                return "lock.fill"
-            case .timeout:
-                return "clock.badge.exclamationmark.fill"
-            case .unknown:
-                return "exclamationmark.triangle.fill"
-            }
-        case .unknown:
-            return "questionmark.circle.fill"
-        }
-    }
-    
-    private var iconColor: Color {
-        switch status.availability {
-        case .available:
-            return .green
-        case .unavailable(let reason):
-            switch reason {
-            case .cliNotFound, .cliNotExecutable:
-                return .orange
-            case .workspaceInaccessible, .permissionDenied:
-                return .red
-            case .timeout:
-                return .yellow
-            case .unknown:
-                return .gray
-            }
-        case .unknown:
-            return .gray
-        }
-    }
-    
-    private var backgroundColor: Color {
-        iconColor
-    }
-    
-    private var borderColor: Color {
-        iconColor
-    }
-    
-    private var title: String {
-        switch status.availability {
-        case .available:
-            return "Connected"
-        case .unavailable(let reason):
-            switch reason {
-            case .cliNotFound, .cliNotExecutable:
-                return "Ralph CLI Unavailable"
-            case .workspaceInaccessible:
-                return "Workspace Inaccessible"
-            case .permissionDenied:
-                return "Permission Denied"
-            case .timeout:
-                return "Connection Timed Out"
-            case .unknown:
-                return "Connection Issue"
-            }
-        case .unknown:
-            return "Checking Connection..."
-        }
-    }
-    
-    private var subtitle: String? {
-        switch status.availability {
-        case .available:
-            return "All systems operational"
-        case .unavailable(let reason):
-            switch reason {
-            case .cliNotFound:
-                return "The ralph executable could not be found"
-            case .cliNotExecutable:
-                return "The ralph executable is not runnable"
-            case .workspaceInaccessible:
-                return "Cannot access the workspace directory"
-            case .permissionDenied:
-                return "Check file permissions for this workspace"
-            case .timeout:
-                return "The operation took too long to respond"
-            case .unknown(let description):
-                return description
-            }
-        case .unknown:
-            return nil
-        }
-    }
-}
-
-/// Smaller inline indicator for use in sidebars/toolbars
-struct ConnectionStatusIndicator: View {
-    let isAvailable: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(isAvailable ? Color.green : Color.orange)
-                    .frame(width: 8, height: 8)
-                
-                Text(isAvailable ? "Connected" : "Offline")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .buttonStyle(.plain)
-        .help(isAvailable ? "CLI is available" : "CLI is unavailable - click for details")
     }
 }

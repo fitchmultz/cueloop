@@ -18,6 +18,10 @@ use crate::contracts::Task;
 use crate::timeutil;
 
 use super::date_utils::{date_key_add_days, format_date_key, parse_date_key, previous_date_key};
+
+/// Maximum number of days to retain in daily stats (90 days = ~3 months).
+/// This prevents unbounded memory growth from historical data accumulation.
+const DAILY_STATS_RETENTION_DAYS: i64 = 90;
 use super::types::{
     CompletionResult, DayStats, EstimationMetrics, ProductivityStats, TaskEstimationPoint,
     VelocityMetrics,
@@ -110,6 +114,9 @@ fn update_stats_with_completion_ref(
 
     stats.last_updated_at = now;
 
+    // Prune old daily stats to prevent unbounded growth
+    prune_old_daily_stats(stats, &today);
+
     Ok(CompletionResult {
         milestone_achieved,
         streak_updated,
@@ -170,6 +177,22 @@ fn check_milestone(stats: &mut ProductivityStats) -> Option<u64> {
         }
     }
     None
+}
+
+/// Prune daily stats older than DAILY_STATS_RETENTION_DAYS to prevent unbounded growth.
+/// Uses the current date to calculate the cutoff, removing any entries older than the threshold.
+pub(crate) fn prune_old_daily_stats(stats: &mut ProductivityStats, today: &str) {
+    let Some(today_dt) = parse_date_key(today) else {
+        return; // Defensive: if we can't parse today, don't prune anything
+    };
+
+    let cutoff_date = today_dt - time::Duration::days(DAILY_STATS_RETENTION_DAYS);
+
+    stats.daily.retain(|date_key, _| {
+        parse_date_key(date_key)
+            .map(|dt| dt >= cutoff_date)
+            .unwrap_or(true) // Keep entries we can't parse (defensive)
+    });
 }
 
 /// Mark a milestone as celebrated

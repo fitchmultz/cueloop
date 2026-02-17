@@ -349,3 +349,111 @@ fn test_record_task_completion_by_id() {
     let stats = load_productivity_stats(temp.path()).unwrap();
     assert_eq!(stats.total_completed, 1);
 }
+
+// Test for daily stats pruning (memory hotspot fix)
+#[test]
+fn test_old_daily_stats_get_pruned() {
+    use crate::productivity::calculations::prune_old_daily_stats;
+    use crate::productivity::types::{CompletedTaskRef, DayStats, ProductivityStats, StreakInfo};
+
+    let today = "2026-01-15";
+    let mut stats = ProductivityStats {
+        version: 1,
+        first_task_completed_at: None,
+        last_updated_at: format!("{}T00:00:00Z", today),
+        daily: BTreeMap::new(),
+        streak: StreakInfo::default(),
+        total_completed: 0,
+        milestones: vec![],
+    };
+
+    // Add entries spanning 120 days (older than 90-day retention)
+    for i in 0..120 {
+        let date = date_key_add_days(today, -(i as i64)).unwrap();
+        stats.daily.insert(
+            date.clone(),
+            DayStats {
+                date: date.clone(),
+                completed_count: 1,
+                tasks: vec![CompletedTaskRef {
+                    id: format!("RQ-{:04}", i),
+                    title: "Old task".to_string(),
+                    completed_at: format!("{}T12:00:00Z", date),
+                }],
+            },
+        );
+    }
+
+    assert_eq!(
+        stats.daily.len(),
+        120,
+        "Should start with 120 daily entries"
+    );
+
+    // Prune old stats
+    prune_old_daily_stats(&mut stats, today);
+
+    // Should retain only the last 90 days plus today = 91 entries
+    assert_eq!(
+        stats.daily.len(),
+        91,
+        "Should prune to 91 entries (90 days retention + today)"
+    );
+
+    // Verify old entries are gone
+    let oldest_date = date_key_add_days(today, -91);
+    assert!(oldest_date.is_some(), "Date 91 days ago should be valid");
+
+    // The entry at 91 days ago should NOT exist (it's past the 90-day retention)
+    if let Some(old_date) = oldest_date {
+        assert!(
+            !stats.daily.contains_key(&old_date),
+            "Entry 91 days ago should have been pruned"
+        );
+    }
+
+    // The entry at 90 days ago SHOULD exist (at the boundary)
+    let boundary_date = date_key_add_days(today, -90).unwrap();
+    assert!(
+        stats.daily.contains_key(&boundary_date),
+        "Entry at 90-day boundary should be retained"
+    );
+}
+
+#[test]
+fn test_prune_respects_total_completed() {
+    // Verify that pruning daily stats doesn't affect the total_completed counter
+    use crate::productivity::calculations::prune_old_daily_stats;
+    use crate::productivity::types::{DayStats, ProductivityStats, StreakInfo};
+
+    let today = "2026-01-15";
+    let mut stats = ProductivityStats {
+        version: 1,
+        first_task_completed_at: None,
+        last_updated_at: format!("{}T00:00:00Z", today),
+        daily: BTreeMap::new(),
+        streak: StreakInfo::default(),
+        total_completed: 5000, // High total from historical data
+        milestones: vec![],
+    };
+
+    // Only add 10 days of recent data
+    for i in 0..10 {
+        let date = date_key_add_days(today, -(i as i64)).unwrap();
+        stats.daily.insert(
+            date.clone(),
+            DayStats {
+                date: date.to_string(),
+                completed_count: 1,
+                tasks: vec![],
+            },
+        );
+    }
+
+    prune_old_daily_stats(&mut stats, today);
+
+    // Total completed should remain unchanged
+    assert_eq!(stats.total_completed, 5000);
+    // Milestones and streaks are preserved
+    assert_eq!(stats.daily.len(), 10);
+}

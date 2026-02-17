@@ -11,6 +11,7 @@
  - Task creation (see task builder workflow).
  - Batch operations on multiple tasks.
  - Navigation or dismissal (handled by parent NavigationSplitView).
+ - Execution overrides UI (delegated to TaskExecutionOverridesSection).
 
  Invariants/assumptions callers must respect:
  - Task is passed in and copied to @State for editing.
@@ -35,7 +36,7 @@ struct TaskDetailView: View {
     @State private var saveError: String?
     @State private var showingUnsavedChangesAlert = false
     @State private var saveSuccess = false
-    
+
     // State for conflict detection (optimistic locking)
     @State private var originalUpdatedAt: Date?
     @State private var hasConflict = false
@@ -103,14 +104,18 @@ struct TaskDetailView: View {
                 checkForExternalChanges()
             }
     }
-    
+
     private var contentView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 basicInfoSection()
                 statusSection()
                 timeTrackingSection()
-                executionOverridesSection()
+                TaskExecutionOverridesSection(
+                    draftTask: $draftTask,
+                    workspace: workspace,
+                    mutateTaskAgent: mutateTaskAgent
+                )
                 tagsSection()
                 contentSections()
                 relationshipsSection()
@@ -216,7 +221,6 @@ struct TaskDetailView: View {
 
     @ViewBuilder
     private func timeTrackingSection() -> some View {
-        // Only show if either field is set or we're in edit mode (always show)
         glassGroupBox("Time Tracking") {
             HStack(spacing: 20) {
                 // Estimated Minutes
@@ -293,162 +297,6 @@ struct TaskDetailView: View {
     private func tagsSection() -> some View {
         glassGroupBox("Tags") {
             TagEditorView(tags: $draftTask.tags)
-        }
-    }
-
-    private static let runnerOptions = ["codex", "opencode", "gemini", "claude", "cursor", "kimi", "pi"]
-    private static let effortOptions = ["low", "medium", "high", "xhigh"]
-
-    @ViewBuilder
-    private func executionOverridesSection() -> some View {
-        glassGroupBox("Execution Overrides") {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Quick Presets")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    ViewThatFits(in: .horizontal) {
-                        FlowLayout(spacing: 8) {
-                            presetButtons
-                        }
-                        ScrollView(.horizontal) {
-                            HStack(spacing: 8) {
-                                presetButtons
-                            }
-                        }
-                        .scrollIndicators(.hidden)
-                    }
-                    if activeExecutionPreset == nil, draftTask.agent != nil {
-                        Label("Custom override active", systemImage: "slider.horizontal.3")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Label(overrideSummaryCaption, systemImage: draftTask.agent == nil ? "arrow.down.circle" : "slider.horizontal.3")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 16) {
-                    Picker("Runner", selection: taskRunnerBinding) {
-                        Text("Inherit").tag("inherit")
-                        ForEach(Self.runnerOptions, id: \.self) { runner in
-                            Text(runner).tag(runner)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(width: 170)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Model")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("Inherit from config", text: taskModelBinding)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(minWidth: 220)
-                    }
-
-                    Spacer()
-                }
-
-                HStack(spacing: 16) {
-                    Picker("Reasoning Effort", selection: taskEffortBinding) {
-                        Text("Inherit").tag("inherit")
-                        ForEach(Self.effortOptions, id: \.self) { effort in
-                            Text(effort).tag(effort)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(width: 170)
-                    .disabled(taskEffortDisabled)
-
-                    Picker("Phases", selection: taskPhasesBinding) {
-                        Text("Inherit").tag(0)
-                        Text("1").tag(1)
-                        Text("2").tag(2)
-                        Text("3").tag(3)
-                    }
-                    .pickerStyle(.menu)
-                    .frame(width: 130)
-
-                    Picker("Iterations", selection: taskIterationsBinding) {
-                        Text("Inherit").tag(0)
-                        ForEach(1...10, id: \.self) { iteration in
-                            Text(String(iteration)).tag(iteration)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(width: 130)
-
-                    Spacer()
-                }
-
-                Text(taskEffortDisabled
-                    ? "Reasoning effort is ignored unless runner is codex. Set runner to codex or inherit."
-                    : "Reasoning effort is only used when the resolved runner is codex."
-                )
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-
-                if let inheritedConfigCaption {
-                    Text(inheritedConfigCaption)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Divider()
-
-                HStack {
-                    Text("Per-Phase Overrides")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("Using \(resolvedPhaseCount) phase\(resolvedPhaseCount == 1 ? "" : "s")")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                ForEach(1...resolvedPhaseCount, id: \.self) { phase in
-                    phaseOverrideEditor(
-                        title: phaseTitle(phase),
-                        phase: phase
-                    )
-                }
-
-                if hasIgnoredPhaseOverrides {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.yellow)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Some phase overrides are currently ignored.")
-                                .font(.caption)
-                                .foregroundStyle(.primary)
-                            Text("Overrides for phases above your selected phase count are not used until you increase phases again.")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button("Trim Ignored") {
-                            trimIgnoredPhaseOverrides()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-                    .padding(8)
-                    .background(Color(NSColor.windowBackgroundColor).opacity(0.35))
-                    .clipShape(.rect(cornerRadius: 8))
-                }
-
-                HStack {
-                    Spacer()
-                    Button("Clear Execution Overrides") {
-                        draftTask.agent = nil
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(draftTask.agent == nil)
-                }
-            }
         }
     }
 
@@ -642,313 +490,6 @@ struct TaskDetailView: View {
         .accessibilityLabel("Add \(title) field")
     }
 
-    @ViewBuilder
-    private func phaseOverrideEditor(
-        title: String,
-        phase: Int
-    ) -> some View {
-        let effortDisabled = phaseEffortDisabled(phase: phase)
-        let hasOverride = phaseOverride(for: phase) != nil
-
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Clear") {
-                    setPhaseOverride(nil, phase: phase)
-                }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
-                .disabled(!hasOverride)
-            }
-
-            HStack(spacing: 12) {
-                Picker("Runner", selection: phaseRunnerBinding(phase: phase)) {
-                    Text("Inherit").tag("inherit")
-                    ForEach(Self.runnerOptions, id: \.self) { runner in
-                        Text(runner).tag(runner)
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 160)
-
-                TextField("Model (inherit if empty)", text: phaseModelBinding(phase: phase))
-                    .textFieldStyle(.roundedBorder)
-
-                Picker("Effort", selection: phaseEffortBinding(phase: phase)) {
-                    Text("Inherit").tag("inherit")
-                    ForEach(Self.effortOptions, id: \.self) { effort in
-                        Text(effort).tag(effort)
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 140)
-                .disabled(effortDisabled)
-            }
-
-            if effortDisabled {
-                Text("Reasoning effort applies only when the effective runner is codex.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(8)
-        .background(Color(NSColor.windowBackgroundColor).opacity(0.35))
-        .cornerRadius(8)
-    }
-
-    private var activeExecutionPreset: RalphTaskExecutionPreset? {
-        RalphTaskExecutionPreset.matchingPreset(for: draftTask.agent)
-    }
-
-    @ViewBuilder
-    private func presetButton(for preset: RalphTaskExecutionPreset) -> some View {
-        let isActive = activeExecutionPreset == preset
-        Button {
-            applyExecutionPreset(preset)
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(preset.displayName)
-                    .font(.caption.weight(.semibold))
-                Text(preset.description)
-                    .font(.caption2)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(isActive ? Color.white : Color.primary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .frame(minWidth: 160, idealWidth: 180, maxWidth: 220, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isActive ? Color.accentColor : Color(NSColor.windowBackgroundColor).opacity(0.35))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isActive ? Color.accentColor : Color.secondary.opacity(0.25), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func applyExecutionPreset(_ preset: RalphTaskExecutionPreset) {
-        draftTask.agent = RalphTaskAgent.normalizedOverride(preset.agentOverride)
-    }
-
-    @ViewBuilder
-    private var presetButtons: some View {
-        ForEach(RalphTaskExecutionPreset.allCases) { preset in
-            presetButton(for: preset)
-        }
-    }
-
-    private var overrideSummaryCaption: String {
-        guard let agent = RalphTaskAgent.normalizedOverride(draftTask.agent) else {
-            return "No task override. Runner/model/phases/iterations inherit from config."
-        }
-
-        var parts: [String] = []
-        if let runner = agent.runner { parts.append("runner \(runner)") }
-        if let model = agent.model { parts.append("model \(model)") }
-        if let effort = agent.modelEffort { parts.append("effort \(effort)") }
-        if let phases = agent.phases { parts.append("phases \(phases)") }
-        if let iterations = agent.iterations { parts.append("iterations \(iterations)") }
-        if let overrides = agent.phaseOverrides, !overrides.isEmpty {
-            let count = [overrides.phase1, overrides.phase2, overrides.phase3].compactMap { $0 }.count
-            parts.append("\(count) phase override\(count == 1 ? "" : "s")")
-        }
-        return parts.isEmpty ? "Task override active" : "Task override: \(parts.joined(separator: ", "))"
-    }
-
-    private var inheritedConfigCaption: String? {
-        guard let runnerConfig = workspace.currentRunnerConfig else { return nil }
-        let inheritedModel = runnerConfig.model ?? "default"
-        let inheritedIterations = runnerConfig.maxIterations.map(String.init) ?? "default"
-        let inheritedPhases = runnerConfig.phases.map(String.init) ?? "default"
-        return "Current inherited config: model \(inheritedModel), phases \(inheritedPhases), iterations \(inheritedIterations)."
-    }
-
-    private var resolvedPhaseCount: Int {
-        let taskPhases = draftTask.agent?.phases
-        let inheritedPhases = workspace.currentRunnerConfig?.phases
-        return min(max(taskPhases ?? inheritedPhases ?? 3, 1), 3)
-    }
-
-    private func phaseTitle(_ phase: Int) -> String {
-        switch phase {
-        case 1:
-            return "Phase 1 (Planning)"
-        case 2:
-            return "Phase 2 (Implementation)"
-        case 3:
-            return "Phase 3 (Review)"
-        default:
-            return "Phase \(phase)"
-        }
-    }
-
-    private var hasIgnoredPhaseOverrides: Bool {
-        let overrides = draftTask.agent?.phaseOverrides
-        if resolvedPhaseCount < 3, overrides?.phase3 != nil {
-            return true
-        }
-        if resolvedPhaseCount < 2, overrides?.phase2 != nil {
-            return true
-        }
-        return false
-    }
-
-    private func trimIgnoredPhaseOverrides() {
-        mutateTaskAgent { agent in
-            guard var overrides = agent.phaseOverrides else { return }
-            if resolvedPhaseCount < 2 {
-                overrides.phase2 = nil
-            }
-            if resolvedPhaseCount < 3 {
-                overrides.phase3 = nil
-            }
-            agent.phaseOverrides = overrides.isEmpty ? nil : overrides
-        }
-    }
-
-    private var taskRunnerBinding: Binding<String> {
-        Binding(
-            get: { draftTask.agent?.runner ?? "inherit" },
-            set: { value in
-                mutateTaskAgent { agent in
-                    agent.runner = value == "inherit" ? nil : value
-                }
-            }
-        )
-    }
-
-    private var taskModelBinding: Binding<String> {
-        Binding(
-            get: { draftTask.agent?.model ?? "" },
-            set: { value in
-                mutateTaskAgent { agent in
-                    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                    agent.model = trimmed.isEmpty ? nil : trimmed
-                }
-            }
-        )
-    }
-
-    private var taskEffortBinding: Binding<String> {
-        Binding(
-            get: { draftTask.agent?.modelEffort ?? "inherit" },
-            set: { value in
-                mutateTaskAgent { agent in
-                    agent.modelEffort = value == "inherit" ? nil : value
-                }
-            }
-        )
-    }
-
-    private var taskEffortDisabled: Bool {
-        guard let runner = normalizedRunnerName(draftTask.agent?.runner) else { return false }
-        return runner != "codex"
-    }
-
-    private var taskPhasesBinding: Binding<Int> {
-        Binding(
-            get: { draftTask.agent?.phases ?? 0 },
-            set: { value in
-                mutateTaskAgent { agent in
-                    agent.phases = value == 0 ? nil : value
-                }
-            }
-        )
-    }
-
-    private var taskIterationsBinding: Binding<Int> {
-        Binding(
-            get: { draftTask.agent?.iterations ?? 0 },
-            set: { value in
-                mutateTaskAgent { agent in
-                    agent.iterations = value == 0 ? nil : value
-                }
-            }
-        )
-    }
-
-    private func phaseOverride(for phase: Int) -> RalphTaskPhaseOverride? {
-        switch phase {
-        case 1: return draftTask.agent?.phaseOverrides?.phase1
-        case 2: return draftTask.agent?.phaseOverrides?.phase2
-        case 3: return draftTask.agent?.phaseOverrides?.phase3
-        default: return nil
-        }
-    }
-
-    private func setPhaseOverride(_ value: RalphTaskPhaseOverride?, phase: Int) {
-        mutateTaskAgent { agent in
-            var overrides = agent.phaseOverrides ?? RalphTaskPhaseOverrides()
-            switch phase {
-            case 1: overrides.phase1 = value
-            case 2: overrides.phase2 = value
-            case 3: overrides.phase3 = value
-            default: break
-            }
-            agent.phaseOverrides = overrides.isEmpty ? nil : overrides
-        }
-    }
-
-    private func phaseRunnerBinding(phase: Int) -> Binding<String> {
-        Binding(
-            get: { phaseOverride(for: phase)?.runner ?? "inherit" },
-            set: { value in
-                var updated = phaseOverride(for: phase) ?? RalphTaskPhaseOverride()
-                updated.runner = value == "inherit" ? nil : value
-                setPhaseOverride(updated.isEmpty ? nil : updated, phase: phase)
-            }
-        )
-    }
-
-    private func phaseModelBinding(phase: Int) -> Binding<String> {
-        Binding(
-            get: { phaseOverride(for: phase)?.model ?? "" },
-            set: { value in
-                var updated = phaseOverride(for: phase) ?? RalphTaskPhaseOverride()
-                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                updated.model = trimmed.isEmpty ? nil : trimmed
-                setPhaseOverride(updated.isEmpty ? nil : updated, phase: phase)
-            }
-        )
-    }
-
-    private func phaseEffortBinding(phase: Int) -> Binding<String> {
-        Binding(
-            get: { phaseOverride(for: phase)?.reasoningEffort ?? "inherit" },
-            set: { value in
-                var updated = phaseOverride(for: phase) ?? RalphTaskPhaseOverride()
-                updated.reasoningEffort = value == "inherit" ? nil : value
-                setPhaseOverride(updated.isEmpty ? nil : updated, phase: phase)
-            }
-        )
-    }
-
-    private func phaseEffortDisabled(phase: Int) -> Bool {
-        let phaseRunner = normalizedRunnerName(phaseOverride(for: phase)?.runner)
-        let taskRunner = normalizedRunnerName(draftTask.agent?.runner)
-        guard let effectiveRunner = phaseRunner ?? taskRunner else { return false }
-        return effectiveRunner != "codex"
-    }
-
-    private func normalizedRunnerName(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return normalized.isEmpty ? nil : normalized
-    }
-
-    private func mutateTaskAgent(_ mutate: (inout RalphTaskAgent) -> Void) {
-        var agent = draftTask.agent ?? RalphTaskAgent()
-        mutate(&agent)
-        draftTask.agent = RalphTaskAgent.normalizedOverride(agent)
-    }
-
     // MARK: - Helper Methods
 
     private func glassGroupBox<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -976,7 +517,7 @@ struct TaskDetailView: View {
             showingConflictAlert = true
             return
         }
-        
+
         isSaving = true
         saveError = nil
         saveSuccess = false
@@ -994,16 +535,18 @@ struct TaskDetailView: View {
                 saveSuccess = true
                 hasConflict = false
                 conflictedExternalTask = nil
-                
+
                 // Update baseline after successful save so future optimistic-lock checks are accurate.
                 draftTask = persistedTask
                 baselineTask = persistedTask
                 originalUpdatedAt = persistedTask.updatedAt
                 onTaskUpdated?(persistedTask)
-                
+
                 // Clear success indicator after 2 seconds
-                withAnimation(.easeInOut.delay(2)) {
-                    saveSuccess = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation(.easeInOut) {
+                        saveSuccess = false
+                    }
                 }
             } catch let error as Workspace.WorkspaceError {
                 isSaving = false
@@ -1020,9 +563,9 @@ struct TaskDetailView: View {
             }
         }
     }
-    
+
     // MARK: - Conflict Detection
-    
+
     private func checkForExternalChanges() {
         guard !isSaving else { return }
 
@@ -1037,7 +580,7 @@ struct TaskDetailView: View {
             }
             return
         }
-        
+
         // Check for conflict using optimistic locking
         if let externalTask = workspace.checkForConflict(
             taskID: task.id,
@@ -1048,7 +591,7 @@ struct TaskDetailView: View {
             showingConflictAlert = true
         }
     }
-    
+
     private func discardLocalChanges() {
         if let externalTask = conflictedExternalTask {
             draftTask = externalTask
@@ -1059,6 +602,11 @@ struct TaskDetailView: View {
         }
     }
 
+    private func mutateTaskAgent(_ mutate: (inout RalphTaskAgent) -> Void) {
+        var agent = draftTask.agent ?? RalphTaskAgent()
+        mutate(&agent)
+        draftTask.agent = RalphTaskAgent.normalizedOverride(agent)
+    }
 }
 
 // Preview
