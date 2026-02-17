@@ -83,7 +83,7 @@ fn ensure_test_worker_initialized() {
             secret: None,
             events: None,
             timeout_secs: Some(1),
-            retry_count: Some(0),
+            retry_count: Some(1),
             retry_backoff_ms: Some(1),
             queue_capacity: Some(1000),
             queue_policy: Some(WebhookQueuePolicy::DropNew),
@@ -200,29 +200,39 @@ fn webhook_send_is_non_blocking() {
 }
 
 /// Test retry behavior with failing endpoint.
-/// Note: This test verifies the retry logic exists by checking the code path
-/// doesn't panic. Due to global worker constraints in tests, we verify
-/// the webhook system handles retry configuration without errors.
+/// This test verifies that the webhook worker actually makes multiple delivery
+/// attempts when configured with retry_count > 0 and the endpoint returns errors.
 #[test]
 #[serial]
 fn webhook_retries_failed_deliveries() {
     ensure_test_worker_initialized();
 
-    // Start a server that returns 500 (failure)
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
+    let expected_task_id = unique_test_id("TEST-RETRY");
+    let expected_task_id_clone = expected_task_id.clone();
+
+    // Count delivery attempts for this specific task
+    let attempt_count = Arc::new(AtomicUsize::new(0));
+    let attempt_count_clone = Arc::clone(&attempt_count);
 
     thread::spawn(move || {
-        if let Ok((mut stream, _)) = listener.accept() {
-            let mut buf = [0u8; 1024];
-            let _ = stream.read(&mut buf);
+        while let Ok((mut stream, _)) = listener.accept() {
+            let request = read_http_request_with_body(&mut stream);
             // Return error to trigger retry path
             let _ = stream.write_all(b"HTTP/1.1 500 Internal Server Error\r\n\r\n");
+
+            // Only count attempts for our specific task
+            if parse_http_json_body(&request).is_some_and(|json| {
+                json.get("task_id").and_then(serde_json::Value::as_str)
+                    == Some(expected_task_id_clone.as_str())
+            }) {
+                attempt_count_clone.fetch_add(1, Ordering::SeqCst);
+            }
         }
     });
 
-    // Configure with 1 retry - this tests that retry config is accepted
-    // and the worker doesn't panic when processing retries
+    // Configure with 1 retry = 2 total attempts (initial + 1 retry)
     let config = WebhookConfig {
         enabled: Some(true),
         url: Some(format!("http://127.0.0.1:{}/webhook", port)),
@@ -230,17 +240,32 @@ fn webhook_retries_failed_deliveries() {
         events: None,
         timeout_secs: Some(5),
         retry_count: Some(1),
-        retry_backoff_ms: Some(10),
+        retry_backoff_ms: Some(10), // Fast backoff for test
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
     };
 
+    // Enqueue should remain non-blocking
     let start = Instant::now();
-    webhook::notify_task_created("TEST-0002", "Test", &config, "2024-01-01T00:00:00Z");
+    webhook::notify_task_created(&expected_task_id, "Test", &config, "2024-01-01T00:00:00Z");
     let elapsed = start.elapsed();
     assert!(
         elapsed < Duration::from_secs(1),
-        "enqueue should remain non-blocking even with retries configured; elapsed={elapsed:?}"
+        "enqueue should remain non-blocking; elapsed={elapsed:?}"
+    );
+
+    // Wait for expected retry attempts (initial + retry_count = 2 total)
+    let expected_attempts = 2;
+    let attempts_observed =
+        test_support::wait_until(Duration::from_secs(10), Duration::from_millis(50), || {
+            attempt_count.load(Ordering::SeqCst) >= expected_attempts
+        });
+
+    assert!(
+        attempts_observed,
+        "expected at least {} delivery attempts for retry_count=1, got {}",
+        expected_attempts,
+        attempt_count.load(Ordering::SeqCst)
     );
 }
 
