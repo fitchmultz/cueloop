@@ -10,6 +10,8 @@
 
 use std::process::Command;
 
+use anyhow::Context;
+
 /// Result of checking a runner binary.
 #[derive(Debug, Clone)]
 pub struct BinaryStatus {
@@ -54,7 +56,8 @@ fn try_command(bin: &str, args: &[&str]) -> anyhow::Result<String> {
         .args(args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        .output()?;
+        .output()
+        .with_context(|| format!("failed to execute runner binary '{}'", bin))?;
 
     if output.status.success() {
         // Combine stdout and stderr for version parsing
@@ -62,7 +65,14 @@ fn try_command(bin: &str, args: &[&str]) -> anyhow::Result<String> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Ok(format!("{}{}", stdout, stderr))
     } else {
-        anyhow::bail!("exit code: {}", output.status)
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let cmd_display = format!("{} {}", bin, args.join(" "));
+        anyhow::bail!(
+            "runner binary check failed\n  command: {}\n  exit code: {}\n  stderr: {}",
+            cmd_display.trim(),
+            output.status,
+            stderr.trim()
+        )
     }
 }
 

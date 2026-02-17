@@ -212,7 +212,17 @@ pub fn replay_failed_deliveries(
     dry_run: bool,
 ) -> Result<ReplayReport> {
     if selector.ids.is_empty() && selector.event.is_none() && selector.task_id.is_none() {
-        bail!("Refusing broad replay. Provide --id, --event, or --task-id.");
+        bail!(
+            "refusing unbounded replay (would redeliver all failures)\n\
+             this could overwhelm external systems or re-trigger side effects\n\
+             \n\
+             examples:\n\
+             \n\
+             ralph webhook replay --id <failure-id>     # replay specific failure\n\
+             ralph webhook replay --event task.done     # replay all task.done failures\n\
+             ralph webhook replay --task-id RQ-0001     # replay failures for a task\n\
+             ralph webhook replay --id a,b,c --limit 5  # replay up to 5 specific failures"
+        );
     }
 
     if selector.max_replay_attempts == 0 {

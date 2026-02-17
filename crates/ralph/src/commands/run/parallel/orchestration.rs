@@ -734,7 +734,23 @@ pub(crate) fn run_loop_parallel(
         match handle.join() {
             Ok(Ok(())) => {}
             Ok(Err(err)) => return Err(err),
-            Err(_) => bail!("Merge runner thread panicked"),
+            Err(panic_info) => {
+                let panic_msg = panic_info
+                    .downcast_ref::<&str>()
+                    .map(|s| s.to_string())
+                    .or_else(|| panic_info.downcast_ref::<String>().cloned())
+                    .unwrap_or_else(|| "unknown panic".to_string());
+                bail!(
+                    "merge runner thread panicked: {}\n\
+                     recovery suggestions:\n\
+                     \n\
+                     1. Check .ralph/logs/ for detailed merge logs\n\
+                     2. Run `git status` to inspect repository state\n\
+                     3. Manually complete merges with `ralph merge --continue` if needed\n\
+                     4. If persistent, report this bug with the panic message",
+                    panic_msg
+                );
+            }
         }
     }
 
