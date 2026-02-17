@@ -1,5 +1,9 @@
 //! Merge runner for parallel PRs and AI-based conflict resolution.
 //!
+//! NOTE: This module is deprecated in favor of merge-agent subprocess architecture.
+//! It is kept for backward compatibility and tests but should not be used in new code.
+//! See `spawn_merge_agent` in `parallel/mod.rs` for the new approach.
+//!
 //! Responsibilities:
 //! - Consume PR work items and attempt merges based on configured policy.
 //! - Validate PR head branch names match the expected naming convention.
@@ -16,6 +20,8 @@
 //! - PRs originate from branches named with the configured prefix.
 //! - Workspaces remain available until merge completion or failure.
 //! - Each work item carries a trusted task_id (from queue/state, not derived from PR head).
+
+#![allow(dead_code)]
 
 mod completion;
 mod conflict;

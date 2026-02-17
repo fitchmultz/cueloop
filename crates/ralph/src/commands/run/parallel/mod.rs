@@ -4,6 +4,7 @@
 //! - Coordinate parallel task execution across multiple workers.
 //! - Manage settings resolution and preflight validation.
 //! - Track worker capacity and task pruning.
+//! - Spawn merge-agent subprocess for PR merging (new architecture).
 //!
 //! Not handled here:
 //! - Main orchestration loop (see `orchestration`).
@@ -19,11 +20,13 @@
 //! - PR creation relies on authenticated `gh` CLI access.
 
 use crate::agent::AgentOverrides;
+use crate::commands::run::merge_agent::{MergeAgentResult, exit_codes};
 use crate::config;
 use crate::contracts::{ConflictPolicy, MergeRunnerConfig, ParallelMergeMethod, ParallelMergeWhen};
 use crate::{git, timeutil};
 use anyhow::{Context, Result, bail};
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 
 mod args;
 mod cleanup_guard;
@@ -41,8 +44,125 @@ pub(crate) use orchestration::run_loop_parallel;
 
 use cleanup_guard::ParallelCleanupGuard;
 use merge_runner::MergeResult;
-use queue_sync::apply_merge_queue_sync;
 use state_init::load_or_init_parallel_state;
+
+// =============================================================================
+// Merge-Agent Subprocess Helpers (new architecture)
+// =============================================================================
+
+/// Result of invoking merge-agent subprocess.
+#[derive(Debug, Clone)]
+pub(crate) struct MergeAgentOutcome {
+    /// Exit code from the merge-agent subprocess.
+    pub exit_code: i32,
+    /// Parsed JSON result from stdout (if available).
+    /// Note: Currently unused but kept for future extensibility.
+    #[allow(dead_code)]
+    pub result: Option<MergeAgentResult>,
+    /// Stderr output (for diagnostics).
+    pub stderr_output: String,
+}
+
+/// Classification of merge-agent exit codes for retry decisions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MergeExitClassification {
+    /// Merge succeeded (exit code 0).
+    Success,
+    /// Task already finalized (exit code 6) - idempotent success.
+    AlreadyFinalized,
+    /// Merge conflict - retryable after resolution (exit code 3).
+    ConflictRetryable,
+    /// Runtime failure - retryable with backoff (exit code 1).
+    RuntimeRetryable,
+    /// Terminal failure - non-retryable (exit codes 2, 4, 5, or others).
+    TerminalFailure,
+}
+
+/// Spawn merge-agent as a subprocess and wait for completion.
+///
+/// This replaces the internal merge-runner thread with explicit process boundaries.
+/// The merge-agent runs in the coordinator repo context (CWD) and returns
+/// structured JSON to stdout.
+///
+/// # Arguments
+/// * `repo_root` - Repository root path (CWD for merge-agent)
+/// * `task_id` - Task ID to finalize
+/// * `pr_number` - PR number to merge
+///
+/// # Returns
+/// A `MergeAgentOutcome` containing exit code, parsed result, and stderr output.
+pub(crate) fn spawn_merge_agent(
+    repo_root: &Path,
+    task_id: &str,
+    pr_number: u32,
+) -> Result<MergeAgentOutcome> {
+    let exe = std::env::current_exe().context("resolve current executable")?;
+
+    let output = std::process::Command::new(exe)
+        .current_dir(repo_root)
+        .args([
+            "run",
+            "merge-agent",
+            "--task",
+            task_id,
+            "--pr",
+            &pr_number.to_string(),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .with_context(|| {
+            format!(
+                "Failed to spawn merge-agent for task {} PR {}",
+                task_id, pr_number
+            )
+        })?;
+
+    let exit_code = output.status.code().unwrap_or(1);
+    let stderr_output = String::from_utf8_lossy(&output.stderr).to_string();
+
+    // Parse JSON result from stdout (may be empty on validation errors)
+    let result = if !output.stdout.is_empty() {
+        serde_json::from_slice::<MergeAgentResult>(&output.stdout)
+            .ok()
+            .or_else(|| {
+                log::warn!(
+                    "merge-agent stdout for {} was not valid JSON: {}",
+                    task_id,
+                    String::from_utf8_lossy(&output.stdout)
+                );
+                None
+            })
+    } else {
+        None
+    };
+
+    Ok(MergeAgentOutcome {
+        exit_code,
+        result,
+        stderr_output,
+    })
+}
+
+/// Classify merge-agent exit code for retry decision.
+///
+/// Exit codes (per merge_agent.rs):
+/// - 0: Success
+/// - 1: Runtime failure (retryable with backoff)
+/// - 2: Validation failure (non-retryable)
+/// - 3: Merge conflict (retryable after conflict resolution)
+/// - 4: PR not found/closed (non-retryable)
+/// - 5: PR is draft (non-retryable)
+/// - 6: Already finalized (idempotent success)
+pub(crate) fn classify_merge_exit_code(code: i32) -> MergeExitClassification {
+    match code {
+        exit_codes::SUCCESS => MergeExitClassification::Success,
+        exit_codes::ALREADY_FINALIZED => MergeExitClassification::AlreadyFinalized,
+        exit_codes::MERGE_CONFLICT => MergeExitClassification::ConflictRetryable,
+        exit_codes::RUNTIME_FAILURE => MergeExitClassification::RuntimeRetryable,
+        _ => MergeExitClassification::TerminalFailure,
+    }
+}
 
 pub(crate) struct ParallelRunOptions {
     pub max_tasks: u32,
@@ -59,11 +179,14 @@ pub(crate) struct ParallelSettings {
     pub(crate) auto_pr: bool,
     pub(crate) auto_merge: bool,
     pub(crate) draft_on_failure: bool,
+    #[allow(dead_code)]
     pub(crate) conflict_policy: ConflictPolicy,
     pub(crate) merge_retries: u8,
     pub(crate) workspace_root: PathBuf,
     pub(crate) branch_prefix: String,
+    #[allow(dead_code)]
     pub(crate) delete_branch_on_merge: bool,
+    #[allow(dead_code)]
     pub(crate) merge_runner: MergeRunnerConfig,
 }
 
@@ -235,6 +358,10 @@ fn record_finished_without_pr(
 ///
 /// Updates the PR record's merge_blocker field when the merge runner
 /// detects a head mismatch or other blocking condition.
+///
+/// Note: This function is deprecated in favor of merge-agent architecture
+/// but kept for backward compatibility.
+#[allow(dead_code)]
 fn persist_merge_blocker_from_result(
     state_path: &Path,
     state_file: &mut state::ParallelStateFile,
@@ -364,10 +491,7 @@ mod tests {
     use crate::contracts::{
         ConflictPolicy, MergeRunnerConfig, ParallelMergeMethod, ParallelMergeWhen,
     };
-    use merge_runner::MergeWorkItem;
     use std::cell::Cell;
-    use std::sync::atomic::AtomicBool;
-    use std::sync::{Arc, mpsc};
     use tempfile::TempDir;
 
     fn create_test_cleanup_guard(temp: &TempDir) -> ParallelCleanupGuard {
@@ -382,17 +506,7 @@ mod tests {
             ParallelMergeWhen::AsCreated,
         );
 
-        let (pr_tx, _pr_rx) = mpsc::channel::<MergeWorkItem>();
-        let merge_stop = Arc::new(AtomicBool::new(false));
-
-        ParallelCleanupGuard::new(
-            merge_stop,
-            pr_tx,
-            None,
-            state_path,
-            state_file,
-            workspace_root,
-        )
+        ParallelCleanupGuard::new_simple(state_path, state_file, workspace_root)
     }
 
     #[test]
@@ -958,5 +1072,76 @@ mod tests {
         assert!(!settings.auto_pr);
         assert!(!settings.auto_merge);
         assert!(!settings.draft_on_failure);
+    }
+
+    // =========================================================================
+    // Merge-Agent Subprocess Tests
+    // =========================================================================
+
+    #[test]
+    fn classify_merge_exit_codes() {
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::SUCCESS),
+            MergeExitClassification::Success
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::ALREADY_FINALIZED),
+            MergeExitClassification::AlreadyFinalized
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::MERGE_CONFLICT),
+            MergeExitClassification::ConflictRetryable
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::RUNTIME_FAILURE),
+            MergeExitClassification::RuntimeRetryable
+        );
+        // Terminal failures
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::VALIDATION_FAILURE),
+            MergeExitClassification::TerminalFailure
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::PR_NOT_FOUND),
+            MergeExitClassification::TerminalFailure
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::PR_IS_DRAFT),
+            MergeExitClassification::TerminalFailure
+        );
+        // Unknown codes are terminal
+        assert_eq!(
+            classify_merge_exit_code(99),
+            MergeExitClassification::TerminalFailure
+        );
+    }
+
+    #[test]
+    fn merge_exit_classification_retry_semantics() {
+        // Success and already finalized are not retryable (they're done)
+        assert!(!matches!(
+            MergeExitClassification::Success,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
+        assert!(!matches!(
+            MergeExitClassification::AlreadyFinalized,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
+
+        // Conflict and runtime are retryable
+        assert!(matches!(
+            MergeExitClassification::ConflictRetryable,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
+        assert!(matches!(
+            MergeExitClassification::RuntimeRetryable,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
+
+        // Terminal is not retryable
+        assert!(!matches!(
+            MergeExitClassification::TerminalFailure,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
     }
 }

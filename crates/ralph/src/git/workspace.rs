@@ -111,6 +111,9 @@ pub(crate) fn create_workspace_at(
 /// - Fetch `origin --prune`.
 /// - Checkout/reset branch to remote: `checkout -B <branch> origin/<branch>`.
 /// - Hard reset + clean to ensure deterministic working tree.
+///
+/// Note: Kept for backward compatibility with merge-runner module.
+#[allow(dead_code)]
 pub(crate) fn ensure_workspace_exists(
     repo_root: &Path,
     workspace_path: &Path,

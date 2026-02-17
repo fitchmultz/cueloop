@@ -2,11 +2,11 @@
 //!
 //! Responsibilities:
 //! - Define the parallel state file format and helpers.
-//! - Persist and reload state for in-flight tasks, PRs, and finished-without-PR blockers.
+//! - Persist and reload state for in-flight tasks, PRs, pending merges, and finished-without-PR blockers.
 //!
 //! Not handled here:
 //! - Worker orchestration or process management (see `parallel/mod.rs`).
-//! - PR merge logic (see `merge_runner`).
+//! - PR merge logic (see `merge_agent`).
 //!
 //! Invariants/assumptions:
 //! - State file lives at `.ralph/cache/parallel/state.json`.
@@ -20,6 +20,47 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use time::OffsetDateTime;
+
+// =============================================================================
+// Pending Merge Job (new architecture - merge-agent subprocess)
+// =============================================================================
+
+/// Lifecycle states for a pending merge job.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum PendingMergeLifecycle {
+    #[default]
+    Queued,
+    InProgress,
+    RetryableFailed,
+    TerminalFailed,
+}
+
+/// A merge job waiting to be processed or currently in progress.
+///
+/// This struct tracks merge jobs that are queued for the merge-agent subprocess.
+/// The coordinator enqueues these after a worker succeeds and creates a PR,
+/// then processes them via subprocess invocation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PendingMergeJob {
+    /// Task ID associated with this merge job.
+    pub task_id: String,
+    /// PR number to merge.
+    pub pr_number: u32,
+    /// Optional path to the workspace (for cleanup after merge).
+    pub workspace_path: Option<PathBuf>,
+    /// Current lifecycle state.
+    #[serde(default)]
+    pub lifecycle: PendingMergeLifecycle,
+    /// Number of merge attempts (for retry policy).
+    #[serde(default)]
+    pub attempts: u8,
+    /// Timestamp when queued (RFC3339).
+    pub queued_at: String,
+    /// Last error message if failed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParallelStateFile {
@@ -37,6 +78,9 @@ pub struct ParallelStateFile {
     pub prs: Vec<ParallelPrRecord>,
     #[serde(default)]
     pub finished_without_pr: Vec<ParallelFinishedWithoutPrRecord>,
+    /// Merge jobs queued or in-progress (new architecture using merge-agent subprocess).
+    #[serde(default)]
+    pub pending_merges: Vec<PendingMergeJob>,
 }
 
 impl ParallelStateFile {
@@ -54,6 +98,7 @@ impl ParallelStateFile {
             tasks_in_flight: Vec::new(),
             prs: Vec::new(),
             finished_without_pr: Vec::new(),
+            pending_merges: Vec::new(),
         }
     }
 
@@ -132,6 +177,127 @@ impl ParallelStateFile {
             keep
         });
         dropped
+    }
+
+    // =========================================================================
+    // Pending Merge Job Management (new architecture - merge-agent subprocess)
+    // =========================================================================
+
+    /// Queue a new merge job after worker success.
+    ///
+    /// If a job for this task already exists, it is replaced with the new one.
+    pub fn enqueue_merge(&mut self, job: PendingMergeJob) {
+        // Remove any existing entry for this task
+        self.pending_merges.retain(|j| j.task_id != job.task_id);
+        self.pending_merges.push(job);
+    }
+
+    /// Get the next queued merge job (FIFO order).
+    pub fn next_queued_merge(&self) -> Option<&PendingMergeJob> {
+        self.pending_merges
+            .iter()
+            .find(|j| j.lifecycle == PendingMergeLifecycle::Queued)
+    }
+
+    /// Get the next queued merge job mutably (FIFO order).
+    pub fn next_queued_merge_mut(&mut self) -> Option<&mut PendingMergeJob> {
+        self.pending_merges
+            .iter_mut()
+            .find(|j| j.lifecycle == PendingMergeLifecycle::Queued)
+    }
+
+    /// Mark a merge job as in-progress.
+    pub fn mark_merge_in_progress(&mut self, task_id: &str) {
+        if let Some(job) = self
+            .pending_merges
+            .iter_mut()
+            .find(|j| j.task_id == task_id)
+        {
+            job.lifecycle = PendingMergeLifecycle::InProgress;
+        }
+    }
+
+    /// Update merge job after completion or failure.
+    ///
+    /// On success, the job will be marked for removal (lifecycle set to a marker).
+    /// On failure, attempts are incremented and lifecycle is set appropriately.
+    pub fn update_merge_result(
+        &mut self,
+        task_id: &str,
+        success: bool,
+        error: Option<String>,
+        retryable: bool,
+    ) {
+        if let Some(job) = self
+            .pending_merges
+            .iter_mut()
+            .find(|j| j.task_id == task_id)
+        {
+            if success {
+                // Mark for removal - caller should call remove_pending_merge
+                job.lifecycle = PendingMergeLifecycle::Queued; // marker for removal
+            } else {
+                job.attempts += 1;
+                job.lifecycle = if retryable {
+                    PendingMergeLifecycle::RetryableFailed
+                } else {
+                    PendingMergeLifecycle::TerminalFailed
+                };
+                job.last_error = error;
+            }
+        }
+    }
+
+    /// Set a pending merge back to queued state (for retry).
+    pub fn requeue_merge(&mut self, task_id: &str) {
+        if let Some(job) = self
+            .pending_merges
+            .iter_mut()
+            .find(|j| j.task_id == task_id)
+        {
+            job.lifecycle = PendingMergeLifecycle::Queued;
+        }
+    }
+
+    /// Mark a merge job as terminally failed.
+    pub fn mark_merge_terminal_failed(&mut self, task_id: &str, error: String) {
+        if let Some(job) = self
+            .pending_merges
+            .iter_mut()
+            .find(|j| j.task_id == task_id)
+        {
+            job.lifecycle = PendingMergeLifecycle::TerminalFailed;
+            job.last_error = Some(error);
+        }
+    }
+
+    /// Remove a completed merge job.
+    pub fn remove_pending_merge(&mut self, task_id: &str) {
+        self.pending_merges.retain(|j| j.task_id != task_id);
+    }
+
+    /// Count pending merges (for capacity tracking).
+    pub fn pending_merge_count(&self) -> usize {
+        self.pending_merges.len()
+    }
+
+    /// Check if there are any queued merges waiting to be processed.
+    pub fn has_queued_merges(&self) -> bool {
+        self.pending_merges
+            .iter()
+            .any(|j| j.lifecycle == PendingMergeLifecycle::Queued)
+    }
+
+    /// Get a pending merge job by task_id.
+    pub fn get_pending_merge(&self, task_id: &str) -> Option<&PendingMergeJob> {
+        self.pending_merges.iter().find(|j| j.task_id == task_id)
+    }
+
+    /// Get a mutable pending merge job by task_id.
+    pub fn get_pending_merge_mut(&mut self, task_id: &str) -> Option<&mut PendingMergeJob> {
+        self.pending_merges
+            .iter_mut()
+            .find(|j| j.task_id == task_id)
     }
 }
 
@@ -248,6 +414,9 @@ impl ParallelPrRecord {
         matches!(self.lifecycle, ParallelPrLifecycle::Open) && !self.merged
     }
 
+    /// Create a PrInfo from this record.
+    /// Note: Kept for backward compatibility with merge-runner tests.
+    #[allow(dead_code)]
     pub(crate) fn pr_info(&self, fallback_head: &str, fallback_base: &str) -> crate::git::PrInfo {
         let head = self
             .head
@@ -967,6 +1136,298 @@ exit 1
         assert!(matches!(pr2.lifecycle, ParallelPrLifecycle::Open));
         assert!(!pr2.merged);
 
+        Ok(())
+    }
+
+    // =========================================================================
+    // Pending Merge Job Tests
+    // =========================================================================
+
+    #[test]
+    fn pending_merge_job_serialization() {
+        let job = PendingMergeJob {
+            task_id: "RQ-0001".to_string(),
+            pr_number: 42,
+            workspace_path: Some(PathBuf::from("/tmp/ws")),
+            lifecycle: PendingMergeLifecycle::Queued,
+            attempts: 0,
+            queued_at: "2026-02-17T00:00:00Z".to_string(),
+            last_error: None,
+        };
+        let json = serde_json::to_string(&job).unwrap();
+        let parsed: PendingMergeJob = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.task_id, "RQ-0001");
+        assert_eq!(parsed.pr_number, 42);
+        assert_eq!(parsed.workspace_path, Some(PathBuf::from("/tmp/ws")));
+        assert_eq!(parsed.lifecycle, PendingMergeLifecycle::Queued);
+    }
+
+    #[test]
+    fn pending_merge_job_lifecycle_defaults_to_queued() {
+        let raw = r#"{
+            "task_id": "RQ-0002",
+            "pr_number": 1,
+            "queued_at": "2026-02-17T00:00:00Z"
+        }"#;
+        let job: PendingMergeJob = serde_json::from_str(raw).unwrap();
+        assert_eq!(job.lifecycle, PendingMergeLifecycle::Queued);
+        assert_eq!(job.attempts, 0);
+        assert!(job.last_error.is_none());
+    }
+
+    #[test]
+    fn state_file_enqueue_merge() {
+        let mut state = ParallelStateFile::new(
+            "2026-02-17T00:00:00Z".into(),
+            "main".into(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 1,
+            workspace_path: None,
+            lifecycle: PendingMergeLifecycle::Queued,
+            attempts: 0,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: None,
+        });
+
+        assert_eq!(state.pending_merges.len(), 1);
+        assert!(state.next_queued_merge().is_some());
+    }
+
+    #[test]
+    fn state_file_enqueue_replaces_existing() {
+        let mut state = ParallelStateFile::new(
+            "2026-02-17T00:00:00Z".into(),
+            "main".into(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 1,
+            workspace_path: None,
+            lifecycle: PendingMergeLifecycle::Queued,
+            attempts: 0,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: None,
+        });
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 2, // Updated PR number
+            workspace_path: Some(PathBuf::from("/tmp/ws")),
+            lifecycle: PendingMergeLifecycle::Queued,
+            attempts: 1,
+            queued_at: "2026-02-17T01:00:00Z".into(),
+            last_error: Some("previous error".into()),
+        });
+
+        assert_eq!(state.pending_merges.len(), 1);
+        let job = state.next_queued_merge().unwrap();
+        assert_eq!(job.pr_number, 2);
+        assert_eq!(job.attempts, 1);
+    }
+
+    #[test]
+    fn state_file_merge_lifecycle_transitions() {
+        let mut state = ParallelStateFile::new(
+            "2026-02-17T00:00:00Z".into(),
+            "main".into(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 1,
+            workspace_path: None,
+            lifecycle: PendingMergeLifecycle::Queued,
+            attempts: 0,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: None,
+        });
+
+        // Mark in-progress
+        state.mark_merge_in_progress("RQ-0001");
+        assert_eq!(
+            state.pending_merges[0].lifecycle,
+            PendingMergeLifecycle::InProgress
+        );
+
+        // Update with retryable failure
+        state.update_merge_result("RQ-0001", false, Some("conflict".into()), true);
+        assert_eq!(
+            state.pending_merges[0].lifecycle,
+            PendingMergeLifecycle::RetryableFailed
+        );
+        assert_eq!(state.pending_merges[0].attempts, 1);
+        assert_eq!(state.pending_merges[0].last_error, Some("conflict".into()));
+
+        // Requeue for retry
+        state.requeue_merge("RQ-0001");
+        assert_eq!(
+            state.pending_merges[0].lifecycle,
+            PendingMergeLifecycle::Queued
+        );
+
+        // Remove on success
+        state.remove_pending_merge("RQ-0001");
+        assert!(state.pending_merges.is_empty());
+    }
+
+    #[test]
+    fn state_file_update_merge_result_success() {
+        let mut state = ParallelStateFile::new(
+            "2026-02-17T00:00:00Z".into(),
+            "main".into(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 1,
+            workspace_path: None,
+            lifecycle: PendingMergeLifecycle::InProgress,
+            attempts: 2,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: Some("previous error".into()),
+        });
+
+        // Update with success
+        state.update_merge_result("RQ-0001", true, None, false);
+
+        // On success, lifecycle is set to Queued as a marker for removal
+        let job = state.get_pending_merge("RQ-0001").unwrap();
+        assert_eq!(job.lifecycle, PendingMergeLifecycle::Queued);
+    }
+
+    #[test]
+    fn state_file_update_merge_result_terminal_failure() {
+        let mut state = ParallelStateFile::new(
+            "2026-02-17T00:00:00Z".into(),
+            "main".into(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 1,
+            workspace_path: None,
+            lifecycle: PendingMergeLifecycle::InProgress,
+            attempts: 0,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: None,
+        });
+
+        // Update with terminal failure
+        state.update_merge_result("RQ-0001", false, Some("PR closed".into()), false);
+
+        let job = state.get_pending_merge("RQ-0001").unwrap();
+        assert_eq!(job.lifecycle, PendingMergeLifecycle::TerminalFailed);
+        assert_eq!(job.last_error, Some("PR closed".into()));
+    }
+
+    #[test]
+    fn state_file_pending_merge_count() {
+        let mut state = ParallelStateFile::new(
+            "2026-02-17T00:00:00Z".into(),
+            "main".into(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        assert_eq!(state.pending_merge_count(), 0);
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 1,
+            workspace_path: None,
+            lifecycle: PendingMergeLifecycle::Queued,
+            attempts: 0,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: None,
+        });
+
+        assert_eq!(state.pending_merge_count(), 1);
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0002".into(),
+            pr_number: 2,
+            workspace_path: None,
+            lifecycle: PendingMergeLifecycle::Queued,
+            attempts: 0,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: None,
+        });
+
+        assert_eq!(state.pending_merge_count(), 2);
+    }
+
+    #[test]
+    fn state_file_has_queued_merges() {
+        let mut state = ParallelStateFile::new(
+            "2026-02-17T00:00:00Z".into(),
+            "main".into(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        assert!(!state.has_queued_merges());
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 1,
+            workspace_path: None,
+            lifecycle: PendingMergeLifecycle::InProgress,
+            attempts: 0,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: None,
+        });
+
+        // InProgress should not count as queued
+        assert!(!state.has_queued_merges());
+
+        state.requeue_merge("RQ-0001");
+        assert!(state.has_queued_merges());
+    }
+
+    #[test]
+    fn state_file_round_trips_with_pending_merges() -> Result<()> {
+        let temp = TempDir::new()?;
+        let path = temp.path().join("state.json");
+        let mut state = ParallelStateFile::new(
+            "2026-02-17T00:00:00Z".to_string(),
+            "main".to_string(),
+            ParallelMergeMethod::Squash,
+            ParallelMergeWhen::AsCreated,
+        );
+
+        state.enqueue_merge(PendingMergeJob {
+            task_id: "RQ-0001".into(),
+            pr_number: 42,
+            workspace_path: Some(PathBuf::from("/tmp/ws/RQ-0001")),
+            lifecycle: PendingMergeLifecycle::Queued,
+            attempts: 1,
+            queued_at: "2026-02-17T00:00:00Z".into(),
+            last_error: Some("previous attempt failed".into()),
+        });
+
+        save_state(&path, &state)?;
+        let loaded = load_state(&path)?.expect("state should exist");
+
+        assert_eq!(loaded.pending_merges.len(), 1);
+        let job = &loaded.pending_merges[0];
+        assert_eq!(job.task_id, "RQ-0001");
+        assert_eq!(job.pr_number, 42);
+        assert_eq!(job.attempts, 1);
+        assert_eq!(job.last_error, Some("previous attempt failed".into()));
         Ok(())
     }
 }

@@ -94,10 +94,14 @@ pub(crate) fn render_task_updater_prompt(
     )
 }
 
+/// Note: Kept for backward compatibility with merge-runner module.
+#[allow(dead_code)]
 pub(crate) fn load_merge_conflict_prompt(repo_root: &Path) -> Result<String> {
     prompts_internal::merge_conflicts::load_merge_conflict_prompt(repo_root)
 }
 
+/// Note: Kept for backward compatibility with merge-runner module.
+#[allow(dead_code)]
 pub(crate) fn render_merge_conflict_prompt(
     template: &str,
     conflict_files: &[String],
