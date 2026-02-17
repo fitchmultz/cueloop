@@ -59,10 +59,22 @@ pub(crate) fn execute_iteration_phases(
         let is_followup = iteration_index > 1;
         let is_final_iteration = iteration_index == setup.iteration_settings.count;
 
+        // Log for structured logging (visible in log files)
         log::info!(
             "Task {task_id}: iteration {iteration_index}/{}",
             setup.iteration_settings.count
         );
+
+        // Print to stderr for guaranteed user visibility (not buried in runner output)
+        if setup.iteration_settings.count > 1 {
+            if is_followup {
+                eprintln!(); // Blank line separator between iterations
+            }
+            eprintln!(
+                "━━━ Iteration {iteration_index}/{} ━━━",
+                setup.iteration_settings.count
+            );
+        }
 
         let phase2_settings = apply_followup_reasoning_effort(
             &setup.phase_matrix.phase2.to_agent_settings(),
