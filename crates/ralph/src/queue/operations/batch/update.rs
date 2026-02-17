@@ -16,9 +16,11 @@
 use crate::contracts::{QueueFile, TaskStatus};
 use crate::queue;
 use crate::queue::TaskEditKey;
-use anyhow::{Result, bail};
+use anyhow::Result;
 
-use super::{BatchOperationResult, BatchTaskResult, deduplicate_task_ids, validate_task_ids_exist};
+use super::{
+    BatchOperationResult, BatchResultCollector, preprocess_batch_ids, validate_task_ids_exist,
+};
 
 /// Batch set status for multiple tasks.
 ///
@@ -40,60 +42,29 @@ pub fn batch_set_status(
     note: Option<&str>,
     continue_on_error: bool,
 ) -> Result<BatchOperationResult> {
-    let unique_ids = deduplicate_task_ids(task_ids);
-
-    if unique_ids.is_empty() {
-        bail!("No task IDs provided for batch status update");
-    }
+    let unique_ids = preprocess_batch_ids(task_ids, "status update")?;
 
     // In atomic mode, validate all IDs exist first
     if !continue_on_error {
         validate_task_ids_exist(queue, &unique_ids)?;
     }
 
-    let mut results = Vec::new();
-    let mut succeeded = 0;
-    let mut failed = 0;
+    let mut collector =
+        BatchResultCollector::new(unique_ids.len(), continue_on_error, "status update");
 
     for task_id in &unique_ids {
         match queue::set_status(queue, task_id, status, now_rfc3339, note) {
             Ok(()) => {
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: true,
-                    error: None,
-                    created_task_ids: Vec::new(),
-                });
-                succeeded += 1;
+                collector.record_success(task_id.clone(), Vec::new());
             }
             Err(e) => {
                 let error_msg = e.to_string();
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: false,
-                    error: Some(error_msg.clone()),
-                    created_task_ids: Vec::new(),
-                });
-                failed += 1;
-
-                if !continue_on_error {
-                    // In atomic mode, we should have already validated, but just in case
-                    bail!(
-                        "Batch operation failed at task {}: {}. Use --continue-on-error to process remaining tasks.",
-                        task_id,
-                        error_msg
-                    );
-                }
+                collector.record_failure(task_id.clone(), error_msg)?;
             }
         }
     }
 
-    Ok(BatchOperationResult {
-        total: unique_ids.len(),
-        succeeded,
-        failed,
-        results,
-    })
+    Ok(collector.finish())
 }
 
 /// Batch set custom field for multiple tasks.
@@ -116,59 +87,29 @@ pub fn batch_set_field(
     now_rfc3339: &str,
     continue_on_error: bool,
 ) -> Result<BatchOperationResult> {
-    let unique_ids = deduplicate_task_ids(task_ids);
-
-    if unique_ids.is_empty() {
-        bail!("No task IDs provided for batch field update");
-    }
+    let unique_ids = preprocess_batch_ids(task_ids, "field update")?;
 
     // In atomic mode, validate all IDs exist first
     if !continue_on_error {
         validate_task_ids_exist(queue, &unique_ids)?;
     }
 
-    let mut results = Vec::new();
-    let mut succeeded = 0;
-    let mut failed = 0;
+    let mut collector =
+        BatchResultCollector::new(unique_ids.len(), continue_on_error, "field update");
 
     for task_id in &unique_ids {
         match queue::set_field(queue, task_id, key, value, now_rfc3339) {
             Ok(()) => {
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: true,
-                    error: None,
-                    created_task_ids: Vec::new(),
-                });
-                succeeded += 1;
+                collector.record_success(task_id.clone(), Vec::new());
             }
             Err(e) => {
                 let error_msg = e.to_string();
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: false,
-                    error: Some(error_msg.clone()),
-                    created_task_ids: Vec::new(),
-                });
-                failed += 1;
-
-                if !continue_on_error {
-                    bail!(
-                        "Batch operation failed at task {}: {}. Use --continue-on-error to process remaining tasks.",
-                        task_id,
-                        error_msg
-                    );
-                }
+                collector.record_failure(task_id.clone(), error_msg)?;
             }
         }
     }
 
-    Ok(BatchOperationResult {
-        total: unique_ids.len(),
-        succeeded,
-        failed,
-        results,
-    })
+    Ok(collector.finish())
 }
 
 /// Batch edit field for multiple tasks.
@@ -200,20 +141,14 @@ pub fn batch_apply_edit(
     max_dependency_depth: u8,
     continue_on_error: bool,
 ) -> Result<BatchOperationResult> {
-    let unique_ids = deduplicate_task_ids(task_ids);
-
-    if unique_ids.is_empty() {
-        bail!("No task IDs provided for batch edit");
-    }
+    let unique_ids = preprocess_batch_ids(task_ids, "edit")?;
 
     // In atomic mode, validate all IDs exist first
     if !continue_on_error {
         validate_task_ids_exist(queue, &unique_ids)?;
     }
 
-    let mut results = Vec::new();
-    let mut succeeded = 0;
-    let mut failed = 0;
+    let mut collector = BatchResultCollector::new(unique_ids.len(), continue_on_error, "edit");
 
     for task_id in &unique_ids {
         match queue::apply_task_edit(
@@ -228,39 +163,14 @@ pub fn batch_apply_edit(
             max_dependency_depth,
         ) {
             Ok(()) => {
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: true,
-                    error: None,
-                    created_task_ids: Vec::new(),
-                });
-                succeeded += 1;
+                collector.record_success(task_id.clone(), Vec::new());
             }
             Err(e) => {
                 let error_msg = e.to_string();
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: false,
-                    error: Some(error_msg.clone()),
-                    created_task_ids: Vec::new(),
-                });
-                failed += 1;
-
-                if !continue_on_error {
-                    bail!(
-                        "Batch operation failed at task {}: {}. Use --continue-on-error to process remaining tasks.",
-                        task_id,
-                        error_msg
-                    );
-                }
+                collector.record_failure(task_id.clone(), error_msg)?;
             }
         }
     }
 
-    Ok(BatchOperationResult {
-        total: unique_ids.len(),
-        succeeded,
-        failed,
-        results,
-    })
+    Ok(collector.finish())
 }

@@ -16,7 +16,9 @@
 use crate::contracts::QueueFile;
 use anyhow::{Result, bail};
 
-use super::{BatchOperationResult, BatchTaskResult, deduplicate_task_ids, validate_task_ids_exist};
+use super::{
+    BatchOperationResult, BatchResultCollector, preprocess_batch_ids, validate_task_ids_exist,
+};
 
 /// Batch append plan items to multiple tasks.
 ///
@@ -36,11 +38,7 @@ pub fn batch_plan_append(
     now_rfc3339: &str,
     continue_on_error: bool,
 ) -> Result<BatchOperationResult> {
-    let unique_ids = deduplicate_task_ids(task_ids);
-
-    if unique_ids.is_empty() {
-        bail!("No task IDs provided for batch plan append");
-    }
+    let unique_ids = preprocess_batch_ids(task_ids, "plan append")?;
 
     if plan_items.is_empty() {
         bail!("No plan items provided for batch plan append");
@@ -51,47 +49,24 @@ pub fn batch_plan_append(
         validate_task_ids_exist(queue, &unique_ids)?;
     }
 
-    let mut results = Vec::new();
-    let mut succeeded = 0;
-    let mut failed = 0;
+    let mut collector =
+        BatchResultCollector::new(unique_ids.len(), continue_on_error, "plan append");
 
     for task_id in &unique_ids {
         match queue.tasks.iter_mut().find(|t| t.id == *task_id) {
             Some(task) => {
                 task.plan.extend(plan_items.iter().cloned());
                 task.updated_at = Some(now_rfc3339.to_string());
-
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: true,
-                    error: None,
-                    created_task_ids: Vec::new(),
-                });
-                succeeded += 1;
+                collector.record_success(task_id.clone(), Vec::new());
             }
             None => {
-                let err_msg = format!("Task not found: {}", task_id);
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: false,
-                    error: Some(err_msg.clone()),
-                    created_task_ids: Vec::new(),
-                });
-                failed += 1;
-
-                if !continue_on_error {
-                    bail!("{}", err_msg);
-                }
+                collector
+                    .record_failure(task_id.clone(), format!("Task not found: {}", task_id))?;
             }
         }
     }
 
-    Ok(BatchOperationResult {
-        total: unique_ids.len(),
-        succeeded,
-        failed,
-        results,
-    })
+    Ok(collector.finish())
 }
 
 /// Batch prepend plan items to multiple tasks.
@@ -112,11 +87,7 @@ pub fn batch_plan_prepend(
     now_rfc3339: &str,
     continue_on_error: bool,
 ) -> Result<BatchOperationResult> {
-    let unique_ids = deduplicate_task_ids(task_ids);
-
-    if unique_ids.is_empty() {
-        bail!("No task IDs provided for batch plan prepend");
-    }
+    let unique_ids = preprocess_batch_ids(task_ids, "plan prepend")?;
 
     if plan_items.is_empty() {
         bail!("No plan items provided for batch plan prepend");
@@ -127,9 +98,8 @@ pub fn batch_plan_prepend(
         validate_task_ids_exist(queue, &unique_ids)?;
     }
 
-    let mut results = Vec::new();
-    let mut succeeded = 0;
-    let mut failed = 0;
+    let mut collector =
+        BatchResultCollector::new(unique_ids.len(), continue_on_error, "plan prepend");
 
     for task_id in &unique_ids {
         match queue.tasks.iter_mut().find(|t| t.id == *task_id) {
@@ -140,35 +110,14 @@ pub fn batch_plan_prepend(
                 task.plan = new_plan;
                 task.updated_at = Some(now_rfc3339.to_string());
 
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: true,
-                    error: None,
-                    created_task_ids: Vec::new(),
-                });
-                succeeded += 1;
+                collector.record_success(task_id.clone(), Vec::new());
             }
             None => {
-                let err_msg = format!("Task not found: {}", task_id);
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: false,
-                    error: Some(err_msg.clone()),
-                    created_task_ids: Vec::new(),
-                });
-                failed += 1;
-
-                if !continue_on_error {
-                    bail!("{}", err_msg);
-                }
+                collector
+                    .record_failure(task_id.clone(), format!("Task not found: {}", task_id))?;
             }
         }
     }
 
-    Ok(BatchOperationResult {
-        total: unique_ids.len(),
-        succeeded,
-        failed,
-        results,
-    })
+    Ok(collector.finish())
 }

@@ -19,7 +19,7 @@ use crate::queue;
 use crate::queue::operations::{CloneTaskOptions, SplitTaskOptions, suggest_new_task_insert_index};
 use anyhow::{Result, bail};
 
-use super::{BatchOperationResult, BatchTaskResult, deduplicate_task_ids};
+use super::{BatchOperationResult, BatchResultCollector, preprocess_batch_ids};
 
 /// Batch clone multiple tasks.
 ///
@@ -50,11 +50,7 @@ pub fn batch_clone_tasks(
     max_dependency_depth: u8,
     continue_on_error: bool,
 ) -> Result<BatchOperationResult> {
-    let unique_ids = deduplicate_task_ids(task_ids);
-
-    if unique_ids.is_empty() {
-        bail!("No task IDs provided for batch clone");
-    }
+    let unique_ids = preprocess_batch_ids(task_ids, "clone")?;
 
     // In atomic mode, validate all source tasks exist first
     if !continue_on_error {
@@ -67,16 +63,15 @@ pub fn batch_clone_tasks(
         }
     }
 
-    let mut results = Vec::new();
-    let mut succeeded = 0;
-    let mut failed = 0;
-
     // Create a working copy for atomic mode
     let original_queue = if !continue_on_error {
         Some(queue.clone())
     } else {
         None
     };
+
+    // Place the collector inside the rollback scope for atomic mode
+    let mut collector = BatchResultCollector::new(unique_ids.len(), continue_on_error, "clone");
 
     for task_id in &unique_ids {
         let opts = CloneTaskOptions::new(task_id, status, now_rfc3339, id_prefix, id_width)
@@ -89,45 +84,29 @@ pub fn batch_clone_tasks(
                 let insert_idx = suggest_new_task_insert_index(queue);
                 queue.tasks.insert(insert_idx, cloned_task);
 
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: true,
-                    error: None,
-                    created_task_ids: vec![new_id],
-                });
-                succeeded += 1;
+                collector.record_success(task_id.clone(), vec![new_id]);
             }
             Err(e) => {
                 let error_msg = e.to_string();
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: false,
-                    error: Some(error_msg.clone()),
-                    created_task_ids: Vec::new(),
-                });
-                failed += 1;
-
                 if !continue_on_error {
                     // Rollback: restore original queue
                     if let Some(ref original) = original_queue {
                         *queue = original.clone();
                     }
+                    // Use bail directly for the atomic mode error
                     bail!(
                         "Batch clone failed at task {}: {}. Use --continue-on-error to process remaining tasks.",
                         task_id,
                         error_msg
                     );
                 }
+                // In continue-on-error mode, record the failure
+                let _ = collector.record_failure(task_id.clone(), error_msg);
             }
         }
     }
 
-    Ok(BatchOperationResult {
-        total: unique_ids.len(),
-        succeeded,
-        failed,
-        results,
-    })
+    Ok(collector.finish())
 }
 
 /// Batch split multiple tasks into child tasks.
@@ -165,11 +144,7 @@ pub fn batch_split_tasks(
         bail!("Number of child tasks must be at least 2");
     }
 
-    let unique_ids = deduplicate_task_ids(task_ids);
-
-    if unique_ids.is_empty() {
-        bail!("No task IDs provided for batch split");
-    }
+    let unique_ids = preprocess_batch_ids(task_ids, "split")?;
 
     // In atomic mode, validate all source tasks exist first
     if !continue_on_error {
@@ -180,16 +155,15 @@ pub fn batch_split_tasks(
         }
     }
 
-    let mut results = Vec::new();
-    let mut succeeded = 0;
-    let mut failed = 0;
-
     // Create a working copy for atomic mode
     let original_queue = if !continue_on_error {
         Some(queue.clone())
     } else {
         None
     };
+
+    // Place the collector inside the rollback scope for atomic mode
+    let mut collector = BatchResultCollector::new(unique_ids.len(), continue_on_error, "split");
 
     for task_id in &unique_ids {
         let opts = SplitTaskOptions::new(task_id, number, status, now_rfc3339, id_prefix, id_width)
@@ -210,42 +184,22 @@ pub fn batch_split_tasks(
                         queue.tasks.insert(idx + 1 + i, child);
                     }
 
-                    results.push(BatchTaskResult {
-                        task_id: task_id.clone(),
-                        success: true,
-                        error: None,
-                        created_task_ids: child_ids,
-                    });
-                    succeeded += 1;
+                    collector.record_success(task_id.clone(), child_ids);
                 } else {
                     // This shouldn't happen since we validated above
                     let err_msg = "Source task disappeared during split".to_string();
-                    results.push(BatchTaskResult {
-                        task_id: task_id.clone(),
-                        success: false,
-                        error: Some(err_msg.clone()),
-                        created_task_ids: Vec::new(),
-                    });
-                    failed += 1;
-
                     if !continue_on_error {
                         if let Some(ref original) = original_queue {
                             *queue = original.clone();
                         }
                         bail!("{}", err_msg);
                     }
+                    // In continue-on-error mode, record the failure
+                    let _ = collector.record_failure(task_id.clone(), err_msg);
                 }
             }
             Err(e) => {
                 let error_msg = e.to_string();
-                results.push(BatchTaskResult {
-                    task_id: task_id.clone(),
-                    success: false,
-                    error: Some(error_msg.clone()),
-                    created_task_ids: Vec::new(),
-                });
-                failed += 1;
-
                 if !continue_on_error {
                     if let Some(ref original) = original_queue {
                         *queue = original.clone();
@@ -256,14 +210,11 @@ pub fn batch_split_tasks(
                         error_msg
                     );
                 }
+                // In continue-on-error mode, record the failure
+                let _ = collector.record_failure(task_id.clone(), error_msg);
             }
         }
     }
 
-    Ok(BatchOperationResult {
-        total: unique_ids.len(),
-        succeeded,
-        failed,
-        results,
-    })
+    Ok(collector.finish())
 }

@@ -101,10 +101,102 @@ pub(crate) fn validate_task_ids_exist(
     Ok(())
 }
 
+/// Collector for batch operation results with standardized error handling.
+///
+/// Responsibilities:
+/// - Track success/failure counts
+/// - Collect individual task results
+/// - Handle continue-on-error semantics
+///
+/// Does not handle:
+/// - Task ID deduplication (use preprocess_batch_ids)
+/// - Actual operation execution (caller responsibility)
+pub(crate) struct BatchResultCollector {
+    total: usize,
+    results: Vec<BatchTaskResult>,
+    succeeded: usize,
+    failed: usize,
+    continue_on_error: bool,
+    op_name: &'static str,
+}
+
+impl BatchResultCollector {
+    /// Create a new collector for a batch operation.
+    pub fn new(total: usize, continue_on_error: bool, op_name: &'static str) -> Self {
+        Self {
+            total,
+            results: Vec::with_capacity(total),
+            succeeded: 0,
+            failed: 0,
+            continue_on_error,
+            op_name,
+        }
+    }
+
+    /// Record a successful operation on a task.
+    pub fn record_success(&mut self, task_id: String, created_task_ids: Vec<String>) {
+        self.results.push(BatchTaskResult {
+            task_id,
+            success: true,
+            error: None,
+            created_task_ids,
+        });
+        self.succeeded += 1;
+    }
+
+    /// Record a failed operation on a task.
+    ///
+    /// Returns an error if not in continue-on-error mode, allowing caller to propagate.
+    pub fn record_failure(&mut self, task_id: String, error: String) -> anyhow::Result<()> {
+        self.results.push(BatchTaskResult {
+            task_id: task_id.clone(),
+            success: false,
+            error: Some(error.clone()),
+            created_task_ids: Vec::new(),
+        });
+        self.failed += 1;
+
+        if !self.continue_on_error {
+            anyhow::bail!(
+                "Batch {} failed at task {}: {}. Use --continue-on-error to process remaining tasks.",
+                self.op_name,
+                task_id,
+                error
+            );
+        }
+        Ok(())
+    }
+
+    /// Consume the collector and return the final result.
+    pub fn finish(self) -> BatchOperationResult {
+        BatchOperationResult {
+            total: self.total,
+            succeeded: self.succeeded,
+            failed: self.failed,
+            results: self.results,
+        }
+    }
+}
+
+/// Preprocess task IDs for batch operations.
+///
+/// Deduplicates task IDs and validates the list is not empty.
+pub(crate) fn preprocess_batch_ids(
+    task_ids: &[String],
+    op_name: &str,
+) -> anyhow::Result<Vec<String>> {
+    let unique_ids = deduplicate_task_ids(task_ids);
+    if unique_ids.is_empty() {
+        anyhow::bail!("No task IDs provided for batch {}", op_name);
+    }
+    Ok(unique_ids)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        batch_delete_tasks, batch_plan_append, batch_plan_prepend, parse_older_than_cutoff,
+        BatchResultCollector, batch_delete_tasks, batch_plan_append, batch_plan_prepend,
+        parse_older_than_cutoff, preprocess_batch_ids, validate_task_ids_exist,
     };
     use crate::contracts::{QueueFile, Task};
 
@@ -249,5 +341,163 @@ mod tests {
         assert_eq!(queue.tasks[0].plan.len(), 2);
         assert_eq!(queue.tasks[0].plan[0], "Step 1");
         assert_eq!(queue.tasks[0].plan[1], "Step 2");
+    }
+
+    // Tests for BatchResultCollector
+
+    #[test]
+    fn batch_result_collector_records_success() {
+        let mut collector = BatchResultCollector::new(2, false, "test");
+        collector.record_success("RQ-0001".to_string(), Vec::new());
+        collector.record_success("RQ-0002".to_string(), vec!["RQ-0003".to_string()]);
+        let result = collector.finish();
+        assert_eq!(result.total, 2);
+        assert_eq!(result.succeeded, 2);
+        assert_eq!(result.failed, 0);
+        assert!(result.all_succeeded());
+    }
+
+    #[test]
+    fn batch_result_collector_records_failure() {
+        let mut collector = BatchResultCollector::new(1, true, "test");
+        let _ = collector.record_failure("RQ-0001".to_string(), "error msg".to_string());
+        let result = collector.finish();
+        assert_eq!(result.total, 1);
+        assert_eq!(result.succeeded, 0);
+        assert_eq!(result.failed, 1);
+        assert!(result.has_failures());
+    }
+
+    #[test]
+    fn batch_result_collector_atomic_mode_fails_on_error() {
+        let mut collector = BatchResultCollector::new(1, false, "test");
+        let result = collector.record_failure("RQ-0001".to_string(), "error".to_string());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn preprocess_batch_ids_deduplicates() {
+        let ids = vec![
+            "RQ-0001".to_string(),
+            "RQ-0001".to_string(),
+            "RQ-0002".to_string(),
+        ];
+        let result = preprocess_batch_ids(&ids, "test").unwrap();
+        assert_eq!(result, vec!["RQ-0001", "RQ-0002"]);
+    }
+
+    #[test]
+    fn preprocess_batch_ids_rejects_empty() {
+        let result = preprocess_batch_ids(&[], "test");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn batch_result_collector_mixed_results() {
+        let mut collector = BatchResultCollector::new(3, true, "test");
+        collector.record_success("RQ-0001".to_string(), Vec::new());
+        let _ = collector.record_failure("RQ-0002".to_string(), "error".to_string());
+        collector.record_success("RQ-0003".to_string(), vec!["RQ-0004".to_string()]);
+        let result = collector.finish();
+        assert_eq!(result.total, 3);
+        assert_eq!(result.succeeded, 2);
+        assert_eq!(result.failed, 1);
+        assert!(result.has_failures());
+        assert!(!result.all_succeeded());
+    }
+
+    #[test]
+    fn batch_result_collector_error_message_content() {
+        let mut collector = BatchResultCollector::new(1, true, "test");
+        let _ = collector.record_failure("RQ-0001".to_string(), "task not found".to_string());
+        let result = collector.finish();
+        assert_eq!(result.results[0].task_id, "RQ-0001");
+        assert_eq!(result.results[0].error.as_ref().unwrap(), "task not found");
+    }
+
+    #[test]
+    fn preprocess_batch_ids_trims_whitespace() {
+        let ids = vec!["  RQ-0001  ".to_string(), "RQ-0002".to_string()];
+        let result = preprocess_batch_ids(&ids, "test").unwrap();
+        assert_eq!(result, vec!["RQ-0001", "RQ-0002"]);
+    }
+
+    #[test]
+    fn preprocess_batch_ids_preserves_order() {
+        let ids = vec![
+            "RQ-0003".to_string(),
+            "RQ-0001".to_string(),
+            "RQ-0003".to_string(),
+            "RQ-0002".to_string(),
+        ];
+        let result = preprocess_batch_ids(&ids, "test").unwrap();
+        assert_eq!(result, vec!["RQ-0003", "RQ-0001", "RQ-0002"]);
+    }
+
+    #[test]
+    fn batch_plan_append_atomic_fails_on_missing() {
+        let mut queue = QueueFile {
+            version: 1,
+            tasks: vec![Task {
+                id: "RQ-0001".to_string(),
+                title: "Task 1".to_string(),
+                plan: vec!["Step 1".to_string()],
+                ..Default::default()
+            }],
+        };
+
+        let result = batch_plan_append(
+            &mut queue,
+            &["RQ-0001".to_string(), "RQ-9999".to_string()],
+            &["Step 2".to_string()],
+            "2026-02-05T00:00:00Z",
+            false,
+        );
+        assert!(result.is_err());
+        // Queue should remain unchanged in atomic mode
+        assert_eq!(queue.tasks[0].plan.len(), 1);
+    }
+
+    #[test]
+    fn batch_plan_prepend_atomic_fails_on_missing() {
+        let mut queue = QueueFile {
+            version: 1,
+            tasks: vec![Task {
+                id: "RQ-0001".to_string(),
+                title: "Task 1".to_string(),
+                plan: vec!["Step 1".to_string()],
+                ..Default::default()
+            }],
+        };
+
+        let result = batch_plan_prepend(
+            &mut queue,
+            &["RQ-0001".to_string(), "RQ-9999".to_string()],
+            &["Step 0".to_string()],
+            "2026-02-05T00:00:00Z",
+            false,
+        );
+        assert!(result.is_err());
+        // Queue should remain unchanged in atomic mode
+        assert_eq!(queue.tasks[0].plan.len(), 1);
+        assert_eq!(queue.tasks[0].plan[0], "Step 1");
+    }
+
+    #[test]
+    fn validate_task_ids_exist_rejects_missing() {
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![Task {
+                id: "RQ-0001".to_string(),
+                title: "Task 1".to_string(),
+                ..Default::default()
+            }],
+        };
+
+        let result = validate_task_ids_exist(&queue, &["RQ-0001".to_string()]);
+        assert!(result.is_ok());
+
+        let result = validate_task_ids_exist(&queue, &["RQ-9999".to_string()]);
+        assert!(result.is_err());
     }
 }
