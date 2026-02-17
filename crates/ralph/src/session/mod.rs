@@ -76,6 +76,25 @@ pub fn clear_session(cache_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Increment the session's tasks_completed_in_loop counter and persist.
+///
+/// Returns Ok(()) on success, or an error if session load/save fails.
+/// Logs a warning on failure but does not propagate the error to avoid
+/// disrupting the run loop.
+pub fn increment_session_progress(cache_dir: &Path) -> Result<()> {
+    let mut session = match load_session(cache_dir)? {
+        Some(s) => s,
+        None => {
+            log::debug!("No session to increment progress for");
+            return Ok(());
+        }
+    };
+
+    let now = crate::timeutil::now_utc_rfc3339_or_fallback();
+    session.mark_task_complete(now);
+    save_session(cache_dir, &session)
+}
+
 /// Result of session validation.
 // Allow large enum variant because SessionState is naturally large (contains strings and phase
 // settings) and boxing would add complexity to all usage sites without meaningful benefit.
@@ -715,5 +734,38 @@ mod tests {
             matches!(result, SessionValidationResult::Valid(_)),
             "Session with future timestamp should be Valid (no timeout)"
         );
+    }
+
+    #[test]
+    fn increment_session_progress_updates_and_persists() {
+        let temp_dir = TempDir::new().unwrap();
+        let cache_dir = temp_dir.path().join("cache");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+
+        // Create initial session
+        let session = test_session("RQ-0001");
+        save_session(&cache_dir, &session).unwrap();
+
+        assert_eq!(session.tasks_completed_in_loop, 0);
+
+        // Increment once
+        increment_session_progress(&cache_dir).unwrap();
+        let loaded = load_session(&cache_dir).unwrap().unwrap();
+        assert_eq!(loaded.tasks_completed_in_loop, 1);
+
+        // Increment again
+        increment_session_progress(&cache_dir).unwrap();
+        let loaded = load_session(&cache_dir).unwrap().unwrap();
+        assert_eq!(loaded.tasks_completed_in_loop, 2);
+    }
+
+    #[test]
+    fn increment_session_progress_handles_missing_session() {
+        let temp_dir = TempDir::new().unwrap();
+        let cache_dir = temp_dir.path().join("cache");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+
+        // No session exists - should succeed without error
+        increment_session_progress(&cache_dir).unwrap();
     }
 }

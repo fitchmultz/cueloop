@@ -310,6 +310,12 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                     tasks_attempted += 1;
                     tasks_succeeded += 1;
                     consecutive_failures = 0; // Reset on success
+
+                    // Persist session progress for accurate resume limits
+                    if let Err(e) = session::increment_session_progress(&cache_dir) {
+                        log::warn!("Failed to persist session progress: {}", e);
+                    }
+
                     if initial_todo_count == 0 {
                         log::info!("RunLoop: task-complete (completed={completed})");
                     } else {
@@ -357,6 +363,12 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                     tasks_attempted += 1;
                     tasks_failed += 1;
                     consecutive_failures += 1;
+
+                    // Persist session progress for accurate resume limits
+                    if let Err(e) = session::increment_session_progress(&cache_dir) {
+                        log::warn!("Failed to persist session progress: {}", e);
+                    }
+
                     log::error!("RunLoop: task failed: {:#}", err);
 
                     // Safety check: prevent infinite loops from rapid consecutive failures

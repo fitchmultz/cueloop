@@ -208,3 +208,46 @@ fn invalid_phases_edge_cases() {
         );
     }
 }
+
+/// Regression test for RQ-0882: Verify that a resumed loop correctly honors
+/// the persisted tasks_completed_in_loop value when enforcing --max-tasks.
+#[test]
+fn resumed_loop_uses_persisted_progress_for_max_tasks() -> anyhow::Result<()> {
+    let temp = tempfile::TempDir::new()?;
+    let repo_root = temp.path().to_path_buf();
+    let cache_dir = repo_root.join(".ralph/cache");
+    std::fs::create_dir_all(&cache_dir)?;
+
+    // Create a session that simulates 2 tasks already completed
+    let mut session = crate::contracts::SessionState::new(
+        "test-session".to_string(),
+        "RQ-0001".to_string(),
+        crate::timeutil::now_utc_rfc3339_or_fallback(),
+        1,
+        crate::contracts::Runner::Claude,
+        "sonnet".to_string(),
+        5, // max_tasks=5
+        None,
+        None,
+    );
+    // Simulate 2 tasks already completed
+    session.tasks_completed_in_loop = 2;
+    session::save_session(&cache_dir, &session)?;
+
+    // Verify the persisted value is 2
+    let loaded = session::load_session(&cache_dir)?.expect("session exists");
+    assert_eq!(
+        loaded.tasks_completed_in_loop, 2,
+        "Session should have persisted tasks_completed_in_loop=2"
+    );
+
+    // Increment and verify it becomes 3
+    session::increment_session_progress(&cache_dir)?;
+    let loaded = session::load_session(&cache_dir)?.expect("session exists");
+    assert_eq!(
+        loaded.tasks_completed_in_loop, 3,
+        "After one increment, tasks_completed_in_loop should be 3"
+    );
+
+    Ok(())
+}
