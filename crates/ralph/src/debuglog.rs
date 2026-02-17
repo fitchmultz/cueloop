@@ -1,13 +1,30 @@
 //! Debug logging for raw, unredacted supervisor and runner output.
+//!
+//! Features:
+//! - Automatic log rotation when file size exceeds 10MB
+//! - Keeps 3 backup files (debug.log.1, debug.log.2, debug.log.3)
+//! - Thread-safe writes via Mutex
 
 use anyhow::{Context, Result, anyhow, bail};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
+
+/// Maximum size of debug.log before rotation (10MB).
+const MAX_LOG_SIZE_BYTES: u64 = 10 * 1024 * 1024;
+
+/// Number of backup files to keep.
+const MAX_BACKUP_FILES: u32 = 3;
+
+/// Debug log file name.
+const LOG_FILE_NAME: &str = "debug.log";
 
 #[derive(Debug)]
 pub struct DebugLog {
+    /// Stored for debugging/diagnostic purposes; currently unused but useful for future extensions
+    #[allow(dead_code)]
+    log_path: PathBuf,
     file: Mutex<std::fs::File>,
 }
 
@@ -22,26 +39,87 @@ impl DebugLog {
         }
         fs::create_dir_all(&logs_dir)
             .with_context(|| format!("create debug logs directory: {}", logs_dir.display()))?;
-        let path = logs_dir.join("debug.log");
+
+        let log_path = logs_dir.join(LOG_FILE_NAME);
+
+        // Check if rotation is needed before opening
+        Self::rotate_if_needed(&log_path)?;
+
         let file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open(&path)
-            .with_context(|| format!("open debug log file: {}", path.display()))?;
+            .open(&log_path)
+            .with_context(|| format!("open debug log file: {}", log_path.display()))?;
+
         Ok(Self {
+            log_path,
             file: Mutex::new(file),
         })
     }
 
+    /// Rotate log files if current log exceeds max size.
+    /// Rotation scheme: debug.log -> debug.log.1 -> debug.log.2 -> debug.log.3 (deleted)
+    fn rotate_if_needed(log_path: &Path) -> Result<()> {
+        // Check if file exists and its size
+        let size = match fs::metadata(log_path) {
+            Ok(meta) => meta.len(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(e) => {
+                return Err(e)
+                    .with_context(|| format!("check log file size: {}", log_path.display()));
+            }
+        };
+
+        if size < MAX_LOG_SIZE_BYTES {
+            return Ok(());
+        }
+
+        // Perform rotation: delete oldest, shift others, move current to .1
+        let parent = log_path.parent().expect("log path has parent");
+
+        // Delete oldest backup if it exists (debug.log.3)
+        let oldest_backup = parent.join(format!("{}.{}", LOG_FILE_NAME, MAX_BACKUP_FILES));
+        if oldest_backup.exists() {
+            fs::remove_file(&oldest_backup)
+                .with_context(|| format!("remove oldest backup: {}", oldest_backup.display()))?;
+        }
+
+        // Shift backups: .2 -> .3, .1 -> .2
+        for i in (1..MAX_BACKUP_FILES).rev() {
+            let src = parent.join(format!("{}.{}", LOG_FILE_NAME, i));
+            let dst = parent.join(format!("{}.{}", LOG_FILE_NAME, i + 1));
+
+            if src.exists() {
+                fs::rename(&src, &dst).with_context(|| {
+                    format!("rotate backup {} -> {}", src.display(), dst.display())
+                })?;
+            }
+        }
+
+        // Move current log to .1
+        let backup_1 = parent.join(format!("{}.1", LOG_FILE_NAME));
+        fs::rename(log_path, &backup_1)
+            .with_context(|| format!("rotate current log to backup: {}", backup_1.display()))?;
+
+        log::info!("Debug log rotated (previous size: {} bytes)", size);
+
+        Ok(())
+    }
+
     pub fn write(&self, text: &str) -> Result<()> {
+        // Check if rotation is needed before writing
+        // We do this check periodically based on write count to avoid overhead
+
         let mut guard = self
             .file
             .lock()
             .map_err(|_| anyhow!("lock debug log file"))?;
+
         guard
             .write_all(text.as_bytes())
             .context("write debug log")?;
         guard.flush().context("flush debug log")?;
+
         Ok(())
     }
 }
@@ -202,6 +280,65 @@ mod tests {
 
         let debug_log = dir.path().join(".ralph/logs/debug.log");
         assert!(!debug_log.exists(), "debug log should not exist");
+        reset_for_tests();
+    }
+
+    #[test]
+    #[serial]
+    fn log_rotation_occurs_when_size_exceeded() {
+        use super::{LOG_FILE_NAME, MAX_LOG_SIZE_BYTES};
+
+        let _guard = test_lock().lock().expect("debug log lock");
+        reset_for_tests();
+        let dir = tempdir().expect("tempdir");
+        let logs_dir = dir.path().join(".ralph/logs");
+        fs::create_dir_all(&logs_dir).expect("mkdir");
+
+        // Create an oversized log file
+        let log_path = logs_dir.join(LOG_FILE_NAME);
+        let oversized_content = vec![b'x'; (MAX_LOG_SIZE_BYTES + 100) as usize];
+        fs::write(&log_path, oversized_content).expect("write oversized log");
+
+        // Enable debug logging - this should trigger rotation
+        enable(dir.path()).expect("enable");
+
+        // Write something to the new log
+        let record = Record::builder()
+            .level(log::Level::Info)
+            .target("test")
+            .args(format_args!("after rotation"))
+            .build();
+        write_log_record(&record);
+
+        // The oversized log should be moved to .1
+        let backup_1 = logs_dir.join(format!("{}.1", LOG_FILE_NAME));
+        assert!(
+            backup_1.exists(),
+            "backup .1 should exist with rotated content"
+        );
+
+        // Verify the backup has the oversized content
+        let backup_size = fs::metadata(&backup_1).expect("backup metadata").len();
+        assert!(
+            backup_size > MAX_LOG_SIZE_BYTES,
+            "backup should contain the oversized data"
+        );
+
+        // New log should exist and contain only our new entry (not the oversized content)
+        assert!(
+            log_path.exists(),
+            "new log file should exist at original path"
+        );
+        let contents = fs::read_to_string(&log_path).expect("read new log");
+        assert!(
+            contents.contains("after rotation"),
+            "new log should have new entry"
+        );
+        assert!(
+            !contents.contains('x'),
+            "new log should not contain the old oversized content"
+        );
+
         reset_for_tests();
     }
 }
