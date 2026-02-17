@@ -24,6 +24,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
         RunCommand::Resume(args) => args.agent.profile.as_deref(),
         RunCommand::One(args) => args.agent.profile.as_deref(),
         RunCommand::Loop(args) => args.agent.profile.as_deref(),
+        RunCommand::MergeAgent(_) => None,
     };
     let resolved = config::resolve_from_cwd_with_profile(profile)?;
     match cmd {
@@ -114,6 +115,11 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     },
                 )
             }
+        }
+        RunCommand::MergeAgent(args) => {
+            // merge-agent uses explicit repo-root context from CWD
+            let exit_code = run_cmd::handle_merge_agent(&args.task, args.pr)?;
+            std::process::exit(exit_code);
         }
     }
 }
@@ -263,6 +269,31 @@ Examples:\n\
 	 ralph run loop --wait-when-blocked --notify-when-unblocked"
     )]
     Loop(RunLoopArgs),
+    /// Merge a PR and finalize task state (subprocess entrypoint for parallel coordinator).
+    #[command(
+        about = "Merge a PR and finalize task state in coordinator repo",
+        after_long_help = "This command is designed to be invoked by the parallel coordinator as a subprocess.
+It validates task/PR inputs, performs merge per configured policy, and finalizes
+canonical queue/done state in the coordinator repo context.
+
+Exit codes:
+  0 - Merge + task finalization successful
+  1 - Runtime/unexpected failure
+  2 - Usage/validation failure
+  >=3 - Domain-specific failures (merge conflict, PR not found, etc.)
+
+Output:
+  stdout - Machine-readable JSON result payload
+  stderr - User-facing diagnostics
+
+Examples:
+  ralph run merge-agent --task RQ-0942 --pr 42
+  ralph run merge-agent --task RQ-0001 --pr 7
+
+This command is intended for internal use by the parallel coordinator.
+For manual PR merging, use 'gh pr merge' directly."
+    )]
+    MergeAgent(MergeAgentArgs),
 }
 
 #[derive(Args)]
@@ -382,6 +413,20 @@ pub struct RunLoopArgs {
 
     #[command(flatten)]
     pub agent: crate::agent::RunAgentArgs,
+}
+
+/// Arguments for the merge-agent subcommand.
+#[derive(Args)]
+pub struct MergeAgentArgs {
+    /// Task ID to finalize after merge (required).
+    /// Example: RQ-0942
+    #[arg(long, value_name = "TASK_ID")]
+    pub task: String,
+
+    /// GitHub PR number to merge (required).
+    /// Must be a positive integer referencing an open PR.
+    #[arg(long, value_name = "PR_NUMBER")]
+    pub pr: u32,
 }
 
 #[cfg(test)]
@@ -597,5 +642,65 @@ mod tests {
                 _ => panic!("expected Command::Run"),
             }
         }
+    }
+
+    #[test]
+    fn run_merge_agent_parses_required_args() {
+        let args = vec![
+            "ralph",
+            "run",
+            "merge-agent",
+            "--task",
+            "RQ-0942",
+            "--pr",
+            "42",
+        ];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            crate::cli::Command::Run(run_args) => match run_args.command {
+                RunCommand::MergeAgent(merge_args) => {
+                    assert_eq!(merge_args.task, "RQ-0942");
+                    assert_eq!(merge_args.pr, 42);
+                }
+                _ => panic!("expected RunCommand::MergeAgent"),
+            },
+            _ => panic!("expected Command::Run"),
+        }
+    }
+
+    #[test]
+    fn run_merge_agent_requires_task_arg() {
+        let args = vec!["ralph", "run", "merge-agent", "--pr", "42"];
+        let result = Cli::try_parse_from(args);
+        assert!(result.is_err(), "--task should be required");
+    }
+
+    #[test]
+    fn run_merge_agent_requires_pr_arg() {
+        let args = vec!["ralph", "run", "merge-agent", "--task", "RQ-0942"];
+        let result = Cli::try_parse_from(args);
+        assert!(result.is_err(), "--pr should be required");
+    }
+
+    #[test]
+    fn run_merge_agent_help_includes_exit_codes() {
+        let mut cmd = Cli::command();
+        let run = cmd.find_subcommand_mut("run").expect("run subcommand");
+        let merge_agent = run
+            .find_subcommand_mut("merge-agent")
+            .expect("merge-agent subcommand");
+        let help = merge_agent.render_long_help().to_string();
+
+        assert!(
+            help.contains("Exit codes"),
+            "missing exit codes in help: {help}"
+        );
+        assert!(help.contains("0 -"), "missing exit code 0: {help}");
+        assert!(help.contains("1 -"), "missing exit code 1: {help}");
+        assert!(help.contains("2 -"), "missing exit code 2: {help}");
+        assert!(
+            help.contains("ralph run merge-agent --task RQ-"),
+            "missing example: {help}"
+        );
     }
 }

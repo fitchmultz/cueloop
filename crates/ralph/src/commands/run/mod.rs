@@ -21,6 +21,7 @@ mod execution_history_cli;
 mod execution_timings;
 mod iteration;
 mod logging;
+mod merge_agent;
 pub mod parallel;
 mod phases;
 mod queue_lock;
@@ -58,6 +59,9 @@ pub use run_one::{
 
 // Re-export dry-run functions
 pub use dry_run::{dry_run_loop, dry_run_one};
+
+// Re-export merge-agent types and handler
+pub use merge_agent::{MergeAgentError, MergeAgentResult, handle_merge_agent};
 
 #[cfg(test)]
 fn resolve_run_agent_settings(
