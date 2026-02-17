@@ -51,7 +51,20 @@ Stored in your user configuration directory:
 | Linux/macOS | `~/.config/ralph/config.json` |
 | With XDG | `$XDG_CONFIG_HOME/ralph/config.json` |
 
-Created automatically on first run or via `ralph init --global`.
+Create this file manually. A minimal example:
+
+```json
+{
+  "version": 1,
+  "agent": {
+    "runner": "claude",
+    "model": "sonnet",
+    "phases": 3
+  }
+}
+```
+
+You can also use `.jsonc` extension for JSON with Comments support.
 
 ### Project Config
 
