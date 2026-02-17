@@ -64,6 +64,13 @@ fn run() -> Result<()> {
     redaction::RedactedLogger::init(Box::new(logger), max_level)
         .context("initialize redacted logger")?;
 
+    // Run temp cleanup on every invocation to catch orphaned files from crashed sessions
+    if let Err(err) =
+        ralph::fsutil::cleanup_default_temp_dirs(ralph::constants::timeouts::TEMP_RETENTION)
+    {
+        log::debug!("startup temp cleanup: {:#}", err);
+    }
+
     // Run sanity checks before commands that need them
     let should_run_sanity = sanity::should_run_sanity_checks(&cli.command);
     if should_run_sanity && !cli.no_sanity_checks {
@@ -107,6 +114,7 @@ fn run() -> Result<()> {
         cli::Command::Prd(args) => cli::prd::handle_prd(args, cli.force),
         cli::Command::Completions(args) => cli::completions::handle_completions(args),
         cli::Command::Migrate(args) => cli::migrate::handle_migrate(args),
+        cli::Command::Cleanup(args) => cli::cleanup::handle_cleanup(args),
         cli::Command::Version(args) => cli::version::handle_version(args),
         cli::Command::Watch(args) => cli::watch::handle_watch(args, cli.force),
         cli::Command::Webhook(args) => {

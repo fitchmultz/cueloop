@@ -464,7 +464,8 @@ fn publish_task(
             return Ok(PublishItemResult::Updated);
         }
 
-        let tmp = tempfile::NamedTempFile::new().context("create temp file for issue body")?;
+        let tmp = crate::fsutil::create_ralph_temp_file("issue")
+            .context("create temp file for issue body")?;
         std::fs::write(tmp.path(), body).context("write issue body to temp file")?;
         edit_issue(
             &resolved.repo_root,
@@ -493,7 +494,8 @@ fn publish_task(
             return Ok(PublishItemResult::Created);
         }
 
-        let tmp = tempfile::NamedTempFile::new().context("create temp file for issue body")?;
+        let tmp = crate::fsutil::create_ralph_temp_file("issue")
+            .context("create temp file for issue body")?;
         std::fs::write(tmp.path(), body).context("write issue body to temp file")?;
         let issue = create_issue(
             &resolved.repo_root,

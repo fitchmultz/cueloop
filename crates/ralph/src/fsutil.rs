@@ -173,6 +173,23 @@ pub fn create_ralph_temp_dir(label: &str) -> Result<tempfile::TempDir> {
     Ok(dir)
 }
 
+/// Creates a NamedTempFile in the ralph temp directory with the ralph_ prefix.
+/// This ensures the file will be caught by cleanup_default_temp_dirs().
+pub fn create_ralph_temp_file(label: &str) -> Result<tempfile::NamedTempFile> {
+    let base = ralph_temp_root();
+    fs::create_dir_all(&base).with_context(|| format!("create temp dir {}", base.display()))?;
+    let prefix = format!(
+        "{prefix}{label}_",
+        prefix = RALPH_TEMP_PREFIX,
+        label = label.trim()
+    );
+    tempfile::Builder::new()
+        .prefix(&prefix)
+        .suffix(".tmp")
+        .tempfile_in(&base)
+        .with_context(|| format!("create temp file in {}", base.display()))
+}
+
 use crate::constants::paths::ENV_RAW_DUMP;
 
 /// Writes a safeguard dump with redaction applied to sensitive content.
@@ -483,5 +500,46 @@ mod tests {
         let mut perms = fs::metadata(&target_dir).unwrap().permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&target_dir, perms).unwrap();
+    }
+
+    #[test]
+    fn create_ralph_temp_file_uses_ralph_prefix() {
+        let temp = create_ralph_temp_file("test").unwrap();
+        let name = temp.path().file_name().unwrap().to_string_lossy();
+        assert!(
+            name.starts_with("ralph_test_"),
+            "temp file should have ralph prefix, got: {}",
+            name
+        );
+        let parent = temp.path().parent().unwrap();
+        assert!(
+            parent.ends_with("ralph"),
+            "temp file should be in ralph temp directory, got: {}",
+            parent.display()
+        );
+    }
+
+    #[test]
+    fn create_ralph_temp_file_is_cleaned_on_drop() {
+        let path;
+        {
+            let temp = create_ralph_temp_file("test").unwrap();
+            path = temp.path().to_path_buf();
+            assert!(path.exists(), "temp file should exist while held");
+        }
+        // After drop, file should be removed
+        assert!(!path.exists(), "temp file should be removed on drop");
+    }
+
+    #[test]
+    fn create_ralph_temp_file_accepts_content() {
+        use std::io::Write;
+
+        let mut temp = create_ralph_temp_file("test").unwrap();
+        temp.write_all(b"test content").unwrap();
+        temp.flush().unwrap();
+
+        let content = fs::read_to_string(temp.path()).unwrap();
+        assert_eq!(content, "test content");
     }
 }

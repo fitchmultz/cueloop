@@ -15,6 +15,7 @@
 //! - CLI parsing happens after argument normalization in `main`.
 
 pub mod app;
+pub mod cleanup;
 pub mod color;
 pub mod completions;
 pub mod config;
@@ -165,6 +166,11 @@ pub enum Command {
         after_long_help = "Examples:\n  ralph migrate              # Check for pending migrations\n  ralph migrate --check      # Exit with error code if migrations pending (CI)\n  ralph migrate --apply      # Apply all pending migrations\n  ralph migrate --list       # List all migrations and their status\n  ralph migrate status       # Show detailed migration status"
     )]
     Migrate(migrate::MigrateArgs),
+    /// Clean up temporary files created by Ralph.
+    #[command(
+        after_long_help = "Examples:\n  ralph cleanup              # Clean temp files older than 7 days\n  ralph cleanup --force      # Clean all ralph temp files\n  ralph cleanup --dry-run    # Show what would be deleted without deleting"
+    )]
+    Cleanup(cleanup::CleanupArgs),
     /// Display version information.
     #[command(after_long_help = "Examples:\n  ralph version\n  ralph version --verbose")]
     Version(version::VersionArgs),

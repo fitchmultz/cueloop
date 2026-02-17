@@ -93,6 +93,14 @@ pub mod timeouts {
     pub const SPINNER_UPDATE_INTERVAL_MS: u64 = 80;
 
     /// Temporary file retention period (7 days).
+    ///
+    /// Files older than this are cleaned up:
+    /// - On CLI startup (main.rs)
+    /// - When building runner commands (with_temp_prompt_file)
+    /// - When running `ralph cleanup` command
+    ///
+    /// Default: 7 days. This balances keeping safeguard dumps available for
+    /// debugging against preventing indefinite accumulation.
     pub const TEMP_RETENTION: Duration = Duration::from_secs(60 * 60 * 24 * 7);
 
     /// Lock cleanup retry delays in milliseconds.

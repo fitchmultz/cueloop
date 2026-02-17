@@ -17,7 +17,6 @@ use std::io::Write;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use tempfile::NamedTempFile;
 
 use crate::contracts::Task;
 use crate::plugins::registry::PluginRegistry;
@@ -63,7 +62,8 @@ impl<'a> ProcessorExecutor<'a> {
         // Write task JSON to temp file
         let task_json =
             serde_json::to_string_pretty(task).context("serialize task for validate_task hook")?;
-        let mut temp_file = NamedTempFile::new().context("create temp file for validate_task")?;
+        let mut temp_file = crate::fsutil::create_ralph_temp_file("plugin")
+            .context("create temp file for validate_task")?;
         temp_file
             .write_all(task_json.as_bytes())
             .context("write task JSON to temp file")?;
@@ -86,7 +86,8 @@ impl<'a> ProcessorExecutor<'a> {
         }
 
         // Write prompt to temp file
-        let mut temp_file = NamedTempFile::new().context("create temp file for pre_prompt")?;
+        let mut temp_file = crate::fsutil::create_ralph_temp_file("plugin")
+            .context("create temp file for pre_prompt")?;
         temp_file
             .write_all(prompt.as_bytes())
             .context("write prompt to temp file")?;
@@ -112,7 +113,8 @@ impl<'a> ProcessorExecutor<'a> {
         }
 
         // Write stdout (NDJSON) to temp file
-        let mut temp_file = NamedTempFile::new().context("create temp file for post_run")?;
+        let mut temp_file = crate::fsutil::create_ralph_temp_file("plugin")
+            .context("create temp file for post_run")?;
         temp_file
             .write_all(stdout.as_bytes())
             .context("write stdout to temp file")?;
