@@ -253,3 +253,71 @@ fn daemon_help_mentions_subcommands() {
     assert_contains(&combined, "status");
     assert_contains(&combined, "logs");
 }
+
+#[test]
+fn config_examples_from_docs_execute_successfully() {
+    use std::process::Command;
+
+    let temp_dir = tempfile::tempdir().expect("failed to create temp dir");
+
+    // Initialize a git repo in the temp directory
+    let git_init = Command::new("git")
+        .args(["init"])
+        .current_dir(&temp_dir)
+        .output()
+        .expect("failed to run git init");
+    assert!(
+        git_init.status.success(),
+        "git init failed: {}",
+        String::from_utf8_lossy(&git_init.stderr)
+    );
+
+    // Configure git user for the temp repo
+    Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(&temp_dir)
+        .output()
+        .expect("failed to set git email");
+    Command::new("git")
+        .args(["config", "user.name", "Test"])
+        .current_dir(&temp_dir)
+        .output()
+        .expect("failed to set git name");
+
+    // Run ralph init
+    let ralph_init = Command::new(test_support::ralph_bin())
+        .args(["init", "--non-interactive"])
+        .current_dir(&temp_dir)
+        .output()
+        .expect("failed to run ralph init");
+    assert!(
+        ralph_init.status.success(),
+        "ralph init failed: {}",
+        String::from_utf8_lossy(&ralph_init.stderr)
+    );
+
+    let commands: Vec<Vec<&str>> = vec![
+        vec!["config", "show"],
+        vec!["config", "show", "--format", "json"],
+        vec!["config", "paths"],
+        vec!["config", "schema"],
+        vec!["config", "profiles", "list"],
+    ];
+
+    for args in &commands {
+        let output = Command::new(test_support::ralph_bin())
+            .args(args)
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap_or_else(|_| panic!("failed to execute ralph {}", args.join(" ")));
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "expected `ralph {}` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}",
+            args.join(" ")
+        );
+    }
+}

@@ -66,20 +66,20 @@ Created automatically when you run `ralph init` in a repository.
 ### Quick Reference
 
 ```bash
-# View current config resolution
+# View resolved configuration
 ralph config show
 
-# View merged config with all layers
-ralph config show --merged
+# View in JSON format
+ralph config show --format json
 
-# Edit global config
-ralph config edit --global
+# View config file paths
+ralph config paths
 
-# Edit project config
-ralph config edit
+# View configuration schema
+ralph config schema
 
-# Validate current configuration
-ralph config validate
+# List available profiles
+ralph config profiles list
 ```
 
 ---
@@ -876,15 +876,14 @@ Ralph validates configuration on load and provides detailed error messages for i
 ### Validation Commands
 
 ```bash
-# Validate current configuration
-ralph config validate
-
-# Show resolved configuration
+# Show resolved configuration (validates on load)
 ralph config show
 
-# Show merged config with all layers
-ralph config show --merged
+# View configuration schema
+ralph config schema
 ```
+
+Note: Configuration validation happens implicitly when loading config. There is no separate `validate` subcommand.
 
 ### Common Validation Errors
 
