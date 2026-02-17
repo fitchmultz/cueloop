@@ -444,4 +444,35 @@ mod tests {
             _ => panic!("expected scan command"),
         }
     }
+
+    #[test]
+    fn scan_explicit_general_mode_equivalent_to_implicit_with_focus() {
+        // Regression test for RQ-0891: ensure --mode general works equivalently to default
+        let cli_explicit =
+            Cli::try_parse_from(["ralph", "scan", "--mode", "general", "test", "focus"])
+                .expect("parse explicit mode");
+
+        let cli_implicit =
+            Cli::try_parse_from(["ralph", "scan", "test", "focus"]).expect("parse implicit mode");
+
+        match (cli_explicit.command, cli_implicit.command) {
+            (
+                crate::cli::Command::Scan(args_explicit),
+                crate::cli::Command::Scan(args_implicit),
+            ) => {
+                // Explicit --mode general should parse to Some(General)
+                assert_eq!(args_explicit.mode, Some(ScanMode::General));
+                assert_eq!(args_explicit.prompt, vec!["test", "focus"]);
+
+                // Implicit (no --mode) should parse to None, but handle_scan resolves to General
+                assert_eq!(args_implicit.mode, None);
+                assert_eq!(args_implicit.prompt, vec!["test", "focus"]);
+
+                // Both should have the same focus resolution logic in handle_scan
+                // Explicit: (Some(General), false) => General
+                // Implicit: (None, false) => General
+            }
+            _ => panic!("expected scan commands"),
+        }
+    }
 }
