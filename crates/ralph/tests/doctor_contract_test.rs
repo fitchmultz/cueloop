@@ -8,6 +8,9 @@ mod test_support;
 fn ralph_cmd() -> Command {
     let mut cmd = Command::new(test_support::ralph_bin());
     cmd.env_remove("RUST_LOG");
+    // Remove path overrides that may be inherited from parent environment
+    cmd.env_remove("RALPH_QUEUE_PATH_OVERRIDE");
+    cmd.env_remove("RALPH_DONE_PATH_OVERRIDE");
     cmd
 }
 

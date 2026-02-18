@@ -102,10 +102,7 @@ fn parallel_run_fails_fast_when_repo_local_workspace_root_not_ignored() -> Resul
     // Configure a repo-local workspace root that is NOT gitignored.
     set_workspace_root(dir.path(), ".ralph/workspaces")?;
 
-    let output = Command::new(test_support::ralph_bin())
-        .current_dir(dir.path())
-        .env_remove("RUST_LOG")
-        .env("RALPH_REPO_ROOT_OVERRIDE", dir.path())
+    let output = test_support::ralph_command(dir.path())
         .args(["run", "loop", "--parallel", "2", "--force"])
         .output()?;
 

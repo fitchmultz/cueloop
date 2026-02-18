@@ -469,7 +469,12 @@ fn queue_id_width_error_is_consistent_between_validate_and_resolve() {
 }
 
 #[test]
+#[serial]
 fn queue_file_error_is_consistent_between_validate_and_resolve() {
+    // Clear any env override to test config-based error handling
+    let prior_override = env::var_os(QUEUE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(QUEUE_PATH_OVERRIDE_ENV) };
+
     let mut cfg = Config::default();
     cfg.queue.file = Some(PathBuf::from(""));
 
@@ -478,10 +483,21 @@ fn queue_file_error_is_consistent_between_validate_and_resolve() {
         resolve_queue_path(std::path::Path::new("/repo"), &cfg).unwrap_err(),
         ERR_EMPTY_QUEUE_FILE,
     );
+
+    // Restore prior override
+    match prior_override {
+        Some(value) => unsafe { env::set_var(QUEUE_PATH_OVERRIDE_ENV, value) },
+        None => unsafe { env::remove_var(QUEUE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
+#[serial]
 fn queue_done_file_error_is_consistent_between_validate_and_resolve() {
+    // Clear any env override to test config-based error handling
+    let prior_override = env::var_os(DONE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(DONE_PATH_OVERRIDE_ENV) };
+
     let mut cfg = Config::default();
     cfg.queue.done_file = Some(PathBuf::from(""));
 
@@ -493,6 +509,12 @@ fn queue_done_file_error_is_consistent_between_validate_and_resolve() {
         resolve_done_path(std::path::Path::new("/repo"), &cfg).unwrap_err(),
         ERR_EMPTY_QUEUE_DONE_FILE,
     );
+
+    // Restore prior override
+    match prior_override {
+        Some(value) => unsafe { env::set_var(DONE_PATH_OVERRIDE_ENV, value) },
+        None => unsafe { env::remove_var(DONE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 // Tests for queue.aging_thresholds validation
