@@ -60,11 +60,7 @@ pub(crate) enum SyncStatus {
 /// Information about a template for display/listing.
 #[derive(Debug, Clone)]
 pub(crate) struct TemplateInfo {
-    #[allow(dead_code)]
-    pub id: PromptTemplateId,
     pub name: String,
-    #[allow(dead_code)]
-    pub label: String,
     pub description: String,
     pub has_override: bool,
 }
@@ -239,13 +235,10 @@ pub(crate) fn list_templates(repo_root: &Path) -> Vec<TemplateInfo> {
     all_template_ids()
         .into_iter()
         .map(|id| {
-            let template = prompt_template(id);
             let file_name = template_file_name(id);
             let override_path = prompts_dir.join(format!("{}.md", file_name));
             TemplateInfo {
-                id,
                 name: file_name.to_string(),
-                label: template.label.to_string(),
                 description: template_description(id).to_string(),
                 has_override: override_path.exists(),
             }
@@ -430,6 +423,10 @@ pub(crate) fn check_sync_status(repo_root: &Path, id: PromptTemplateId) -> Resul
 /// Sync a single template.
 ///
 /// Returns true if the file was updated, false otherwise.
+///
+/// This function is kept as public API for programmatic sync operations.
+/// The `ralph prompt sync` CLI command currently uses `export_template` directly,
+/// but this API is preserved for library usage and future extensions.
 #[allow(dead_code)]
 pub(crate) fn sync_template(
     repo_root: &Path,
@@ -707,7 +704,6 @@ mod tests {
 
         // Check that worker is in the list
         let worker = templates.iter().find(|t| t.name == "worker").unwrap();
-        assert_eq!(worker.label, "worker");
         assert!(!worker.has_override);
     }
 

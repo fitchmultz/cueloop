@@ -19,15 +19,18 @@
 /// Buffer size limits for output handling and memory management.
 pub mod buffers {
     /// Maximum size for ANSI buffer (10MB).
+    /// Reduced from 100MB to prevent memory pressure during runner execution.
     pub const MAX_ANSI_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
     /// Maximum line length before truncation (10MB).
+    /// Reduced from 100MB to prevent memory pressure with runaway runner output.
     pub const MAX_LINE_LENGTH: usize = 10 * 1024 * 1024;
 
     /// Maximum buffer size for stream processing (10MB).
+    /// Reduced from 100MB to prevent memory pressure during long-running tasks.
     pub const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
-    /// Maximum log lines to retain in TUI.
+    /// Maximum log lines to retain for interactive log viewers.
     pub const MAX_LOG_LINES: usize = 10_000;
 
     /// Maximum tool value length before truncation.
@@ -71,6 +74,12 @@ pub mod limits {
 
     /// Maximum LFS pointer file size (bytes).
     pub const MAX_POINTER_SIZE: u64 = 1024;
+
+    /// Maximum number of queue backup files to retain in `.ralph/cache`.
+    pub const MAX_QUEUE_BACKUP_FILES: usize = 50;
+
+    /// Maximum number of undo snapshots to retain in `.ralph/cache/undo`.
+    pub const MAX_UNDO_SNAPSHOTS: usize = 20;
 }
 
 /// Timeout and interval durations.
@@ -84,6 +93,14 @@ pub mod timeouts {
     pub const SPINNER_UPDATE_INTERVAL_MS: u64 = 80;
 
     /// Temporary file retention period (7 days).
+    ///
+    /// Files older than this are cleaned up:
+    /// - On CLI startup (main.rs)
+    /// - When building runner commands (with_temp_prompt_file)
+    /// - When running `ralph cleanup` command
+    ///
+    /// Default: 7 days. This balances keeping safeguard dumps available for
+    /// debugging against preventing indefinite accumulation.
     pub const TEMP_RETENTION: Duration = Duration::from_secs(60 * 60 * 24 * 7);
 
     /// Lock cleanup retry delays in milliseconds.
@@ -147,13 +164,12 @@ pub mod paths {
     /// Environment variable for raw dump mode.
     pub const ENV_RAW_DUMP: &str = "RALPH_RAW_DUMP";
 
-    /// Environment variable to force completion signal mode (used by parallel workers).
-    pub const ENV_FORCE_COMPLETION_SIGNAL: &str = "RALPH_FORCE_COMPLETION_SIGNAL";
-
     /// Environment variable for the runner actually used (set by Ralph when spawning runners).
+    /// Used for analytics tracking in task custom fields.
     pub const ENV_RUNNER_USED: &str = "RALPH_RUNNER_USED";
 
     /// Environment variable for the model actually used (set by Ralph when spawning runners).
+    /// Used for analytics tracking in task custom fields.
     pub const ENV_MODEL_USED: &str = "RALPH_MODEL_USED";
 }
 

@@ -265,6 +265,8 @@ mod tests {
             completed_at: None,
             started_at: None,
             scheduled_start: scheduled_start.map(|s| s.to_string()),
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],

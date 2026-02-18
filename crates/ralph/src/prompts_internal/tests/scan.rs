@@ -192,3 +192,59 @@ fn render_scan_prompt_replaces_project_type_guidance_placeholder() -> Result<()>
     assert!(rendered.contains("## PROJECT TYPE: CODE"));
     Ok(())
 }
+
+#[test]
+fn default_scan_prompt_v2_maintenance_requires_queue_validation_safety() -> Result<()> {
+    let dir = TempDir::new()?;
+    let template = load_scan_prompt(dir.path(), ScanPromptVersion::V2, ScanMode::Maintenance)?;
+    let config = default_config();
+    let rendered = render_scan_prompt(
+        &template,
+        "",
+        ScanMode::Maintenance,
+        ScanPromptVersion::V2,
+        ProjectType::Code,
+        &config,
+    )?;
+    assert!(
+        rendered.contains("VALIDATION SAFETY RULES"),
+        "maintenance v2 prompt must include validation safety rules"
+    );
+    assert!(
+        rendered.contains("Run `ralph queue validate` before finishing"),
+        "maintenance v2 prompt must require queue validation"
+    );
+    assert!(
+        rendered.contains("depends_on`)") || rendered.contains("depends_on"),
+        "maintenance v2 prompt should include dependency relationship safety"
+    );
+    Ok(())
+}
+
+#[test]
+fn default_scan_prompt_v2_innovation_requires_queue_validation_safety() -> Result<()> {
+    let dir = TempDir::new()?;
+    let template = load_scan_prompt(dir.path(), ScanPromptVersion::V2, ScanMode::Innovation)?;
+    let config = default_config();
+    let rendered = render_scan_prompt(
+        &template,
+        "",
+        ScanMode::Innovation,
+        ScanPromptVersion::V2,
+        ProjectType::Code,
+        &config,
+    )?;
+    assert!(
+        rendered.contains("VALIDATION SAFETY RULES"),
+        "innovation v2 prompt must include validation safety rules"
+    );
+    assert!(
+        rendered.contains("Run `ralph queue validate` before finishing"),
+        "innovation v2 prompt must require queue validation"
+    );
+    assert!(
+        rendered.contains("depends_on`)") || rendered.contains("depends_on"),
+        "innovation v2 prompt should include dependency relationship safety"
+    );
+    Ok(())
+}

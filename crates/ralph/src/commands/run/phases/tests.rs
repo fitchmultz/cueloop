@@ -8,7 +8,6 @@ use super::{
     generate_phase_session_id, phase_session_id_for_runner,
 };
 use crate::commands::run::supervision::ContinueSession;
-use crate::completions;
 use crate::constants::defaults::PHASE2_FINAL_RESPONSE_FALLBACK;
 use crate::contracts::{
     ClaudePermissionMode, Config, GitRevertMode, Model, QueueConfig, QueueFile, ReasoningEffort,
@@ -16,11 +15,13 @@ use crate::contracts::{
 };
 use crate::queue;
 use crate::testsupport::runner::create_fake_runner;
+use crate::testsupport::{INTERRUPT_TEST_MUTEX, reset_ctrlc_interrupt_flag};
 use crate::{git, promptflow, runner, runutil};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tempfile::TempDir;
 
@@ -182,6 +183,8 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
         duplicates: None,
         custom_fields: std::collections::HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     };
 
     queue::save_queue(
@@ -208,6 +211,12 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
 
 #[test]
 fn phase1_continue_resumes_and_recovers_from_plan_only_violation() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     git_init(temp.path())?;
     std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
@@ -311,6 +320,12 @@ echo '{{"sessionID":"sess-123"}}'
 
 #[test]
 fn phase1_proceed_allows_plan_only_violation() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     git_init(temp.path())?;
     std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
@@ -398,6 +413,12 @@ echo '{{"sessionID":"sess-123"}}'
 
 #[test]
 fn phase1_rejects_changes_to_baseline_dirty_paths() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     git_init(temp.path())?;
     std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
@@ -476,6 +497,116 @@ echo '{{"sessionID":"sess-123"}}'
 }
 
 #[test]
+fn phase1_allows_jsonc_queue_bookkeeping_changes() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
+    let temp = TempDir::new()?;
+    git_init(temp.path())?;
+    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+
+    let queue_jsonc = temp.path().join(".ralph/queue.jsonc");
+    let done_jsonc = temp.path().join(".ralph/done.jsonc");
+    std::fs::write(&queue_jsonc, "{ \"version\": 1, \"tasks\": [] }")?;
+    std::fs::write(&done_jsonc, "{ \"version\": 1, \"tasks\": [] }")?;
+
+    let status = Command::new("git")
+        .current_dir(temp.path())
+        .args(["add", "-f", ".ralph/queue.jsonc", ".ralph/done.jsonc"])
+        .status()?;
+    anyhow::ensure!(status.success(), "git add failed");
+    let status = Command::new("git")
+        .current_dir(temp.path())
+        .args(["commit", "--quiet", "-m", "add jsonc queue files"])
+        .status()?;
+    anyhow::ensure!(status.success(), "git commit failed");
+
+    std::fs::write(&queue_jsonc, "{ \"version\": 2, \"tasks\": [] }")?;
+    std::fs::write(&done_jsonc, "{ \"version\": 2, \"tasks\": [] }")?;
+
+    let script = format!(
+        r#"#!/bin/sh
+set -e
+plan="{root}/.ralph/cache/plans/RQ-0001.md"
+echo "plan content" > "$plan"
+echo '{{"type":"text","part":{{"text":"ok"}}}}'
+echo '{{"sessionID":"sess-123"}}'
+"#,
+        root = temp.path().display()
+    );
+    let runner_path = create_fake_runner(temp.path(), "opencode", &script)?;
+
+    let resolved = resolved_for_repo(temp.path().to_path_buf(), &runner_path);
+    let settings = runner::AgentSettings {
+        runner: Runner::Opencode,
+        model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
+        reasoning_effort: None,
+        runner_cli: runner::ResolvedRunnerCliOptions::default(),
+    };
+    let bins = runner::RunnerBinaries {
+        codex: "codex",
+        opencode: runner_path.to_str().expect("runner path"),
+        gemini: "gemini",
+        claude: "claude",
+        cursor: "agent",
+        kimi: "kimi",
+        pi: "pi",
+    };
+    let policy = promptflow::PromptPolicy {
+        repoprompt_plan_required: false,
+        repoprompt_tool_injection: false,
+    };
+
+    let invocation = PhaseInvocation {
+        resolved: &resolved,
+        settings: &settings,
+        bins,
+        task_id: "RQ-0001",
+        base_prompt: "base prompt",
+        policy: &policy,
+        output_handler: None,
+        output_stream: runner::OutputStream::Terminal,
+        project_type: crate::contracts::ProjectType::Code,
+        git_revert_mode: GitRevertMode::Ask,
+        git_commit_push_enabled: true,
+        push_policy: crate::commands::run::supervision::PushPolicy::RequireUpstream,
+        revert_prompt: None,
+        iteration_context: "",
+        iteration_completion_block: "",
+        phase3_completion_guidance: "",
+        is_final_iteration: true,
+        allow_dirty_repo: false,
+        post_run_mode: PostRunMode::Normal,
+        notify_on_complete: None,
+        notify_sound: None,
+        lfs_check: false,
+        no_progress: false,
+        execution_timings: None,
+        plugins: None,
+    };
+
+    let plan_text = execute_phase1_planning(&invocation, 2)?;
+    assert_eq!(plan_text.trim(), "plan content");
+
+    let mut paths = git::status_paths(temp.path())?;
+    paths.sort();
+    anyhow::ensure!(
+        paths
+            == vec![
+                ".ralph/done.jsonc".to_string(),
+                ".ralph/queue.jsonc".to_string()
+            ],
+        "expected jsonc queue bookkeeping paths only, got: {:?}",
+        paths
+    );
+
+    Ok(())
+}
+
+#[test]
 fn ensure_phase3_completion_requires_clean_repo_when_enabled() -> Result<()> {
     let temp = TempDir::new()?;
     git_init(temp.path())?;
@@ -528,6 +659,42 @@ fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
 }
 
 #[test]
+fn ensure_phase3_completion_allows_config_jsonc_changes_when_enabled() -> Result<()> {
+    let temp = TempDir::new()?;
+    git_init(temp.path())?;
+    write_queue_and_done(temp.path(), TaskStatus::Done)?;
+    let status = Command::new("git")
+        .current_dir(temp.path())
+        .args(["commit", "--quiet", "-m", "queue and done"])
+        .status()?;
+    anyhow::ensure!(status.success(), "git commit failed");
+
+    std::fs::write(
+        temp.path().join(".ralph/config.jsonc"),
+        "{ \"version\": 1 }",
+    )?;
+    let status = Command::new("git")
+        .current_dir(temp.path())
+        .args(["add", "-f", ".ralph/config.jsonc"])
+        .status()?;
+    anyhow::ensure!(status.success(), "git add failed");
+    let status = Command::new("git")
+        .current_dir(temp.path())
+        .args(["commit", "--quiet", "-m", "add config jsonc"])
+        .status()?;
+    anyhow::ensure!(status.success(), "git commit failed");
+
+    std::fs::write(
+        temp.path().join(".ralph/config.jsonc"),
+        "{ \"version\": 2 }",
+    )?;
+
+    let resolved = resolved_for_completion(temp.path().to_path_buf());
+    ensure_phase3_completion(&resolved, "RQ-0001", true)?;
+    Ok(())
+}
+
+#[test]
 fn ensure_phase3_completion_rejected_still_requires_clean_repo_for_other_changes() -> Result<()> {
     let temp = TempDir::new()?;
     git_init(temp.path())?;
@@ -552,6 +719,12 @@ fn ensure_phase3_completion_allows_dirty_repo_when_disabled() -> Result<()> {
 
 #[test]
 fn phase3_review_non_final_skips_completion_enforcement() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     let script = r#"#!/bin/sh
 echo '{"sessionID":"sess-123"}'
@@ -578,15 +751,6 @@ echo '{"sessionID":"sess-123"}'
         repoprompt_plan_required: false,
         repoprompt_tool_injection: false,
     };
-
-    let signal = completions::CompletionSignal {
-        task_id: "RQ-0001".to_string(),
-        status: TaskStatus::Done,
-        notes: vec!["note".to_string()],
-        runner_used: None,
-        model_used: None,
-    };
-    completions::write_completion_signal(temp.path(), &signal)?;
 
     let invocation = PhaseInvocation {
         resolved: &resolved,
@@ -616,15 +780,19 @@ echo '{"sessionID":"sess-123"}'
         plugins: None,
     };
 
+    // Non-final iterations should complete without requiring task finalization
     execute_phase3_review(&invocation)?;
-
-    let signal_after = completions::read_completion_signal(temp.path(), "RQ-0001")?;
-    assert!(signal_after.is_none());
     Ok(())
 }
 
 #[test]
 fn phase3_review_non_final_runs_ci_gate_when_enabled() -> Result<()> {
+    // Synchronize with tests that modify the interrupt flag.
+    // Hold the mutex for the entire test to prevent any race conditions.
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
     let temp = TempDir::new()?;
     let script = r#"#!/bin/sh
 echo '{"sessionID":"sess-123"}'

@@ -8,16 +8,18 @@
 target/
 .learnings
 .vscode/settings.json
-.ralph/lock
-.ralph/cache/plans
-.ralph/cache/phase2_final
-.ralph/cache/completions
-.ralph/cache/queue.json.backup*
-.ralph/cache/parallel/state.json
-.ralph/cache/session.json
-.ralph/workspaces/
+.ralph
 .learnings
 debug/
-.ralph/cache/stop_requested
+
+# Coverage artifacts (LLVM profiling data can appear anywhere)
+*.profraw
+*.profdata
+
+CLAUDE.md
+
+# Ralph debug logs (raw/unredacted; do not commit)
 .ralph/logs/
-.ralph/cache/execution_history.json
+
+# Ralph parallel mode workspace directories
+.ralph/workspaces/

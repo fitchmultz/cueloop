@@ -2,11 +2,11 @@
 //!
 //! Responsibilities:
 //! - Categorize tasks by age into buckets (fresh, warning, stale, rotten, unknown).
-//! - Provide shared aging logic for CLI reports and TUI indicators.
+//! - Provide shared aging logic for CLI reports and UI indicators.
 //!
 //! Not handled here:
 //! - Output formatting (see shared.rs).
-//! - TUI color mapping (TUI maps buckets to colors).
+//! - UI color/styling mapping (callers decide how to render buckets).
 //!
 //! Invariants/assumptions:
 //! - Thresholds must satisfy: warning_days < stale_days < rotten_days.
@@ -107,12 +107,6 @@ pub(crate) enum AgingBucket {
 #[derive(Debug, Clone)]
 pub(crate) struct TaskAging {
     pub bucket: AgingBucket,
-    /// The timestamp field used as the anchor for age calculation.
-    #[allow(dead_code)]
-    pub basis: &'static str,
-    /// The raw anchor timestamp value (if available).
-    #[allow(dead_code)]
-    pub anchor_ts: Option<String>,
     /// The computed age duration.
     pub age: Option<Duration>,
 }
@@ -153,11 +147,9 @@ pub(crate) fn compute_task_aging(
     thresholds: AgingThresholds,
     now: OffsetDateTime,
 ) -> TaskAging {
-    let Some((basis, raw)) = anchor_for_task(task) else {
+    let Some((_basis, raw)) = anchor_for_task(task) else {
         return TaskAging {
             bucket: AgingBucket::Unknown,
-            basis: "unknown",
-            anchor_ts: None,
             age: None,
         };
     };
@@ -165,8 +157,6 @@ pub(crate) fn compute_task_aging(
     let Some(anchor) = timeutil::parse_rfc3339_opt(raw) else {
         return TaskAging {
             bucket: AgingBucket::Unknown,
-            basis,
-            anchor_ts: Some(raw.to_string()),
             age: None,
         };
     };
@@ -174,8 +164,6 @@ pub(crate) fn compute_task_aging(
     if anchor > now {
         return TaskAging {
             bucket: AgingBucket::Unknown,
-            basis,
-            anchor_ts: Some(raw.to_string()),
             age: None,
         };
     }
@@ -193,8 +181,6 @@ pub(crate) fn compute_task_aging(
 
     TaskAging {
         bucket,
-        basis,
-        anchor_ts: Some(raw.to_string()),
         age: Some(age),
     }
 }
@@ -541,6 +527,8 @@ mod tests {
             completed_at: None,
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],

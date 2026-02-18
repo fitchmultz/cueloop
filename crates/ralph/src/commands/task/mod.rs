@@ -84,6 +84,8 @@ pub struct TaskBuildOptions {
     pub template_target: Option<String>,
     /// Fail on unknown template variables (default: false, warns only)
     pub strict_templates: bool,
+    /// Estimated minutes for task completion
+    pub estimated_minutes: Option<u32>,
 }
 
 // TaskUpdateSettings controls runner-driven task updates via .ralph/prompts/task_updater.md.
@@ -292,6 +294,7 @@ mod tests {
             template_hint: None,
             template_target: None,
             strict_templates: false,
+            estimated_minutes: None,
         }
     }
 

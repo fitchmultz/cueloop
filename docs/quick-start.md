@@ -27,6 +27,18 @@ make install
 
 This installs the `ralph` binary to `~/.local/bin/ralph` (or a writable fallback path).
 
+## Try the Interactive Tutorial
+
+New to Ralph? Run the interactive tutorial to get hands-on experience:
+
+```bash
+ralph tutorial
+```
+
+The tutorial creates a sandbox environment and guides you through the core workflow step by step.
+
+Use `ralph tutorial --keep-sandbox` to preserve the sandbox directory for further experimentation.
+
 ## Initialize Your Project
 
 Navigate to your project directory and run:
@@ -58,15 +70,14 @@ ralph init --non-interactive
 
 After initialization, you have several options:
 
-### Launch the Interactive UI
+### macOS: Open the App (SwiftUI)
 
 ```bash
-ralph tui
+ralph app open
 ```
 
-The TUI provides a visual interface for:
+The macOS app provides an interactive UI for:
 - Viewing and managing tasks
-- Running tasks with a single keystroke
 - Editing task fields
 - Creating new tasks
 
@@ -107,7 +118,7 @@ Ralph supports multiple AI runners. Choose based on your needs:
 | Runner | Best For | Model Options | Notes |
 |--------|----------|---------------|-------|
 | **Claude** | General purpose, reasoning | `sonnet` (default), `opus`, or arbitrary IDs | Full tool use support, excellent for complex tasks |
-| **Codex** | Code generation, OpenAI ecosystem | `gpt-5.3-codex`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` | Reasoning effort control (`low` to `xhigh`) |
+| **Codex** | Code generation, OpenAI ecosystem | `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` | Reasoning effort control (`low` to `xhigh`) |
 | **OpenCode** | Flexible model selection | Arbitrary model IDs (e.g., `zai-coding-plan/glm-4.7`) | Good for custom model endpoints |
 | **Gemini** | Google ecosystem, cost efficiency | `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs | Fast, good for quick iterations |
 | **Cursor** | Cursor IDE users | Uses Cursor's `agent` binary | Integrates with Cursor workflow |
@@ -134,9 +145,9 @@ ralph task "Add user authentication feature"
 ralph task "Refactor database layer" --request "Move all database access code into a dedicated module"
 ```
 
-### From the TUI
+### From the App (macOS)
 
-Press `n` in the TUI to create a new task interactively.
+Open the app with `ralph app open` and create tasks from the UI.
 
 ## Configuration
 
@@ -161,12 +172,17 @@ See `docs/configuration.md` for all options.
 ### Daily Development
 
 ```bash
-# Start the TUI
-ralph tui
+# macOS (optional): open the app UI
+ralph app open
 
-# Press Enter to run the next task
-# Press 'l' to toggle loop mode
-# Press 'a' to archive completed tasks
+# Run the next task
+ralph run one
+
+# Or run until all tasks are complete
+ralph run loop
+
+# Archive completed tasks
+ralph queue archive
 ```
 
 ### Adding Tasks from Code Review
@@ -174,10 +190,6 @@ ralph tui
 ```bash
 # Quick task creation
 ralph task "Fix memory leak in parser"
-
-# Or use the TUI for more detail
-ralph tui
-# Press 'n' to add a task
 ```
 
 ### Running Specific Tasks
@@ -185,8 +197,6 @@ ralph tui
 ```bash
 # Run a specific task by ID
 ralph run one --task-id RQ-0005
-
-# Or find it in the TUI and press Enter
 ```
 
 ## Next Steps

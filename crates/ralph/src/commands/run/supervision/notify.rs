@@ -94,8 +94,6 @@ mod tests {
                 claude_permission_mode: Some(
                     crate::contracts::ClaudePermissionMode::BypassPermissions,
                 ),
-                update_task_before_run: None,
-                fail_on_prerun_update_error: None,
                 runner_cli: None,
                 phase_overrides: None,
                 instruction_files: None,
@@ -122,11 +120,6 @@ mod tests {
                 max_dependency_depth: Some(10),
                 auto_archive_terminal_after_days: None,
                 aging_thresholds: None,
-            },
-            tui: crate::contracts::TuiConfig {
-                auto_archive_terminal: None,
-                celebrations_enabled: Some(false),
-                stats_enabled: Some(false),
             },
             ..Config::default()
         };

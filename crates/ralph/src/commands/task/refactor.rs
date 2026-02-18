@@ -114,6 +114,7 @@ pub fn build_refactor_tasks(
                 template_hint: Some("refactor".to_string()),
                 template_target: None,
                 strict_templates: false,
+                estimated_minutes: None,
             },
         )?;
         created_count += 1;

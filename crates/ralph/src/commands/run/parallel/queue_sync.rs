@@ -1,5 +1,9 @@
 //! Queue synchronization after PR merges.
 //!
+//! NOTE: This module is deprecated in favor of merge-agent subprocess architecture.
+//! The merge-agent handles queue sync internally. This module is kept for backward
+//! compatibility and tests.
+//!
 //! Responsibilities:
 //! - Apply queue/done file updates from merged PRs.
 //! - Parse and validate queue bytes with JSONC support.
@@ -13,6 +17,8 @@
 //! Invariants/assumptions:
 //! - All bytes are validated before any file writes occur.
 //! - Invalid queue/done data fails fast without modifying disk.
+
+#![allow(dead_code)]
 
 use crate::config;
 use crate::contracts::QueueFile;

@@ -3,13 +3,13 @@
 //! Responsibilities:
 //! - Verify that parallel mode fails fast when gh CLI is not available but auto_pr/auto_merge is enabled.
 //! - Verify that the error message is clear and actionable.
+//! - Verify that parallel mode proceeds when gh is available and authenticated.
 //!
 //! Not handled here:
-//! - Testing actual PR creation (that requires gh to be installed and authenticated).
-//! - Testing the success path when gh is available (that's covered by other tests).
+//! - Testing actual PR creation (that requires real gh with repository access).
 //!
 //! Invariants/assumptions:
-//! - The test creates a fake gh binary that always fails to simulate gh being unavailable.
+//! - The test creates a fake gh binary to simulate various gh states.
 //! - The fake gh is placed first in PATH to shadow any real gh installation.
 
 use anyhow::Result;
@@ -72,6 +72,8 @@ fn parallel_run_fails_fast_when_gh_not_found() -> Result<()> {
     let output = Command::new(test_support::ralph_bin())
         .current_dir(dir.path())
         .env_remove("RUST_LOG")
+        .env_remove("RALPH_QUEUE_PATH_OVERRIDE")
+        .env_remove("RALPH_DONE_PATH_OVERRIDE")
         .env("RALPH_REPO_ROOT_OVERRIDE", dir.path())
         .env(
             "PATH",
@@ -154,6 +156,8 @@ exit 1
     let output = Command::new(test_support::ralph_bin())
         .current_dir(dir.path())
         .env_remove("RUST_LOG")
+        .env_remove("RALPH_QUEUE_PATH_OVERRIDE")
+        .env_remove("RALPH_DONE_PATH_OVERRIDE")
         .env("RALPH_REPO_ROOT_OVERRIDE", dir.path())
         .env(
             "PATH",
@@ -239,6 +243,78 @@ fn parallel_run_skips_gh_check_when_auto_pr_disabled() -> Result<()> {
     assert!(
         !combined.contains("gh CLI check failed") && !combined.contains("GitHub CLI"),
         "should not fail with gh error when auto_pr/auto_merge are disabled\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn parallel_run_proceeds_when_gh_available_and_authenticated() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+
+    // Initialize ralph
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    // Create bin directory with fake gh that succeeds for both checks
+    let bin_dir = dir.path().join("bin");
+    std::fs::create_dir_all(&bin_dir)?;
+
+    // Create a fake gh that passes both --version and auth status
+    let gh_script = r#"#!/bin/bash
+if [ "$1" = "--version" ]; then
+    echo "gh version 2.40.0"
+    exit 0
+elif [ "$1" = "auth" ] && [ "$2" = "status" ]; then
+    echo "Logged in to github.com as test-user"
+    exit 0
+fi
+exit 0
+"#;
+    test_support::create_executable_script(&bin_dir, "gh", gh_script)?;
+    create_noop_runner(&bin_dir)?;
+
+    // Configure to use the noop runner and enable auto_pr (requires gh)
+    let config_path = dir.path().join(".ralph/config.json");
+    let config_content = format!(
+        r#"{{"version":1,"agent":{{"runner":"opencode","opencode_bin":"{}","phases":1}},"parallel":{{"auto_pr":true,"auto_merge":false}}}}"#,
+        bin_dir.join("noop-runner").display()
+    );
+    std::fs::write(&config_path, config_content)?;
+
+    // Run parallel mode with the fake gh in PATH first
+    let output = Command::new(test_support::ralph_bin())
+        .current_dir(dir.path())
+        .env_remove("RUST_LOG")
+        .env("RALPH_REPO_ROOT_OVERRIDE", dir.path())
+        .env(
+            "PATH",
+            format!(
+                "{}:{}",
+                bin_dir.display(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
+        .args(["run", "loop", "--parallel", "2", "--force"])
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{stdout}{stderr}");
+
+    // Should NOT fail with gh-related error (it may fail for other reasons like no tasks)
+    // The key assertion: no gh preflight failure
+    assert!(
+        !combined.contains("gh CLI check failed")
+            && !combined.contains("GitHub CLI")
+            && !combined.contains("not authenticated")
+            && !combined.contains("gh auth login"),
+        "should not fail with gh error when gh is available and authenticated\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     Ok(())

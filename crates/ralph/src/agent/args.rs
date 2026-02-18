@@ -56,8 +56,8 @@ pub struct AgentArgs {
     pub runner: Option<String>,
 
     /// Model override for this invocation. Overrides task.agent and config.
-    /// Allowed: gpt-5.3-codex, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding
-    /// (codex supports only gpt-5.3-codex/gpt-5.3/gpt-5.2-codex/gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids).
+    /// Allowed: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding
+    /// (codex supports only gpt-5.3-codex/gpt-5.3-codex-spark/gpt-5.3/gpt-5.2-codex/gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids).
     #[arg(long)]
     pub model: Option<String>,
 
@@ -88,8 +88,8 @@ pub struct RunAgentArgs {
     pub runner: Option<String>,
 
     /// Model override for this invocation. Overrides task.agent and config.
-    /// Allowed: gpt-5.3-codex, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding
-    /// (codex supports only gpt-5.3-codex/gpt-5.3/gpt-5.2-codex/gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids).
+    /// Allowed: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding
+    /// (codex supports only gpt-5.3-codex/gpt-5.3-codex-spark/gpt-5.3/gpt-5.2-codex/gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids).
     #[arg(long)]
     pub model: Option<String>,
 
@@ -135,16 +135,6 @@ pub struct RunAgentArgs {
     /// Include draft tasks when selecting what to run.
     #[arg(long)]
     pub include_draft: bool,
-
-    /// Automatically update the selected task immediately before running it.
-    ///
-    /// This runs the equivalent of: `ralph task update <TASK_ID>` once per task.
-    #[arg(long, conflicts_with = "no_update_task")]
-    pub update_task: bool,
-
-    /// Disable automatic pre-run task update (overrides config).
-    #[arg(long, conflicts_with = "update_task")]
-    pub no_update_task: bool,
 
     /// Enable desktop notification on task completion (overrides config).
     #[arg(long, conflicts_with = "no_notify")]

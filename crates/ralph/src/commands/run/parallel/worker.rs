@@ -13,12 +13,12 @@
 //! Invariants/assumptions:
 //! - Workers run in isolated workspaces with dedicated branches.
 //! - Task selection respects queue order and exclusion sets.
+//! - Blocking state is computed dynamically from state file and queue.
 
 use crate::agent::AgentOverrides;
 use crate::commands::run::parallel::args::build_override_args;
 use crate::commands::run::selection::select_run_one_task_index_excluding;
 use crate::config;
-use crate::constants::paths::ENV_FORCE_COMPLETION_SIGNAL;
 use crate::git::WorkspaceSpec;
 use crate::lock::DirLock;
 use crate::queue;
@@ -27,7 +27,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
-use time::OffsetDateTime;
 
 use super::state;
 
@@ -84,13 +83,10 @@ pub(crate) fn select_next_task_locked(
     )))
 }
 
-/// Collect IDs that should be excluded from task selection (in-flight, open PRs, blocking finished-without-PR).
+/// Collect IDs that should be excluded from task selection (in-flight, open PRs, pending merges).
 pub(crate) fn collect_excluded_ids(
     state_file: &state::ParallelStateFile,
     in_flight: &HashMap<String, WorkerState>,
-    now: OffsetDateTime,
-    auto_pr_enabled: bool,
-    draft_on_failure: bool,
 ) -> HashSet<String> {
     let mut excluded = HashSet::new();
     for key in in_flight.keys() {
@@ -99,17 +95,15 @@ pub(crate) fn collect_excluded_ids(
     for record in &state_file.tasks_in_flight {
         excluded.insert(record.task_id.trim().to_string());
     }
-    // Only exclude tasks with PRs that are still open and not merged
+    // Only exclude tasks with PRs that are still open
     for record in &state_file.prs {
         if record.is_open_unmerged() {
             excluded.insert(record.task_id.trim().to_string());
         }
     }
-    // Only exclude finished-without-PR records that are currently blocking
-    for record in &state_file.finished_without_pr {
-        if record.is_blocking(now, auto_pr_enabled, draft_on_failure) {
-            excluded.insert(record.task_id.trim().to_string());
-        }
+    // Exclude tasks with pending merges
+    for job in &state_file.pending_merges {
+        excluded.insert(job.task_id.trim().to_string());
     }
     excluded
 }
@@ -129,13 +123,14 @@ pub(crate) fn terminate_workers(in_flight: &mut HashMap<String, WorkerState>) {
 
 /// Spawn a worker process for the given task in the specified workspace.
 pub(crate) fn spawn_worker(
-    _resolved: &config::Resolved,
+    resolved: &config::Resolved,
     workspace_path: &Path,
     task_id: &str,
     overrides: &AgentOverrides,
     force: bool,
 ) -> Result<Child> {
-    let (mut cmd, args) = build_worker_command(workspace_path, task_id, overrides, force)?;
+    let (mut cmd, args) =
+        build_worker_command(resolved, workspace_path, task_id, overrides, force)?;
     log::debug!(
         "Spawning parallel worker {} in {} with args: {:?}",
         task_id,
@@ -149,6 +144,7 @@ pub(crate) fn spawn_worker(
 
 /// Build the command and arguments for a worker subprocess.
 fn build_worker_command(
+    _resolved: &config::Resolved,
     workspace_path: &Path,
     task_id: &str,
     overrides: &AgentOverrides,
@@ -159,20 +155,21 @@ fn build_worker_command(
     cmd.current_dir(workspace_path);
     cmd.env("PWD", workspace_path);
     cmd.env(crate::config::REPO_ROOT_OVERRIDE_ENV, workspace_path);
-    cmd.env(ENV_FORCE_COMPLETION_SIGNAL, "1");
+    cmd.env_remove(crate::config::QUEUE_PATH_OVERRIDE_ENV);
+    cmd.env_remove(crate::config::DONE_PATH_OVERRIDE_ENV);
     cmd.stdin(Stdio::null());
 
     let mut args: Vec<String> = Vec::new();
     if force {
         args.push("--force".to_string());
     }
-    args.push("--no-progress".to_string());
     args.push("run".to_string());
     args.push("one".to_string());
     args.push("--id".to_string());
     args.push(task_id.to_string());
     args.push("--parallel-worker".to_string());
     args.push("--non-interactive".to_string());
+    args.push("--no-progress".to_string());
 
     args.extend(build_override_args(overrides));
 
@@ -192,14 +189,29 @@ mod tests {
         let workspace_path = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace_path)?;
 
+        let ralph_dir = temp.path().join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: temp.path().to_path_buf(),
+            queue_path: ralph_dir.join("queue.json"),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
         let overrides = AgentOverrides::default();
-        let (cmd, args) = build_worker_command(&workspace_path, "RQ-1234", &overrides, true)?;
+        let (cmd, args) =
+            build_worker_command(&resolved, &workspace_path, "RQ-1234", &overrides, true)?;
 
         assert_eq!(cmd.get_current_dir(), Some(workspace_path.as_path()));
 
         let mut pwd_seen = false;
         let mut override_seen = false;
-        let mut force_seen = false;
+        let mut queue_override_seen = false;
+        let mut done_override_seen = false;
         for (key, value) in cmd.get_envs() {
             if key == std::ffi::OsStr::new("PWD") {
                 pwd_seen = true;
@@ -209,9 +221,21 @@ mod tests {
                 override_seen = true;
                 assert_eq!(value, Some(workspace_path.as_os_str()));
             }
-            if key == std::ffi::OsStr::new(ENV_FORCE_COMPLETION_SIGNAL) {
-                force_seen = true;
-                assert_eq!(value, Some(std::ffi::OsStr::new("1")));
+            if key == std::ffi::OsStr::new(crate::config::QUEUE_PATH_OVERRIDE_ENV) {
+                queue_override_seen = true;
+                assert!(
+                    value.is_none(),
+                    "{} should be absent, not set",
+                    crate::config::QUEUE_PATH_OVERRIDE_ENV
+                );
+            }
+            if key == std::ffi::OsStr::new(crate::config::DONE_PATH_OVERRIDE_ENV) {
+                done_override_seen = true;
+                assert!(
+                    value.is_none(),
+                    "{} should be absent, not set",
+                    crate::config::DONE_PATH_OVERRIDE_ENV
+                );
             }
         }
         assert!(pwd_seen, "PWD env should be set for workspace execution");
@@ -221,9 +245,14 @@ mod tests {
             crate::config::REPO_ROOT_OVERRIDE_ENV
         );
         assert!(
-            force_seen,
-            "{} env should be set for workspace execution",
-            ENV_FORCE_COMPLETION_SIGNAL
+            queue_override_seen,
+            "{} must be explicitly removed on worker process",
+            crate::config::QUEUE_PATH_OVERRIDE_ENV
+        );
+        assert!(
+            done_override_seen,
+            "{} must be explicitly removed on worker process",
+            crate::config::DONE_PATH_OVERRIDE_ENV
         );
 
         assert!(args.contains(&"--force".to_string()));
@@ -235,6 +264,18 @@ mod tests {
         // Default overrides should not emit git-commit-push flags
         assert!(!args.contains(&"--git-commit-push-on".to_string()));
         assert!(!args.contains(&"--git-commit-push-off".to_string()));
+
+        let run_pos = args.iter().position(|arg| arg == "run").expect("run");
+        let one_pos = args.iter().position(|arg| arg == "one").expect("one");
+        let no_progress_pos = args
+            .iter()
+            .position(|arg| arg == "--no-progress")
+            .expect("--no-progress");
+        assert!(
+            no_progress_pos > one_pos && one_pos > run_pos,
+            "--no-progress must be scoped under `run one`, got args: {:?}",
+            args
+        );
 
         let id_pos = args.iter().position(|arg| arg == "--id").expect("--id");
         assert_eq!(args.get(id_pos + 1), Some(&"RQ-1234".to_string()));
@@ -248,11 +289,25 @@ mod tests {
         let workspace_path = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace_path)?;
 
+        let ralph_dir = temp.path().join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: temp.path().to_path_buf(),
+            queue_path: ralph_dir.join("queue.json"),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
         let overrides = AgentOverrides {
             git_commit_push_enabled: Some(true),
             ..Default::default()
         };
-        let (_cmd, args) = build_worker_command(&workspace_path, "RQ-1234", &overrides, false)?;
+        let (_cmd, args) =
+            build_worker_command(&resolved, &workspace_path, "RQ-1234", &overrides, false)?;
 
         assert!(args.contains(&"--git-commit-push-on".to_string()));
         assert!(!args.contains(&"--git-commit-push-off".to_string()));
@@ -266,11 +321,25 @@ mod tests {
         let workspace_path = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace_path)?;
 
+        let ralph_dir = temp.path().join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: temp.path().to_path_buf(),
+            queue_path: ralph_dir.join("queue.json"),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
         let overrides = AgentOverrides {
             git_commit_push_enabled: Some(false),
             ..Default::default()
         };
-        let (_cmd, args) = build_worker_command(&workspace_path, "RQ-1234", &overrides, false)?;
+        let (_cmd, args) =
+            build_worker_command(&resolved, &workspace_path, "RQ-1234", &overrides, false)?;
 
         assert!(args.contains(&"--git-commit-push-off".to_string()));
         assert!(!args.contains(&"--git-commit-push-on".to_string()));
@@ -280,12 +349,6 @@ mod tests {
 
     #[test]
     fn collect_excluded_ids_includes_state_and_in_flight() -> Result<()> {
-        use crate::timeutil;
-
-        let temp = TempDir::new()?;
-        let ws_path = temp.path().join("workspace");
-        std::fs::create_dir_all(&ws_path)?;
-
         let mut state_file = state::ParallelStateFile::new(
             "2026-02-01T00:00:00Z".to_string(),
             "main".to_string(),
@@ -303,50 +366,30 @@ mod tests {
         state_file.prs.push(state::ParallelPrRecord {
             task_id: "RQ-0003".to_string(),
             pr_number: 7,
-            pr_url: "https://example.com/pr/7".to_string(),
-            head: Some("ralph/RQ-0003".to_string()),
-            base: Some("main".to_string()),
-            workspace_path: None,
-            merged: false,
             lifecycle: state::ParallelPrLifecycle::Open,
-            merge_blocker: None,
         });
         // Closed PR should NOT be excluded
         state_file.prs.push(state::ParallelPrRecord {
             task_id: "RQ-0005".to_string(),
             pr_number: 8,
-            pr_url: "https://example.com/pr/8".to_string(),
-            head: Some("ralph/RQ-0005".to_string()),
-            base: Some("main".to_string()),
-            workspace_path: None,
-            merged: false,
             lifecycle: state::ParallelPrLifecycle::Closed,
-            merge_blocker: None,
         });
         // Merged PR should NOT be excluded
         state_file.prs.push(state::ParallelPrRecord {
             task_id: "RQ-0006".to_string(),
             pr_number: 9,
-            pr_url: "https://example.com/pr/9".to_string(),
-            head: Some("ralph/RQ-0006".to_string()),
-            base: Some("main".to_string()),
-            workspace_path: None,
-            merged: true,
             lifecycle: state::ParallelPrLifecycle::Merged,
-            merge_blocker: None,
         });
-        // Finished without PR should be excluded (when auto_pr is disabled)
-        state_file
-            .finished_without_pr
-            .push(state::ParallelFinishedWithoutPrRecord {
-                task_id: "RQ-0007".to_string(),
-                workspace_path: ws_path.to_string_lossy().to_string(),
-                branch: "ralph/RQ-0007".to_string(),
-                success: true,
-                finished_at: "2026-02-02T00:00:00Z".to_string(),
-                reason: state::ParallelNoPrReason::AutoPrDisabled,
-                message: None,
-            });
+        // Pending merge should be excluded
+        state_file.pending_merges.push(state::PendingMergeJob {
+            task_id: "RQ-0007".to_string(),
+            pr_number: 10,
+            workspace_path: None,
+            lifecycle: state::PendingMergeLifecycle::Queued,
+            attempts: 0,
+            queued_at: "2026-02-02T00:00:00Z".to_string(),
+            last_error: None,
+        });
 
         let mut in_flight = HashMap::new();
         let child = std::process::Command::new("true").spawn()?;
@@ -363,9 +406,7 @@ mod tests {
             },
         );
 
-        let now = timeutil::parse_rfc3339("2026-02-03T00:00:00Z")?;
-        // auto_pr_enabled=false, so AutoPrDisabled records should block
-        let excluded = collect_excluded_ids(&state_file, &in_flight, now, false, true);
+        let excluded = collect_excluded_ids(&state_file, &in_flight);
         assert!(
             excluded.contains("RQ-0002"),
             "in-flight task should be excluded"
@@ -380,7 +421,7 @@ mod tests {
         );
         assert!(
             excluded.contains("RQ-0007"),
-            "finished-without-PR task should be excluded when auto_pr is disabled"
+            "pending merge task should be excluded"
         );
         assert!(
             !excluded.contains("RQ-0005"),
@@ -391,103 +432,9 @@ mod tests {
             "merged PR task should NOT be excluded"
         );
 
-        // With auto_pr enabled, AutoPrDisabled records should NOT block
-        let excluded_enabled = collect_excluded_ids(&state_file, &in_flight, now, true, true);
-        assert!(
-            !excluded_enabled.contains("RQ-0007"),
-            "finished-without-PR task should NOT be excluded when auto_pr is enabled"
-        );
-
         for worker in in_flight.values_mut() {
             let _ = worker.child.wait();
         }
-
-        Ok(())
-    }
-
-    #[test]
-    fn collect_excluded_ids_finished_without_pr_is_conditional_on_settings() -> Result<()> {
-        use crate::timeutil;
-
-        let temp = TempDir::new()?;
-        let ws = temp.path().join("ws");
-        std::fs::create_dir_all(&ws)?;
-
-        let mut state_file = state::ParallelStateFile::new(
-            "2026-02-01T00:00:00Z".to_string(),
-            "main".to_string(),
-            ParallelMergeMethod::Squash,
-            ParallelMergeWhen::AsCreated,
-        );
-        state_file
-            .finished_without_pr
-            .push(state::ParallelFinishedWithoutPrRecord {
-                task_id: "RQ-0007".to_string(),
-                workspace_path: ws.to_string_lossy().to_string(),
-                branch: "ralph/RQ-0007".to_string(),
-                success: true,
-                finished_at: "2026-02-02T00:00:00Z".to_string(),
-                reason: state::ParallelNoPrReason::AutoPrDisabled,
-                message: None,
-            });
-
-        let in_flight = HashMap::new();
-        let now = timeutil::parse_rfc3339("2026-02-03T00:00:00Z")?;
-
-        let excluded_when_disabled =
-            collect_excluded_ids(&state_file, &in_flight, now, false, true);
-        assert!(excluded_when_disabled.contains("RQ-0007"));
-
-        let excluded_when_enabled = collect_excluded_ids(&state_file, &in_flight, now, true, true);
-        assert!(!excluded_when_enabled.contains("RQ-0007"));
-
-        Ok(())
-    }
-
-    #[test]
-    fn collect_excluded_ids_pr_create_failed_expires() -> Result<()> {
-        use crate::timeutil;
-
-        let temp = TempDir::new()?;
-        let ws = temp.path().join("ws");
-        std::fs::create_dir_all(&ws)?;
-
-        let mut state_file = state::ParallelStateFile::new(
-            "2026-02-01T00:00:00Z".to_string(),
-            "main".to_string(),
-            ParallelMergeMethod::Squash,
-            ParallelMergeWhen::AsCreated,
-        );
-
-        state_file
-            .finished_without_pr
-            .push(state::ParallelFinishedWithoutPrRecord {
-                task_id: "RQ-FAIL-NEW".to_string(),
-                workspace_path: ws.to_string_lossy().to_string(),
-                branch: "ralph/RQ-FAIL-NEW".to_string(),
-                success: true,
-                finished_at: "2026-02-02T23:30:00Z".to_string(),
-                reason: state::ParallelNoPrReason::PrCreateFailed,
-                message: None,
-            });
-
-        state_file
-            .finished_without_pr
-            .push(state::ParallelFinishedWithoutPrRecord {
-                task_id: "RQ-FAIL-OLD".to_string(),
-                workspace_path: ws.to_string_lossy().to_string(),
-                branch: "ralph/RQ-FAIL-OLD".to_string(),
-                success: true,
-                finished_at: "2020-01-01T00:00:00Z".to_string(),
-                reason: state::ParallelNoPrReason::PrCreateFailed,
-                message: None,
-            });
-
-        let now = timeutil::parse_rfc3339("2026-02-03T00:00:00Z")?;
-        let excluded = collect_excluded_ids(&state_file, &HashMap::new(), now, true, true);
-
-        assert!(excluded.contains("RQ-FAIL-NEW"));
-        assert!(!excluded.contains("RQ-FAIL-OLD"));
 
         Ok(())
     }
@@ -529,6 +476,8 @@ mod tests {
             relates_to: vec![],
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         });
         queue::save_queue(&queue_path, &queue_file)?;

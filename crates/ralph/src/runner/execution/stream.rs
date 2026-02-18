@@ -80,11 +80,13 @@ fn append_to_buffer(buffer: &mut String, text: &str, exceeded_logged: &mut bool)
         if text.len() >= MAX_BUFFER_SIZE {
             // New text alone exceeds limit, keep just the end of it
             buffer.clear();
-            buffer.push_str(&text[text.len() - MAX_BUFFER_SIZE..]);
+            let start = text.floor_char_boundary(text.len() - MAX_BUFFER_SIZE);
+            buffer.push_str(&text[start..]);
         } else {
             // Trim old content to make room for new text
             let keep_from = buffer.len() + text.len() - MAX_BUFFER_SIZE;
-            let remaining = buffer.split_off(keep_from);
+            let start = buffer.floor_char_boundary(keep_from);
+            let remaining = buffer.split_off(start);
             *buffer = remaining;
             buffer.push_str(text);
         }
@@ -132,11 +134,13 @@ pub(super) fn spawn_reader<R: Read + Send + 'static>(
                 if text_str.len() >= MAX_BUFFER_SIZE {
                     // New text alone exceeds limit, keep just the end of it
                     guard.clear();
-                    guard.push_str(&text_str[text_str.len() - MAX_BUFFER_SIZE..]);
+                    let start = text_str.floor_char_boundary(text_str.len() - MAX_BUFFER_SIZE);
+                    guard.push_str(&text_str[start..]);
                 } else {
                     // Trim old content to make room for new text
                     let keep_from = guard.len() + text_str.len() - MAX_BUFFER_SIZE;
-                    let remaining = guard.split_off(keep_from);
+                    let start = guard.floor_char_boundary(keep_from);
+                    let remaining = guard.split_off(start);
                     *guard = remaining;
                     guard.push_str(text_str);
                 }
@@ -571,7 +575,13 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                     let details = function
                         .get("arguments")
                         .and_then(|a| a.as_str())
-                        .and_then(|args_str| serde_json::from_str::<JsonValue>(args_str).ok())
+                        .and_then(|args_str| {
+                            serde_json::from_str::<JsonValue>(args_str)
+                                .inspect_err(|e| {
+                                    log::trace!("Failed to parse tool arguments JSON: {}", e)
+                                })
+                                .ok()
+                        })
                         .and_then(|args_json| format_tool_details(&args_json));
                     lines.push(outpututil::format_tool_call(name, details.as_deref()));
                 }
@@ -579,11 +589,19 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
         }
     }
 
-    // Handle kimi tool results: role="tool" with tool_name added during tracking
+    // Handle kimi tool results: role="tool" with content array
+    // Note: We intentionally don't display the full tool output content here
+    // because it's often verbose (file contents, search results, etc.).
+    // The tool arguments were already displayed when the assistant made the tool call.
     if let Some(role) = json.get("role").and_then(|r| r.as_str())
         && role == "tool"
-        && let Some(tool_name) = json.get("tool_name").and_then(|t| t.as_str())
     {
+        // Get tool name (with "Tool" as default)
+        let tool_name = json
+            .get("tool_name")
+            .and_then(|t| t.as_str())
+            .unwrap_or("Tool");
+
         lines.push(outpututil::format_tool_call(tool_name, Some("(completed)")));
     }
 

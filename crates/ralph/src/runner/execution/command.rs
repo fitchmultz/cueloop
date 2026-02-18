@@ -16,7 +16,7 @@ use anyhow::{Result, anyhow};
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use crate::fsutil;
 
@@ -26,10 +26,11 @@ use crate::constants::timeouts::TEMP_RETENTION;
 use crate::contracts::{ClaudePermissionMode, Model, ReasoningEffort};
 
 /// Builds `std::process::Command` instances with standardized configuration for runners.
-#[allow(dead_code)]
 pub(super) struct RunnerCommandBuilder {
     cmd: Command,
     bin: String,
+    /// Working directory for the command. Kept for debugging/error messages.
+    #[allow(dead_code)]
     work_dir: PathBuf,
     stdin_payload: Option<Vec<u8>>,
     // We hold these to ensure temp files/dirs persist until the command is built and executed.
@@ -65,7 +66,6 @@ impl RunnerCommandBuilder {
         self
     }
 
-    #[allow(dead_code)]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -75,27 +75,8 @@ impl RunnerCommandBuilder {
         self
     }
 
-    #[allow(dead_code)]
     pub fn env(mut self, key: &str, val: &str) -> Self {
         self.cmd.env(key, val);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn stdout(mut self, cfg: Stdio) -> Self {
-        self.cmd.stdout(cfg);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn stderr(mut self, cfg: Stdio) -> Self {
-        self.cmd.stderr(cfg);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn stdin(mut self, cfg: Stdio) -> Self {
-        self.cmd.stdin(cfg);
         self
     }
 

@@ -296,6 +296,8 @@ pub fn create_task_from_comment(comment: &DetectedComment, resolved: &Resolved) 
         updated_at: Some(now),
         completed_at: None,
         started_at: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         scheduled_start: None,
         depends_on: Vec::new(),
         blocks: Vec::new(),
@@ -397,6 +399,8 @@ mod tests {
             relates_to: vec![],
             duplicates: None,
             custom_fields: HashMap::new(),
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         });
         let done_json = serde_json::to_string_pretty(&done_queue).unwrap();
@@ -443,6 +447,8 @@ mod tests {
             relates_to: vec![],
             duplicates: None,
             custom_fields: HashMap::new(),
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         });
 
@@ -554,6 +560,8 @@ mod tests {
                 map.insert("watch.comment_type".to_string(), "todo".to_string());
                 map
             },
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         };
         queue.tasks.push(task);
@@ -606,6 +614,8 @@ mod tests {
                 map.insert("watch.fingerprint".to_string(), fingerprint);
                 map
             },
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         };
         queue.tasks.push(task);
@@ -644,6 +654,8 @@ mod tests {
             completed_at: None,
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],
@@ -734,6 +746,8 @@ mod tests {
                 map.insert("watch.comment_type".to_string(), "todo".to_string());
                 map
             },
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         };
         queue.tasks.push(task);
@@ -794,6 +808,8 @@ mod tests {
             completed_at: None,
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],
@@ -852,6 +868,8 @@ mod tests {
             completed_at: Some("2026-01-02T00:00:00Z".to_string()),
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],

@@ -33,6 +33,8 @@ fn task_with(id: &str, status: TaskStatus, tags: Vec<String>) -> Task {
         duplicates: None,
         custom_fields: HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     }
 }
 
@@ -118,9 +120,11 @@ fn validate_rejects_zero_agent_iterations() {
         runner: None,
         model: None,
         model_effort: crate::contracts::ModelEffort::Default,
+        phases: None,
         iterations: Some(0),
         followup_reasoning_effort: None,
         runner_cli: None,
+        phase_overrides: None,
     });
     let queue = QueueFile {
         version: 1,
@@ -128,6 +132,27 @@ fn validate_rejects_zero_agent_iterations() {
     };
     let err = validate_queue(&queue, "RQ", 4).unwrap_err();
     assert!(format!("{err}").contains("agent.iterations"));
+}
+
+#[test]
+fn validate_rejects_invalid_agent_phases() {
+    let mut task = task("RQ-0001");
+    task.agent = Some(TaskAgent {
+        runner: None,
+        model: None,
+        model_effort: crate::contracts::ModelEffort::Default,
+        phases: Some(4),
+        iterations: None,
+        followup_reasoning_effort: None,
+        runner_cli: None,
+        phase_overrides: None,
+    });
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![task],
+    };
+    let err = validate_queue(&queue, "RQ", 4).unwrap_err();
+    assert!(format!("{err}").contains("agent.phases"));
 }
 
 #[test]
@@ -310,6 +335,8 @@ fn task_with_deps(id: &str, status: TaskStatus, deps: Vec<String>) -> Task {
         completed_at: None,
         started_at: None,
         scheduled_start: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         depends_on: deps,
         blocks: vec![],
         relates_to: vec![],
@@ -540,6 +567,8 @@ fn task_with_relationships(
         completed_at: None,
         started_at: None,
         scheduled_start: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         depends_on: vec![],
         blocks,
         relates_to,
@@ -816,6 +845,8 @@ fn task_with_parent(id: &str, parent_id: Option<&str>) -> Task {
         completed_at: None,
         started_at: None,
         scheduled_start: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         depends_on: vec![],
         blocks: vec![],
         relates_to: vec![],
@@ -867,7 +898,7 @@ fn validate_warns_on_self_parent() {
 }
 
 #[test]
-fn validate_warns_on_parent_cycle() {
+fn validate_errors_on_parent_cycle() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
@@ -877,12 +908,12 @@ fn validate_warns_on_parent_cycle() {
     };
 
     let result = validate_queue_set(&active, None, "RQ", 4, 10);
-    assert!(result.is_ok(), "Should not error on parent cycle");
-    let warnings = result.unwrap();
+    assert!(result.is_err(), "Should error on parent cycle");
+    let err = result.unwrap_err();
     assert!(
-        warnings.iter().any(|w| w.message.contains("Circular")),
-        "Should warn about circular parent: {:?}",
-        warnings
+        err.to_string().contains("Circular parent chain"),
+        "Error should mention circular parent chain: {}",
+        err
     );
 }
 

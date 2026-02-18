@@ -69,12 +69,14 @@ pub fn run_wizard() -> Result<WizardAnswers> {
             "Google's Gemini CLI - Good for large context windows",
         ),
         ("Cursor", "Cursor's agent mode - IDE-integrated workflow"),
+        ("Kimi", "Moonshot AI Kimi - Strong coding capabilities"),
+        ("Pi", "Inflection Pi - Conversational AI assistant"),
     ];
 
     let runner_idx = Select::new()
         .with_prompt("Select your AI runner")
         .items(
-            &runners
+            runners
                 .iter()
                 .map(|(name, desc)| format!("{} - {}", name, desc))
                 .collect::<Vec<_>>(),
@@ -89,6 +91,8 @@ pub fn run_wizard() -> Result<WizardAnswers> {
         2 => Runner::Opencode,
         3 => Runner::Gemini,
         4 => Runner::Cursor,
+        5 => Runner::Kimi,
+        6 => Runner::Pi,
         _ => Runner::Claude, // default fallback
     };
 
@@ -208,6 +212,7 @@ fn select_model(runner: &Runner) -> Result<String> {
         ],
         Runner::Codex => vec![
             ("gpt-5.3-codex", "Codex optimized for coding (recommended)"),
+            ("gpt-5.3-codex-spark", "Codex Spark variant for coding"),
             ("gpt-5.3", "General GPT-5.3"),
             ("gpt-5.2-codex", "Codex optimized for coding (legacy)"),
             ("gpt-5.2", "General GPT-5.2 (legacy)"),
@@ -220,7 +225,23 @@ fn select_model(runner: &Runner) -> Result<String> {
             ),
             ("custom", "Other model (specify)"),
         ],
-        _ => vec![
+        Runner::Opencode => vec![
+            ("zai-coding-plan/glm-4.7", "GLM-4.7 model (recommended)"),
+            ("custom", "Other model (specify)"),
+        ],
+        Runner::Kimi => vec![
+            ("kimi-for-coding", "Kimi coding model (recommended)"),
+            ("custom", "Other model (specify)"),
+        ],
+        Runner::Pi => vec![
+            ("gpt-5.3", "GPT-5.3 model (recommended)"),
+            ("custom", "Other model (specify)"),
+        ],
+        Runner::Cursor => vec![
+            ("auto", "Let Cursor choose automatically (recommended)"),
+            ("custom", "Other model (specify)"),
+        ],
+        Runner::Plugin(_) => vec![
             ("default", "Use runner default"),
             ("custom", "Specify custom model"),
         ],
@@ -332,7 +353,7 @@ pub fn print_completion_message(answers: Option<&WizardAnswers>, _queue_path: &P
     );
     println!();
     println!("{}", colored::Colorize::bold("Next steps:"));
-    println!("  1. Run 'ralph tui' to launch the interactive UI");
+    println!("  1. Run 'ralph app open' to open the macOS app (optional)");
     println!("  2. Run 'ralph run one' to execute your first task");
     println!("  3. Edit .ralph/config.json to customize settings");
 

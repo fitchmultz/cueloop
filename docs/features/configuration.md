@@ -16,9 +16,8 @@ Ralph uses a flexible, layered JSON configuration system that allows you to cust
 8. [Queue Configuration](#queue-configuration)
 9. [Plugin Configuration](#plugin-configuration)
 10. [Profile Configuration](#profile-configuration)
-11. [TUI Configuration](#tui-configuration)
-12. [Environment Variables](#environment-variables)
-13. [Validation](#validation)
+11. [Environment Variables](#environment-variables)
+12. [Validation](#validation)
 
 ---
 
@@ -52,7 +51,20 @@ Stored in your user configuration directory:
 | Linux/macOS | `~/.config/ralph/config.json` |
 | With XDG | `$XDG_CONFIG_HOME/ralph/config.json` |
 
-Created automatically on first run or via `ralph init --global`.
+Create this file manually. A minimal example:
+
+```json
+{
+  "version": 1,
+  "agent": {
+    "runner": "claude",
+    "model": "sonnet",
+    "phases": 3
+  }
+}
+```
+
+You can also use `.jsonc` extension for JSON with Comments support.
 
 ### Project Config
 
@@ -67,20 +79,20 @@ Created automatically when you run `ralph init` in a repository.
 ### Quick Reference
 
 ```bash
-# View current config resolution
+# View resolved configuration
 ralph config show
 
-# View merged config with all layers
-ralph config show --merged
+# View in JSON format
+ralph config show --format json
 
-# Edit global config
-ralph config edit --global
+# View config file paths
+ralph config paths
 
-# Edit project config
-ralph config edit
+# View configuration schema
+ralph config schema
 
-# Validate current configuration
-ralph config validate
+# List available profiles
+ralph config profiles list
 ```
 
 ---
@@ -189,7 +201,6 @@ The configuration root contains these main sections:
 | `queue` | `QueueConfig` | Queue file locations and ID formatting |
 | `plugins` | `PluginsConfig` | Plugin enable/disable and settings |
 | `profiles` | `object` | Named configuration profiles |
-| `tui` | `TuiConfig` | Terminal UI-specific settings |
 
 ### Example Structure
 
@@ -201,8 +212,7 @@ The configuration root contains these main sections:
   "parallel": { /* ... */ },
   "queue": { /* ... */ },
   "plugins": { /* ... */ },
-  "profiles": { /* ... */ },
-  "tui": { /* ... */ }
+  "profiles": { /* ... */ }
 }
 ```
 
@@ -286,13 +296,6 @@ Paths can be:
 }
 ```
 
-### Task Update Settings
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `update_task_before_run` | `boolean` | `false` | Auto-update task before execution |
-| `fail_on_prerun_update_error` | `boolean` | `false` | Fail run if pre-run update fails |
-
 ### Session & Recovery
 
 | Field | Type | Default | Description |
@@ -324,8 +327,7 @@ Paths can be:
     "repoprompt_plan_required": false,
     "instruction_files": ["AGENTS.md"],
     "session_timeout_hours": 24,
-    "scan_prompt_version": "v2",
-    "update_task_before_run": false
+    "scan_prompt_version": "v2"
   }
 }
 ```
@@ -485,7 +487,7 @@ Desktop notification configuration for task events.
 | `notify_on_complete` | `boolean` | `true` | Notify on task completion |
 | `notify_on_fail` | `boolean` | `true` | Notify on task failure |
 | `notify_on_loop_complete` | `boolean` | `true` | Notify when loop mode completes |
-| `suppress_when_active` | `boolean` | `true` | Suppress when TUI is active |
+| `suppress_when_active` | `boolean` | `true` | Suppress when the macOS app is active |
 | `sound_enabled` | `boolean` | `false` | Play sound with notifications |
 | `sound_path` | `string` | `null` | Custom sound file path |
 | `timeout_ms` | `number` | `8000` | Notification timeout (1000-60000) |
@@ -542,7 +544,7 @@ HTTP webhook configuration for external integrations.
 
 ## Parallel Configuration
 
-The `parallel` section controls parallel task execution for `ralph run loop`. **Note**: Parallel mode is CLI-only; the TUI does not support parallel runs.
+The `parallel` section controls parallel task execution for `ralph run loop`. **Note**: Parallel mode is CLI-only.
 
 ### Core Fields
 
@@ -823,37 +825,6 @@ User-defined profiles with the same name as built-ins override the built-in.
 
 ---
 
-## TUI Configuration
-
-The `tui` section configures Terminal UI-specific behavior.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `auto_archive_terminal` | `"never" \| "prompt" \| "always"` | `null` | Auto-archive behavior for terminal tasks |
-| `celebrations_enabled` | `boolean` | `true` | Enable celebration animations |
-| `stats_enabled` | `boolean` | `true` | Enable productivity stats tracking |
-
-### Auto-Archive Behavior
-
-- `never`: Never auto-archive (default behavior)
-- `prompt`: Ask before archiving
-- `always`: Archive immediately without prompt
-
-### Example
-
-```json
-{
-  "version": 1,
-  "tui": {
-    "auto_archive_terminal": "prompt",
-    "celebrations_enabled": true,
-    "stats_enabled": true
-  }
-}
-```
-
----
-
 ## Environment Variables
 
 Environment variables can be used within configuration files for dynamic values and secrets.
@@ -910,7 +881,7 @@ Ralph validates configuration on load and provides detailed error messages for i
 | `agent.session_timeout_hours` | Must be `≥ 1` |
 | `parallel.workers` | Must be `≥ 2` (if set) |
 | `parallel.merge_retries` | Must be `≥ 1` (if set) |
-| `queue.id_width` | Must be `≥ 0` |
+| `queue.id_width` | Must be `≥ 1` (minimum 1) |
 | `queue.*_threshold*` | Must be within documented ranges |
 | Binary paths | Must be non-empty if specified |
 | Branch prefix | Must form valid git ref with task ID |
@@ -918,15 +889,14 @@ Ralph validates configuration on load and provides detailed error messages for i
 ### Validation Commands
 
 ```bash
-# Validate current configuration
-ralph config validate
-
-# Show resolved configuration
+# Show resolved configuration (validates on load)
 ralph config show
 
-# Show merged config with all layers
-ralph config show --merged
+# View configuration schema
+ralph config schema
 ```
+
+Note: Configuration validation happens implicitly when loading config. There is no separate `validate` subcommand.
 
 ### Common Validation Errors
 
@@ -1072,13 +1042,6 @@ Here's a comprehensive example demonstrating all configuration sections:
       "model": "opus",
       "phases": 3
     }
-  },
-  
-  // TUI settings
-  "tui": {
-    "auto_archive_terminal": "prompt",
-    "celebrations_enabled": true,
-    "stats_enabled": true
   }
 }
 ```

@@ -113,8 +113,6 @@ mod tests {
                 kimi_bin: Some("kimi".to_string()),
                 pi_bin: Some("pi".to_string()),
                 phases: Some(2),
-                update_task_before_run: None,
-                fail_on_prerun_update_error: None,
                 claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
                 runner_cli: None,
                 phase_overrides: None,

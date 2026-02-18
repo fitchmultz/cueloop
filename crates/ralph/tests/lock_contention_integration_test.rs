@@ -13,14 +13,16 @@
 //! - Subprocess-based lock holder signals readiness before contention check.
 //! - Lock directory path is stable under the temp repo.
 
+mod test_support;
+
 use anyhow::{Context, Result};
 use ralph::{lock, queue};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tempfile::TempDir;
 
 fn current_exe() -> PathBuf {
@@ -45,7 +47,17 @@ fn lock_holder_process() -> Result<()> {
     println!("LOCK_HELD");
     let _ = std::io::stdout().flush();
 
-    thread::sleep(Duration::from_secs(30));
+    // Parent closes stdin when it's done asserting contention behavior.
+    let mut stdin = std::io::stdin();
+    let mut buf = [0u8; 1];
+    loop {
+        match stdin.read(&mut buf) {
+            Ok(0) => break,
+            Ok(_) => continue,
+            Err(err) if err.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => break,
+        }
+    }
     Ok(())
 }
 
@@ -61,11 +73,13 @@ fn lock_contention_blocks_second_process() -> Result<()> {
         .arg("--nocapture")
         .env("RALPH_TEST_LOCK_HOLD", "1")
         .env("RALPH_TEST_REPO_ROOT", &repo_root)
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
         .context("spawn lock holder process")?;
 
+    let child_stdin = child.stdin.take().context("capture lock holder stdin")?;
     let stdout = child.stdout.take().context("capture lock holder stdout")?;
     let (tx, rx) = mpsc::channel();
 
@@ -86,21 +100,15 @@ fn lock_contention_blocks_second_process() -> Result<()> {
         }
     });
 
-    let mut got_signal = false;
-    let start = Instant::now();
-    while start.elapsed() < Duration::from_secs(10) {
-        match rx.recv_timeout(Duration::from_millis(200)) {
-            Ok(line) => {
+    let got_signal =
+        test_support::wait_until(Duration::from_secs(10), Duration::from_millis(50), || {
+            while let Ok(line) = rx.try_recv() {
                 if line.contains("LOCK_HELD") {
-                    got_signal = true;
-                    break;
+                    return true;
                 }
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => continue,
-            Err(_) => break,
-        }
-    }
-
+            false
+        });
     anyhow::ensure!(got_signal, "lock holder did not signal readiness");
 
     let err = queue::acquire_queue_lock(&repo_root, "contender", false).unwrap_err();
@@ -112,7 +120,7 @@ fn lock_contention_blocks_second_process() -> Result<()> {
         "expected lock path in error: {msg}"
     );
 
-    let _ = child.kill();
+    drop(child_stdin);
     let _ = child.wait();
 
     let _ = std::fs::remove_dir_all(&lock_dir);
@@ -138,11 +146,13 @@ fn parallel_supervisor_prevents_second_supervisor() -> Result<()> {
         .env("RALPH_TEST_LOCK_HOLD", "1")
         .env("RALPH_TEST_REPO_ROOT", &repo_root)
         .env("RALPH_TEST_LOCK_LABEL", "run loop")
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
         .context("spawn lock holder process")?;
 
+    let child_stdin = child.stdin.take().context("capture lock holder stdin")?;
     let stdout = child.stdout.take().context("capture lock holder stdout")?;
     let (tx, rx) = mpsc::channel();
 
@@ -163,22 +173,15 @@ fn parallel_supervisor_prevents_second_supervisor() -> Result<()> {
         }
     });
 
-    // Wait for the lock holder to signal readiness
-    let mut got_signal = false;
-    let start = Instant::now();
-    while start.elapsed() < Duration::from_secs(10) {
-        match rx.recv_timeout(Duration::from_millis(200)) {
-            Ok(line) => {
+    let got_signal =
+        test_support::wait_until(Duration::from_secs(10), Duration::from_millis(50), || {
+            while let Ok(line) = rx.try_recv() {
                 if line.contains("LOCK_HELD") {
-                    got_signal = true;
-                    break;
+                    return true;
                 }
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => continue,
-            Err(_) => break,
-        }
-    }
-
+            false
+        });
     anyhow::ensure!(got_signal, "lock holder did not signal readiness");
 
     // Attempt to acquire the queue lock - should fail with contention
@@ -198,7 +201,7 @@ fn parallel_supervisor_prevents_second_supervisor() -> Result<()> {
         "expected 'run loop' or 'already held' in error: {msg}"
     );
 
-    let _ = child.kill();
+    drop(child_stdin);
     let _ = child.wait();
 
     let _ = std::fs::remove_dir_all(&lock_dir);
@@ -239,6 +242,8 @@ fn run_loop_aborts_immediately_on_queue_lock_error() -> Result<()> {
             completed_at: None,
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],
@@ -297,6 +302,119 @@ fn run_loop_aborts_immediately_on_queue_lock_error() -> Result<()> {
     anyhow::ensure!(
         err_msg.contains("Queue lock already held"),
         "expected 'Queue lock already held' in error: {err_msg}"
+    );
+
+    // Error should NOT contain "50 consecutive failures" - this would indicate
+    // the run loop was retrying instead of aborting immediately
+    anyhow::ensure!(
+        !err_msg.contains("50 consecutive failures"),
+        "run loop hit 50-failure abort instead of returning immediately: {err_msg}"
+    );
+
+    // Should have failed quickly (under 1 second), not after retries
+    anyhow::ensure!(
+        elapsed < Duration::from_secs(1),
+        "run loop took too long ({elapsed:?}), should have failed immediately"
+    );
+
+    Ok(())
+}
+
+/// Test that run loop aborts immediately on queue validation error without hitting the
+/// 50-failure abort loop (regression test for invalid relates_to format).
+///
+/// This test verifies that when the queue has an invalid relationship reference
+/// (e.g., relates_to pointing to a non-existent task), the run loop returns the
+/// validation error immediately rather than retrying and eventually hitting
+/// "aborting after 50 consecutive failures".
+#[test]
+fn run_loop_aborts_immediately_on_queue_validation_error() -> Result<()> {
+    let dir = TempDir::new().context("create temp dir")?;
+    let repo_root = dir.path().to_path_buf();
+    std::fs::create_dir_all(repo_root.join(".ralph")).context("create .ralph dir")?;
+
+    // Create a queue with an invalid relates_to reference (RQ-9999 doesn't exist)
+    let queue = ralph::contracts::QueueFile {
+        version: 1,
+        tasks: vec![ralph::contracts::Task {
+            id: "RQ-0001".to_string(),
+            status: ralph::contracts::TaskStatus::Todo,
+            title: "Test task".to_string(),
+            description: None,
+            priority: ralph::contracts::TaskPriority::Medium,
+            tags: vec![],
+            scope: vec!["src/main.rs".to_string()],
+            evidence: vec!["observed".to_string()],
+            plan: vec!["do thing".to_string()],
+            notes: vec![],
+            request: Some("test request".to_string()),
+            agent: None,
+            created_at: Some("2026-02-06T00:00:00Z".to_string()),
+            updated_at: Some("2026-02-06T00:00:00Z".to_string()),
+            completed_at: None,
+            started_at: None,
+            scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
+            depends_on: vec![],
+            blocks: vec![],
+            relates_to: vec!["RQ-9999".to_string()], // Non-existent task
+            duplicates: None,
+            custom_fields: Default::default(),
+            parent_id: None,
+        }],
+    };
+    let queue_path = repo_root.join(".ralph/queue.json");
+    let done_path = repo_root.join(".ralph/done.json");
+    ralph::queue::save_queue(&queue_path, &queue)?;
+    ralph::queue::save_queue(&done_path, &ralph::contracts::QueueFile::default())?;
+
+    // Set up resolved config
+    let resolved = ralph::config::Resolved {
+        config: ralph::contracts::Config::default(),
+        repo_root: repo_root.clone(),
+        queue_path: queue_path.clone(),
+        done_path: done_path.clone(),
+        id_prefix: "RQ".to_string(),
+        id_width: 4,
+        global_config_path: None,
+        project_config_path: Some(repo_root.join(".ralph/config.json")),
+    };
+
+    // Attempt to run the loop - should fail immediately with validation error
+    let start = std::time::Instant::now();
+    let result = ralph::commands::run::run_loop(
+        &resolved,
+        ralph::commands::run::RunLoopOptions {
+            max_tasks: 0,
+            agent_overrides: ralph::agent::AgentOverrides::default(),
+            force: false,
+            auto_resume: false,
+            starting_completed: 0,
+            non_interactive: true,
+            parallel_workers: None,
+            wait_when_blocked: false,
+            wait_poll_ms: 1000,
+            wait_timeout_seconds: 0,
+            notify_when_unblocked: false,
+            wait_when_empty: false,
+            empty_poll_ms: 30_000,
+        },
+    );
+    let elapsed = start.elapsed();
+
+    // Verify the error
+    let err = result.expect_err("expected run_loop to fail with validation error");
+    let err_msg = format!("{:#}", err);
+
+    // Error should contain "relationship" and "non-existent"
+    anyhow::ensure!(
+        err_msg.contains("relationship"),
+        "expected 'relationship' in error: {err_msg}"
+    );
+    anyhow::ensure!(
+        err_msg.contains("non-existent") || err_msg.contains("RQ-9999"),
+        "expected 'non-existent' or task ID in error: {err_msg}"
     );
 
     // Error should NOT contain "50 consecutive failures" - this would indicate

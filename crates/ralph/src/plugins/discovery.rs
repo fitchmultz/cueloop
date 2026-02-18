@@ -23,6 +23,8 @@ pub(crate) enum PluginScope {
 pub(crate) struct DiscoveredPlugin {
     pub scope: PluginScope,
     pub plugin_dir: PathBuf,
+    /// Path to the plugin.json manifest file.
+    /// Kept for error messages and debugging.
     #[allow(dead_code)]
     pub manifest_path: PathBuf,
     pub manifest: PluginManifest,

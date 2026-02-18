@@ -43,6 +43,8 @@ pub(crate) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<()> {
     logging::with_scope(&format!("CI gate ({command})"), || {
         let status = runutil::shell_command(command)
             .current_dir(&resolved.repo_root)
+            .env_remove(crate::config::QUEUE_PATH_OVERRIDE_ENV)
+            .env_remove(crate::config::DONE_PATH_OVERRIDE_ENV)
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
@@ -60,9 +62,10 @@ pub(crate) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<()> {
         }
 
         bail!(
-            "CI failed: '{}' exited with code {:?}. Fix the linting, type-checking, or test failures before proceeding.",
+            "CI failed: '{}' exited with code {:?}. Run '{}' again to identify the issues and fix.",
             command,
-            status.code()
+            status.code(),
+            command
         )
     })
 }
@@ -70,8 +73,8 @@ pub(crate) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<()> {
 fn strict_ci_gate_compliance_message(resolved: &crate::config::Resolved) -> String {
     let cmd = ci_gate_command_label(resolved);
     format!(
-        r#"CI gate ({}): error: CI failed: '{}' exited with an error code. Fix the linting, type-checking, or test failures before proceeding. Compliance is mandatory. No hacky fixes allowed e.g. skipping tests, half-assed patches, etc. Implement fixes your mother would be proud of."#,
-        cmd, cmd
+        r#"CI gate ({}): error: CI failed: '{}' exited with an error code. Run '{}' again to identify the issues and fix. You MUST see the CI gate pass before this turn can end and proceed further. NO skipping tests, half-assed patches, or sloppy shortcuts. Flaky tests should be investigated and patched. Failures unrelated to your work are in scope and your responsibility. Implement fixes your mother would be proud of."#,
+        cmd, cmd, cmd
     )
 }
 
@@ -166,6 +169,7 @@ mod tests {
     use crate::contracts::{
         AgentConfig, Config, NotificationConfig, QueueConfig, Runner, RunnerRetryConfig,
     };
+    use serial_test::serial;
     use std::path::PathBuf;
     use tempfile::TempDir;
 
@@ -191,8 +195,6 @@ mod tests {
                 claude_permission_mode: Some(
                     crate::contracts::ClaudePermissionMode::BypassPermissions,
                 ),
-                update_task_before_run: None,
-                fail_on_prerun_update_error: None,
                 runner_cli: None,
                 phase_overrides: None,
                 instruction_files: None,
@@ -222,11 +224,6 @@ mod tests {
                 max_dependency_depth: Some(10),
                 auto_archive_terminal_after_days: None,
                 aging_thresholds: None,
-            },
-            tui: crate::contracts::TuiConfig {
-                auto_archive_terminal: None,
-                celebrations_enabled: Some(false),
-                stats_enabled: Some(false),
             },
             ..Config::default()
         };
@@ -272,5 +269,53 @@ mod tests {
         let resolved = resolved_with_ci_command(temp.path(), Some("".to_string()), true);
         let err = run_ci_gate(&resolved).unwrap_err();
         assert!(err.to_string().contains("empty"));
+    }
+
+    #[test]
+    #[serial]
+    fn run_ci_gate_strips_queue_and_done_override_env() -> Result<()> {
+        let prior_queue = std::env::var_os(crate::config::QUEUE_PATH_OVERRIDE_ENV);
+        let prior_done = std::env::var_os(crate::config::DONE_PATH_OVERRIDE_ENV);
+        let prior_repo = std::env::var_os(crate::config::REPO_ROOT_OVERRIDE_ENV);
+
+        // SAFETY: this test is serial and restores process env before returning.
+        unsafe {
+            std::env::set_var(
+                crate::config::QUEUE_PATH_OVERRIDE_ENV,
+                "/tmp/source-queue.json",
+            );
+            std::env::set_var(
+                crate::config::DONE_PATH_OVERRIDE_ENV,
+                "/tmp/source-done.json",
+            );
+            std::env::set_var(crate::config::REPO_ROOT_OVERRIDE_ENV, "/tmp/workspace-root");
+        }
+
+        let temp = TempDir::new()?;
+        let command = if cfg!(windows) {
+            "powershell -NoProfile -Command \"if ($env:RALPH_QUEUE_PATH_OVERRIDE -or $env:RALPH_DONE_PATH_OVERRIDE) { exit 42 }\""
+        } else {
+            "sh -c 'test -z \"$RALPH_QUEUE_PATH_OVERRIDE\" && test -z \"$RALPH_DONE_PATH_OVERRIDE\"'"
+        };
+        let resolved = resolved_with_ci_command(temp.path(), Some(command.to_string()), true);
+        let result = run_ci_gate(&resolved);
+
+        // SAFETY: restore env to pre-test values.
+        unsafe {
+            match prior_queue {
+                Some(v) => std::env::set_var(crate::config::QUEUE_PATH_OVERRIDE_ENV, v),
+                None => std::env::remove_var(crate::config::QUEUE_PATH_OVERRIDE_ENV),
+            }
+            match prior_done {
+                Some(v) => std::env::set_var(crate::config::DONE_PATH_OVERRIDE_ENV, v),
+                None => std::env::remove_var(crate::config::DONE_PATH_OVERRIDE_ENV),
+            }
+            match prior_repo {
+                Some(v) => std::env::set_var(crate::config::REPO_ROOT_OVERRIDE_ENV, v),
+                None => std::env::remove_var(crate::config::REPO_ROOT_OVERRIDE_ENV),
+            }
+        }
+
+        result
     }
 }

@@ -508,6 +508,7 @@ pub fn build_worker_prompt(
                 &phase1_template,
                 &base_prompt,
                 iteration_context,
+                promptflow::PHASE1_TASK_REFRESH_REQUIRED_INSTRUCTION,
                 &task_id,
                 total_phases,
                 &policy,
@@ -776,6 +777,8 @@ mod tests {
             relates_to: vec![],
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         }
     }

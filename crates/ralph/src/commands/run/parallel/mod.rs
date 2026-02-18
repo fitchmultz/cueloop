@@ -4,6 +4,7 @@
 //! - Coordinate parallel task execution across multiple workers.
 //! - Manage settings resolution and preflight validation.
 //! - Track worker capacity and task pruning.
+//! - Spawn merge-agent subprocess for PR merging (new architecture).
 //!
 //! Not handled here:
 //! - Main orchestration loop (see `orchestration`).
@@ -17,13 +18,17 @@
 //! - Queue order is authoritative for task selection.
 //! - Workers run in isolated workspaces with dedicated branches.
 //! - PR creation relies on authenticated `gh` CLI access.
+//! - One active worker per task ID (enforced by upsert_task).
+//! - One pending merge per task ID (enforced by enqueue_merge).
 
 use crate::agent::AgentOverrides;
+use crate::commands::run::merge_agent::{MergeAgentResult, exit_codes};
 use crate::config;
 use crate::contracts::{ConflictPolicy, MergeRunnerConfig, ParallelMergeMethod, ParallelMergeWhen};
 use crate::{git, timeutil};
 use anyhow::{Context, Result, bail};
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 
 mod args;
 mod cleanup_guard;
@@ -40,9 +45,125 @@ mod worker;
 pub(crate) use orchestration::run_loop_parallel;
 
 use cleanup_guard::ParallelCleanupGuard;
-use merge_runner::MergeResult;
-use queue_sync::apply_merge_queue_sync;
 use state_init::load_or_init_parallel_state;
+
+// =============================================================================
+// Merge-Agent Subprocess Helpers (new architecture)
+// =============================================================================
+
+/// Result of invoking merge-agent subprocess.
+#[derive(Debug, Clone)]
+pub(crate) struct MergeAgentOutcome {
+    /// Exit code from the merge-agent subprocess.
+    pub exit_code: i32,
+    /// Parsed JSON result from stdout (if available).
+    /// Note: Currently unused but kept for future extensibility.
+    #[allow(dead_code)]
+    pub result: Option<MergeAgentResult>,
+    /// Stderr output (for diagnostics).
+    pub stderr_output: String,
+}
+
+/// Classification of merge-agent exit codes for retry decisions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MergeExitClassification {
+    /// Merge succeeded (exit code 0).
+    Success,
+    /// Task already finalized (exit code 6) - idempotent success.
+    AlreadyFinalized,
+    /// Merge conflict - retryable after resolution (exit code 3).
+    ConflictRetryable,
+    /// Runtime failure - retryable with backoff (exit code 1).
+    RuntimeRetryable,
+    /// Terminal failure - non-retryable (exit codes 2, 4, 5, or others).
+    TerminalFailure,
+}
+
+/// Spawn merge-agent as a subprocess and wait for completion.
+///
+/// This replaces the internal merge-runner thread with explicit process boundaries.
+/// The merge-agent runs in the coordinator repo context (CWD) and returns
+/// structured JSON to stdout.
+///
+/// # Arguments
+/// * `repo_root` - Repository root path (CWD for merge-agent)
+/// * `task_id` - Task ID to finalize
+/// * `pr_number` - PR number to merge
+///
+/// # Returns
+/// A `MergeAgentOutcome` containing exit code, parsed result, and stderr output.
+pub(crate) fn spawn_merge_agent(
+    repo_root: &Path,
+    task_id: &str,
+    pr_number: u32,
+) -> Result<MergeAgentOutcome> {
+    let exe = std::env::current_exe().context("resolve current executable")?;
+
+    let output = std::process::Command::new(exe)
+        .current_dir(repo_root)
+        .args([
+            "run",
+            "merge-agent",
+            "--task",
+            task_id,
+            "--pr",
+            &pr_number.to_string(),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .with_context(|| {
+            format!(
+                "Failed to spawn merge-agent for task {} PR {}",
+                task_id, pr_number
+            )
+        })?;
+
+    let exit_code = output.status.code().unwrap_or(1);
+    let stderr_output = String::from_utf8_lossy(&output.stderr).to_string();
+
+    // Parse JSON result from stdout (may be empty on validation errors)
+    let result = if !output.stdout.is_empty() {
+        serde_json::from_slice::<MergeAgentResult>(&output.stdout)
+            .ok()
+            .or_else(|| {
+                log::warn!(
+                    "merge-agent stdout for {} was not valid JSON: {}",
+                    task_id,
+                    String::from_utf8_lossy(&output.stdout)
+                );
+                None
+            })
+    } else {
+        None
+    };
+
+    Ok(MergeAgentOutcome {
+        exit_code,
+        result,
+        stderr_output,
+    })
+}
+
+/// Classify merge-agent exit code for retry decision.
+///
+/// Exit codes (per merge_agent.rs):
+/// - 0: Success
+/// - 1: Runtime failure (retryable with backoff)
+/// - 2: Validation failure (non-retryable)
+/// - 3: Merge conflict (retryable after conflict resolution)
+/// - 4: PR not found/closed (non-retryable)
+/// - 5: PR is draft (non-retryable)
+/// - 6: Already finalized (idempotent success)
+pub(crate) fn classify_merge_exit_code(code: i32) -> MergeExitClassification {
+    match code {
+        exit_codes::SUCCESS => MergeExitClassification::Success,
+        exit_codes::ALREADY_FINALIZED => MergeExitClassification::AlreadyFinalized,
+        exit_codes::MERGE_CONFLICT => MergeExitClassification::ConflictRetryable,
+        exit_codes::RUNTIME_FAILURE => MergeExitClassification::RuntimeRetryable,
+        _ => MergeExitClassification::TerminalFailure,
+    }
+}
 
 pub(crate) struct ParallelRunOptions {
     pub max_tasks: u32,
@@ -59,11 +180,14 @@ pub(crate) struct ParallelSettings {
     pub(crate) auto_pr: bool,
     pub(crate) auto_merge: bool,
     pub(crate) draft_on_failure: bool,
+    #[allow(dead_code)]
     pub(crate) conflict_policy: ConflictPolicy,
     pub(crate) merge_retries: u8,
     pub(crate) workspace_root: PathBuf,
     pub(crate) branch_prefix: String,
+    #[allow(dead_code)]
     pub(crate) delete_branch_on_merge: bool,
+    #[allow(dead_code)]
     pub(crate) merge_runner: MergeRunnerConfig,
 }
 
@@ -197,73 +321,6 @@ where
     Ok((workspace, child))
 }
 
-/// Record a finished task that didn't create a PR.
-fn record_finished_without_pr(
-    state_path: &Path,
-    state_file: &mut state::ParallelStateFile,
-    task_id: &str,
-    workspace: &git::WorkspaceSpec,
-    success: bool,
-    reason: state::ParallelNoPrReason,
-    message: Option<String>,
-) -> Result<()> {
-    let record = state::ParallelFinishedWithoutPrRecord::new(
-        task_id,
-        workspace,
-        success,
-        timeutil::now_utc_rfc3339_or_fallback(),
-        reason.clone(),
-        message.clone(),
-    );
-    state_file.upsert_finished_without_pr(record);
-    state::save_state(state_path, state_file)?;
-    let reason_label = reason.as_str();
-    log::warn!(
-        "Task {} finished without PR (reason: {}). Recorded state in {}. \
-         This may temporarily block reruns; it automatically clears when PR settings allow reruns or when the TTL expires.",
-        task_id,
-        reason_label,
-        state_path.display()
-    );
-    if let Some(detail) = message {
-        log::info!("Detail for {}: {}", task_id, detail);
-    }
-    Ok(())
-}
-
-/// Persists merge blocker from a MergeResult to the state file.
-///
-/// Updates the PR record's merge_blocker field when the merge runner
-/// detects a head mismatch or other blocking condition.
-fn persist_merge_blocker_from_result(
-    state_path: &Path,
-    state_file: &mut state::ParallelStateFile,
-    result: &MergeResult,
-) -> Result<()> {
-    let Some(ref blocker) = result.merge_blocker else {
-        return Ok(());
-    };
-
-    if let Some(record) = state_file
-        .prs
-        .iter_mut()
-        .find(|r| r.task_id == result.task_id)
-    {
-        if record.merge_blocker.as_deref() != Some(blocker.as_str()) {
-            record.merge_blocker = Some(blocker.clone());
-            state::save_state(state_path, state_file)?;
-        }
-    } else {
-        log::warn!(
-            "Received merge blocker for task {} but no PR record exists; ignoring blocker: {}",
-            result.task_id,
-            blocker
-        );
-    }
-
-    Ok(())
-}
-
 // Task pruning (stays in mod.rs - called by orchestration loop)
 fn prune_stale_tasks_in_flight(state_file: &mut state::ParallelStateFile) -> Vec<String> {
     let now = time::OffsetDateTime::now_utc();
@@ -281,11 +338,11 @@ fn prune_stale_tasks_in_flight(state_file: &mut state::ParallelStateFile) -> Vec
         }
 
         if let Some(pid) = record.pid {
-            if crate::lock::pid_is_running(pid) == Some(false) {
+            // Only prune when definitively dead; retain when running or indeterminate.
+            if crate::lock::pid_liveness(pid).is_definitely_not_running() {
                 dropped.push(record.task_id.clone());
                 return false;
             }
-            // Retain when running or indeterminate (pid_is_running == None).
             return true;
         }
 
@@ -329,9 +386,9 @@ fn effective_in_flight_count(
 
 fn initial_tasks_started(
     state_file: &state::ParallelStateFile,
-    now: time::OffsetDateTime,
-    auto_pr_enabled: bool,
-    draft_on_failure: bool,
+    _now: time::OffsetDateTime,
+    _auto_pr_enabled: bool,
+    _draft_on_failure: bool,
 ) -> u32 {
     let open_unmerged_prs = state_file
         .prs
@@ -339,16 +396,9 @@ fn initial_tasks_started(
         .filter(|record| record.is_open_unmerged())
         .count();
 
-    let blocking_finished_without_pr = state_file
-        .finished_without_pr
-        .iter()
-        .filter(|r| r.is_blocking(now, auto_pr_enabled, draft_on_failure))
-        .count();
-
     let total = state_file
         .tasks_in_flight
         .len()
-        .saturating_add(blocking_finished_without_pr)
         .saturating_add(open_unmerged_prs);
 
     u32::try_from(total).unwrap_or(u32::MAX)
@@ -364,10 +414,7 @@ mod tests {
     use crate::contracts::{
         ConflictPolicy, MergeRunnerConfig, ParallelMergeMethod, ParallelMergeWhen,
     };
-    use merge_runner::MergeWorkItem;
     use std::cell::Cell;
-    use std::sync::atomic::AtomicBool;
-    use std::sync::{Arc, mpsc};
     use tempfile::TempDir;
 
     fn create_test_cleanup_guard(temp: &TempDir) -> ParallelCleanupGuard {
@@ -382,17 +429,7 @@ mod tests {
             ParallelMergeWhen::AsCreated,
         );
 
-        let (pr_tx, _pr_rx) = mpsc::channel::<MergeWorkItem>();
-        let merge_stop = Arc::new(AtomicBool::new(false));
-
-        ParallelCleanupGuard::new(
-            merge_stop,
-            pr_tx,
-            None,
-            state_path,
-            state_file,
-            workspace_root,
-        )
+        ParallelCleanupGuard::new_simple(state_path, state_file, workspace_root)
     }
 
     #[test]
@@ -585,10 +622,8 @@ mod tests {
         // Create workspace directories so records are considered blocking
         let ws1 = ws_root.join("RQ-0001");
         let ws2 = ws_root.join("RQ-0002");
-        let ws3 = ws_root.join("RQ-0003");
         std::fs::create_dir_all(&ws1)?;
         std::fs::create_dir_all(&ws2)?;
-        std::fs::create_dir_all(&ws3)?;
 
         let now = timeutil::parse_rfc3339("2026-02-03T00:00:00Z")?;
 
@@ -613,33 +648,16 @@ mod tests {
             pid: Some(12346),
             started_at: "2026-02-02T00:00:00Z".to_string(),
         });
-        // AutoPrDisabled only counts as started when auto_pr is still disabled
-        state_file
-            .finished_without_pr
-            .push(state::ParallelFinishedWithoutPrRecord {
-                task_id: "RQ-0003".to_string(),
-                workspace_path: ws3.to_string_lossy().to_string(),
-                branch: "ralph/RQ-0003".to_string(),
-                success: true,
-                finished_at: "2026-02-01T02:00:00Z".to_string(),
-                reason: state::ParallelNoPrReason::AutoPrDisabled,
-                message: None,
-            });
 
-        // With auto_pr disabled, all 3 count as started
-        assert_eq!(initial_tasks_started(&state_file, now, false, true), 3);
-
-        // With auto_pr enabled, AutoPrDisabled records don't block, so only 2 count
+        // 2 in-flight tasks count as started
+        assert_eq!(initial_tasks_started(&state_file, now, false, true), 2);
         assert_eq!(initial_tasks_started(&state_file, now, true, true), 2);
 
-        // With max_tasks = 2, should not be able to start more (when auto_pr is disabled)
-        assert!(!can_start_more_tasks(3, 2));
+        // With max_tasks = 2, should not be able to start more
+        assert!(!can_start_more_tasks(2, 2));
 
-        // With max_tasks = 3, should not be able to start more (when auto_pr is disabled)
-        assert!(!can_start_more_tasks(3, 3));
-
-        // With max_tasks = 4, should be able to start more
-        assert!(can_start_more_tasks(3, 4));
+        // With max_tasks = 3, should be able to start more
+        assert!(can_start_more_tasks(2, 3));
 
         // With max_tasks = 0 (unlimited), should be able to start more
         assert!(can_start_more_tasks(2, 0));
@@ -660,41 +678,23 @@ mod tests {
             ParallelMergeWhen::AsCreated,
         );
 
-        // One open/unmerged PR from a previous run should count as "already started"
+        // One open PR from a previous run should count as "already started"
         state_file.prs.push(state::ParallelPrRecord {
             task_id: "RQ-0100".to_string(),
             pr_number: 1,
-            pr_url: "https://example.com/pr/1".to_string(),
-            head: Some("ralph/RQ-0100".to_string()),
-            base: Some("main".to_string()),
-            workspace_path: None,
-            merged: false,
             lifecycle: state::ParallelPrLifecycle::Open,
-            merge_blocker: None,
         });
 
-        // These should NOT count toward started (they are not open+unmerged)
+        // These should NOT count toward started (they are not open)
         state_file.prs.push(state::ParallelPrRecord {
             task_id: "RQ-0101".to_string(),
             pr_number: 2,
-            pr_url: "https://example.com/pr/2".to_string(),
-            head: Some("ralph/RQ-0101".to_string()),
-            base: Some("main".to_string()),
-            workspace_path: None,
-            merged: false,
             lifecycle: state::ParallelPrLifecycle::Closed,
-            merge_blocker: None,
         });
         state_file.prs.push(state::ParallelPrRecord {
             task_id: "RQ-0102".to_string(),
             pr_number: 3,
-            pr_url: "https://example.com/pr/3".to_string(),
-            head: Some("ralph/RQ-0102".to_string()),
-            base: Some("main".to_string()),
-            workspace_path: None,
-            merged: true,
             lifecycle: state::ParallelPrLifecycle::Merged,
-            merge_blocker: None,
         });
 
         let started = initial_tasks_started(&state_file, now, true, true);
@@ -958,5 +958,76 @@ mod tests {
         assert!(!settings.auto_pr);
         assert!(!settings.auto_merge);
         assert!(!settings.draft_on_failure);
+    }
+
+    // =========================================================================
+    // Merge-Agent Subprocess Tests
+    // =========================================================================
+
+    #[test]
+    fn classify_merge_exit_codes() {
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::SUCCESS),
+            MergeExitClassification::Success
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::ALREADY_FINALIZED),
+            MergeExitClassification::AlreadyFinalized
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::MERGE_CONFLICT),
+            MergeExitClassification::ConflictRetryable
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::RUNTIME_FAILURE),
+            MergeExitClassification::RuntimeRetryable
+        );
+        // Terminal failures
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::VALIDATION_FAILURE),
+            MergeExitClassification::TerminalFailure
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::PR_NOT_FOUND),
+            MergeExitClassification::TerminalFailure
+        );
+        assert_eq!(
+            classify_merge_exit_code(exit_codes::PR_IS_DRAFT),
+            MergeExitClassification::TerminalFailure
+        );
+        // Unknown codes are terminal
+        assert_eq!(
+            classify_merge_exit_code(99),
+            MergeExitClassification::TerminalFailure
+        );
+    }
+
+    #[test]
+    fn merge_exit_classification_retry_semantics() {
+        // Success and already finalized are not retryable (they're done)
+        assert!(!matches!(
+            MergeExitClassification::Success,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
+        assert!(!matches!(
+            MergeExitClassification::AlreadyFinalized,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
+
+        // Conflict and runtime are retryable
+        assert!(matches!(
+            MergeExitClassification::ConflictRetryable,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
+        assert!(matches!(
+            MergeExitClassification::RuntimeRetryable,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
+
+        // Terminal is not retryable
+        assert!(!matches!(
+            MergeExitClassification::TerminalFailure,
+            MergeExitClassification::ConflictRetryable | MergeExitClassification::RuntimeRetryable
+        ));
     }
 }

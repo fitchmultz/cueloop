@@ -10,11 +10,13 @@
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Model {
     #[default]
     Gpt53Codex,
+    Gpt53CodexSpark,
     Gpt53,
     Gpt52Codex,
     Gpt52,
@@ -45,6 +47,7 @@ impl Model {
     pub fn as_str(&self) -> &str {
         match self {
             Model::Gpt53Codex => "gpt-5.3-codex",
+            Model::Gpt53CodexSpark => "gpt-5.3-codex-spark",
             Model::Gpt53 => "gpt-5.3",
             Model::Gpt52Codex => "gpt-5.2-codex",
             Model::Gpt52 => "gpt-5.2",
@@ -64,6 +67,7 @@ impl std::str::FromStr for Model {
         }
         Ok(match trimmed {
             "gpt-5.3-codex" => Model::Gpt53Codex,
+            "gpt-5.3-codex-spark" => Model::Gpt53CodexSpark,
             "gpt-5.3" => Model::Gpt53,
             "gpt-5.2-codex" => Model::Gpt52Codex,
             "gpt-5.2" => Model::Gpt52,
@@ -75,16 +79,50 @@ impl std::str::FromStr for Model {
 
 // Manual JsonSchema implementation for Model since it has custom Serialize/Deserialize
 impl schemars::JsonSchema for Model {
-    fn schema_name() -> String {
-        "Model".to_string()
+    fn schema_name() -> Cow<'static, str> {
+        "Model".into()
     }
 
-    fn json_schema(_: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
-        schemars::schema::SchemaObject {
-            instance_type: Some(schemars::schema::InstanceType::String.into()),
-            ..Default::default()
-        }
-        .into()
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "oneOf": [
+                {
+                    "type": "string",
+                    "const": "gpt-5.3-codex",
+                    "description": "OpenAI GPT-5.3 Codex (default)"
+                },
+                {
+                    "type": "string",
+                    "const": "gpt-5.3-codex-spark",
+                    "description": "OpenAI GPT-5.3 Codex Spark (fast)"
+                },
+                {
+                    "type": "string",
+                    "const": "gpt-5.3",
+                    "description": "OpenAI GPT-5.3"
+                },
+                {
+                    "type": "string",
+                    "const": "gpt-5.2-codex",
+                    "description": "OpenAI GPT-5.2 Codex"
+                },
+                {
+                    "type": "string",
+                    "const": "gpt-5.2",
+                    "description": "OpenAI GPT-5.2"
+                },
+                {
+                    "type": "string",
+                    "const": "zai-coding-plan/glm-4.7",
+                    "description": "ZhipuAI GLM-4.7"
+                },
+                {
+                    "type": "string",
+                    "description": "Custom model identifier",
+                    "minLength": 1
+                }
+            ]
+        })
     }
 }
 
@@ -132,6 +170,10 @@ mod tests {
     #[test]
     fn model_parses_known_variants() {
         assert_eq!("gpt-5.3-codex".parse::<Model>().unwrap(), Model::Gpt53Codex);
+        assert_eq!(
+            "gpt-5.3-codex-spark".parse::<Model>().unwrap(),
+            Model::Gpt53CodexSpark
+        );
         assert_eq!("gpt-5.3".parse::<Model>().unwrap(), Model::Gpt53);
         assert_eq!("gpt-5.2-codex".parse::<Model>().unwrap(), Model::Gpt52Codex);
         assert_eq!("gpt-5.2".parse::<Model>().unwrap(), Model::Gpt52);
@@ -160,6 +202,10 @@ mod tests {
         let model = Model::Gpt53Codex;
         let json = serde_json::to_string(&model).unwrap();
         assert_eq!(json, "\"gpt-5.3-codex\"");
+
+        let model = Model::Gpt53CodexSpark;
+        let json = serde_json::to_string(&model).unwrap();
+        assert_eq!(json, "\"gpt-5.3-codex-spark\"");
 
         let model = Model::Gpt52Codex;
         let json = serde_json::to_string(&model).unwrap();
@@ -202,6 +248,49 @@ mod tests {
         assert_eq!(
             ModelEffort::XHigh.as_reasoning_effort(),
             Some(ReasoningEffort::XHigh)
+        );
+    }
+
+    #[test]
+    fn model_json_schema_includes_known_models() {
+        use schemars::JsonSchema;
+
+        let schema = Model::json_schema(&mut schemars::SchemaGenerator::default());
+        let schema_json = serde_json::to_string(&schema).unwrap();
+
+        // Verify known models are in schema
+        assert!(
+            schema_json.contains("gpt-5.3-codex"),
+            "schema should list gpt-5.3-codex"
+        );
+        assert!(
+            schema_json.contains("gpt-5.3-codex-spark"),
+            "schema should list gpt-5.3-codex-spark"
+        );
+        assert!(
+            schema_json.contains("gpt-5.3"),
+            "schema should list gpt-5.3"
+        );
+        assert!(
+            schema_json.contains("gpt-5.2-codex"),
+            "schema should list gpt-5.2-codex"
+        );
+        assert!(
+            schema_json.contains("gpt-5.2"),
+            "schema should list gpt-5.2"
+        );
+        assert!(
+            schema_json.contains("zai-coding-plan/glm-4.7"),
+            "schema should list glm-4.7"
+        );
+
+        // Verify oneOf structure
+        assert!(schema_json.contains("oneOf"), "schema should use oneOf");
+
+        // Verify custom model fallback exists
+        assert!(
+            schema_json.contains("Custom model identifier"),
+            "schema should have custom fallback"
         );
     }
 }

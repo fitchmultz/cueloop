@@ -21,23 +21,23 @@ use crate::timeutil;
 use super::shared::{ReportFormat, format_date_key, print_json};
 
 #[derive(Debug, Serialize)]
-struct HistoryWindow {
-    days: i64,
-    start_date: String,
-    end_date: String,
+pub(crate) struct HistoryWindow {
+    pub days: i64,
+    pub start_date: String,
+    pub end_date: String,
 }
 
 #[derive(Debug, Serialize)]
-struct HistoryDay {
-    date: String,
-    created: Vec<String>,
-    completed: Vec<String>,
+pub(crate) struct HistoryDay {
+    pub date: String,
+    pub created: Vec<String>,
+    pub completed: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
-struct HistoryReport {
-    window: HistoryWindow,
-    days: Vec<HistoryDay>,
+pub(crate) struct HistoryReport {
+    pub window: HistoryWindow,
+    pub days: Vec<HistoryDay>,
 }
 
 fn start_of_window(now: OffsetDateTime, days_to_show: i64) -> OffsetDateTime {
@@ -62,7 +62,11 @@ fn collect_all_tasks<'a>(queue: &'a QueueFile, done: Option<&'a QueueFile>) -> V
     all_tasks
 }
 
-fn build_history_report(queue: &QueueFile, done: Option<&QueueFile>, days: u32) -> HistoryReport {
+pub(crate) fn build_history_report(
+    queue: &QueueFile,
+    done: Option<&QueueFile>,
+    days: u32,
+) -> HistoryReport {
     let all_tasks = collect_all_tasks(queue, done);
     let days_to_show = days.max(1) as i64;
     let now = OffsetDateTime::now_utc();

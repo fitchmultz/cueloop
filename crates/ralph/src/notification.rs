@@ -9,7 +9,7 @@
 //! Does NOT handle:
 //! - Notification scheduling or queuing (callers trigger explicitly).
 //! - Persistent notification history or logging.
-//! - TUI mode detection (callers should suppress if desired).
+//! - UI mode detection (callers should suppress if desired).
 //! - Do Not Disturb detection (handled at call site if needed).
 //!
 //! Invariants:
@@ -18,6 +18,59 @@
 //! - All platform-specific code is isolated per target OS.
 
 use std::path::Path;
+
+/// CLI overrides for notification settings.
+/// Fields are `Option<bool>` to distinguish "not set" from explicit false.
+#[derive(Debug, Clone, Default)]
+pub struct NotificationOverrides {
+    /// Override notify_on_complete from CLI.
+    pub notify_on_complete: Option<bool>,
+    /// Override notify_on_fail from CLI.
+    pub notify_on_fail: Option<bool>,
+    /// Override sound_enabled from CLI.
+    pub notify_sound: Option<bool>,
+}
+
+/// Build a runtime NotificationConfig from config and CLI overrides.
+///
+/// Precedence: CLI overrides > config values > defaults.
+///
+/// # Arguments
+/// * `config` - The notification config from resolved configuration
+/// * `overrides` - CLI overrides for notification settings
+///
+/// # Returns
+/// A fully-resolved NotificationConfig ready for use at runtime.
+pub fn build_notification_config(
+    config: &crate::contracts::NotificationConfig,
+    overrides: &NotificationOverrides,
+) -> NotificationConfig {
+    let notify_on_complete = overrides
+        .notify_on_complete
+        .or(config.notify_on_complete)
+        .unwrap_or(true);
+    let notify_on_fail = overrides
+        .notify_on_fail
+        .or(config.notify_on_fail)
+        .unwrap_or(true);
+    let notify_on_loop_complete = config.notify_on_loop_complete.unwrap_or(true);
+    // enabled acts as a global on/off switch - true if ANY notification type is enabled
+    let enabled = notify_on_complete || notify_on_fail || notify_on_loop_complete;
+
+    NotificationConfig {
+        enabled,
+        notify_on_complete,
+        notify_on_fail,
+        notify_on_loop_complete,
+        suppress_when_active: config.suppress_when_active.unwrap_or(true),
+        sound_enabled: overrides
+            .notify_sound
+            .or(config.sound_enabled)
+            .unwrap_or(false),
+        sound_path: config.sound_path.clone(),
+        timeout_ms: config.timeout_ms.unwrap_or(8000),
+    }
+}
 
 /// Configuration for desktop notifications.
 #[derive(Debug, Clone, Default)]
@@ -30,7 +83,7 @@ pub struct NotificationConfig {
     pub notify_on_fail: bool,
     /// Enable desktop notifications when loop mode completes.
     pub notify_on_loop_complete: bool,
-    /// Suppress notifications when TUI is active.
+    /// Suppress notifications when a foreground UI client is active.
     pub suppress_when_active: bool,
     /// Enable sound alerts with notifications.
     pub sound_enabled: bool,
@@ -56,12 +109,12 @@ impl NotificationConfig {
         }
     }
 
-    /// Check if notifications should be suppressed based on TUI state.
-    pub fn should_suppress(&self, tui_active: bool) -> bool {
+    /// Check if notifications should be suppressed based on UI state.
+    pub fn should_suppress(&self, ui_active: bool) -> bool {
         if !self.enabled {
             return true;
         }
-        if tui_active && self.suppress_when_active {
+        if ui_active && self.suppress_when_active {
             return true;
         }
         false
@@ -91,13 +144,13 @@ pub enum NotificationType {
 /// * `task_id` - The task identifier (for task-specific notifications)
 /// * `task_title` - The task title (for task-specific notifications)
 /// * `config` - Notification configuration
-/// * `tui_active` - Whether the TUI is currently active (for suppression)
+/// * `ui_active` - Whether a foreground UI client is currently active (for suppression)
 pub fn send_notification(
     notification_type: NotificationType,
     task_id: &str,
     task_title: &str,
     config: &NotificationConfig,
-    tui_active: bool,
+    ui_active: bool,
 ) {
     // Check if this notification type is enabled
     let type_enabled = match notification_type {
@@ -114,8 +167,8 @@ pub fn send_notification(
         return;
     }
 
-    if config.should_suppress(tui_active) {
-        log::debug!("Notifications suppressed (TUI active or globally disabled)");
+    if config.should_suppress(ui_active) {
+        log::debug!("Notifications suppressed (UI active or globally disabled)");
         return;
     }
 
@@ -146,20 +199,20 @@ pub fn notify_task_complete(task_id: &str, task_title: &str, config: &Notificati
     );
 }
 
-/// Send task completion notification with TUI awareness.
+/// Send task completion notification with UI awareness.
 /// Silently logs errors but never fails the calling operation.
 pub fn notify_task_complete_with_context(
     task_id: &str,
     task_title: &str,
     config: &NotificationConfig,
-    tui_active: bool,
+    ui_active: bool,
 ) {
     send_notification(
         NotificationType::TaskComplete,
         task_id,
         task_title,
         config,
-        tui_active,
+        ui_active,
     );
 }
 
@@ -630,6 +683,86 @@ mod tests {
         assert!(config.sound_enabled);
         assert_eq!(config.sound_path, Some("/path/to/sound.wav".to_string()));
         assert_eq!(config.timeout_ms, 5000);
+    }
+
+    #[test]
+    fn build_notification_config_uses_defaults() {
+        let config = crate::contracts::NotificationConfig::default();
+        let overrides = NotificationOverrides::default();
+        let result = build_notification_config(&config, &overrides);
+
+        assert!(result.enabled);
+        assert!(result.notify_on_complete);
+        assert!(result.notify_on_fail);
+        assert!(result.notify_on_loop_complete);
+        assert!(result.suppress_when_active);
+        assert!(!result.sound_enabled);
+        assert!(result.sound_path.is_none());
+        assert_eq!(result.timeout_ms, 8000);
+    }
+
+    #[test]
+    fn build_notification_config_overrides_take_precedence() {
+        let config = crate::contracts::NotificationConfig {
+            notify_on_complete: Some(false),
+            notify_on_fail: Some(false),
+            sound_enabled: Some(false),
+            ..Default::default()
+        };
+        let overrides = NotificationOverrides {
+            notify_on_complete: Some(true),
+            notify_on_fail: Some(true),
+            notify_sound: Some(true),
+        };
+        let result = build_notification_config(&config, &overrides);
+
+        assert!(result.notify_on_complete); // override wins
+        assert!(result.notify_on_fail); // override wins
+        assert!(result.sound_enabled); // override wins
+    }
+
+    #[test]
+    fn build_notification_config_config_used_when_no_override() {
+        let config = crate::contracts::NotificationConfig {
+            notify_on_complete: Some(false),
+            notify_on_fail: Some(true),
+            suppress_when_active: Some(false),
+            timeout_ms: Some(5000),
+            sound_path: Some("/path/to/sound.wav".to_string()),
+            ..Default::default()
+        };
+        let overrides = NotificationOverrides::default();
+        let result = build_notification_config(&config, &overrides);
+
+        assert!(!result.notify_on_complete); // from config
+        assert!(result.notify_on_fail); // from config
+        assert!(!result.suppress_when_active); // from config
+        assert_eq!(result.timeout_ms, 5000); // from config
+        assert_eq!(result.sound_path, Some("/path/to/sound.wav".to_string()));
+    }
+
+    #[test]
+    fn build_notification_config_enabled_computed_correctly() {
+        // If all notification types are disabled, enabled should be false
+        let config = crate::contracts::NotificationConfig {
+            notify_on_complete: Some(false),
+            notify_on_fail: Some(false),
+            notify_on_loop_complete: Some(false),
+            ..Default::default()
+        };
+        let overrides = NotificationOverrides::default();
+        let result = build_notification_config(&config, &overrides);
+        assert!(!result.enabled);
+
+        // If any notification type is enabled, enabled should be true
+        let config = crate::contracts::NotificationConfig {
+            notify_on_complete: Some(true),
+            notify_on_fail: Some(false),
+            notify_on_loop_complete: Some(false),
+            ..Default::default()
+        };
+        let result = build_notification_config(&config, &overrides);
+        assert!(result.enabled);
     }
 
     #[cfg(target_os = "windows")]

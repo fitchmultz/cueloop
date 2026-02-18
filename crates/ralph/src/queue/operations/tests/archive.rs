@@ -454,3 +454,39 @@ fn maybe_archive_terminal_tasks_in_memory_disabled_when_none() -> anyhow::Result
 
     Ok(())
 }
+
+#[test]
+fn archive_report_contains_specific_task_ids() -> anyhow::Result<()> {
+    use crate::contracts::TaskStatus;
+
+    // Create multiple terminal tasks with different IDs
+    let mut task1 = task_with("RQ-0001", TaskStatus::Done, vec![]);
+    task1.completed_at = Some("2026-01-01T00:00:00Z".to_string());
+
+    let mut task2 = task_with("RQ-0002", TaskStatus::Rejected, vec![]);
+    task2.completed_at = Some("2026-01-02T00:00:00Z".to_string());
+
+    let mut task3 = task_with("RQ-0003", TaskStatus::Done, vec![]);
+    task3.completed_at = Some("2026-01-03T00:00:00Z".to_string());
+
+    let mut active = QueueFile {
+        version: 1,
+        tasks: vec![task1, task2, task3],
+    };
+    let mut done = QueueFile::default();
+
+    let now = "2026-01-11T00:00:00Z";
+    let report = archive_terminal_tasks_in_memory(&mut active, &mut done, now)?;
+
+    // Report should contain all archived task IDs
+    assert_eq!(report.moved_ids.len(), 3);
+    assert!(report.moved_ids.contains(&"RQ-0001".to_string()));
+    assert!(report.moved_ids.contains(&"RQ-0002".to_string()));
+    assert!(report.moved_ids.contains(&"RQ-0003".to_string()));
+
+    // All tasks should be archived
+    assert!(active.tasks.is_empty());
+    assert_eq!(done.tasks.len(), 3);
+
+    Ok(())
+}

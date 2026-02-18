@@ -2,13 +2,15 @@
 //!
 //! Responsibilities:
 //! - Provide `ralph webhook test` command for testing webhook configuration.
+//! - Provide `ralph webhook status` for diagnostics snapshots.
+//! - Provide `ralph webhook replay` for explicit bounded failure replay.
 //!
 //! Does NOT handle:
 //! - Webhook configuration management (use config files).
-//! - Persistent webhook state.
+//! - Direct HTTP delivery internals (delegated to `crate::webhook`).
 
 use anyhow::{Result, bail};
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 
 #[derive(Args)]
 pub struct WebhookArgs {
@@ -23,6 +25,61 @@ pub enum WebhookCommand {
         after_long_help = "Examples:\n  ralph webhook test\n  ralph webhook test --event task_created\n  ralph webhook test --event phase_started --print-json\n  ralph webhook test --url https://example.com/webhook"
     )]
     Test(TestArgs),
+    /// Show webhook delivery diagnostics and recent failures.
+    #[command(
+        after_long_help = "Examples:\n  ralph webhook status\n  ralph webhook status --recent 10\n  ralph webhook status --format json"
+    )]
+    Status(StatusArgs),
+    /// Replay failed webhook deliveries with explicit targeting.
+    #[command(
+        after_long_help = "Examples:\n  ralph webhook replay --id wf-1700000000-1 --dry-run\n  ralph webhook replay --event task_completed --limit 5\n  ralph webhook replay --task-id RQ-0814 --max-replay-attempts 3"
+    )]
+    Replay(ReplayArgs),
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, Default)]
+pub enum WebhookStatusFormat {
+    #[default]
+    Text,
+    Json,
+}
+
+#[derive(Args)]
+pub struct StatusArgs {
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = WebhookStatusFormat::Text)]
+    pub format: WebhookStatusFormat,
+
+    /// Number of recent failure records to include.
+    #[arg(long, default_value_t = 20)]
+    pub recent: usize,
+}
+
+#[derive(Args)]
+pub struct ReplayArgs {
+    /// Replay a specific failure record ID (repeatable).
+    #[arg(long = "id")]
+    pub ids: Vec<String>,
+
+    /// Replay failures matching an event name (e.g., task_completed).
+    #[arg(long)]
+    pub event: Option<String>,
+
+    /// Replay failures matching a task ID.
+    #[arg(long)]
+    pub task_id: Option<String>,
+
+    /// Maximum matched failures to consider for this invocation.
+    #[arg(long, default_value_t = 20)]
+    pub limit: usize,
+
+    /// Maximum allowed replay attempts per failure record.
+    #[arg(long, default_value_t = 3)]
+    pub max_replay_attempts: u32,
+
+    /// Preview replay candidates without enqueueing.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Args)]
@@ -57,10 +114,13 @@ pub struct TestArgs {
 pub fn handle_webhook(args: &WebhookArgs, resolved: &crate::config::Resolved) -> Result<()> {
     match &args.command {
         WebhookCommand::Test(test_args) => handle_test(test_args, resolved),
+        WebhookCommand::Status(status_args) => handle_status(status_args, resolved),
+        WebhookCommand::Replay(replay_args) => handle_replay(replay_args, resolved),
     }
 }
 
 fn handle_test(args: &TestArgs, resolved: &crate::config::Resolved) -> Result<()> {
+    use crate::contracts::WebhookEventSubscription;
     use crate::timeutil;
     use crate::webhook::{WebhookContext, WebhookEventType, WebhookPayload, send_webhook_payload};
     use std::str::FromStr;
@@ -78,7 +138,11 @@ fn handle_test(args: &TestArgs, resolved: &crate::config::Resolved) -> Result<()
     // For non-task events, temporarily enable them for this test
     // This ensures new events can be tested without modifying config
     if config.events.is_none() {
-        config.events = Some(vec![args.event.clone()]);
+        // Parse the event string into WebhookEventSubscription
+        let event_sub: WebhookEventSubscription =
+            serde_json::from_str(&format!("\"{}\"", args.event))
+                .map_err(|e| anyhow::anyhow!("Invalid event type '{}': {}", args.event, e))?;
+        config.events = Some(vec![event_sub]);
     }
 
     // Parse event type using FromStr
@@ -202,5 +266,112 @@ fn handle_test(args: &TestArgs, resolved: &crate::config::Resolved) -> Result<()
     send_webhook_payload(payload, &config);
 
     println!("Test webhook sent successfully.");
+    Ok(())
+}
+
+fn handle_status(args: &StatusArgs, resolved: &crate::config::Resolved) -> Result<()> {
+    let diagnostics = crate::webhook::diagnostics_snapshot(
+        &resolved.repo_root,
+        &resolved.config.agent.webhook,
+        args.recent,
+    )?;
+
+    match args.format {
+        WebhookStatusFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&diagnostics)?);
+        }
+        WebhookStatusFormat::Text => {
+            println!("Webhook delivery diagnostics");
+            println!("  queue depth: {}", diagnostics.queue_depth);
+            println!("  queue capacity: {}", diagnostics.queue_capacity);
+            println!("  queue policy: {:?}", diagnostics.queue_policy);
+            println!("  enqueued total: {}", diagnostics.enqueued_total);
+            println!("  delivered total: {}", diagnostics.delivered_total);
+            println!("  failed total: {}", diagnostics.failed_total);
+            println!("  dropped total: {}", diagnostics.dropped_total);
+            println!(
+                "  retry attempts total: {}",
+                diagnostics.retry_attempts_total
+            );
+            println!("  failure store: {}", diagnostics.failure_store_path);
+
+            if diagnostics.recent_failures.is_empty() {
+                println!("  recent failures: none");
+            } else {
+                println!("  recent failures:");
+                for record in diagnostics.recent_failures {
+                    let task = record.task_id.as_deref().unwrap_or("-");
+                    println!(
+                        "    {} event={} task={} attempts={} replay_count={} at={} error={}",
+                        record.id,
+                        record.event,
+                        task,
+                        record.attempts,
+                        record.replay_count,
+                        record.failed_at,
+                        record.error
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_replay(args: &ReplayArgs, resolved: &crate::config::Resolved) -> Result<()> {
+    if args.ids.is_empty() && args.event.is_none() && args.task_id.is_none() {
+        bail!("Refusing broad replay. Provide --id, --event, or --task-id.");
+    }
+
+    let selector = crate::webhook::ReplaySelector {
+        ids: args.ids.clone(),
+        event: args.event.clone(),
+        task_id: args.task_id.clone(),
+        limit: args.limit,
+        max_replay_attempts: args.max_replay_attempts,
+    };
+
+    let report = crate::webhook::replay_failed_deliveries(
+        &resolved.repo_root,
+        &resolved.config.agent.webhook,
+        &selector,
+        args.dry_run,
+    )?;
+
+    if report.dry_run {
+        println!(
+            "Dry-run: matched {}, eligible {}, skipped over replay cap {}",
+            report.matched_count, report.eligible_count, report.skipped_max_replay_attempts
+        );
+    } else {
+        println!(
+            "Replay complete: matched {}, replayed {}, skipped over replay cap {}, skipped enqueue failures {}",
+            report.matched_count,
+            report.replayed_count,
+            report.skipped_max_replay_attempts,
+            report.skipped_enqueue_failures
+        );
+    }
+
+    if report.candidates.is_empty() {
+        println!("No matching failure records.");
+    } else {
+        println!("Candidates:");
+        for candidate in report.candidates {
+            let task = candidate.task_id.as_deref().unwrap_or("-");
+            println!(
+                "  {} event={} task={} attempts={} replay_count={} eligible={} at={}",
+                candidate.id,
+                candidate.event,
+                task,
+                candidate.attempts,
+                candidate.replay_count,
+                candidate.eligible_for_replay,
+                candidate.failed_at
+            );
+        }
+    }
+
     Ok(())
 }

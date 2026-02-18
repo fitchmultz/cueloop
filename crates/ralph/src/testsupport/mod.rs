@@ -15,3 +15,7 @@
 pub(crate) mod git;
 pub(crate) mod path;
 pub(crate) mod runner;
+
+// Re-export test sync utilities from the crate root to avoid circular imports
+pub use crate::test_sync::INTERRUPT_TEST_MUTEX;
+pub use crate::test_sync::reset_ctrlc_interrupt_flag;

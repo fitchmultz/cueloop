@@ -310,6 +310,12 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                     tasks_attempted += 1;
                     tasks_succeeded += 1;
                     consecutive_failures = 0; // Reset on success
+
+                    // Persist session progress for accurate resume limits
+                    if let Err(e) = session::increment_session_progress(&cache_dir) {
+                        log::warn!("Failed to persist session progress: {}", e);
+                    }
+
                     if initial_todo_count == 0 {
                         log::info!("RunLoop: task-complete (completed={completed})");
                     } else {
@@ -336,10 +342,33 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                         return Err(err);
                     }
 
+                    // Dirty repository errors are non-retriable - return immediately
+                    // to prevent the 50-failure abort loop on deterministic dirty repo errors.
+                    // A dirty repo cannot self-resolve; user intervention is required.
+                    if runutil::is_dirty_repo_error(&err) {
+                        log::error!("RunLoop: aborting due to dirty repository");
+                        return Err(err);
+                    }
+
+                    // Queue validation errors are non-retriable - return immediately
+                    // to prevent the 50-failure abort loop on deterministic validation errors.
+                    // Queue validation errors (invalid relationships, duplicate IDs, etc.)
+                    // cannot self-resolve; user intervention is required.
+                    if runutil::is_queue_validation_error(&err) {
+                        log::error!("RunLoop: aborting due to queue validation error");
+                        return Err(err);
+                    }
+
                     completed += 1;
                     tasks_attempted += 1;
                     tasks_failed += 1;
                     consecutive_failures += 1;
+
+                    // Persist session progress for accurate resume limits
+                    if let Err(e) = session::increment_session_progress(&cache_dir) {
+                        log::warn!("Failed to persist session progress: {}", e);
+                    }
+
                     log::error!("RunLoop: task failed: {:#}", err);
 
                     // Safety check: prevent infinite loops from rapid consecutive failures
@@ -363,49 +392,14 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
 
     // Send loop completion notification
     if tasks_attempted > 0 {
-        let notify_on_complete = opts
-            .agent_overrides
-            .notify_on_complete
-            .or(resolved.config.agent.notification.notify_on_complete)
-            .unwrap_or(true);
-        let notify_on_fail = opts
-            .agent_overrides
-            .notify_on_fail
-            .or(resolved.config.agent.notification.notify_on_fail)
-            .unwrap_or(true);
-        let notify_on_loop_complete = resolved
-            .config
-            .agent
-            .notification
-            .notify_on_loop_complete
-            .unwrap_or(true);
-        // enabled acts as a global on/off switch - true if ANY notification type is enabled
-        let enabled = notify_on_complete || notify_on_fail || notify_on_loop_complete;
-
-        let notify_config = crate::notification::NotificationConfig {
-            enabled,
-            notify_on_complete,
-            notify_on_fail,
-            notify_on_loop_complete,
-            suppress_when_active: resolved
-                .config
-                .agent
-                .notification
-                .suppress_when_active
-                .unwrap_or(true),
-            sound_enabled: opts
-                .agent_overrides
-                .notify_sound
-                .or(resolved.config.agent.notification.sound_enabled)
-                .unwrap_or(false),
-            sound_path: resolved.config.agent.notification.sound_path.clone(),
-            timeout_ms: resolved
-                .config
-                .agent
-                .notification
-                .timeout_ms
-                .unwrap_or(8000),
-        };
+        let notify_config = crate::notification::build_notification_config(
+            &resolved.config.agent.notification,
+            &crate::notification::NotificationOverrides {
+                notify_on_complete: opts.agent_overrides.notify_on_complete,
+                notify_on_fail: opts.agent_overrides.notify_on_fail,
+                notify_sound: opts.agent_overrides.notify_sound,
+            },
+        );
         crate::notification::notify_loop_complete(
             tasks_attempted,
             tasks_succeeded,

@@ -17,11 +17,20 @@ fn build_phase1_prompt_contains_required_elements() {
     let repo_root = TempDir::new().unwrap();
     let template = prompts::load_worker_phase1_prompt(repo_root.path()).unwrap();
 
-    let prompt =
-        promptflow::build_phase1_prompt(&template, base, "", task_id, 2, &policy, &config).unwrap();
+    let prompt = promptflow::build_phase1_prompt(
+        &template,
+        base,
+        "",
+        promptflow::PHASE1_TASK_REFRESH_REQUIRED_INSTRUCTION,
+        task_id,
+        2,
+        &policy,
+        &config,
+    )
+    .unwrap();
 
     assert!(prompt.contains("PLANNING MODE - PHASE 1 OF 2"));
-    assert!(prompt.contains("NO FILE EDITS ARE ALLOWED IN PHASE 1"));
+    assert!(prompt.contains("TASK REFRESH STEP"));
     assert!(prompt.contains(prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
     assert!(prompt.contains(prompts::REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION));
     assert!(prompt.contains("PLAN ONLY"));
@@ -42,8 +51,17 @@ fn build_phase1_prompt_omits_rp_if_disabled() {
     let repo_root = TempDir::new().unwrap();
     let template = prompts::load_worker_phase1_prompt(repo_root.path()).unwrap();
 
-    let prompt =
-        promptflow::build_phase1_prompt(&template, base, "", task_id, 2, &policy, &config).unwrap();
+    let prompt = promptflow::build_phase1_prompt(
+        &template,
+        base,
+        "",
+        promptflow::PHASE1_TASK_REFRESH_REQUIRED_INSTRUCTION,
+        task_id,
+        2,
+        &policy,
+        &config,
+    )
+    .unwrap();
 
     assert!(!prompt.contains(prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
     assert!(!prompt.contains(prompts::REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION));
@@ -169,9 +187,8 @@ fn build_phase2_handoff_prompt_contains_required_elements() {
     assert!(prompt.contains("IMPLEMENTATION MODE - PHASE 2 OF 3"));
     assert!(prompt.contains("CURRENT TASK: RQ-1234"));
     assert!(prompt.contains(checklist));
-    assert!(prompt.contains(
-        "If you identify unresolved risks, bugs, or suspicious leads, list them explicitly"
-    ));
+    assert!(prompt.contains("Do NOT intentionally defer follow-ups"));
+    assert!(prompt.contains("BLOCKERS (should be empty)"));
     assert!(prompt.contains("APPROVED PLAN"));
     assert!(prompt.contains(plan));
     assert!(prompt.contains("BASE_PROMPT"));
@@ -247,11 +264,12 @@ fn completion_checklist_requires_closing_flagged_issues() {
 }
 
 #[test]
-fn phase2_handoff_checklist_highlights_remaining_leads() {
+fn phase2_handoff_checklist_discourages_deferrals() {
     let config = Config::default();
     let repo_root = TempDir::new().unwrap();
     let template = prompts::load_phase2_handoff_checklist(repo_root.path()).unwrap();
     let rendered = prompts::render_phase2_handoff_checklist(&template, &config).unwrap();
 
-    assert!(rendered.contains("remaining risks, suspicious leads"));
+    assert!(rendered.contains("Do NOT intentionally defer"));
+    assert!(rendered.contains("BLOCKERS (should be empty)"));
 }

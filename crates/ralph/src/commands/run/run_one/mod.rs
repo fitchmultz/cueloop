@@ -19,7 +19,13 @@ use crate::runner;
 use crate::runutil;
 use anyhow::Result;
 
+mod completion;
+mod context;
+mod execution_setup;
 mod orchestration;
+mod phase_execution;
+mod selection;
+mod webhooks;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum QueueLockMode {

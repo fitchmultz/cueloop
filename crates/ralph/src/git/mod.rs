@@ -29,7 +29,7 @@ pub mod status;
 pub mod workspace;
 
 // Re-export commonly used items for convenience within the crate.
-pub(crate) use branch::current_branch;
+pub(crate) use branch::{current_branch, fast_forward_branch_to_origin};
 pub use clean::{
     RALPH_RUN_CLEAN_ALLOWED_PATHS, repo_dirty_only_allowed_paths, require_clean_repo_ignoring_paths,
 };
@@ -38,7 +38,10 @@ pub use commit::{
     push_upstream_with_rebase, restore_tracked_paths_to_head, revert_uncommitted, upstream_ref,
 };
 pub use error::GitError;
-pub(crate) use issue::{create_issue, edit_issue, parse_issue_number};
+pub(crate) use issue::{
+    GITHUB_ISSUE_SYNC_HASH_KEY, compute_issue_sync_hash, create_issue, edit_issue,
+    normalize_issue_metadata_list, parse_issue_number,
+};
 pub use lfs::{check_lfs_health, filter_modified_lfs_files, has_lfs, list_lfs_files};
 pub(crate) use pr::{
     MergeState, PrInfo, PrLifecycle, check_gh_available, create_pr, merge_pr, pr_lifecycle_status,

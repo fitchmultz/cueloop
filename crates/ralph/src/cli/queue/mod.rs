@@ -16,6 +16,7 @@
 mod aging;
 mod archive;
 mod burndown;
+mod dashboard;
 mod explain;
 mod export;
 mod graph;
@@ -44,7 +45,9 @@ use clap::{Args, Subcommand};
 use crate::config;
 
 pub use aging::QueueAgingArgs;
+pub use archive::QueueArchiveArgs;
 pub use burndown::QueueBurndownArgs;
+pub use dashboard::QueueDashboardArgs;
 pub use explain::QueueExplainArgs;
 pub use export::QueueExportArgs;
 pub use graph::QueueGraphArgs;
@@ -66,6 +69,7 @@ pub(crate) use show::show_task;
 pub use sort::QueueSortArgs;
 pub use stats::QueueStatsArgs;
 pub use tree::QueueTreeArgs;
+pub use unlock::QueueUnlockArgs;
 
 pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
@@ -76,9 +80,9 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Show(args) => show::handle(&resolved, args),
         QueueCommand::List(args) => list::handle(&resolved, args),
         QueueCommand::Search(args) => search::handle(&resolved, args),
-        QueueCommand::Archive => archive::handle(&resolved, force),
+        QueueCommand::Archive(args) => archive::handle(&resolved, force, args),
         QueueCommand::Repair(args) => repair::handle(&resolved, force, args),
-        QueueCommand::Unlock => unlock::handle(&resolved),
+        QueueCommand::Unlock(args) => unlock::handle(&resolved, args),
         QueueCommand::Sort(args) => sort::handle(&resolved, force, args),
         QueueCommand::Stats(args) => stats::handle(&resolved, args),
         QueueCommand::History(args) => history::handle(&resolved, args),
@@ -92,6 +96,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
         QueueCommand::Stop => stop::handle(&resolved),
         QueueCommand::Explain(args) => explain::handle(&resolved, args),
         QueueCommand::Tree(args) => tree::handle(&resolved, args),
+        QueueCommand::Dashboard(args) => dashboard::handle(&resolved, args),
         QueueCommand::Issue(args) => issue::handle(&resolved, force, args),
     }
 }
@@ -145,16 +150,20 @@ pub enum QueueCommand {
     Search(QueueSearchArgs),
 
     /// Move completed tasks from queue.json to done.json.
-    #[command(after_long_help = "Example:\n ralph queue archive")]
-    Archive,
+    #[command(
+        after_long_help = "Examples:\n  ralph queue archive\n  ralph queue archive --dry-run"
+    )]
+    Archive(QueueArchiveArgs),
 
     /// Repair the queue and done files (fix missing fields, duplicates, timestamps).
     #[command(after_long_help = "Example:\n ralph queue repair\n ralph queue repair --dry-run")]
     Repair(RepairArgs),
 
-    /// Remove the queue lock file.
-    #[command(after_long_help = "Example:\n ralph queue unlock")]
-    Unlock,
+    /// Safely remove the queue lock file with process detection.
+    #[command(after_long_help = "Safely remove the queue lock directory.\n\n\
+Safety:\n  - Checks if the lock holder process is still running\n  - Blocks if process is active (override with --force)\n  - Requires confirmation in interactive mode (bypass with --yes)\n\n\
+Examples:\n  ralph queue unlock --dry-run\n  ralph queue unlock --yes\n  ralph queue unlock --force --yes")]
+    Unlock(QueueUnlockArgs),
 
     /// Sort tasks by priority (reorders the queue file).
     #[command(
@@ -224,9 +233,17 @@ pub enum QueueCommand {
     )]
     Tree(QueueTreeArgs),
 
+    /// Aggregated dashboard for analytics UI (combines stats, burndown, history, productivity).
+    #[command(
+        after_long_help = "Examples:\n  ralph queue dashboard\n  ralph queue dashboard --days 30\n  ralph queue dashboard --days 7\n\n\
+The dashboard command returns all analytics data in a single JSON payload for GUI clients.\n\
+Each section includes a 'status' field ('ok' or 'unavailable') for graceful partial failure handling."
+    )]
+    Dashboard(QueueDashboardArgs),
+
     /// Publish tasks to GitHub Issues.
     #[command(
-        after_long_help = "Examples:\n  ralph queue issue publish RQ-0655\n  ralph queue issue publish RQ-0655 --dry-run\n  ralph queue issue publish RQ-0655 --label bug --assignee @me\n  ralph queue issue publish RQ-0655 --repo owner/repo"
+        after_long_help = "Examples:\n  ralph queue issue publish RQ-0655\n  ralph queue issue publish RQ-0655 --dry-run\n  ralph queue issue publish RQ-0655 --label bug --assignee @me\n  ralph queue issue publish RQ-0655 --repo owner/repo\n  ralph queue issue publish-many --status todo --tag bug --dry-run\n  ralph queue issue publish-many --status todo --execute --force"
     )]
     Issue(QueueIssueArgs),
 }

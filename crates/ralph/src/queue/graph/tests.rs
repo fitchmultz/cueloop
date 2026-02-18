@@ -5,7 +5,7 @@
 //! - Cover both success paths and key failure modes (e.g., cycle detection).
 //!
 //! Not handled here:
-//! - Integration-level CLI/TUI rendering behavior (covered elsewhere).
+//! - Integration-level UI rendering behavior (covered elsewhere).
 //!
 //! Invariants/assumptions:
 //! - Task timestamps are present (to satisfy `Task` invariants in this crate's contracts).
@@ -33,6 +33,8 @@ fn task(id: &str, depends_on: Vec<&str>, status: TaskStatus) -> Task {
         completed_at: None,
         started_at: None,
         scheduled_start: None,
+        estimated_minutes: None,
+        actual_minutes: None,
         depends_on: depends_on.into_iter().map(|s| s.to_string()).collect(),
         blocks: vec![],
         relates_to: vec![],
@@ -99,6 +101,95 @@ fn topological_sort_detects_cycle() {
     let graph = build_graph(&active, None);
     let err = topological_sort(&graph).expect_err("expected cycle error");
     assert!(err.to_string().to_lowercase().contains("cycle"));
+}
+
+#[test]
+fn topological_sort_detects_longer_cycle() {
+    // A depends on C, B depends on A, C depends on B -> forms 3-node cycle
+    let active = queue_file(vec![
+        task("RQ-0001", vec!["RQ-0003"], TaskStatus::Todo), // A -> C
+        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo), // B -> A
+        task("RQ-0003", vec!["RQ-0002"], TaskStatus::Todo), // C -> B
+    ]);
+
+    let graph = build_graph(&active, None);
+    let err = topological_sort(&graph).expect_err("expected cycle error for 3-node cycle");
+    assert!(err.to_string().to_lowercase().contains("cycle"));
+}
+
+#[test]
+fn topological_sort_detects_self_loop() {
+    // A depends on itself (self-loop)
+    let active = queue_file(vec![
+        task("RQ-0001", vec!["RQ-0001"], TaskStatus::Todo), // A -> A
+    ]);
+
+    let graph = build_graph(&active, None);
+    let err = topological_sort(&graph).expect_err("expected cycle error for self-loop");
+    assert!(err.to_string().to_lowercase().contains("cycle"));
+}
+
+#[test]
+fn topological_sort_detects_cycle_with_independent_nodes() {
+    // Cycle: A -> B -> A
+    // Independent: C (no deps), D depends on C
+    let active = queue_file(vec![
+        task("RQ-0001", vec!["RQ-0002"], TaskStatus::Todo), // A -> B (cycle)
+        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo), // B -> A (cycle)
+        task("RQ-0003", vec![], TaskStatus::Todo),          // C (independent)
+        task("RQ-0004", vec!["RQ-0003"], TaskStatus::Todo), // D -> C (independent chain)
+    ]);
+
+    let graph = build_graph(&active, None);
+    let err = topological_sort(&graph).expect_err("expected cycle error");
+    assert!(err.to_string().to_lowercase().contains("cycle"));
+}
+
+#[test]
+fn topological_sort_detects_multiple_cycles() {
+    // Cycle 1: A -> B -> A
+    // Cycle 2: C -> D -> C
+    let active = queue_file(vec![
+        task("RQ-0001", vec!["RQ-0002"], TaskStatus::Todo),
+        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+        task("RQ-0003", vec!["RQ-0004"], TaskStatus::Todo),
+        task("RQ-0004", vec!["RQ-0003"], TaskStatus::Todo),
+    ]);
+
+    let graph = build_graph(&active, None);
+    let err = topological_sort(&graph).expect_err("expected cycle error");
+    assert!(err.to_string().to_lowercase().contains("cycle"));
+}
+
+#[test]
+fn topological_sort_handles_complex_dag() {
+    // Diamond dependency pattern:
+    //       A
+    //      / \
+    //     B   C
+    //      \ /
+    //       D
+    let active = queue_file(vec![
+        task("RQ-0001", vec![], TaskStatus::Todo), // A (root)
+        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo), // B -> A
+        task("RQ-0003", vec!["RQ-0001"], TaskStatus::Todo), // C -> A
+        task("RQ-0004", vec!["RQ-0002", "RQ-0003"], TaskStatus::Todo), // D -> B, C
+    ]);
+
+    let graph = build_graph(&active, None);
+    let sorted = topological_sort(&graph).expect("DAG should sort successfully");
+    assert_eq!(sorted.len(), 4);
+
+    // A must come before B, C, D
+    let idx_a = sorted.iter().position(|id| id == "RQ-0001").unwrap();
+    let idx_b = sorted.iter().position(|id| id == "RQ-0002").unwrap();
+    let idx_c = sorted.iter().position(|id| id == "RQ-0003").unwrap();
+    let idx_d = sorted.iter().position(|id| id == "RQ-0004").unwrap();
+
+    assert!(idx_a < idx_b);
+    assert!(idx_a < idx_c);
+    assert!(idx_b < idx_d);
+    assert!(idx_c < idx_d);
 }
 
 #[test]

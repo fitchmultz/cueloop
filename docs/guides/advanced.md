@@ -687,8 +687,8 @@ ralph daemon start
 # Check status
 ralph daemon status
 
-# View logs
-tail -f .ralph/logs/daemon.log
+# View daemon logs
+ralph daemon logs
 
 # Stop daemon
 ralph daemon stop

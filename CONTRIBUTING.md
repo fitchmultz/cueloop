@@ -47,7 +47,7 @@ cargo run -p ralph -- queue list
 
 ### The CI Gate
 
-**All contributions MUST pass `make ci` before being considered complete.** This is a hard requirement.
+**All contributions MUST pass `make macos-ci` before being considered complete.** This is a hard requirement.
 
 The CI gate runs the full validation pipeline:
 
@@ -58,10 +58,10 @@ check-env-safety → check-backup-artifacts → deps → format → type-check �
 Run it with:
 
 ```bash
-make ci
+make macos-ci
 ```
 
-Do not commit or push changes if `make ci` is failing. Fix all issues first.
+Do not commit or push changes if `make macos-ci` is failing. Fix all issues first.
 
 ## Contribution Guidelines
 
@@ -105,12 +105,55 @@ All new or changed behavior must be covered by tests:
 Example:
 
 ```bash
-# Run all tests
+# Run all tests (nextest workspace tests with cargo-test fallback, then doc tests)
 make test
 
 # Run tests for just the ralph crate
 cargo test -p ralph
 ```
+
+### Code Coverage
+
+Ralph uses `cargo-llvm-cov` for code coverage analysis. Coverage is **optional** and not part of the default CI gate.
+
+#### Prerequisites
+
+```bash
+# Install cargo-llvm-cov
+cargo install cargo-llvm-cov
+
+# On macOS, you may also need the llvm-tools component
+rustup component add llvm-tools-preview
+```
+
+#### Running Coverage
+
+```bash
+# Generate coverage report
+make coverage
+
+# Clean coverage artifacts
+make coverage-clean
+```
+
+The coverage target generates:
+- **HTML Report**: `target/coverage/html/index.html` (opens automatically on macOS)
+- **JSON Data**: `target/coverage/coverage.json` (machine-readable coverage data)
+
+#### Interpreting Results
+
+The HTML report shows:
+- Line-by-line coverage highlighting
+- Per-file coverage percentages
+- Per-crate breakdown
+
+The terminal output shows:
+- Total coverage (lines, functions, regions)
+- Per-crate breakdown (sorted alphabetically)
+
+Coverage helps identify untested code paths but does not replace thoughtful test design.
+
+For troubleshooting coverage issues, see [Troubleshooting](docs/index.md#troubleshooting).
 
 ### Integration Testing (CLI)
 
@@ -162,7 +205,7 @@ Commit the updated snapshot files under `crates/ralph/tests/snapshots/`.
 
 ### Feature Parity
 
-When changing user-visible workflows, maintain parity between CLI and TUI, or document/justify the divergence explicitly.
+When changing user-visible workflows, maintain parity between the CLI and the macOS app, or document/justify the divergence explicitly.
 
 ### CLI Help Documentation
 
@@ -191,7 +234,7 @@ Examples:
 Include in your PR description:
 
 1. **What changed**: A brief summary of the changes
-2. **How to verify**: Steps to validate (expected: `make ci`)
+2. **How to verify**: Steps to validate (expected: `make macos-ci`)
 3. **Breaking changes**: Call out any breaking behavior explicitly
 
 Example:
@@ -202,23 +245,25 @@ Added validation for task ID format in queue operations.
 
 ## Verification
 ```bash
-make ci
+make macos-ci
 ```
 
 ## Breaking Changes
 None.
+
 ```
 
 ### Local-CI-First Philosophy
 
-This repository is local-CI-first. We avoid adding remote CI (e.g., GitHub Actions) as a substitute for `make ci`. The local CI gate is the source of truth.
+This repository is local-CI-first. We avoid adding remote CI (e.g., GitHub Actions) as a substitute for `make macos-ci`. The local CI gate is the source of truth.
 
 ## Repository Structure
 
 Key locations to know:
 
+- `apps/RalphMac/`: macOS SwiftUI app (thin client that shells out to the bundled `ralph` CLI)
 - `crates/ralph/`: Primary Rust CLI crate
-  - `src/`: CLI commands, runner integration, queue management, TUI
+  - `src/`: CLI commands, runner integration, queue management
   - `assets/prompts/`: Embedded prompt templates
 - `docs/`: CLI + workflow + configuration docs (`docs/index.md` is the entry point)
 - `schemas/`: Generated JSON schemas (committed)

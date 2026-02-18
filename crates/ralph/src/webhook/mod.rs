@@ -5,12 +5,13 @@
 //! - Background worker handles HTTP delivery with retries.
 //! - Bounded queue with configurable backpressure policy.
 //! - Generate HMAC-SHA256 signatures for webhook verification.
+//! - Expose delivery diagnostics and bounded replay controls for failed events.
 //!
 //! Does NOT handle:
 //! - Webhook endpoint management or registration.
-//! - Persistent delivery history or logging.
-//! - TUI mode detection (callers should suppress if desired).
+//! - UI mode detection (callers should suppress if desired).
 //! - Response processing beyond HTTP status check.
+//! - Exactly-once delivery guarantees.
 //!
 //! Invariants:
 //! - Webhook failures are logged but never fail the calling operation.
@@ -21,9 +22,15 @@
 
 use crate::contracts::{WebhookConfig, WebhookQueuePolicy};
 use crossbeam_channel::{Sender, TrySendError, bounded};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 use std::time::Duration;
+
+mod diagnostics;
+pub use diagnostics::{
+    ReplayCandidate, ReplayReport, ReplaySelector, WebhookDiagnostics, WebhookFailureRecord,
+    diagnostics_snapshot, failure_store_path, replay_failed_deliveries,
+};
 
 /// Types of webhook events that can be sent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,7 +99,7 @@ impl std::str::FromStr for WebhookEventType {
 
 /// Optional context metadata for webhook payloads.
 /// These fields are only serialized when set (Some).
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WebhookContext {
     /// Runner used for this phase/execution (e.g., "claude", "codex").
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -124,7 +131,7 @@ pub struct WebhookContext {
 }
 
 /// Webhook event payload structure.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookPayload {
     /// Event type identifier.
     pub event: String,
@@ -205,12 +212,14 @@ fn init_worker(config: &WebhookConfig) {
     // Use get_or_init to ensure thread-safe one-time initialization
     let _ = CHANNEL.get_or_init(|| {
         let (sender, receiver) = bounded(capacity);
+        diagnostics::set_queue_capacity(capacity);
 
         // Spawn the worker thread (moves receiver into the closure)
         std::thread::spawn(move || {
             log::debug!("Webhook worker started (capacity: {})", capacity);
 
             while let Ok(msg) = receiver.recv() {
+                diagnostics::note_queue_dequeue();
                 if let Err(e) = deliver_webhook(&msg) {
                     log::warn!("Webhook delivery failed: {}", e);
                 }
@@ -249,6 +258,7 @@ fn deliver_webhook(msg: &WebhookMessage) -> anyhow::Result<()> {
 
     for attempt in 0..=msg.config.retry_count {
         if attempt > 0 {
+            diagnostics::note_retry_attempt();
             let backoff = msg.config.retry_backoff.as_millis() as u64 * attempt as u64;
             std::thread::sleep(Duration::from_millis(backoff));
             log::debug!("Webhook retry attempt {} after {}ms", attempt, backoff);
@@ -256,6 +266,7 @@ fn deliver_webhook(msg: &WebhookMessage) -> anyhow::Result<()> {
 
         match send_request(url, &body, signature.as_deref(), msg.config.timeout) {
             Ok(()) => {
+                diagnostics::note_delivery_success();
                 log::debug!("Webhook delivered successfully to {}", url);
                 return Ok(());
             }
@@ -266,7 +277,9 @@ fn deliver_webhook(msg: &WebhookMessage) -> anyhow::Result<()> {
         }
     }
 
-    Err(last_error.unwrap_or_else(|| anyhow::anyhow!("All webhook attempts failed")))
+    let final_error = last_error.unwrap_or_else(|| anyhow::anyhow!("All webhook attempts failed"));
+    diagnostics::note_delivery_failure(msg, &final_error, msg.config.retry_count.saturating_add(1));
+    Err(final_error)
 }
 
 /// Send a webhook payload directly (non-blocking, enqueues for delivery).
@@ -274,24 +287,45 @@ fn deliver_webhook(msg: &WebhookMessage) -> anyhow::Result<()> {
 /// This is the low-level function that checks event filtering and enqueues.
 /// Prefer using the `notify_*` convenience functions for common events.
 pub fn send_webhook_payload(payload: WebhookPayload, config: &WebhookConfig) {
+    if !send_webhook_payload_internal(payload, config, false) {
+        log::warn!("Webhook enqueue failed (queue full or worker disconnected)");
+    }
+}
+
+pub(crate) fn enqueue_webhook_payload_for_replay(
+    payload: WebhookPayload,
+    config: &WebhookConfig,
+) -> bool {
+    send_webhook_payload_internal(payload, config, true)
+}
+
+pub(crate) fn resolve_webhook_config(config: &WebhookConfig) -> ResolvedWebhookConfig {
+    ResolvedWebhookConfig::from_config(config)
+}
+
+fn send_webhook_payload_internal(
+    payload: WebhookPayload,
+    config: &WebhookConfig,
+    bypass_event_filter: bool,
+) -> bool {
     // Check if webhooks are enabled for this event type
-    if !config.is_event_enabled(&payload.event) {
+    if !bypass_event_filter && !config.is_event_enabled(&payload.event) {
         log::debug!("Webhook for event {} is disabled; skipping", payload.event);
-        return;
+        return false;
     }
 
     let resolved = ResolvedWebhookConfig::from_config(config);
 
     if !resolved.enabled {
         log::debug!("Webhooks globally disabled; skipping");
-        return;
+        return false;
     }
 
     let url = match &resolved.url {
         Some(url) if !url.is_empty() => url.clone(),
         _ => {
             log::debug!("Webhook URL not configured; skipping");
-            return;
+            return false;
         }
     };
 
@@ -317,6 +351,7 @@ pub fn send_webhook_payload(payload: WebhookPayload, config: &WebhookConfig) {
         Some(sender) => apply_backpressure_policy(&sender, msg, policy),
         None => {
             log::error!("Webhook worker not initialized; cannot send webhook");
+            false
         }
     }
 }
@@ -354,7 +389,7 @@ fn apply_backpressure_policy(
     sender: &Sender<WebhookMessage>,
     msg: WebhookMessage,
     policy: WebhookQueuePolicy,
-) {
+) -> bool {
     match policy {
         WebhookQueuePolicy::DropOldest => {
             // Drop new webhooks when queue is full, preserving existing queue contents.
@@ -362,35 +397,52 @@ fn apply_backpressure_policy(
             // (we cannot pop from the front of the queue from the sender side).
             match sender.try_send(msg) {
                 Ok(()) => {
+                    diagnostics::note_enqueue_success();
                     log::debug!("Webhook enqueued for delivery");
+                    true
                 }
                 Err(TrySendError::Full(_)) => {
                     // Queue is full - drop the new message
+                    diagnostics::note_dropped_message();
                     log::warn!("Webhook queue full (drop_oldest policy); dropping new message");
+                    false
                 }
                 Err(TrySendError::Disconnected(_)) => {
+                    diagnostics::note_dropped_message();
                     log::error!("Webhook worker disconnected; cannot send webhook");
+                    false
                 }
             }
         }
-        WebhookQueuePolicy::DropNew => {
-            if let Err(e) = sender.try_send(msg) {
-                log::warn!("Webhook queue full; dropping message: {}", e);
-            } else {
+        WebhookQueuePolicy::DropNew => match sender.try_send(msg) {
+            Ok(()) => {
+                diagnostics::note_enqueue_success();
                 log::debug!("Webhook enqueued for delivery");
+                true
             }
-        }
+            Err(e) => {
+                diagnostics::note_dropped_message();
+                log::warn!("Webhook queue full; dropping message: {}", e);
+                false
+            }
+        },
         WebhookQueuePolicy::BlockWithTimeout => {
             // Block briefly (100ms), then drop if still full
             match sender.send_timeout(msg, Duration::from_millis(100)) {
                 Ok(()) => {
+                    diagnostics::note_enqueue_success();
                     log::debug!("Webhook enqueued for delivery");
+                    true
                 }
                 Err(crossbeam_channel::SendTimeoutError::Timeout(_msg)) => {
+                    diagnostics::note_dropped_message();
                     log::warn!("Webhook queue full (timeout); dropping message");
+                    false
                 }
                 Err(crossbeam_channel::SendTimeoutError::Disconnected(_)) => {
+                    diagnostics::note_dropped_message();
                     log::error!("Webhook worker disconnected; cannot send webhook");
+                    false
                 }
             }
         }
@@ -404,19 +456,27 @@ fn send_request(
     signature: Option<&str>,
     timeout: Duration,
 ) -> anyhow::Result<()> {
-    let mut request = ureq::post(url)
-        .set("Content-Type", "application/json")
-        .set("User-Agent", concat!("ralph/", env!("CARGO_PKG_VERSION")));
+    // In ureq 3.x, we use an Agent with timeout configuration
+    let agent = ureq::Agent::new_with_config(
+        ureq::Agent::config_builder()
+            .timeout_global(Some(timeout))
+            .build(),
+    );
+
+    let mut request = agent
+        .post(url)
+        .header("Content-Type", "application/json")
+        .header("User-Agent", concat!("ralph/", env!("CARGO_PKG_VERSION")));
 
     if let Some(sig) = signature {
-        request = request.set("X-Ralph-Signature", sig);
+        request = request.header("X-Ralph-Signature", sig);
     }
 
-    let response = request.timeout(timeout).send_string(body)?;
+    let response = request.send(body)?;
 
     let status = response.status();
 
-    if (200..300).contains(&status) {
+    if status.is_success() {
         Ok(())
     } else {
         Err(anyhow::anyhow!(

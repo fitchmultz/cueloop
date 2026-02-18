@@ -25,6 +25,15 @@ use crate::timeutil;
 /// Handle the `schedule` command.
 pub fn handle(args: &TaskScheduleArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task schedule", force)?;
+
+    // Create undo snapshot before mutation
+    let op = if args.clear {
+        format!("task schedule clear {}", args.task_id)
+    } else {
+        format!("task schedule {} {:?}", args.task_id, args.when)
+    };
+    crate::undo::create_undo_snapshot(resolved, &op)?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);

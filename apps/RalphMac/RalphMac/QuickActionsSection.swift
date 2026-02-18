@@ -1,0 +1,186 @@
+/**
+ QuickActionsSection
+
+ Responsibilities:
+ - Provide Quick Actions content column with working directory header and console output.
+ - Provide Quick Actions detail column with commands, status, and controls.
+ - Handle quick commands like version check and init.
+
+ Does not handle:
+ - Task queue management (see QueueContent).
+ - Advanced command configuration (see AdvancedRunnerSection).
+ - Direct CLI execution (delegated to Workspace).
+
+ Invariants/assumptions callers must respect:
+ - Workspace is injected via @ObservedObject.
+ - View is used within NavigationSplitView context.
+ */
+
+import SwiftUI
+import RalphCore
+
+@MainActor
+struct QuickActionsContentColumn: View {
+    @ObservedObject var workspace: Workspace
+    let navTitle: (String) -> String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            WorkingDirectoryHeader(workspace: workspace)
+                .padding(16)
+
+            Divider()
+
+            ConsoleView(workspace: workspace)
+                .padding(16)
+        }
+        .contentBackground(cornerRadius: 12)
+        .navigationTitle(navTitle("Quick Actions"))
+    }
+}
+
+@MainActor
+struct QuickActionsDetailColumn: View {
+    @ObservedObject var workspace: Workspace
+    let navTitle: (String) -> String
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                workingDirectorySection()
+
+                Divider()
+
+                quickCommandsSection()
+
+                Divider()
+
+                statusSection()
+
+                errorSection()
+            }
+            .padding(20)
+        }
+        .background(.clear)
+        .navigationTitle(navTitle("Quick Actions"))
+    }
+
+    @ViewBuilder
+    private func workingDirectorySection() -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Working Directory")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(workspace.name)
+                    .font(.subheadline)
+                Text(workspace.workingDirectoryURL.path)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            HStack {
+                if !workspace.recentWorkingDirectories.isEmpty {
+                    Menu("Recents") {
+                        ForEach(workspace.recentWorkingDirectories, id: \.path) { url in
+                            Button(url.path) {
+                                workspace.selectRecentWorkingDirectory(url)
+                            }
+                        }
+                    }
+                }
+
+                Button("Choose…") {
+                    workspace.chooseWorkingDirectory()
+                }
+                .buttonStyle(GlassButtonStyle())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func quickCommandsSection() -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Quick Commands")
+                .font(.headline)
+
+            HStack(spacing: 12) {
+                actionButton("Version", icon: "info.circle.fill", action: { workspace.runVersion() })
+                actionButton("Init", icon: "folder.badge.plus", action: { workspace.runInit() })
+
+                Spacer()
+
+                if workspace.isRunning {
+                    Button(action: { workspace.cancel() }) {
+                        Label("Stop", systemImage: "stop.circle.fill")
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func statusSection() -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Status")
+                .font(.headline)
+
+            HStack(spacing: 16) {
+                if let status = workspace.lastExitStatus {
+                    HStack(spacing: 6) {
+                        Image(systemName: status.code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundStyle(status.code == 0 ? .green : .red)
+                        Text("Exit: \(status.code) [\(status.reason.rawValue)]")
+                            .font(.system(.body, design: .monospaced))
+                    }
+                } else {
+                    Text("No commands run yet")
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func errorSection() -> some View {
+        if let error = workspace.errorMessage {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .accessibilityLabel("Error")
+                    Text("Error")
+                        .font(.headline)
+                        .foregroundStyle(.red)
+
+                    Spacer()
+
+                    if workspace.lastRecoveryError != nil {
+                        Button("Show Recovery Options") {
+                            workspace.showErrorRecovery = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                }
+
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.body)
+            }
+        }
+    }
+
+    private func actionButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+        }
+        .buttonStyle(GlassButtonStyle())
+        .accessibilityLabel("\(title)")
+    }
+}

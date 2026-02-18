@@ -52,6 +52,12 @@ pub enum ProductivityCommand {
         after_long_help = "Examples:\n  ralph productivity streak\n  ralph productivity streak --format json"
     )]
     Streak(ProductivityStreakArgs),
+
+    /// Estimation accuracy: compare estimated vs actual time for completed tasks.
+    #[command(
+        after_long_help = "Examples:\n  ralph productivity estimation\n  ralph productivity estimation --format json"
+    )]
+    Estimation(ProductivityEstimationArgs),
 }
 
 #[derive(Args)]
@@ -78,6 +84,13 @@ pub struct ProductivityVelocityArgs {
 
 #[derive(Args)]
 pub struct ProductivityStreakArgs {
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = ProductivityFormat::Text)]
+    pub format: ProductivityFormat,
+}
+
+#[derive(Args)]
+pub struct ProductivityEstimationArgs {
     /// Output format.
     #[arg(long, value_enum, default_value_t = ProductivityFormat::Text)]
     pub format: ProductivityFormat,
@@ -119,6 +132,20 @@ pub fn handle(args: ProductivityArgs) -> Result<()> {
                 }
                 ProductivityFormat::Text => {
                     productivity::print_streak_report_text(&report);
+                }
+            }
+        }
+        ProductivityCommand::Estimation(cmd) => {
+            // Load completed tasks from done.json
+            let done_path = resolved.repo_root.join(".ralph/done.json");
+            let done_queue = crate::queue::load_queue_or_default(&done_path)?;
+            let report = productivity::build_estimation_report(&done_queue.tasks);
+            match cmd.format {
+                ProductivityFormat::Json => {
+                    print!("{}", serde_json::to_string_pretty(&report)?);
+                }
+                ProductivityFormat::Text => {
+                    productivity::print_estimation_report_text(&report);
                 }
             }
         }

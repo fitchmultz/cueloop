@@ -2,9 +2,42 @@ RUST_WORKSPACE := .
 PREFIX ?= $(HOME)/.local
 BIN_DIR ?= $(PREFIX)/bin
 BIN_NAME ?= ralph
+CARGO_HTTP_MULTIPLEXING ?= false
+XCODE_DERIVED_DATA_ROOT ?= target/tmp/xcode-deriveddata
+# Pin destination arch to avoid xcodebuild's "first of multiple matching destinations" warning.
+# Override if you intentionally want a different destination.
+XCODE_DESTINATION ?= platform=macOS,arch=$(shell uname -m)
+# UI tests: Set to 1 to include UI tests (headed, mouse-interactive), 0 to skip (default for CI)
+RALPH_UI_TESTS ?= 0
 
-.PHONY: install update lint format type-check clean clean-temp test generate build ci deps \
-	check-env-safety check-backup-artifacts
+.DELETE_ON_ERROR:
+.ONESHELL:
+SHELL := bash
+.SHELLFLAGS := -eu -o pipefail -c
+
+# Require GNU Make >= 4.x (Homebrew `make` provides `gmake`, plus a `make` shim under `.../gnubin`).
+ifeq ($(filter 4.% 5.%,$(MAKE_VERSION)),)
+$(error GNU Make >= 4 is required (found: $(MAKE_VERSION)). On macOS: `brew install make` then run `gmake <target>` or add `$(HOME)/.zshrc`: export PATH="/opt/homebrew/opt/make/libexec/gnubin:$$PATH")
+endif
+
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
+
+.PHONY: help install update lint lint-fix format type-check clean clean-temp test generate build ci deps \
+	check-env-safety check-backup-artifacts macos-preflight macos-build macos-test macos-ci macos-test-ui \
+	macos-test-window-shortcuts coverage coverage-clean
+
+help:
+	@echo "Common targets:"
+	@echo "  make ci          # Rust-only local CI gate (formats code, builds+installs release)"
+	@echo "  make macos-ci     # Rust gate + macOS app build+test (requires Xcode)"
+	@echo "  make test         # Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing)"
+	@echo "  make coverage     # Generate code coverage report (requires cargo-llvm-cov)"
+	@echo "  make coverage-clean  # Remove coverage artifacts"
+	@echo "  make macos-test-window-shortcuts # Run focused multi-window shortcut UI regressions"
+	@echo "  make lint         # Clippy with -D warnings"
+	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
+	@echo "  make install      # Install release binary to BIN_DIR"
 
 # Optional but cheap: fail fast if lockfile or network access is busted
 deps:
@@ -23,7 +56,7 @@ install: build
 	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
 
 update:
-	@cargo update
+	@CARGO_HTTP_MULTIPLEXING=$(CARGO_HTTP_MULTIPLEXING) cargo update
 
 format:
 	@echo "→ Formatting code..."
@@ -32,55 +65,66 @@ format:
 
 type-check:
 	@echo "→ Type-checking..."
-	@cargo check --workspace --all-targets
+	@cargo check --workspace --all-targets --all-features --locked
 	@echo "  ✓ Type-checking complete"
 
 lint:
-	@echo "→ Clippy autofix (phase 1/2)..."
-	@cargo clippy --fix --allow-dirty --workspace --all-targets --all-features --locked -- -D warnings
+	@echo "→ Linting (clippy, non-mutating)..."
+	@cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 	@echo "  ✓ Linting complete"
+
+lint-fix:
+	@echo "→ Clippy autofix (optional)..."
+	@cargo clippy --fix --allow-dirty --workspace --all-targets --all-features --locked -- -D warnings
+	@echo "  ✓ Lint autofix complete"
 
 test:
 	@echo "→ Running tests..."
-	@bash -lc 'set -euo pipefail; \
-		repo_root="$$(pwd -P)"; \
-		system_tmp="$${TMPDIR:-/tmp}"; \
-		system_tmp="$${system_tmp%/}"; \
-		legacy_tmp_base="$$system_tmp/ralph-ci-tmp"; \
-		if [ "$${RALPH_CI_KEEP_TMP:-0}" != "1" ]; then rm -rf "$$legacy_tmp_base" 2>/dev/null || true; fi; \
-		tmp_base="$$repo_root/target/tmp/ralph-ci-tmp"; \
-		if [ "$${RALPH_CI_KEEP_TMP:-0}" != "1" ]; then rm -rf "$$tmp_base" 2>/dev/null || true; fi; \
-		mkdir -p "$$tmp_base"; \
-		run_dir="$$(mktemp -d "$$tmp_base/ralph-ci.XXXXXX")"; \
-		cleanup() { \
-			if [ "$${RALPH_CI_KEEP_TMP:-0}" = "1" ]; then \
-				echo "  ℹ Keeping CI temp dir: $$run_dir"; \
-				return 0; \
-			fi; \
-			rm -rf "$$run_dir" 2>/dev/null || true; \
-			rm -rf "$$tmp_base" 2>/dev/null || true; \
-		}; \
-		trap cleanup EXIT INT TERM; \
-		export TMPDIR="$$run_dir"; \
-		export TEMP="$$run_dir"; \
-		export TMP="$$run_dir"; \
-		unit_test_output=$$(cargo test --workspace --all-targets --locked -- --include-ignored 2>&1) || { \
-			echo "  ✗ Unit tests failed!"; \
-			echo ""; \
-			echo "=== Full test output ==="; \
-			echo "$$unit_test_output"; \
-			exit 1; \
-		}; \
-		echo "$$unit_test_output" | grep -E "^(test result:|running|     Running)" || true; \
-		doc_test_output=$$(cargo test --workspace --doc --locked -- --include-ignored 2>&1) || { \
-			echo "  ✗ Doc tests failed!"; \
-			echo ""; \
-			echo "=== Full test output ==="; \
-			echo "$$doc_test_output"; \
-			exit 1; \
-		}; \
-		echo "$$doc_test_output" | grep -E "^(test result:|running|     Running)" || true; \
-		echo "  ✓ Tests passed"'
+	@repo_root="$$(pwd -P)"; \
+	system_tmp="$${TMPDIR:-/tmp}"; \
+	system_tmp="$${system_tmp%/}"; \
+	legacy_tmp_base="$$system_tmp/ralph-ci-tmp"; \
+	if [ "$${RALPH_CI_KEEP_TMP:-0}" != "1" ]; then rm -rf "$$legacy_tmp_base" 2>/dev/null || true; fi; \
+	tmp_base="$$repo_root/target/tmp/ralph-ci-tmp"; \
+	if [ "$${RALPH_CI_KEEP_TMP:-0}" != "1" ]; then rm -rf "$$tmp_base" 2>/dev/null || true; fi; \
+	mkdir -p "$$tmp_base"; \
+	run_dir="$$(mktemp -d "$$tmp_base/ralph-ci.XXXXXX")"; \
+	cleanup() { \
+		if [ "$${RALPH_CI_KEEP_TMP:-0}" = "1" ]; then \
+			echo "  ℹ Keeping CI temp dir: $$run_dir"; \
+			return 0; \
+		fi; \
+		rm -rf "$$run_dir" 2>/dev/null || true; \
+		rm -rf "$$tmp_base" 2>/dev/null || true; \
+	}; \
+	trap cleanup EXIT INT TERM; \
+	export TMPDIR="$$run_dir"; \
+	export TEMP="$$run_dir"; \
+	export TMP="$$run_dir"; \
+	unit_log="$$run_dir/unit-tests.log"; \
+	doc_log="$$run_dir/doc-tests.log"; \
+	if cargo nextest --version >/dev/null 2>&1; then \
+		echo "  → Using cargo-nextest for non-doc tests"; \
+		if cargo nextest run --workspace --all-targets --locked -- --include-ignored >"$$unit_log" 2>&1; then \
+			grep -E "^(test result:|running|     Running|Summary|PASS|FAIL)" "$$unit_log" | tail -5 || true; \
+		else \
+			echo "  ✗ Workspace tests failed!"; echo ""; echo "=== Full test output ==="; cat "$$unit_log"; exit 1; \
+		fi; \
+	else \
+		echo "  ⚠ cargo-nextest not found; falling back to cargo test --workspace --all-targets"; \
+		echo "    Install with: cargo install cargo-nextest --locked"; \
+		if cargo test --workspace --all-targets --locked -- --include-ignored >"$$unit_log" 2>&1; then \
+			grep -E "^(test result:|running|     Running)" "$$unit_log" || true; \
+		else \
+			echo "  ✗ Workspace tests failed!"; echo ""; echo "=== Full test output ==="; cat "$$unit_log"; exit 1; \
+		fi; \
+	fi; \
+	if cargo test --workspace --doc --locked -- --include-ignored >"$$doc_log" 2>&1; then \
+		grep -E "^(test result:|running|     Running)" "$$doc_log" || true; \
+	else \
+		echo "  ✗ Doc tests failed!"; echo ""; echo "=== Full test output ==="; cat "$$doc_log"; exit 1; \
+	fi; \
+	echo "  ✓ Tests passed"
 
 # Required every time
 build:
@@ -114,7 +158,7 @@ check-env-safety:
 	fi
 
 check-backup-artifacts:
-	@bak_files=$$(find crates/ralph/src/ -name '*.bak' -type f 2>/dev/null); \
+	@bak_files="$$(find crates/ralph/src/ -name '*.bak' -type f 2>/dev/null || true)"; \
 	if [ -n "$$bak_files" ]; then \
 		echo "ERROR: Backup artifacts found in crates/ralph/src/:"; \
 		echo "$$bak_files"; \
@@ -123,21 +167,134 @@ check-backup-artifacts:
 	fi
 
 # Speed-first local CI that always builds release + installs
-ci:
-	@echo "→ Local CI (mutates code, always builds+installs release)..."
+ci: check-env-safety check-backup-artifacts deps format type-check lint test build generate install
+	@echo "→ Local CI (formats code, always builds+installs release)..."
 	@echo ""
-	@set -e; \
-	$(MAKE) check-env-safety        || { echo ""; echo "✗ CI failed at: check-env-safety"; exit 1; }; \
-	$(MAKE) check-backup-artifacts  || { echo ""; echo "✗ CI failed at: check-backup-artifacts"; exit 1; }; \
-	$(MAKE) deps                   || { echo ""; echo "✗ CI failed at: deps"; exit 1; }; \
-	$(MAKE) format                 || { echo ""; echo "✗ CI failed at: format"; exit 1; }; \
-	$(MAKE) type-check             || { echo ""; echo "✗ CI failed at: type-check"; exit 1; }; \
-	$(MAKE) lint                   || { echo ""; echo "✗ CI failed at: lint"; exit 1; }; \
-	$(MAKE) test                   || { echo ""; echo "✗ CI failed at: test"; exit 1; }; \
-	$(MAKE) build                  || { echo ""; echo "✗ CI failed at: build"; exit 1; }; \
-	$(MAKE) generate               || { echo ""; echo "✗ CI failed at: generate"; exit 1; }; \
-	$(MAKE) install                || { echo ""; echo "✗ CI failed at: install"; exit 1; }
+	@echo "  ✓ CI completed"
+
+macos-preflight:
+	@os="$$(uname -s)"; \
+	if [ "$$os" != "Darwin" ]; then \
+		echo "macos-preflight: macOS-only (uname: $$os)"; \
+		exit 1; \
+	fi; \
+	if ! command -v xcodebuild >/dev/null 2>&1; then \
+		echo "macos-preflight: xcodebuild not found on PATH"; \
+		exit 1; \
+	fi
+
+macos-build:
+	@$(MAKE) --no-print-directory macos-preflight
+	@$(MAKE) --no-print-directory build
+	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/build"; \
+	echo "→ macOS build (Xcode build)..."; \
+	rm -rf "$$derived_data_path" 2>/dev/null || true; \
+	xcodebuild \
+		-project apps/RalphMac/RalphMac.xcodeproj \
+		-scheme RalphMac \
+		-configuration Release \
+		-destination '$(XCODE_DESTINATION)' \
+		-derivedDataPath "$$derived_data_path" \
+		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
+		build
+
+macos-test:
+	@$(MAKE) --no-print-directory macos-preflight
+	@$(MAKE) --no-print-directory build
+	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/test"; \
+	ralph_bin_path="$$(pwd)/target/release/ralph"; \
+	include_ui_tests="$(RALPH_UI_TESTS)"; \
+	if [ "$$include_ui_tests" = "1" ]; then \
+		echo "→ macOS tests (Xcode, including UI tests - will take over mouse/keyboard)..."; \
+		skipped_tests=""; \
+	else \
+		echo "→ macOS tests (Xcode, skipping UI tests - use RALPH_UI_TESTS=1 to include)..."; \
+		skipped_tests="-skip-testing RalphMacUITests"; \
+	fi; \
+	rm -rf "$$derived_data_path" 2>/dev/null || true; \
+	RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
+		-project apps/RalphMac/RalphMac.xcodeproj \
+		-scheme RalphMac \
+		-configuration Debug \
+		-destination '$(XCODE_DESTINATION)' \
+		-derivedDataPath "$$derived_data_path" \
+		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
+		$$skipped_tests \
+		test
+
+# Run macOS UI tests (interactive - will take over mouse/keyboard)
+macos-test-ui:
+	@$(MAKE) --no-print-directory macos-test RALPH_UI_TESTS=1
+
+# Run targeted UI regressions for window/tab shortcut scoping.
+macos-test-window-shortcuts:
+	@$(MAKE) --no-print-directory macos-preflight
+	@$(MAKE) --no-print-directory build
+	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui-shortcuts"; \
+	ralph_bin_path="$$(pwd)/target/release/ralph"; \
+	echo "→ macOS UI shortcut regressions (focused window/tab behavior)..."; \
+	rm -rf "$$derived_data_path" 2>/dev/null || true; \
+	RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
+		-project apps/RalphMac/RalphMac.xcodeproj \
+		-scheme RalphMac \
+		-configuration Debug \
+		-destination '$(XCODE_DESTINATION)' \
+		-derivedDataPath "$$derived_data_path" \
+		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
+		-only-testing:RalphMacUITests/RalphMacUITests/test_windowShortcuts_affectOnlyFocusedWindow \
+		-only-testing:RalphMacUITests/RalphMacUITests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
+		test
+
+macos-ci: macos-preflight ci macos-build macos-test
+	@echo "→ macOS ship gate (Rust CI + macOS app build+test)..."
+	@echo "  ℹ UI automation is intentionally excluded from macos-ci (use make macos-test-ui or make macos-test-window-shortcuts when idle)."
+	@echo "  ✓ macOS CI completed"
+
+# Coverage output directory
+COVERAGE_DIR ?= target/coverage
+
+# Coverage: Generate HTML and summary reports (requires cargo-llvm-cov)
+# Generates: HTML report, text summary with per-crate breakdown, and JSON data
+coverage:
+	@echo "→ Running coverage analysis..."
+	@if ! cargo llvm-cov --version >/dev/null 2>&1; then \
+		echo "ERROR: cargo-llvm-cov not found."; \
+		echo ""; \
+		echo "Install with:"; \
+		echo "  cargo install cargo-llvm-cov"; \
+		echo ""; \
+		echo "On macOS, you may also need:"; \
+		echo "  rustup component add llvm-tools-preview"; \
+		exit 1; \
+	fi
+	@mkdir -p $(COVERAGE_DIR)
+	@echo "  → Running tests with coverage instrumentation..."
+	@cargo llvm-cov --workspace --all-targets --all-features --locked \
+		--html --output-dir $(COVERAGE_DIR)/html \
+		--json --output-path $(COVERAGE_DIR)/coverage.json
 	@echo ""
-	@echo "═══════════════════════════════════════════════════"
-	@echo "  ✓ CI completed successfully"
-	@echo "═══════════════════════════════════════════════════"
+	@echo "  ✓ Coverage report generated:"
+	@echo "    HTML:  $(COVERAGE_DIR)/html/index.html"
+	@echo "    JSON:  $(COVERAGE_DIR)/coverage.json"
+	@echo ""
+	@echo "  → Coverage summary:"
+	@echo ""
+	@echo "    Total Coverage:"
+	@jq -r '[.data[0].totals.lines.percent // 0, .data[0].totals.functions.percent // 0, .data[0].totals.regions.percent // 0] | "      Lines: \(.[0])%, Functions: \(.[1])%, Regions: \(.[2])%"' $(COVERAGE_DIR)/coverage.json 2>/dev/null || echo "      (install jq for formatted output)"
+	@echo ""
+	@echo "    Per-Crate Breakdown:"
+	@jq -r '.data[0].summaries // [] | sort_by(.crate_name) | .[] | "      \(.crate_name): Lines \(.summary.lines.percent // 0)%, Functions \(.summary.functions.percent // 0)%"' $(COVERAGE_DIR)/coverage.json 2>/dev/null || echo "      (see $(COVERAGE_DIR)/coverage.json for raw data)"
+	@echo ""
+	@echo "  → Opening HTML report..."
+	@open $(COVERAGE_DIR)/html/index.html 2>/dev/null || echo "    (open $(COVERAGE_DIR)/html/index.html manually)"
+
+# Coverage clean: Remove coverage artifacts
+coverage-clean:
+	@echo "→ Cleaning coverage artifacts..."
+	@rm -rf $(COVERAGE_DIR)
+	@find . -name '*.profraw' -type f -delete 2>/dev/null || true
+	@find . -name '*.profdata' -type f -delete 2>/dev/null || true
+	@echo "  ✓ Coverage artifacts removed"

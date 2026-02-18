@@ -33,6 +33,12 @@ pub struct QueuePruneArgs {
 
 pub(crate) fn handle(resolved: &Resolved, force: bool, args: QueuePruneArgs) -> Result<()> {
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue prune", force)?;
+
+    // Create undo snapshot before mutation (only if not dry-run)
+    if !args.dry_run {
+        crate::undo::create_undo_snapshot(resolved, "queue prune")?;
+    }
+
     let report: queue::PruneReport = queue::prune_done_tasks(
         &resolved.done_path,
         queue::PruneOptions {

@@ -1,6 +1,7 @@
 # Ralph Documentation
 
 > **Ralph** is a Rust CLI for running AI agent loops against a structured JSON task queue.
+> On macOS, Ralph also includes a SwiftUI app for interactive queue work (`ralph app open`).
 
 ![Documentation Overview](assets/images/2026-02-07-docs-overview.png)
 
@@ -13,7 +14,7 @@ Choose your path:
 | User Type | Start Here | Goal |
 |-----------|------------|------|
 | **New User** | [Quick Start Guide](#start-here) | Get Ralph installed and running your first task |
-| **Daily User** | [Core Concepts](#core-concepts) → [TUI Guide](#workflow-tools) | Efficient daily task management |
+| **Daily User** | [Core Concepts](#core-concepts) → [App Guide](#workflow-tools) | Efficient daily task management |
 | **Power User** | [Parallel Execution](#execution-features) → [Webhooks](#integration-features) | Scale and integrate Ralph |
 | **Contributor** | [Contributing Guide](#contributing) → [Error Handling](#development-reference) | Extend and improve Ralph |
 
@@ -38,8 +39,11 @@ cargo install ralph
 # 2. Initialize your project
 ralph init
 
-# 3. Launch the interactive TUI
-ralph tui
+# 3. Run the next task
+ralph run one
+
+# macOS (optional): open the app UI
+ralph app open
 ```
 
 ---
@@ -128,7 +132,7 @@ Detailed guides for Ralph's capabilities, organized by category:
 
 | Feature | Document | Description |
 |---------|----------|-------------|
-| TUI | [features/tui.md](features/tui.md) | Terminal User Interface |
+| App (macOS) | [features/app.md](features/app.md) | macOS SwiftUI app |
 | Scan | [features/scan.md](features/scan.md) | AI-powered repository scanning |
 | Daemon & Watch | [features/daemon-and-watch.md](features/daemon-and-watch.md) | Background execution and file watching |
 
@@ -175,8 +179,8 @@ Step-by-step tutorials for common workflows:
 
 | Guide | Description |
 |-------|-------------|
-| [Daily Development](quick-start.md#daily-development) | TUI workflow for everyday use |
-| [Creating Tasks](quick-start.md#creating-tasks) | From CLI and TUI |
+| [Daily Development](quick-start.md#daily-development) | CLI + macOS app workflow for everyday use |
+| [Creating Tasks](quick-start.md#creating-tasks) | From CLI and macOS app |
 | [Queue Management](queue-and-tasks.md) | Managing the task queue |
 
 ### Advanced Workflows
@@ -185,17 +189,17 @@ Step-by-step tutorials for common workflows:
 |-------|----------|
 | Parallel Execution | [features/parallel.md](features/parallel.md) |
 | Repository Scanning | [features/scan.md](features/scan.md) |
-| Webhook Integration | [features/webhooks.md](features/webhooks.md) |
+| Webhook Integration | [guides/webhook-integrations.md](guides/webhook-integrations.md) |
 | Plugin Development | [plugin-development.md](plugin-development.md) |
 
 ### Use Case Guides
 
 | I want to... | See |
 |--------------|-----|
-| Get started quickly | [Quick Start](quick-start.md), [TUI](features/tui.md) |
+| Get started quickly | [Quick Start](quick-start.md), [App](features/app.md) |
 | Configure my runner | [Runners](features/runners.md), [Configuration](configuration.md) |
 | Set up parallel execution | [Parallel](features/parallel.md) |
-| Integrate with Slack/Discord | [Webhooks](features/webhooks.md) |
+| Integrate with Slack/Discord | [Webhook Integrations](guides/webhook-integrations.md), [Webhooks](features/webhooks.md) |
 | Automate task detection | [Daemon and Watch](features/daemon-and-watch.md), [Scan](features/scan.md) |
 | Handle failures and recovery | [Session Management](features/session-management.md) |
 | Manage task dependencies | [Dependencies](features/dependencies.md) |
@@ -218,13 +222,14 @@ Complete reference documentation:
 | [ralph run](cli.md#ralph-run) | Run tasks |
 | [ralph queue](cli.md#ralph-queue) | Queue management |
 | [ralph task](cli.md#ralph-task) | Task creation and management |
-| [ralph tui](cli.md#ralph-tui) | Interactive TUI |
+| [ralph app](cli.md#ralph-app) | macOS app integration |
 | [ralph scan](cli.md#ralph-scan) | Repository scanning |
 | [ralph config](cli.md#ralph-config) | Configuration inspection |
 | [ralph doctor](cli.md#ralph-doctor) | Environment verification |
+| [ralph undo](cli.md#ralph-undo) | Undo queue operations |
 | [ralph daemon](cli.md#ralph-daemon) | Background daemon management |
 | [ralph context](cli.md#ralph-context) | AGENTS.md management |
-| [ralph webhook](cli.md#ralph-webhook) | Webhook testing |
+| [ralph webhook](cli.md#ralph-webhook) | Webhook testing, diagnostics, and replay |
 | [ralph completions](cli.md#ralph-completions) | Shell completions |
 
 ### Configuration Reference
@@ -284,7 +289,7 @@ make ci
 
 | Location | Purpose |
 |----------|---------|
-| `crates/ralph/src/` | CLI commands, runner integration, queue management, TUI |
+| `crates/ralph/src/` | CLI commands, runner integration, queue management |
 | `crates/ralph/assets/prompts/` | Embedded prompt templates |
 | `crates/ralph/tests/` | Integration tests |
 | `docs/` | Documentation |
@@ -322,7 +327,6 @@ Optional prompt overrides (defaults are embedded in the binary):
 | File | Purpose |
 |------|---------|
 | `.ralph/cache/plans/<TASK_ID>.md` | Phase 1 cached plans |
-| `.ralph/cache/completions/<TASK_ID>.json` | Task completion signals |
 | `.ralph/cache/parallel/state.json` | Parallel run state |
 | `.ralph/cache/session.json` | Session state for crash recovery |
 
@@ -337,6 +341,7 @@ Optional prompt overrides (defaults are embedded in the binary):
 | Queue lock issues | `ralph queue unlock` or `--force` |
 | `.env tracked` error | `git rm --cached .env` |
 | Runner not found | Check `ralph doctor`, verify PATH |
+| Coverage not generating | Install `cargo-llvm-cov` and `llvm-tools-preview` component |
 
 ### Diagnostics
 
@@ -349,6 +354,12 @@ ralph queue validate
 
 # Test webhook configuration
 ralph webhook test
+
+# Generate coverage report
+make coverage
+
+# Clean coverage artifacts
+make coverage-clean
 ```
 
 ---

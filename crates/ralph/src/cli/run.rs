@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Define clap structures for run commands and flags.
-//! - Route run subcommands to task execution and TUI entry points.
+//! - Route run subcommands to supervisor execution entry points.
 //!
 //! Not handled here:
 //! - Queue persistence and task status transitions (see `crate::queue`).
@@ -16,17 +16,18 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use crate::cli::interactive;
-use crate::{agent, commands::run as run_cmd, config, debuglog, tui};
+use crate::{agent, commands::run as run_cmd, config, debuglog};
 
-pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()> {
+pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
     // Extract profile from the command to resolve config with the selected profile
     let profile = match &cmd {
         RunCommand::Resume(args) => args.agent.profile.as_deref(),
         RunCommand::One(args) => args.agent.profile.as_deref(),
         RunCommand::Loop(args) => args.agent.profile.as_deref(),
+        RunCommand::MergeAgent(_) => None,
     };
     let resolved = config::resolve_from_cwd_with_profile(profile)?;
+    clear_run_scoped_path_overrides();
     match cmd {
         RunCommand::Resume(args) => {
             if args.debug {
@@ -62,34 +63,7 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
             // Profile already applied during config resolution; just resolve remaining overrides
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
 
-            if args.interactive {
-                let factories = interactive::build_interactive_factories(
-                    &resolved,
-                    &overrides,
-                    args.agent.repo_prompt,
-                    force,
-                )?;
-
-                // Interactive one: open the TUI (no auto-loop).
-                let options = tui::TuiOptions {
-                    start_loop: false,
-                    loop_max_tasks: None,
-                    loop_include_draft: args.agent.include_draft,
-                    show_flowchart: args.visualize,
-                    no_mouse: false,
-                    color: crate::tui::terminal::ColorOption::Auto,
-                    ascii_borders: false,
-                    no_progress,
-                };
-                let _ = tui::run_tui(
-                    &resolved,
-                    force,
-                    options,
-                    factories.runner_factory,
-                    factories.scan_factory,
-                )?;
-                Ok(())
-            } else if args.dry_run {
+            if args.dry_run {
                 if args.parallel_worker {
                     return Err(anyhow::anyhow!(
                         "--dry-run cannot be used with --parallel-worker"
@@ -120,41 +94,7 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
             // Profile already applied during config resolution; just resolve remaining overrides
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
 
-            if args.interactive {
-                let factories = interactive::build_interactive_factories(
-                    &resolved,
-                    &overrides,
-                    args.agent.repo_prompt,
-                    force,
-                )?;
-
-                // Interactive loop: auto-start the loop in the TUI to match semantics.
-                let max = if args.max_tasks == 0 {
-                    None
-                } else {
-                    Some(args.max_tasks)
-                };
-
-                let options = tui::TuiOptions {
-                    start_loop: true,
-                    loop_max_tasks: max,
-                    loop_include_draft: args.agent.include_draft,
-                    show_flowchart: args.visualize,
-                    no_mouse: false,
-                    color: crate::tui::terminal::ColorOption::Auto,
-                    ascii_borders: false,
-                    no_progress,
-                };
-
-                let _ = tui::run_tui(
-                    &resolved,
-                    force,
-                    options,
-                    factories.runner_factory,
-                    factories.scan_factory,
-                )?;
-                Ok(())
-            } else if args.dry_run {
+            if args.dry_run {
                 run_cmd::dry_run_loop(&resolved, &overrides)
             } else {
                 run_cmd::run_loop(
@@ -177,6 +117,29 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
                 )
             }
         }
+        RunCommand::MergeAgent(args) => {
+            // merge-agent uses explicit repo-root context from CWD
+            let exit_code = run_cmd::handle_merge_agent(&args.task, args.pr)?;
+            std::process::exit(exit_code);
+        }
+    }
+}
+
+fn clear_run_scoped_path_overrides() {
+    for key in [
+        config::QUEUE_PATH_OVERRIDE_ENV,
+        config::DONE_PATH_OVERRIDE_ENV,
+    ] {
+        if std::env::var_os(key).is_some() {
+            log::debug!(
+                "clearing {} after run config resolution to avoid leaking path overrides to child processes",
+                key
+            );
+            // SAFETY: This runs on the single-threaded CLI path before any worker/agent subprocess
+            // is spawned by this process. Clearing inherited overrides here prevents nested commands
+            // (e.g., CI/test subprocesses) from mutating queue/done in the wrong repository.
+            unsafe { std::env::remove_var(key) };
+        }
     }
 }
 
@@ -190,29 +153,27 @@ pub fn handle_run(cmd: RunCommand, force: bool, no_progress: bool) -> Result<()>
   3) otherwise: resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\
  \n\
  Notes:\n\
-  - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
-  - Allowed models: gpt-5.3-codex, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.3-codex + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
-  - `--effort` is codex-only and is ignored for other runners.\n\
-  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
-  - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
-     - `--parallel` runs loop tasks concurrently in workspaces (clone-based) (CLI-only; conflicts with `--interactive`).\n\
-     - Parallel workers do not modify `.ralph/queue.json` or `.ralph/done.json`; they commit completion signals in `.ralph/cache/completions/<TASK_ID>.json`.\n\
-     - After merge, the coordinator applies completion signals to update queue/done (errors if missing).\n\
-  - `--update-task` runs `ralph task update <TASK_ID>` once per task immediately before task is marked `doing`.\n\
-  - Clean-repo checks allow changes to `.ralph/config.json` (plus `.ralph/queue.json` and `.ralph/done.json`); use `--force` to bypass entirely.\n\
-  - TUI entrypoints: `ralph tui`, `ralph run one -i`, `ralph run loop -i`.\n\
- \n\
+	  - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
+	  - Allowed models: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
+	  - `--effort` is codex-only and is ignored for other runners.\n\
+	  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
+	  - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
+	     - `--parallel` runs loop tasks concurrently in workspaces (clone-based).\n\
+	     - Parallel workers do not modify `.ralph/queue.json` or `.ralph/done.json`; the merge-agent subprocess handles task finalization.\n\
+	  - Clean-repo checks allow changes to `.ralph/config.{json,jsonc}` (plus `.ralph/queue.{json,jsonc}` and `.ralph/done.{json,jsonc}`); use `--force` to bypass entirely.\n\
+	 \n\
 Phase-specific overrides:\n\
-  Use --runner-phaseN, --model-phaseN, --effort-phaseN to override settings for a specific phase.\n\
+	  Use --runner-phaseN, --model-phaseN, --effort-phaseN to override settings for a specific phase.\n\
   Phase-specific flags take precedence over global flags for that phase.\n\
   Single-pass (--phases 1) uses Phase 2 overrides.\n\
  \n\
   Precedence per phase (highest to lowest):\n\
     1) CLI phase override (--runner-phaseN, --model-phaseN, --effort-phaseN)\n\
-    2) Config phase override (agent.phase_overrides.phaseN.*)\n\
-    3) CLI global override (--runner, --model, --effort)\n\
-    4) Task override (task.agent.*)\n\
-    5) Config defaults (agent.*)\n\
+    2) Task phase override (task.agent.phase_overrides.phaseN.*)\n\
+    3) Config phase override (agent.phase_overrides.phaseN.*)\n\
+    4) CLI global override (--runner, --model, --effort)\n\
+    5) Task global override (task.agent.runner/model/model_effort)\n\
+    6) Config defaults (agent.*)\n\
  \n\
  To change defaults for this repo, edit .ralph/config.json:\n\
   version: 1\n\
@@ -234,24 +195,18 @@ Examples:\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode disabled\n\
  ralph run one --git-commit-push-off\n\
- ralph run one --update-task\n\
  ralph run one --lfs-check\n\
  ralph run loop --max-tasks 0\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
  ralph run loop --include-draft --max-tasks 1\n\
- ralph run loop --update-task --max-tasks 1\n\
  ralph run loop --git-revert-mode ask --max-tasks 1\n\
  ralph run loop --git-commit-push-on --max-tasks 1\n\
  ralph run loop --lfs-check --max-tasks 1\n\
  ralph run loop --parallel --max-tasks 4\n\
- ralph run loop --parallel 4 --max-tasks 8\n\
- ralph run resume\n\
- ralph run resume --force\n\
- ralph run loop --resume --max-tasks 5\n\
- ralph tui\n\
- ralph tui --read-only\n\
- ralph run one -i\n\
- ralph run loop -i"
+	 ralph run loop --parallel 4 --max-tasks 8\n\
+	 ralph run resume\n\
+	 ralph run resume --force\n\
+	 ralph run loop --resume --max-tasks 5"
 )]
 pub struct RunArgs {
     #[command(subcommand)]
@@ -279,7 +234,6 @@ pub enum RunCommand {
 Examples:\n\
  ralph run one\n\
  ralph run one --id RQ-0001\n\
- ralph run one -i\n\
  ralph run one --debug\n\
  ralph run one --profile quick (kimi, 1-phase)\n\
  ralph run one --profile thorough (claude/opus, 3-phase)\n\
@@ -296,15 +250,13 @@ Examples:\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode enabled\n\
  ralph run one --git-commit-push-off\n\
- ralph run one --update-task\n\
  ralph run one --lfs-check\n\
  ralph run one --repo-prompt plan\n\
  ralph run one --repo-prompt off\n\
  ralph run one --non-interactive\n\
  ralph run one --dry-run\n\
  ralph run one --dry-run --include-draft\n\
- ralph run one --dry-run --id RQ-0001\n\
- ralph tui"
+ ralph run one --dry-run --id RQ-0001"
     )]
     One(RunOneArgs),
     #[command(
@@ -325,19 +277,41 @@ Examples:\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode disabled --max-tasks 1\n\
  ralph run loop --git-commit-push-off --max-tasks 1\n\
- ralph run loop --update-task --max-tasks 1\n\
  ralph run loop --repo-prompt tools --max-tasks 1\n\
  ralph run loop --repo-prompt off --max-tasks 1\n\
- ralph run loop --lfs-check --max-tasks 1\n\
- ralph run loop --dry-run\n\
- ralph run loop -i\n\
- ralph run loop --wait-when-blocked\n\
- ralph run loop --wait-when-blocked --wait-timeout-seconds 600\n\
- ralph run loop --wait-when-blocked --wait-poll-ms 250\n\
- ralph run loop --wait-when-blocked --notify-when-unblocked\n\
- ralph tui"
+	 ralph run loop --lfs-check --max-tasks 1\n\
+	 ralph run loop --dry-run\n\
+	 ralph run loop --wait-when-blocked\n\
+	 ralph run loop --wait-when-blocked --wait-timeout-seconds 600\n\
+	 ralph run loop --wait-when-blocked --wait-poll-ms 250\n\
+	 ralph run loop --wait-when-blocked --notify-when-unblocked"
     )]
     Loop(RunLoopArgs),
+    /// Merge a PR and finalize task state (subprocess entrypoint for parallel coordinator).
+    #[command(
+        about = "Merge a PR and finalize task state in coordinator repo",
+        after_long_help = "This command is designed to be invoked by the parallel coordinator as a subprocess.
+It validates task/PR inputs, performs merge per configured policy, and finalizes
+canonical queue/done state in the coordinator repo context.
+
+Exit codes:
+  0 - Merge + task finalization successful
+  1 - Runtime/unexpected failure
+  2 - Usage/validation failure
+  >=3 - Domain-specific failures (merge conflict, PR not found, etc.)
+
+Output:
+  stdout - Machine-readable JSON result payload
+  stderr - User-facing diagnostics
+
+Examples:
+  ralph run merge-agent --task RQ-0942 --pr 42
+  ralph run merge-agent --task RQ-0001 --pr 7
+
+This command is intended for internal use by the parallel coordinator.
+For manual PR merging, use 'gh pr merge' directly."
+    )]
+    MergeAgent(MergeAgentArgs),
 }
 
 #[derive(Args)]
@@ -360,33 +334,21 @@ pub struct ResumeArgs {
 
 #[derive(Args)]
 pub struct RunOneArgs {
-    /// Launch interactive TUI mode for task selection and management.
-    #[arg(short = 'i', long)]
-    pub interactive: bool,
-
     /// Capture raw supervisor + runner output to .ralph/logs/debug.log.
     #[arg(long)]
     pub debug: bool,
 
-    /// Run a specific task by ID (non-interactive only).
-    #[arg(long, value_name = "TASK_ID", conflicts_with = "interactive")]
+    /// Run a specific task by ID.
+    #[arg(long, value_name = "TASK_ID")]
     pub id: Option<String>,
 
-    /// Show workflow flowchart visualization on start (interactive only).
-    #[arg(long, default_value_t = false)]
-    pub visualize: bool,
-
     /// Skip interactive prompts (for CI/non-interactive environments).
-    #[arg(long, conflicts_with = "interactive")]
+    #[arg(long)]
     pub non_interactive: bool,
 
     /// Select a task and print why it would (or would not) run.
     /// Does not invoke any runner and does not write queue/done.
-    #[arg(
-        long,
-        conflicts_with = "interactive",
-        conflicts_with = "parallel_worker"
-    )]
+    #[arg(long, conflicts_with = "parallel_worker")]
     pub dry_run: bool,
 
     /// Internal: run as a parallel worker (skips queue lock, allows upstream creation).
@@ -403,17 +365,9 @@ pub struct RunLoopArgs {
     #[arg(long, default_value_t = 0)]
     pub max_tasks: u32,
 
-    /// Launch interactive TUI mode for task selection and management.
-    #[arg(short = 'i', long)]
-    pub interactive: bool,
-
     /// Capture raw supervisor + runner output to .ralph/logs/debug.log.
     #[arg(long)]
     pub debug: bool,
-
-    /// Show workflow flowchart visualization on start (interactive only).
-    #[arg(long, default_value_t = false)]
-    pub visualize: bool,
 
     /// Automatically resume an interrupted session without prompting.
     #[arg(long)]
@@ -425,7 +379,7 @@ pub struct RunLoopArgs {
 
     /// Select a task and print why it would (or would not) run.
     /// Does not invoke any runner and does not write queue/done.
-    #[arg(long, conflicts_with = "interactive", conflicts_with = "parallel")]
+    #[arg(long, conflicts_with = "parallel")]
     pub dry_run: bool,
 
     /// Run tasks in parallel using N workers (default when flag present: 2).
@@ -435,7 +389,6 @@ pub struct RunLoopArgs {
         num_args = 0..=1,
         default_missing_value = "2",
         value_name = "N",
-        conflicts_with = "interactive"
     )]
     pub parallel: Option<u8>,
 
@@ -445,7 +398,12 @@ pub struct RunLoopArgs {
     pub wait_when_blocked: bool,
 
     /// Poll interval in milliseconds while waiting for unblocked tasks (default: 1000, min: 50).
-    #[arg(long, default_value_t = 1000, value_name = "MS")]
+    #[arg(
+        long,
+        default_value_t = 1000,
+        value_parser = clap::value_parser!(u64).range(50..),
+        value_name = "MS"
+    )]
     pub wait_poll_ms: u64,
 
     /// Timeout in seconds for waiting (0 = no timeout).
@@ -458,28 +416,95 @@ pub struct RunLoopArgs {
 
     /// Wait when queue is empty instead of exiting (continuous mode).
     /// Alias: --continuous
-    #[arg(
-        long,
-        alias = "continuous",
-        conflicts_with = "parallel",
-        conflicts_with = "interactive"
-    )]
+    #[arg(long, alias = "continuous", conflicts_with = "parallel")]
     pub wait_when_empty: bool,
 
     /// Poll interval in milliseconds while waiting for new tasks when queue is empty
     /// (default: 30000, min: 50). Only used with --wait-when-empty.
-    #[arg(long, default_value_t = 30_000, value_name = "MS")]
+    #[arg(
+        long,
+        default_value_t = 30_000,
+        value_parser = clap::value_parser!(u64).range(50..),
+        value_name = "MS"
+    )]
     pub empty_poll_ms: u64,
 
     #[command(flatten)]
     pub agent: crate::agent::RunAgentArgs,
 }
 
+/// Arguments for the merge-agent subcommand.
+#[derive(Args)]
+pub struct MergeAgentArgs {
+    /// Task ID to finalize after merge (required).
+    /// Example: RQ-0942
+    #[arg(long, value_name = "TASK_ID")]
+    pub task: String,
+
+    /// GitHub PR number to merge (required).
+    /// Must be a positive integer referencing an open PR.
+    #[arg(long, value_name = "PR_NUMBER")]
+    pub pr: u32,
+}
+
 #[cfg(test)]
 mod tests {
     use clap::{CommandFactory, Parser};
+    use serial_test::serial;
 
+    use crate::cli::run::clear_run_scoped_path_overrides;
     use crate::cli::{Cli, run::RunCommand};
+    use crate::config::{DONE_PATH_OVERRIDE_ENV, QUEUE_PATH_OVERRIDE_ENV, REPO_ROOT_OVERRIDE_ENV};
+
+    #[test]
+    #[serial]
+    fn clear_run_scoped_path_overrides_removes_only_queue_and_done() {
+        let prior_queue = std::env::var_os(QUEUE_PATH_OVERRIDE_ENV);
+        let prior_done = std::env::var_os(DONE_PATH_OVERRIDE_ENV);
+        let prior_repo = std::env::var_os(REPO_ROOT_OVERRIDE_ENV);
+
+        // SAFETY: test is serial and restores all touched env vars before exit.
+        unsafe {
+            std::env::set_var(QUEUE_PATH_OVERRIDE_ENV, "/tmp/queue.json");
+            std::env::set_var(DONE_PATH_OVERRIDE_ENV, "/tmp/done.json");
+            std::env::set_var(REPO_ROOT_OVERRIDE_ENV, "/tmp/repo-root");
+        }
+
+        clear_run_scoped_path_overrides();
+
+        assert!(
+            std::env::var_os(QUEUE_PATH_OVERRIDE_ENV).is_none(),
+            "{} should be cleared",
+            QUEUE_PATH_OVERRIDE_ENV
+        );
+        assert!(
+            std::env::var_os(DONE_PATH_OVERRIDE_ENV).is_none(),
+            "{} should be cleared",
+            DONE_PATH_OVERRIDE_ENV
+        );
+        assert_eq!(
+            std::env::var_os(REPO_ROOT_OVERRIDE_ENV),
+            Some(std::ffi::OsString::from("/tmp/repo-root")),
+            "{} should be preserved",
+            REPO_ROOT_OVERRIDE_ENV
+        );
+
+        // SAFETY: restoring original process env for this serial test.
+        unsafe {
+            match prior_queue {
+                Some(v) => std::env::set_var(QUEUE_PATH_OVERRIDE_ENV, v),
+                None => std::env::remove_var(QUEUE_PATH_OVERRIDE_ENV),
+            }
+            match prior_done {
+                Some(v) => std::env::set_var(DONE_PATH_OVERRIDE_ENV, v),
+                None => std::env::remove_var(DONE_PATH_OVERRIDE_ENV),
+            }
+            match prior_repo {
+                Some(v) => std::env::set_var(REPO_ROOT_OVERRIDE_ENV, v),
+                None => std::env::remove_var(REPO_ROOT_OVERRIDE_ENV),
+            }
+        }
+    }
 
     #[test]
     fn run_one_help_includes_phase_semantics() {
@@ -533,22 +558,11 @@ mod tests {
             crate::cli::Command::Run(run_args) => match run_args.command {
                 RunCommand::One(one_args) => {
                     assert!(one_args.non_interactive);
-                    assert!(!one_args.interactive);
                 }
                 _ => panic!("expected RunCommand::One"),
             },
             _ => panic!("expected Command::Run"),
         }
-    }
-
-    #[test]
-    fn run_one_interactive_and_non_interactive_conflicts() {
-        let args = vec!["ralph", "run", "one", "--interactive", "--non-interactive"];
-        let result = Cli::try_parse_from(args);
-        assert!(
-            result.is_err(),
-            "--interactive and --non-interactive should conflict"
-        );
     }
 
     #[test]
@@ -582,7 +596,6 @@ mod tests {
             crate::cli::Command::Run(run_args) => match run_args.command {
                 RunCommand::One(one_args) => {
                     assert!(one_args.dry_run);
-                    assert!(!one_args.interactive);
                 }
                 _ => panic!("expected RunCommand::One"),
             },
@@ -604,16 +617,6 @@ mod tests {
             },
             _ => panic!("expected Command::Run"),
         }
-    }
-
-    #[test]
-    fn run_one_dry_run_conflicts_with_interactive() {
-        let args = vec!["ralph", "run", "one", "--dry-run", "--interactive"];
-        let result = Cli::try_parse_from(args);
-        assert!(
-            result.is_err(),
-            "--dry-run and --interactive should conflict"
-        );
     }
 
     #[test]
@@ -671,6 +674,104 @@ mod tests {
         assert!(
             help.contains("ralph run loop --dry-run"),
             "missing dry-run example: {help}"
+        );
+    }
+
+    #[test]
+    fn run_loop_wait_poll_ms_rejects_below_minimum() {
+        let args = vec!["ralph", "run", "loop", "--wait-poll-ms", "10"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_err(),
+            "--wait-poll-ms should reject values below 50"
+        );
+    }
+
+    #[test]
+    fn run_loop_empty_poll_ms_rejects_below_minimum() {
+        let args = vec!["ralph", "run", "loop", "--empty-poll-ms", "10"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_err(),
+            "--empty-poll-ms should reject values below 50"
+        );
+    }
+
+    #[test]
+    fn run_loop_wait_poll_ms_accepts_minimum() {
+        let args = vec!["ralph", "run", "loop", "--wait-poll-ms", "50"];
+        let cli = Cli::try_parse_from(args);
+        assert!(cli.is_ok(), "--wait-poll-ms should accept 50");
+        if let Ok(cli) = cli {
+            match cli.command {
+                crate::cli::Command::Run(run_args) => match run_args.command {
+                    RunCommand::Loop(loop_args) => {
+                        assert_eq!(loop_args.wait_poll_ms, 50);
+                    }
+                    _ => panic!("expected RunCommand::Loop"),
+                },
+                _ => panic!("expected Command::Run"),
+            }
+        }
+    }
+
+    #[test]
+    fn run_merge_agent_parses_required_args() {
+        let args = vec![
+            "ralph",
+            "run",
+            "merge-agent",
+            "--task",
+            "RQ-0942",
+            "--pr",
+            "42",
+        ];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            crate::cli::Command::Run(run_args) => match run_args.command {
+                RunCommand::MergeAgent(merge_args) => {
+                    assert_eq!(merge_args.task, "RQ-0942");
+                    assert_eq!(merge_args.pr, 42);
+                }
+                _ => panic!("expected RunCommand::MergeAgent"),
+            },
+            _ => panic!("expected Command::Run"),
+        }
+    }
+
+    #[test]
+    fn run_merge_agent_requires_task_arg() {
+        let args = vec!["ralph", "run", "merge-agent", "--pr", "42"];
+        let result = Cli::try_parse_from(args);
+        assert!(result.is_err(), "--task should be required");
+    }
+
+    #[test]
+    fn run_merge_agent_requires_pr_arg() {
+        let args = vec!["ralph", "run", "merge-agent", "--task", "RQ-0942"];
+        let result = Cli::try_parse_from(args);
+        assert!(result.is_err(), "--pr should be required");
+    }
+
+    #[test]
+    fn run_merge_agent_help_includes_exit_codes() {
+        let mut cmd = Cli::command();
+        let run = cmd.find_subcommand_mut("run").expect("run subcommand");
+        let merge_agent = run
+            .find_subcommand_mut("merge-agent")
+            .expect("merge-agent subcommand");
+        let help = merge_agent.render_long_help().to_string();
+
+        assert!(
+            help.contains("Exit codes"),
+            "missing exit codes in help: {help}"
+        );
+        assert!(help.contains("0 -"), "missing exit code 0: {help}");
+        assert!(help.contains("1 -"), "missing exit code 1: {help}");
+        assert!(help.contains("2 -"), "missing exit code 2: {help}");
+        assert!(
+            help.contains("ralph run merge-agent --task RQ-"),
+            "missing example: {help}"
         );
     }
 }

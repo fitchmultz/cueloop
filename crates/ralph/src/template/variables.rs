@@ -536,6 +536,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         };
 
         let context = TemplateContext {
@@ -599,6 +601,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         };
 
         let validation = validate_task_template(&task);
@@ -636,6 +640,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         };
 
         let validation = validate_task_template(&task);
@@ -668,6 +674,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         };
 
         let validation = validate_task_template(&task);

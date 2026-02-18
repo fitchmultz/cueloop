@@ -60,7 +60,7 @@ ralph --no-sanity-checks run loop
 * `ralph context <subcommand>`: manage project context (AGENTS.md) for AI agents.
 * `ralph queue <subcommand>`: inspect, search, validate, and maintain `.ralph/queue.json` + `.ralph/done.json`.
 * `ralph run <subcommand>`: run tasks via a runner (codex/opencode/gemini/claude/cursor/kimi/pi).
-* `ralph tui`: launch the interactive UI (queue + execution + loop).
+* `ralph app <subcommand>`: macOS app integration (open the SwiftUI app).
 * `ralph prompt <subcommand>`: render compiled prompts for inspection.
 * `ralph task`: create a task from a request.
 * `ralph prd <subcommand>`: convert PRD (Product Requirements Document) markdown to tasks.
@@ -69,7 +69,83 @@ ralph --no-sanity-checks run loop
 * `ralph completions <shell>`: generate shell completion scripts.
 * `ralph productivity <subcommand>`: view productivity analytics (streaks, velocity, milestones).
 * `ralph plugin <subcommand>`: manage plugins (list, validate, install, uninstall, init).
+* `ralph runner <subcommand>`: inspect runner capabilities and list available runners.
 * `ralph version`: display version information.
+* `ralph tutorial`: run interactive tutorial for onboarding.
+* `ralph undo`: undo the most recent queue-modifying operation.
+
+## `ralph tutorial`
+
+Run an interactive tutorial that guides you through Ralph's core workflow in a sandbox environment.
+
+The tutorial creates a temporary project and walks you through:
+1. Initializing Ralph (`ralph init`)
+2. Creating a task
+3. Previewing task execution (dry-run)
+4. Reviewing the results
+
+### Examples
+
+```bash
+# Run interactive tutorial
+ralph tutorial
+
+# Keep sandbox for experimentation after tutorial
+ralph tutorial --keep-sandbox
+
+# Non-interactive mode (for CI/testing)
+ralph tutorial --non-interactive
+```
+
+### Options
+
+- `--keep-sandbox`: Preserve the sandbox directory after tutorial completion
+- `--non-interactive`: Skip interactive prompts (for automated testing)
+
+## `ralph undo`
+
+Undo the most recent queue-modifying operation by restoring from an automatic snapshot.
+
+Snapshots are created automatically before operations that modify the queue:
+- `ralph task done/reject` - completing tasks
+- `ralph task start` - starting work on a task
+- `ralph task ready` - promoting draft tasks
+- `ralph task edit/field` - editing tasks
+- `ralph task clone` - cloning tasks
+- `ralph task split` - splitting tasks
+- `ralph task schedule` - scheduling tasks
+- `ralph task relate/blocks/mark-duplicate` - managing task relationships
+- `ralph task batch` - batch operations
+- `ralph queue archive` - archiving terminal tasks
+- `ralph queue prune` - pruning old tasks
+- `ralph queue sort` - sorting the queue
+- `ralph queue import` - importing tasks
+- `ralph queue issue publish/publish-many` - publishing tasks as GitHub issues
+
+Undo snapshots are stored in `.ralph/cache/undo/` with a retention limit (default: 20 snapshots). When you undo an operation, the snapshot is removed to prevent redo cycles.
+
+### Examples
+
+```bash
+# List available undo snapshots
+ralph undo --list
+
+# Preview undo without applying
+ralph undo --dry-run
+
+# Undo the most recent operation
+ralph undo
+
+# Undo a specific operation by ID
+ralph undo --id undo-20260215073000000000
+```
+
+### Options
+
+- `--list`: List available snapshots instead of restoring
+- `--dry-run`: Preview restore without modifying files
+- `--id <ID>`: Restore a specific snapshot by ID (defaults to most recent)
+- `-v, --verbose`: Show verbose output
 
 ## `ralph completions`
 
@@ -133,7 +209,7 @@ Once installed, completions work automatically:
 ```bash
 # Type 'ralph ' then press Tab to see subcommands
 ralph <TAB>
-# queue   run   task   scan   tui   ...
+# queue   run   task   scan   app   ...
 
 # Type 'ralph queue ' then press Tab to see queue subcommands
 ralph queue <TAB>
@@ -185,10 +261,11 @@ Manage Ralph as a background daemon (continuous execution mode). The daemon runs
 * `ralph daemon start`: Start the daemon in the background.
 * `ralph daemon stop`: Stop the daemon gracefully.
 * `ralph daemon status`: Show daemon status (running, stopped, or stale).
+* `ralph daemon logs`: Stream daemon logs and runtime output.
 
 ### `ralph daemon start`
 
-Start Ralph as a background daemon. The daemon detaches from the terminal and logs to `.ralph/logs/daemon.log`.
+Start Ralph as a background daemon. The daemon detaches from the terminal and writes logs to `.ralph/logs/daemon.log`.
 
 #### Flags
 
@@ -200,7 +277,7 @@ Start Ralph as a background daemon. The daemon detaches from the terminal and lo
 
 - Acquires a dedicated daemon lock at `.ralph/cache/daemon.lock`
 - Writes daemon state to `.ralph/cache/daemon.json`
-- Redirects stdout/stderr to `.ralph/logs/daemon.log`
+- Redirects stdout/stderr to `.ralph/logs/daemon.log` (viewable with `ralph daemon logs`)
 - Runs until stopped via `ralph daemon stop` or `ralph queue stop`
 - Uses continuous mode: waits for new tasks when queue is empty
 - Uses wait-when-blocked: waits for dependencies/schedules to resolve
@@ -216,6 +293,31 @@ ralph daemon start --empty-poll-ms 5000
 
 # Start with notifications when unblocked
 ralph daemon start --notify-when-unblocked
+```
+
+### `ralph daemon logs`
+
+Inspect daemon log output from `.ralph/logs/daemon.log` with optional filtering.
+
+#### Flags
+
+* `--tail <N>`: show the last `N` lines from the log before any follow stream (default: `100`).
+* `--follow`, `-f`: stream appended lines as they arrive (`follow` mode).
+* `--since <DURATION_OR_TIMESTAMP>`: show lines at or after the provided timestamp (supports RFC3339 and relative values accepted by `timeutil::parse_relative_time`).
+* `--level <trace|debug|info|warn|error|fatal|critical>`: filter by log level.
+* `--contains <TEXT>`: include only lines containing the substring.
+* `--json`: emit one JSON object per matching line.
+
+#### Examples
+
+```bash
+ralph daemon logs
+ralph daemon logs --tail 50
+ralph daemon logs --follow
+ralph daemon logs --follow --tail 200
+ralph daemon logs --since 'in 30 minutes'
+ralph daemon logs --level error --contains webhook
+ralph daemon logs --json --level warn
 ```
 
 #### Service Templates
@@ -308,11 +410,13 @@ ralph daemon status
 
 ## `ralph webhook`
 
-Test webhook configuration and inspect webhook payloads.
+Manage webhook delivery operations.
 
 ### Subcommands
 
 * `ralph webhook test`: Send a test webhook event.
+* `ralph webhook status`: Inspect delivery queue counters and recent failures.
+* `ralph webhook replay`: Replay persisted failure records with explicit targeting.
 
 ### `ralph webhook test`
 
@@ -351,6 +455,60 @@ ralph webhook test --event task_created --print-json --pretty false
 
 # Test with custom URL
 ralph webhook test --url https://example.com/webhook
+```
+
+### `ralph webhook status`
+
+Show live webhook delivery counters and recent persisted failures.
+
+#### Flags
+
+* `--format <FORMAT>`: Output format (`text` or `json`, default: `text`).
+* `--recent <N>`: Number of recent failures to include (default: `20`).
+
+#### Examples
+
+```bash
+# Human-readable diagnostics
+ralph webhook status
+
+# Machine-readable diagnostics for automation
+ralph webhook status --format json
+
+# Include only the 5 most recent failures
+ralph webhook status --recent 5
+```
+
+### `ralph webhook replay`
+
+Replay failed deliveries from `.ralph/cache/webhooks/failures.json`.
+
+Safety constraints:
+* Replay requires explicit targeting (`--id`, `--event`, or `--task-id`).
+* Replay enforces per-record attempt caps (`--max-replay-attempts`).
+* `--dry-run` previews replay candidates without modifying state.
+* Non-dry-run replay requires `agent.webhook.enabled=true` and `agent.webhook.url` to be configured.
+
+#### Flags
+
+* `--id <ID>`: Replay a specific failure record ID (repeatable).
+* `--event <EVENT>`: Replay failures matching an event.
+* `--task-id <TASK_ID>`: Replay failures matching a task.
+* `--limit <N>`: Maximum matched failure records to consider (default: `20`).
+* `--max-replay-attempts <N>`: Maximum replay attempts per record (default: `3`).
+* `--dry-run`: Preview candidates without enqueueing.
+
+#### Examples
+
+```bash
+# Preview replay for one failed record
+ralph webhook replay --dry-run --id wf-1700000000-1
+
+# Replay the latest 5 failed task_completed events
+ralph webhook replay --event task_completed --limit 5
+
+# Replay failures for one task with explicit replay cap
+ralph webhook replay --task-id RQ-0814 --max-replay-attempts 3
 ```
 
 ## `ralph config`
@@ -700,164 +858,27 @@ fi
 ralph doctor --format json | jq '.checks[] | select(.severity == "Error")'
 ```
 
-## `ralph tui`
+## `ralph app`
 
-Launch the interactive TUI. This is the primary user-facing entry point.
+Open the Ralph macOS app (SwiftUI) for interactive queue work.
 
-Behavior:
+Note: This command is macOS-only. On other platforms, use the CLI (`ralph queue ...`, `ralph run ...`).
 
-* Execution is enabled by default (press Enter to run selected task).
-* Use `--read-only` to disable execution.
-* Loop mode is available inside the TUI (press `l` to toggle).
-* Archive done/rejected tasks inside the TUI (press `a`, then confirm).
-* Use `:` to open the command palette for discoverability.
-* The footer shows status messages and errors as actions run.
+### Subcommands
 
-Keybindings (task list unless noted otherwise):
-
-* Help overlay: `?` or `h` opens help, `Esc` (or `?`/`h`) closes.
-* Navigation
-  * `Up`/`Down` or `j`/`k`: move selection
-  * `Enter`: run selected task
-* Actions
-  * `l`: toggle loop mode
-  * `a`: archive done/rejected tasks (confirmation)
-  * `d`: delete selected task (confirmation)
-  * `e`: edit task fields
-  * `n`: create a new task
-  * `c`: edit project config
-  * `g`: scan repository
-  * `r`: reload queue from disk
-  * `q` (or `Esc` from the task list): quit (prompts if a task is running)
-* Filters & Search
-  * `/`: search tasks
-  * `t`: filter by tags
-  * `f`: cycle status filter
-  * `x`: clear filters
-* Quick Changes
-  * `s`: cycle task status
-  * `p`: cycle priority
-* Command Palette
-  * `:`: open palette (type to filter, `Enter` to run, `Esc` to cancel)
-* Execution View
-  * `Esc`: return to task list
-  * `Up`/`Down` or `j`/`k`: scroll logs
-  * `PgUp`/`PgDn`: page logs
-  * `a`: toggle auto-scroll
-  * `l`: stop loop mode
-  * `p`: toggle progress panel visibility
-  * `f`: toggle flowchart overlay
-
-### TUI Execution View Flowchart Overlay
-
-When running a task in the TUI, press `f` to open the workflow flowchart overlay. This provides a visual representation of the current position in the 3-phase workflow:
-
-* **Phase visualization**: Shows the workflow topology with connected phase nodes
-  * `>` (yellow): Currently active phase
-  * `+` (green): Completed phase
-  * `o` (gray): Pending phase
-* **Phase descriptions**: Brief explanation of what each phase does
-* **Phase timing**: Elapsed time per phase (if started)
-
-The flowchart adapts to the configured workflow:
-* **1-phase**: Shows "Single Phase" (Execute task)
-* **2-phase**: Shows Planning → Implementation
-* **3-phase** (default): Shows Planning → Implementation → Review
-
-Press `f`, `Esc`, `h`, or `?` to close the flowchart overlay.
-
-Use `--visualize` flag with `ralph run one -i` or `ralph run loop -i` to show the flowchart immediately on TUI start:
-
-```bash
-ralph run one -i --visualize
-ralph run loop -i --visualize
-```
-
-### TUI Execution View Progress Panel
-
-When running a task in the TUI, the execution view displays a progress panel showing:
-
-* **Phase indicators**: Visual indicators for each phase (Planning → Implementation → Review)
-  * `▶` (yellow): Currently active phase
-  * `✓` (green): Completed phase
-  * `○` (gray): Pending phase
-* **Phase timing**: Elapsed time per phase in MM:SS format
-* **Total execution time**: Overall duration since task start
-
-The progress panel automatically appears when a task starts and adapts to the configured workflow:
-* **1-phase**: Shows "Single Phase" indicator
-* **2-phase**: Shows Planning → Implementation
-* **3-phase** (default): Shows Planning → Implementation → Review
-
-Press `p` in the execution view to toggle the progress panel visibility. This is useful when you need more screen space for log output.
-
-Phase transitions are detected automatically from runner output (e.g., "# IMPLEMENTATION MODE" header).
+* `open`: Open the app for the current repository.
 
 Examples:
 
 ```bash
-ralph tui
-ralph tui --read-only
-ralph tui --runner codex --model gpt-5.3-codex --effort high
+ralph app open
 ```
-
-### Terminal Compatibility
-
-The TUI automatically detects terminal capabilities and adjusts rendering accordingly:
-
-* **Color support**: Auto-detected from `TERM`, `COLORTERM`, and `TERM_PROGRAM` environment variables. Supports truecolor, 256-color, 16-color, and monochrome modes.
-* **Mouse support**: Enabled by default on terminals that support it. Use `--no-mouse` to disable mouse capture for terminals with broken mouse support.
-* **Unicode support**: Uses Unicode box-drawing characters by default. Use `--ascii-borders` for ASCII-only terminals.
-
-Terminal compatibility flags:
-
-* `--no-mouse`: Disable mouse capture (useful for terminals with broken mouse support or when running over SSH).
-* `--color <auto|always|never>`: Control color output. `auto` detects terminal capabilities (default), `always` forces colors, `never` disables colors. Also respects the `NO_COLOR` environment variable.
-* `--ascii-borders`: Use ASCII characters (`+`, `-`, `|`) for borders instead of Unicode box-drawing characters.
-
-Examples:
-
-```bash
-# Disable mouse capture
-ralph tui --no-mouse
-
-# Force colors even in pipes or non-TTY environments
-ralph tui --color always
-
-# Disable colors entirely
-ralph tui --color never
-
-# Use ASCII borders for older terminals
-ralph tui --ascii-borders
-
-# Combine options for maximum compatibility
-ralph tui --no-mouse --color never --ascii-borders
-```
-
-### Tested Terminals
-
-The TUI has been tested on the following terminal applications:
-
-| Terminal | Color | Mouse | Unicode | Notes |
-|----------|-------|-------|---------|-------|
-| iTerm2 (macOS) | Full | Yes | Yes | Primary development target |
-| Terminal.app (macOS) | Full | Yes | Yes | Default macOS terminal |
-| Windows Terminal | Full | Yes | Yes | Modern Windows terminal |
-| GNOME Terminal | Full | Yes | Yes | Common Linux terminal |
-| Konsole | Full | Yes | Yes | KDE terminal |
-| Alacritty | Full | Yes | Yes | GPU-accelerated terminal |
-| WezTerm | Full | Yes | Yes | Modern terminal emulator |
-| tmux | Full | Yes | Yes | Terminal multiplexer |
-| screen | 16-color | Basic | Yes | Legacy multiplexer |
-| VS Code terminal | Full | Yes | Yes | Embedded terminal |
-
-If you encounter issues with a specific terminal, try the compatibility flags above.
 
 ## `ralph run`
 
 ### Subcommands
 
-* `one`: run exactly one task (optionally by ID or via interactive TUI).
+* `one`: run exactly one task (optionally by ID).
 * `loop`: run tasks until none remain (or `--max-tasks` reached).
 
 Run iterations are controlled by config and task settings:
@@ -873,15 +894,6 @@ Use `--phases <1|2|3>` (or `agent.phases` in config) to control execution shape:
 - `3`: plan -> implement+CI -> review+complete.
 
 Use `--quick` as a shorthand for `--phases 1` to skip the planning phase and run single-pass execution immediately.
-
-### Interactive flags
-
-* `ralph run one -i` launches the same TUI as `ralph tui`.
-* `ralph run loop -i` launches the same TUI and auto-starts loop mode.
-
-### Workflow visualization
-
-* `--visualize`: Show the workflow flowchart overlay immediately on TUI start (interactive mode only). Useful for understanding the current position in the 3-phase workflow before execution begins.
 
 ### Draft tasks
 
@@ -955,7 +967,6 @@ Flags:
 * `--dry-run`: Enable dry-run mode (selection-only introspection).
 
 Constraints:
-- Conflicts with `--interactive` (TUI mode)
 - Conflicts with `--parallel-worker` and `--parallel`
 
 Examples:
@@ -995,7 +1006,6 @@ Flags:
 
 Constraints:
 - Conflicts with `--parallel` (parallel mode does not support wait mode)
-- Conflicts with `--interactive` (TUI mode)
 - Only applies to sequential run loop mode
 
 Examples:
@@ -1035,7 +1045,6 @@ Flags:
 
 Constraints:
 - Conflicts with `--parallel` (parallel mode does not support continuous mode)
-- Conflicts with `--interactive` (TUI mode)
 - Only applies to sequential run loop mode
 
 Examples:
@@ -1057,22 +1066,21 @@ ralph run loop --continuous --wait-when-blocked
 ### Parallel loop (CLI-only)
 
 `--parallel [N]` runs multiple tasks concurrently in separate isolated git workspace clones. The default is `2`
-when `--parallel` is provided without a value. This mode is CLI-only and conflicts with
-interactive/TUI workflows.
+when `--parallel` is provided without a value. This mode is CLI-only.
 
 Notes:
-- `--parallel` conflicts with `--interactive`, `--wait-when-blocked`, and ignores `--resume`.
+- `--parallel` conflicts with `--wait-when-blocked` and ignores `--resume`.
 - Each task runs in its own isolated git workspace clone and branch; PRs are created/merged automatically when enabled.
 - Queue and done files are coordinator-only in parallel mode; worker branches do not modify `.ralph/queue.json` or `.ralph/done.json`.
-- Workers commit per-task completion signals in `.ralph/cache/completions/<TASK_ID>.json`.
-- After a PR merge, the coordinator applies the completion signal to update queue/done (and stats). If a signal is missing, the merge is halted with an error.
+- The coordinator invokes `ralph run merge-agent --task <TASK_ID> --pr <PR_NUMBER>` for each eligible PR.
+- Merge-agent handles PR merge and task finalization atomically; no completion-signal files are used.
+- Queue/done updates happen only in coordinator repo context via merge-agent subprocess.
 - Parallel workers force RepoPrompt mode to `off` (no tooling or planning requirement) to keep edits inside workspace clones.
 - Parallel workers honor `--git-commit-push-on/off` and `agent.git_commit_push_enabled` config. When commit/push is disabled, parallel PR automation (`auto_pr`, `auto_merge`, `draft_on_failure`) is skipped because PRs require pushed commits.
-- When PR automation is disabled or PR creation fails, Ralph records the task as finished without a PR in `.ralph/cache/parallel/state.json` and will not re-run it automatically. To retry, remove the finished-without-PR entry from the state file. If the task already completed successfully, mark it done manually (since no PR exists for the coordinator to apply).
 - You can set a default worker count with `parallel.workers` in `.ralph/config.json`.
 - The default workspace location is `<repo-parent>/.workspaces/<repo-name>/parallel/<TASK_ID>` (configurable via `parallel.workspace_root`).
 - State is persisted to `.ralph/cache/parallel/state.json` for crash recovery and coordination.
-- On startup, Ralph prunes stale in-flight task records and reconciles PR records before checking the state file's base branch. If the base branch is missing or mismatched and there are no in-flight tasks, open PRs, or finished-without-PR blockers, Ralph auto-heals the state file to the current branch. Otherwise it errors with recovery guidance.
+- On startup, Ralph prunes stale in-flight task records and reconciles PR records before checking the state file's base branch.
 
 Examples:
 
@@ -1083,11 +1091,6 @@ ralph run loop --parallel --max-tasks 4
 # Run with 4 workers
 ralph run loop --parallel 4 --max-tasks 8
 ```
-
-### Pre-run task update
-
-* `--update-task`: Automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution. This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. This runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via config: `agent.update_task_before_run: true`.
-* `--no-update-task`: Disable automatic pre-run task update (overrides config).
 
 ### Normalized runner CLI options
 
@@ -1152,11 +1155,6 @@ ralph run one --phases 3 \
               --runner-phase3 codex --model-phase3 gpt-5.2-codex --effort-phase3 high
 ```
 
-**TUI Limitation**: The TUI task builder (press `N` in the TUI) only supports global
-runner/model/effort overrides, not per-phase overrides. To use phase-specific overrides,
-either configure them in `.ralph/config.json` under `agent.phase_overrides`, or use the
-CLI `ralph run` commands with the phase-specific flags above.
-
 Examples:
 
 ```bash
@@ -1169,31 +1167,59 @@ ralph run one --phases 2
 ralph run one --phases 1
 ralph run one --quick
 ralph run one --include-draft
-ralph run one -i
-ralph run one -i --visualize
-ralph run one --update-task
 ralph run loop --max-tasks 0
 ralph run loop --profile quick --max-tasks 5
 ralph run loop --profile thorough --max-tasks 3
 ralph run loop --phases 3 --max-tasks 0
 ralph run loop --quick --max-tasks 1
 ralph run loop --include-draft --max-tasks 1
-ralph run loop --update-task --max-tasks 1
 ralph run loop --repo-prompt tools --max-tasks 1
 ralph run loop --repo-prompt off --max-tasks 1
 ralph run loop --parallel --max-tasks 4
 ralph run loop --parallel 4 --max-tasks 8
-ralph run loop -i --max-tasks 3
-ralph run loop -i --visualize --max-tasks 1
 ralph run loop --max-tasks 1 --debug
 ralph run one --git-commit-push-off
 ralph run one --approval-mode yolo --sandbox disabled
 ralph run one --approval-mode auto-edits --runner claude
 ```
 
-Clean-repo checks for `run one` and `run loop` allow changes to `.ralph/config.json`
-(alongside `.ralph/queue.json` and `.ralph/done.json`). Use `--force` to bypass the
+Clean-repo checks for `run one` and `run loop` allow changes to
+`.ralph/config.{json,jsonc}` (alongside `.ralph/queue.{json,jsonc}` and
+`.ralph/done.{json,jsonc}`). Use `--force` to bypass the
 clean-repo check entirely if needed.
+
+### `ralph run merge-agent`
+
+Run the merge-agent subprocess for a specific task/PR pair. This command is typically invoked by the parallel coordinator, but can also be run manually for debugging or recovery.
+
+#### Arguments
+
+* `--task <TASK_ID>`: Required. The task ID to finalize.
+* `--pr <PR_NUMBER>`: Required. The PR number to merge.
+
+#### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Merge + task finalization successful |
+| 1 | Runtime/unexpected failure |
+| 2 | Usage/validation failure (invalid task/PR format) |
+| >=3 | Domain-specific failures |
+
+#### Output
+
+- Stdout: JSON object with `{task_id, pr_number, merged, message}`
+- Stderr: User-facing diagnostics
+
+#### Examples
+
+```bash
+# Merge PR #42 for task RQ-0001
+ralph run merge-agent --task RQ-0001 --pr 42
+
+# Check exit code
+echo $?  # 0 = success, 1 = runtime error, 2 = validation error
+```
 
 ## `ralph scan`
 
@@ -1210,8 +1236,8 @@ Key flags:
 * `--repo-prompt <tools|plan|off>` (alias: `-rp`): `tools` = tooling reminders only, `plan` = planning requirement + tooling reminders, `off` = disable both.
 * Runner CLI overrides: `--approval-mode <default|auto-edits|yolo|safe>`, `--sandbox <default|enabled|disabled>`, `--verbosity <quiet|normal|verbose>`, `--plan-mode <default|enabled|disabled>`, `--output-format <stream-json|json|text>`, `--unsupported-option-policy <ignore|warn|error>`.
 
-Clean-repo checks for `scan` allow changes to `.ralph/queue.json` and `.ralph/done.json`
-only (unlike `run`, changes to `.ralph/config.json` are *not* allowed). Use `--force` to
+Clean-repo checks for `scan` allow changes to `.ralph/queue.{json,jsonc}`,
+`.ralph/done.{json,jsonc}`, and `.ralph/config.{json,jsonc}`. Use `--force` to
 bypass the clean-repo check (and stale queue locks) entirely if needed.
 
 Examples:
@@ -1473,11 +1499,16 @@ ralph queue search "api" --format json
 
 Move terminal tasks (done/rejected) from `.ralph/queue.json` to `.ralph/done.json`.
 
+Flags:
+
+* `--dry-run`: show what would be archived without writing to disk.
+
 ```bash
 ralph queue archive
+ralph queue archive --dry-run
 ```
 
-**Note:** This command archives immediately. To enable automatic archiving based on task age, configure `queue.auto_archive_terminal_after_days` in your config. When set, the sweep runs during TUI startup/reload and after CLI task edits:
+**Note:** This command archives immediately. To enable automatic archiving based on task age, configure `queue.auto_archive_terminal_after_days` in your config. When set, the sweep runs during macOS app startup/reload and after CLI task edits:
 
 - `null` (default): No automatic sweep
 - `0`: Archive all terminal tasks immediately when sweep runs
@@ -1520,11 +1551,13 @@ Flags:
 
 * `--sort-by <priority>`: sort by field (default: `priority`). Only priority is supported for queue file reordering; use `ralph queue list --sort-by` for time-based triage.
 * `--order <ascending|descending>`: sort order (default: `descending`, highest priority first).
+* `--dry-run`: show what would change without writing to disk.
 
 ```bash
 ralph queue sort
 ralph queue sort --order descending
 ralph queue sort --order ascending
+ralph queue sort --dry-run
 ```
 
 Note: `ralph queue sort` intentionally supports only priority sorting to prevent accidental queue reordering. For time-based triage without modifying the queue file, use `ralph queue list --sort-by <field>`.
@@ -1680,6 +1713,78 @@ ralph queue tree --include-done
 ralph queue tree --max-depth 5
 ```
 
+### `ralph queue dashboard`
+
+Aggregated analytics endpoint for GUI clients. Returns all dashboard data in a single JSON payload, reducing process fan-out when loading analytics views.
+
+This command combines data from:
+- `ralph productivity summary` - streaks, milestones, recent completions
+- `ralph productivity velocity` - tasks per day over the window
+- `ralph queue burndown` - remaining tasks over time
+- `ralph queue stats` - completion rates, tag breakdown
+- `ralph queue history` - task creation/completion events by day
+
+Each section includes a `status` field (`ok` or `unavailable`) for graceful partial failure handling.
+
+Flags:
+
+* `--days <N>`: time window in days for velocity, burndown, and history (default: 30).
+
+```bash
+# 30-day window (default)
+ralph queue dashboard
+
+# 7-day window
+ralph queue dashboard --days 7
+
+# 90-day window
+ralph queue dashboard --days 90
+```
+
+Output format (JSON only):
+
+```json
+{
+  "window_days": 30,
+  "generated_at": "2026-02-14T18:57:47Z",
+  "sections": {
+    "productivity_summary": {
+      "status": "ok",
+      "data": { ... }
+    },
+    "productivity_velocity": {
+      "status": "ok",
+      "data": { ... }
+    },
+    "burndown": {
+      "status": "ok",
+      "data": { ... }
+    },
+    "queue_stats": {
+      "status": "ok",
+      "data": { ... }
+    },
+    "history": {
+      "status": "ok",
+      "data": { ... }
+    }
+  }
+}
+```
+
+When a section is unavailable (e.g., no productivity stats for new projects), the response includes an error message:
+
+```json
+{
+  "sections": {
+    "productivity_summary": {
+      "status": "unavailable",
+      "error_message": "productivity stats not available"
+    }
+  }
+}
+```
+
 ### `ralph queue export`
 
 Export task data to various formats for external analysis, reporting, and sharing.
@@ -1775,7 +1880,7 @@ ralph queue export --format md --status done --created-after 2026-01-27
 
 Publish (create or update) a single Ralph task as a GitHub Issue using the `gh` CLI. The created/updated issue URL is persisted in the task's `custom_fields` for future reference and re-sync.
 
-**Note**: This is a CLI-only command; there is no TUI workflow for issue publish.
+**Note**: This is a CLI-only command; there is no macOS app workflow for issue publish.
 
 Prerequisites:
 * GitHub CLI (`gh`) must be installed and authenticated (`gh auth login`)
@@ -1805,6 +1910,9 @@ ralph queue issue publish RQ-0655
 # Re-run to sync changes after editing the task
 ralph queue issue publish RQ-0655
 
+# Publish many tasks by status/tag/id pattern (dry-run and execute)
+ralph queue issue publish-many --status todo --tag bug --id-pattern '^RQ-08' --dry-run
+
 # Add labels and assignees
 ralph queue issue publish RQ-0655 --label bug --label help-wanted --assignee @me
 
@@ -1819,6 +1927,7 @@ Persisted custom fields:
 
 * `github_issue_url`: The canonical GitHub issue URL (e.g., `https://github.com/owner/repo/issues/123`)
 * `github_issue_number`: The issue number as a string (e.g., `"123"`)
+* `github_issue_sync_hash`: Normalized sync fingerprint used for incremental sync skip.
 
 These fields are compatible with the existing `custom_fields` schema and survive queue round-trips.
 
@@ -1827,7 +1936,7 @@ These fields are compatible with the existing `custom_fields` schema and survive
 
 Import tasks from CSV, TSV, or JSON into the active queue. This complements `ralph queue export` and enables bulk backlog seeding, cross-repo task migration, and automation without hand-editing JSON.
 
-**Note**: This is a CLI-only command; there is no TUI workflow for import.
+**Note**: This is a CLI-only command; there is no macOS app workflow for import.
 
 Flags:
 
@@ -2199,54 +2308,67 @@ ralph watch --auto-queue --close-removed --patterns "*.rs"
 
 Create tasks and edit task fields from CLI.
 
-Common subcommands:
-- `ralph task <request>`: create a task from a freeform request.
-- `ralph task --template <name> [target] <request>`: create a task from a template with optional target.
-- `ralph task show <TASK_ID>`: show task details (queue + done). Alias: `details`.
-- `ralph task status <draft|todo|doing|done|rejected> <TASK_ID>...`: update status for one or more tasks.
-- `ralph task edit <FIELD> <VALUE> <TASK_ID>...`: edit any task field (default + custom) for one or more tasks.
-- `ralph task field <KEY> <VALUE> <TASK_ID>...`: set one custom field on one or more tasks.
-- `ralph task relate <TASK_ID> <RELATION> <OTHER_TASK_ID>`: add a relationship between tasks (blocks, relates_to, duplicates).
-- `ralph task blocks <TASK_ID> <BLOCKED_TASK_ID>...`: mark a task as blocking other tasks (shorthand for relate).
-- `ralph task mark-duplicate <TASK_ID> <ORIGINAL_TASK_ID>`: mark a task as duplicate of another (shorthand for relate).
-- `ralph task batch <operation>`: perform batch operations on multiple tasks efficiently.
-- `ralph task update [TASK_ID]`: refresh task fields based on current repo state (omit `TASK_ID` to update all tasks).
-- `ralph task template list`: list available templates.
-- `ralph task template show <name>`: show template details.
-- `ralph task template build <name> [target] <request>`: build a task from a template.
-- `ralph task clone <TASK_ID>`: clone an existing task to create a new task from it. Alias: `duplicate`.
-- `ralph task split <TASK_ID>`: split a task into multiple child tasks for better granularity.
-- `ralph task start <TASK_ID>`: start work on a task (sets `started_at` and moves to doing).
-- `ralph task children <TASK_ID>`: list child tasks for a given task.
-- `ralph task parent <TASK_ID>`: show the parent task for a given task.
+### Common journeys
 
-Field formats (for `ralph task edit`):
+- Create a task:
+  - `ralph task "Refactor queue parsing"`
+  - `ralph task build-refactor`
+- Start work on a task:
+  - `ralph task ready RQ-0001`
+  - `ralph task start RQ-0001`
+- Complete a task:
+  - `ralph task status done RQ-0001`
+  - `ralph task done --note "Build checks pass" RQ-0001`
+- Split a task:
+  - `ralph task split RQ-0001`
+  - `ralph task split --number 3 RQ-0001`
+
+Command intent sections:
+
+- **Create and build**:
+  - `ralph task` (create from freeform request)
+  - `ralph task build <request>`
+  - `ralph task refactor`
+  - `ralph task build-refactor`
+
+- **Batch and templates**:
+  - `ralph task template`
+  - `ralph task from`
+  - `ralph task batch`
+- **Template workflow**:
+  - `ralph task template list`
+  - `ralph task template show <name>`
+  - `ralph task template build <name> [target] <request>`
+  - `ralph task from template <name> --title "..." --set var=value`
+
+- **Lifecycle**:
+  - `ralph task show` / `ralph task details`
+  - `ralph task ready`
+  - `ralph task status`
+  - `ralph task done`
+  - `ralph task reject`
+  - `ralph task start`
+  - `ralph task schedule`
+
+- **Edit**:
+  - `ralph task field`
+  - `ralph task edit`
+  - `ralph task update`
+
+- **Relationships**:
+  - `ralph task clone` / `ralph task duplicate`
+  - `ralph task split`
+  - `ralph task relate`
+  - `ralph task blocks`
+  - `ralph task mark-duplicate`
+  - `ralph task children`
+  - `ralph task parent`
+
+Field formats (for task edits):
 - Lists (`tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`): comma/newline-separated.
 - `custom_fields`: `key=value` pairs, comma/newline-separated.
 - Optional text (`request`, `completed_at`): pass `""` to clear.
 - Required timestamps (`created_at`, `updated_at`) must be RFC3339 strings and should not be cleared.
-
-Examples:
-
-```bash
-ralph task "Add CLI task edit command"
-ralph task status doing RQ-0001
-ralph task status doing RQ-0001 RQ-0002 RQ-0003
-ralph task status done --tag-filter ready
-ralph task edit title "Update queue edit docs" RQ-0001
-ralph task edit tags "cli, rust" RQ-0001 RQ-0002
-ralph task field severity high RQ-0001 RQ-0002
-ralph task edit custom_fields "severity=high, owner=ralph" RQ-0001
-ralph task edit request "" RQ-0001
-
-# Batch operations
-ralph task batch status doing RQ-0001 RQ-0002 RQ-0003
-ralph task batch field priority high --tag-filter urgent
-ralph task batch edit tags "reviewed" --tag-filter rust
-ralph task batch --dry-run status done --tag-filter ready
-```
-
-**TUI Parity**: The TUI also supports building tasks with agent overrides. Press `N` in the TUI, enter a description, then configure optional overrides (runner, model, effort, tags, scope, repo-prompt mode) before building. See `docs/tui-task-management.md` for details.
 
 ### ralph task show
 
@@ -2798,6 +2920,68 @@ Example custom template (`.ralph/templates/api-test.json`):
 }
 ```
 
+### ralph task from template
+
+Build a task from a template with variable substitution. This is a convenience command that combines template selection, variable substitution, and task creation in one step. It provides a more intuitive interface compared to `ralph task template build` for common workflows.
+
+**Usage:**
+```bash
+ralph task from template <TEMPLATE> --title "TITLE" [--set VAR=VALUE]...
+```
+
+**Arguments:**
+- `<TEMPLATE>` - Template name (use `ralph task template list` to see available)
+- `--title` - Task title/request (required)
+- `--set VAR=VALUE` - Set template variable (repeatable)
+- `--tags` - Additional tags (comma-separated)
+- `--runner`, `--model`, `--effort` (`-e`) - Runner overrides
+- `--repo-prompt <tools|plan|off>` (alias: `-rp`) - RepoPrompt mode
+- `--strict-templates` - Fail on unknown variables
+- `--dry-run` - Preview without adding to queue
+- Runner CLI overrides: `--approval-mode`, `--sandbox`, `--verbosity`, `--plan-mode`, `--output-format`, `--unsupported-option-policy`
+
+**Template Variables:**
+
+Templates support variable substitution using `{{variable}}` syntax:
+- `{{target}}` - The target file/path (set via `--set target=...`)
+- `{{module}}` - Module name derived from target (e.g., `src/cli/task.rs` → `cli::task`)
+- `{{file}}` - Filename only (e.g., `task.rs`)
+- `{{branch}}` - Current git branch name
+
+**Examples:**
+
+```bash
+# Create a bug fix task
+ralph task from template bug --title "Fix login timeout on slow connections"
+
+# Create a feature task with target variable
+ralph task from template feature --title "Add dark mode" --set target=src/ui/theme.rs
+
+# Create a test task for a specific module
+ralph task from template add-tests --title "Add auth tests" --set target=src/auth/mod.rs
+
+# Create a performance optimization task
+ralph task from template refactor-performance --title "Optimize parser" --set target=src/parser/
+
+# Create with custom component variable
+ralph task from template bug --title "Fix auth issue" --set target=src/auth.rs --set component=auth
+
+# Preview task without adding to queue
+ralph task from template bug --title "Test task" --dry-run
+
+# Create with runner overrides
+ralph task from template feature --title "Add API" --set target=src/api.rs --runner codex --effort high
+```
+
+**Comparison with `template build`:**
+
+| Command | Best For | Syntax |
+|---------|----------|--------|
+| `task from template` | Quick task creation with clear title | `--title "..." --set var=value` |
+| `task template build` | Full control with positional args | `[target] "request"` |
+
+The `from template` command is recommended for most use cases as it's more intuitive and requires less typing.
+
 ### ralph task build refactor
 
 Automatically create refactoring tasks for large files exceeding a LOC threshold.
@@ -3187,7 +3371,7 @@ Watch-created tasks follow this lifecycle:
 1. **Detection**: File change triggers comment scanning
 2. **Deduplication**: Fingerprint check prevents duplicate tasks
 3. **Creation**: Task added to queue with `watch` tag and metadata
-4. **Execution**: Task worked on normally via `ralph run` or TUI
+4. **Execution**: Task worked on normally via `ralph run` or the macOS app
 5. **Reconciliation** (with `--close-removed`): If comment is deleted, task auto-completes
 
 ### Notes
@@ -3200,7 +3384,7 @@ Watch-created tasks follow this lifecycle:
 
 ## Runner and Model Overrides
 
-These flags are supported on `task`, `scan`, `run one`, `run loop`, and `tui`:
+These flags are supported on `task`, `scan`, `run one`, and `run loop`:
 
 * `--runner <codex|opencode|gemini|claude|cursor|kimi|pi>`
 * `--model <model-id>`
@@ -3223,7 +3407,6 @@ Claude permission precedence:
 Examples:
 
 ```bash
-ralph tui --runner claude --model opus
 ralph run one --runner codex --model gpt-5.3-codex --effort high
 ```
 
@@ -3232,10 +3415,9 @@ ralph run one --runner codex --model gpt-5.3-codex --effort high
 The `run one` and `run loop` commands also support:
 
 * `--include-draft`: Include draft tasks (`status: draft`) when selecting what to run.
-* `--non-interactive`: Skip interactive prompts for sanity checks and session recovery (conflicts with `--interactive`). Useful for CI environments where TTY is not available.
-* `--parallel [N]` (run loop only): Run tasks concurrently in isolated git workspace clones. Defaults to `2` when provided without a value. Conflicts with `--interactive` and is CLI-only (not supported in the TUI). Parallel workers do not modify `.ralph/queue.json` or `.ralph/done.json`; they commit completion signals in `.ralph/cache/completions/<TASK_ID>.json`, and the coordinator applies them after merge (errors if missing). Parallel workers force RepoPrompt mode to `off` to keep edits inside workspace clones. Parallel workers honor `--git-commit-push-on/off` and `agent.git_commit_push_enabled`; when commit/push is disabled, parallel PR automation is skipped.
-* `--update-task`: Automatically run `ralph task update <TASK_ID>` once per task immediately before the supervisor marks the task as `doing` and starts execution. This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. Runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via config: `agent.update_task_before_run: true`.
-* `--no-update-task`: Disable automatic pre-run task update for this invocation (overrides config).
+* `--non-interactive`: Skip interactive prompts for sanity checks and session recovery. Useful for CI environments where TTY is not available.
+* `--parallel [N]` (run loop only): Run tasks concurrently in isolated git workspace clones. Defaults to `2` when provided without a value. Parallel workers do not modify `.ralph/queue.json` or `.ralph/done.json`; they commit completion signals in `.ralph/cache/completions/<TASK_ID>.json`, and the coordinator applies them after merge (errors if missing). Parallel workers force RepoPrompt mode to `off` to keep edits inside workspace clones. Parallel workers honor `--git-commit-push-on/off` and `agent.git_commit_push_enabled`; when commit/push is disabled, parallel PR automation is skipped.
+* Multi-phase runs (`--phases 2` or `--phases 3`) automatically refresh task fields (`scope,evidence,plan,notes,tags,depends_on`) at the start of Phase 1 and then generate the plan in that same Phase 1 session.
 * `--notify`: Enable desktop notification on task completion (overrides config).
 * `--no-notify`: Disable desktop notification on task completion (overrides config).
 * `--notify-fail`: Enable desktop notification on task failure (overrides config).
@@ -3249,8 +3431,6 @@ Examples:
 
 ```bash
 ralph run one --include-draft
-ralph run one --update-task
-ralph run one --no-update-task
 ralph run one --notify
 ralph run one --notify --notify-sound
 ralph run one --no-notify
@@ -3261,7 +3441,6 @@ ralph run one --git-commit-push-off
 ralph run loop --include-draft --max-tasks 1
 ralph run loop --parallel --max-tasks 4
 ralph run loop --parallel 4 --max-tasks 8
-ralph run loop --update-task --max-tasks 1
 ralph run loop --max-tasks 1 --debug
 ```
 
@@ -3432,13 +3611,95 @@ Examples:
 ralph plugin uninstall acme.super_runner --scope project
 ```
 
+## `ralph runner`
+
+Manage and inspect AI runners (codex, opencode, gemini, claude, cursor, kimi, pi).
+
+### Subcommands
+
+* `capabilities`: Show capabilities for a specific runner.
+* `list`: List all available runners.
+
+### `ralph runner capabilities <runner>`
+
+Display detailed capability information for a specific runner, including:
+- Supported models and default model
+- Feature support (reasoning effort, sandbox, plan mode, verbose)
+- Binary status (installed, version)
+- Session handling behavior
+
+#### Arguments
+
+* `<runner>`: Runner to inspect (codex, opencode, gemini, claude, cursor, kimi, pi).
+
+#### Flags
+
+* `--format <text|json>`: Output format (default: text).
+
+#### Examples
+
+```bash
+# Show Codex capabilities
+ralph runner capabilities codex
+
+# Show Claude capabilities in JSON format
+ralph runner capabilities claude --format json
+
+# Check if Gemini binary is installed
+ralph runner capabilities gemini
+
+# Get capabilities for all runners via JSON
+for r in codex claude gemini opencode cursor kimi pi; do
+  ralph runner capabilities "$r" --format json | jq '.binary.installed'
+done
+```
+
+#### Output Example
+
+```
+Runner: OpenAI Codex CLI (codex)
+
+Binary:
+  Status: installed
+  Version: 1.2.3
+
+Models:
+  Default: gpt-5.3-codex
+  Allowed: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2
+
+Features:
+  Session resume: yes
+  Reasoning effort: yes
+  Plan mode: no
+  Verbose output: no
+  Sandbox: default, enabled, disabled (supported)
+```
+
+### `ralph runner list`
+
+List all available runners with brief descriptions.
+
+#### Flags
+
+* `--format <text|json>`: Output format (default: text).
+
+#### Examples
+
+```bash
+# List all runners
+ralph runner list
+
+# JSON output for scripting
+ralph runner list --format json | jq '.[].id'
+```
+
 ## Help Output
 
 For the full, authoritative list of flags and examples, run:
 
 ```bash
 ralph --help
-ralph tui --help
+ralph app --help
 ralph queue --help
 ralph run --help
 ralph plugin --help

@@ -12,6 +12,10 @@
 //! Invariants:
 //! - PluginExecutor must be created once and reused for consistent behavior.
 //! - All built-in runners are pre-registered at construction time.
+//!
+//! Note: Module-level dead_code allow is required because this module provides
+//! orchestrator types and registry structures that may not use all fields in
+//! every execution path, but are part of the public API for extension.
 
 #![allow(dead_code)]
 

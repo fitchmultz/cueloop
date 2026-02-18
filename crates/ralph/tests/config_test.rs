@@ -29,11 +29,45 @@ fn create_queue_json(dir: &TempDir, content: &str) -> PathBuf {
     queue_path
 }
 
+// Helper to create a queue.jsonc file
+fn create_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
+    let ralph_dir = setup_ralph_dir(dir);
+    let queue_path = ralph_dir.join("queue.jsonc");
+    fs::write(&queue_path, content).expect("write queue.jsonc");
+    queue_path
+}
+
+// Helper to create a done.json file
+#[allow(dead_code)]
+fn create_done_json(dir: &TempDir, content: &str) -> PathBuf {
+    let ralph_dir = setup_ralph_dir(dir);
+    let done_path = ralph_dir.join("done.json");
+    fs::write(&done_path, content).expect("write done.json");
+    done_path
+}
+
+// Helper to create a done.jsonc file
+#[allow(dead_code)]
+fn create_done_jsonc(dir: &TempDir, content: &str) -> PathBuf {
+    let ralph_dir = setup_ralph_dir(dir);
+    let done_path = ralph_dir.join("done.jsonc");
+    fs::write(&done_path, content).expect("write done.jsonc");
+    done_path
+}
+
 // Helper to create a config.json file
 fn create_config_json(dir: &TempDir, content: &str) -> PathBuf {
     let ralph_dir = setup_ralph_dir(dir);
     let config_path = ralph_dir.join("config.json");
     fs::write(&config_path, content).expect("write config.json");
+    config_path
+}
+
+// Helper to create a config.jsonc file
+fn create_config_jsonc(dir: &TempDir, content: &str) -> PathBuf {
+    let ralph_dir = setup_ralph_dir(dir);
+    let config_path = ralph_dir.join("config.jsonc");
+    fs::write(&config_path, content).expect("write config.jsonc");
     config_path
 }
 
@@ -142,17 +176,32 @@ fn test_global_config_path_none_if_no_home() {
 }
 
 #[test]
+#[serial]
 fn test_resolve_queue_path_relative() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
+
     let dir = TempDir::new().expect("create temp dir");
     let repo_root = dir.path();
     let cfg = Config::default();
 
     let queue_path = config::resolve_queue_path(repo_root, &cfg).unwrap();
     assert_eq!(queue_path, repo_root.join(".ralph/queue.json"));
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
+#[serial]
 fn test_resolve_queue_path_custom_relative() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
+
     let dir = TempDir::new().expect("create temp dir");
     let repo_root = dir.path();
     let mut cfg = Config::default();
@@ -160,10 +209,20 @@ fn test_resolve_queue_path_custom_relative() {
 
     let queue_path = config::resolve_queue_path(repo_root, &cfg).unwrap();
     assert_eq!(queue_path, repo_root.join("custom/queue.json"));
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
+#[serial]
 fn test_resolve_queue_path_absolute() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
+
     let dir = TempDir::new().expect("create temp dir");
     let absolute = PathBuf::from("/tmp/absolute/queue.json");
     let repo_root = dir.path();
@@ -172,10 +231,20 @@ fn test_resolve_queue_path_absolute() {
 
     let queue_path = config::resolve_queue_path(repo_root, &cfg).unwrap();
     assert_eq!(queue_path, absolute);
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
+#[serial]
 fn test_resolve_queue_path_empty_fails() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
+
     let dir = TempDir::new().expect("create temp dir");
     let repo_root = dir.path();
     let mut cfg = Config::default();
@@ -183,20 +252,40 @@ fn test_resolve_queue_path_empty_fails() {
 
     let result = config::resolve_queue_path(repo_root, &cfg);
     assert!(result.is_err());
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
+#[serial]
 fn test_resolve_done_path_relative() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::DONE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) };
+
     let dir = TempDir::new().expect("create temp dir");
     let repo_root = dir.path();
     let cfg = Config::default();
 
     let done_path = config::resolve_done_path(repo_root, &cfg).unwrap();
     assert_eq!(done_path, repo_root.join(".ralph/done.json"));
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::DONE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
+#[serial]
 fn test_resolve_done_path_custom_relative() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::DONE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) };
+
     let dir = TempDir::new().expect("create temp dir");
     let repo_root = dir.path();
     let mut cfg = Config::default();
@@ -204,10 +293,20 @@ fn test_resolve_done_path_custom_relative() {
 
     let done_path = config::resolve_done_path(repo_root, &cfg).unwrap();
     assert_eq!(done_path, repo_root.join("custom/done.json"));
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::DONE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
+#[serial]
 fn test_resolve_done_path_absolute() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::DONE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) };
+
     let dir = TempDir::new().expect("create temp dir");
     let absolute = PathBuf::from("/tmp/absolute/done.json");
     let repo_root = dir.path();
@@ -216,10 +315,20 @@ fn test_resolve_done_path_absolute() {
 
     let done_path = config::resolve_done_path(repo_root, &cfg).unwrap();
     assert_eq!(done_path, absolute);
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::DONE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
+#[serial]
 fn test_resolve_done_path_empty_fails() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::DONE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) };
+
     let dir = TempDir::new().expect("create temp dir");
     let repo_root = dir.path();
     let mut cfg = Config::default();
@@ -227,6 +336,11 @@ fn test_resolve_done_path_empty_fails() {
 
     let result = config::resolve_done_path(repo_root, &cfg);
     assert!(result.is_err());
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::DONE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 #[test]
@@ -604,8 +718,6 @@ fn test_agent_config_merge_from_partial() {
         ci_gate_enabled: Some(true),
         git_revert_mode: Some(GitRevertMode::Ask),
         git_commit_push_enabled: Some(true),
-        update_task_before_run: None,
-        fail_on_prerun_update_error: None,
         notification: NotificationConfig::default(),
         webhook: WebhookConfig::default(),
         runner_retry: RunnerRetryConfig::default(),
@@ -637,8 +749,6 @@ fn test_agent_config_merge_from_partial() {
         ci_gate_enabled: Some(false),
         git_revert_mode: Some(GitRevertMode::Disabled),
         git_commit_push_enabled: Some(false),
-        update_task_before_run: None,
-        fail_on_prerun_update_error: None,
         notification: NotificationConfig::default(),
         webhook: WebhookConfig::default(),
         runner_retry: RunnerRetryConfig::default(),
@@ -682,8 +792,10 @@ fn test_validate_config_invalid_phases_fails() {
 fn test_resolve_queue_path_expands_tilde_to_home() {
     let _guard = env_lock().lock().expect("env lock");
     let original_home = env::var("HOME").ok();
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
 
     unsafe { env::set_var("HOME", "/custom/home") };
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
 
     let repo_root = PathBuf::from("/repo/root");
     let mut cfg = Config::default();
@@ -697,6 +809,258 @@ fn test_resolve_queue_path_expands_tilde_to_home() {
         Some(v) => unsafe { env::set_var("HOME", v) },
         None => unsafe { env::remove_var("HOME") },
     }
+    // Restore override
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    }
+}
+
+// Tests for .jsonc file format support (RQ-0807)
+
+#[test]
+fn test_find_repo_root_via_ralph_queue_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    create_queue_jsonc(&dir, r#"{"version":1,"tasks":[]}"#);
+
+    let repo_root = config::find_repo_root(dir.path());
+    assert_eq!(repo_root, dir.path());
+}
+
+#[test]
+fn test_find_repo_root_via_ralph_config_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    create_config_jsonc(&dir, r#"{"version":1}"#);
+
+    let repo_root = config::find_repo_root(dir.path());
+    assert_eq!(repo_root, dir.path());
+}
+
+#[test]
+#[serial]
+fn test_resolve_queue_path_prefers_json_over_jsonc() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
+
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create both .json and .jsonc files
+    fs::write(ralph_dir.join("queue.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
+    fs::write(ralph_dir.join("queue.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
+
+    let cfg = Config::default();
+    let queue_path = config::resolve_queue_path(dir.path(), &cfg).unwrap();
+
+    // Should prefer .json over .jsonc
+    assert_eq!(queue_path, ralph_dir.join("queue.json"));
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    };
+}
+
+#[test]
+#[serial]
+fn test_resolve_queue_path_falls_back_to_jsonc() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
+
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create only .jsonc file
+    fs::write(ralph_dir.join("queue.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
+
+    let cfg = Config::default();
+    let queue_path = config::resolve_queue_path(dir.path(), &cfg).unwrap();
+
+    // Should fall back to .jsonc when .json doesn't exist
+    assert_eq!(queue_path, ralph_dir.join("queue.jsonc"));
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    };
+}
+
+#[test]
+#[serial]
+fn test_resolve_done_path_prefers_json_over_jsonc() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::DONE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) };
+
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create both .json and .jsonc files
+    fs::write(ralph_dir.join("done.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
+    fs::write(ralph_dir.join("done.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
+
+    let cfg = Config::default();
+    let done_path = config::resolve_done_path(dir.path(), &cfg).unwrap();
+
+    // Should prefer .json over .jsonc
+    assert_eq!(done_path, ralph_dir.join("done.json"));
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::DONE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) },
+    };
+}
+
+#[test]
+#[serial]
+fn test_resolve_done_path_falls_back_to_jsonc() {
+    let _guard = env_lock().lock().expect("env lock");
+    let prior_override = env::var_os(config::DONE_PATH_OVERRIDE_ENV);
+    unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) };
+
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create only .jsonc file
+    fs::write(ralph_dir.join("done.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
+
+    let cfg = Config::default();
+    let done_path = config::resolve_done_path(dir.path(), &cfg).unwrap();
+
+    // Should fall back to .jsonc when .json doesn't exist
+    assert_eq!(done_path, ralph_dir.join("done.jsonc"));
+
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::DONE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) },
+    };
+}
+
+#[test]
+fn test_project_config_path_prefers_json_over_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create both .json and .jsonc files
+    fs::write(ralph_dir.join("config.json"), r#"{"version":1}"#).unwrap();
+    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
+
+    let config_path = config::project_config_path(dir.path());
+
+    // Should prefer .json over .jsonc
+    assert_eq!(config_path, ralph_dir.join("config.json"));
+}
+
+#[test]
+fn test_project_config_path_falls_back_to_jsonc() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+
+    // Create only .jsonc file
+    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
+
+    let config_path = config::project_config_path(dir.path());
+
+    // Should fall back to .jsonc when .json doesn't exist
+    assert_eq!(config_path, ralph_dir.join("config.jsonc"));
+}
+
+#[test]
+#[serial]
+fn test_global_config_path_falls_back_to_jsonc() {
+    let _guard = env_lock().lock().expect("env lock");
+    let dir = TempDir::new().expect("create temp dir");
+    let xdg_config = dir.path().join(".config");
+    let ralph_dir = xdg_config.join("ralph");
+    fs::create_dir_all(&ralph_dir).expect("create xdg config dir");
+
+    // Create only config.jsonc (no config.json)
+    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
+
+    unsafe { env::set_var("XDG_CONFIG_HOME", &xdg_config) };
+    let config_path = config::global_config_path();
+    unsafe { env::remove_var("XDG_CONFIG_HOME") };
+
+    assert!(config_path.is_some());
+    assert_eq!(config_path.unwrap(), ralph_dir.join("config.jsonc"));
+}
+
+#[test]
+#[serial]
+fn test_global_config_path_prefers_json_over_jsonc() {
+    let _guard = env_lock().lock().expect("env lock");
+    let dir = TempDir::new().expect("create temp dir");
+    let xdg_config = dir.path().join(".config");
+    let ralph_dir = xdg_config.join("ralph");
+    fs::create_dir_all(&ralph_dir).expect("create xdg config dir");
+
+    // Create both .json and .jsonc files
+    fs::write(ralph_dir.join("config.json"), r#"{"version":1}"#).unwrap();
+    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
+
+    unsafe { env::set_var("XDG_CONFIG_HOME", &xdg_config) };
+    let config_path = config::global_config_path();
+    unsafe { env::remove_var("XDG_CONFIG_HOME") };
+
+    assert!(config_path.is_some());
+    // Should prefer .json over .jsonc
+    assert_eq!(config_path.unwrap(), ralph_dir.join("config.json"));
+}
+
+#[test]
+fn test_load_layer_accepts_jsonc_with_comments() {
+    let dir = TempDir::new().expect("create temp dir");
+    let config_path = dir.path().join("config.jsonc");
+
+    // Write JSONC with comments
+    let jsonc_content = r#"{
+        // This is a single-line comment
+        "version": 1,
+        "agent": {
+            /* Multi-line
+               comment */
+            "runner": "claude"
+        }
+    }"#;
+    fs::write(&config_path, jsonc_content).expect("write config.jsonc");
+
+    let layer = config::load_layer(&config_path).unwrap();
+    assert_eq!(layer.version, Some(1));
+    assert_eq!(layer.agent.runner, Some(Runner::Claude));
+}
+
+#[test]
+fn test_load_queue_accepts_jsonc_with_comments() {
+    let dir = TempDir::new().expect("create temp dir");
+    let ralph_dir = setup_ralph_dir(&dir);
+    let queue_path = ralph_dir.join("queue.jsonc");
+
+    // Write JSONC with comments
+    let jsonc_content = r#"{
+        // Queue file with comments
+        "version": 1,
+        "tasks": [
+            /* Task entry */
+            {
+                "id": "RQ-0001",
+                "title": "Test task",
+                "status": "todo",
+                "tags": [],
+                "scope": [],
+                "evidence": [],
+                "plan": [],
+                "created_at": "2026-01-18T00:00:00Z",
+                "updated_at": "2026-01-18T00:00:00Z"
+            }
+        ]
+    }"#;
+    fs::write(&queue_path, jsonc_content).expect("write queue.jsonc");
+
+    let queue = ralph::queue::load_queue(&queue_path).unwrap();
+    assert_eq!(queue.tasks.len(), 1);
+    assert_eq!(queue.tasks[0].id, "RQ-0001");
 }
 
 #[test]
@@ -704,8 +1068,10 @@ fn test_resolve_queue_path_expands_tilde_to_home() {
 fn test_resolve_done_path_expands_tilde_to_home() {
     let _guard = env_lock().lock().expect("env lock");
     let original_home = env::var("HOME").ok();
+    let prior_override = env::var_os(config::DONE_PATH_OVERRIDE_ENV);
 
     unsafe { env::set_var("HOME", "/custom/home") };
+    unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) };
 
     let repo_root = PathBuf::from("/repo/root");
     let mut cfg = Config::default();
@@ -719,6 +1085,11 @@ fn test_resolve_done_path_expands_tilde_to_home() {
         Some(v) => unsafe { env::set_var("HOME", v) },
         None => unsafe { env::remove_var("HOME") },
     }
+    // Restore override
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::DONE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::DONE_PATH_OVERRIDE_ENV) },
+    }
 }
 
 #[test]
@@ -726,8 +1097,10 @@ fn test_resolve_done_path_expands_tilde_to_home() {
 fn test_resolve_queue_path_expands_tilde_alone_to_home() {
     let _guard = env_lock().lock().expect("env lock");
     let original_home = env::var("HOME").ok();
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
 
     unsafe { env::set_var("HOME", "/custom/home") };
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
 
     let repo_root = PathBuf::from("/repo/root");
     let mut cfg = Config::default();
@@ -741,6 +1114,11 @@ fn test_resolve_queue_path_expands_tilde_alone_to_home() {
         Some(v) => unsafe { env::set_var("HOME", v) },
         None => unsafe { env::remove_var("HOME") },
     }
+    // Restore override
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    }
 }
 
 #[test]
@@ -748,8 +1126,10 @@ fn test_resolve_queue_path_expands_tilde_alone_to_home() {
 fn test_resolve_queue_path_does_not_join_when_tilde_expands() {
     let _guard = env_lock().lock().expect("env lock");
     let original_home = env::var("HOME").ok();
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
 
     unsafe { env::set_var("HOME", "/custom/home") };
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
 
     // When ~ expands to an absolute path, it should NOT be joined to repo_root
     let repo_root = PathBuf::from("/repo/root");
@@ -766,6 +1146,11 @@ fn test_resolve_queue_path_does_not_join_when_tilde_expands() {
         Some(v) => unsafe { env::set_var("HOME", v) },
         None => unsafe { env::remove_var("HOME") },
     }
+    // Restore override
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
+    }
 }
 
 #[test]
@@ -773,9 +1158,11 @@ fn test_resolve_queue_path_does_not_join_when_tilde_expands() {
 fn test_resolve_queue_path_relative_when_home_unset() {
     let _guard = env_lock().lock().expect("env lock");
     let original_home = env::var("HOME").ok();
+    let prior_override = env::var_os(config::QUEUE_PATH_OVERRIDE_ENV);
 
     // Remove HOME - tilde should not expand, path treated as relative
     unsafe { env::remove_var("HOME") };
+    unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) };
 
     let dir = TempDir::new().expect("create temp dir");
     let repo_root = dir.path();
@@ -789,5 +1176,10 @@ fn test_resolve_queue_path_relative_when_home_unset() {
     // Restore HOME
     if let Some(v) = original_home {
         unsafe { env::set_var("HOME", v) }
+    }
+    // Restore override
+    match prior_override {
+        Some(v) => unsafe { env::set_var(config::QUEUE_PATH_OVERRIDE_ENV, v) },
+        None => unsafe { env::remove_var(config::QUEUE_PATH_OVERRIDE_ENV) },
     }
 }

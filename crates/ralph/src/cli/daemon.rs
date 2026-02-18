@@ -13,7 +13,7 @@
 //! - Daemon uses a dedicated lock separate from the queue lock.
 
 use anyhow::Result;
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, builder::PossibleValuesParser};
 
 use crate::{commands::daemon as daemon_cmd, config};
 
@@ -24,6 +24,7 @@ pub fn handle_daemon(cmd: DaemonCommand) -> Result<()> {
         DaemonCommand::Stop => daemon_cmd::stop(&resolved),
         DaemonCommand::Status => daemon_cmd::status(&resolved),
         DaemonCommand::Serve(args) => daemon_cmd::serve(&resolved, args),
+        DaemonCommand::Logs(args) => daemon_cmd::logs(&resolved, args),
     }
 }
 
@@ -61,17 +62,37 @@ pub enum DaemonCommand {
     /// Internal: Run the daemon serve loop (do not use directly).
     #[command(hide = true)]
     Serve(DaemonServeArgs),
+    /// Inspect daemon logs with filtering and follow mode.
+    #[command(
+        about = "Inspect daemon logs",
+        after_long_help = "Examples:
+ ralph daemon logs
+ ralph daemon logs --tail 50
+ ralph daemon logs --follow --tail 200
+ ralph daemon logs --since 'in 10 minutes'
+ ralph daemon logs --level error --contains \"webhook\"
+ ralph daemon logs --json --since 2026-02-01T00:00:00Z"
+    )]
+    Logs(DaemonLogsArgs),
 }
 
 #[derive(Args)]
 pub struct DaemonStartArgs {
     /// Poll interval in milliseconds while waiting for new tasks when queue is empty
     /// (default: 30000, min: 50).
-    #[arg(long, default_value_t = 30_000)]
+    #[arg(
+        long,
+        default_value_t = 30_000,
+        value_parser = clap::value_parser!(u64).range(50..)
+    )]
     pub empty_poll_ms: u64,
 
     /// Poll interval in milliseconds while waiting for blocked tasks (default: 1000, min: 50).
-    #[arg(long, default_value_t = 1_000)]
+    #[arg(
+        long,
+        default_value_t = 1_000,
+        value_parser = clap::value_parser!(u64).range(50..)
+    )]
     pub wait_poll_ms: u64,
 
     /// Notify when queue becomes unblocked (desktop + webhook).
@@ -83,14 +104,109 @@ pub struct DaemonStartArgs {
 pub struct DaemonServeArgs {
     /// Poll interval in milliseconds while waiting for new tasks when queue is empty
     /// (default: 30000, min: 50).
-    #[arg(long, default_value_t = 30_000)]
+    #[arg(
+        long,
+        default_value_t = 30_000,
+        value_parser = clap::value_parser!(u64).range(50..)
+    )]
     pub empty_poll_ms: u64,
 
     /// Poll interval in milliseconds while waiting for blocked tasks (default: 1000, min: 50).
-    #[arg(long, default_value_t = 1_000)]
+    #[arg(
+        long,
+        default_value_t = 1_000,
+        value_parser = clap::value_parser!(u64).range(50..)
+    )]
     pub wait_poll_ms: u64,
 
     /// Notify when queue becomes unblocked (desktop + webhook).
     #[arg(long)]
     pub notify_when_unblocked: bool,
+}
+
+#[derive(Args)]
+pub struct DaemonLogsArgs {
+    /// Show the last N lines from the daemon log.
+    #[arg(short = 'n', long = "tail", default_value_t = 100)]
+    pub tail: usize,
+
+    /// Follow daemon log output as lines are appended.
+    #[arg(short, long)]
+    pub follow: bool,
+
+    /// Only show lines at or after this timestamp (RFC3339) or relative expression.
+    #[arg(long, value_name = "DURATION_OR_TIMESTAMP", value_parser = parse_daemon_log_since)]
+    pub since: Option<time::OffsetDateTime>,
+
+    /// Filter by level (trace, debug, info, warn, error, fatal, critical).
+    #[arg(long = "level", value_name = "LEVEL", value_parser = PossibleValuesParser::new([
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal",
+        "critical"
+    ]))]
+    pub level: Option<String>,
+
+    /// Show only lines containing this substring.
+    #[arg(long)]
+    pub contains: Option<String>,
+
+    /// Emit machine-readable JSON objects, one per output line.
+    #[arg(long)]
+    pub json: bool,
+}
+
+fn parse_daemon_log_since(raw: &str) -> anyhow::Result<time::OffsetDateTime> {
+    crate::timeutil::parse_relative_time(raw)
+        .and_then(|value| crate::timeutil::parse_rfc3339(&value))
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use crate::cli::Cli;
+
+    #[test]
+    fn daemon_start_wait_poll_ms_rejects_below_minimum() {
+        let args = vec!["ralph", "daemon", "start", "--wait-poll-ms", "10"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_err(),
+            "daemon start --wait-poll-ms should reject values below 50"
+        );
+    }
+
+    #[test]
+    fn daemon_start_empty_poll_ms_rejects_below_minimum() {
+        let args = vec!["ralph", "daemon", "start", "--empty-poll-ms", "10"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_err(),
+            "daemon start --empty-poll-ms should reject values below 50"
+        );
+    }
+
+    #[test]
+    fn daemon_start_wait_poll_ms_accepts_minimum() {
+        let args = vec!["ralph", "daemon", "start", "--wait-poll-ms", "50"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_ok(),
+            "daemon start --wait-poll-ms should accept 50"
+        );
+    }
+
+    #[test]
+    fn daemon_start_empty_poll_ms_accepts_minimum() {
+        let args = vec!["ralph", "daemon", "start", "--empty-poll-ms", "50"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_ok(),
+            "daemon start --empty-poll-ms should accept 50"
+        );
+    }
 }

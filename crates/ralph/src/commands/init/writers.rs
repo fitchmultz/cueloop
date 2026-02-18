@@ -14,7 +14,7 @@
 //! - Existing files are validated before being considered "Valid".
 //! - Atomic writes are used for all file operations.
 
-use crate::contracts::{Config, QueueFile, Task, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskStatus};
 use crate::fsutil;
 use crate::queue;
 use anyhow::{Context, Result};
@@ -77,6 +77,8 @@ pub fn write_queue(
             updated_at: Some(timestamp),
             completed_at: None,
             started_at: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             scheduled_start: None,
             depends_on: vec![],
             blocks: vec![],
@@ -126,12 +128,10 @@ pub fn write_config(
     wizard_answers: Option<&WizardAnswers>,
 ) -> Result<FileInitStatus> {
     if path.exists() && !force {
-        // Validate existing config by trying to parse it
-        let raw =
-            fs::read_to_string(path).with_context(|| format!("read config {}", path.display()))?;
-        serde_json::from_str::<Config>(&raw).with_context(|| {
+        // Validate existing config using load_layer to support JSONC with comments
+        crate::config::load_layer(path).with_context(|| {
             format!(
-                "Config file exists but is invalid JSON: {}. Use --force to overwrite.",
+                "Config file exists but is invalid JSON/JSONC: {}. Use --force to overwrite.",
                 path.display()
             )
         })?;

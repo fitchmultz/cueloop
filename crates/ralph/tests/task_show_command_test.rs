@@ -6,7 +6,7 @@
 //!
 //! Not handled here:
 //! - Exhaustive formatting or color output verification.
-//! - TUI rendering or runner execution paths.
+//! - UI rendering or runner execution paths.
 //!
 //! Invariants/assumptions:
 //! - The Ralph binary is available via CARGO_BIN_EXE_ralph or adjacent to the test binary.
@@ -51,6 +51,8 @@ fn make_task(id: &str, status: TaskStatus, title: &str) -> Task {
         duplicates: None,
         custom_fields: HashMap::new(),
         parent_id: None,
+        estimated_minutes: None,
+        actual_minutes: None,
     }
 }
 

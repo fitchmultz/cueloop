@@ -50,6 +50,17 @@ fn init_sensitive_env_cache() -> HashSet<String> {
 
 /// Returns the cached set of sensitive environment variable values.
 /// Initializes the cache on first call if not already populated.
+#[cfg(test)]
+fn get_sensitive_env_values() -> HashSet<String> {
+    // Tests mutate process environment variables and run in parallel with
+    // unrelated tests. Avoid stale-cache behavior in test builds so each call
+    // reflects current env state deterministically.
+    init_sensitive_env_cache()
+}
+
+/// Returns the cached set of sensitive environment variable values.
+/// Initializes the cache on first call if not already populated.
+#[cfg(not(test))]
 fn get_sensitive_env_values() -> HashSet<String> {
     // Fast path: check if cache is already populated
     if let Ok(guard) = SENSITIVE_ENV_CACHE.read()
@@ -610,14 +621,16 @@ mod tests {
     fn redact_text_leaves_non_sensitive_env_values() {
         let _guard = env_lock().lock().expect("env lock");
         clear_sensitive_env_cache();
-        unsafe { std::env::set_var("PATH", "/usr/bin") };
+        let key = "RALPH_NON_SENSITIVE_ENV";
+        let value = "visible_plain_value";
+        unsafe { std::env::set_var(key, value) };
 
-        let input = "PATH=/usr/bin";
+        let input = "value is visible_plain_value";
         let output = redact_text(input);
 
-        unsafe { std::env::remove_var("PATH") };
+        unsafe { std::env::remove_var(key) };
 
-        assert!(output.contains("/usr/bin"));
+        assert!(output.contains(value));
     }
 
     #[test]
@@ -633,6 +646,22 @@ mod tests {
 
         assert!(!output.contains("supersecretkeyvalue"));
         assert!(output.contains(REDACTED));
+    }
+
+    #[test]
+    fn redact_text_reads_latest_sensitive_env_values_without_manual_cache_clear() {
+        let _guard = env_lock().lock().expect("env lock");
+        clear_sensitive_env_cache();
+        unsafe { std::env::set_var("API_TOKEN", "initialsecretvalue") };
+        let first = redact_text("token is initialsecretvalue");
+        unsafe { std::env::set_var("API_TOKEN", "updatedsecretvalue") };
+        let second = redact_text("token is updatedsecretvalue");
+        unsafe { std::env::remove_var("API_TOKEN") };
+
+        assert!(!first.contains("initialsecretvalue"));
+        assert!(!second.contains("updatedsecretvalue"));
+        assert!(first.contains(REDACTED));
+        assert!(second.contains(REDACTED));
     }
 
     struct MockLogger {

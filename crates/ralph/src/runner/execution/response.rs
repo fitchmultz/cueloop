@@ -11,7 +11,8 @@ use serde_json::Value as JsonValue;
 use crate::contracts::Runner;
 
 use super::builtin_plugins::{
-    CodexResponseParser, CursorResponseParser, KimiResponseParser, OpencodeResponseParser,
+    ClaudeResponseParser, CodexResponseParser, CursorResponseParser, GeminiResponseParser,
+    KimiResponseParser, OpencodeResponseParser, PiResponseParser,
 };
 use super::json::parse_json_line;
 use super::plugin_trait::ResponseParser;
@@ -44,12 +45,6 @@ impl ResponseParserRegistry {
         Self { parsers }
     }
 
-    /// Register a custom parser for a runner.
-    #[allow(dead_code)]
-    pub fn register(&mut self, runner_id: String, parser: Box<dyn ResponseParser>) {
-        self.parsers.insert(runner_id, parser);
-    }
-
     /// Extract the final assistant response from runner output.
     pub fn extract_final_response(&self, runner: &Runner, stdout: &str) -> Option<String> {
         let runner_id = runner.id();
@@ -77,85 +72,7 @@ impl ResponseParserRegistry {
     }
 }
 
-// =============================================================================
-// Runner-Specific Response Parsers
-// =============================================================================
-
-struct ClaudeResponseParser;
-
-impl ResponseParser for ClaudeResponseParser {
-    fn parse(&self, json: &JsonValue, _buffer: &mut String) -> Option<String> {
-        if json.get("type").and_then(|t| t.as_str()) != Some("assistant") {
-            return None;
-        }
-
-        let message = json.get("message")?;
-        let content = message.get("content")?.as_array()?;
-
-        let mut parts = Vec::new();
-        for item in content {
-            if item.get("type").and_then(|t| t.as_str()) != Some("text") {
-                continue;
-            }
-            if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
-                let trimmed = text.trim();
-                if !trimmed.is_empty() {
-                    parts.push(trimmed.to_string());
-                }
-            }
-        }
-
-        if parts.is_empty() {
-            None
-        } else {
-            Some(parts.join("\n"))
-        }
-    }
-
-    fn runner_id(&self) -> &str {
-        "claude"
-    }
-}
-
-struct GeminiResponseParser;
-
-impl ResponseParser for GeminiResponseParser {
-    fn parse(&self, json: &JsonValue, _buffer: &mut String) -> Option<String> {
-        if json.get("type").and_then(|t| t.as_str()) != Some("message") {
-            return None;
-        }
-
-        if json.get("role").and_then(|r| r.as_str()) != Some("assistant") {
-            return None;
-        }
-
-        let content = json.get("content")?;
-        extract_text_content(content)
-    }
-
-    fn runner_id(&self) -> &str {
-        "gemini"
-    }
-}
-
-struct PiResponseParser;
-
-impl ResponseParser for PiResponseParser {
-    fn parse(&self, json: &JsonValue, _buffer: &mut String) -> Option<String> {
-        if json.get("type").and_then(|t| t.as_str()) != Some("result") {
-            return None;
-        }
-
-        let result = json.get("result")?;
-        extract_text_content(result)
-    }
-
-    fn runner_id(&self) -> &str {
-        "pi"
-    }
-}
-
-// CursorResponseParser is now imported from builtin_plugins.rs
+// All response parsers are now imported from builtin_plugins module.
 
 // =============================================================================
 // Legacy Compatibility
@@ -240,41 +157,6 @@ fn try_all_parsers(
 }
 
 // =============================================================================
-// Shared Helpers
-// =============================================================================
-
-/// Extract text content from a JSON value (string or array of text objects).
-fn extract_text_content(content: &JsonValue) -> Option<String> {
-    match content {
-        JsonValue::String(text) => {
-            let trimmed = text.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        }
-        JsonValue::Array(items) => {
-            let mut parts = Vec::new();
-            for item in items {
-                if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
-                    let trimmed = text.trim();
-                    if !trimmed.is_empty() {
-                        parts.push(trimmed.to_string());
-                    }
-                }
-            }
-            if parts.is_empty() {
-                None
-            } else {
-                Some(parts.join("\n"))
-            }
-        }
-        _ => None,
-    }
-}
-
-// =============================================================================
 // Tests
 // =============================================================================
 
@@ -322,24 +204,6 @@ mod tests {
 
         let result = extract_final_assistant_response(stdout);
         assert_eq!(result, Some("Legacy response".to_string()));
-    }
-
-    #[test]
-    fn extract_text_content_handles_string() {
-        let json = JsonValue::String("  hello world  ".to_string());
-        assert_eq!(extract_text_content(&json), Some("hello world".to_string()));
-    }
-
-    #[test]
-    fn extract_text_content_handles_array() {
-        let json = JsonValue::Array(vec![
-            serde_json::json!({"type": "text", "text": "line 1"}),
-            serde_json::json!({"type": "text", "text": "line 2"}),
-        ]);
-        assert_eq!(
-            extract_text_content(&json),
-            Some("line 1\nline 2".to_string())
-        );
     }
 
     #[test]

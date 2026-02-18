@@ -11,7 +11,8 @@
 //! - CLI option resolution (see `runner/execution/cli_options.rs`).
 //!
 //! Assumptions/invariants:
-//! - Codex runner only supports `gpt-5.2-codex` and `gpt-5.2`.
+//! - Codex runner only supports `gpt-5.3-codex`, `gpt-5.3-codex-spark`,
+//!   `gpt-5.3`, `gpt-5.2-codex`, and `gpt-5.2`.
 //! - Non-Codex runners must never "inherit" Codex-only defaults.
 
 use anyhow::{Result, anyhow, bail};
@@ -58,9 +59,11 @@ pub(crate) fn resolve_model_for_runner(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn resolve_model_for_phase(
     runner: &Runner,
     cli_phase_model: Option<Model>,
+    task_phase_model: Option<Model>,
     config_phase_model: Option<Model>,
     cli_global_model: Option<Model>,
     task_model: Option<Model>,
@@ -69,6 +72,9 @@ pub(super) fn resolve_model_for_phase(
 ) -> Model {
     if let Some(model) = cli_phase_model {
         return model;
+    }
+    if let Some(model) = task_phase_model {
+        return normalize_model_for_runner(runner, model);
     }
     if let Some(model) = config_phase_model {
         return normalize_model_for_runner(runner, model);
@@ -93,10 +99,17 @@ pub(super) fn resolve_model_for_phase(
 fn normalize_model_for_runner(runner: &Runner, model: Model) -> Model {
     if runner == &Runner::Codex {
         match model {
-            Model::Gpt53Codex | Model::Gpt53 | Model::Gpt52Codex | Model::Gpt52 => model,
+            Model::Gpt53Codex
+            | Model::Gpt53CodexSpark
+            | Model::Gpt53
+            | Model::Gpt52Codex
+            | Model::Gpt52 => model,
             _ => default_model_for_runner(runner),
         }
-    } else if matches!(model, Model::Gpt53Codex | Model::Gpt52Codex) {
+    } else if matches!(
+        model,
+        Model::Gpt53Codex | Model::Gpt53CodexSpark | Model::Gpt52Codex
+    ) {
         default_model_for_runner(runner)
     } else {
         model
@@ -106,12 +119,16 @@ fn normalize_model_for_runner(runner: &Runner, model: Model) -> Model {
 pub(crate) fn validate_model_for_runner(runner: &Runner, model: &Model) -> Result<()> {
     if runner == &Runner::Codex {
         match model {
-            Model::Gpt53Codex | Model::Gpt53 | Model::Gpt52Codex | Model::Gpt52 => {}
+            Model::Gpt53Codex
+            | Model::Gpt53CodexSpark
+            | Model::Gpt53
+            | Model::Gpt52Codex
+            | Model::Gpt52 => {}
             Model::Glm47 => {
                 bail!("model zai-coding-plan/glm-4.7 is not supported for codex runner")
             }
             Model::Custom(name) => bail!(
-                "model {} is not supported for codex runner (allowed: gpt-5.3-codex, gpt-5.3, gpt-5.2-codex, gpt-5.2)",
+                "model {} is not supported for codex runner (allowed: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2)",
                 name
             ),
         }
@@ -169,6 +186,18 @@ mod tests {
     fn resolve_model_for_runner_replaces_codex_default_for_gemini() {
         let model =
             resolve_model_for_runner(&Runner::Gemini, None, None, Some(Model::Gpt52Codex), false);
+        assert_eq!(model.as_str(), DEFAULT_GEMINI_MODEL);
+    }
+
+    #[test]
+    fn resolve_model_for_runner_replaces_codex_spark_default_for_gemini() {
+        let model = resolve_model_for_runner(
+            &Runner::Gemini,
+            None,
+            None,
+            Some(Model::Gpt53CodexSpark),
+            false,
+        );
         assert_eq!(model.as_str(), DEFAULT_GEMINI_MODEL);
     }
 
@@ -277,8 +306,21 @@ mod tests {
     }
 
     #[test]
+    fn resolve_model_for_runner_no_override_uses_spark_config_model_for_codex() {
+        let model = resolve_model_for_runner(
+            &Runner::Codex,
+            None,
+            None,
+            Some(Model::Gpt53CodexSpark),
+            false,
+        );
+        assert_eq!(model, Model::Gpt53CodexSpark);
+    }
+
+    #[test]
     fn validate_model_for_runner_accepts_gpt53_for_codex() {
         assert!(validate_model_for_runner(&Runner::Codex, &Model::Gpt53Codex).is_ok());
+        assert!(validate_model_for_runner(&Runner::Codex, &Model::Gpt53CodexSpark).is_ok());
         assert!(validate_model_for_runner(&Runner::Codex, &Model::Gpt53).is_ok());
     }
 

@@ -25,9 +25,7 @@ use crate::timeutil;
 
 /// Handle the `field` command (set custom fields).
 pub fn handle_field(args: &TaskFieldArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task field", force)?;
-    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-    let now = timeutil::now_utc_rfc3339()?;
+    let queue_file = queue::load_queue(&resolved.queue_path)?;
 
     // Resolve task IDs from explicit list or tag filter
     let task_ids =
@@ -36,6 +34,40 @@ pub fn handle_field(args: &TaskFieldArgs, force: bool, resolved: &config::Resolv
     if task_ids.is_empty() {
         bail!("No tasks specified. Provide task IDs or use --tag-filter.");
     }
+
+    if args.dry_run {
+        // Preview mode: show diff without saving
+        println!("Dry run - would update {} tasks:", task_ids.len());
+        for task_id in &task_ids {
+            let preview =
+                queue::operations::preview_set_field(&queue_file, task_id, &args.key, &args.value)?;
+            println!("  {}:", preview.task_id);
+            println!("    Field: {}", preview.key);
+            println!(
+                "    Old: {}",
+                preview.old_value.as_deref().unwrap_or("(not set)")
+            );
+            println!("    New: {}", preview.new_value);
+        }
+        println!("\nDry run complete. No changes made.");
+        return Ok(());
+    }
+
+    // Normal mode: acquire lock and apply
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task field", force)?;
+
+    // Create undo snapshot before mutation
+    let task_ids_preview = task_ids.join(", ");
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!(
+            "task field {}={} [{}]",
+            args.key, args.value, task_ids_preview
+        ),
+    )?;
+
+    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+    let now = timeutil::now_utc_rfc3339()?;
 
     let result = queue::operations::batch_set_field(
         &mut queue_file,
@@ -108,6 +140,14 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
 
     // Normal mode: acquire lock and apply
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task edit", force)?;
+
+    // Create undo snapshot before mutation
+    let task_ids_preview = task_ids.join(", ");
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!("task edit {} [{}]", args.field.as_str(), task_ids_preview),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
 
@@ -124,9 +164,11 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
         false, // continue_on_error - default to atomic for CLI
     )?;
 
-    // Run auto-archive sweep for terminal tasks if configured
-    let mut archived_count = 0;
-    if let Some(days) = resolved.config.queue.auto_archive_terminal_after_days {
+    // Run auto-archive sweep for terminal tasks if configured and not disabled
+    let mut archived_task_ids: Vec<String> = Vec::new();
+    if !args.no_auto_archive
+        && let Some(days) = resolved.config.queue.auto_archive_terminal_after_days
+    {
         match queue::maybe_archive_terminal_tasks_in_memory(
             &mut queue_file,
             &mut done_file,
@@ -134,7 +176,7 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
             Some(days),
         ) {
             Ok(report) => {
-                archived_count = report.moved_ids.len();
+                archived_task_ids = report.moved_ids;
             }
             Err(e) => {
                 log::warn!("Auto-archive sweep failed: {}", e);
@@ -143,7 +185,7 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
     }
 
     queue::save_queue(&resolved.queue_path, &queue_file)?;
-    if archived_count > 0 {
+    if !archived_task_ids.is_empty() {
         queue::save_queue(&resolved.done_path, &done_file)?;
     }
 
@@ -153,8 +195,15 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
         false,
     );
 
-    if archived_count > 0 {
-        println!("Auto-archived {} terminal task(s)", archived_count);
+    if !archived_task_ids.is_empty() {
+        // List specific archived task IDs
+        println!(
+            "Auto-archived {} terminal task(s):",
+            archived_task_ids.len()
+        );
+        for task_id in &archived_task_ids {
+            println!("  - {}", task_id);
+        }
     }
 
     Ok(())

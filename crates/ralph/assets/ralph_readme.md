@@ -107,15 +107,14 @@ ralph queue next-id --count 7
 
 ### Execution
 
-- Launch interactive TUI:
-  - `ralph tui`
-  - `ralph tui --read-only`
+- Open the macOS app (macOS-only):
+  - `ralph app open`
+  - `ralph app open --path /Applications/Ralph.app`
 - Run one task:
   - `ralph run one`
   - `ralph run one --phases 3` (full workflow)
   - `ralph run one --quick` (single-phase, shorthand for `--phases 1`)
   - `ralph run one --include-draft`
-  - `ralph run one --update-task`
 - Run multiple tasks:
   - `ralph run loop --max-tasks 0`
   - `ralph run loop --phases 2 --max-tasks 0`
@@ -231,7 +230,7 @@ Defaults via config (`.ralph/config.json` or `~/.config/ralph/config.json`):
 ```
 
 **Allowed models by runner:**
-- **Codex**: `gpt-5.3-codex`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` (only these four)
+- **Codex**: `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` (restricted list)
 - **OpenCode**: arbitrary model IDs (e.g., `zai-coding-plan/glm-4.7`)
 - **Gemini**: `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs
 - **Claude**: `sonnet` (default), `opus`, or arbitrary model IDs
@@ -313,8 +312,6 @@ ralph run one --debug
 ### Task Selection & Execution
 - `--quick`: Shorthand for `--phases 1` (single-pass execution)
 - `--include-draft`: Include draft tasks (`status: draft`) when selecting what to run
-- `--update-task`: Automatically run `ralph task update` before execution
-- `--visualize`: Show workflow flowchart immediately (TUI mode)
 
 ### Runner Configuration
 - `--runner <codex|opencode|gemini|claude|cursor>`: Override runner

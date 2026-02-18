@@ -34,6 +34,9 @@ Common optional fields:
 - `priority`: `critical`, `high`, `medium`, `low` (default: `medium`).
 - `request`: original human request (string or null).
 - `completed_at`: RFC3339 UTC timestamp (required if status is `done` or `rejected`, otherwise optional).
+- `started_at`: RFC3339 UTC timestamp when work started (optional).
+- `estimated_minutes`: Estimated time to complete in minutes (optional, for planning).
+- `actual_minutes`: Actual time spent in minutes (optional, for tracking).
 - `agent`: per-task runner override (see below).
 - `depends_on` (list of task IDs, defaults to empty).
 - `blocks` (list of task IDs, defaults to empty): Tasks that this task blocks. Semantically different from `depends_on`: blocks is "I prevent X" vs depends_on "I need X".
@@ -47,15 +50,20 @@ Common optional fields:
     - These fields are observational (what actually ran) and should not be confused with `agent.runner`/`agent.model` which express intent/override.
 
 Per-task agent overrides:
-- `agent.runner`: `codex`, `opencode`, `gemini`, `claude`, or `cursor`.
+- `agent.runner`: `codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, or `pi` (plugin runners are also supported).
 - `agent.model`: model id string.
 - `agent.model_effort`: `default`, `low`, `medium`, `high`, `xhigh` (Codex only).
+- `agent.phases`: number of phases for this task (`1`, `2`, or `3`).
 - `agent.iterations`: number of iterations for this task (default: 1).
 - `agent.followup_reasoning_effort`: reasoning effort for iterations after the first (Codex only).
+- `agent.phase_overrides.phase1|phase2|phase3.runner`: per-phase runner override.
+- `agent.phase_overrides.phase1|phase2|phase3.model`: per-phase model override.
+- `agent.phase_overrides.phase1|phase2|phase3.reasoning_effort`: per-phase reasoning effort override (Codex only).
 
 Notes:
 - `agent.model_effort: default` (or omitting the field) uses the configured `agent.reasoning_effort`.
 - `agent.followup_reasoning_effort` is ignored for non-Codex runners.
+- Phase resolution precedence is: CLI phase overrides > task phase overrides > config phase overrides > CLI global overrides > task global overrides > config defaults.
 - Breaking change: `agent.reasoning_effort` in task entries is replaced by `agent.model_effort`.
 
 ## Example Task
@@ -79,8 +87,15 @@ Notes:
     "runner": "codex",
     "model": "gpt-5.3-codex",
     "model_effort": "high",
+    "phases": 2,
     "iterations": 2,
-    "followup_reasoning_effort": "low"
+    "followup_reasoning_effort": "low",
+    "phase_overrides": {
+      "phase2": {
+        "runner": "kimi",
+        "model": "kimi-code/kimi-for-coding"
+      }
+    }
   }
 }
 ```
@@ -231,7 +246,9 @@ Validation warnings are logged during queue operations. Review them with `ralph 
 
 ## Task ID Validation
 
-Ralph enforces unique task IDs across both `.ralph/queue.json` and `.ralph/done.json`. Duplicate IDs will cause validation errors.
+Ralph enforces unique task IDs across **both** `.ralph/queue.json` **AND** `.ralph/done.json`. Duplicate IDs will cause validation errors and block most queue operations.
+
+> **Important:** Completed task IDs in `done.json` remain "claimed" and are included in uniqueness checks. Even though tasks are archived, their IDs cannot be reused for new tasks to prevent collisions with historical references.
 
 ### Duplicate Task ID Errors
 
@@ -296,18 +313,17 @@ ralph queue graph --task RQ-0001 --reverse
 ralph queue graph --critical
 ```
 
-### TUI Dependency Overlay
+### macOS App
 
-In the TUI, press `v` to open the dependency graph overlay for the selected task:
+On macOS, you can explore dependencies interactively in the Ralph app:
 
-- Shows upstream dependencies (what this task depends on) by default
-- Press `t` or `Tab` to toggle to downstream view (what this task blocks)
-- Press `c` to toggle critical path highlighting
-- Press `d`, `v`, `Esc`, or `q` to close the overlay
+```bash
+ralph app open
+```
 
 ### Critical Path
 
-The critical path is the longest dependency chain in the graph. Tasks on the critical path are highlighted with `*` in tree/list output and in red in the TUI overlay. Completing critical path tasks unblocks the most downstream work.
+The critical path is the longest dependency chain in the graph. Tasks on the critical path are highlighted with `*` in tree/list output. Completing critical path tasks unblocks the most downstream work.
 - `ralph task` inserts new tasks near the top of the queue:
   - Default: insert at position 0 (top).
   - If the first task is already `doing`, insert at position 1 (immediately below the in-progress task).

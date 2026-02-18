@@ -87,8 +87,12 @@ pub(crate) fn require_task_status(
     done_file: &QueueFile,
     task_id: &str,
 ) -> Result<(TaskStatus, String, bool)> {
-    find_task_status(queue_file, done_file, task_id)
-        .ok_or_else(|| anyhow!("task {task_id} not found in queue or done"))
+    find_task_status(queue_file, done_file, task_id).ok_or_else(|| {
+        anyhow!(
+            "{}",
+            crate::error_messages::task_not_found_in_queue_or_done(task_id)
+        )
+    })
 }
 
 /// Finds a task's status, title, and whether it's in the done file.
@@ -201,6 +205,8 @@ mod tests {
             relates_to: vec![],
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
+            estimated_minutes: None,
+            actual_minutes: None,
             parent_id: None,
         };
 
@@ -232,8 +238,6 @@ mod tests {
                 claude_permission_mode: Some(
                     crate::contracts::ClaudePermissionMode::BypassPermissions,
                 ),
-                update_task_before_run: None,
-                fail_on_prerun_update_error: None,
                 runner_cli: None,
                 phase_overrides: None,
                 instruction_files: None,
@@ -263,11 +267,6 @@ mod tests {
                 max_dependency_depth: Some(10),
                 auto_archive_terminal_after_days: None,
                 aging_thresholds: None,
-            },
-            tui: crate::contracts::TuiConfig {
-                auto_archive_terminal: None,
-                celebrations_enabled: Some(false),
-                stats_enabled: Some(false),
             },
             ..Config::default()
         };

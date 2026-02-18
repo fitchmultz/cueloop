@@ -11,7 +11,7 @@
   - any invariants/assumptions callers must respect
   - (prefer `//!` module docs at the top of the file)
 - Tests: all new/changed behavior must be covered (success + failure modes). Prefer tests near the code.
-- Feature parity: when changing a user-visible workflow, maintain parity between CLI and TUI (or document/justify the divergence explicitly).
+- Feature parity: when changing a user-visible workflow, maintain parity between the CLI and any supported GUI client (or document/justify the divergence explicitly).
 - CLI help: user-facing commands/flags MUST have `--help` text with examples.
 - Secrets: never commit or print secrets; redact runner output before copying into documentation.
 
@@ -25,7 +25,7 @@ The Makefile is the contract; keep these targets working:
 
 - `make ci`: local CI gate (see the `ci:` target in your `Makefile` for exact ordering). Do not remove `install`.
 - `make install`: install binary to `~/.local/bin/` (or a writable fallback).
-- `make test`: runs workspace tests + doc tests and builds a release binary in an isolated temp dir.
+- `make test`: runs cargo-nextest for workspace tests (fallback to `cargo test` if nextest is missing), then `cargo test --doc` in isolated temp dirs.
 - `make lint`: `cargo clippy --workspace --all-targets -- -D warnings`
 - `make format`: `cargo fmt --all`
 - `make type-check`: `cargo check --workspace --all-targets`

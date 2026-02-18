@@ -15,7 +15,7 @@ pub(crate) use crate::commands::run::execution_timings::RunExecutionTimings;
 
 mod phase1;
 mod phase2;
-mod phase3;
+pub(crate) mod phase3;
 mod shared;
 mod single;
 
@@ -24,8 +24,7 @@ mod tests;
 
 pub use phase1::execute_phase1_planning;
 pub use phase2::execute_phase2_implementation;
-pub(crate) use phase3::finalize_phase3_if_done;
-pub use phase3::{apply_phase3_completion_signal, execute_phase3_review};
+pub use phase3::execute_phase3_review;
 pub use single::execute_single_phase;
 
 /// Represents the type of phase being executed.
@@ -50,7 +49,7 @@ pub enum PhaseType {
 pub enum PostRunMode {
     /// Standard post-run supervision (queue/done updates + git finalization).
     Normal,
-    /// Parallel worker supervision (no queue/done mutations; completion signals only).
+    /// Parallel worker supervision (no queue/done mutations; merge-agent handles finalization).
     ParallelWorker,
 }
 

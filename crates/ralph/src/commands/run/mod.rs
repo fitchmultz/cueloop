@@ -1,7 +1,7 @@
 //! Run command entrypoints and module wiring.
 //!
 //! Responsibilities:
-//! - Define the public `commands::run` API used by CLI/TUI.
+//! - Define the public `commands::run` API used by CLI and UI clients.
 //! - Re-export stable types used across the crate (e.g., `PhaseType`).
 //!
 //! Not handled here:
@@ -21,6 +21,7 @@ mod execution_history_cli;
 mod execution_timings;
 mod iteration;
 mod logging;
+mod merge_agent;
 pub mod parallel;
 mod phases;
 mod queue_lock;
@@ -30,34 +31,18 @@ mod run_session;
 mod selection;
 mod supervision;
 
-// Re-export types that are used by other modules within commands::run.
-// These are used by the tests module and other internal modules.
-#[allow(unused_imports)]
-pub(crate) use context::{mark_task_doing, task_context_for_prompt};
-#[allow(unused_imports)]
-pub(crate) use execution_timings::RunExecutionTimings;
-#[allow(unused_imports)]
-pub(crate) use iteration::{apply_followup_reasoning_effort, resolve_iteration_settings};
-#[allow(unused_imports)]
-pub(crate) use run_session::{create_session_for_task, validate_resumed_task};
-#[allow(unused_imports)]
-pub(crate) use selection::select_run_one_task_index;
-#[allow(unused_imports)]
-pub(crate) use supervision::{PushPolicy, post_run_supervise, post_run_supervise_parallel_worker};
-
-// Preserve existing `commands::run` unit tests which call phase 3 helpers directly.
-#[allow(unused_imports)]
-pub(crate) use phases::{apply_phase3_completion_signal, finalize_phase3_if_done};
+// Re-export types that are used by other modules via crate::commands::run::* paths.
+// These are used by phase modules.
+pub(crate) use supervision::{post_run_supervise, post_run_supervise_parallel_worker};
 
 // Re-export PhaseType for use by runner module.
 pub(crate) use phases::PhaseType;
 
 pub use crate::agent::AgentOverrides;
 
-// Re-export parallel state types for TUI overlay
+// Re-export parallel state types for UI clients.
 pub use parallel::state::{
-    ParallelFinishedWithoutPrRecord, ParallelNoPrReason, ParallelPrLifecycle, ParallelPrRecord,
-    ParallelStateFile, load_state, state_file_path,
+    ParallelPrLifecycle, ParallelPrRecord, ParallelStateFile, load_state, state_file_path,
 };
 
 // Re-export run loop types
@@ -70,6 +55,9 @@ pub use run_one::{
 
 // Re-export dry-run functions
 pub use dry_run::{dry_run_loop, dry_run_one};
+
+// Re-export merge-agent types and handler
+pub use merge_agent::{MergeAgentError, MergeAgentResult, handle_merge_agent};
 
 #[cfg(test)]
 fn resolve_run_agent_settings(

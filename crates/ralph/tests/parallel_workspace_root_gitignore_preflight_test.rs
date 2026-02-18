@@ -102,10 +102,7 @@ fn parallel_run_fails_fast_when_repo_local_workspace_root_not_ignored() -> Resul
     // Configure a repo-local workspace root that is NOT gitignored.
     set_workspace_root(dir.path(), ".ralph/workspaces")?;
 
-    let output = Command::new(test_support::ralph_bin())
-        .current_dir(dir.path())
-        .env_remove("RUST_LOG")
-        .env("RALPH_REPO_ROOT_OVERRIDE", dir.path())
+    let output = test_support::ralph_command(dir.path())
         .args(["run", "loop", "--parallel", "2", "--force"])
         .output()?;
 
@@ -169,8 +166,19 @@ fn parallel_run_not_blocked_by_workspace_root_preflight_when_ignored() -> Result
         std::fs::write(&gitignore_path, existing)?;
     }
 
-    let (status, stdout, stderr) =
-        test_support::run_in_dir(dir.path(), &["run", "loop", "--parallel", "2", "--force"]);
+    // Use --max-tasks 1 to ensure the parallel loop terminates.
+    let (status, stdout, stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "run",
+            "loop",
+            "--parallel",
+            "2",
+            "--force",
+            "--max-tasks",
+            "1",
+        ],
+    );
     let combined = format!("{stdout}{stderr}");
 
     assert!(

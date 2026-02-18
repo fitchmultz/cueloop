@@ -135,6 +135,10 @@ Phase 2 is the **doing phase**. The AI agent implements the plan from Phase 1 (o
 5. Run CI gate
 6. Stop BEFORE task completion (supervision point)
 
+**No-Deferrals Policy (Phase 2)**:
+- Phase 2 is responsible for fully executing the Phase 1 plan and closing any newly discovered follow-ups, inconsistencies, or test gaps it finds along the way.
+- Only true blockers may remain at handoff (this should be rare). If blocked, Phase 2 must list explicit remediation steps (commands/files/expected outcome).
+
 ### CI Gate Integration
 
 Phase 2 includes mandatory CI validation (unless disabled):
@@ -181,7 +185,7 @@ This design provides a **supervision checkpoint** where you can:
 
 ### Phase 2 Final Response Cache
 
-The runner's final response is cached at `.ralph/cache/phase2_final_response/<TASK_ID>.md` for Phase 3 reference.
+The runner's final response is cached at `.ralph/cache/phase2_final/<TASK_ID>.md` for Phase 3 reference.
 
 ## Phase 3: Review + Completion
 
@@ -224,7 +228,7 @@ ralph task reject <TASK_ID> [--note "rejection reason"]
 **Enforcement**:
 - Phase 3 loops until the task is archived to `done.json`
 - If task is not done/rejected, user is prompted based on `git_revert_mode`
-- With `git_commit_push_enabled=true`, rejected tasks only allow dirty files in `.ralph/queue.json` and `.ralph/done.json`
+- With `git_commit_push_enabled=true`, rejected tasks allow dirty files in `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, `.ralph/config.{json,jsonc}`, and `.ralph/cache/`
 
 ### Code Review Context
 
@@ -236,10 +240,12 @@ Phase 3 generates a code review prompt that includes:
 
 ### Completion Signals
 
-When the runner marks a task done/rejected, Ralph writes a completion signal:
+When the runner marks a task done/rejected in **sequential mode**, Ralph writes a completion signal:
 - Location: `.ralph/cache/completions/<TASK_ID>.json`
 - Contains: status, notes, runner_used, model_used
 - Used for: Analytics, webhook events, custom fields patching
+
+**Note:** In parallel mode, task finalization is handled by the merge-agent subprocess. No completion-signal file is produced by parallel workers.
 
 ## Single-Phase Mode
 

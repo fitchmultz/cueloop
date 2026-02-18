@@ -24,7 +24,9 @@ Ralph supports JSONC (JSON with Comments) for configuration and queue files. Thi
 - `.json` - Standard JSON (default, backward compatible)
 - `.jsonc` - JSON with Comments support
 
-Ralph can read both `.json` and `.jsonc` files regardless of extension. When writing files, Ralph always outputs standard JSON format (comments are not preserved on rewrite).
+Ralph can read both `.json` and `.jsonc` files regardless of extension. When both files exist, `.json` takes precedence over `.jsonc` (e.g., `config.json` is used instead of `config.jsonc` if both are present).
+
+When writing files, Ralph always outputs standard JSON format (comments are not preserved on rewrite).
 
 ### Example JSONC Config
 
@@ -61,7 +63,6 @@ Supported fields:
 - `runner`: `codex`, `opencode`, `gemini`, `claude`, or `cursor`.
 - `model`: default model id (string).
 - `phases`: number of phases (1, 2, or 3).
-- `update_task_before_run`: if `true`, Ralph runs `ralph task update <TASK-ID>` once per task immediately before execution begins (default: `false`). This updates task fields (scope, evidence, plan, notes, tags, depends_on) based on current repository state, priming agents with better task information. Runs only once per task, before the first iteration (not before subsequent iterations if `iterations > 1`). Can also be enabled via CLI flag: `--update-task`.
 - `reasoning_effort`: `low`, `medium`, `high`, `xhigh` (Codex only).
 - `iterations`: number of iterations to run per task (default: 1).
 - `followup_reasoning_effort`: reasoning effort for iterations after the first (Codex only).
@@ -69,7 +70,7 @@ Supported fields:
 - `repoprompt_tool_injection`: inject RepoPrompt tooling reminders into prompts.
 - `git_revert_mode`: `ask`, `enabled`, or `disabled`.
 - `git_commit_push_enabled`: enable or disable automatic git commit/push after successful runs (default: `true`).
-  **Safety warning:** When enabled, Ralph will automatically push changes to the remote repository. This action is irreversible. The TUI will prompt for confirmation when enabling this setting.
+  **Safety warning:** When enabled, Ralph will automatically push changes to the remote repository. This action is irreversible. Ralph will prompt for confirmation when enabling this setting.
   **Parallel workers:** This setting is inherited by parallel workers. When disabled, parallel PR automation (`auto_pr`, `auto_merge`, `draft_on_failure`) is skipped because PRs require pushed commits.
 - `session_timeout_hours`: session timeout in hours for crash recovery (default: `24`). Sessions older than this threshold are considered stale and require explicit user confirmation to resume. Set to a higher value if you want to allow resuming sessions after longer periods.
 - `runner_retry`: runner invocation retry/backoff configuration for transient failure handling. See [`agent.runner_retry`](#agentrunner_retry) below.
@@ -93,6 +94,7 @@ Supported fields:
   ```
 
 Notes:
+- Multi-phase runs (`phases >= 2`) always refresh task fields (`scope,evidence,plan,notes,tags,depends_on`) at the start of Phase 1, then generate the plan in that same Phase 1 runner session. This behavior is built in and not configurable.
 - `followup_reasoning_effort` is ignored for non-Codex runners.
 - Breaking change: `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
 - CI gate auto-retry: When enabled, Ralph automatically sends a strict compliance message and retries up to 2 times on CI failure during Phase 2, Phase 3, or single-phase execution. This behavior is not configurable; after 2 automatic retries, the user is prompted via the configured `git_revert_mode`. Post-run supervision prompts immediately on CI failure.
@@ -209,7 +211,7 @@ Runner invocation retry/backoff configuration for transient failure handling. Co
 
 Notes:
 - Retries only occur when the repository is clean (or dirty only in Ralph-allowed paths like `.ralph/`), or when `git_revert_mode` is `enabled` for auto-revert.
-- The TUI displays retry attempt counts and backoff delays via `RALPH_OPERATION:` markers in runner output.
+- Retry attempt counts and backoff delays are emitted via `RALPH_OPERATION:` markers in runner output.
 - To disable retry entirely, set `max_attempts: 1`.
 
 ### `agent.phase_overrides`
@@ -253,12 +255,11 @@ Each phase config can specify:
 }
 ```
 
-**Precedence (per phase):** CLI phase flags > config phase override (`agent.phase_overrides.phaseN.*`) > CLI global overrides > task overrides (`task.agent.*`) > config defaults (`agent.*`) > code defaults
+**Precedence (per phase):** CLI phase flags > task phase override (`task.agent.phase_overrides.phaseN.*`) > config phase override (`agent.phase_overrides.phaseN.*`) > CLI global overrides > task global overrides (`task.agent.*`) > config defaults (`agent.*`) > code defaults
 
 ## Parallel Configuration
 
-`parallel` controls the CLI-only parallel execution mode for `ralph run loop`. The TUI does not
-support parallel runs.
+`parallel` controls the CLI-only parallel execution mode for `ralph run loop`.
 
 Key fields:
 - `workers`: number of concurrent workers (must be `>= 2`). Default: `null` (disabled unless CLI
@@ -341,7 +342,7 @@ rejected during parallel preflight. Prefer repo-relative paths like `.ralph/queu
 The `auto_archive_terminal_after_days` setting provides a queue-level sweep that archives terminal tasks (done/rejected) automatically:
 
 - **Not set / `null`** (default): Disabled; no automatic sweep occurs.
-- **`0`**: Archive immediately when the sweep runs (during TUI startup/reload and after CLI task edit).
+- **`0`**: Archive immediately when the sweep runs (during macOS app startup/reload and after CLI task edit).
 - **`N > 0`**: Archive only when `completed_at` is at least `N` days old.
 
 **Safety behavior:** When `N > 0`, tasks with missing, blank, or invalid `completed_at` timestamps are **not moved**. This ensures only tasks with valid completion timestamps are archived automatically.
@@ -370,12 +371,11 @@ Immediate archive (archive all terminal tasks on sweep):
 }
 ```
 
-**Note:** This is distinct from `tui.auto_archive_terminal`, which controls per-status-change behavior in the TUI (see TUI Task Management documentation). The queue-level sweep runs:
-- When the TUI starts or reloads queue files
+The queue-level sweep runs:
+- When the macOS app starts or reloads queue files
 - After `ralph task edit` operations (CLI)
 
 For immediate manual archiving, use `ralph queue archive`.
-```
 
 ### Aging Thresholds
 
@@ -416,14 +416,14 @@ Example configuration:
 3. Global config (`~/.config/ralph/config.json`)
 4. Schema defaults (`schemas/config.schema.json`)
 
-## TUI Safety Warnings
+## App Safety Warnings (macOS)
 
-When using the TUI config editor (`e` key in the task list), certain high-risk settings display inline warnings:
+When editing configuration in the macOS app, certain high-risk settings display inline warnings:
 
-- **Danger level** (⚠): Settings like `git_commit_push_enabled` that can cause irreversible actions. The TUI will prompt for confirmation before enabling these.
+- **Danger level** (⚠): Settings like `git_commit_push_enabled` that can cause irreversible actions. The app prompts for confirmation before enabling these.
 - **Warning level** (ℹ): Settings like `approval_mode` and `claude_permission_mode` that reduce safety checks. These show descriptive text but don't require confirmation.
 
-The confirmation dialog for Danger-level settings explains the risk and requires an explicit `y` keypress to proceed. Pressing `n` or `Esc` cancels the change.
+The confirmation dialog for Danger-level settings explains the risk and requires an explicit confirmation to proceed.
 
 ## Notification Configuration
 
@@ -434,7 +434,7 @@ Supported fields:
 - `notify_on_complete`: enable notifications on task completion (default: `true`).
 - `notify_on_fail`: enable notifications on task failure (default: `true`).
 - `notify_on_loop_complete`: enable notifications when loop mode finishes (default: `true`).
-- `suppress_when_active`: suppress notifications when TUI is active (default: `true`).
+- `suppress_when_active`: suppress notifications when the macOS app is active (default: `true`).
 - `sound_enabled`: play sound with notification (default: `false`).
 - `sound_path`: custom sound file path (optional, platform-specific).
 - `timeout_ms`: notification display duration in milliseconds (default: `8000`, range: `1000-60000`).
@@ -458,6 +458,7 @@ Supported fields:
   - **Task events**: `task_created`, `task_started`, `task_completed`, `task_failed`, `task_status_changed`
   - **Loop events**: `loop_started`, `loop_stopped` (opt-in)
   - **Phase events**: `phase_started`, `phase_completed` (opt-in)
+  - **Queue event**: `queue_unblocked` (opt-in)
   - Use `["*"]` to subscribe to all events including new ones
 - `timeout_secs`: request timeout in seconds (default: `30`, max: `300`).
 - `retry_count`: number of retry attempts for failed deliveries (default: `3`, max: `10`).
@@ -498,6 +499,7 @@ Webhooks are delivered **asynchronously** by a background worker thread:
 - **Non-blocking**: The `send_webhook` call returns immediately after enqueueing.
 - **Order preservation**: Webhooks are delivered in FIFO order within the constraints of the backpressure policy.
 - **Failure handling**: Failed deliveries are retried (per `retry_count` and `retry_backoff_ms`).
+- **Failure persistence**: Final delivery failures are persisted to `.ralph/cache/webhooks/failures.json` (bounded to the most recent 200 records).
 - **Worker lifecycle**: The background worker starts on first webhook send and shuts down when the process exits.
 
 Example:
@@ -623,7 +625,19 @@ ralph webhook test --event task_created --print-json --pretty
 
 # Test with custom URL
 ralph webhook test --url https://example.com/webhook
+
+# Inspect queue/failure diagnostics
+ralph webhook status
+ralph webhook status --format json
+
+# Replay failed deliveries safely
+ralph webhook replay --dry-run --id wf-1700000000-1
+ralph webhook replay --event task_completed --limit 5
 ```
+
+Non-dry-run replay (`ralph webhook replay` without `--dry-run`) requires:
+- `agent.webhook.enabled: true`
+- `agent.webhook.url` set to a non-empty endpoint URL
 
 - **Windows**: Uses toast notifications; custom sounds play via `winmm.dll` PlaySound for `.wav` files, PowerShell MediaPlayer fallback for other formats.
 

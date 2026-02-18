@@ -28,91 +28,91 @@ use crate::timeutil;
 use super::shared::{avg_duration, format_duration};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
-struct StatsSummary {
-    total: usize,
-    done: usize,
-    rejected: usize,
-    terminal: usize,
-    active: usize,
-    terminal_rate: f64,
+pub(crate) struct StatsSummary {
+    pub total: usize,
+    pub done: usize,
+    pub rejected: usize,
+    pub terminal: usize,
+    pub active: usize,
+    pub terminal_rate: f64,
 }
 
 #[derive(Debug, Serialize)]
-struct StatsFilters {
-    tags: Vec<String>,
+pub(crate) struct StatsFilters {
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-struct DurationStats {
-    count: usize,
-    average_seconds: i64,
-    median_seconds: i64,
-    average_human: String,
-    median_human: String,
+pub(crate) struct DurationStats {
+    pub count: usize,
+    pub average_seconds: i64,
+    pub median_seconds: i64,
+    pub average_human: String,
+    pub median_human: String,
 }
 
 #[derive(Debug, Serialize)]
-struct TimeTrackingStats {
-    lead_time: Option<DurationStats>,
-    work_time: Option<DurationStats>,
-    start_lag: Option<DurationStats>,
+pub(crate) struct TimeTrackingStats {
+    pub lead_time: Option<DurationStats>,
+    pub work_time: Option<DurationStats>,
+    pub start_lag: Option<DurationStats>,
 }
 
 #[derive(Debug, Serialize)]
-struct VelocityBreakdownEntry {
-    key: String,
-    last_7_days: u32,
-    last_30_days: u32,
+pub(crate) struct VelocityBreakdownEntry {
+    pub key: String,
+    pub last_7_days: u32,
+    pub last_30_days: u32,
 }
 
 #[derive(Debug, Serialize)]
-struct VelocityBreakdowns {
-    by_tag: Vec<VelocityBreakdownEntry>,
-    by_runner: Vec<VelocityBreakdownEntry>,
+pub(crate) struct VelocityBreakdowns {
+    pub by_tag: Vec<VelocityBreakdownEntry>,
+    pub by_runner: Vec<VelocityBreakdownEntry>,
 }
 
 #[derive(Debug, Serialize)]
-struct SlowGroupEntry {
-    key: String,
-    count: usize,
-    median_seconds: i64,
-    median_human: String,
+pub(crate) struct SlowGroupEntry {
+    pub key: String,
+    pub count: usize,
+    pub median_seconds: i64,
+    pub median_human: String,
 }
 
 #[derive(Debug, Serialize)]
-struct SlowGroups {
-    by_tag: Vec<SlowGroupEntry>,
-    by_runner: Vec<SlowGroupEntry>,
+pub(crate) struct SlowGroups {
+    pub by_tag: Vec<SlowGroupEntry>,
+    pub by_runner: Vec<SlowGroupEntry>,
 }
 
 #[derive(Debug, Serialize)]
-struct TagBreakdown {
-    tag: String,
-    count: usize,
-    percentage: f64,
+pub(crate) struct TagBreakdown {
+    pub tag: String,
+    pub count: usize,
+    pub percentage: f64,
 }
 
 #[derive(Debug, Serialize)]
-struct ExecutionHistoryEtaReport {
-    runner: String,
-    model: String,
-    phase_count: u8,
-    sample_count: usize,
-    estimated_total_seconds: u64,
-    estimated_total_human: String,
-    confidence: String,
+pub(crate) struct ExecutionHistoryEtaReport {
+    pub runner: String,
+    pub model: String,
+    pub phase_count: u8,
+    pub sample_count: usize,
+    pub estimated_total_seconds: u64,
+    pub estimated_total_human: String,
+    pub confidence: String,
 }
 
 #[derive(Debug, Serialize)]
-struct StatsReport {
-    summary: StatsSummary,
-    durations: Option<DurationStats>,
-    time_tracking: TimeTrackingStats,
-    velocity: VelocityBreakdowns,
-    slow_groups: SlowGroups,
-    tag_breakdown: Vec<TagBreakdown>,
-    filters: StatsFilters,
-    execution_history_eta: Option<ExecutionHistoryEtaReport>,
+pub(crate) struct StatsReport {
+    pub summary: StatsSummary,
+    pub durations: Option<DurationStats>,
+    pub time_tracking: TimeTrackingStats,
+    pub velocity: VelocityBreakdowns,
+    pub slow_groups: SlowGroups,
+    pub tag_breakdown: Vec<TagBreakdown>,
+    pub filters: StatsFilters,
+    pub execution_history_eta: Option<ExecutionHistoryEtaReport>,
 }
 
 /// Extract the runner group key for a task, preferring observational data over intent.
@@ -339,7 +339,11 @@ fn calc_slow_groups(tasks: &[&Task]) -> SlowGroups {
     SlowGroups { by_tag, by_runner }
 }
 
-fn build_stats_report(queue: &QueueFile, done: Option<&QueueFile>, tags: &[String]) -> StatsReport {
+pub(crate) fn build_stats_report(
+    queue: &QueueFile,
+    done: Option<&QueueFile>,
+    tags: &[String],
+) -> StatsReport {
     let all_tasks = collect_all_tasks(queue, done);
     let filtered_tasks = filter_tasks_by_tags(all_tasks, tags);
 
@@ -665,6 +669,8 @@ mod tests {
             completed_at: None,
             started_at: None,
             scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
             depends_on: vec![],
             blocks: vec![],
             relates_to: vec![],
@@ -683,9 +689,11 @@ mod tests {
             runner: Some(crate::contracts::Runner::Claude),
             model: None,
             model_effort: crate::contracts::ModelEffort::Default,
+            phases: None,
             iterations: None,
             followup_reasoning_effort: None,
             runner_cli: None,
+            phase_overrides: None,
         });
 
         assert_eq!(task_runner_group_key(&task), Some("codex".to_string()));
@@ -698,9 +706,11 @@ mod tests {
             runner: Some(crate::contracts::Runner::Claude),
             model: None,
             model_effort: crate::contracts::ModelEffort::Default,
+            phases: None,
             iterations: None,
             followup_reasoning_effort: None,
             runner_cli: None,
+            phase_overrides: None,
         });
 
         assert_eq!(task_runner_group_key(&task), Some("claude".to_string()));

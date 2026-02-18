@@ -386,10 +386,14 @@ You can override the default templates by creating files in `.ralph/prompts/`:
 ```
 .ralph/
   prompts/
-    scan.md                 # Overrides all scan modes (if used)
-    scan_maintenance.md     # Overrides maintenance mode
-    scan_innovation.md      # Overrides innovation mode
+    scan_general_v2.md        # General scan mode (v2)
+    scan_maintenance_v1.md    # Maintenance scan mode (v1)
+    scan_maintenance_v2.md    # Maintenance scan mode (v2)
+    scan_innovation_v1.md     # Innovation scan mode (v1)
+    scan_innovation_v2.md     # Innovation scan mode (v2)
 ```
+
+Use the filename that matches the active `scan_prompt_version` and scan mode.
 
 **Important**: Custom templates must preserve required placeholders:
 - `{{USER_FOCUS}}` - The focus prompt (normalized to "(none)" if empty)
@@ -440,6 +444,10 @@ After a successful scan, the agent:
    - Sets `created_at` and `updated_at` timestamps
    - Adds appropriate tags (`maintenance`, `innovation`, or `scan`)
 
+4. **Validates queue integrity**
+   - Ensures edited queue passes `ralph queue validate`
+   - Rejects invalid task relationships or malformed fields
+
 ### Task Fields Set by Scan
 
 | Field | Value |
@@ -453,16 +461,15 @@ After a successful scan, the agent:
 | `scope` | Relevant file paths and commands |
 | `evidence` | Concrete findings from codebase |
 | `plan` | Specific steps to resolve |
-| `request` | `"scan finding"` or mode-specific variant |
+| `request` | `"scan: <focus>"` (backfilled when missing) |
 | `custom_fields.scan_agent` | `"scan-maintenance"`, `"scan-innovation"`, or `"scan-general"` |
 
 ### Minimum Task Generation
 
-**INTENDED BEHAVIOR**: The scan should generate a minimum number of meaningful tasks:
-- V1 templates: Minimum 7 tasks
-- V2 templates: Minimum 10 tasks
-
-**CURRENTLY IMPLEMENTED BEHAVIOR**: V2 templates include explicit language: "You MUST generate at least 10 new tasks with no upper limit."
+**INTENDED AND IMPLEMENTED BEHAVIOR**:
+- V1 templates: Minimum 7 tasks.
+- V2 templates: Target 10+ meaningful tasks when supported by evidence.
+- In V2, quality beats quota: if fewer than 10 verifiable findings exist, the scan should return fewer and explain why.
 
 ### Deduplication
 

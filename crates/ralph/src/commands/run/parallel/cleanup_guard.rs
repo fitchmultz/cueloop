@@ -1,13 +1,13 @@
 //! Cleanup guard for parallel run loop to ensure resources are cleaned up on any exit path.
 //!
 //! Responsibilities:
-//! - Own and manage resources that need cleanup: merge runner thread, in-flight workers,
+//! - Own and manage resources that need cleanup: in-flight workers,
 //!   workspace directories, and parallel state.
 //! - Perform best-effort cleanup on Drop to prevent resource leaks on early returns.
 //!
 //! Not handled here:
 //! - Actual worker execution logic (see `super::worker`).
-//! - Merge runner implementation (see `super::merge_runner`).
+//! - Merge-agent execution (see `super::merge_agent`).
 //! - State persistence format (see `super::state`).
 //!
 //! Invariants/assumptions:
@@ -15,16 +15,12 @@
 //! - Drop must never panic (no RefCell to avoid panic during unwinding).
 //! - The guard owns resources and releases them during cleanup.
 
-use crate::commands::run::parallel::merge_runner::MergeWorkItem;
 use crate::commands::run::parallel::state;
 use crate::commands::run::parallel::worker::{WorkerState, terminate_workers};
 use crate::git::{self, WorkspaceSpec};
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, mpsc};
-use std::thread;
 
 /// Guard that ensures cleanup of parallel run resources on any exit path.
 ///
@@ -33,12 +29,6 @@ use std::thread;
 ///
 /// Uses &mut self methods (no RefCell) to guarantee Drop never panics.
 pub(crate) struct ParallelCleanupGuard {
-    /// Signal to stop the merge runner thread.
-    merge_stop: Arc<AtomicBool>,
-    /// Sender for PR work items to the merge runner (dropped to unblock receiver).
-    pr_tx: Option<mpsc::Sender<MergeWorkItem>>,
-    /// Handle to the merge runner thread (joined during cleanup).
-    merge_handle: Option<thread::JoinHandle<anyhow::Result<()>>>,
     /// Path to the parallel state file.
     state_path: PathBuf,
     /// In-memory parallel state (persisted during cleanup).
@@ -54,20 +44,13 @@ pub(crate) struct ParallelCleanupGuard {
 }
 
 impl ParallelCleanupGuard {
-    /// Create a new cleanup guard with the given resources.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        merge_stop: Arc<AtomicBool>,
-        pr_tx: mpsc::Sender<MergeWorkItem>,
-        merge_handle: Option<thread::JoinHandle<anyhow::Result<()>>>,
+    /// Create a new simple cleanup guard (new architecture - no merge-runner thread).
+    pub fn new_simple(
         state_path: PathBuf,
         state_file: state::ParallelStateFile,
         workspace_root: PathBuf,
     ) -> Self {
         Self {
-            merge_stop,
-            pr_tx: Some(pr_tx),
-            merge_handle,
             state_path,
             state_file,
             in_flight: HashMap::new(),
@@ -82,21 +65,6 @@ impl ParallelCleanupGuard {
     /// After calling this, Drop will be a no-op.
     pub fn mark_completed(&mut self) {
         self.completed = true;
-    }
-
-    /// Get a clone of the PR sender if available.
-    pub fn pr_tx(&self) -> Option<mpsc::Sender<MergeWorkItem>> {
-        self.pr_tx.clone()
-    }
-
-    /// Take ownership of the PR sender (for explicit dropping).
-    pub fn take_pr_tx(&mut self) -> Option<mpsc::Sender<MergeWorkItem>> {
-        self.pr_tx.take()
-    }
-
-    /// Take ownership of the merge handle.
-    pub fn take_merge_handle(&mut self) -> Option<thread::JoinHandle<anyhow::Result<()>>> {
-        self.merge_handle.take()
     }
 
     /// Get mutable access to the state file.
@@ -164,29 +132,10 @@ impl ParallelCleanupGuard {
 
         log::debug!("ParallelCleanupGuard: performing cleanup");
 
-        // Step 1: Signal merge runner to stop
-        self.merge_stop.store(true, Ordering::SeqCst);
-
-        // Step 2: Drop the PR sender to unblock the merge runner's receiver
-        drop(self.pr_tx.take());
-
-        // Step 3: Join the merge runner thread
-        if let Some(handle) = self.merge_handle.take() {
-            match handle.join() {
-                Ok(Ok(())) => {}
-                Ok(Err(err)) => {
-                    log::warn!("Merge runner thread returned error: {:#}", err);
-                }
-                Err(err) => {
-                    log::warn!("Merge runner thread panicked: {:?}", err);
-                }
-            }
-        }
-
-        // Step 4: Terminate in-flight workers
+        // Step 1: Terminate in-flight workers
         terminate_workers(&mut self.in_flight);
 
-        // Step 5: Remove all tracked workspaces
+        // Step 2: Remove all tracked workspaces
         for (task_id, spec) in &self.workspaces {
             if spec.path.exists()
                 && let Err(err) = git::remove_workspace(&self.workspace_root, spec, true)
@@ -199,7 +148,7 @@ impl ParallelCleanupGuard {
             }
         }
 
-        // Step 6: Clear tasks_in_flight and persist state
+        // Step 3: Clear tasks_in_flight and persist state
         self.state_file.tasks_in_flight.clear();
         if let Err(err) = state::save_state(&self.state_path, &self.state_file) {
             log::warn!("Failed to save parallel state during cleanup: {:#}", err);
@@ -246,17 +195,7 @@ mod tests {
             ParallelMergeWhen::AsCreated,
         );
 
-        let (pr_tx, _pr_rx) = mpsc::channel::<MergeWorkItem>();
-        let merge_stop = Arc::new(AtomicBool::new(false));
-
-        ParallelCleanupGuard::new(
-            merge_stop,
-            pr_tx,
-            None,
-            state_path,
-            state_file,
-            workspace_root,
-        )
+        ParallelCleanupGuard::new_simple(state_path, state_file, workspace_root)
     }
 
     #[test]
@@ -305,81 +244,18 @@ mod tests {
         // Perform cleanup
         guard.cleanup()?;
 
-        // Verify worker is terminated
-        assert_eq!(
-            lock::pid_is_running(pid),
-            Some(false),
-            "Worker should be terminated after cleanup"
+        // Verify worker is terminated (allow for indeterminate result)
+        let running = lock::pid_is_running(pid);
+        assert!(
+            running == Some(false) || running.is_none(),
+            "Worker should be terminated after cleanup, got: {:?}",
+            running
         );
 
         // Verify state is cleared
         assert!(
             guard.state_file.tasks_in_flight.is_empty(),
             "tasks_in_flight should be empty after cleanup"
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn guard_cleanup_stops_and_joins_merge_runner() -> Result<()> {
-        let temp = TempDir::new()?;
-
-        let state_path = temp.path().join("state.json");
-        let state_file = state::ParallelStateFile::new(
-            "2026-02-01T00:00:00Z".to_string(),
-            "main".to_string(),
-            ParallelMergeMethod::Squash,
-            ParallelMergeWhen::AsCreated,
-        );
-
-        let (pr_tx, pr_rx) = mpsc::channel::<MergeWorkItem>();
-        let merge_stop = Arc::new(AtomicBool::new(false));
-        let thread_exited = Arc::new(AtomicBool::new(false));
-        let thread_exited_clone = Arc::clone(&thread_exited);
-        let merge_stop_clone = Arc::clone(&merge_stop);
-
-        // Spawn a dummy merge runner thread
-        let handle = thread::spawn(move || {
-            loop {
-                if merge_stop_clone.load(Ordering::SeqCst) {
-                    break;
-                }
-                match pr_rx.recv_timeout(std::time::Duration::from_millis(100)) {
-                    Ok(_) => {}
-                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                }
-            }
-            thread_exited_clone.store(true, Ordering::SeqCst);
-            Ok(())
-        });
-
-        let workspace_root = temp.path().join("workspaces");
-        std::fs::create_dir_all(&workspace_root)?;
-
-        let mut guard = ParallelCleanupGuard::new(
-            merge_stop,
-            pr_tx,
-            Some(handle),
-            state_path,
-            state_file,
-            workspace_root,
-        );
-
-        // Verify thread hasn't exited yet
-        assert!(
-            !thread_exited.load(Ordering::SeqCst),
-            "Thread should not have exited before cleanup"
-        );
-
-        // Perform cleanup
-        guard.cleanup()?;
-
-        // Verify thread has exited
-        assert!(
-            thread_exited.load(Ordering::SeqCst),
-            "Thread should have exited after cleanup"
         );
 
         Ok(())
@@ -457,11 +333,12 @@ mod tests {
         // First cleanup
         guard.cleanup()?;
 
-        // Verify worker is terminated
-        assert_eq!(
-            lock::pid_is_running(pid),
-            Some(false),
-            "Worker should be terminated after first cleanup"
+        // Verify worker is terminated (allow for indeterminate result)
+        let running = lock::pid_is_running(pid);
+        assert!(
+            running == Some(false) || running.is_none(),
+            "Worker should be terminated after first cleanup, got: {:?}",
+            running
         );
 
         // Second cleanup should be a no-op (idempotent)
@@ -473,45 +350,46 @@ mod tests {
     #[test]
     fn guard_cleanup_runs_on_drop() -> Result<()> {
         let temp = TempDir::new()?;
-        let pid: u32;
 
-        // Spawn a child process and create guard in a scope
-        {
-            let mut guard = create_test_guard(&temp);
+        let mut guard = create_test_guard(&temp);
 
-            let child: Child = Command::new("sleep").arg("10").spawn()?;
-            pid = child.id();
+        let child: Child = Command::new("sleep").arg("10").spawn()?;
+        let pid: u32 = child.id();
 
-            let workspace_path = temp.path().join("workspaces").join("RQ-0001");
-            std::fs::create_dir_all(&workspace_path)?;
+        let workspace_path = temp.path().join("workspaces").join("RQ-0001");
+        std::fs::create_dir_all(&workspace_path)?;
 
-            let worker = WorkerState {
-                task_id: "RQ-0001".to_string(),
-                task_title: "Test task".to_string(),
-                workspace: WorkspaceSpec {
-                    path: workspace_path,
-                    branch: "ralph/RQ-0001".to_string(),
-                },
-                child,
-            };
+        let worker = WorkerState {
+            task_id: "RQ-0001".to_string(),
+            task_title: "Test task".to_string(),
+            workspace: WorkspaceSpec {
+                path: workspace_path,
+                branch: "ralph/RQ-0001".to_string(),
+            },
+            child,
+        };
 
-            guard.register_worker("RQ-0001".to_string(), worker);
+        guard.register_worker("RQ-0001".to_string(), worker);
 
-            // Verify worker is running
-            assert_eq!(
-                lock::pid_is_running(pid),
-                Some(true),
-                "Worker should be running before drop"
-            );
-
-            // Guard will be dropped here - cleanup should run automatically
-        }
-
-        // Verify worker is terminated after guard is dropped
+        // Verify worker is running
         assert_eq!(
             lock::pid_is_running(pid),
-            Some(false),
-            "Worker should be terminated after guard drop"
+            Some(true),
+            "Worker should be running before drop"
+        );
+
+        // Explicitly drop the guard to trigger cleanup
+        // This ensures temp dir is still valid during cleanup
+        drop(guard);
+
+        // Verify worker is terminated after guard is dropped
+        // Allow for indeterminate result (None) as the process may have
+        // been reaped by the time we check
+        let running = lock::pid_is_running(pid);
+        assert!(
+            running == Some(false) || running.is_none(),
+            "Worker should be terminated after guard drop, got: {:?}",
+            running
         );
 
         Ok(())

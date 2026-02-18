@@ -85,6 +85,13 @@ pub fn handle(args: &TaskSplitArgs, force: bool, resolved: &config::Resolved) ->
 
     // Acquire lock and perform actual split
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task split", force)?;
+
+    // Create undo snapshot before mutation
+    crate::undo::create_undo_snapshot(
+        resolved,
+        &format!("task split {} into {} tasks", args.task_id, args.number),
+    )?;
+
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
 
     let (updated_source, child_tasks) =
@@ -95,8 +102,25 @@ pub fn handle(args: &TaskSplitArgs, force: bool, resolved: &config::Resolved) ->
         .tasks
         .iter()
         .position(|t| t.id == args.task_id)
-        .context("Source task not found in queue")?;
+        .with_context(|| crate::error_messages::source_task_not_found(&args.task_id, false))?;
     queue_file.tasks[source_index] = updated_source;
+
+    // Log and print output before moving child_tasks
+    log::info!(
+        "Split task {} into {} child tasks (status: {})",
+        args.task_id,
+        child_tasks.len(),
+        status
+    );
+    println!(
+        "Split task {} into {} child tasks:",
+        args.task_id,
+        child_tasks.len()
+    );
+
+    for child in &child_tasks {
+        println!("  - Created {}", child.id);
+    }
 
     // Insert child tasks at appropriate position (after the source task)
     let insert_at = source_index + 1;
@@ -106,34 +130,6 @@ pub fn handle(args: &TaskSplitArgs, force: bool, resolved: &config::Resolved) ->
 
     // Save queue
     queue::save_queue(&resolved.queue_path, &queue_file)?;
-
-    log::info!(
-        "Split task {} into {} child tasks (status: {})",
-        args.task_id,
-        args.number,
-        status
-    );
-    println!(
-        "Split task {} into {} child tasks:",
-        args.task_id, args.number
-    );
-    // Calculate base numeric part for display purposes
-    let base_numeric = args
-        .task_id
-        .strip_prefix(&resolved.id_prefix)
-        .and_then(|s| s.strip_prefix('-'))
-        .and_then(|s| s.parse::<u32>().ok())
-        .unwrap_or(0);
-
-    for i in 0..args.number {
-        let child_id = format!(
-            "{}-{:0>width$}",
-            resolved.id_prefix,
-            base_numeric + (i as u32) + 1,
-            width = resolved.id_width
-        );
-        println!("  - Created {}", child_id);
-    }
 
     Ok(())
 }

@@ -5,6 +5,7 @@
 //! - Record lock ownership metadata (PID, timestamp, command, label).
 //! - Detect supervising processes and stale lock holders.
 //! - Support shared task locks when a supervising process owns the lock.
+//! - Provide tri-state PID liveness checks (Running, NotRunning, Indeterminate).
 //!
 //! Not handled here:
 //! - Atomic writes or temp file cleanup (see `crate::fsutil`).
@@ -18,6 +19,8 @@
 //! - Labels are informational and should be trimmed before evaluation.
 //! - Task lock sidecar files use unique names (owner_task_<pid>_<counter>) to prevent
 //!   collisions when multiple task locks are acquired from the same process.
+//! - Indeterminate PID liveness is treated conservatively as lock-owned to prevent
+//!   concurrent supervisors and unsafe state cleanup.
 
 use crate::constants::limits::MAX_RETRIES;
 use crate::constants::timeouts::DELAYS_MS;
@@ -37,6 +40,54 @@ pub(crate) const TASK_OWNER_PREFIX: &str = "owner_task_";
 /// Per-process counter for generating unique task owner file names.
 /// This ensures multiple task locks from the same process don't collide.
 static TASK_OWNER_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+/// Tri-state PID liveness result.
+///
+/// Used to distinguish between definitive running/not-running states and
+/// indeterminate cases where we cannot determine the process status (e.g.,
+/// permission errors, unsupported platforms).
+///
+/// Safety principle: Indeterminate liveness is treated conservatively as
+/// lock-owned to prevent concurrent supervisors and unsafe state cleanup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PidLiveness {
+    /// Process is definitely running.
+    Running,
+    /// Process is definitely not running (dead/zombie).
+    NotRunning,
+    /// Process status cannot be determined (permission error, unsupported platform).
+    Indeterminate,
+}
+
+impl PidLiveness {
+    /// Returns true if the process is definitely not running.
+    ///
+    /// Use this for stale detection: only treat a lock as stale when we have
+    /// definitive evidence the owner is dead.
+    pub fn is_definitely_not_running(self) -> bool {
+        matches!(self, Self::NotRunning)
+    }
+
+    /// Returns true if the process is running or status is indeterminate.
+    ///
+    /// Use this for lock ownership checks: preserve locks when we cannot
+    /// definitively prove the owner is dead.
+    pub fn is_running_or_indeterminate(self) -> bool {
+        matches!(self, Self::Running | Self::Indeterminate)
+    }
+}
+
+/// Check PID liveness with tri-state result.
+///
+/// Wraps `pid_is_running` to provide a more expressive result type
+/// that distinguishes between running, not-running, and indeterminate states.
+pub fn pid_liveness(pid: u32) -> PidLiveness {
+    match pid_is_running(pid) {
+        Some(true) => PidLiveness::Running,
+        Some(false) => PidLiveness::NotRunning,
+        None => PidLiveness::Indeterminate,
+    }
+}
 
 #[derive(Debug)]
 pub struct DirLock {
@@ -218,11 +269,17 @@ fn cleanup_lock_dir(lock_dir: &Path, owner_path: &Path, force: bool) -> Result<(
     ))
 }
 
-struct LockOwner {
-    pid: u32,
-    started_at: String,
-    command: String,
-    label: String,
+/// Lock owner metadata parsed from the owner file.
+#[derive(Debug, Clone)]
+pub struct LockOwner {
+    /// Process ID that holds the lock.
+    pub pid: u32,
+    /// ISO 8601 timestamp when the lock was acquired.
+    pub started_at: String,
+    /// Command line of the process that acquired the lock.
+    pub command: String,
+    /// Label describing the lock purpose (e.g., "run one", "task").
+    pub label: String,
 }
 
 impl LockOwner {
@@ -239,7 +296,7 @@ pub fn queue_lock_dir(repo_root: &Path) -> PathBuf {
 }
 
 fn is_supervising_label(label: &str) -> bool {
-    matches!(label, "run one" | "run loop" | "tui")
+    matches!(label, "run one" | "run loop")
 }
 
 /// Check if the queue lock is currently held by a supervising process
@@ -263,71 +320,6 @@ pub fn is_supervising_process(lock_dir: &Path) -> Result<bool> {
     };
 
     Ok(is_supervising_label(&owner.label))
-}
-
-/// Check if the current process is running under ralph's supervision.
-/// This returns true only if:
-/// 1. A supervising process holds the lock, AND
-/// 2. The current process is a descendant of that supervising process (same process group)
-///
-/// This distinguishes between:
-/// - An agent running inside a supervised session (should use completion signals)
-/// - A user manually running commands while a supervisor is active (should use direct completion)
-pub fn is_current_process_supervised(lock_dir: &Path) -> Result<bool> {
-    let owner_path = lock_dir.join("owner");
-
-    let raw = match fs::read_to_string(&owner_path) {
-        Ok(raw) => raw,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(err) => {
-            return Err(anyhow!(err))
-                .with_context(|| format!("read lock owner {}", owner_path.display()));
-        }
-    };
-
-    let owner = match parse_lock_owner(&raw) {
-        Some(owner) => owner,
-        None => return Ok(false),
-    };
-
-    // Check if the lock holder is a supervising process
-    if !is_supervising_label(&owner.label) {
-        return Ok(false);
-    }
-
-    // Check if the current process is the same as or a descendant of the supervisor
-    // On Unix, we can check if the current process group matches the supervisor's process group
-    #[cfg(unix)]
-    {
-        let current_pid = std::process::id();
-        let supervisor_pid = owner.pid;
-
-        // If the current process IS the supervisor, it's not "supervised"
-        if current_pid == supervisor_pid {
-            return Ok(false);
-        }
-
-        // Check if the supervisor is still running and is our ancestor
-        // by comparing process groups
-        let current_pgid = unsafe { libc::getpgrp() };
-        let supervisor_pgid = unsafe { libc::getpgid(supervisor_pid as i32) };
-
-        if supervisor_pgid < 0 {
-            // Error getting supervisor's process group, assume not supervised
-            return Ok(false);
-        }
-
-        // If we're in the same process group as the supervisor, we're supervised
-        Ok(current_pgid == supervisor_pgid)
-    }
-
-    #[cfg(not(unix))]
-    {
-        // On non-Unix systems, just check if the supervisor is still running
-        // and assume we're supervised if it is (conservative approach)
-        let current_pid = std::process::id();
-        Ok(current_pid != owner.pid && pid_is_running(owner.pid).unwrap_or(false))
-    }
 }
 
 pub fn acquire_dir_lock(lock_dir: &Path, label: &str, force: bool) -> Result<DirLock> {
@@ -358,7 +350,7 @@ pub fn acquire_dir_lock(lock_dir: &Path, label: &str, force: bool) -> Result<Dir
 
             let is_stale = owner
                 .as_ref()
-                .is_some_and(|o| pid_is_running(o.pid) == Some(false));
+                .is_some_and(|o| pid_liveness(o.pid).is_definitely_not_running());
 
             if force && is_stale {
                 let _ = fs::remove_dir_all(lock_dir);
@@ -475,7 +467,11 @@ fn write_lock_owner(owner_path: &Path, owner: &LockOwner) -> Result<()> {
     Ok(())
 }
 
-fn read_lock_owner(lock_dir: &Path) -> Result<Option<LockOwner>> {
+/// Read the lock owner metadata from the lock directory.
+///
+/// Returns `Ok(None)` if no owner file exists, `Ok(Some(LockOwner))` if the
+/// owner file exists and is valid, or an error if the file cannot be read.
+pub fn read_lock_owner(lock_dir: &Path) -> Result<Option<LockOwner>> {
     let owner_path = lock_dir.join("owner");
     let raw = match fs::read_to_string(&owner_path) {
         Ok(raw) => raw,
@@ -502,7 +498,14 @@ fn parse_lock_owner(raw: &str) -> Option<LockOwner> {
         if let Some((key, value)) = trimmed.split_once(':') {
             let value = value.trim().to_string();
             match key.trim() {
-                "pid" => pid = value.parse::<u32>().ok(),
+                "pid" => {
+                    pid = value
+                        .parse::<u32>()
+                        .inspect_err(|e| {
+                            log::debug!("Lock file has invalid pid '{}': {}", value, e)
+                        })
+                        .ok()
+                }
                 "started_at" => started_at = Some(value),
                 "command" => command = Some(value),
                 "label" => label = Some(value),
@@ -518,6 +521,60 @@ fn parse_lock_owner(raw: &str) -> Option<LockOwner> {
         command: command.unwrap_or_else(|| "unknown".to_string()),
         label: label.unwrap_or_else(|| "unknown".to_string()),
     })
+}
+
+/// Check if a process with the given PID exists using ToolHelp API.
+/// This works even for protected system processes where OpenProcess would fail.
+///
+/// Returns:
+/// - `Some(true)` if the process exists in the system process list
+/// - `Some(false)` if the process is not found in the process list
+/// - `None` if the ToolHelp API call failed (unexpected)
+#[cfg(windows)]
+fn pid_exists_via_toolhelp(pid: u32) -> Option<bool> {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, PROCESSENTRY32, Process32First, Process32Next, TH32CS_SNAPPROCESS,
+    };
+
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            log::debug!(
+                "CreateToolhelp32Snapshot failed for PID existence check, error: {}",
+                windows_sys::Win32::Foundation::GetLastError()
+            );
+            return None;
+        }
+
+        let result = {
+            let mut entry: PROCESSENTRY32 = std::mem::zeroed();
+            entry.dwSize = std::mem::size_of::<PROCESSENTRY32>() as u32;
+
+            if Process32First(snapshot, &mut entry) == 0 {
+                log::debug!(
+                    "Process32First failed, error: {}",
+                    windows_sys::Win32::Foundation::GetLastError()
+                );
+                None
+            } else {
+                let mut found = false;
+                loop {
+                    if entry.th32ProcessID == pid {
+                        found = true;
+                        break;
+                    }
+                    if Process32Next(snapshot, &mut entry) == 0 {
+                        break;
+                    }
+                }
+                Some(found)
+            }
+        };
+
+        CloseHandle(snapshot);
+        result
+    }
 }
 
 /// Check if a process with the given PID is currently running.
@@ -542,7 +599,9 @@ pub fn pid_is_running(pid: u32) -> Option<bool> {
 
     #[cfg(windows)]
     {
-        use windows_sys::Win32::Foundation::{CloseHandle, ERROR_INVALID_PARAMETER};
+        use windows_sys::Win32::Foundation::{
+            CloseHandle, ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER,
+        };
         use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION};
 
         unsafe {
@@ -557,8 +616,17 @@ pub fn pid_is_running(pid: u32) -> Option<bool> {
                 if err == ERROR_INVALID_PARAMETER {
                     // Invalid PID means process doesn't exist
                     Some(false)
+                } else if err == ERROR_ACCESS_DENIED {
+                    // Access denied - process might exist but we can't open it
+                    // Use ToolHelp API to check if process exists
+                    log::debug!(
+                        "OpenProcess({}) failed with ERROR_ACCESS_DENIED, falling back to ToolHelp enumeration",
+                        pid
+                    );
+                    pid_exists_via_toolhelp(pid)
                 } else {
                     // Other error - can't determine status
+                    log::debug!("OpenProcess({}) failed with unexpected error: {}", pid, err);
                     None
                 }
             }
@@ -640,5 +708,86 @@ mod tests {
         assert!(!is_task_owner_file("owner_task"));
         assert!(!is_task_owner_file(""));
         assert!(!is_task_owner_file("task_owner_1234"));
+    }
+
+    /// Test that PidLiveness helper methods work correctly.
+    #[test]
+    fn test_pid_liveness_helpers() {
+        assert!(PidLiveness::NotRunning.is_definitely_not_running());
+        assert!(!PidLiveness::Running.is_definitely_not_running());
+        assert!(!PidLiveness::Indeterminate.is_definitely_not_running());
+
+        assert!(PidLiveness::Running.is_running_or_indeterminate());
+        assert!(PidLiveness::Indeterminate.is_running_or_indeterminate());
+        assert!(!PidLiveness::NotRunning.is_running_or_indeterminate());
+    }
+
+    /// Test that pid_liveness wraps pid_is_running correctly.
+    #[test]
+    fn test_pid_liveness_wrapper() {
+        let current_pid = std::process::id();
+        assert_eq!(pid_liveness(current_pid), PidLiveness::Running);
+
+        // High PID is unlikely to exist; should be NotRunning or Indeterminate
+        let result = pid_liveness(0xFFFFFFFE);
+        assert!(matches!(
+            result,
+            PidLiveness::NotRunning | PidLiveness::Indeterminate
+        ));
+    }
+
+    /// Test that indeterminate liveness is treated conservatively as lock-owned.
+    #[test]
+    fn test_stale_lock_detection_is_conservative() {
+        // Only NotRunning should be treated as stale
+        assert!(!PidLiveness::Running.is_definitely_not_running());
+        assert!(!PidLiveness::Indeterminate.is_definitely_not_running());
+        assert!(PidLiveness::NotRunning.is_definitely_not_running());
+    }
+
+    /// Windows-specific tests for PID liveness detection.
+    #[cfg(windows)]
+    mod windows_tests {
+        use super::*;
+
+        /// Test that pid_exists_via_toolhelp finds the current process.
+        #[test]
+        fn test_toolhelp_finds_current_process() {
+            let current_pid = std::process::id();
+            let result = pid_exists_via_toolhelp(current_pid);
+            assert_eq!(
+                result,
+                Some(true),
+                "ToolHelp should find current process PID {}",
+                current_pid
+            );
+        }
+
+        /// Test that pid_exists_via_toolhelp handles non-existent PIDs.
+        #[test]
+        fn test_toolhelp_nonexistent_pid() {
+            let result = pid_exists_via_toolhelp(0xFFFFFFFE);
+            assert_eq!(
+                result,
+                Some(false),
+                "ToolHelp should not find non-existent PID"
+            );
+        }
+
+        /// Test that pid_is_running handles ERROR_ACCESS_DENIED correctly.
+        /// PID 4 is typically the System process on Windows which exists
+        /// but OpenProcess fails with ERROR_ACCESS_DENIED.
+        #[test]
+        fn test_access_denied_fallback() {
+            // PID 4 is typically the System process on Windows
+            // It exists but OpenProcess fails with ERROR_ACCESS_DENIED
+            let result = pid_is_running(4);
+            // Should return Some(true) using ToolHelp fallback
+            assert_eq!(
+                result,
+                Some(true),
+                "System process (PID 4) should be detected as running via ToolHelp fallback"
+            );
+        }
     }
 }

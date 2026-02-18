@@ -22,10 +22,13 @@ pub(crate) use error::{
     RetryableReason, RunnerFailureClass, runner_execution_error, runner_execution_error_with_source,
 };
 
-pub(crate) use execution::{ResolvedRunnerCliOptions, ctrlc_state};
+pub(crate) use execution::{
+    BuiltInRunnerPlugin, ResolvedRunnerCliOptions, RunnerPlugin, ctrlc_state,
+};
 
 pub(crate) use model::{
-    parse_model, parse_reasoning_effort, resolve_model_for_runner, validate_model_for_runner,
+    default_model_for_runner, parse_model, parse_reasoning_effort, resolve_model_for_runner,
+    validate_model_for_runner,
 };
 
 pub(crate) use settings::{
@@ -50,7 +53,7 @@ use std::process::ExitStatus;
 use std::sync::Arc;
 use std::time::Duration;
 
-/// Callback type for streaming runner output to consumers (e.g., TUI).
+/// Callback type for streaming runner output to consumers (e.g., the macOS app).
 /// Called with each chunk of output as it's received from the runner process.
 pub type OutputHandler = Arc<Box<dyn Fn(&str) + Send + Sync>>;
 

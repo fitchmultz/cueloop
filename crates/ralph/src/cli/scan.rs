@@ -98,7 +98,7 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Scan repository for new tasks and focus areas",
-    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n  - Use --profile to apply a named profile (quick, thorough, or custom).\n\nRunner CLI options:\n  - Override approval/sandbox/verbosity/plan-mode via flags.\n  - Unsupported options follow --unsupported-option-policy.\n\nProfile precedence:\n  - CLI flags > task.agent > selected profile > base config\n\nSafety:\n  - Clean-repo checks allow changes to `.ralph/queue.json` and `.ralph/done.json` only (not `.ralph/config.json`).\n  - Use `--force` to bypass the clean-repo check (and stale queue locks) entirely if needed.\n\nExamples:\n  ralph scan \"production readiness gaps\"                              # General mode with focus prompt\n  ralph scan --focus \"production readiness gaps\"                     # General mode with --focus flag\n  ralph scan --mode maintenance \"security audit\"                     # Maintenance mode with focus\n  ralph scan --mode maintenance                                        # Maintenance mode without focus\n  ralph scan --mode innovation \"feature gaps for CLI\"                # Innovation mode with focus\n  ralph scan --mode innovation                                         # Innovation mode without focus\n  ralph scan -m innovation \"enhancement opportunities\"               # Short flag for mode\n  ralph scan --profile thorough \"deep risk audit\"                    # Use thorough profile (claude/opus/3-phase)\n  ralph scan --profile quick \"quick bug fixes\"                       # Use quick profile (kimi/1-phase)\n  ralph scan --runner opencode --model gpt-5.2 \"CI and safety gaps\"  # With runner overrides\n  ralph scan --runner gemini --model gemini-3-flash-preview \"risk audit\"\n  ralph scan --runner codex --model gpt-5.3-codex --effort high \"queue correctness\"\n  ralph scan --approval-mode auto-edits --runner claude \"auto edits review\"\n  ralph scan --sandbox disabled --runner codex \"sandbox audit\"\n  ralph scan --repo-prompt plan \"Deep codebase analysis\"\n  ralph scan --repo-prompt off \"Quick surface scan\"\n  ralph scan --runner kimi \"risk audit\"\n  ralph scan --runner pi \"risk audit\""
+    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n  - Use --profile to apply a named profile (quick, thorough, or custom).\n\nRunner CLI options:\n  - Override approval/sandbox/verbosity/plan-mode via flags.\n  - Unsupported options follow --unsupported-option-policy.\n\nProfile precedence:\n  - CLI flags > task.agent > selected profile > base config\n\nSafety:\n  - Clean-repo checks allow changes to `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, and `.ralph/config.{json,jsonc}`.\n  - Use `--force` to bypass the clean-repo check (and stale queue locks) entirely if needed.\n\nExamples:\n  ralph scan \"production readiness gaps\"                              # General mode with focus prompt\n  ralph scan --focus \"production readiness gaps\"                     # General mode with --focus flag\n  ralph scan --mode maintenance \"security audit\"                     # Maintenance mode with focus\n  ralph scan --mode maintenance                                        # Maintenance mode without focus\n  ralph scan --mode innovation \"feature gaps for CLI\"                # Innovation mode with focus\n  ralph scan --mode innovation                                         # Innovation mode without focus\n  ralph scan -m innovation \"enhancement opportunities\"               # Short flag for mode\n  ralph scan --profile thorough \"deep risk audit\"                    # Use thorough profile (claude/opus/3-phase)\n  ralph scan --profile quick \"quick bug fixes\"                       # Use quick profile (kimi/1-phase)\n  ralph scan --runner opencode --model gpt-5.2 \"CI and safety gaps\"  # With runner overrides\n  ralph scan --runner gemini --model gemini-3-flash-preview \"risk audit\"\n  ralph scan --runner codex --model gpt-5.3-codex --effort high \"queue correctness\"\n  ralph scan --approval-mode auto-edits --runner claude \"auto edits review\"\n  ralph scan --sandbox disabled --runner codex \"sandbox audit\"\n  ralph scan --repo-prompt plan \"Deep codebase analysis\"\n  ralph scan --repo-prompt off \"Quick surface scan\"\n  ralph scan --runner kimi \"risk audit\"\n  ralph scan --runner pi \"risk audit\""
 )]
 pub struct ScanArgs {
     /// Optional focus prompt as positional argument (alternative to --focus).
@@ -442,6 +442,37 @@ mod tests {
                 assert_eq!(args.prompt, vec!["some", "focus"]);
             }
             _ => panic!("expected scan command"),
+        }
+    }
+
+    #[test]
+    fn scan_explicit_general_mode_equivalent_to_implicit_with_focus() {
+        // Regression test for RQ-0891: ensure --mode general works equivalently to default
+        let cli_explicit =
+            Cli::try_parse_from(["ralph", "scan", "--mode", "general", "test", "focus"])
+                .expect("parse explicit mode");
+
+        let cli_implicit =
+            Cli::try_parse_from(["ralph", "scan", "test", "focus"]).expect("parse implicit mode");
+
+        match (cli_explicit.command, cli_implicit.command) {
+            (
+                crate::cli::Command::Scan(args_explicit),
+                crate::cli::Command::Scan(args_implicit),
+            ) => {
+                // Explicit --mode general should parse to Some(General)
+                assert_eq!(args_explicit.mode, Some(ScanMode::General));
+                assert_eq!(args_explicit.prompt, vec!["test", "focus"]);
+
+                // Implicit (no --mode) should parse to None, but handle_scan resolves to General
+                assert_eq!(args_implicit.mode, None);
+                assert_eq!(args_implicit.prompt, vec!["test", "focus"]);
+
+                // Both should have the same focus resolution logic in handle_scan
+                // Explicit: (Some(General), false) => General
+                // Implicit: (None, false) => General
+            }
+            _ => panic!("expected scan commands"),
         }
     }
 }

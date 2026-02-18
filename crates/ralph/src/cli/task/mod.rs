@@ -19,6 +19,7 @@ mod build;
 mod children;
 mod clone;
 mod edit;
+mod from_template;
 mod parent;
 mod refactor;
 mod relations;
@@ -38,10 +39,10 @@ pub use args::{
     BatchEditArgs, BatchFieldArgs, BatchMode, BatchOperation, BatchStatusArgs, TaskArgs,
     TaskBatchArgs, TaskBlocksArgs, TaskBuildArgs, TaskBuildRefactorArgs, TaskChildrenArgs,
     TaskCloneArgs, TaskCommand, TaskDoneArgs, TaskEditArgs, TaskEditFieldArg, TaskFieldArgs,
-    TaskMarkDuplicateArgs, TaskParentArgs, TaskReadyArgs, TaskRejectArgs, TaskRelateArgs,
-    TaskRelationFormat, TaskScheduleArgs, TaskShowArgs, TaskSplitArgs, TaskStartArgs,
-    TaskStatusArg, TaskStatusArgs, TaskTemplateArgs, TaskTemplateBuildArgs, TaskTemplateCommand,
-    TaskTemplateShowArgs, TaskUpdateArgs,
+    TaskFromArgs, TaskFromCommand, TaskFromTemplateArgs, TaskMarkDuplicateArgs, TaskParentArgs,
+    TaskReadyArgs, TaskRejectArgs, TaskRelateArgs, TaskRelationFormat, TaskScheduleArgs,
+    TaskShowArgs, TaskSplitArgs, TaskStartArgs, TaskStatusArg, TaskStatusArgs, TaskTemplateArgs,
+    TaskTemplateBuildArgs, TaskTemplateCommand, TaskTemplateShowArgs, TaskUpdateArgs,
 };
 
 /// Main entry point for task commands.
@@ -74,6 +75,11 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
         Some(TaskCommand::Start(args)) => start::handle(&args, force, &resolved),
         Some(TaskCommand::Children(args)) => children::handle(&args, &resolved),
         Some(TaskCommand::Parent(args)) => parent::handle(&args, &resolved),
+        Some(TaskCommand::From(args)) => match args.command {
+            TaskFromCommand::Template(template_args) => {
+                from_template::handle(&resolved, &template_args, force)
+            }
+        },
         None => {
             // Default command: build from request
             build::handle(&args.build, force, &resolved)
@@ -87,7 +93,7 @@ mod tests {
 
     use crate::cli::Cli;
     use crate::cli::queue::QueueShowFormat;
-    use crate::cli::task::args::{TaskEditFieldArg, TaskStatusArg};
+    use crate::cli::task::args::{BatchOperation, TaskEditFieldArg, TaskStatusArg};
 
     #[test]
     fn task_update_help_mentions_rp_examples() {
@@ -491,7 +497,7 @@ mod tests {
         match cli.command {
             crate::cli::Command::Task(args) => match args.command {
                 Some(crate::cli::task::TaskCommand::Batch(args)) => match args.operation {
-                    crate::cli::task::args::BatchOperation::Status(status_args) => {
+                    BatchOperation::Status(status_args) => {
                         assert_eq!(status_args.status, TaskStatusArg::Doing);
                         assert_eq!(
                             status_args.select.task_ids,
@@ -525,7 +531,7 @@ mod tests {
         match cli.command {
             crate::cli::Command::Task(args) => match args.command {
                 Some(crate::cli::task::TaskCommand::Batch(args)) => match args.operation {
-                    crate::cli::task::args::BatchOperation::Status(status_args) => {
+                    BatchOperation::Status(status_args) => {
                         assert_eq!(status_args.status, TaskStatusArg::Doing);
                         assert!(status_args.select.task_ids.is_empty());
                         assert_eq!(status_args.select.tag_filter, vec!["rust", "cli"]);
@@ -547,7 +553,7 @@ mod tests {
         match cli.command {
             crate::cli::Command::Task(args) => match args.command {
                 Some(crate::cli::task::TaskCommand::Batch(args)) => match args.operation {
-                    crate::cli::task::args::BatchOperation::Field(field_args) => {
+                    BatchOperation::Field(field_args) => {
                         assert_eq!(field_args.key, "severity");
                         assert_eq!(field_args.value, "high");
                         assert_eq!(field_args.select.task_ids, vec!["RQ-0001", "RQ-0002"]);
@@ -580,7 +586,7 @@ mod tests {
                     assert!(args.dry_run);
                     assert!(!args.continue_on_error);
                     match args.operation {
-                        crate::cli::task::args::BatchOperation::Edit(edit_args) => {
+                        BatchOperation::Edit(edit_args) => {
                             assert_eq!(edit_args.field, TaskEditFieldArg::Priority);
                             assert_eq!(edit_args.value, "high");
                             assert_eq!(edit_args.select.task_ids, vec!["RQ-0001", "RQ-0002"]);
@@ -613,7 +619,7 @@ mod tests {
                     assert!(!args.dry_run);
                     assert!(args.continue_on_error);
                     match args.operation {
-                        crate::cli::task::args::BatchOperation::Status(status_args) => {
+                        BatchOperation::Status(status_args) => {
                             assert_eq!(status_args.status, TaskStatusArg::Doing);
                         }
                         _ => panic!("expected batch status operation"),
@@ -708,6 +714,47 @@ mod tests {
                     assert_eq!(args.key, "severity");
                     assert_eq!(args.value, "high");
                     assert_eq!(args.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                }
+                _ => panic!("expected task field command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_field_parses_dry_run_flag() {
+        let cli = Cli::try_parse_from([
+            "ralph",
+            "task",
+            "field",
+            "--dry-run",
+            "severity",
+            "high",
+            "RQ-0001",
+        ])
+        .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Field(args)) => {
+                    assert!(args.dry_run);
+                    assert_eq!(args.key, "severity");
+                    assert_eq!(args.value, "high");
+                    assert_eq!(args.task_ids, vec!["RQ-0001"]);
+                }
+                _ => panic!("expected task field command"),
+            },
+            _ => panic!("expected task command"),
+        }
+    }
+
+    #[test]
+    fn task_field_without_dry_run_defaults_to_false() {
+        let cli = Cli::try_parse_from(["ralph", "task", "field", "severity", "high", "RQ-0001"])
+            .expect("parse");
+        match cli.command {
+            crate::cli::Command::Task(args) => match args.command {
+                Some(crate::cli::task::TaskCommand::Field(args)) => {
+                    assert!(!args.dry_run);
                 }
                 _ => panic!("expected task field command"),
             },

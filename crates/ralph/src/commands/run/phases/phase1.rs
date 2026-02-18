@@ -1,4 +1,14 @@
 //! Phase 1 (planning) execution.
+//!
+//! Responsibilities:
+//! - Execute Phase 1 planning runner pass and enforce plan-only output constraints.
+//!
+//! Not handled here:
+//! - Phase 2/3 execution behavior.
+//! - Queue/task selection and task status transitions.
+//!
+//! Invariants/assumptions:
+//! - Phase 1 may only mutate queue bookkeeping and the plan cache file.
 
 use super::shared::execute_runner_pass;
 use super::{PhaseInvocation, PhaseType, phase_session_id_for_runner};
@@ -21,11 +31,18 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
         } else {
             Vec::new()
         };
+        let task_refresh_instruction =
+            if matches!(ctx.post_run_mode, super::PostRunMode::ParallelWorker) {
+                promptflow::PHASE1_TASK_REFRESH_DISABLED_INSTRUCTION
+            } else {
+                promptflow::PHASE1_TASK_REFRESH_REQUIRED_INSTRUCTION
+            };
         let p1_template = prompts::load_worker_phase1_prompt(&ctx.resolved.repo_root)?;
         let p1_prompt = promptflow::build_phase1_prompt(
             &p1_template,
             ctx.base_prompt,
             ctx.iteration_context,
+            task_refresh_instruction,
             ctx.task_id,
             total_phases,
             ctx.policy,
@@ -65,13 +82,15 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
         };
 
         // ENFORCEMENT: Phase 1 must not implement.
-        // It may only edit `.ralph/queue.json` / `.ralph/done.json` (status bookkeeping)
-        // plus the plan cache file for the current task.
+        // It may only edit queue bookkeeping files (`.ralph/queue.{json,jsonc}`,
+        // `.ralph/done.{json,jsonc}`) plus the plan cache file for the current task.
         let plan_cache_rel = format!(".ralph/cache/plans/{}.md", ctx.task_id);
         let plan_cache_dir = ".ralph/cache/plans/";
         let allowed_paths = [
             ".ralph/queue.json",
+            ".ralph/queue.jsonc",
             ".ralph/done.json",
+            ".ralph/done.jsonc",
             plan_cache_rel.as_str(),
             plan_cache_dir,
         ];

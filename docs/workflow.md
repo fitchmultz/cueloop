@@ -34,14 +34,13 @@ Default execution uses three phases:
    - Plan-only violations prompt for action when `git_revert_mode=ask`; you can keep+proceed (explicit override), revert changes, or continue planning with a message.
 2. Phase 2 (Implementation + CI): apply changes, run the configured CI gate command (default `make ci`) when enabled, then stop.
 3. Phase 3 (Review + Completion): review diff, resolve any flagged risks or suspicious leads before completion, re-run the configured CI gate command (default `make ci`) when enabled, complete task, and (when auto git commit/push is enabled) commit and push.
-   - With auto git commit/push enabled, Phase 3 requires a clean repo to finish; for rejected tasks, the only allowed dirty files are `.ralph/queue.json` and `.ralph/done.json` (queue bookkeeping).
+   - With auto git commit/push enabled, Phase 3 requires a clean repo to finish; for rejected tasks, allowed dirty files include `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, `.ralph/config.{json,jsonc}`, and `.ralph/cache/` (Ralph bookkeeping/state).
 
 Phases can be set via `--phases` or `agent.phases` in config.
 
 ## Parallel Run Loop (CLI Only)
 
-Parallel execution is available only via the CLI (`ralph run loop --parallel [N]`). The TUI does
-not support parallel runs.
+Parallel execution is available only via the CLI (`ralph run loop --parallel [N]`).
 
 High-level behavior:
 - Each task runs in its own isolated git workspace clone under
@@ -135,13 +134,18 @@ ralph daemon start
 # Check status
 ralph daemon status
 
+# View logs
+ralph daemon logs
+# Live follow
+ralph daemon logs --follow
+
 # Stop daemon
 ralph daemon stop
 ```
 
 The daemon is a thin wrapper around `ralph run loop --continuous --wait-when-blocked` that:
 - Detaches from the terminal
-- Logs to `.ralph/logs/daemon.log`
+- View logs with `ralph daemon logs`
 - Manages PID/state files in `.ralph/cache/`
 - Responds to `ralph daemon stop` and `ralph queue stop`
 

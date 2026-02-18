@@ -45,6 +45,7 @@ impl RunnerRetryPolicy {
     }
 
     /// Returns true if retry is enabled (more than 1 attempt allowed).
+    /// Kept as public API for future retry control flow extensions.
     #[allow(dead_code)]
     pub(crate) fn enabled(self) -> bool {
         self.max_attempts > 1

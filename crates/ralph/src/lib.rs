@@ -1,5 +1,3 @@
-#![deny(unsafe_op_in_unsafe_fn)]
-
 //! Ralph library surface.
 //!
 //! Responsibilities:
@@ -13,6 +11,8 @@
 //! Invariants/assumptions:
 //! - Modules remain internal-first; public exports are intentional.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 // --- Core --------------------------------------------------------------------
 
 pub mod agent;
@@ -25,24 +25,22 @@ pub(crate) mod reports;
 // --- Commands ----------------------------------------------------------------
 
 pub mod cli;
+#[path = "cli/spec.rs"]
+pub mod cli_spec;
 pub mod commands;
 pub mod migration;
 pub mod plugins;
 pub mod sanity;
-
-// --- UI ----------------------------------------------------------------------
-
-pub mod tui;
+pub mod undo;
 
 // --- Utils -------------------------------------------------------------------
 
 pub mod celebrations;
+pub mod error_messages;
 pub mod eta_calculator;
 pub mod execution_history;
 pub mod fsutil;
 pub mod git;
-// DEPRECATED: gitutil is deprecated and will be removed. Use `git` instead.
-pub(crate) mod gitutil;
 pub mod jsonc;
 pub mod lock;
 pub mod notification;
@@ -65,7 +63,6 @@ pub mod timeutil;
 // --- Internal ----------------------------------------------------------------
 
 // Not used by the binary/tests directly; keep crate-private.
-pub(crate) mod completions;
 pub(crate) mod debuglog;
 
 // Internal prompt composition helpers.
@@ -76,3 +73,29 @@ mod runutil_tests;
 
 #[cfg(test)]
 pub(crate) mod testsupport;
+
+/// Test synchronization utilities for managing global state across tests.
+///
+/// This module provides synchronization primitives to prevent test flakiness
+/// caused by global state interference between parallel tests.
+#[cfg(test)]
+pub(crate) mod test_sync {
+    use std::sync::{Mutex, OnceLock};
+
+    /// Global mutex to synchronize tests that modify the Ctrl+C interrupt flag.
+    ///
+    /// Tests that set the interrupt flag should acquire this mutex.
+    /// Tests that use the runner should reset the flag before starting.
+    pub static INTERRUPT_TEST_MUTEX: OnceLock<Mutex<()>> = OnceLock::new();
+
+    /// Reset the global Ctrl+C interrupted flag to false.
+    ///
+    /// This should be called by tests that use the runner to ensure they
+    /// don't fail due to stale interrupt flags from other tests.
+    pub fn reset_ctrlc_interrupt_flag() {
+        use std::sync::atomic::Ordering;
+        if let Ok(ctrlc) = crate::runner::ctrlc_state() {
+            ctrlc.interrupted.store(false, Ordering::SeqCst);
+        }
+    }
+}

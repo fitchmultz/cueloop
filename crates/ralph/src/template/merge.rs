@@ -113,6 +113,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         }
     }
 
@@ -132,6 +134,7 @@ mod tests {
             template_hint: None,
             template_target: None,
             strict_templates: false,
+            estimated_minutes: None,
         };
 
         merge_template_with_options(&template, &mut options);
@@ -155,6 +158,7 @@ mod tests {
             template_hint: None,
             template_target: None,
             strict_templates: false,
+            estimated_minutes: None,
         };
 
         merge_template_with_options(&template, &mut options);
@@ -180,6 +184,7 @@ mod tests {
             template_hint: None,
             template_target: None,
             strict_templates: false,
+            estimated_minutes: None,
         };
 
         merge_template_with_options(&template, &mut options);
@@ -213,6 +218,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         };
 
         let mut options = TaskBuildOptions {
@@ -228,6 +235,7 @@ mod tests {
             template_hint: None,
             template_target: None,
             strict_templates: false,
+            estimated_minutes: None,
         };
 
         merge_template_with_options(&template, &mut options);
@@ -280,6 +288,8 @@ mod tests {
             duplicates: None,
             custom_fields: std::collections::HashMap::new(),
             parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
         };
 
         let context = format_template_context(&template);
