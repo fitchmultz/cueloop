@@ -171,6 +171,8 @@ pub fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
     let output = Command::new(ralph_bin())
         .current_dir(dir)
         .env_remove("RUST_LOG")
+        .env_remove("RALPH_QUEUE_PATH_OVERRIDE")
+        .env_remove("RALPH_DONE_PATH_OVERRIDE")
         .env("RALPH_REPO_ROOT_OVERRIDE", dir)
         .args(args)
         .output()
@@ -180,6 +182,18 @@ pub fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
         String::from_utf8_lossy(&output.stdout).to_string(),
         String::from_utf8_lossy(&output.stderr).to_string(),
     )
+}
+
+/// Create a ralph Command with proper environment isolation.
+/// Removes inherited path overrides and sets repo root override.
+pub fn ralph_command(dir: &Path) -> Command {
+    let mut cmd = Command::new(ralph_bin());
+    cmd.current_dir(dir)
+        .env_remove("RUST_LOG")
+        .env_remove("RALPH_QUEUE_PATH_OVERRIDE")
+        .env_remove("RALPH_DONE_PATH_OVERRIDE")
+        .env("RALPH_REPO_ROOT_OVERRIDE", dir);
+    cmd
 }
 
 pub fn git_init(dir: &Path) -> Result<()> {
