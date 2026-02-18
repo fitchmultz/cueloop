@@ -15,8 +15,8 @@ use super::super::contracts::{Config, GitRevertMode};
 use super::super::prompts_internal::util::validate_instruction_file_paths;
 use super::layer::{ConfigLayer, apply_layer, load_layer, save_layer};
 use super::resolution::{
-    REPO_ROOT_OVERRIDE_ENV, resolve_done_path, resolve_from_cwd, resolve_id_prefix,
-    resolve_id_width, resolve_queue_path,
+    DONE_PATH_OVERRIDE_ENV, QUEUE_PATH_OVERRIDE_ENV, REPO_ROOT_OVERRIDE_ENV, resolve_done_path,
+    resolve_from_cwd, resolve_id_prefix, resolve_id_width, resolve_queue_path,
 };
 use super::validation::{
     ERR_EMPTY_QUEUE_DONE_FILE, ERR_EMPTY_QUEUE_FILE, ERR_EMPTY_QUEUE_ID_PREFIX,
@@ -396,6 +396,40 @@ fn resolve_from_cwd_rejects_missing_repo_root_override() {
         None => unsafe { env::remove_var(REPO_ROOT_OVERRIDE_ENV) },
     };
     env::set_current_dir(original_dir).expect("restore cwd");
+}
+
+#[test]
+#[serial]
+fn resolve_queue_path_uses_env_override_when_set() {
+    let cfg = Config::default();
+    let repo_root = PathBuf::from("/repo");
+    let prior_override = env::var_os(QUEUE_PATH_OVERRIDE_ENV);
+
+    unsafe { env::set_var(QUEUE_PATH_OVERRIDE_ENV, "shared/queue.json") };
+    let resolved = resolve_queue_path(&repo_root, &cfg).expect("queue path override");
+    assert_eq!(resolved, repo_root.join("shared/queue.json"));
+
+    match prior_override {
+        Some(value) => unsafe { env::set_var(QUEUE_PATH_OVERRIDE_ENV, value) },
+        None => unsafe { env::remove_var(QUEUE_PATH_OVERRIDE_ENV) },
+    };
+}
+
+#[test]
+#[serial]
+fn resolve_done_path_uses_env_override_when_set() {
+    let cfg = Config::default();
+    let repo_root = PathBuf::from("/repo");
+    let prior_override = env::var_os(DONE_PATH_OVERRIDE_ENV);
+
+    unsafe { env::set_var(DONE_PATH_OVERRIDE_ENV, "archive/done.json") };
+    let resolved = resolve_done_path(&repo_root, &cfg).expect("done path override");
+    assert_eq!(resolved, repo_root.join("archive/done.json"));
+
+    match prior_override {
+        Some(value) => unsafe { env::set_var(DONE_PATH_OVERRIDE_ENV, value) },
+        None => unsafe { env::remove_var(DONE_PATH_OVERRIDE_ENV) },
+    };
 }
 
 // Tests for queue validation consistency between validate_config and resolve_* helpers

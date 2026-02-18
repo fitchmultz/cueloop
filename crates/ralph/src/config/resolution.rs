@@ -34,6 +34,10 @@ use super::validation::{
 
 /// Environment variable for overriding repo root resolution.
 pub const REPO_ROOT_OVERRIDE_ENV: &str = "RALPH_REPO_ROOT_OVERRIDE";
+/// Environment variable for overriding queue file path resolution.
+pub const QUEUE_PATH_OVERRIDE_ENV: &str = "RALPH_QUEUE_PATH_OVERRIDE";
+/// Environment variable for overriding done file path resolution.
+pub const DONE_PATH_OVERRIDE_ENV: &str = "RALPH_DONE_PATH_OVERRIDE";
 
 /// Resolve configuration from the current working directory.
 pub fn resolve_from_cwd() -> Result<Resolved> {
@@ -193,6 +197,28 @@ pub fn resolve_id_width(cfg: &Config) -> Result<usize> {
 
 /// Resolve the queue file path from config.
 pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
+    if let Some(raw_override) = env::var_os(QUEUE_PATH_OVERRIDE_ENV) {
+        let override_path = PathBuf::from(raw_override);
+        if override_path.as_os_str().is_empty() {
+            bail!(
+                "{} is set but empty. Provide a valid queue file path.",
+                QUEUE_PATH_OVERRIDE_ENV
+            );
+        }
+        let value = fsutil::expand_tilde(&override_path);
+        let resolved = if value.is_absolute() {
+            value
+        } else {
+            repo_root.join(value)
+        };
+        log::debug!(
+            "using {} override for queue path: {}",
+            QUEUE_PATH_OVERRIDE_ENV,
+            resolved.display()
+        );
+        return Ok(resolved);
+    }
+
     validate_queue_file_override(cfg.queue.file.as_deref())?;
 
     // Get the raw path, using default if not specified
@@ -223,6 +249,28 @@ pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
 
 /// Resolve the done file path from config.
 pub fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
+    if let Some(raw_override) = env::var_os(DONE_PATH_OVERRIDE_ENV) {
+        let override_path = PathBuf::from(raw_override);
+        if override_path.as_os_str().is_empty() {
+            bail!(
+                "{} is set but empty. Provide a valid done file path.",
+                DONE_PATH_OVERRIDE_ENV
+            );
+        }
+        let value = fsutil::expand_tilde(&override_path);
+        let resolved = if value.is_absolute() {
+            value
+        } else {
+            repo_root.join(value)
+        };
+        log::debug!(
+            "using {} override for done path: {}",
+            DONE_PATH_OVERRIDE_ENV,
+            resolved.display()
+        );
+        return Ok(resolved);
+    }
+
     validate_queue_done_file_override(cfg.queue.done_file.as_deref())?;
 
     // Get the raw path, using default if not specified

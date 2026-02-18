@@ -123,13 +123,14 @@ pub(crate) fn terminate_workers(in_flight: &mut HashMap<String, WorkerState>) {
 
 /// Spawn a worker process for the given task in the specified workspace.
 pub(crate) fn spawn_worker(
-    _resolved: &config::Resolved,
+    resolved: &config::Resolved,
     workspace_path: &Path,
     task_id: &str,
     overrides: &AgentOverrides,
     force: bool,
 ) -> Result<Child> {
-    let (mut cmd, args) = build_worker_command(workspace_path, task_id, overrides, force)?;
+    let (mut cmd, args) =
+        build_worker_command(resolved, workspace_path, task_id, overrides, force)?;
     log::debug!(
         "Spawning parallel worker {} in {} with args: {:?}",
         task_id,
@@ -143,6 +144,7 @@ pub(crate) fn spawn_worker(
 
 /// Build the command and arguments for a worker subprocess.
 fn build_worker_command(
+    resolved: &config::Resolved,
     workspace_path: &Path,
     task_id: &str,
     overrides: &AgentOverrides,
@@ -153,6 +155,8 @@ fn build_worker_command(
     cmd.current_dir(workspace_path);
     cmd.env("PWD", workspace_path);
     cmd.env(crate::config::REPO_ROOT_OVERRIDE_ENV, workspace_path);
+    cmd.env(crate::config::QUEUE_PATH_OVERRIDE_ENV, &resolved.queue_path);
+    cmd.env(crate::config::DONE_PATH_OVERRIDE_ENV, &resolved.done_path);
     cmd.stdin(Stdio::null());
 
     let mut args: Vec<String> = Vec::new();
@@ -185,13 +189,29 @@ mod tests {
         let workspace_path = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace_path)?;
 
+        let ralph_dir = temp.path().join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: temp.path().to_path_buf(),
+            queue_path: ralph_dir.join("queue.json"),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
         let overrides = AgentOverrides::default();
-        let (cmd, args) = build_worker_command(&workspace_path, "RQ-1234", &overrides, true)?;
+        let (cmd, args) =
+            build_worker_command(&resolved, &workspace_path, "RQ-1234", &overrides, true)?;
 
         assert_eq!(cmd.get_current_dir(), Some(workspace_path.as_path()));
 
         let mut pwd_seen = false;
         let mut override_seen = false;
+        let mut queue_override_seen = false;
+        let mut done_override_seen = false;
         for (key, value) in cmd.get_envs() {
             if key == std::ffi::OsStr::new("PWD") {
                 pwd_seen = true;
@@ -201,12 +221,30 @@ mod tests {
                 override_seen = true;
                 assert_eq!(value, Some(workspace_path.as_os_str()));
             }
+            if key == std::ffi::OsStr::new(crate::config::QUEUE_PATH_OVERRIDE_ENV) {
+                queue_override_seen = true;
+                assert_eq!(value, Some(resolved.queue_path.as_os_str()));
+            }
+            if key == std::ffi::OsStr::new(crate::config::DONE_PATH_OVERRIDE_ENV) {
+                done_override_seen = true;
+                assert_eq!(value, Some(resolved.done_path.as_os_str()));
+            }
         }
         assert!(pwd_seen, "PWD env should be set for workspace execution");
         assert!(
             override_seen,
             "{} env should be set for workspace execution",
             crate::config::REPO_ROOT_OVERRIDE_ENV
+        );
+        assert!(
+            queue_override_seen,
+            "{} env should be set for worker queue reads",
+            crate::config::QUEUE_PATH_OVERRIDE_ENV
+        );
+        assert!(
+            done_override_seen,
+            "{} env should be set for worker done reads",
+            crate::config::DONE_PATH_OVERRIDE_ENV
         );
 
         assert!(args.contains(&"--force".to_string()));
@@ -243,11 +281,25 @@ mod tests {
         let workspace_path = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace_path)?;
 
+        let ralph_dir = temp.path().join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: temp.path().to_path_buf(),
+            queue_path: ralph_dir.join("queue.json"),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
         let overrides = AgentOverrides {
             git_commit_push_enabled: Some(true),
             ..Default::default()
         };
-        let (_cmd, args) = build_worker_command(&workspace_path, "RQ-1234", &overrides, false)?;
+        let (_cmd, args) =
+            build_worker_command(&resolved, &workspace_path, "RQ-1234", &overrides, false)?;
 
         assert!(args.contains(&"--git-commit-push-on".to_string()));
         assert!(!args.contains(&"--git-commit-push-off".to_string()));
@@ -261,11 +313,25 @@ mod tests {
         let workspace_path = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace_path)?;
 
+        let ralph_dir = temp.path().join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+        let resolved = config::Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: temp.path().to_path_buf(),
+            queue_path: ralph_dir.join("queue.json"),
+            done_path: ralph_dir.join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
         let overrides = AgentOverrides {
             git_commit_push_enabled: Some(false),
             ..Default::default()
         };
-        let (_cmd, args) = build_worker_command(&workspace_path, "RQ-1234", &overrides, false)?;
+        let (_cmd, args) =
+            build_worker_command(&resolved, &workspace_path, "RQ-1234", &overrides, false)?;
 
         assert!(args.contains(&"--git-commit-push-off".to_string()));
         assert!(!args.contains(&"--git-commit-push-on".to_string()));
