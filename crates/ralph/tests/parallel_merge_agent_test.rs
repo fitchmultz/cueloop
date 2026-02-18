@@ -283,6 +283,75 @@ exit 0
     Ok(())
 }
 
+/// Verify that merge-agent heals partial-finalization state without duplicating done entries.
+///
+/// Partial-finalization can happen if a previous run archived the task in done.json
+/// but crashed before removing it from queue.json.
+#[test]
+fn merge_agent_reconciles_partial_finalization_without_duplicate_done_entries() -> Result<()> {
+    let _lock = test_support::env_lock().lock().unwrap();
+    let temp = test_support::temp_dir_outside_repo();
+
+    test_support::git_init(temp.path())?;
+    test_support::ralph_init(temp.path())?;
+
+    // Simulate partial finalization: task is still active in queue but already archived in done.
+    let queue_task = test_support::make_test_task(
+        "RQ-0006",
+        "Partial finalization task",
+        ralph::contracts::TaskStatus::Doing,
+    );
+    test_support::write_queue(temp.path(), std::slice::from_ref(&queue_task))?;
+
+    let done_task = test_support::make_test_task(
+        "RQ-0006",
+        "Partial finalization task",
+        ralph::contracts::TaskStatus::Done,
+    );
+    test_support::write_done(temp.path(), std::slice::from_ref(&done_task))?;
+
+    // Create fake gh that reports PR is already merged.
+    let bin_dir = temp.path().join("bin");
+    std::fs::create_dir_all(&bin_dir)?;
+    let gh_script = r#"#!/bin/bash
+if [[ "$1" == "pr" ]] && [[ "$2" == "view" ]]; then
+    echo '{"number":42,"state":"MERGED","merged":true,"mergeStateStatus":"CLEAN"}'
+    exit 0
+fi
+exit 0
+"#;
+    let _gh_path = test_support::create_executable_script(&bin_dir, "gh", gh_script)?;
+
+    let (status, stdout, stderr) = test_support::with_prepend_path(&bin_dir, || {
+        test_support::run_in_dir(
+            temp.path(),
+            &["run", "merge-agent", "--task", "RQ-0006", "--pr", "42"],
+        )
+    });
+
+    let exit_code = status.code().unwrap_or(-1);
+    assert_eq!(
+        exit_code, 0,
+        "Expected exit code 0 when reconciling partial finalization, got {}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+        exit_code
+    );
+
+    let queue = test_support::read_queue(temp.path())?;
+    assert!(
+        !queue.tasks.iter().any(|t| t.id == "RQ-0006"),
+        "Queue should no longer contain reconciled task"
+    );
+
+    let done = test_support::read_done(temp.path())?;
+    let count = done.tasks.iter().filter(|t| t.id == "RQ-0006").count();
+    assert_eq!(
+        count, 1,
+        "Done archive should contain exactly one entry after reconciliation"
+    );
+
+    Ok(())
+}
+
 // =============================================================================
 // Test: Merge-Agent Validation Error Exit Code
 // =============================================================================

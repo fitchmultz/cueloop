@@ -42,6 +42,7 @@ use crate::queue;
 use crate::{git, promptflow, runutil, signal, timeutil};
 use anyhow::{Context, Result, bail};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::thread;
 use std::time::Duration;
@@ -58,6 +59,18 @@ use super::{
     preflight_parallel_workspace_root_is_gitignored, prune_stale_tasks_in_flight,
     resolve_parallel_settings, spawn_merge_agent, spawn_worker_with_registered_workspace,
 };
+
+fn workspace_path_for_cleanup(
+    task_id: &str,
+    merge_job_workspace_path: Option<&PathBuf>,
+    completed_workspaces: &HashMap<String, git::WorkspaceSpec>,
+) -> Option<PathBuf> {
+    merge_job_workspace_path.cloned().or_else(|| {
+        completed_workspaces
+            .get(task_id)
+            .map(|workspace| workspace.path.clone())
+    })
+}
 
 /// Main entry point for parallel run loop.
 pub(crate) fn run_loop_parallel(
@@ -423,9 +436,15 @@ pub(crate) fn run_loop_parallel(
                                 // Update PR lifecycle
                                 guard.state_file_mut().mark_pr_merged(&task_id);
 
-                                // Delete workspace immediately per spec
-                                if let Some(ws_path) = &merge_job.workspace_path {
-                                    if let Err(e) = std::fs::remove_dir_all(ws_path) {
+                                // Delete workspace immediately per spec.
+                                // On resumed runs, pending merge jobs may not carry workspace_path,
+                                // so fall back to completed_workspaces tracking.
+                                if let Some(ws_path) = workspace_path_for_cleanup(
+                                    &task_id,
+                                    merge_job.workspace_path.as_ref(),
+                                    &completed_workspaces,
+                                ) {
+                                    if let Err(e) = std::fs::remove_dir_all(&ws_path) {
                                         log::warn!(
                                             "Failed to delete workspace {} for {}: {}",
                                             ws_path.display(),
@@ -794,8 +813,11 @@ pub(crate) fn run_loop_parallel(
 
                                 guard.state_file_mut().mark_pr_merged(&task_id);
 
-                                if let Some(ws_path) = &merge_job.workspace_path
-                                    && let Err(e) = std::fs::remove_dir_all(ws_path)
+                                if let Some(ws_path) = workspace_path_for_cleanup(
+                                    &task_id,
+                                    merge_job.workspace_path.as_ref(),
+                                    &completed_workspaces,
+                                ) && let Err(e) = std::fs::remove_dir_all(&ws_path)
                                 {
                                     log::warn!(
                                         "Failed to delete workspace {} for {}: {}",
@@ -1147,5 +1169,41 @@ mod tests {
             ParallelPrLifecycle::Open,
             "Conflict path should leave PR open"
         );
+    }
+
+    #[test]
+    fn workspace_cleanup_prefers_merge_job_path_when_present() {
+        let mut completed_workspaces = HashMap::new();
+        completed_workspaces.insert(
+            "RQ-0001".to_string(),
+            git::WorkspaceSpec {
+                path: PathBuf::from("/tmp/fallback"),
+                branch: "ralph/RQ-0001".to_string(),
+            },
+        );
+
+        let resolved = workspace_path_for_cleanup(
+            "RQ-0001",
+            Some(&PathBuf::from("/tmp/explicit")),
+            &completed_workspaces,
+        );
+
+        assert_eq!(resolved, Some(PathBuf::from("/tmp/explicit")));
+    }
+
+    #[test]
+    fn workspace_cleanup_uses_completed_workspace_fallback() {
+        let mut completed_workspaces = HashMap::new();
+        completed_workspaces.insert(
+            "RQ-0002".to_string(),
+            git::WorkspaceSpec {
+                path: PathBuf::from("/tmp/fallback-rq2"),
+                branch: "ralph/RQ-0002".to_string(),
+            },
+        );
+
+        let resolved = workspace_path_for_cleanup("RQ-0002", None, &completed_workspaces);
+
+        assert_eq!(resolved, Some(PathBuf::from("/tmp/fallback-rq2")));
     }
 }

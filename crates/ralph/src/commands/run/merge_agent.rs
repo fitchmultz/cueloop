@@ -276,6 +276,59 @@ fn finalize_task(
     task_id: &str,
     pr_number: u32,
 ) -> Result<(), MergeAgentError> {
+    let task_id_trimmed = task_id.trim();
+
+    // Heal partial-finalization state without duplicating done entries:
+    // if done.json already contains the task but queue.json still has it,
+    // remove the active queue entry and keep the existing archive record.
+    if ctx.done_path.exists() && ctx.queue_path.exists() {
+        let done_file = queue::load_queue_or_default(&ctx.done_path).map_err(|e| {
+            MergeAgentError::Runtime(format!("Failed to load done file for finalization: {}", e))
+        })?;
+        let done_contains_task = done_file
+            .tasks
+            .iter()
+            .any(|t| t.id.trim() == task_id_trimmed);
+
+        if done_contains_task {
+            let mut queue_file = queue::load_queue(&ctx.queue_path).map_err(|e| {
+                MergeAgentError::Runtime(format!("Failed to load queue for finalization: {}", e))
+            })?;
+            let original_len = queue_file.tasks.len();
+            queue_file.tasks.retain(|t| t.id.trim() != task_id_trimmed);
+
+            if queue_file.tasks.len() != original_len {
+                let warnings = queue::validate_queue_set(
+                    &queue_file,
+                    Some(&done_file),
+                    &ctx.id_prefix,
+                    ctx.id_width,
+                    ctx.max_dependency_depth,
+                )
+                .map_err(|e| {
+                    MergeAgentError::Runtime(format!(
+                        "Queue validation failed while reconciling task {}: {}",
+                        task_id_trimmed, e
+                    ))
+                })?;
+                queue::log_warnings(&warnings);
+
+                queue::save_queue(&ctx.queue_path, &queue_file).map_err(|e| {
+                    MergeAgentError::Runtime(format!(
+                        "Failed to persist reconciled queue for task {}: {}",
+                        task_id_trimmed, e
+                    ))
+                })?;
+                emit_diagnostic(&format!(
+                    "Reconciled partial finalization for {}: removed stale queue entry",
+                    task_id_trimmed
+                ));
+            }
+
+            return Ok(());
+        }
+    }
+
     let now = timeutil::now_utc_rfc3339()
         .map_err(|e| MergeAgentError::Runtime(format!("Failed to get timestamp: {}", e)))?;
 
@@ -305,19 +358,30 @@ fn is_task_already_done(
     done_path: &Path,
     task_id: &str,
 ) -> Result<bool, MergeAgentError> {
+    let mut queue_status: Option<TaskStatus> = None;
+
     // Check queue file for done status
     if queue_path.exists() {
         let queue_file = queue::load_queue(queue_path)
             .map_err(|e| MergeAgentError::Runtime(format!("Failed to load queue: {}", e)))?;
 
-        if let Some(task) = queue_file
+        queue_status = queue_file
             .tasks
             .iter()
             .find(|t| t.id.trim() == task_id.trim())
-            && task.status == TaskStatus::Done
-        {
+            .map(|task| task.status);
+    }
+
+    match queue_status {
+        Some(TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing) => {
+            // Active queue entry means finalization still needs to run, even if done.json
+            // already contains a copy from a prior partial write.
+            return Ok(false);
+        }
+        Some(TaskStatus::Done | TaskStatus::Rejected) => {
             return Ok(true);
         }
+        None => {}
     }
 
     // Check done file for archived task
@@ -698,6 +762,31 @@ mod execution_tests {
         .unwrap();
 
         assert!(result);
+    }
+
+    #[test]
+    fn is_task_already_done_returns_false_when_done_has_task_but_queue_still_active() {
+        let temp = TempDir::new().unwrap();
+        write_queue_file(
+            &temp,
+            r#"{"version":1,"tasks":[{"id":"RQ-0001","status":"doing","title":"Test","tags":[],"scope":[],"evidence":[],"plan":[],"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}]}"#,
+        );
+        write_done_file(
+            &temp,
+            r#"{"version":1,"tasks":[{"id":"RQ-0001","status":"done","title":"Test","tags":[],"scope":[],"evidence":[],"plan":[],"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","completed_at":"2026-01-01T00:00:00Z"}]}"#,
+        );
+
+        let result = is_task_already_done(
+            &temp.path().join(".ralph/queue.json"),
+            &temp.path().join(".ralph/done.json"),
+            "RQ-0001",
+        )
+        .unwrap();
+
+        assert!(
+            !result,
+            "Active queue entry should prevent already-finalized short-circuit"
+        );
     }
 
     #[test]
