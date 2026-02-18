@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Execute the configured CI gate command (default: make ci).
 //! - Capture stdout/stderr for compliance messages.
+//! - Detect common error patterns and provide specific guidance.
 //! - Provide command label for error messages.
 //!
 //! Not handled here:
@@ -12,12 +13,299 @@
 //! Invariants/assumptions:
 //! - CI gate command is configured or defaults to "make ci".
 //! - Command output is captured (not inherited) to include in compliance messages.
+//! - Error pattern detection is best-effort; undetected patterns fall back to generic guidance.
 
 use super::logging;
 use crate::constants::limits::CI_GATE_AUTO_RETRY_LIMIT;
 use crate::runutil;
 use anyhow::{Context, Result, bail};
 use std::process::Stdio;
+
+// ============================================================================
+// CI Error Pattern Detection
+// ============================================================================
+
+/// Detected error pattern from CI output with actionable guidance.
+#[derive(Debug, Clone)]
+pub(crate) struct DetectedErrorPattern {
+    /// Human-readable pattern name (e.g., "TOML parse error")
+    pub pattern_type: &'static str,
+    /// File path mentioned in the error, if extractable
+    pub file_path: Option<String>,
+    /// Line number mentioned in the error, if extractable
+    pub line_number: Option<u32>,
+    /// Invalid value that caused the error
+    pub invalid_value: Option<String>,
+    /// Valid values/alternatives mentioned in the error
+    pub valid_values: Option<String>,
+    /// Specific actionable guidance for this pattern
+    pub guidance: &'static str,
+}
+
+// Guidance templates for common error patterns
+const TOML_PARSE_ERROR_GUIDANCE: &str =
+    "Read the TOML file at the mentioned line and fix the syntax error or invalid value.";
+const UNKNOWN_VARIANT_GUIDANCE: &str =
+    "Replace the invalid value with one of the valid options listed in the error message.";
+const RUFF_PYPROJECT_GUIDANCE: &str = "Check pyproject.toml for invalid ruff configuration. Common issues: invalid target-version, unknown lint rules.";
+const FORMAT_CHECK_GUIDANCE: &str = "Run the formatter directly to see what needs changing.";
+const LINT_CHECK_GUIDANCE: &str = "Run the linter directly to see the specific errors.";
+
+/// Extract line number from error output.
+///
+/// Looks for patterns like:
+/// - "at line N"
+/// - "line N, column M"
+/// - ":N:M" suffix on paths (e.g., "file.rs:44:18")
+fn extract_line_number(output: &str) -> Option<u32> {
+    let lower = output.to_lowercase();
+
+    // Pattern: "at line N" or "line N, column M"
+    if let Some(pos) = lower.find("line ") {
+        let after = &lower[pos + 5..];
+        // Get the first token after "line "
+        if let Some(token) = after.split_whitespace().next() {
+            // Trim trailing punctuation like colons or commas
+            let cleaned = token.trim_end_matches(':').trim_end_matches(',');
+            if let Ok(num) = cleaned.parse::<u32>() {
+                return Some(num);
+            }
+        }
+    }
+
+    // Pattern: ":N:M" suffix (e.g., "file.rs:44:18")
+    // Look for colon followed by digits at the end of a word
+    for part in lower.split_whitespace() {
+        // Check for pattern like "pyproject.toml:44:18"
+        // We need to find the first colon after the filename
+        if let Some(first_colon) = part.find(':') {
+            let after_first = &part[first_colon + 1..];
+            // The next segment should be the line number
+            if let Some(line_str) = after_first.split(':').next()
+                && let Ok(num) = line_str.parse::<u32>()
+                && num > 0
+                && num < 100000
+            {
+                // Sanity check for line numbers
+                return Some(num);
+            }
+        }
+    }
+
+    None
+}
+
+/// Extract invalid value from unknown variant errors.
+///
+/// Pattern: "unknown variant `VALUE`"
+fn extract_invalid_value(output: &str) -> Option<String> {
+    let lower = output.to_lowercase();
+
+    if let Some(pos) = lower.find("unknown variant") {
+        let after = &output[pos..];
+        // Look for backtick-delimited value
+        if let Some(start) = after.find('`') {
+            let rest = &after[start + 1..];
+            if let Some(end) = rest.find('`') {
+                return Some(rest[..end].to_string());
+            }
+        }
+    }
+
+    None
+}
+
+/// Extract valid alternatives from unknown variant errors.
+///
+/// Pattern: "expected one of A, B, C"
+fn extract_valid_values(output: &str) -> Option<String> {
+    let lower = output.to_lowercase();
+
+    if let Some(pos) = lower.find("expected one of") {
+        let after = &output[pos + 15..]; // "expected one of" length
+        // Take everything up to common terminators (but NOT comma, since values are comma-separated)
+        let end_pos = after
+            .find('\n')
+            .or_else(|| after.find('.'))
+            .unwrap_or(after.len());
+        let values = after[..end_pos].trim();
+        if !values.is_empty() {
+            return Some(values.to_string());
+        }
+    }
+
+    None
+}
+
+/// Infer file path from error context.
+///
+/// For errors that don't explicitly mention a file, infer based on error type.
+fn infer_file_path(output: &str) -> Option<String> {
+    let lower = output.to_lowercase();
+
+    // Check for explicitly mentioned files
+    for filename in &["pyproject.toml", "cargo.toml", "rustfmt.toml", ".toml"] {
+        if lower.contains(filename) {
+            // Try to extract the specific filename
+            for word in lower.split_whitespace() {
+                if word.contains(".toml") || word.ends_with(".toml") {
+                    // Clean up any trailing punctuation
+                    let cleaned = word.trim_end_matches(':').trim_end_matches(',');
+                    return Some(cleaned.to_string());
+                }
+            }
+            return Some(filename.to_string());
+        }
+    }
+
+    // Infer from ruff context
+    if lower.contains("ruff") && lower.contains("parse") {
+        return Some("pyproject.toml".to_string());
+    }
+
+    None
+}
+
+/// Detect TOML parse errors with file/line information.
+///
+/// Pattern: "TOML parse error at line N, column M" or "parse error at line N"
+fn detect_toml_parse_error(output: &str) -> Option<DetectedErrorPattern> {
+    let lower = output.to_lowercase();
+
+    if !lower.contains("toml") || !lower.contains("parse") {
+        return None;
+    }
+
+    Some(DetectedErrorPattern {
+        pattern_type: "TOML parse error",
+        file_path: infer_file_path(output),
+        line_number: extract_line_number(output),
+        invalid_value: extract_invalid_value(output),
+        valid_values: extract_valid_values(output),
+        guidance: TOML_PARSE_ERROR_GUIDANCE,
+    })
+}
+
+/// Detect "unknown variant" enum errors.
+///
+/// Pattern: "unknown variant `X`, expected one of A, B, C"
+fn detect_unknown_variant_error(output: &str) -> Option<DetectedErrorPattern> {
+    let lower = output.to_lowercase();
+
+    if !lower.contains("unknown variant") {
+        return None;
+    }
+
+    Some(DetectedErrorPattern {
+        pattern_type: "Unknown variant error",
+        file_path: infer_file_path(output),
+        line_number: extract_line_number(output),
+        invalid_value: extract_invalid_value(output),
+        valid_values: extract_valid_values(output),
+        guidance: UNKNOWN_VARIANT_GUIDANCE,
+    })
+}
+
+/// Detect ruff-specific errors.
+///
+/// Pattern: "ruff failed:" or tool-specific prefixes
+fn detect_ruff_error(output: &str) -> Option<DetectedErrorPattern> {
+    let lower = output.to_lowercase();
+
+    if !lower.contains("ruff") {
+        return None;
+    }
+
+    // If it's also a TOML parse error, let that handler take precedence
+    if lower.contains("toml") && lower.contains("parse") {
+        return None;
+    }
+
+    Some(DetectedErrorPattern {
+        pattern_type: "Ruff error",
+        file_path: Some("pyproject.toml".to_string()),
+        line_number: extract_line_number(output),
+        invalid_value: extract_invalid_value(output),
+        valid_values: extract_valid_values(output),
+        guidance: RUFF_PYPROJECT_GUIDANCE,
+    })
+}
+
+/// Detect format-check failures.
+///
+/// Pattern: "format-check failed" or "format check failed"
+fn detect_format_check_error(output: &str) -> Option<DetectedErrorPattern> {
+    let lower = output.to_lowercase();
+
+    if !lower.contains("format") || !lower.contains("failed") {
+        return None;
+    }
+
+    Some(DetectedErrorPattern {
+        pattern_type: "Format check failure",
+        file_path: None,
+        line_number: None,
+        invalid_value: None,
+        valid_values: None,
+        guidance: FORMAT_CHECK_GUIDANCE,
+    })
+}
+
+/// Detect lint-check failures.
+///
+/// Pattern: "lint-check failed" or "lint check failed"
+fn detect_lint_check_error(output: &str) -> Option<DetectedErrorPattern> {
+    let lower = output.to_lowercase();
+
+    if !lower.contains("lint") || !lower.contains("failed") {
+        return None;
+    }
+
+    Some(DetectedErrorPattern {
+        pattern_type: "Lint check failure",
+        file_path: None,
+        line_number: None,
+        invalid_value: None,
+        valid_values: None,
+        guidance: LINT_CHECK_GUIDANCE,
+    })
+}
+
+/// Main entry point to detect CI error patterns.
+///
+/// Scans combined stdout/stderr for known error patterns and returns
+/// the most specific/relevant pattern found.
+fn detect_ci_error_pattern(stdout: &str, stderr: &str) -> Option<DetectedErrorPattern> {
+    let combined = format!("{}\n{}", stderr, stdout);
+
+    // Try patterns in order of specificity
+    detect_toml_parse_error(&combined)
+        .or_else(|| detect_unknown_variant_error(&combined))
+        .or_else(|| detect_ruff_error(&combined))
+        .or_else(|| detect_format_check_error(&combined))
+        .or_else(|| detect_lint_check_error(&combined))
+}
+
+/// Format detected pattern into actionable guidance for compliance message.
+fn format_detected_pattern(pattern: &DetectedErrorPattern) -> String {
+    let mut guidance = format!("\n## DETECTED ERROR: {}\n", pattern.pattern_type);
+
+    if let Some(file) = &pattern.file_path {
+        guidance.push_str(&format!("- **File**: `{}`\n", file));
+    }
+    if let Some(line) = pattern.line_number {
+        guidance.push_str(&format!("- **Line**: {}\n", line));
+    }
+    if let Some(invalid) = &pattern.invalid_value {
+        guidance.push_str(&format!("- **Invalid value**: `{}`\n", invalid));
+    }
+    if let Some(valid) = &pattern.valid_values {
+        guidance.push_str(&format!("- **Valid options**: {}\n", valid));
+    }
+
+    guidance.push_str(&format!("\n**Action**: {}\n", pattern.guidance));
+    guidance
+}
 
 /// Result of running the CI gate command.
 #[derive(Debug)]
@@ -155,12 +443,18 @@ fn strict_ci_gate_compliance_message(
     // Format exit code as a number, using -1 if unavailable (e.g., killed by signal)
     let exit_code_display = result.exit_code.unwrap_or(-1);
 
+    // Detect error patterns and generate specific guidance
+    let detected = detect_ci_error_pattern(&result.stdout, &result.stderr);
+    let specific_guidance = detected
+        .as_ref()
+        .map(format_detected_pattern)
+        .unwrap_or_default();
+
     format!(
         r#"CI gate ({cmd}): CI failed with exit code {exit_code_display}.
 
 {output_snippet}
-
-Run '{cmd}' again WITHOUT tail/head truncation to see the full output. Fix the errors above before continuing. You MUST see the CI gate pass before this turn can end.
+{specific_guidance}Fix the errors above before continuing. You MUST see the CI gate pass before this turn can end.
 
 COMMON PATTERNS:
 - "ruff failed: TOML parse error" -> Check pyproject.toml for invalid values at the mentioned line
@@ -535,5 +829,199 @@ mod tests {
     fn truncate_for_log_handles_empty_string() {
         let truncated = truncate_for_log("", 100);
         assert_eq!(truncated, "");
+    }
+
+    // ========================================================================
+    // Pattern Detection Tests
+    // ========================================================================
+
+    #[test]
+    fn detect_toml_parse_error_extracts_line_number() {
+        let output = "ruff failed: TOML parse error at line 44, column 18: unknown variant `py314`";
+        let pattern = detect_toml_parse_error(output).unwrap();
+        assert_eq!(pattern.line_number, Some(44));
+        assert_eq!(pattern.pattern_type, "TOML parse error");
+    }
+
+    #[test]
+    fn detect_toml_parse_error_returns_none_for_non_toml() {
+        let output = "Some random error message";
+        assert!(detect_toml_parse_error(output).is_none());
+    }
+
+    #[test]
+    fn detect_unknown_variant_extracts_values() {
+        let output =
+            "unknown variant `py314`, expected one of py37, py38, py39, py310, py311, py312, py313";
+        let pattern = detect_unknown_variant_error(output).unwrap();
+        assert_eq!(pattern.invalid_value, Some("py314".to_string()));
+        assert!(pattern.valid_values.unwrap().contains("py313"));
+        assert_eq!(pattern.pattern_type, "Unknown variant error");
+    }
+
+    #[test]
+    fn detect_unknown_variant_returns_none_for_non_variant() {
+        let output = "Some error without variant";
+        assert!(detect_unknown_variant_error(output).is_none());
+    }
+
+    #[test]
+    fn detect_ruff_error_returns_pattern() {
+        let output = "ruff failed with some error";
+        let pattern = detect_ruff_error(output).unwrap();
+        assert_eq!(pattern.pattern_type, "Ruff error");
+        assert_eq!(pattern.file_path, Some("pyproject.toml".to_string()));
+    }
+
+    #[test]
+    fn detect_format_check_error_returns_pattern() {
+        let output = "format-check failed";
+        let pattern = detect_format_check_error(output).unwrap();
+        assert_eq!(pattern.pattern_type, "Format check failure");
+    }
+
+    #[test]
+    fn detect_lint_check_error_returns_pattern() {
+        let output = "lint check failed";
+        let pattern = detect_lint_check_error(output).unwrap();
+        assert_eq!(pattern.pattern_type, "Lint check failure");
+    }
+
+    #[test]
+    fn detect_ci_error_pattern_combines_stdout_stderr() {
+        let stdout = "Some output";
+        let stderr = "TOML parse error at line 10";
+        let pattern = detect_ci_error_pattern(stdout, stderr).unwrap();
+        assert_eq!(pattern.line_number, Some(10));
+    }
+
+    #[test]
+    fn detect_ci_error_pattern_returns_none_on_clean_output() {
+        let output = "All tests passed!";
+        assert!(detect_ci_error_pattern(output, "").is_none());
+    }
+
+    #[test]
+    fn extract_line_number_from_at_line_pattern() {
+        let output = "Error at line 42";
+        assert_eq!(extract_line_number(output), Some(42));
+    }
+
+    #[test]
+    fn extract_line_number_from_colon_pattern() {
+        let output = "pyproject.toml:44:18: error";
+        assert_eq!(extract_line_number(output), Some(44));
+    }
+
+    #[test]
+    fn extract_line_number_returns_none_when_not_present() {
+        let output = "No line number here";
+        assert!(extract_line_number(output).is_none());
+    }
+
+    #[test]
+    fn extract_invalid_value_finds_backtick_value() {
+        let output = "unknown variant `py314`, expected...";
+        assert_eq!(extract_invalid_value(output), Some("py314".to_string()));
+    }
+
+    #[test]
+    fn extract_valid_values_finds_expected_list() {
+        let output = "expected one of py37, py38, py313";
+        assert_eq!(
+            extract_valid_values(output),
+            Some("py37, py38, py313".to_string())
+        );
+    }
+
+    #[test]
+    fn compliance_message_includes_detected_toml_error() {
+        let temp = TempDir::new().unwrap();
+        let resolved = resolved_with_ci_command(temp.path(), None, true);
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr:
+                "TOML parse error at line 44: unknown variant `py314`, expected one of py37, py313"
+                    .to_string(),
+        };
+
+        let msg = strict_ci_gate_compliance_message(&resolved, &result);
+        assert!(
+            msg.contains("DETECTED ERROR"),
+            "Should contain DETECTED ERROR section"
+        );
+        assert!(
+            msg.contains("TOML parse error"),
+            "Should identify error type"
+        );
+        assert!(msg.contains("**Line**"), "Should show Line label");
+        assert!(msg.contains("44"), "Should show line 44");
+        assert!(msg.contains("py314"), "Should show invalid value");
+    }
+
+    #[test]
+    fn compliance_message_includes_detected_unknown_variant() {
+        let temp = TempDir::new().unwrap();
+        let resolved = resolved_with_ci_command(temp.path(), None, true);
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: "unknown variant `foo`, expected one of bar, baz".to_string(),
+        };
+
+        let msg = strict_ci_gate_compliance_message(&resolved, &result);
+        assert!(
+            msg.contains("DETECTED ERROR"),
+            "Should contain DETECTED ERROR section"
+        );
+        assert!(
+            msg.contains("Unknown variant error"),
+            "Should identify error type"
+        );
+        assert!(msg.contains("`foo`"), "Should show invalid value");
+        assert!(msg.contains("bar, baz"), "Should show valid options");
+    }
+
+    #[test]
+    fn compliance_message_no_detected_section_on_clean_output() {
+        let temp = TempDir::new().unwrap();
+        let resolved = resolved_with_ci_command(temp.path(), None, true);
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: "build failed".to_string(),
+            stderr: String::new(),
+        };
+
+        let msg = strict_ci_gate_compliance_message(&resolved, &result);
+        assert!(
+            !msg.contains("DETECTED ERROR"),
+            "Should NOT contain DETECTED ERROR section for unrecognized errors"
+        );
+        // Should still have common patterns
+        assert!(msg.contains("COMMON PATTERNS"));
+    }
+
+    #[test]
+    fn format_detected_pattern_includes_all_fields() {
+        let pattern = DetectedErrorPattern {
+            pattern_type: "Test error",
+            file_path: Some("test.toml".to_string()),
+            line_number: Some(10),
+            invalid_value: Some("bad_value".to_string()),
+            valid_values: Some("good1, good2".to_string()),
+            guidance: "Fix the error",
+        };
+
+        let formatted = format_detected_pattern(&pattern);
+        assert!(formatted.contains("Test error"));
+        assert!(formatted.contains("test.toml"));
+        assert!(formatted.contains("10"));
+        assert!(formatted.contains("bad_value"));
+        assert!(formatted.contains("good1, good2"));
+        assert!(formatted.contains("Fix the error"));
     }
 }
