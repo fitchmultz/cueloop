@@ -159,13 +159,13 @@ fn build_worker_command(
     if force {
         args.push("--force".to_string());
     }
-    args.push("--no-progress".to_string());
     args.push("run".to_string());
     args.push("one".to_string());
     args.push("--id".to_string());
     args.push(task_id.to_string());
     args.push("--parallel-worker".to_string());
     args.push("--non-interactive".to_string());
+    args.push("--no-progress".to_string());
 
     args.extend(build_override_args(overrides));
 
@@ -218,6 +218,18 @@ mod tests {
         // Default overrides should not emit git-commit-push flags
         assert!(!args.contains(&"--git-commit-push-on".to_string()));
         assert!(!args.contains(&"--git-commit-push-off".to_string()));
+
+        let run_pos = args.iter().position(|arg| arg == "run").expect("run");
+        let one_pos = args.iter().position(|arg| arg == "one").expect("one");
+        let no_progress_pos = args
+            .iter()
+            .position(|arg| arg == "--no-progress")
+            .expect("--no-progress");
+        assert!(
+            no_progress_pos > one_pos && one_pos > run_pos,
+            "--no-progress must be scoped under `run one`, got args: {:?}",
+            args
+        );
 
         let id_pos = args.iter().position(|arg| arg == "--id").expect("--id");
         assert_eq!(args.get(id_pos + 1), Some(&"RQ-1234".to_string()));
