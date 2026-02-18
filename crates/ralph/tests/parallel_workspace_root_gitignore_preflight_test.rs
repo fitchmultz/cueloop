@@ -169,8 +169,19 @@ fn parallel_run_not_blocked_by_workspace_root_preflight_when_ignored() -> Result
         std::fs::write(&gitignore_path, existing)?;
     }
 
-    let (status, stdout, stderr) =
-        test_support::run_in_dir(dir.path(), &["run", "loop", "--parallel", "2", "--force"]);
+    // Use --max-tasks 1 to ensure the parallel loop terminates.
+    let (status, stdout, stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "run",
+            "loop",
+            "--parallel",
+            "2",
+            "--force",
+            "--max-tasks",
+            "1",
+        ],
+    );
     let combined = format!("{stdout}{stderr}");
 
     assert!(

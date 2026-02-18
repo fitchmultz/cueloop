@@ -146,11 +146,20 @@ fn parallel_run_succeeds_when_origin_remote_exists() -> Result<()> {
     // Run parallel mode; repo has origin remote so it should pass preflight.
     // Note: It may still fail due to no tasks being available or runner issues,
     // but it should NOT fail due to missing origin.
+    // Use --max-tasks 1 to ensure the parallel loop terminates.
     let output = Command::new(test_support::ralph_bin())
         .current_dir(dir.path())
         .env_remove("RUST_LOG")
         .env("RALPH_REPO_ROOT_OVERRIDE", dir.path())
-        .args(["run", "loop", "--parallel", "2", "--force"])
+        .args([
+            "run",
+            "loop",
+            "--parallel",
+            "2",
+            "--force",
+            "--max-tasks",
+            "1",
+        ])
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
