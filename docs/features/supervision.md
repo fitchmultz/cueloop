@@ -276,8 +276,10 @@ Phase 3 writes a completion signal to `.ralph/cache/completions/{TASK_ID}.json`:
 
 **Signal Requirements:**
 - Status must be `done` or `rejected` (terminal states)
-- Used by parallel workers to confirm completion before PR creation
+- Used for analytics and webhook events
 - Staged and committed with task changes
+
+**Note:** In parallel mode, task finalization is handled by the merge-agent subprocess. No completion-signal file is produced by parallel workers.
 
 ### Queue Maintenance
 
@@ -458,11 +460,9 @@ Parallel workers have a simplified supervision flow:
 
 1. **Run CI Gate** (if dirty)
 2. **Restore Bookkeeping**: Reset queue/done/productivity files to HEAD
-3. **Ensure Completion Signal**: Verify `.ralph/cache/completions/{TASK_ID}.json` exists
-4. **Stage Signal**: Add completion signal to git index
-5. **Finalize Git**: Commit and push changes (if enabled)
+3. **Finalize Git**: Commit and push changes (if enabled)
 
-Workers do not modify queue/done files directly—the coordinator handles task state management.
+Workers do not modify queue/done files directly—the coordinator handles task state management via the merge-agent subprocess. Task finalization happens atomically in the coordinator repo context when `ralph run merge-agent` is invoked.
 
 ### CI Failure Recovery Flow
 
@@ -597,16 +597,16 @@ git commit -m "RQ-0001: Task title"
 git push
 ```
 
-### Completion Signal Missing (Parallel Mode)
+### Merge-Agent Failure (Parallel Mode)
 
-**Symptom**: Parallel worker fails with "Completion signal missing".
+**Symptom**: Parallel worker completes but task remains in queue.
 
 **Resolution**:
 ```bash
-# Re-run Phase 3 to generate signal
-ralph run one --phases 3 --id RQ-0001
+# Manually run merge-agent for the task/PR
+ralph run merge-agent --task RQ-0001 --pr 42
 
-# Or manually finalize
+# Or manually finalize the task
 ralph task done RQ-0001
 ```
 

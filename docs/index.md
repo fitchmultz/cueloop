@@ -327,7 +327,6 @@ Optional prompt overrides (defaults are embedded in the binary):
 | File | Purpose |
 |------|---------|
 | `.ralph/cache/plans/<TASK_ID>.md` | Phase 1 cached plans |
-| `.ralph/cache/completions/<TASK_ID>.json` | Task completion signals |
 | `.ralph/cache/parallel/state.json` | Parallel run state |
 | `.ralph/cache/session.json` | Session state for crash recovery |
 

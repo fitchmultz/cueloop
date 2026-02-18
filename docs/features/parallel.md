@@ -15,7 +15,7 @@ Parallel execution runs multiple tasks concurrently in isolated git workspace cl
 5. [PR Automation](#pr-automation)
 6. [Configuration](#configuration)
 7. [State Management](#state-management)
-8. [Merge Runner](#merge-runner)
+8. [Merge-Agent Command](#merge-agent-command)
 9. [Limitations](#limitations)
 10. [Workflow](#workflow)
 11. [Monitoring](#monitoring)
@@ -83,14 +83,16 @@ ralph run loop --parallel 3 --max-tasks 10
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                               │
+                              │ On PR creation
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       Merge Runner Thread                        │
-│              (Background PR monitoring/merging)                  │
+│                     Merge-Agent Subprocess                       │
+│          (ralph run merge-agent --task X --pr N)                 │
 ├─────────────────────────────────────────────────────────────────┤
-│  - Polls PR merge status                                         │
-│  - Handles merge conflicts                                       │
-│  - Applies queue sync after merge                                │
+│  - Validates PR merge eligibility                                │
+│  - Executes merge per configured policy                          │
+│  - Finalizes task in canonical queue/done                        │
+│  - Emits structured JSON result to stdout                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -118,7 +120,6 @@ Independent subprocesses that:
 JSON file at `.ralph/cache/parallel/state.json` tracking:
 - `tasks_in_flight`: Currently running tasks
 - `prs`: Created PRs with lifecycle state
-- `finished_without_pr`: Tasks that completed without PR creation
 - Base branch and merge settings
 
 #### 4. Cleanup Guard (`cleanup_guard.rs`)
@@ -127,7 +128,7 @@ RAII guard ensuring:
 - Workers are terminated on interrupt/error
 - Workspaces are cleaned up appropriately
 - State file is persisted
-- Merge runner thread is joined
+- Merge-agent subprocesses are drained before exit
 
 ---
 
@@ -224,9 +225,8 @@ With this config:
 
 Ralph validates PR head branches match the expected naming convention. If a mismatch is detected:
 
-1. A `merge_blocker` is set in the state file
+1. A warning is logged with details
 2. The PR is skipped for auto-merge
-3. A warning is logged with details
 
 This prevents accidental merges when branch naming conventions change.
 
@@ -444,20 +444,7 @@ If not specified, inherits from `agent.*` settings.
       "head": "ralph/RQ-0001",
       "base": "main",
       "workspace_path": "/path/to/workspaces/RQ-0001",
-      "merged": false,
-      "lifecycle": "open",
-      "merge_blocker": null
-    }
-  ],
-  "finished_without_pr": [
-    {
-      "task_id": "RQ-0005",
-      "workspace_path": "/path/to/workspaces/RQ-0005",
-      "branch": "ralph/RQ-0005",
-      "success": true,
-      "finished_at": "2026-02-07T10:35:00Z",
-      "reason": "auto_pr_disabled",
-      "message": null
+      "lifecycle": "pending_merge"
     }
   ]
 }
@@ -473,25 +460,14 @@ If not specified, inherits from `agent.*` settings.
 | `merge_when` | `string` | Merge timing for this run |
 | `tasks_in_flight` | `array` | Currently running tasks |
 | `prs` | `array` | Created PRs with lifecycle state |
-| `finished_without_pr` | `array` | Tasks completed without PR |
 
 ### PR Lifecycle States
 
 | State | Description |
 |-------|-------------|
-| `open` | PR is open and not yet merged |
-| `closed` | PR was closed without merging |
+| `pending_merge` | PR is open and awaiting merge |
 | `merged` | PR was successfully merged |
-
-### Finished Without PR Reasons
-
-| Reason | Description | Blocking Behavior |
-|--------|-------------|-------------------|
-| `auto_pr_disabled` | PR automation was disabled | Blocks only while auto_pr disabled |
-| `draft_pr_disabled` | Draft PR on failure was disabled | Blocks only while draft_on_failure disabled |
-| `pr_create_failed` | PR creation failed (API error, etc.) | Blocks for 24h TTL |
-| `draft_pr_skipped_no_changes` | Worker failed with no changes | Blocks for 24h TTL |
-| `unknown` | Unknown/unexpected reason | Blocks for 24h TTL |
+| `closed` | PR was closed without merging |
 
 ### Crash Recovery
 
@@ -500,8 +476,7 @@ On startup, Ralph performs state recovery:
 1. **Prune stale tasks**: Remove tasks with missing workspaces or dead PIDs
 2. **Reconcile PRs**: Query GitHub to update PR lifecycle states
 3. **Clean workspaces**: Remove workspaces for merged/closed PRs
-4. **Prune non-blocking**: Clear finished-without-pr records that no longer block
-5. **Validate base branch**: Ensure base branch consistency
+4. **Validate base branch**: Ensure base branch consistency
 
 If the base branch doesn't match:
 - With no blocking work: Auto-heal to current branch
@@ -509,37 +484,46 @@ If the base branch doesn't match:
 
 ---
 
-## Merge Runner
+## Merge-Agent Command
 
 ### Purpose
 
-The merge runner handles:
-- Polling PR merge status
-- Attempting merges when eligible
-- Auto-resolving merge conflicts using AI
-- Applying queue sync after merge
+The merge-agent is an explicit subprocess command that:
+- Validates PR merge eligibility
+- Executes merge per configured policy
+- Finalizes task state in canonical queue/done
+- Returns structured JSON result to coordinator
 
-### Merge Process Flow
+No completion-signal files are used. Task finalization happens directly in the coordinator repo context via the merge-agent subprocess.
 
+### Command
+
+```bash
+ralph run merge-agent --task <TASK_ID> --pr <PR_NUMBER>
 ```
-PR Created ──► Check Merge Status
-                     │
-        ┌───────────┼───────────┐
-        ▼           ▼           ▼
-    [Clean]     [Dirty]     [Other]
-        │           │           │
-        ▼           ▼           ▼
-    Merge PR   Try Resolve   Retry Later
-        │           │           │
-        ▼           ▼           ▼
-   On Success  On Success   Exceed Retries
-        │           │           │
-        ▼           ▼           ▼
-   Queue Sync  Merge PR     Skip PR
-        │           │
-        └─────┬─────┘
-              ▼
-        Mark Merged
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Merge + task finalization successful |
+| 1 | Runtime/unexpected failure |
+| 2 | Usage/validation failure |
+| >=3 | Domain-specific failures |
+
+### Output
+
+- **Stdout**: JSON object with `{task_id, pr_number, merged, message}`
+- **Stderr**: User-facing diagnostics
+
+### Examples
+
+```bash
+# Merge PR #42 for task RQ-0001
+ralph run merge-agent --task RQ-0001 --pr 42
+
+# Check exit code
+echo $?  # 0 = success, 1 = runtime error, 2 = validation error
 ```
 
 ### Conflict Resolution
@@ -563,15 +547,6 @@ When `conflict_policy: auto_resolve` and a PR has merge conflicts:
 | `retry_later` | Wait and retry merge later |
 | `reject` | Skip PR, mark as failed |
 
-### Merge Runner Prompt
-
-The merge runner uses the `merge_conflicts` prompt template:
-
-```
-.ralph/prompts/merge_conflicts.md (if exists)
-→ Fallback to embedded default
-```
-
 ---
 
 ## Limitations
@@ -580,9 +555,9 @@ The merge runner uses the `merge_conflicts` prompt template:
 
 **INTENDED BEHAVIOR**: In-flight tasks should be resumable after interruption.
 
-**CURRENTLY IMPLEMENTED BEHAVIOR**: Parallel mode does not support session resume for individual tasks. If a worker is interrupted, the task will be recorded as finished without PR (if incomplete) and must be re-run manually.
+**CURRENTLY IMPLEMENTED BEHAVIOR**: Parallel mode does not support session resume for individual tasks. If a worker is interrupted, the task state is persisted and can be manually re-run.
 
-**Workaround**: The state file tracks in-flight tasks, and stale tasks are pruned on restart. You can manually resume by marking the task incomplete and re-running.
+**Workaround**: The state file tracks in-flight tasks, and stale tasks are pruned on restart. You can manually resume by re-running the task.
 
 ### RepoPrompt Forced Off
 
@@ -643,17 +618,16 @@ Parallel execution respects task dependencies (`depends_on`), but:
    - On success: Create PR (if auto_pr enabled)
    - On failure: Create draft PR (if draft_on_failure enabled)
    - Update state file
-   - Clean up workspace (after merge or on failure without PR)
 
-6. **Merge Runner**
-   - Polls PRs for merge eligibility
-   - Attempts merges
-   - Resolves conflicts (if configured)
-   - Applies queue sync after merge
+6. **Merge-Agent Processing**
+   - Coordinator invokes `ralph run merge-agent --task <TASK_ID> --pr <PR_NUMBER>`
+   - Merge-agent validates and executes merge
+   - Task finalization happens in coordinator repo context
+   - Workspace cleaned up after successful merge
 
 7. **Cleanup**
    - Terminate remaining workers
-   - Join merge runner thread
+   - Drain merge-agent subprocesses
    - Clear state file tasks_in_flight
    - Remove workspaces
 
@@ -661,11 +635,12 @@ Parallel execution respects task dependencies (`depends_on`), but:
 
 On Ctrl+C or error:
 
-1. Signal merge runner to stop
+1. Stop scheduling new workers
 2. Terminate all in-flight workers
-3. Clean up workspaces (best effort)
-4. Save state file
-5. Exit with appropriate status
+3. Drain merge-agent subprocesses (unless hard abort)
+4. Clean up workspaces (best effort)
+5. Save state file
+6. Exit with appropriate status
 
 ---
 
@@ -688,9 +663,9 @@ Key fields to monitor:
 | Field | Indication |
 |-------|------------|
 | `tasks_in_flight` | Currently running tasks |
-| `prs` (lifecycle: open) | Pending PRs awaiting merge |
-| `prs` (merge_blocker) | PRs blocked from auto-merge |
-| `finished_without_pr` | Tasks needing manual intervention |
+| `prs` (lifecycle: pending_merge) | PRs awaiting merge |
+| `prs` (lifecycle: merged) | Successfully merged PRs |
+| `prs` (lifecycle: closed) | Closed PRs |
 
 ### Log Output
 
@@ -821,11 +796,11 @@ ralph run loop --parallel
 # Check if parallel run is active
 jq '.tasks_in_flight | length' .ralph/cache/parallel/state.json
 
-# Check for blocked PRs
-jq '.prs[] | select(.merge_blocker != null) | {task_id, merge_blocker}' .ralph/cache/parallel/state.json
+# Check pending merges
+jq '.prs[] | select(.lifecycle == "pending_merge") | {task_id, pr_number}' .ralph/cache/parallel/state.json
 
-# Clear specific merge blocker (after fixing issue)
-jq '(.prs[] | select(.task_id == "RQ-0001")).merge_blocker = null' .ralph/cache/parallel/state.json > state.tmp.json && mv state.tmp.json .ralph/cache/parallel/state.json
+# Manually run merge-agent for a specific task/PR
+ralph run merge-agent --task RQ-0001 --pr 42
 ```
 
 ---

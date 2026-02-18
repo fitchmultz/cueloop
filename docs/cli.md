@@ -1072,15 +1072,15 @@ Notes:
 - `--parallel` conflicts with `--wait-when-blocked` and ignores `--resume`.
 - Each task runs in its own isolated git workspace clone and branch; PRs are created/merged automatically when enabled.
 - Queue and done files are coordinator-only in parallel mode; worker branches do not modify `.ralph/queue.json` or `.ralph/done.json`.
-- Workers commit per-task completion signals in `.ralph/cache/completions/<TASK_ID>.json`.
-- After a PR merge, the coordinator applies the completion signal to update queue/done (and stats). If a signal is missing, the merge is halted with an error.
+- The coordinator invokes `ralph run merge-agent --task <TASK_ID> --pr <PR_NUMBER>` for each eligible PR.
+- Merge-agent handles PR merge and task finalization atomically; no completion-signal files are used.
+- Queue/done updates happen only in coordinator repo context via merge-agent subprocess.
 - Parallel workers force RepoPrompt mode to `off` (no tooling or planning requirement) to keep edits inside workspace clones.
 - Parallel workers honor `--git-commit-push-on/off` and `agent.git_commit_push_enabled` config. When commit/push is disabled, parallel PR automation (`auto_pr`, `auto_merge`, `draft_on_failure`) is skipped because PRs require pushed commits.
-- When PR automation is disabled or PR creation fails, Ralph records the task as finished without a PR in `.ralph/cache/parallel/state.json` and will not re-run it automatically. To retry, remove the finished-without-PR entry from the state file. If the task already completed successfully, mark it done manually (since no PR exists for the coordinator to apply).
 - You can set a default worker count with `parallel.workers` in `.ralph/config.json`.
 - The default workspace location is `<repo-parent>/.workspaces/<repo-name>/parallel/<TASK_ID>` (configurable via `parallel.workspace_root`).
 - State is persisted to `.ralph/cache/parallel/state.json` for crash recovery and coordination.
-- On startup, Ralph prunes stale in-flight task records and reconciles PR records before checking the state file's base branch. If the base branch is missing or mismatched and there are no in-flight tasks, open PRs, or finished-without-PR blockers, Ralph auto-heals the state file to the current branch. Otherwise it errors with recovery guidance.
+- On startup, Ralph prunes stale in-flight task records and reconciles PR records before checking the state file's base branch.
 
 Examples:
 
@@ -1187,6 +1187,39 @@ Clean-repo checks for `run one` and `run loop` allow changes to
 `.ralph/config.{json,jsonc}` (alongside `.ralph/queue.{json,jsonc}` and
 `.ralph/done.{json,jsonc}`). Use `--force` to bypass the
 clean-repo check entirely if needed.
+
+### `ralph run merge-agent`
+
+Run the merge-agent subprocess for a specific task/PR pair. This command is typically invoked by the parallel coordinator, but can also be run manually for debugging or recovery.
+
+#### Arguments
+
+* `--task <TASK_ID>`: Required. The task ID to finalize.
+* `--pr <PR_NUMBER>`: Required. The PR number to merge.
+
+#### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Merge + task finalization successful |
+| 1 | Runtime/unexpected failure |
+| 2 | Usage/validation failure (invalid task/PR format) |
+| >=3 | Domain-specific failures |
+
+#### Output
+
+- Stdout: JSON object with `{task_id, pr_number, merged, message}`
+- Stderr: User-facing diagnostics
+
+#### Examples
+
+```bash
+# Merge PR #42 for task RQ-0001
+ralph run merge-agent --task RQ-0001 --pr 42
+
+# Check exit code
+echo $?  # 0 = success, 1 = runtime error, 2 = validation error
+```
 
 ## `ralph scan`
 

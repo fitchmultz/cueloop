@@ -240,10 +240,12 @@ Phase 3 generates a code review prompt that includes:
 
 ### Completion Signals
 
-When the runner marks a task done/rejected, Ralph writes a completion signal:
+When the runner marks a task done/rejected in **sequential mode**, Ralph writes a completion signal:
 - Location: `.ralph/cache/completions/<TASK_ID>.json`
 - Contains: status, notes, runner_used, model_used
 - Used for: Analytics, webhook events, custom fields patching
+
+**Note:** In parallel mode, task finalization is handled by the merge-agent subprocess. No completion-signal file is produced by parallel workers.
 
 ## Single-Phase Mode
 
