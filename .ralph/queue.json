@@ -2,56 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0950",
-      "status": "todo",
-      "title": "Add CI output passthrough to agent before compliance message",
-      "description": "When CI gate fails, the agent receives a compliance message but may not see the full CI output. In RQ-0124, the agent kept running `make ci` manually and truncating output with `tail -30`. The CI gate failure log showed the ruff parse error at the start of output (before tests). Agent should see the complete CI output including format-check, lint-check phases that run before tests.",
-      "priority": "medium",
-      "tags": [
-        "scan",
-        "ci",
-        "agent-visibility",
-        "ralph"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/supervision/ci.rs",
-        "crates/ralph/src/commands/run/logging.rs"
-      ],
-      "evidence": [
-        "log: Agent ran `make ci 2>&1 | tail -30` which truncated early errors",
-        "log: ruff format --check runs BEFORE tests, error appeared at start of CI output",
-        "analysis: Agent needs to see full CI output when gate fails",
-        "code: format_ci_output_for_message() takes LAST N lines, truncating early errors",
-        "code: detect_ci_error_pattern() scans combined output but agent only sees truncated snippet"
-      ],
-      "plan": [
-        "Change format_ci_output_for_message to show BOTH start and end of output",
-        "First 50 lines (early errors like format/lint) + last 50 lines (test failures)",
-        "Include line count indicator when truncated (e.g., 'Lines 1-50 of 200')",
-        "Add unit tests for head+tail truncation behavior",
-        "Run cargo test -p ralph to verify"
-      ],
-      "notes": [
-        "Modified format_ci_output_for_message() to show both head (early errors) and tail (test failures) instead of just tail",
-        "Changed function signature from max_lines to max_head_lines + max_tail_lines (50, 50)",
-        "Added 2 new tests: format_ci_output_shows_head_and_tail and format_ci_output_shows_all_when_small",
-        "All 40 CI supervision tests pass, full CI gate passes"
-      ],
-      "request": "scan finding",
-      "created_at": "2026-02-18T22:30:00Z",
-      "updated_at": "2026-02-19T01:36:37.559575000Z",
-      "completed_at": "2026-02-19T01:36:37.559575000Z",
-      "started_at": "2026-02-19T01:25:00.228090000Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "model_used": "sonnet",
-        "runner_used": "claude",
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0953",
       "status": "todo",
       "title": "Improve CI gate logging with full command output",
@@ -101,9 +51,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "runner_used": "claude",
         "model_used": "sonnet",
-        "runner_used": "claude"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -166,8 +116,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-general",
-        "runner_used": "claude",
-        "model_used": "sonnet"
+        "model_used": "sonnet",
+        "runner_used": "claude"
       }
     },
     {

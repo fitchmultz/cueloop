@@ -426,8 +426,10 @@ fn format_ci_output_for_message(
         return "No output captured.".to_string();
     }
 
+    let budget = max_head_lines.saturating_add(max_tail_lines);
+
     // If output fits within budget, show everything
-    if total_lines <= max_head_lines + max_tail_lines {
+    if total_lines <= budget {
         return format!(
             "CI output ({} lines):\n```\n{}\n```",
             total_lines,
@@ -435,14 +437,61 @@ fn format_ci_output_for_message(
         );
     }
 
-    // Show head (early errors) and tail (test failures)
-    let head: Vec<&str> = lines.iter().take(max_head_lines).copied().collect();
-    let tail_start = total_lines.saturating_sub(max_tail_lines);
+    // Show head (early errors) and tail (test failures) with explicit line ranges.
+    // Ensure segments never overlap and remain coherent for zero-line budgets.
+    let head_count = max_head_lines.min(total_lines);
+    let tail_count = max_tail_lines.min(total_lines.saturating_sub(head_count));
+
+    let head: Vec<&str> = lines.iter().take(head_count).copied().collect();
+    let tail_start = total_lines.saturating_sub(tail_count);
     let tail: Vec<&str> = lines.iter().skip(tail_start).copied().collect();
-    let omitted = total_lines - max_head_lines - max_tail_lines;
+    let omitted = total_lines.saturating_sub(head.len() + tail.len());
+
+    if head.is_empty() && tail.is_empty() {
+        return format!(
+            "CI output ({} lines total; snippet budget is 0 lines).\n\n... {} lines omitted ...",
+            total_lines, omitted
+        );
+    }
+
+    // Use explicit line ranges for operator readability
+    if tail.is_empty() {
+        let head_range = format!("1-{}", head.len());
+        return format!(
+            "CI output ({} lines total; showing lines {}):\n\
+             ```
+             {}
+             ```
+
+             ... {} lines omitted ...",
+            total_lines,
+            head_range,
+            head.join("\n"),
+            omitted,
+        );
+    }
+
+    if head.is_empty() {
+        let tail_range = format!("{}-{}", tail_start + 1, total_lines);
+        return format!(
+            "CI output ({} lines total; showing lines {}):\n\
+             ```
+             {}
+             ```
+
+             ... {} lines omitted ...",
+            total_lines,
+            tail_range,
+            tail.join("\n"),
+            omitted,
+        );
+    }
+
+    let head_range = format!("1-{}", head.len());
+    let tail_range = format!("{}-{}", tail_start + 1, total_lines);
 
     format!(
-        "CI output ({} lines total, showing first {} and last {}):\n\
+        "CI output ({} lines total; showing lines {} and {}):\n\
          ```
          {}
          ```
@@ -453,8 +502,8 @@ fn format_ci_output_for_message(
          {}
          ```",
         total_lines,
-        max_head_lines,
-        max_tail_lines,
+        head_range,
+        tail_range,
         head.join("\n"),
         omitted,
         tail.join("\n")
@@ -535,6 +584,25 @@ pub(crate) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<CiGateRe
             .into())
         }
     })
+}
+
+/// Build a combined CI failure message that includes CI output context.
+///
+/// Used when user intervention provides additional guidance via RevertOutcome::Continue.
+/// Ensures agent always sees CI output even when user provides a custom message.
+fn build_ci_failure_message_with_user_input(
+    resolved: &crate::config::Resolved,
+    result: &CiGateResult,
+    user_message: &str,
+) -> String {
+    let strict_message = strict_ci_gate_compliance_message(resolved, result);
+    if user_message.trim().is_empty() {
+        return strict_message;
+    }
+    format!(
+        "{}\n\n---\n\nAgent message from user intervention:\n{}",
+        strict_message, user_message
+    )
 }
 
 fn strict_ci_gate_compliance_message(
@@ -690,8 +758,21 @@ where
 
         match outcome {
             runutil::RevertOutcome::Continue { message } => {
-                let (output, elapsed) =
-                    super::resume_continue_session(resolved, continue_session, &message, plugins)?;
+                // Prepend strict CI compliance message to ensure agent sees CI output
+                let gate_result = CiGateResult {
+                    success: false,
+                    exit_code: result.exit_code,
+                    stdout: result.stdout.clone(),
+                    stderr: result.stderr.clone(),
+                };
+                let combined_message =
+                    build_ci_failure_message_with_user_input(resolved, &gate_result, &message);
+                let (output, elapsed) = super::resume_continue_session(
+                    resolved,
+                    continue_session,
+                    &combined_message,
+                    plugins,
+                )?;
                 on_resume(&output, elapsed)?;
                 continue;
             }
@@ -926,6 +1007,9 @@ mod tests {
         // Should show total line count
         assert!(result.contains("200 lines total"));
 
+        // Should show explicit line ranges
+        assert!(result.contains("showing lines 1-50 and 151-200"));
+
         // Should include early lines (format/lint errors appear here)
         assert!(result.contains("line1"));
         assert!(result.contains("line50"));
@@ -981,6 +1065,192 @@ mod tests {
             "Expected 'exit code 2', got: {msg}"
         );
         assert!(msg.contains("ruff failed"));
+    }
+
+    #[test]
+    fn compliance_message_includes_formatted_ci_output_with_ranges() {
+        let temp = TempDir::new().unwrap();
+        let resolved = resolved_with_ci_command(temp.path(), None, true);
+
+        // Create large output that will be truncated
+        let stdout = (1..=200)
+            .map(|i| format!("out-{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let stderr = (1..=10)
+            .map(|i| format!("err-{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout,
+            stderr,
+        };
+
+        let msg = strict_ci_gate_compliance_message(&resolved, &result);
+
+        // Should include formatted output with line ranges
+        assert!(
+            msg.contains("lines total"),
+            "Should show total lines in message"
+        );
+        assert!(
+            msg.contains("showing lines"),
+            "Should show explicit line ranges"
+        );
+        assert!(
+            msg.contains("err-1"),
+            "Should include early stderr in output"
+        );
+        assert!(
+            msg.contains("out-200"),
+            "Should include late stdout in output"
+        );
+        assert!(
+            msg.contains("lines omitted"),
+            "Should indicate truncation when output is large"
+        );
+        assert!(
+            msg.contains("Fix the errors above before continuing."),
+            "Should include enforcement guidance"
+        );
+    }
+
+    #[test]
+    fn format_ci_output_handles_zero_head_budget() {
+        let stdout = (1..=8)
+            .map(|i| format!("line{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let result = format_ci_output_for_message(&stdout, "", 0, 3);
+
+        assert!(result.contains("8 lines total"));
+        assert!(result.contains("showing lines 6-8"));
+        assert!(result.contains("line6"));
+        assert!(result.contains("line8"));
+        assert!(result.contains("5 lines omitted"));
+        assert!(!result.contains("1-0"));
+    }
+
+    #[test]
+    fn format_ci_output_handles_zero_tail_budget() {
+        let stdout = (1..=8)
+            .map(|i| format!("line{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let result = format_ci_output_for_message(&stdout, "", 3, 0);
+
+        assert!(result.contains("8 lines total"));
+        assert!(result.contains("showing lines 1-3"));
+        assert!(result.contains("line1"));
+        assert!(result.contains("line3"));
+        assert!(result.contains("5 lines omitted"));
+        assert!(!result.contains("9-8"));
+    }
+
+    #[test]
+    fn format_ci_output_handles_zero_total_budget() {
+        let stdout = "line1\nline2\nline3";
+
+        let result = format_ci_output_for_message(stdout, "", 0, 0);
+
+        assert!(result.contains("3 lines total; snippet budget is 0 lines"));
+        assert!(result.contains("3 lines omitted"));
+        assert!(!result.contains("```"));
+    }
+
+    #[test]
+    fn compliance_message_orders_output_before_enforcement_text() {
+        let temp = TempDir::new().unwrap();
+        let resolved = resolved_with_ci_command(temp.path(), None, true);
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(2),
+            stdout: "out-1\nout-2".to_string(),
+            stderr: "err-1".to_string(),
+        };
+
+        let msg = strict_ci_gate_compliance_message(&resolved, &result);
+
+        let output_idx = msg
+            .find("CI output (")
+            .expect("message should include CI output snippet");
+        let fix_idx = msg
+            .find("Fix the errors above before continuing.")
+            .expect("message should include enforcement text");
+
+        assert!(
+            output_idx < fix_idx,
+            "output snippet should appear before enforcement guidance"
+        );
+    }
+
+    #[test]
+    fn build_ci_failure_message_with_user_input_includes_ci_output() {
+        let temp = TempDir::new().unwrap();
+        let resolved = resolved_with_ci_command(temp.path(), None, true);
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: "test stdout output".to_string(),
+            stderr: "ruff failed: TOML parse error".to_string(),
+        };
+        let user_message = "Please check the pyproject.toml file";
+
+        let combined = build_ci_failure_message_with_user_input(&resolved, &result, user_message);
+
+        // Should include CI output context
+        assert!(
+            combined.contains("CI output ("),
+            "should include CI output header"
+        );
+        assert!(
+            combined.contains("ruff failed: TOML parse error"),
+            "should include stderr from CI"
+        );
+        assert!(combined.contains("exit code 1"), "should include exit code");
+
+        // Should include user message
+        assert!(
+            combined.contains(user_message),
+            "should include user message"
+        );
+
+        // Should include enforcement guidance
+        assert!(
+            combined.contains("Fix the errors above before continuing."),
+            "should include enforcement guidance"
+        );
+
+        // CI output should come before user message
+        let ci_output_idx = combined.find("CI output (").unwrap();
+        let user_msg_idx = combined.find(user_message).unwrap();
+        assert!(
+            ci_output_idx < user_msg_idx,
+            "CI output should appear before user message"
+        );
+    }
+
+    #[test]
+    fn build_ci_failure_message_with_empty_user_input_returns_strict_message_only() {
+        let temp = TempDir::new().unwrap();
+        let resolved = resolved_with_ci_command(temp.path(), None, true);
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: "test stdout output".to_string(),
+            stderr: "ruff failed: TOML parse error".to_string(),
+        };
+
+        let combined = build_ci_failure_message_with_user_input(&resolved, &result, " \n\t ");
+        let strict = strict_ci_gate_compliance_message(&resolved, &result);
+
+        assert_eq!(combined, strict);
+        assert!(!combined.contains("Agent message from user intervention:"));
     }
 
     #[test]

@@ -53,9 +53,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
         "scan_agent": "scan-general",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -188,8 +188,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -378,9 +378,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-general",
         "runner_used": "codex",
-        "model_used": "gpt-5.3-codex",
-        "scan_agent": "scan-general"
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -438,9 +438,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.3-codex",
         "runner_used": "codex",
-        "scan_agent": "scan-general",
-        "model_used": "gpt-5.3-codex"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -559,9 +559,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "sonnet",
         "runner_used": "claude",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "sonnet"
       }
     },
     {
@@ -615,9 +615,69 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-general",
         "model_used": "gpt-5.3-codex",
+        "runner_used": "codex"
+      }
+    },
+    {
+      "id": "RQ-0950",
+      "status": "done",
+      "title": "Add CI output passthrough to agent before compliance message",
+      "description": "When CI gate fails, the agent receives a compliance message but may not see the full CI output. In RQ-0124, the agent kept running `make ci` manually and truncating output with `tail -30`. The CI gate failure log showed the ruff parse error at the start of output (before tests). Agent should see the complete CI output including format-check, lint-check phases that run before tests.",
+      "priority": "medium",
+      "tags": [
+        "scan",
+        "ci",
+        "agent-visibility",
+        "compliance",
+        "supervision",
+        "regression"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/supervision/ci.rs",
+        "crates/ralph/src/commands/run/supervision/mod.rs",
+        "crates/ralph/src/commands/run/supervision/parallel_worker.rs",
+        "crates/ralph/src/commands/run/phases/shared.rs",
+        "crates/ralph/src/commands/run/logging.rs"
+      ],
+      "evidence": [
+        "log: Agent previously piped make ci to tail, hiding early failures (format/lint/parse) that occur before tests",
+        "code: format_ci_output_for_message() in ci.rs combines stderr+stdout and renders head+tail with explicit range metadata",
+        "code: strict_ci_gate_compliance_message() injects formatted CI output before enforcement guidance in the retry compliance message",
+        "code: run_ci_gate_with_continue_session() uses strict_ci_gate_compliance_message() for auto-retry Continue prompts",
+        "risk: escalation/manual-continue branches may bypass strict message construction, which can drop formatted CI visibility unless explicitly handled"
+      ],
+      "plan": [
+        "Harden one canonical CI-output formatter contract in ci.rs: stderr-first ordering, first 50 + last 50 lines, total lines, explicit shown ranges, omitted count, and empty-output fallback",
+        "Confirm strict_ci_gate_compliance_message() ordering is stable: exit-code intro, formatted CI output block, detected-pattern guidance, then enforcement/compliance text",
+        "Eliminate any continue-session path that can send agent-facing CI failure guidance without the canonical formatted CI output snippet (including escalation/manual-continue branches)",
+        "Keep CI failure formatting/message assembly centralized in ci.rs and update callers only if needed to prevent alternate/truncated message paths",
+        "Add or tighten unit tests for: large output head+tail ranges, small output full passthrough, empty output fallback, strict message inclusion/order, and escalation/manual continue visibility",
+        "Run cargo test -p ralph in Phase 2 after implementation to validate regression coverage"
+      ],
+      "notes": [
+        "Current ci.rs already includes head+tail formatting and compliance-message tests; this task is a refinement/hardening pass, not a greenfield implementation.",
+        "Primary regression risk is branch divergence in continue-session handling where agent-visible messages might bypass the canonical formatted snippet.",
+        "No backward-compatibility shim should be introduced; keep one message-formatting path for CI compliance output.",
+        "Ensured manual Continue branch prepends canonical strict CI output/context before user intervention text.",
+        "Hardened combined-message builder to return strict message unchanged when user intervention message is empty/whitespace.",
+        "Added regression tests for zero-total-budget CI output formatting and empty user-intervention handling in ci supervision tests.",
+        "Validated no alternate CI failure agent-message path bypasses ci.rs formatter in supervision/mod.rs, supervision/parallel_worker.rs, phases/shared.rs, and logging.rs.",
+        "Verified with cargo test -p ralph --lib -- commands::run::supervision::ci and full make agent-ci (pass)."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-02-18T22:30:00Z",
+      "updated_at": "2026-02-19T16:58:15.605441000Z",
+      "completed_at": "2026-02-19T16:58:15.605441000Z",
+      "started_at": "2026-02-19T01:25:00.228090000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
         "runner_used": "codex",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex"
       }
     }
   ]
