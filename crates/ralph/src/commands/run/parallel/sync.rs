@@ -1,7 +1,7 @@
 //! State synchronization and git helpers for parallel workers.
 //!
 //! Responsibilities:
-//! - Sync ralph state (config, prompts) to worker workspaces.
+//! - Sync repo-local runtime state into worker workspaces.
 //! - Commit changes on worker failure for draft PR creation.
 //! - Ensure branches are pushed before creating PRs.
 //!
@@ -21,23 +21,24 @@ use std::path::Path;
 
 /// Sync ralph state files from repo root to workspace.
 ///
-/// Syncs `.ralph/config.json`, `.ralph/prompts/`, and gitignored allowlisted files.
-/// Queue/done files are intentionally NOT synchronized to prevent merge conflicts
-/// in parallel worker branches.
+/// Syncs `.ralph/` runtime files plus gitignored allowlisted files.
+/// Queue/done and ephemeral `.ralph` runtime paths are intentionally NOT synchronized
+/// to prevent coordinator state leakage and merge conflicts in worker branches.
 ///
 /// # Errors
 /// Returns an error if:
 /// - File operations fail
 pub(crate) fn sync_ralph_state(resolved: &config::Resolved, workspace_path: &Path) -> Result<()> {
-    // Create .ralph directory for config/prompts/cache (always needed)
+    // Create .ralph directory for worker runtime state (always needed)
     let target = workspace_path.join(".ralph");
     fs::create_dir_all(&target)
         .with_context(|| format!("create workspace ralph dir {}", target.display()))?;
 
-    // Sync config and prompts from the standard .ralph location
+    // Sync repo-local .ralph runtime tree (excluding coordinator-only and ephemeral paths)
     let source = resolved.repo_root.join(".ralph");
-    sync_file_if_exists(&source.join("config.json"), &target.join("config.json"))?;
-    sync_prompts_dir(&source.join("prompts"), &target.join("prompts"))?;
+    sync_ralph_runtime_tree(resolved, &source, &target)?;
+
+    // Sync selected non-.ralph ignored files (currently .env*)
     sync_gitignored(&resolved.repo_root, workspace_path)?;
 
     Ok(())
@@ -80,26 +81,90 @@ fn sync_file_if_exists(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
-fn sync_prompts_dir(source: &Path, target: &Path) -> Result<()> {
-    if !source.is_dir() {
+fn sync_ralph_runtime_tree(
+    resolved: &config::Resolved,
+    source_root: &Path,
+    target_root: &Path,
+) -> Result<()> {
+    if !source_root.is_dir() {
         return Ok(());
     }
-    fs::create_dir_all(target)
-        .with_context(|| format!("create workspace prompts dir {}", target.display()))?;
-    for entry in
-        fs::read_dir(source).with_context(|| format!("read prompts dir {}", source.display()))?
+
+    sync_ralph_runtime_tree_recursive(resolved, source_root, source_root, target_root)
+}
+
+fn sync_ralph_runtime_tree_recursive(
+    resolved: &config::Resolved,
+    source_root: &Path,
+    current_source_dir: &Path,
+    target_root: &Path,
+) -> Result<()> {
+    for entry in fs::read_dir(current_source_dir)
+        .with_context(|| format!("read ralph dir {}", current_source_dir.display()))?
     {
-        let entry = entry.with_context(|| format!("read prompts entry in {}", source.display()))?;
-        let path = entry.path();
-        if entry.file_type().map(|t| t.is_file()).unwrap_or(false)
-            && let Some(name) = path.file_name()
-        {
-            let dest = target.join(name);
-            fs::copy(&path, &dest)
-                .with_context(|| format!("sync {} to {}", path.display(), dest.display()))?;
+        let entry = entry
+            .with_context(|| format!("read ralph entry in {}", current_source_dir.display()))?;
+        let source_path = entry.path();
+
+        if should_skip_ralph_runtime_path(resolved, source_root, &source_path) {
+            continue;
         }
+
+        let rel_path = source_path.strip_prefix(source_root).with_context(|| {
+            format!(
+                "derive relative path from {} to {}",
+                source_root.display(),
+                source_path.display()
+            )
+        })?;
+        let target_path = target_root.join(rel_path);
+
+        let file_type = entry
+            .file_type()
+            .with_context(|| format!("read type for {}", source_path.display()))?;
+        if file_type.is_dir() {
+            fs::create_dir_all(&target_path)
+                .with_context(|| format!("create workspace dir {}", target_path.display()))?;
+            sync_ralph_runtime_tree_recursive(resolved, source_root, &source_path, target_root)?;
+            continue;
+        }
+
+        sync_file_if_exists(&source_path, &target_path)?;
     }
+
     Ok(())
+}
+
+fn should_skip_ralph_runtime_path(
+    resolved: &config::Resolved,
+    source_root: &Path,
+    source_path: &Path,
+) -> bool {
+    const NEVER_COPY_RALPH_DIRS: &[&str] = &["cache", "workspaces", "logs", "lock"];
+
+    let Ok(rel_path) = source_path.strip_prefix(source_root) else {
+        return true;
+    };
+
+    if rel_path.components().count() == 1
+        && let Some(name) = rel_path.file_name().and_then(|name| name.to_str())
+        && matches!(
+            name,
+            "queue.json" | "queue.jsonc" | "done.json" | "done.jsonc"
+        )
+    {
+        return true;
+    }
+
+    if source_path == resolved.queue_path || source_path == resolved.done_path {
+        return true;
+    }
+
+    rel_path
+        .components()
+        .next()
+        .and_then(|component| component.as_os_str().to_str())
+        .is_some_and(|component| NEVER_COPY_RALPH_DIRS.contains(&component))
 }
 
 /// Decide whether a gitignored entry should be synced to workspaces.
@@ -108,7 +173,7 @@ fn sync_prompts_dir(source: &Path, target: &Path) -> Result<()> {
 /// - Ignore empty entries
 /// - Skip entries with trailing '/' (directories)
 /// - Skip entries under never-copy prefixes (target/, node_modules/, .ralph/cache/, etc.)
-/// - Allow only files whose basename is .env or starts with .env.
+/// - Allow only files whose basename is `.env` or starts with `.env.`
 fn should_sync_gitignored_entry(raw_git_entry: &str) -> bool {
     // Never-copy directory prefixes/components
     const NEVER_COPY_PREFIXES: &[&str] = &[
@@ -272,6 +337,90 @@ mod tests {
     }
 
     #[test]
+    fn sync_ralph_state_copies_runtime_files_from_ignored_ralph_dir() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path().join("repo");
+        let workspace_root = temp.path().join("workspace");
+        fs::create_dir_all(&repo_root)?;
+        git_test::init_repo(&repo_root)?;
+        fs::create_dir_all(&workspace_root)?;
+
+        fs::write(repo_root.join(".gitignore"), ".ralph/\n")?;
+        fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
+        fs::create_dir_all(repo_root.join(".ralph/templates"))?;
+        fs::create_dir_all(repo_root.join(".ralph/cache/parallel"))?;
+        fs::create_dir_all(repo_root.join(".ralph/logs"))?;
+        fs::create_dir_all(repo_root.join(".ralph/workspaces"))?;
+        fs::create_dir_all(repo_root.join(".ralph/lock"))?;
+        fs::write(repo_root.join(".ralph/queue.json"), "{queue}")?;
+        fs::write(repo_root.join(".ralph/done.json"), "{done}")?;
+        fs::write(
+            repo_root.join(".ralph/config.jsonc"),
+            "{/*comment*/\"version\":1}",
+        )?;
+        fs::write(
+            repo_root.join(".ralph/prompts/worker.md"),
+            "# Worker prompt",
+        )?;
+        fs::write(
+            repo_root.join(".ralph/templates/task.json"),
+            "{\"template\":true}",
+        )?;
+        fs::write(
+            repo_root.join(".ralph/cache/parallel/state.json"),
+            "{\"cached\":true}",
+        )?;
+        fs::write(repo_root.join(".ralph/logs/debug.log"), "debug")?;
+        fs::write(
+            repo_root.join(".ralph/workspaces/shared.txt"),
+            "workspace state",
+        )?;
+        fs::write(repo_root.join(".ralph/lock/queue.lock"), "lock")?;
+
+        let resolved = build_test_resolved(&repo_root, None, None);
+        sync_ralph_state(&resolved, &workspace_root)?;
+
+        assert_eq!(
+            fs::read_to_string(workspace_root.join(".ralph/config.jsonc"))?,
+            "{/*comment*/\"version\":1}"
+        );
+        assert_eq!(
+            fs::read_to_string(workspace_root.join(".ralph/prompts/worker.md"))?,
+            "# Worker prompt"
+        );
+        assert_eq!(
+            fs::read_to_string(workspace_root.join(".ralph/templates/task.json"))?,
+            "{\"template\":true}"
+        );
+        assert!(
+            !workspace_root.join(".ralph/queue.json").exists(),
+            "queue.json should not be synchronized to worker workspaces"
+        );
+        assert!(
+            !workspace_root.join(".ralph/done.json").exists(),
+            "done.json should not be synchronized to worker workspaces"
+        );
+        assert!(
+            !workspace_root.join(".ralph/cache").exists(),
+            "cache/ should not be synchronized to worker workspaces"
+        );
+        assert!(
+            !workspace_root.join(".ralph/logs").exists(),
+            "logs/ should not be synchronized to worker workspaces"
+        );
+        assert!(
+            !workspace_root.join(".ralph/workspaces").exists(),
+            "workspaces/ should not be synchronized to worker workspaces"
+        );
+        assert!(
+            !workspace_root.join(".ralph/lock").exists(),
+            "lock/ should not be synchronized to worker workspaces"
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn sync_ralph_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path().join("repo");
@@ -384,6 +533,51 @@ mod tests {
         // Verify config and prompts still sync
         assert_eq!(
             fs::read_to_string(workspace_root.join(".ralph/config.json"))?,
+            "{config}"
+        );
+        assert_eq!(
+            fs::read_to_string(workspace_root.join(".ralph/prompts/override.md"))?,
+            "prompt"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn sync_ralph_state_custom_queue_done_paths_inside_ralph_are_not_synced() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path().join("repo");
+        let workspace_root = temp.path().join("workspace");
+        fs::create_dir_all(&repo_root)?;
+        git_test::init_repo(&repo_root)?;
+
+        // Create custom queue/done paths under .ralph
+        let queue_path = repo_root.join(".ralph/data/queue.jsonc");
+        let done_path = repo_root.join(".ralph/data/done.json");
+        fs::create_dir_all(queue_path.parent().unwrap())?;
+        fs::write(&queue_path, "{custom_queue}")?;
+        fs::write(&done_path, "{custom_done}")?;
+
+        // Create .ralph runtime files that should still sync
+        fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
+        fs::write(repo_root.join(".ralph/config.jsonc"), "{config}")?;
+        fs::write(repo_root.join(".ralph/prompts/override.md"), "prompt")?;
+        fs::create_dir_all(&workspace_root)?;
+
+        let resolved = build_test_resolved(&repo_root, Some(queue_path), Some(done_path));
+        sync_ralph_state(&resolved, &workspace_root)?;
+
+        // Custom queue/done should be excluded even under .ralph
+        assert!(
+            !workspace_root.join(".ralph/data/queue.jsonc").exists(),
+            "custom .ralph queue path should not be synchronized"
+        );
+        assert!(
+            !workspace_root.join(".ralph/data/done.json").exists(),
+            "custom .ralph done path should not be synchronized"
+        );
+        // Other runtime files should still sync
+        assert_eq!(
+            fs::read_to_string(workspace_root.join(".ralph/config.jsonc"))?,
             "{config}"
         );
         assert_eq!(

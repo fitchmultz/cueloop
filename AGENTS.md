@@ -69,6 +69,10 @@ Every source file MUST start with `//!` docs covering:
 ### Phase 1 Follow-up Guardrail
 - Follow-up Phase 1 baseline snapshots must exclude mutable `.ralph/**` paths; only baseline dirty paths outside `.ralph/` are immutable.
 
+### Parallel Workspace Runtime Sync
+- Worker workspace setup mirrors repo-local `.ralph/` runtime files recursively, but MUST exclude coordinator-only and ephemeral paths: queue/done files and `.ralph/{cache,workspaces,logs,lock}/`.
+- Gitignored non-`.ralph` sync remains narrow by design (`.env*` only) to avoid copying heavy build/cache directories.
+
 ### File Size Limits
 - Target: <500 LOC
 - Soft limit: ~800 LOC (requires justification)
