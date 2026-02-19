@@ -104,11 +104,26 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             allowed.extend(baseline_paths.iter().cloned());
             let allowed_refs: Vec<&str> = allowed.iter().map(String::as_str).collect();
 
-            let status = git::require_clean_repo_ignoring_paths(
-                &ctx.resolved.repo_root,
-                false,
-                &allowed_refs,
-            );
+            let status = if ctx.is_followup_iteration {
+                let current = git::status_paths(&ctx.resolved.repo_root)?;
+                if current.is_empty()
+                    || git::repo_dirty_only_allowed_paths(&ctx.resolved.repo_root, &allowed_refs)?
+                {
+                    Ok(())
+                } else {
+                    Err(GitError::DirtyRepo {
+                        details: "\n\nFollow-up Phase 1 violation: planning introduced dirty paths outside baseline and allowed queue/plan paths."
+                            .to_string(),
+                    })
+                }
+            } else {
+                git::require_clean_repo_ignoring_paths(
+                    &ctx.resolved.repo_root,
+                    false,
+                    &allowed_refs,
+                )
+            };
+
             let snapshot_check = match status {
                 Ok(()) => git::ensure_paths_unchanged(&ctx.resolved.repo_root, &baseline_snapshots)
                     .map_err(|err| GitError::Other(err.context("baseline dirty path changed"))),

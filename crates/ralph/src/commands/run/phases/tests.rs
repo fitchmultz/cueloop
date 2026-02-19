@@ -293,6 +293,7 @@ echo '{{"sessionID":"sess-123"}}'
         iteration_completion_block: "",
         phase3_completion_guidance: "",
         is_final_iteration: true,
+        is_followup_iteration: false,
         allow_dirty_repo: true,
         post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
@@ -386,6 +387,7 @@ echo '{{"sessionID":"sess-123"}}'
         iteration_completion_block: "",
         phase3_completion_guidance: "",
         is_final_iteration: true,
+        is_followup_iteration: false,
         allow_dirty_repo: true,
         post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
@@ -477,6 +479,7 @@ echo '{{"sessionID":"sess-123"}}'
         iteration_completion_block: "",
         phase3_completion_guidance: "",
         is_final_iteration: true,
+        is_followup_iteration: false,
         allow_dirty_repo: true,
         post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
@@ -578,6 +581,7 @@ echo '{{"sessionID":"sess-123"}}'
         iteration_completion_block: "",
         phase3_completion_guidance: "",
         is_final_iteration: true,
+        is_followup_iteration: false,
         allow_dirty_repo: false,
         post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
@@ -770,6 +774,7 @@ echo '{"sessionID":"sess-123"}'
         iteration_completion_block: "block",
         phase3_completion_guidance: "guidance",
         is_final_iteration: false,
+        is_followup_iteration: false,
         allow_dirty_repo: true,
         post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
@@ -842,6 +847,7 @@ echo '{"sessionID":"sess-123"}'
         iteration_completion_block: "block",
         phase3_completion_guidance: "guidance",
         is_final_iteration: false,
+        is_followup_iteration: false,
         allow_dirty_repo: true,
         post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
@@ -930,6 +936,7 @@ echo '{{"sessionID":"sess-123"}}'
         iteration_completion_block: "",
         phase3_completion_guidance: "",
         is_final_iteration: false,
+        is_followup_iteration: false,
         allow_dirty_repo: true,
         post_run_mode: PostRunMode::Normal,
         notify_on_complete: None,
@@ -965,6 +972,180 @@ echo '{{"sessionID":"sess-123"}}'
     assert_eq!(prompt_calls.load(Ordering::SeqCst), 1);
 
     assert!(err.to_string().contains("CI gate failed"));
+
+    Ok(())
+}
+
+#[test]
+fn phase1_followup_allows_preexisting_iteration_dirty_state() -> Result<()> {
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
+    let temp = TempDir::new()?;
+    git_init(temp.path())?;
+    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::write(temp.path().join("impl.txt"), "prior iteration changes")?;
+
+    let script = format!(
+        r#"#!/bin/sh
+set -e
+plan="{root}/.ralph/cache/plans/RQ-0001.md"
+echo "plan content iteration 2" > "$plan"
+echo '{{"type":"text","part":{{"text":"ok"}}}}'
+echo '{{"sessionID":"sess-123"}}'
+"#,
+        root = temp.path().display()
+    );
+    let runner_path = create_fake_runner(temp.path(), "opencode", &script)?;
+
+    let resolved = resolved_for_repo(temp.path().to_path_buf(), &runner_path);
+    let settings = runner::AgentSettings {
+        runner: Runner::Opencode,
+        model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
+        reasoning_effort: None,
+        runner_cli: runner::ResolvedRunnerCliOptions::default(),
+    };
+    let bins = runner::RunnerBinaries {
+        codex: "codex",
+        opencode: runner_path.to_str().expect("runner path"),
+        gemini: "gemini",
+        claude: "claude",
+        cursor: "agent",
+        kimi: "kimi",
+        pi: "pi",
+    };
+    let policy = promptflow::PromptPolicy {
+        repoprompt_plan_required: false,
+        repoprompt_tool_injection: false,
+    };
+
+    let invocation = PhaseInvocation {
+        resolved: &resolved,
+        settings: &settings,
+        bins,
+        task_id: "RQ-0001",
+        base_prompt: "base prompt",
+        policy: &policy,
+        output_handler: None,
+        output_stream: runner::OutputStream::Terminal,
+        project_type: crate::contracts::ProjectType::Code,
+        git_revert_mode: GitRevertMode::Disabled,
+        git_commit_push_enabled: true,
+        push_policy: crate::commands::run::supervision::PushPolicy::RequireUpstream,
+        revert_prompt: None,
+        iteration_context: "",
+        iteration_completion_block: "",
+        phase3_completion_guidance: "",
+        is_final_iteration: true,
+        is_followup_iteration: true,
+        allow_dirty_repo: true,
+        post_run_mode: PostRunMode::Normal,
+        notify_on_complete: None,
+        notify_sound: None,
+        lfs_check: false,
+        no_progress: false,
+        execution_timings: None,
+        plugins: None,
+    };
+
+    let plan_text = execute_phase1_planning(&invocation, 3)?;
+    assert_eq!(plan_text.trim(), "plan content iteration 2");
+
+    let mut paths = git::status_paths(temp.path())?;
+    paths.sort();
+
+    anyhow::ensure!(
+        paths == vec!["impl.txt".to_string()],
+        "expected impl.txt to be dirty (plan cache is gitignored), got: {:?}",
+        paths
+    );
+
+    Ok(())
+}
+
+#[test]
+fn phase1_followup_rejects_new_disallowed_dirty_paths() -> Result<()> {
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let _interrupt_guard = interrupt_mutex.lock().unwrap();
+    reset_ctrlc_interrupt_flag();
+
+    let temp = TempDir::new()?;
+    git_init(temp.path())?;
+    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::write(temp.path().join("impl.txt"), "prior iteration changes")?;
+
+    let script = format!(
+        r#"#!/bin/sh
+set -e
+plan="{root}/.ralph/cache/plans/RQ-0001.md"
+disallowed="{root}/src/new_file.rs"
+mkdir -p "$(dirname "$disallowed")"
+echo "disallowed" > "$disallowed"
+echo "plan content" > "$plan"
+echo '{{"type":"text","part":{{"text":"ok"}}}}'
+echo '{{"sessionID":"sess-123"}}'
+"#,
+        root = temp.path().display()
+    );
+    let runner_path = create_fake_runner(temp.path(), "opencode", &script)?;
+
+    let resolved = resolved_for_repo(temp.path().to_path_buf(), &runner_path);
+    let settings = runner::AgentSettings {
+        runner: Runner::Opencode,
+        model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
+        reasoning_effort: None,
+        runner_cli: runner::ResolvedRunnerCliOptions::default(),
+    };
+    let bins = runner::RunnerBinaries {
+        codex: "codex",
+        opencode: runner_path.to_str().expect("runner path"),
+        gemini: "gemini",
+        claude: "claude",
+        cursor: "agent",
+        kimi: "kimi",
+        pi: "pi",
+    };
+    let policy = promptflow::PromptPolicy {
+        repoprompt_plan_required: false,
+        repoprompt_tool_injection: false,
+    };
+
+    let invocation = PhaseInvocation {
+        resolved: &resolved,
+        settings: &settings,
+        bins,
+        task_id: "RQ-0001",
+        base_prompt: "base prompt",
+        policy: &policy,
+        output_handler: None,
+        output_stream: runner::OutputStream::Terminal,
+        project_type: crate::contracts::ProjectType::Code,
+        git_revert_mode: GitRevertMode::Disabled,
+        git_commit_push_enabled: true,
+        push_policy: crate::commands::run::supervision::PushPolicy::RequireUpstream,
+        revert_prompt: None,
+        iteration_context: "",
+        iteration_completion_block: "",
+        phase3_completion_guidance: "",
+        is_final_iteration: true,
+        is_followup_iteration: true,
+        allow_dirty_repo: true,
+        post_run_mode: PostRunMode::Normal,
+        notify_on_complete: None,
+        notify_sound: None,
+        lfs_check: false,
+        no_progress: false,
+        execution_timings: None,
+        plugins: None,
+    };
+
+    let err =
+        execute_phase1_planning(&invocation, 3).expect_err("expected follow-up phase1 violation");
+    assert!(
+        err.to_string().contains("Follow-up Phase 1 violation"),
+        "expected follow-up violation message, got: {err}"
+    );
 
     Ok(())
 }

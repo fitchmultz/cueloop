@@ -76,6 +76,7 @@ pub struct PhaseInvocation<'a> {
     pub iteration_completion_block: &'a str,
     pub phase3_completion_guidance: &'a str,
     pub is_final_iteration: bool,
+    pub is_followup_iteration: bool,
     pub allow_dirty_repo: bool,
     pub post_run_mode: PostRunMode,
     /// Notification override from CLI (--notify/--no-notify).
