@@ -471,11 +471,10 @@ pub(crate) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<CiGateRe
     }
 
     logging::with_scope(&format!("CI gate ({command})"), || {
-        let output = runutil::shell_command(command)
-            .current_dir(&resolved.repo_root)
-            .env_remove(crate::config::QUEUE_PATH_OVERRIDE_ENV)
-            .env_remove(crate::config::DONE_PATH_OVERRIDE_ENV)
-            .env_remove(crate::config::REPO_ROOT_OVERRIDE_ENV)
+        let mut cmd = runutil::shell_command(command);
+        cmd.current_dir(&resolved.repo_root);
+        runutil::sanitize_run_scoped_overrides(&mut cmd);
+        let output = cmd
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

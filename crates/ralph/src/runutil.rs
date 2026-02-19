@@ -30,6 +30,8 @@ pub use revert::{
 
 pub use shell::shell_command;
 
+pub(crate) use shell::sanitize_run_scoped_overrides;
+
 // --- Crate-private API (unchanged call-site paths) ---------------------------
 
 pub(crate) use abort::{

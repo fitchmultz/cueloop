@@ -598,6 +598,30 @@ pub fn read_done(dir: &Path) -> Result<QueueFile> {
     serde_json::from_str(&raw).context("parse done.json")
 }
 
+/// Snapshot of queue and done file contents for comparison.
+///
+/// Uses raw JSON strings to avoid requiring PartialEq on QueueFile.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueueDoneSnapshot {
+    pub queue_json: String,
+    pub done_json: String,
+}
+
+/// Snapshot queue and done files for later comparison.
+///
+/// Useful for verifying CI gate isolation: parent queue/done should be
+/// unchanged after worker/CI gate execution.
+pub fn snapshot_queue_done(dir: &Path) -> Result<QueueDoneSnapshot> {
+    let queue_path = dir.join(".ralph/queue.json");
+    let done_path = dir.join(".ralph/done.json");
+    let queue_json = std::fs::read_to_string(&queue_path).context("read queue.json")?;
+    let done_json = std::fs::read_to_string(&done_path).context("read done.json")?;
+    Ok(QueueDoneSnapshot {
+        queue_json,
+        done_json,
+    })
+}
+
 /// Normalize CLI output for stable snapshots.
 ///
 /// Applies filters to make output deterministic across runs:

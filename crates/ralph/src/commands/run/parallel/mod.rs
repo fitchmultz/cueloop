@@ -108,8 +108,8 @@ pub(crate) fn spawn_merge_agent(
 ) -> Result<MergeAgentOutcome> {
     let exe = std::env::current_exe().context("resolve current executable")?;
 
-    let output = std::process::Command::new(exe)
-        .current_dir(repo_root)
+    let mut cmd = std::process::Command::new(exe);
+    cmd.current_dir(repo_root)
         .args([
             "run",
             "merge-agent",
@@ -119,14 +119,14 @@ pub(crate) fn spawn_merge_agent(
             &pr_number.to_string(),
         ])
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .with_context(|| {
-            format!(
-                "Failed to spawn merge-agent for task {} PR {}",
-                task_id, pr_number
-            )
-        })?;
+        .stderr(Stdio::piped());
+    crate::runutil::sanitize_run_scoped_overrides(&mut cmd);
+    let output = cmd.output().with_context(|| {
+        format!(
+            "Failed to spawn merge-agent for task {} PR {}",
+            task_id, pr_number
+        )
+    })?;
 
     let exit_code = output.status.code().unwrap_or(1);
     let stderr_output = String::from_utf8_lossy(&output.stderr).to_string();

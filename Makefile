@@ -9,6 +9,8 @@ XCODE_DERIVED_DATA_ROOT ?= target/tmp/xcode-deriveddata
 XCODE_DESTINATION ?= platform=macOS,arch=$(shell uname -m)
 # UI tests: Set to 1 to include UI tests (headed, mouse-interactive), 0 to skip (default for CI)
 RALPH_UI_TESTS ?= 0
+# Environment variable sanitization for cargo commands (prevents RALPH_*_OVERRIDE leakage)
+RALPH_ENV_RESET := unset RALPH_QUEUE_PATH_OVERRIDE RALPH_DONE_PATH_OVERRIDE RALPH_REPO_ROOT_OVERRIDE
 
 .DELETE_ON_ERROR:
 .ONESHELL:
@@ -42,7 +44,7 @@ help:
 # Optional but cheap: fail fast if lockfile or network access is busted
 deps:
 	@echo "→ Fetching deps (locked)..."
-	@cargo fetch --locked
+	@$(RALPH_ENV_RESET); cargo fetch --locked
 	@echo "  ✓ Deps fetched"
 
 install: build
@@ -60,22 +62,22 @@ update:
 
 format:
 	@echo "→ Formatting code..."
-	@cargo fmt --all
+	@$(RALPH_ENV_RESET); cargo fmt --all
 	@echo "  ✓ Formatting complete"
 
 type-check:
 	@echo "→ Type-checking..."
-	@cargo check --workspace --all-targets --all-features --locked
+	@$(RALPH_ENV_RESET); cargo check --workspace --all-targets --all-features --locked
 	@echo "  ✓ Type-checking complete"
 
 lint:
 	@echo "→ Linting (clippy, non-mutating)..."
-	@cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+	@$(RALPH_ENV_RESET); cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 	@echo "  ✓ Linting complete"
 
 lint-fix:
 	@echo "→ Clippy autofix (optional)..."
-	@cargo clippy --fix --allow-dirty --workspace --all-targets --all-features --locked -- -D warnings
+	@$(RALPH_ENV_RESET); cargo clippy --fix --allow-dirty --workspace --all-targets --all-features --locked -- -D warnings
 	@echo "  ✓ Lint autofix complete"
 
 test:
@@ -101,9 +103,7 @@ test:
 	export TMPDIR="$$run_dir"; \
 	export TEMP="$$run_dir"; \
 	export TMP="$$run_dir"; \
-	unset RALPH_QUEUE_PATH_OVERRIDE; \
-	unset RALPH_DONE_PATH_OVERRIDE; \
-	unset RALPH_REPO_ROOT_OVERRIDE; \
+	$(RALPH_ENV_RESET); \
 	unit_log="$$run_dir/unit-tests.log"; \
 	doc_log="$$run_dir/doc-tests.log"; \
 	if cargo nextest --version >/dev/null 2>&1; then \
@@ -132,7 +132,7 @@ test:
 # Required every time
 build:
 	@echo "→ Release build..."
-	@cargo build --workspace --release --locked
+	@$(RALPH_ENV_RESET); cargo build --workspace --release --locked
 	@echo "  ✓ Release build complete"
 
 # Use the already-built release binary (no cargo run, no debug compile)

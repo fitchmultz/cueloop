@@ -4,6 +4,7 @@
 //! - Verify CI gate strips all RALPH_*_OVERRIDE environment variables.
 //! - Ensure child processes cannot access parent's queue/done paths via env.
 //! - Prevent regression of data loss bug when running parallel loops.
+//! - Verify pre-existing parent queue/done content is preserved.
 //!
 //! Not handled here:
 //! - Full parallel mode E2E testing (see parallel_e2e_test.rs).
@@ -16,12 +17,70 @@
 
 use anyhow::{Context, Result};
 use ralph::config::{DONE_PATH_OVERRIDE_ENV, QUEUE_PATH_OVERRIDE_ENV, REPO_ROOT_OVERRIDE_ENV};
+use ralph::contracts::TaskStatus;
 use std::path::Path;
 use std::process::Command;
 use tempfile::TempDir;
 
 mod test_support;
-use test_support::ralph_bin;
+use test_support::{
+    configure_ci_gate, configure_runner, create_noop_runner, make_test_task, ralph_bin,
+    snapshot_queue_done, write_done, write_queue,
+};
+
+fn setup_workspace_with_noop_runner(workspace: &Path, ci_gate_command: &str) -> Result<()> {
+    let git_status = Command::new("git")
+        .current_dir(workspace)
+        .args(["init", "--quiet"])
+        .status()
+        .context("git init")?;
+    anyhow::ensure!(git_status.success(), "git init failed");
+
+    Command::new("git")
+        .current_dir(workspace)
+        .args(["config", "user.name", "Test"])
+        .status()
+        .context("git config user.name")?;
+    Command::new("git")
+        .current_dir(workspace)
+        .args(["config", "user.email", "test@example.com"])
+        .status()
+        .context("git config user.email")?;
+
+    let ralph_dir = workspace.join(".ralph");
+    std::fs::create_dir_all(&ralph_dir)?;
+    std::fs::write(ralph_dir.join("config.json"), "{}")?;
+    let runner_path = create_noop_runner(workspace, "opencode")?;
+    configure_runner(workspace, "opencode", "test-model", Some(&runner_path))?;
+    configure_ci_gate(workspace, Some(ci_gate_command), Some(true))?;
+    let config_path = ralph_dir.join("config.json");
+    let mut config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
+            .context("parse config")?;
+    config["agent"]["git_commit_push_enabled"] = serde_json::json!(false);
+    std::fs::write(&config_path, serde_json::to_string_pretty(&config)?).context("write config")?;
+
+    let workspace_queue_tasks = vec![make_test_task(
+        "RQ-0001",
+        "Workspace task",
+        TaskStatus::Todo,
+    )];
+    write_queue(workspace, &workspace_queue_tasks)?;
+    write_done(workspace, &[])?;
+
+    Command::new("git")
+        .current_dir(workspace)
+        .args(["add", "."])
+        .status()
+        .context("git add")?;
+    Command::new("git")
+        .current_dir(workspace)
+        .args(["commit", "-m", "init", "--quiet"])
+        .status()
+        .context("git commit")?;
+
+    Ok(())
+}
 
 /// Verify CI gate subprocess does not inherit RALPH_*_OVERRIDE environment variables.
 ///
@@ -115,18 +174,16 @@ fn makefile_test_unsets_ralph_override_vars() -> Result<()> {
 
     let makefile_content = std::fs::read_to_string(&makefile_path).context("read Makefile")?;
 
-    // Check for unset statements in the test target
+    // Check for centralized reset macro and test target usage
     assert!(
-        makefile_content.contains("unset RALPH_QUEUE_PATH_OVERRIDE"),
-        "Makefile must unset RALPH_QUEUE_PATH_OVERRIDE in test target"
+        makefile_content.contains(
+            "RALPH_ENV_RESET := unset RALPH_QUEUE_PATH_OVERRIDE RALPH_DONE_PATH_OVERRIDE RALPH_REPO_ROOT_OVERRIDE"
+        ),
+        "Makefile must define a centralized RALPH_ENV_RESET macro with all override vars"
     );
     assert!(
-        makefile_content.contains("unset RALPH_DONE_PATH_OVERRIDE"),
-        "Makefile must unset RALPH_DONE_PATH_OVERRIDE in test target"
-    );
-    assert!(
-        makefile_content.contains("unset RALPH_REPO_ROOT_OVERRIDE"),
-        "Makefile must unset RALPH_REPO_ROOT_OVERRIDE in test target"
+        makefile_content.contains("$(RALPH_ENV_RESET);"),
+        "Makefile test target must invoke centralized RALPH_ENV_RESET macro"
     );
 
     Ok(())
@@ -235,6 +292,187 @@ fn ci_gate_child_process_has_no_override_env() -> Result<()> {
         !stderr.contains("exit 42") && !stderr.contains("exited with code"),
         "CI gate should have stripped RALPH_*_OVERRIDE env vars. stderr: {}",
         stderr
+    );
+
+    Ok(())
+}
+
+/// Verify pre-existing parent queue/done files are preserved during CI gate success flow.
+///
+/// This test seeds parent files with sentinel tasks, runs with env overrides
+/// pointing at those parent files, and verifies the parent content is unchanged
+/// after the worker/CI gate execution completes.
+#[test]
+fn ci_gate_preserves_existing_parent_queue_done_on_success() -> Result<()> {
+    let parent = TempDir::new()?;
+    let workspace = TempDir::new()?;
+
+    // Seed parent .ralph/ with sentinel queue and done files
+    let parent_queue_tasks = vec![
+        make_test_task("RQ-9001", "Parent sentinel task 1", TaskStatus::Todo),
+        make_test_task("RQ-9002", "Parent sentinel task 2", TaskStatus::Doing),
+    ];
+    let parent_done_tasks = vec![make_test_task(
+        "RQ-9003",
+        "Parent done task",
+        TaskStatus::Done,
+    )];
+    write_queue(parent.path(), &parent_queue_tasks)?;
+    write_done(parent.path(), &parent_done_tasks)?;
+    let before = snapshot_queue_done(parent.path())?;
+
+    setup_workspace_with_noop_runner(workspace.path(), "echo CI check passed")?;
+
+    // Execute: Run with env overrides pointing at parent (simulating leakage attempt)
+    let coordinator_queue = workspace
+        .path()
+        .join(".ralph/queue.json")
+        .to_string_lossy()
+        .to_string();
+    let coordinator_done = workspace
+        .path()
+        .join(".ralph/done.json")
+        .to_string_lossy()
+        .to_string();
+    let output = Command::new(ralph_bin())
+        .current_dir(workspace.path())
+        .env(REPO_ROOT_OVERRIDE_ENV, workspace.path())
+        .env(
+            QUEUE_PATH_OVERRIDE_ENV,
+            parent.path().join(".ralph/queue.json"),
+        )
+        .env(
+            DONE_PATH_OVERRIDE_ENV,
+            parent.path().join(".ralph/done.json"),
+        )
+        .args([
+            "run",
+            "one",
+            "--id",
+            "RQ-0001",
+            "--non-interactive",
+            "--coordinator-queue-path",
+            coordinator_queue.as_str(),
+            "--coordinator-done-path",
+            coordinator_done.as_str(),
+            "--parallel-worker",
+        ])
+        .output()
+        .context("run ralph with override env")?;
+    anyhow::ensure!(
+        output.status.success(),
+        "expected worker run to succeed so CI gate path executes\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    // Verify: Parent queue/done should be unchanged
+    let after = snapshot_queue_done(parent.path())?;
+    assert_eq!(
+        before, after,
+        "parent queue/done changed during CI gate success flow"
+    );
+
+    Ok(())
+}
+
+/// Verify pre-existing parent queue/done files are preserved during CI gate failure flow.
+///
+/// This test seeds parent files with sentinel tasks, runs with env overrides
+/// pointing at those parent files, forces a CI gate failure, and verifies
+/// the parent content is still unchanged after the failure.
+#[test]
+fn ci_gate_preserves_existing_parent_queue_done_on_failure() -> Result<()> {
+    let parent = TempDir::new()?;
+    let workspace = TempDir::new()?;
+
+    // Seed parent .ralph/ with sentinel queue and done files
+    let parent_queue_tasks = vec![
+        make_test_task("RQ-9001", "Parent sentinel task 1", TaskStatus::Todo),
+        make_test_task("RQ-9002", "Parent sentinel task 2", TaskStatus::Doing),
+    ];
+    let parent_done_tasks = vec![make_test_task(
+        "RQ-9003",
+        "Parent done task",
+        TaskStatus::Done,
+    )];
+    write_queue(parent.path(), &parent_queue_tasks)?;
+    write_done(parent.path(), &parent_done_tasks)?;
+    let before = snapshot_queue_done(parent.path())?;
+
+    // CI gate command:
+    // 1. Verify no RALPH_*_OVERRIDE vars are set
+    // 2. Intentionally fail with exit code 17
+    #[cfg(unix)]
+    let ci_gate_command = "sh -c 'test -z \"$RALPH_QUEUE_PATH_OVERRIDE\" && test -z \"$RALPH_DONE_PATH_OVERRIDE\" && test -z \"$RALPH_REPO_ROOT_OVERRIDE\" && exit 17'";
+    #[cfg(windows)]
+    let ci_gate_command = "powershell -NoProfile -Command \"if ($env:RALPH_QUEUE_PATH_OVERRIDE -or $env:RALPH_DONE_PATH_OVERRIDE -or $env:RALPH_REPO_ROOT_OVERRIDE) { exit 42 }; exit 17\"";
+
+    setup_workspace_with_noop_runner(workspace.path(), ci_gate_command)?;
+
+    // Execute: Run with env overrides pointing at parent (simulating leakage attempt)
+    let coordinator_queue = workspace
+        .path()
+        .join(".ralph/queue.json")
+        .to_string_lossy()
+        .to_string();
+    let coordinator_done = workspace
+        .path()
+        .join(".ralph/done.json")
+        .to_string_lossy()
+        .to_string();
+    let output = Command::new(ralph_bin())
+        .current_dir(workspace.path())
+        .env(REPO_ROOT_OVERRIDE_ENV, workspace.path())
+        .env(
+            QUEUE_PATH_OVERRIDE_ENV,
+            parent.path().join(".ralph/queue.json"),
+        )
+        .env(
+            DONE_PATH_OVERRIDE_ENV,
+            parent.path().join(".ralph/done.json"),
+        )
+        .args([
+            "run",
+            "one",
+            "--id",
+            "RQ-0001",
+            "--non-interactive",
+            "--coordinator-queue-path",
+            coordinator_queue.as_str(),
+            "--coordinator-done-path",
+            coordinator_done.as_str(),
+            "--parallel-worker",
+        ])
+        .output()
+        .context("run ralph with override env")?;
+
+    anyhow::ensure!(
+        !output.status.success(),
+        "expected worker run to fail because CI gate intentionally exits 17"
+    );
+
+    let combined = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        combined.contains("exit code 17"),
+        "expected CI gate failure with exit code 17 to prove CI gate executed. output: {}",
+        combined
+    );
+    assert!(
+        !combined.contains("exit code 42"),
+        "CI gate should have stripped RALPH_*_OVERRIDE env vars before running. output: {}",
+        combined
+    );
+
+    // Verify: Parent queue/done should be unchanged even after failure
+    let after = snapshot_queue_done(parent.path())?;
+    assert_eq!(
+        before, after,
+        "parent queue/done changed during CI gate failure flow"
     );
 
     Ok(())
