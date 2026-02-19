@@ -25,6 +25,12 @@ use super::PushPolicy;
 use super::ci::{ci_gate_command_label, run_ci_gate, run_ci_gate_with_continue_session};
 use super::git_ops::{finalize_git_state, warn_if_modified_lfs};
 
+const PARALLEL_BOOKKEEPING_PATHS: [&str; 3] = [
+    ".ralph/queue.json",
+    ".ralph/done.json",
+    ".ralph/cache/productivity.json",
+];
+
 /// Post-run supervision for parallel workers.
 ///
 /// Restores shared bookkeeping files and commits/pushes only the worker's
@@ -153,7 +159,22 @@ pub(crate) fn post_run_supervise_parallel_worker(
 
         restore_parallel_worker_bookkeeping(resolved)?;
 
-        let status = git::status_porcelain(&resolved.repo_root)?;
+        let mut status = git::status_porcelain(&resolved.repo_root)?;
+        let mut bookkeeping_lines = collect_bookkeeping_status_lines(&status);
+        if !bookkeeping_lines.is_empty() {
+            // Defensive retry: if any parallel bookkeeping files still show up in status,
+            // restore once more and fail fast if they remain dirty.
+            restore_parallel_worker_bookkeeping(resolved)?;
+            status = git::status_porcelain(&resolved.repo_root)?;
+            bookkeeping_lines = collect_bookkeeping_status_lines(&status);
+            if !bookkeeping_lines.is_empty() {
+                anyhow::bail!(
+                    "parallel bookkeeping files remained dirty after restore: {}",
+                    bookkeeping_lines.join(", ")
+                );
+            }
+        }
+
         if status.trim().is_empty() {
             return Ok(());
         }
@@ -192,19 +213,32 @@ fn task_title_from_queue_or_done(
 }
 
 fn restore_parallel_worker_bookkeeping(resolved: &crate::config::Resolved) -> Result<()> {
+    // In parallel worker mode, queue/done may be overridden to coordinator paths
+    // outside the workspace repo. Always restore the workspace-local bookkeeping
+    // files so they are excluded from worker commits and rebases.
+    let workspace_queue_path = resolved.repo_root.join(".ralph").join("queue.json");
+    let workspace_done_path = resolved.repo_root.join(".ralph").join("done.json");
     let productivity_path = resolved
         .repo_root
         .join(".ralph")
         .join("cache")
         .join("productivity.json");
-    let paths = vec![
-        resolved.queue_path.clone(),
-        resolved.done_path.clone(),
-        productivity_path,
-    ];
+    let paths = vec![workspace_queue_path, workspace_done_path, productivity_path];
     git::restore_tracked_paths_to_head(&resolved.repo_root, &paths)
         .context("restore queue/done/productivity to HEAD")?;
     Ok(())
+}
+
+fn collect_bookkeeping_status_lines(status: &str) -> Vec<String> {
+    status
+        .lines()
+        .filter(|line| {
+            PARALLEL_BOOKKEEPING_PATHS
+                .iter()
+                .any(|path| line.contains(path))
+        })
+        .map(std::string::ToString::to_string)
+        .collect()
 }
 
 /// Write a marker file indicating CI gate failure.
@@ -271,6 +305,8 @@ fn write_marker_file(path: &std::path::Path, content: &serde_json::Value) -> boo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::contracts::Config;
+    use crate::testsupport::git as git_test;
 
     #[test]
     fn write_ci_failure_marker_creates_expected_json_payload() {
@@ -324,5 +360,99 @@ mod tests {
         let payload: serde_json::Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(payload["task_id"], "RQ-8888");
         assert_eq!(payload["error"], "ci fallback");
+    }
+
+    #[test]
+    fn restore_bookkeeping_uses_workspace_paths_when_coordinator_paths_are_overridden() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let repo_root = temp.path().join("workspace");
+        std::fs::create_dir_all(repo_root.join(".ralph/cache")).unwrap();
+        git_test::init_repo(&repo_root).unwrap();
+
+        let workspace_queue = repo_root.join(".ralph/queue.json");
+        let workspace_done = repo_root.join(".ralph/done.json");
+        let productivity = repo_root.join(".ralph/cache/productivity.json");
+        std::fs::write(&workspace_queue, "{\"version\":1,\"tasks\":[]}").unwrap();
+        std::fs::write(&workspace_done, "{\"version\":1,\"tasks\":[]}").unwrap();
+        std::fs::write(&productivity, "{\"stats\":[]}").unwrap();
+        git_test::commit_all(&repo_root, "init bookkeeping").unwrap();
+
+        let coordinator_root = temp.path().join("coordinator");
+        std::fs::create_dir_all(coordinator_root.join(".ralph")).unwrap();
+        let coordinator_queue = coordinator_root.join(".ralph/queue.json");
+        let coordinator_done = coordinator_root.join(".ralph/done.json");
+        std::fs::write(
+            &coordinator_queue,
+            "{\"version\":1,\"tasks\":[{\"id\":\"RQ-1\"}]}",
+        )
+        .unwrap();
+        std::fs::write(&coordinator_done, "{\"version\":1,\"tasks\":[]}").unwrap();
+
+        // Dirty workspace-local bookkeeping files.
+        std::fs::write(
+            &workspace_queue,
+            "{\"version\":1,\"tasks\":[{\"id\":\"W\"}]}",
+        )
+        .unwrap();
+        std::fs::write(
+            &workspace_done,
+            "{\"version\":1,\"tasks\":[{\"id\":\"W\"}]}",
+        )
+        .unwrap();
+        std::fs::write(&productivity, "{\"stats\":[\"dirty\"]}").unwrap();
+
+        let resolved = crate::config::Resolved {
+            config: Config::default(),
+            repo_root: repo_root.clone(),
+            queue_path: coordinator_queue,
+            done_path: coordinator_done,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        restore_parallel_worker_bookkeeping(&resolved).unwrap();
+
+        // Workspace files restored to committed content.
+        assert_eq!(
+            std::fs::read_to_string(&workspace_queue).unwrap(),
+            "{\"version\":1,\"tasks\":[]}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&workspace_done).unwrap(),
+            "{\"version\":1,\"tasks\":[]}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&productivity).unwrap(),
+            "{\"stats\":[]}"
+        );
+    }
+
+    #[test]
+    fn collect_bookkeeping_status_lines_matches_tracked_paths() {
+        let status = "\
+ M .ralph/queue.json
+M  src/lib.rs
+ R .ralph/done.json -> .ralph/done-old.json
+?? scratch.txt
+";
+
+        let matches = collect_bookkeeping_status_lines(status);
+        assert_eq!(matches.len(), 2);
+        assert!(matches[0].contains(".ralph/queue.json"));
+        assert!(matches[1].contains(".ralph/done.json"));
+    }
+
+    #[test]
+    fn collect_bookkeeping_status_lines_ignores_non_bookkeeping_changes() {
+        let status = "\
+M  src/lib.rs
+A  docs/notes.md
+?? temp.log
+";
+
+        let matches = collect_bookkeeping_status_lines(status);
+        assert!(matches.is_empty());
     }
 }
