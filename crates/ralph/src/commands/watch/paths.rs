@@ -80,7 +80,21 @@ pub fn matches_pattern(name: &str, pattern: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    //! Unit tests for path filtering and pattern matching.
+    //!
+    //! Responsibilities:
+    //! - Test glob pattern matching for filenames
+    //! - Test file filtering based on patterns and ignore rules
+    //! - Test event path extraction and filtering
+    //!
+    //! Not handled here:
+    //! - File system operations (just path string logic)
+    //! - Comment detection (see comments.rs)
+    //! - Full watch loop integration (see event_loop.rs)
+
     use super::*;
+    use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn matches_pattern_basic() {
@@ -149,5 +163,162 @@ mod tests {
         assert!(matches_pattern("anything", "*"));
         assert!(matches_pattern("a", "?"));
         assert!(!matches_pattern("ab", "?"));
+    }
+
+    // =========================================================================
+    // Tests for should_process_file
+    // =========================================================================
+
+    #[test]
+    fn should_process_file_skips_directories() {
+        let temp_dir = TempDir::new().unwrap();
+        let dir_path = temp_dir.path().join("testdir");
+        fs::create_dir(&dir_path).unwrap();
+
+        // Even with matching pattern, directory should be skipped
+        assert!(!should_process_file(&dir_path, &["*".to_string()], &[]));
+    }
+
+    #[test]
+    fn should_process_file_requires_pattern_match() {
+        let path = Path::new("file.txt");
+        // Does not match *.rs pattern
+        assert!(!should_process_file(path, &["*.rs".to_string()], &[]));
+        // Does match *.txt pattern
+        assert!(should_process_file(path, &["*.txt".to_string()], &[]));
+    }
+
+    #[test]
+    fn should_process_file_ignores_take_precedence() {
+        let path = Path::new("test.rs");
+        // File matches include pattern *.rs
+        assert!(should_process_file(path, &["*.rs".to_string()], &[]));
+        // But should be ignored when ignore pattern test.* is present
+        assert!(!should_process_file(
+            path,
+            &["*.rs".to_string()],
+            &["test.*".to_string()]
+        ));
+    }
+
+    #[test]
+    fn should_process_file_skips_target_dir() {
+        let path = Path::new("/project/target/debug/main.rs");
+        // Even though it's a .rs file, target/ is hardcoded to be ignored
+        assert!(!should_process_file(path, &["*.rs".to_string()], &[]));
+    }
+
+    #[test]
+    fn should_process_file_skips_node_modules() {
+        let path = Path::new("/project/node_modules/package/index.js");
+        assert!(!should_process_file(path, &["*.js".to_string()], &[]));
+    }
+
+    #[test]
+    fn should_process_file_skips_git_dir() {
+        let path = Path::new("/project/.git/hooks/pre-commit");
+        assert!(!should_process_file(path, &["*".to_string()], &[]));
+    }
+
+    #[test]
+    fn should_process_file_skips_vendor_dir() {
+        let path = Path::new("/project/vendor/lib/helper.rb");
+        assert!(!should_process_file(path, &["*.rb".to_string()], &[]));
+    }
+
+    #[test]
+    fn should_process_file_skips_ralph_dir() {
+        let path = Path::new("/project/.ralph/cache/data.json");
+        assert!(!should_process_file(path, &["*.json".to_string()], &[]));
+    }
+
+    // =========================================================================
+    // Tests for get_relevant_paths
+    // =========================================================================
+
+    #[test]
+    fn get_relevant_paths_filters_event_paths() {
+        let event = Event {
+            kind: notify::EventKind::Modify(notify::event::ModifyKind::Data(
+                notify::event::DataChange::Content,
+            )),
+            paths: vec![
+                PathBuf::from("test.rs"),  // Should match *.rs
+                PathBuf::from("other.py"), // Should not match
+            ],
+            attrs: Default::default(),
+        };
+        let opts = WatchOptions {
+            patterns: vec!["*.rs".to_string()],
+            ignore_patterns: vec![],
+            debounce_ms: 100,
+            auto_queue: false,
+            notify: false,
+            comment_types: vec![],
+            paths: vec![],
+            force: false,
+            close_removed: false,
+        };
+
+        let result = get_relevant_paths(&event, &opts);
+        assert!(result.is_some());
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 1);
+        assert!(paths[0].ends_with("test.rs"));
+    }
+
+    #[test]
+    fn get_relevant_paths_returns_none_when_no_matches() {
+        let event = Event {
+            kind: notify::EventKind::Modify(notify::event::ModifyKind::Data(
+                notify::event::DataChange::Content,
+            )),
+            paths: vec![PathBuf::from("file.txt"), PathBuf::from("file.py")],
+            attrs: Default::default(),
+        };
+        let opts = WatchOptions {
+            patterns: vec!["*.rs".to_string()],
+            ignore_patterns: vec![],
+            debounce_ms: 100,
+            auto_queue: false,
+            notify: false,
+            comment_types: vec![],
+            paths: vec![],
+            force: false,
+            close_removed: false,
+        };
+
+        assert!(get_relevant_paths(&event, &opts).is_none());
+    }
+
+    #[test]
+    fn get_relevant_paths_respects_ignore_patterns() {
+        let event = Event {
+            kind: notify::EventKind::Modify(notify::event::ModifyKind::Data(
+                notify::event::DataChange::Content,
+            )),
+            paths: vec![
+                PathBuf::from("include.rs"), // Should match
+                PathBuf::from("exclude.rs"), // Should be ignored
+            ],
+            attrs: Default::default(),
+        };
+        let opts = WatchOptions {
+            patterns: vec!["*.rs".to_string()],
+            ignore_patterns: vec!["exclude.*".to_string()],
+            debounce_ms: 100,
+            auto_queue: false,
+            notify: false,
+            comment_types: vec![],
+            paths: vec![],
+            force: false,
+            close_removed: false,
+        };
+
+        let result = get_relevant_paths(&event, &opts);
+        assert!(result.is_some());
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 1);
+        assert!(paths[0].ends_with("include.rs"));
     }
 }

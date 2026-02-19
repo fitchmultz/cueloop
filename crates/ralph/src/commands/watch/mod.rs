@@ -120,3 +120,104 @@ pub fn run_watch(resolved: &Resolved, opts: WatchOptions) -> Result<()> {
     log::info!("Watch mode stopped.");
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    //! Integration tests for watch command functionality.
+    //!
+    //! Responsibilities:
+    //! - Test actual watch command behavior (run_watch, path validation)
+    //! - Test regex building through public API
+    //! - Test that all comment type variants work correctly
+    //!
+    //! Not handled here:
+    //! - Individual module logic (tested in submodule unit tests)
+    //! - Struct derive behavior (trusted to compiler)
+
+    use super::*;
+    use crate::commands::watch::types::CommentType;
+    use crate::contracts::{Config, QueueFile};
+    use tempfile::TempDir;
+
+    fn create_test_resolved(temp_dir: &TempDir) -> Resolved {
+        let queue_path = temp_dir.path().join("queue.json");
+        let done_path = temp_dir.path().join("done.json");
+
+        // Create empty queue file
+        let queue = QueueFile::default();
+        let queue_json = serde_json::to_string_pretty(&queue).unwrap();
+        std::fs::write(&queue_path, queue_json).unwrap();
+
+        Resolved {
+            config: Config::default(),
+            repo_root: temp_dir.path().to_path_buf(),
+            queue_path,
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        }
+    }
+
+    #[test]
+    fn build_comment_regex_integration() {
+        // Test that build_comment_regex works through the public API
+        let regex = build_comment_regex(&[CommentType::Todo]).unwrap();
+
+        assert!(regex.is_match("// TODO: test"));
+        assert!(regex.is_match("// todo: test"));
+        assert!(!regex.is_match("// FIXME: test"));
+    }
+
+    #[test]
+    fn watch_state_creation() {
+        let state = WatchState::new(100);
+        assert!(state.pending_files.is_empty());
+        assert_eq!(state.debounce_duration, Duration::from_millis(100));
+    }
+
+    #[test]
+    fn run_watch_rejects_nonexistent_paths() {
+        let temp_dir = TempDir::new().unwrap();
+        let resolved = create_test_resolved(&temp_dir);
+
+        let nonexistent = temp_dir.path().join("nonexistent.rs");
+
+        let opts = WatchOptions {
+            patterns: vec!["*.rs".to_string()],
+            debounce_ms: 50,
+            auto_queue: false,
+            notify: false,
+            ignore_patterns: vec![],
+            comment_types: vec![CommentType::Todo],
+            paths: vec![nonexistent.clone()],
+            force: false,
+            close_removed: false,
+        };
+
+        // run_watch should fail for nonexistent paths
+        let result = run_watch(&resolved, opts);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("Failed to watch path") || err_msg.contains("No such file"));
+    }
+
+    #[test]
+    fn all_comment_type_variants_compile_regex() {
+        // Verify all comment type variants produce valid regexes
+        let all_types = vec![
+            CommentType::Todo,
+            CommentType::Fixme,
+            CommentType::Hack,
+            CommentType::Xxx,
+            CommentType::All,
+        ];
+
+        for ct in all_types {
+            let regex = build_comment_regex(&[ct]).unwrap();
+            // Should compile successfully with non-empty pattern
+            assert!(!regex.as_str().is_empty());
+        }
+    }
+}

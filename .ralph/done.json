@@ -118,8 +118,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -255,8 +255,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "model_used": "gpt-5.3-codex"
+        "model_used": "gpt-5.3-codex",
+        "runner_used": "codex"
       }
     },
     {
@@ -321,8 +321,8 @@
         "RQ-0953"
       ],
       "custom_fields": {
-        "runner_used": "codex",
         "model_used": "gpt-5.3-codex",
+        "runner_used": "codex",
         "scan_agent": "scan-general"
       }
     },
@@ -379,8 +379,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "model_used": "gpt-5.3-codex",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -500,9 +500,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex",
         "runner_used": "codex",
-        "model_used": "gpt-5.3-codex"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -560,8 +560,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-general",
-        "runner_used": "claude",
-        "model_used": "sonnet"
+        "model_used": "sonnet",
+        "runner_used": "claude"
       }
     },
     {
@@ -615,9 +615,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex",
         "runner_used": "codex",
-        "model_used": "gpt-5.3-codex"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -675,9 +675,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex",
         "runner_used": "codex",
-        "model_used": "gpt-5.3-codex"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -804,9 +804,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-for-coding/k2p5",
+        "runner_used": "opencode",
         "scan_agent": "scan-general",
-        "runner_used": "opencode"
+        "model_used": "kimi-for-coding/k2p5"
       }
     },
     {
@@ -857,9 +857,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "opencode",
         "model_used": "kimi-for-coding/k2p5",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "opencode"
       }
     },
     {
@@ -918,8 +918,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "opencode",
         "scan_agent": "scan-general",
+        "runner_used": "opencode",
         "model_used": "kimi-for-coding/k2p5"
       }
     },
@@ -990,8 +990,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "opencode",
         "model_used": "kimi-for-coding/k2p5",
+        "runner_used": "opencode",
         "scan_agent": "scan-general"
       }
     },
@@ -1039,9 +1039,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "opencode",
         "model_used": "kimi-for-coding/k2p5",
-        "scan_agent": "scan-general",
-        "runner_used": "opencode"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -1079,6 +1079,52 @@
       "created_at": "2026-02-17T19:51:00Z",
       "updated_at": "2026-02-19T21:03:57.678405000Z",
       "completed_at": "2026-02-19T21:03:57.678405000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-general",
+        "runner_used": "kimi"
+      }
+    },
+    {
+      "id": "RQ-0940",
+      "status": "done",
+      "title": "Add tests for watch command submodules",
+      "description": "The watch command has 8 submodules (comments, debounce, event_loop, paths, processor, state, tasks, types) but test coverage is sparse. The command monitors files for TODO/FIXME comments and auto-creates tasks. Without tests, file watching bugs could miss important comments.",
+      "priority": "medium",
+      "tags": [
+        "scan",
+        "testing",
+        "cli",
+        "watch"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/watch/"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/commands/watch/mod.rs :: 100+ lines",
+        "analysis: 8 submodules, sparse test coverage"
+      ],
+      "plan": [
+        "Add tests for comments.rs: build_comment_regex",
+        "Add tests for debounce.rs: debounce timing logic",
+        "Run `cargo test -p ralph --lib -- commands::watch` to verify"
+      ],
+      "notes": [
+        "Added comprehensive tests for watch command submodules",
+        "comments.rs: 22 new tests for regex building and comment detection",
+        "paths.rs: 13 new tests for pattern matching and file filtering",
+        "state.rs: 15 new tests for debounce and state management",
+        "processor.rs: 7 new tests for file processing logic",
+        "mod.rs: 4 integration tests for watch command entry point",
+        "Phase 3 refinements: removed 9 filler tests, fixed debounce test assertion, eliminated timing-dependent tests"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-02-17T19:51:00Z",
+      "updated_at": "2026-02-19T22:31:00.247835000Z",
+      "completed_at": "2026-02-19T22:31:00.247835000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
