@@ -211,35 +211,118 @@ fn restore_parallel_worker_bookkeeping(resolved: &crate::config::Resolved) -> Re
 /// The coordinator checks for this before creating draft PRs.
 /// If the marker exists, the coordinator skips draft PR creation.
 fn write_ci_failure_marker(workspace_path: &std::path::Path, task_id: &str, error_message: &str) {
-    let marker_path = workspace_path.join(crate::commands::run::parallel::CI_FAILURE_MARKER_FILE);
-    if let Some(parent) = marker_path.parent()
-        && let Err(e) = std::fs::create_dir_all(parent)
-    {
-        log::warn!(
-            "Failed to create parent directory for CI failure marker: {}",
-            e
-        );
-        return;
-    }
     let content = serde_json::json!({
         "task_id": task_id,
         "timestamp": timeutil::now_utc_rfc3339_or_fallback(),
         "error": error_message
     });
-    match std::fs::File::create(&marker_path) {
+
+    let primary_marker =
+        workspace_path.join(crate::commands::run::parallel::CI_FAILURE_MARKER_FILE);
+    if write_marker_file(&primary_marker, &content) {
+        log::debug!(
+            "Wrote CI failure marker for task {} at {}",
+            task_id,
+            primary_marker.display()
+        );
+        return;
+    }
+
+    let fallback_marker =
+        workspace_path.join(crate::commands::run::parallel::CI_FAILURE_MARKER_FALLBACK_FILE);
+    if write_marker_file(&fallback_marker, &content) {
+        log::warn!(
+            "Primary CI failure marker unavailable; wrote fallback marker for task {} at {}",
+            task_id,
+            fallback_marker.display()
+        );
+        return;
+    }
+
+    log::error!(
+        "Failed to write both primary and fallback CI failure markers for task {}",
+        task_id
+    );
+}
+
+fn write_marker_file(path: &std::path::Path, content: &serde_json::Value) -> bool {
+    if let Some(parent) = path.parent()
+        && let Err(e) = std::fs::create_dir_all(parent)
+    {
+        log::warn!("Failed to create marker parent directory: {}", e);
+        return false;
+    }
+    match std::fs::File::create(path) {
         Ok(mut file) => {
             if let Err(e) = file.write_all(content.to_string().as_bytes()) {
-                log::warn!("Failed to write CI failure marker: {}", e);
+                log::warn!("Failed to write marker file {}: {}", path.display(), e);
+                false
             } else {
-                log::debug!(
-                    "Wrote CI failure marker for task {} at {}",
-                    task_id,
-                    marker_path.display()
-                );
+                true
             }
         }
         Err(e) => {
-            log::warn!("Failed to create CI failure marker file: {}", e);
+            log::warn!("Failed to create marker file {}: {}", path.display(), e);
+            false
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn write_ci_failure_marker_creates_expected_json_payload() {
+        let temp = tempfile::TempDir::new().unwrap();
+
+        write_ci_failure_marker(temp.path(), "RQ-1234", "CI gate failed");
+
+        let marker_path = temp
+            .path()
+            .join(crate::commands::run::parallel::CI_FAILURE_MARKER_FILE);
+        assert!(marker_path.exists(), "marker file should exist");
+
+        let raw = std::fs::read_to_string(marker_path).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(payload["task_id"], "RQ-1234");
+        assert_eq!(payload["error"], "CI gate failed");
+        assert!(payload["timestamp"].as_str().is_some());
+    }
+
+    #[test]
+    fn write_ci_failure_marker_overwrites_existing_marker_contents() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let marker_path = temp
+            .path()
+            .join(crate::commands::run::parallel::CI_FAILURE_MARKER_FILE);
+        std::fs::create_dir_all(marker_path.parent().unwrap()).unwrap();
+        std::fs::write(&marker_path, r#"{"task_id":"RQ-0001","error":"old"}"#).unwrap();
+
+        write_ci_failure_marker(temp.path(), "RQ-9999", "new failure");
+
+        let raw = std::fs::read_to_string(marker_path).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(payload["task_id"], "RQ-9999");
+        assert_eq!(payload["error"], "new failure");
+    }
+
+    #[test]
+    fn write_ci_failure_marker_uses_fallback_when_primary_path_is_unusable() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let primary_parent = temp.path().join(".ralph");
+        std::fs::write(&primary_parent, "not-a-directory").unwrap();
+
+        write_ci_failure_marker(temp.path(), "RQ-8888", "ci fallback");
+
+        let fallback = temp
+            .path()
+            .join(crate::commands::run::parallel::CI_FAILURE_MARKER_FALLBACK_FILE);
+        assert!(fallback.exists(), "fallback marker should exist");
+
+        let raw = std::fs::read_to_string(fallback).unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(payload["task_id"], "RQ-8888");
+        assert_eq!(payload["error"], "ci fallback");
     }
 }

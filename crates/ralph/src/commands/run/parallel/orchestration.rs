@@ -53,8 +53,8 @@ use super::state::{self, PendingMergeJob, PendingMergeLifecycle};
 use super::sync::{commit_failure_changes, ensure_branch_pushed, sync_ralph_state};
 use super::worker::{WorkerState, collect_excluded_ids, select_next_task_locked, spawn_worker};
 use super::{
-    CI_FAILURE_MARKER_FILE, MergeExitClassification, ParallelRunOptions,
-    apply_git_commit_push_policy_to_parallel_settings, can_start_more_tasks,
+    CI_FAILURE_MARKER_FALLBACK_FILE, CI_FAILURE_MARKER_FILE, MergeExitClassification,
+    ParallelRunOptions, apply_git_commit_push_policy_to_parallel_settings, can_start_more_tasks,
     classify_merge_exit_code, effective_in_flight_count, initial_tasks_started,
     load_or_init_parallel_state, overrides_for_parallel_workers,
     preflight_parallel_workspace_root_is_gitignored, prune_stale_tasks_in_flight,
@@ -108,21 +108,32 @@ fn should_break_parallel_loop(
 /// Returns true if the worker failed due to CI gate, false otherwise.
 fn has_ci_failure_marker(workspace_path: &Path) -> bool {
     workspace_path.join(CI_FAILURE_MARKER_FILE).exists()
+        || workspace_path
+            .join(CI_FAILURE_MARKER_FALLBACK_FILE)
+            .exists()
 }
 
 /// Get CI failure details from marker file (for logging).
 fn read_ci_failure_marker(workspace_path: &Path) -> Option<String> {
-    let marker_path = workspace_path.join(CI_FAILURE_MARKER_FILE);
-    std::fs::read_to_string(&marker_path).ok()
+    [
+        workspace_path.join(CI_FAILURE_MARKER_FILE),
+        workspace_path.join(CI_FAILURE_MARKER_FALLBACK_FILE),
+    ]
+    .into_iter()
+    .find_map(|marker_path| std::fs::read_to_string(marker_path).ok())
 }
 
 /// Remove CI failure marker file from workspace.
 fn remove_ci_failure_marker(workspace_path: &Path) {
-    let marker_path = workspace_path.join(CI_FAILURE_MARKER_FILE);
-    if marker_path.exists()
-        && let Err(e) = std::fs::remove_file(&marker_path)
-    {
-        log::debug!("Failed to remove CI failure marker: {}", e);
+    for marker_path in [
+        workspace_path.join(CI_FAILURE_MARKER_FILE),
+        workspace_path.join(CI_FAILURE_MARKER_FALLBACK_FILE),
+    ] {
+        if marker_path.exists()
+            && let Err(e) = std::fs::remove_file(&marker_path)
+        {
+            log::debug!("Failed to remove CI failure marker: {}", e);
+        }
     }
 }
 
@@ -417,13 +428,17 @@ pub(crate) fn run_loop_parallel(
                     &mut guard,
                     &task_id,
                     || {
-                        git::create_workspace_at(
+                        let workspace = git::create_workspace_at(
                             &resolved.repo_root,
                             &settings.workspace_root,
                             &task_id,
                             &base_branch,
                             &settings.branch_prefix,
-                        )
+                        )?;
+                        // Workspaces may be reused after failed cleanup. Remove any stale
+                        // CI marker before a new worker run to avoid cross-run contamination.
+                        remove_ci_failure_marker(&workspace.path);
+                        Ok(workspace)
                     },
                     |path| sync_ralph_state(resolved, path),
                     |workspace| {
@@ -1328,6 +1343,47 @@ mod tests {
     #[test]
     fn loop_breaks_without_pending_merges_when_no_tasks_available() {
         assert!(should_break_parallel_loop(false, false, false, false));
+    }
+
+    #[test]
+    fn ci_failure_marker_helpers_round_trip() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let marker_path = temp.path().join(CI_FAILURE_MARKER_FILE);
+        std::fs::create_dir_all(marker_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &marker_path,
+            r#"{"task_id":"RQ-0001","error":"ci failed","timestamp":"2026-02-01T00:00:00Z"}"#,
+        )
+        .unwrap();
+
+        assert!(has_ci_failure_marker(temp.path()));
+        let details = read_ci_failure_marker(temp.path()).unwrap();
+        assert!(details.contains("RQ-0001"));
+        assert!(details.contains("ci failed"));
+
+        remove_ci_failure_marker(temp.path());
+        assert!(!has_ci_failure_marker(temp.path()));
+    }
+
+    #[test]
+    fn ci_failure_marker_helpers_support_fallback_marker_path() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let marker_path = temp.path().join(CI_FAILURE_MARKER_FALLBACK_FILE);
+        std::fs::write(&marker_path, r#"{"task_id":"RQ-0002","error":"fallback"}"#).unwrap();
+
+        assert!(has_ci_failure_marker(temp.path()));
+        let details = read_ci_failure_marker(temp.path()).unwrap();
+        assert!(details.contains("RQ-0002"));
+
+        remove_ci_failure_marker(temp.path());
+        assert!(!has_ci_failure_marker(temp.path()));
+    }
+
+    #[test]
+    fn remove_ci_failure_marker_is_noop_when_marker_missing() {
+        let temp = tempfile::TempDir::new().unwrap();
+        remove_ci_failure_marker(temp.path());
+        assert!(!has_ci_failure_marker(temp.path()));
     }
 
     /// Regression test: Failed worker workspace is cleaned up.

@@ -16,6 +16,7 @@
 //! - Temp directories are created outside the repo to avoid git pollution.
 
 use anyhow::Result;
+use std::process::Command;
 
 mod test_support;
 
@@ -163,6 +164,107 @@ fn parallel_respects_max_tasks_limit() -> Result<()> {
     if !status.success() {
         eprintln!("Parallel run completed (expected with disabled PR automation)");
     }
+
+    Ok(())
+}
+
+/// Verify that CI-gate worker failures do not create draft PRs.
+#[test]
+fn parallel_ci_failure_skips_draft_pr_creation() -> Result<()> {
+    let _lock = test_support::env_lock().lock().unwrap();
+    let temp = test_support::temp_dir_outside_repo();
+    let remote = test_support::temp_dir_outside_repo();
+
+    test_support::git_init(temp.path())?;
+    test_support::ralph_init(temp.path())?;
+
+    // Add tracked content so worker changes make the workspace dirty and trigger CI gate.
+    std::fs::write(temp.path().join("tracked.txt"), "base\n")?;
+    test_support::git_add_all_commit(temp.path(), "add tracked fixture")?;
+
+    let status = Command::new("git")
+        .current_dir(remote.path())
+        .args(["init", "--bare", "--quiet"])
+        .status()?;
+    anyhow::ensure!(status.success(), "git init --bare failed");
+
+    let remote_path = remote.path().to_string_lossy().to_string();
+    let status = Command::new("git")
+        .current_dir(temp.path())
+        .args(["remote", "add", "origin", remote_path.as_str()])
+        .status()?;
+    anyhow::ensure!(status.success(), "git remote add origin failed");
+
+    let status = Command::new("git")
+        .current_dir(temp.path())
+        .args(["push", "-u", "origin", "HEAD"])
+        .status()?;
+    anyhow::ensure!(status.success(), "git push -u origin HEAD failed");
+
+    let tasks = vec![test_support::make_test_task(
+        "RQ-0001",
+        "CI-gate failure should skip draft PR",
+        ralph::contracts::TaskStatus::Todo,
+    )];
+    test_support::write_queue(temp.path(), &tasks)?;
+
+    let bin_dir = temp.path().join("bin");
+    std::fs::create_dir_all(&bin_dir)?;
+    let runner_script = "#!/bin/bash\nprintf 'mutation\\n' >> tracked.txt\nexit 0\n";
+    let runner_path = test_support::create_executable_script(&bin_dir, "opencode", runner_script)?;
+    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
+
+    let (gh_path, gh_invocations) = test_support::create_fake_gh_for_parallel(temp.path(), 101)?;
+    test_support::configure_parallel_with_pr_automation(temp.path(), &gh_path)?;
+
+    #[cfg(unix)]
+    let ci_gate_command = "sh -c 'exit 17'";
+    #[cfg(windows)]
+    let ci_gate_command = "powershell -NoProfile -Command \"exit 17\"";
+    test_support::configure_ci_gate(temp.path(), Some(ci_gate_command), Some(true))?;
+
+    // Keep focus on draft PR behavior without merge side effects.
+    {
+        let config_path = temp.path().join(".ralph/config.json");
+        let raw = std::fs::read_to_string(&config_path)?;
+        let mut config: serde_json::Value = serde_json::from_str(&raw)?;
+        config["parallel"]["auto_merge"] = serde_json::json!(false);
+        std::fs::write(&config_path, serde_json::to_string_pretty(&config)?)?;
+    }
+
+    let bin_dir = gh_path.parent().unwrap().to_path_buf();
+    let (_status, stdout, stderr) = test_support::with_prepend_path(&bin_dir, || {
+        test_support::run_in_dir(
+            temp.path(),
+            &[
+                "run",
+                "loop",
+                "--parallel",
+                "2",
+                "--max-tasks",
+                "1",
+                "--force",
+            ],
+        )
+    });
+
+    let combined = format!("{}{}", stdout, stderr);
+    assert!(
+        combined.contains("CI gate failed"),
+        "expected CI gate failure to be reported\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let gh_calls = std::fs::read_to_string(&gh_invocations).unwrap_or_default();
+    assert!(
+        gh_calls.contains("auth status"),
+        "expected gh auth preflight call to prove gh path executed\nCalls:\n{}",
+        gh_calls
+    );
+    assert!(
+        !gh_calls.contains("pr create"),
+        "CI-gate failures must not create draft PRs\nCalls:\n{}",
+        gh_calls
+    );
 
     Ok(())
 }
