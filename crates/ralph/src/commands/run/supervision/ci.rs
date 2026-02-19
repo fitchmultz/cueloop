@@ -339,28 +339,61 @@ fn truncate_for_log(s: &str, max_chars: usize) -> String {
 
 /// Format CI output for inclusion in compliance message.
 ///
-/// Takes last N lines (default 100) to show most relevant output.
+/// Shows BOTH the start (early errors like format/lint) and end (test failures)
+/// of CI output to ensure the agent sees all relevant errors.
+///
 /// stderr is included first since errors typically appear there.
-fn format_ci_output_for_message(stdout: &str, stderr: &str, max_lines: usize) -> String {
+fn format_ci_output_for_message(
+    stdout: &str,
+    stderr: &str,
+    max_head_lines: usize,
+    max_tail_lines: usize,
+) -> String {
     let mut lines: Vec<&str> = Vec::new();
 
     // Include stderr first (usually contains errors)
     lines.extend(stderr.lines());
     lines.extend(stdout.lines());
 
-    // Take last N lines to show most recent/relevant output
-    let start = lines.len().saturating_sub(max_lines);
-    let selected = &lines[start..];
+    let total_lines = lines.len();
 
-    if selected.is_empty() {
-        "No output captured.".to_string()
-    } else {
-        format!(
-            "Last {} lines of CI output:\n```\n{}\n```",
-            selected.len(),
-            selected.join("\n")
-        )
+    if total_lines == 0 {
+        return "No output captured.".to_string();
     }
+
+    // If output fits within budget, show everything
+    if total_lines <= max_head_lines + max_tail_lines {
+        return format!(
+            "CI output ({} lines):\n```\n{}\n```",
+            total_lines,
+            lines.join("\n")
+        );
+    }
+
+    // Show head (early errors) and tail (test failures)
+    let head: Vec<&str> = lines.iter().take(max_head_lines).copied().collect();
+    let tail_start = total_lines.saturating_sub(max_tail_lines);
+    let tail: Vec<&str> = lines.iter().skip(tail_start).copied().collect();
+    let omitted = total_lines - max_head_lines - max_tail_lines;
+
+    format!(
+        "CI output ({} lines total, showing first {} and last {}):\n\
+         ```
+         {}
+         ```
+
+         ... {} lines omitted ...
+
+         ```
+         {}
+         ```",
+        total_lines,
+        max_head_lines,
+        max_tail_lines,
+        head.join("\n"),
+        omitted,
+        tail.join("\n")
+    )
 }
 
 /// Executes the CI gate command if enabled.
@@ -443,8 +476,8 @@ fn strict_ci_gate_compliance_message(
 ) -> String {
     let cmd = ci_gate_command_label(resolved);
 
-    // Include last N lines of output in the message
-    let output_snippet = format_ci_output_for_message(&result.stdout, &result.stderr, 100);
+    // Include head (early errors) and tail (test failures) of output in the message
+    let output_snippet = format_ci_output_for_message(&result.stdout, &result.stderr, 50, 50);
 
     // Format exit code as a number, using -1 if unavailable (e.g., killed by signal)
     let exit_code_display = result.exit_code.unwrap_or(-1);
@@ -793,7 +826,7 @@ mod tests {
     fn format_ci_output_includes_stderr_first() {
         let stdout = "line1\nline2\nline3";
         let stderr = "error1\nerror2";
-        let result = format_ci_output_for_message(stdout, stderr, 10);
+        let result = format_ci_output_for_message(stdout, stderr, 50, 50);
 
         // stderr should appear in output
         assert!(result.contains("error1"));
@@ -801,25 +834,53 @@ mod tests {
     }
 
     #[test]
-    fn format_ci_output_truncates_to_max_lines() {
+    fn format_ci_output_shows_head_and_tail() {
         let stdout = (1..=200)
             .map(|i| format!("line{i}"))
             .collect::<Vec<_>>()
             .join("\n");
         let stderr = "";
-        let result = format_ci_output_for_message(&stdout, stderr, 50);
 
-        // Should include "Last 50 lines"
-        assert!(result.contains("Last 50 lines"));
-        // Should include line 151 (line 200 - 50 + 1)
+        // Request 50 head + 50 tail
+        let result = format_ci_output_for_message(&stdout, stderr, 50, 50);
+
+        // Should show total line count
+        assert!(result.contains("200 lines total"));
+
+        // Should include early lines (format/lint errors appear here)
+        assert!(result.contains("line1"));
+        assert!(result.contains("line50"));
+
+        // Should include late lines (test failures appear here)
         assert!(result.contains("line151"));
-        // Should NOT include line 150
+        assert!(result.contains("line200"));
+
+        // Should NOT include middle lines
+        assert!(!result.contains("line51"));
+        assert!(!result.contains("line100"));
         assert!(!result.contains("line150"));
+
+        // Should indicate truncation
+        assert!(result.contains("100 lines omitted"));
+    }
+
+    #[test]
+    fn format_ci_output_shows_all_when_small() {
+        let stdout = "line1\nline2\nline3";
+        let stderr = "";
+
+        let result = format_ci_output_for_message(stdout, stderr, 50, 50);
+
+        // Should show all without truncation
+        assert!(result.contains("3 lines)"));
+        assert!(result.contains("line1"));
+        assert!(result.contains("line3"));
+        assert!(!result.contains("omitted"));
     }
 
     #[test]
     fn format_ci_output_handles_empty() {
-        let result = format_ci_output_for_message("", "", 100);
+        let result = format_ci_output_for_message("", "", 50, 50);
         assert!(result.contains("No output captured"));
     }
 
