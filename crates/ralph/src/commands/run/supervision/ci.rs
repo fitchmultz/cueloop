@@ -288,6 +288,7 @@ fn detect_ci_error_pattern(stdout: &str, stderr: &str) -> Option<DetectedErrorPa
 
 /// Get a stable key representing the error pattern for comparison.
 /// Returns None if no pattern detected, or Some(pattern_type) if detected.
+#[cfg(test)]
 fn get_error_pattern_key(result: &CiGateResult) -> Option<String> {
     detect_ci_error_pattern(&result.stdout, &result.stderr).map(|p| p.pattern_type.to_string())
 }
@@ -315,12 +316,56 @@ fn format_detected_pattern(pattern: &DetectedErrorPattern) -> String {
 
 /// Result of running the CI gate command.
 #[derive(Debug)]
+#[allow(dead_code)] // success field used in tests only
 pub(crate) struct CiGateResult {
     pub success: bool,
     pub exit_code: Option<i32>,
     pub stdout: String,
     pub stderr: String,
 }
+
+/// CI gate failure with captured output for logging.
+///
+/// This error type is used when CI fails (non-zero exit code).
+/// The `Display` impl includes truncated stdout/stderr and detected
+/// error patterns, allowing `with_scope` to log a rich error message.
+#[derive(Debug)]
+pub(crate) struct CiFailure {
+    /// Exit code from the CI command
+    pub exit_code: Option<i32>,
+    /// Full stdout (kept for compliance messages)
+    pub stdout: String,
+    /// Full stderr (kept for compliance messages)
+    pub stderr: String,
+    /// Detected error pattern type, if any
+    pub error_pattern: Option<&'static str>,
+}
+
+impl std::fmt::Display for CiFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let exit_code = self.exit_code.unwrap_or(-1);
+        write!(f, "CI failed with exit code {}", exit_code)?;
+
+        if let Some(pattern) = &self.error_pattern {
+            write!(f, " [{}]", pattern)?;
+        }
+
+        // Include truncated output for immediate visibility in logs
+        let stderr_preview = truncate_for_log(&self.stderr, 500);
+        let stdout_preview = truncate_for_log(&self.stdout, 500);
+
+        if !stderr_preview.is_empty() {
+            write!(f, "\n>>> stderr:\n{}", stderr_preview)?;
+        }
+        if !stdout_preview.is_empty() {
+            write!(f, "\n>>> stdout:\n{}", stdout_preview)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl std::error::Error for CiFailure {}
 
 /// Truncate a string for logging, showing the end (most recent output).
 ///
@@ -448,25 +493,28 @@ pub(crate) fn run_ci_gate(resolved: &crate::config::Resolved) -> Result<CiGateRe
         let success = output.status.success();
         let exit_code = output.status.code();
 
-        // Log output on failure for debugging
-        if !success {
-            log::error!(
-                "CI gate ({command}) failed with exit code {:?}. stdout: {}",
+        if success {
+            Ok(CiGateResult {
+                success,
                 exit_code,
-                truncate_for_log(&stdout, 2000)
-            );
-            log::error!(
-                "CI gate ({command}) stderr: {}",
-                truncate_for_log(&stderr, 2000)
-            );
-        }
+                stdout,
+                stderr,
+            })
+        } else {
+            // Detect error pattern for logging context
+            let detected = detect_ci_error_pattern(&stdout, &stderr);
+            let error_pattern = detected.as_ref().map(|p| p.pattern_type);
 
-        Ok(CiGateResult {
-            success,
-            exit_code,
-            stdout,
-            stderr,
-        })
+            // Return CiFailure so with_scope logs it with ERROR level
+            // The Display impl includes truncated output for immediate visibility
+            Err(CiFailure {
+                exit_code,
+                stdout,
+                stderr,
+                error_pattern,
+            }
+            .into())
+        }
     })
 }
 
@@ -518,17 +566,22 @@ where
     F: FnMut(&crate::runner::RunnerOutput, std::time::Duration) -> Result<()>,
 {
     loop {
-        let result = run_ci_gate(resolved)?;
-
-        if result.success {
-            // Reset error tracking on success
-            continue_session.last_ci_error_pattern = None;
-            continue_session.consecutive_same_error_count = 0;
-            break;
-        }
+        // run_ci_gate returns Ok(CiGateResult) on success, Err(CiFailure) on CI failure
+        let result = match run_ci_gate(resolved) {
+            Ok(_) => {
+                // CI passed - reset error tracking and exit loop
+                continue_session.last_ci_error_pattern = None;
+                continue_session.consecutive_same_error_count = 0;
+                return Ok(());
+            }
+            Err(err) => {
+                // Check if this is a CI failure (retryable) or another error
+                err.downcast::<CiFailure>()?
+            }
+        };
 
         // Get current error pattern and update consecutive count
-        let current_pattern = get_error_pattern_key(&result);
+        let current_pattern = result.error_pattern.as_ref().map(|p| p.to_string());
 
         match (&continue_session.last_ci_error_pattern, &current_pattern) {
             (Some(last), Some(current)) if last == current => {
@@ -595,7 +648,14 @@ where
             );
 
             // Include the CI output in the compliance message
-            let message = strict_ci_gate_compliance_message(resolved, &result);
+            // Build CiGateResult from CiFailure for message formatting
+            let gate_result = CiGateResult {
+                success: false,
+                exit_code: result.exit_code,
+                stdout: result.stdout.clone(),
+                stderr: result.stderr.clone(),
+            };
+            let message = strict_ci_gate_compliance_message(resolved, &gate_result);
             let (output, elapsed) =
                 super::resume_continue_session(resolved, continue_session, &message, plugins)?;
             on_resume(&output, elapsed)?;
@@ -628,7 +688,6 @@ where
             }
         }
     }
-    Ok(())
 }
 
 /// Returns the CI gate command label for display purposes.
@@ -813,12 +872,13 @@ mod tests {
             "sh -c 'echo stdout text; echo stderr text >&2; exit 1'"
         };
         let resolved = resolved_with_ci_command(temp.path(), Some(command.to_string()), true);
-        let result = run_ci_gate(&resolved)?;
+        let err = run_ci_gate(&resolved).unwrap_err();
 
-        assert!(!result.success);
-        assert_eq!(result.exit_code, Some(1));
-        assert!(result.stdout.contains("stdout text"));
-        assert!(result.stderr.contains("stderr text"));
+        // CI failure now returns Err(CiFailure)
+        let ci_failure = err.downcast::<CiFailure>().unwrap();
+        assert_eq!(ci_failure.exit_code, Some(1));
+        assert!(ci_failure.stdout.contains("stdout text"));
+        assert!(ci_failure.stderr.contains("stderr text"));
         Ok(())
     }
 
@@ -955,6 +1015,105 @@ mod tests {
     fn truncate_for_log_handles_empty_string() {
         let truncated = truncate_for_log("", 100);
         assert_eq!(truncated, "");
+    }
+
+    // ========================================================================
+    // CiFailure Tests
+    // ========================================================================
+
+    #[test]
+    fn ci_failure_display_includes_exit_code() {
+        let failure = CiFailure {
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: String::new(),
+            error_pattern: None,
+        };
+
+        let msg = failure.to_string();
+        assert!(
+            msg.contains("exit code 1"),
+            "Expected 'exit code 1', got: {msg}"
+        );
+    }
+
+    #[test]
+    fn ci_failure_display_includes_error_pattern() {
+        let failure = CiFailure {
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: String::new(),
+            error_pattern: Some("TOML parse error"),
+        };
+
+        let msg = failure.to_string();
+        assert!(
+            msg.contains("[TOML parse error]"),
+            "Expected pattern, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn ci_failure_display_includes_truncated_output() {
+        let failure = CiFailure {
+            exit_code: Some(1),
+            stdout: "test output".to_string(),
+            stderr: "TOML parse error at line 44".to_string(),
+            error_pattern: Some("TOML parse error"),
+        };
+
+        let msg = failure.to_string();
+        assert!(
+            msg.contains(">>> stderr:"),
+            "Expected stderr section, got: {msg}"
+        );
+        assert!(
+            msg.contains(">>> stdout:"),
+            "Expected stdout section, got: {msg}"
+        );
+        assert!(
+            msg.contains("TOML parse error at line 44"),
+            "Expected error message, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn ci_failure_truncates_long_output() {
+        let long_output = "x".repeat(1000);
+        let failure = CiFailure {
+            exit_code: Some(1),
+            stdout: long_output.clone(),
+            stderr: String::new(),
+            error_pattern: None,
+        };
+
+        let msg = failure.to_string();
+        // Should be truncated, not full 1000 chars
+        assert!(
+            msg.len() < 800,
+            "Message should be truncated, got length {}",
+            msg.len()
+        );
+        assert!(
+            msg.contains("..."),
+            "Expected truncation marker, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn ci_failure_handles_missing_exit_code() {
+        let failure = CiFailure {
+            exit_code: None,
+            stdout: String::new(),
+            stderr: String::new(),
+            error_pattern: None,
+        };
+
+        let msg = failure.to_string();
+        assert!(
+            msg.contains("exit code -1"),
+            "Expected -1 for missing exit code, got: {msg}"
+        );
     }
 
     // ========================================================================

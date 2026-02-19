@@ -67,23 +67,21 @@ pub(crate) fn post_run_supervise_parallel_worker(
                     log::warn!(
                         "CI gate continue requested but no session id; falling back to standard CI gate handling."
                     );
-                    let result = run_ci_gate(resolved)?;
-                    if !result.success {
+                    if let Err(err) = run_ci_gate(resolved) {
                         let outcome = runutil::apply_git_revert_mode(
                             &resolved.repo_root,
                             git_revert_mode,
                             "CI gate failure",
                             revert_prompt.as_ref(),
                         )?;
-                        let exit_code_display = result.exit_code.unwrap_or(-1);
                         // Write CI failure marker so coordinator skips draft PR creation
                         write_ci_failure_marker(
                             &resolved.repo_root,
                             task_id,
-                            &format!("CI gate failed with exit code {}", exit_code_display),
+                            &format!("CI gate failed: {:#}", err),
                         );
                         anyhow::bail!(
-                            "{} Error: CI failed with exit code {exit_code_display}",
+                            "{} Error: {:#}",
                             runutil::format_revert_failure_message(
                                 &format!(
                                     "CI gate failed: '{}' did not pass after the task completed.",
@@ -91,6 +89,7 @@ pub(crate) fn post_run_supervise_parallel_worker(
                                 ),
                                 outcome,
                             ),
+                            err
                         );
                     }
                 } else if let Err(err) = run_ci_gate_with_continue_session(
@@ -125,33 +124,30 @@ pub(crate) fn post_run_supervise_parallel_worker(
                         err
                     );
                 }
-            } else {
-                let result = run_ci_gate(resolved)?;
-                if !result.success {
-                    let outcome = runutil::apply_git_revert_mode(
-                        &resolved.repo_root,
-                        git_revert_mode,
-                        "CI gate failure",
-                        revert_prompt.as_ref(),
-                    )?;
-                    let exit_code_display = result.exit_code.unwrap_or(-1);
-                    // Write CI failure marker so coordinator skips draft PR creation
-                    write_ci_failure_marker(
-                        &resolved.repo_root,
-                        task_id,
-                        &format!("CI gate failed with exit code {}", exit_code_display),
-                    );
-                    anyhow::bail!(
-                        "{} Error: CI failed with exit code {exit_code_display}",
-                        runutil::format_revert_failure_message(
-                            &format!(
-                                "CI gate failed: '{}' did not pass after the task completed.",
-                                ci_gate_command_label(resolved)
-                            ),
-                            outcome,
+            } else if let Err(err) = run_ci_gate(resolved) {
+                let outcome = runutil::apply_git_revert_mode(
+                    &resolved.repo_root,
+                    git_revert_mode,
+                    "CI gate failure",
+                    revert_prompt.as_ref(),
+                )?;
+                // Write CI failure marker so coordinator skips draft PR creation
+                write_ci_failure_marker(
+                    &resolved.repo_root,
+                    task_id,
+                    &format!("CI gate failed: {:#}", err),
+                );
+                anyhow::bail!(
+                    "{} Error: {:#}",
+                    runutil::format_revert_failure_message(
+                        &format!(
+                            "CI gate failed: '{}' did not pass after the task completed.",
+                            ci_gate_command_label(resolved)
                         ),
-                    );
-                }
+                        outcome,
+                    ),
+                    err
+                );
             }
         }
 
