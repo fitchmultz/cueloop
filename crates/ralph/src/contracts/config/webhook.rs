@@ -103,9 +103,15 @@ pub struct WebhookConfig {
     #[schemars(range(min = 100, max = 30000))]
     pub retry_backoff_ms: Option<u32>,
 
-    /// Maximum number of pending webhooks in the delivery queue (default: 100, range: 10-10000).
+    /// Maximum number of pending webhooks in the delivery queue (default: 500, range: 10-10000).
     #[schemars(range(min = 10, max = 10000))]
     pub queue_capacity: Option<u32>,
+
+    /// Multiplier for queue capacity in parallel mode (default: 2.0, range: 1.0-10.0).
+    /// When running with N parallel workers, effective capacity = queue_capacity * max(1, workers * multiplier).
+    /// Set higher (e.g., 3.0) if webhook endpoint is slow or unreliable.
+    #[schemars(range(min = 1.0, max = 10.0))]
+    pub parallel_queue_multiplier: Option<f32>,
 
     /// Backpressure policy when queue is full (default: drop_oldest).
     /// - drop_oldest: Drop new webhooks when full (preserves existing queue contents)
@@ -139,6 +145,9 @@ impl WebhookConfig {
         }
         if other.queue_capacity.is_some() {
             self.queue_capacity = other.queue_capacity;
+        }
+        if other.parallel_queue_multiplier.is_some() {
+            self.parallel_queue_multiplier = other.parallel_queue_multiplier;
         }
         if other.queue_policy.is_some() {
             self.queue_policy = other.queue_policy;

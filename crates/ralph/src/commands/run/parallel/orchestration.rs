@@ -268,6 +268,10 @@ pub(crate) fn run_loop_parallel(
 
     let base_branch = state_file.base_branch.clone();
 
+    // Initialize webhook worker with parallel-optimized capacity
+    // This must happen before any webhook calls to ensure proper queue sizing
+    crate::webhook::init_worker_for_parallel(&resolved.config.agent.webhook, settings.workers);
+
     // Emit loop_started webhook after preflights pass
     let loop_start_time = std::time::Instant::now();
     let loop_webhook_ctx = crate::webhook::WebhookContext {

@@ -185,7 +185,7 @@ pub fn diagnostics_snapshot(
     let configured_capacity = config
         .queue_capacity
         .map(|value| value.clamp(1, 10000) as usize)
-        .unwrap_or(100);
+        .unwrap_or(500);
     let queue_capacity = match state.queue_capacity.load(Ordering::SeqCst) {
         0 => configured_capacity,
         value => value,

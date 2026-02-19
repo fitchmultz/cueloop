@@ -204,10 +204,11 @@ static CHANNEL: OnceLock<WebhookChannel> = OnceLock::new();
 /// Initialize the global webhook worker and channel.
 fn init_worker(config: &WebhookConfig) {
     // Clamp capacity to valid range (1-10000) to avoid rendezvous channel behavior at 0
+    // Default to 500 for better parallel mode handling (was 100, too small for burst loads)
     let capacity = config
         .queue_capacity
         .map(|c| c.clamp(1, 10000))
-        .unwrap_or(100) as usize;
+        .unwrap_or(500) as usize;
 
     // Use get_or_init to ensure thread-safe one-time initialization
     let _ = CHANNEL.get_or_init(|| {
@@ -217,6 +218,59 @@ fn init_worker(config: &WebhookConfig) {
         // Spawn the worker thread (moves receiver into the closure)
         std::thread::spawn(move || {
             log::debug!("Webhook worker started (capacity: {})", capacity);
+
+            while let Ok(msg) = receiver.recv() {
+                diagnostics::note_queue_dequeue();
+                if let Err(e) = deliver_webhook(&msg) {
+                    log::warn!("Webhook delivery failed: {}", e);
+                }
+            }
+
+            log::debug!("Webhook worker shutting down");
+        });
+
+        WebhookChannel {
+            sender: sender.clone(),
+        }
+    });
+}
+
+/// Initialize the global webhook worker with capacity scaled for parallel execution.
+/// Call this instead of relying on implicit init when running in parallel mode.
+///
+/// The effective capacity is calculated as:
+///   base_capacity * max(1, worker_count * parallel_queue_multiplier)
+///
+/// This provides a larger queue buffer for parallel mode where multiple workers
+/// may send webhooks concurrently while the delivery thread is blocked on slow endpoints.
+pub fn init_worker_for_parallel(config: &WebhookConfig, worker_count: u8) {
+    let base_capacity = config
+        .queue_capacity
+        .map(|c| c.clamp(1, 10000))
+        .unwrap_or(500) as usize;
+
+    let multiplier = config
+        .parallel_queue_multiplier
+        .unwrap_or(2.0)
+        .clamp(1.0, 10.0);
+
+    // Scale capacity: base * max(1, workers * multiplier), clamped to max
+    let scaled =
+        (base_capacity as f64 * (worker_count as f64 * multiplier as f64).max(1.0)) as usize;
+    let capacity = scaled.clamp(1, 10000);
+
+    // Use get_or_init to ensure thread-safe one-time initialization
+    let _ = CHANNEL.get_or_init(|| {
+        let (sender, receiver) = bounded(capacity);
+        diagnostics::set_queue_capacity(capacity);
+
+        // Spawn the worker thread (moves receiver into the closure)
+        std::thread::spawn(move || {
+            log::debug!(
+                "Webhook worker started (capacity: {}, parallel-optimized for {} workers)",
+                capacity,
+                worker_count
+            );
 
             while let Ok(msg) = receiver.recv() {
                 diagnostics::note_queue_dequeue();
@@ -288,7 +342,8 @@ fn deliver_webhook(msg: &WebhookMessage) -> anyhow::Result<()> {
 /// Prefer using the `notify_*` convenience functions for common events.
 pub fn send_webhook_payload(payload: WebhookPayload, config: &WebhookConfig) {
     if !send_webhook_payload_internal(payload, config, false) {
-        log::warn!("Webhook enqueue failed (queue full or worker disconnected)");
+        // Detailed warning already logged by apply_backpressure_policy
+        log::debug!("Webhook enqueue failed (see warning above for details)");
     }
 }
 
@@ -390,6 +445,14 @@ fn apply_backpressure_policy(
     msg: WebhookMessage,
     policy: WebhookQueuePolicy,
 ) -> bool {
+    // Clone event details before moving msg into try_send/send_timeout
+    let event_type = msg.payload.event.clone();
+    let task_id = msg
+        .payload
+        .task_id
+        .clone()
+        .unwrap_or_else(|| "loop".to_string());
+
     match policy {
         WebhookQueuePolicy::DropOldest => {
             // Drop new webhooks when queue is full, preserving existing queue contents.
@@ -404,12 +467,20 @@ fn apply_backpressure_policy(
                 Err(TrySendError::Full(_)) => {
                     // Queue is full - drop the new message
                     diagnostics::note_dropped_message();
-                    log::warn!("Webhook queue full (drop_oldest policy); dropping new message");
+                    log::warn!(
+                        "Webhook queue full (drop_oldest policy); dropping event={} task={}",
+                        event_type,
+                        task_id
+                    );
                     false
                 }
                 Err(TrySendError::Disconnected(_)) => {
                     diagnostics::note_dropped_message();
-                    log::error!("Webhook worker disconnected; cannot send webhook");
+                    log::error!(
+                        "Webhook worker disconnected; cannot send event={} task={}",
+                        event_type,
+                        task_id
+                    );
                     false
                 }
             }
@@ -422,7 +493,12 @@ fn apply_backpressure_policy(
             }
             Err(e) => {
                 diagnostics::note_dropped_message();
-                log::warn!("Webhook queue full; dropping message: {}", e);
+                log::warn!(
+                    "Webhook queue full; dropping event={} task={}: {}",
+                    event_type,
+                    task_id,
+                    e
+                );
                 false
             }
         },
@@ -436,12 +512,20 @@ fn apply_backpressure_policy(
                 }
                 Err(crossbeam_channel::SendTimeoutError::Timeout(_msg)) => {
                     diagnostics::note_dropped_message();
-                    log::warn!("Webhook queue full (timeout); dropping message");
+                    log::warn!(
+                        "Webhook queue full (timeout); dropping event={} task={}",
+                        event_type,
+                        task_id
+                    );
                     false
                 }
                 Err(crossbeam_channel::SendTimeoutError::Disconnected(_)) => {
                     diagnostics::note_dropped_message();
-                    log::error!("Webhook worker disconnected; cannot send webhook");
+                    log::error!(
+                        "Webhook worker disconnected; cannot send event={} task={}",
+                        event_type,
+                        task_id
+                    );
                     false
                 }
             }

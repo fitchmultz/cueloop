@@ -96,6 +96,7 @@
         "webhook": {
           "enabled": null,
           "events": null,
+          "parallel_queue_multiplier": null,
           "queue_capacity": null,
           "queue_policy": null,
           "retry_backoff_ms": null,
@@ -476,6 +477,7 @@
           "default": {
             "enabled": null,
             "events": null,
+            "parallel_queue_multiplier": null,
             "queue_capacity": null,
             "queue_policy": null,
             "retry_backoff_ms": null,
@@ -1476,8 +1478,19 @@
             "$ref": "#/$defs/WebhookEventSubscription"
           }
         },
+        "parallel_queue_multiplier": {
+          "description": "Multiplier for queue capacity in parallel mode (default: 2.0, range: 1.0-10.0).\nWhen running with N parallel workers, effective capacity = queue_capacity * max(1, workers * multiplier).\nSet higher (e.g., 3.0) if webhook endpoint is slow or unreliable.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "default": null,
+          "maximum": 10.0,
+          "minimum": 1.0
+        },
         "queue_capacity": {
-          "description": "Maximum number of pending webhooks in the delivery queue (default: 100, range: 10-10000).",
+          "description": "Maximum number of pending webhooks in the delivery queue (default: 500, range: 10-10000).",
           "type": [
             "integer",
             "null"

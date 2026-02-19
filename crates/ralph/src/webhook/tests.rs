@@ -52,6 +52,7 @@ fn webhook_test_config() -> WebhookConfig {
         retry_count: Some(0),
         retry_backoff_ms: Some(1),
         queue_capacity: Some(100),
+        parallel_queue_multiplier: None,
         queue_policy: Some(WebhookQueuePolicy::DropNew),
     }
 }

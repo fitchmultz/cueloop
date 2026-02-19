@@ -87,6 +87,7 @@ fn ensure_test_worker_initialized() {
             retry_backoff_ms: Some(1),
             queue_capacity: Some(1000),
             queue_policy: Some(WebhookQueuePolicy::DropNew),
+            ..Default::default()
         };
 
         webhook::notify_task_created(
@@ -186,6 +187,7 @@ fn webhook_send_is_non_blocking() {
         retry_backoff_ms: Some(100),
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     webhook::notify_task_created("TEST-0001", "Test", &config, "2024-01-01T00:00:00Z");
@@ -243,6 +245,7 @@ fn webhook_retries_failed_deliveries() {
         retry_backoff_ms: Some(10), // Fast backoff for test
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     // Enqueue should remain non-blocking
@@ -324,6 +327,7 @@ fn webhook_includes_signature_header() {
         retry_backoff_ms: Some(100),
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     webhook::notify_task_created(&expected_task_id, "Test", &config, "2024-01-01T00:00:00Z");
@@ -385,6 +389,7 @@ fn webhook_drop_new_policy() {
         retry_backoff_ms: Some(10),
         queue_capacity: Some(2),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     // Send 5 webhooks quickly - queue can only hold 2
@@ -452,6 +457,7 @@ fn webhook_respects_event_filtering() {
         retry_backoff_ms: Some(10),
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     // Send task_created webhook - should be filtered out
@@ -500,6 +506,7 @@ fn webhook_loop_events_are_opt_in_by_default() {
         retry_backoff_ms: Some(10),
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
     let expected_repo_root = unique_test_id("/tmp/repo");
 
@@ -592,6 +599,7 @@ fn webhook_loop_event_payload_shape() {
         retry_backoff_ms: Some(10),
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     webhook::notify_loop_started(
@@ -665,6 +673,7 @@ fn webhook_phase_event_includes_context_fields() {
         retry_backoff_ms: Some(10),
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     webhook::notify_phase_completed(
@@ -745,6 +754,7 @@ fn webhook_disabled_does_not_send() {
         retry_backoff_ms: Some(100),
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     webhook::notify_task_created(&expected_task_id, "Test", &config, "2024-01-01T00:00:00Z");
@@ -776,6 +786,7 @@ fn webhook_no_url_does_not_send() {
         retry_backoff_ms: Some(100),
         queue_capacity: Some(10),
         queue_policy: Some(WebhookQueuePolicy::DropNew),
+        ..Default::default()
     };
 
     // This should not panic and should return immediately
@@ -830,6 +841,7 @@ fn webhook_drop_oldest_policy() {
         retry_backoff_ms: Some(10),
         queue_capacity: Some(2),
         queue_policy: Some(WebhookQueuePolicy::DropOldest),
+        ..Default::default()
     };
 
     // Send multiple webhooks - some may be dropped due to queue policy
