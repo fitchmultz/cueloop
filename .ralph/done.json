@@ -54,8 +54,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.3-codex",
-        "runner_used": "codex",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "codex"
       }
     },
     {
@@ -255,8 +255,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "model_used": "gpt-5.3-codex"
+        "model_used": "gpt-5.3-codex",
+        "runner_used": "codex"
       }
     },
     {
@@ -379,8 +379,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "scan_agent": "scan-general",
-        "model_used": "gpt-5.3-codex"
+        "model_used": "gpt-5.3-codex",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -438,9 +438,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
         "runner_used": "codex",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -501,8 +501,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "model_used": "gpt-5.3-codex",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -559,9 +559,65 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "sonnet",
-        "runner_used": "claude"
+        "runner_used": "claude",
+        "scan_agent": "scan-general"
+      }
+    },
+    {
+      "id": "RQ-0949",
+      "status": "done",
+      "title": "Fix agent not investigating TOML parse errors in CI output",
+      "description": "The RQ-0124 agent saw the error 'TOML parse error at line 44, column 18: unknown variant py314' multiple times but never investigated the pyproject.toml file. The error clearly pointed to line 44 of pyproject.toml with the invalid value 'py314'. The agent should have read the file and fixed the target-version. This is an agent behavior improvement - when CI fails with a parse error pointing to a specific file and line, investigate that file.",
+      "priority": "high",
+      "tags": [
+        "scan",
+        "agent-behavior",
+        "error-investigation",
+        "ci",
+        "toml",
+        "refinement"
+      ],
+      "scope": [
+        "~/.codex/AGENTS.md",
+        "AGENTS.md",
+        ".ralph/cache/plans/RQ-0949.md"
+      ],
+      "evidence": [
+        "log: TOML parse error at line 44, column 18: unknown variant `py314`",
+        "log: Agent re-ran `make ci 2>&1 | tail -30` repeatedly without inspecting pyproject.toml",
+        "file: ~/.codex/AGENTS.md now contains a CI Error Investigation section with parse-error patterns and required actions",
+        "code: crates/ralph/src/commands/run/supervision/ci.rs already detects parse/variant patterns and emits structured compliance hints",
+        "observation: project-local AGENTS.md intentionally avoids duplicating global guidance"
+      ],
+      "plan": [
+        "Re-verify global CI Error Investigation guidance is explicit, internally consistent, and present exactly once in ~/.codex/AGENTS.md",
+        "Harden wording so parse/config errors force file-first investigation before any CI retry",
+        "Ensure unknown-variant remediation explicitly maps invalid values to one of the listed valid options",
+        "Keep project-local AGENTS.md free of duplicated global policy; only add repo-specific guidance if a genuine gap is found",
+        "Refresh cached plan with a standalone Phase 2 directive focused on regression checks and behavior hardening"
+      ],
+      "notes": [
+        "RQ-0949 is a behavior-policy refinement task; Ralph runtime code already performs parse-error pattern detection",
+        "Primary risk is policy drift or ambiguous wording that allows blind CI reruns",
+        "Refinement focus: detect regressions, remove ambiguity, and preserve a single authoritative guidance source",
+        "No implementation scope beyond approved planning artifacts for this phase",
+        "Phase 3 review confirmed CI Error Investigation guidance exists exactly once in ~/.codex/AGENTS.md and remains explicit.",
+        "Audited ci.rs parse/unknown-variant detection and compliance messaging; behavior already enforces file-first investigation guidance.",
+        "No code refinements required; no stale assumptions found in other queue tasks."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-02-18T22:30:00Z",
+      "updated_at": "2026-02-19T15:58:52.597013000Z",
+      "completed_at": "2026-02-19T15:58:52.597013000Z",
+      "started_at": "2026-02-19T01:07:05.714238000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "gpt-5.3-codex",
+        "runner_used": "codex",
+        "scan_agent": "scan-general"
       }
     }
   ]
