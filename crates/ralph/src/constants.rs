@@ -54,6 +54,10 @@ pub mod limits {
     /// Auto-retry limit for CI gate failures.
     pub const CI_GATE_AUTO_RETRY_LIMIT: u8 = 5;
 
+    /// Number of consecutive CI failures with the same error pattern before escalation.
+    /// After this many identical failures, Ralph stops retrying and requires intervention.
+    pub const CI_FAILURE_ESCALATION_THRESHOLD: u8 = 3;
+
     /// Maximum consecutive failures before aborting run loop.
     pub const MAX_CONSECUTIVE_FAILURES: u32 = 50;
 

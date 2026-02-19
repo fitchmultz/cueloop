@@ -36,6 +36,12 @@ pub(crate) struct ContinueSession {
     pub ci_failure_retry_count: u8,
     /// The task ID for this continue session (needed for processor hooks).
     pub task_id: String,
+    /// The pattern type of the last CI error (e.g., "TOML parse error").
+    /// Used to detect repeated failures with the same root cause.
+    pub last_ci_error_pattern: Option<String>,
+    /// Count of consecutive CI failures with the same error pattern.
+    /// Reset when pattern changes or CI passes.
+    pub consecutive_same_error_count: u8,
 }
 
 /// Context for resuming a runner session during a post-run CI gate failure.

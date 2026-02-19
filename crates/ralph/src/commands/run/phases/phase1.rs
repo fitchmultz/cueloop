@@ -79,6 +79,8 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
             output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,
             task_id: ctx.task_id.to_string(),
+            last_ci_error_pattern: None,
+            consecutive_same_error_count: 0,
         };
 
         // ENFORCEMENT: Phase 1 must not implement.

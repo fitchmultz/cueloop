@@ -16,7 +16,7 @@
 //! - Error pattern detection is best-effort; undetected patterns fall back to generic guidance.
 
 use super::logging;
-use crate::constants::limits::CI_GATE_AUTO_RETRY_LIMIT;
+use crate::constants::limits::{CI_FAILURE_ESCALATION_THRESHOLD, CI_GATE_AUTO_RETRY_LIMIT};
 use crate::runutil;
 use anyhow::{Context, Result, bail};
 use std::process::Stdio;
@@ -286,6 +286,12 @@ fn detect_ci_error_pattern(stdout: &str, stderr: &str) -> Option<DetectedErrorPa
         .or_else(|| detect_lint_check_error(&combined))
 }
 
+/// Get a stable key representing the error pattern for comparison.
+/// Returns None if no pattern detected, or Some(pattern_type) if detected.
+fn get_error_pattern_key(result: &CiGateResult) -> Option<String> {
+    detect_ci_error_pattern(&result.stdout, &result.stderr).map(|p| p.pattern_type.to_string())
+}
+
 /// Format detected pattern into actionable guidance for compliance message.
 fn format_detected_pattern(pattern: &DetectedErrorPattern) -> String {
     let mut guidance = format!("\n## DETECTED ERROR: {}\n", pattern.pattern_type);
@@ -482,9 +488,68 @@ where
         let result = run_ci_gate(resolved)?;
 
         if result.success {
+            // Reset error tracking on success
+            continue_session.last_ci_error_pattern = None;
+            continue_session.consecutive_same_error_count = 0;
             break;
         }
 
+        // Get current error pattern and update consecutive count
+        let current_pattern = get_error_pattern_key(&result);
+
+        match (&continue_session.last_ci_error_pattern, &current_pattern) {
+            (Some(last), Some(current)) if last == current => {
+                continue_session.consecutive_same_error_count = continue_session
+                    .consecutive_same_error_count
+                    .saturating_add(1);
+            }
+            _ => {
+                // Different error or no pattern - reset counter
+                continue_session.consecutive_same_error_count = 1;
+            }
+        }
+        continue_session.last_ci_error_pattern = current_pattern.clone();
+
+        // Check for escalation threshold (same error repeated N times)
+        if continue_session.consecutive_same_error_count >= CI_FAILURE_ESCALATION_THRESHOLD {
+            log::error!(
+                "CI gate failed {} times with same error pattern '{}'; escalating",
+                continue_session.consecutive_same_error_count,
+                current_pattern.as_deref().unwrap_or("unknown")
+            );
+
+            let detected = detect_ci_error_pattern(&result.stdout, &result.stderr);
+            let specific_guidance = detected
+                .as_ref()
+                .map(format_detected_pattern)
+                .unwrap_or_default();
+
+            let outcome = runutil::apply_git_revert_mode(
+                &resolved.repo_root,
+                git_revert_mode,
+                "CI failure escalation",
+                revert_prompt,
+            )?;
+
+            bail!(
+                "{} Error: CI failed {} consecutive times with the same error.\n\n\
+                 The agent is not making progress on this issue.\n\n\
+                 Error pattern: {}\n\n\
+                 {}\n\n\
+                 MANUAL INTERVENTION REQUIRED: The automated compliance messages \
+                 are not resolving this CI failure. Please investigate the root cause \
+                 directly and fix it before re-running.",
+                runutil::format_revert_failure_message(
+                    "CI gate repeated failure escalation.",
+                    outcome,
+                ),
+                continue_session.consecutive_same_error_count,
+                current_pattern.as_deref().unwrap_or("unrecognized"),
+                specific_guidance
+            );
+        }
+
+        // Existing retry logic for attempts below threshold
         if continue_session.ci_failure_retry_count < CI_GATE_AUTO_RETRY_LIMIT {
             continue_session.ci_failure_retry_count =
                 continue_session.ci_failure_retry_count.saturating_add(1);
@@ -1023,5 +1088,90 @@ mod tests {
         assert!(formatted.contains("bad_value"));
         assert!(formatted.contains("good1, good2"));
         assert!(formatted.contains("Fix the error"));
+    }
+
+    // ========================================================================
+    // Error Pattern Key Tests
+    // ========================================================================
+
+    #[test]
+    fn get_error_pattern_key_returns_pattern_type() {
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: "TOML parse error at line 44".to_string(),
+        };
+        assert_eq!(
+            get_error_pattern_key(&result),
+            Some("TOML parse error".to_string())
+        );
+    }
+
+    #[test]
+    fn get_error_pattern_key_returns_none_for_unrecognized() {
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: "some random output".to_string(),
+            stderr: String::new(),
+        };
+        assert_eq!(get_error_pattern_key(&result), None);
+    }
+
+    #[test]
+    fn get_error_pattern_key_detects_unknown_variant() {
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: "unknown variant `py314`, expected one of py37, py38".to_string(),
+        };
+        assert_eq!(
+            get_error_pattern_key(&result),
+            Some("Unknown variant error".to_string())
+        );
+    }
+
+    #[test]
+    fn get_error_pattern_key_detects_format_check() {
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: "format-check failed".to_string(),
+        };
+        assert_eq!(
+            get_error_pattern_key(&result),
+            Some("Format check failure".to_string())
+        );
+    }
+
+    #[test]
+    fn get_error_pattern_key_detects_lint_check() {
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: "lint check failed".to_string(),
+        };
+        assert_eq!(
+            get_error_pattern_key(&result),
+            Some("Lint check failure".to_string())
+        );
+    }
+
+    #[test]
+    fn get_error_pattern_key_combines_stdout_stderr() {
+        let result = CiGateResult {
+            success: false,
+            exit_code: Some(1),
+            stdout: "some output".to_string(),
+            stderr: "TOML parse error at line 10".to_string(),
+        };
+        assert_eq!(
+            get_error_pattern_key(&result),
+            Some("TOML parse error".to_string())
+        );
     }
 }

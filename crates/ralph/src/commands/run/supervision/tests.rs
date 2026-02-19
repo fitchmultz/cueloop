@@ -149,6 +149,8 @@ fn resume_continue_session_requires_session_id() -> anyhow::Result<()> {
         output_stream: crate::runner::OutputStream::Terminal,
         ci_failure_retry_count: 0,
         task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
     };
 
     let err = resume_continue_session(&resolved, &mut session, "hello", None)
@@ -463,6 +465,8 @@ echo '{{"sessionID":"sess-123"}}'
         output_stream: crate::runner::OutputStream::Terminal,
         ci_failure_retry_count: CI_GATE_AUTO_RETRY_LIMIT,
         task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
     };
 
     let mut on_resume = |_output: &crate::runner::RunnerOutput,
@@ -530,6 +534,8 @@ fn continue_session_preserves_runner_cli_options() {
         output_stream: crate::runner::OutputStream::Terminal,
         ci_failure_retry_count: 0,
         task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
     };
 
     // Verify the stored runner_cli matches what was set
@@ -562,6 +568,8 @@ fn continue_session_preserves_phase_type() {
         output_stream: crate::runner::OutputStream::Terminal,
         ci_failure_retry_count: 0,
         task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
     };
     assert_eq!(planning_session.phase_type, PhaseType::Planning);
 
@@ -577,6 +585,8 @@ fn continue_session_preserves_phase_type() {
         output_stream: crate::runner::OutputStream::Terminal,
         ci_failure_retry_count: 0,
         task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
     };
     assert_eq!(impl_session.phase_type, PhaseType::Implementation);
 
@@ -592,6 +602,8 @@ fn continue_session_preserves_phase_type() {
         output_stream: crate::runner::OutputStream::Terminal,
         ci_failure_retry_count: 0,
         task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
     };
     assert_eq!(review_session.phase_type, PhaseType::Review);
 
@@ -607,6 +619,8 @@ fn continue_session_preserves_phase_type() {
         output_handler: None,
         output_stream: crate::runner::OutputStream::Terminal,
         ci_failure_retry_count: 0,
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
     };
     assert_eq!(single_session.phase_type, PhaseType::SinglePhase);
 }

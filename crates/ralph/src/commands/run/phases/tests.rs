@@ -951,6 +951,8 @@ echo '{{"sessionID":"sess-123"}}'
         output_stream: runner::OutputStream::Terminal,
         ci_failure_retry_count: 0,
         task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
     };
 
     let err = run_ci_gate_with_continue(&invocation, continue_session, |_output, _elapsed| Ok(()))

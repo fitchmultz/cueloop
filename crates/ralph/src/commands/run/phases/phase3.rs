@@ -96,6 +96,8 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<(), anyhow::Er
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
                 task_id: ctx.task_id.to_string(),
+                last_ci_error_pattern: None,
+                consecutive_same_error_count: 0,
             };
             let timings = ctx.execution_timings;
             let runner = ctx.settings.runner.clone();
@@ -125,6 +127,8 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<(), anyhow::Er
             output_stream: ctx.output_stream,
             ci_failure_retry_count: 0,
             task_id: ctx.task_id.to_string(),
+            last_ci_error_pattern: None,
+            consecutive_same_error_count: 0,
         };
 
         if ctx.post_run_mode == PostRunMode::ParallelWorker {

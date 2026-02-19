@@ -69,6 +69,8 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
                 task_id: ctx.task_id.to_string(),
+                last_ci_error_pattern: None,
+                consecutive_same_error_count: 0,
             };
             let runner = ctx.settings.runner.clone();
             let model = ctx.settings.model.clone();
@@ -133,6 +135,8 @@ pub fn execute_single_phase(ctx: &PhaseInvocation<'_>) -> Result<()> {
                 output_stream: ctx.output_stream,
                 ci_failure_retry_count: 0,
                 task_id: ctx.task_id.to_string(),
+                last_ci_error_pattern: None,
+                consecutive_same_error_count: 0,
             };
             let timings = ctx.execution_timings;
             let runner = ctx.settings.runner.clone();
