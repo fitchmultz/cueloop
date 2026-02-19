@@ -1668,4 +1668,122 @@ mod tests {
             "ruff detector should yield to TOML parse"
         );
     }
+
+    // ========================================================================
+    // CI Escalation Threshold Tests
+    // ========================================================================
+
+    fn continue_session_for_ci_tests() -> crate::commands::run::supervision::ContinueSession {
+        crate::commands::run::supervision::ContinueSession {
+            runner: crate::contracts::Runner::Codex,
+            model: crate::contracts::Model::Gpt52Codex,
+            reasoning_effort: None,
+            runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
+            phase_type: crate::commands::run::PhaseType::Implementation,
+            session_id: Some("sess-123".to_string()),
+            output_handler: None,
+            output_stream: crate::runner::OutputStream::Terminal,
+            ci_failure_retry_count: CI_GATE_AUTO_RETRY_LIMIT,
+            task_id: "RQ-0947".to_string(),
+            last_ci_error_pattern: None,
+            consecutive_same_error_count: 0,
+        }
+    }
+
+    #[test]
+    fn run_ci_gate_with_continue_session_escalates_on_threshold_same_pattern() -> Result<()> {
+        let temp = TempDir::new()?;
+        let command = if cfg!(windows) {
+            r#"powershell -NoProfile -Command "Write-Error 'ruff failed: TOML parse error at line 44'; exit 1""#
+        } else {
+            r#"sh -c 'echo "ruff failed: TOML parse error at line 44" >&2; exit 1'"#
+        };
+
+        let resolved = resolved_with_ci_command(temp.path(), Some(command.to_string()), true);
+        let mut session = continue_session_for_ci_tests();
+        session.ci_failure_retry_count = 0;
+        session.last_ci_error_pattern = Some("TOML parse error".to_string());
+        session.consecutive_same_error_count = CI_FAILURE_ESCALATION_THRESHOLD - 1;
+
+        let err = run_ci_gate_with_continue_session(
+            &resolved,
+            crate::contracts::GitRevertMode::Disabled,
+            None,
+            &mut session,
+            |_output, _elapsed| -> Result<()> { panic!("on_resume should not be called") },
+            None,
+        )
+        .expect_err("expected escalation on repeated identical CI error");
+
+        let msg = err.to_string();
+        assert!(msg.contains("MANUAL INTERVENTION REQUIRED"));
+        assert!(msg.contains("same error"));
+        assert!(msg.contains("TOML parse error"));
+        assert_eq!(
+            session.consecutive_same_error_count,
+            CI_FAILURE_ESCALATION_THRESHOLD
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn run_ci_gate_with_continue_session_resets_counter_when_pattern_changes() -> Result<()> {
+        let temp = TempDir::new()?;
+        let command = if cfg!(windows) {
+            r#"powershell -NoProfile -Command "Write-Error 'format-check failed'; exit 1""#
+        } else {
+            r#"sh -c 'echo "format-check failed" >&2; exit 1'"#
+        };
+
+        let resolved = resolved_with_ci_command(temp.path(), Some(command.to_string()), true);
+        let mut session = continue_session_for_ci_tests();
+        session.ci_failure_retry_count = CI_GATE_AUTO_RETRY_LIMIT;
+        session.last_ci_error_pattern = Some("TOML parse error".to_string());
+        session.consecutive_same_error_count = CI_FAILURE_ESCALATION_THRESHOLD - 1;
+
+        let _ = run_ci_gate_with_continue_session(
+            &resolved,
+            crate::contracts::GitRevertMode::Disabled,
+            None,
+            &mut session,
+            |_output, _elapsed| -> Result<()> { panic!("on_resume should not be called") },
+            None,
+        )
+        .expect_err("expected CI failure after counter reset path");
+
+        assert_eq!(session.consecutive_same_error_count, 1);
+        assert_eq!(
+            session.last_ci_error_pattern.as_deref(),
+            Some("Format check failure")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn run_ci_gate_with_continue_session_clears_pattern_tracking_after_success() -> Result<()> {
+        let temp = TempDir::new()?;
+        let command = if cfg!(windows) {
+            r#"powershell -NoProfile -Command "exit 0""#
+        } else {
+            r#"sh -c 'exit 0'"#
+        };
+
+        let resolved = resolved_with_ci_command(temp.path(), Some(command.to_string()), true);
+        let mut session = continue_session_for_ci_tests();
+        session.last_ci_error_pattern = Some("TOML parse error".to_string());
+        session.consecutive_same_error_count = 2;
+
+        run_ci_gate_with_continue_session(
+            &resolved,
+            crate::contracts::GitRevertMode::Disabled,
+            None,
+            &mut session,
+            |_output, _elapsed| -> Result<()> { Ok(()) },
+            None,
+        )?;
+
+        assert_eq!(session.last_ci_error_pattern, None);
+        assert_eq!(session.consecutive_same_error_count, 0);
+        Ok(())
+    }
 }

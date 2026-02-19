@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Verify CI failure compliance messages reach the agent via Continue session.
 //! - Ensure strict enforcement language and CI output context are passed to retry.
+//! - Verify escalation behavior after repeated identical CI failures.
 //!
 //! Not handled here:
 //! - CI gate execution itself (see ci_gate_*_test.rs).
@@ -13,6 +14,7 @@
 //! - Compliance message is passed to resume_continue_session on failure.
 
 use anyhow::{Context, Result};
+use ralph::constants::limits::CI_FAILURE_ESCALATION_THRESHOLD;
 mod test_support;
 
 #[test]
@@ -163,6 +165,86 @@ exit 0
         args_content.contains("CI gate (./custom-ci.sh): CI failed with exit code 1")
             || args_content.contains("CI gate (./custom-ci.sh)"),
         "expected custom CI command in compliance message passed to runner args\nargs:\n{args_content}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn ci_gate_repeated_same_error_escalates_before_retry_limit() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
+    anyhow::ensure!(
+        status.success(),
+        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    test_support::write_valid_single_todo_queue(dir.path())?;
+
+    let ci_script = r#"#!/bin/sh
+echo 'CI failing with TOML error'
+echo 'ruff failed: TOML parse error at line 44: unknown variant `py314`' >&2
+exit 2
+"#;
+    test_support::create_executable_script(dir.path(), "ci-gate.sh", ci_script)?;
+    test_support::configure_ci_gate(dir.path(), Some("./ci-gate.sh"), Some(true))?;
+
+    let resume_count_file = dir.path().join(".ralph/escalation_resume_count.txt");
+
+    let runner_script = format!(
+        r#"#!/bin/sh
+# Increment resume counter
+echo "1" >> {count_file}
+# Output JSON with session_id so resume can work
+echo '{{"session_id":"escalation-test-session","stdout":"runner output","status":"success"}}'
+exit 0
+"#,
+        count_file = resume_count_file.display()
+    );
+    let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)
+        .context("write runner script")?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+
+    test_support::git_add_all_commit(dir.path(), "setup test env")?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["run", "one", "--git-revert-mode", "disabled"]);
+
+    anyhow::ensure!(
+        !status.success(),
+        "expected run one to fail due to CI escalation\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        stderr.contains("MANUAL INTERVENTION REQUIRED"),
+        "expected escalation language in stderr\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        stderr.contains("same error") || stderr.contains("repeated"),
+        "expected repeated-same-error wording in stderr\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    anyhow::ensure!(
+        resume_count_file.exists(),
+        "expected resume count file at {}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+        resume_count_file.display()
+    );
+
+    let resume_count = std::fs::read_to_string(&resume_count_file)
+        .context("read resume count file")?
+        .lines()
+        .count();
+
+    anyhow::ensure!(
+        resume_count == usize::from(CI_FAILURE_ESCALATION_THRESHOLD),
+        "expected exactly {} resume attempts before escalation (threshold {}), got {}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+        CI_FAILURE_ESCALATION_THRESHOLD,
+        CI_FAILURE_ESCALATION_THRESHOLD,
+        resume_count
     );
 
     Ok(())
