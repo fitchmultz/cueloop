@@ -37,43 +37,6 @@
       }
     },
     {
-      "id": "RQ-0923",
-      "status": "todo",
-      "title": "Add tests for runner error classification functions",
-      "description": "The runner/error.rs module has only 2 tests (redaction and context), but the classify() method and helper functions like looks_like_rate_limit(), looks_like_temporary_unavailable(), looks_like_auth_required() have NO unit tests. Retry logic depends entirely on correct classification.",
-      "priority": "high",
-      "tags": [
-        "scan",
-        "testing",
-        "runner",
-        "error-handling"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/error.rs"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/runner/error.rs :: lines 121-150 :: pattern matching functions untested",
-        "analysis: None of these pattern matching functions have test coverage"
-      ],
-      "plan": [
-        "Add test: looks_like_rate_limit_detects_429",
-        "Add test: looks_like_temporary_unavailable_detects_503",
-        "Add test: looks_like_auth_required_detects_401",
-        "Add test: classify_returns_retryable_for_rate_limit",
-        "Run `cargo test -p ralph --lib -- runner::error` to verify"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-02-17T19:44:50Z",
-      "updated_at": "2026-02-17T19:44:50Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0926",
       "status": "todo",
       "title": "Add runtime validation for config queue thresholds",

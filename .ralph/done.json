@@ -53,9 +53,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -118,8 +118,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -255,8 +255,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "model_used": "gpt-5.3-codex"
+        "model_used": "gpt-5.3-codex",
+        "runner_used": "codex"
       }
     },
     {
@@ -378,8 +378,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
         "runner_used": "codex",
+        "model_used": "gpt-5.3-codex",
         "scan_agent": "scan-general"
       }
     },
@@ -438,9 +438,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -559,9 +559,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-general",
         "model_used": "sonnet",
-        "runner_used": "claude",
-        "scan_agent": "scan-general"
+        "runner_used": "claude"
       }
     },
     {
@@ -616,8 +616,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.3-codex",
-        "runner_used": "codex",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "codex"
       }
     },
     {
@@ -675,9 +675,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -804,9 +804,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "kimi-for-coding/k2p5",
+        "runner_used": "opencode",
         "scan_agent": "scan-general",
-        "runner_used": "opencode"
+        "model_used": "kimi-for-coding/k2p5"
       }
     },
     {
@@ -857,9 +857,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "opencode",
         "model_used": "kimi-for-coding/k2p5",
-        "scan_agent": "scan-general",
-        "runner_used": "opencode"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -918,9 +918,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "opencode",
         "scan_agent": "scan-general",
-        "model_used": "kimi-for-coding/k2p5"
+        "model_used": "kimi-for-coding/k2p5",
+        "runner_used": "opencode"
       }
     },
     {
@@ -990,8 +990,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "runner_used": "opencode",
+        "scan_agent": "scan-general",
         "model_used": "kimi-for-coding/k2p5"
       }
     },
@@ -1039,9 +1039,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "opencode",
         "model_used": "kimi-for-coding/k2p5",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "opencode"
       }
     },
     {
@@ -1084,8 +1084,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-general",
-        "runner_used": "kimi",
-        "model_used": "kimi-code/kimi-for-coding"
+        "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi"
       }
     },
     {
@@ -1129,8 +1129,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "kimi",
         "model_used": "kimi-code/kimi-for-coding",
+        "runner_used": "kimi",
         "scan_agent": "scan-general"
       }
     },
@@ -1218,6 +1218,50 @@
       "created_at": "2026-02-17T19:44:50Z",
       "updated_at": "2026-02-20T00:14:34.361157000Z",
       "completed_at": "2026-02-20T00:14:34.361157000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-general",
+        "runner_used": "kimi"
+      }
+    },
+    {
+      "id": "RQ-0923",
+      "status": "done",
+      "title": "Add tests for runner error classification functions",
+      "description": "The runner/error.rs module has only 2 tests (redaction and context), but the classify() method and helper functions like looks_like_rate_limit(), looks_like_temporary_unavailable(), looks_like_auth_required() have NO unit tests. Retry logic depends entirely on correct classification.",
+      "priority": "high",
+      "tags": [
+        "scan",
+        "testing",
+        "runner",
+        "error-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/runner/error.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/runner/error.rs :: lines 121-150 :: pattern matching functions untested",
+        "analysis: None of these pattern matching functions have test coverage"
+      ],
+      "plan": [
+        "Add test: looks_like_rate_limit_detects_429",
+        "Add test: looks_like_temporary_unavailable_detects_503",
+        "Add test: looks_like_auth_required_detects_401",
+        "Add test: classify_returns_retryable_for_rate_limit",
+        "Run `cargo test -p ralph --lib -- runner::error` to verify"
+      ],
+      "notes": [
+        "Added 22 new unit tests for runner error classification functions",
+        "All 24 tests passing (including 2 existing)",
+        "Coverage: looks_like_rate_limit, looks_like_temporary_unavailable, looks_like_auth_required, classify() method"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-02-17T19:44:50Z",
+      "updated_at": "2026-02-21T05:01:03.616696000Z",
+      "completed_at": "2026-02-21T05:01:03.616696000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
