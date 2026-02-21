@@ -188,8 +188,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "model_used": "gpt-5.3-codex"
+        "model_used": "gpt-5.3-codex",
+        "runner_used": "codex"
       }
     },
     {
@@ -255,8 +255,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -322,8 +322,8 @@
       ],
       "custom_fields": {
         "scan_agent": "scan-general",
-        "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -379,8 +379,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "model_used": "gpt-5.3-codex",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -500,9 +500,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "gpt-5.3-codex",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -559,9 +559,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "claude",
         "scan_agent": "scan-general",
-        "model_used": "sonnet",
-        "runner_used": "claude"
+        "model_used": "sonnet"
       }
     },
     {
@@ -615,9 +615,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
+        "runner_used": "codex",
         "scan_agent": "scan-general",
-        "runner_used": "codex"
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -675,9 +675,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.3-codex",
         "runner_used": "codex",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "gpt-5.3-codex"
       }
     },
     {
@@ -804,9 +804,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "kimi-for-coding/k2p5",
         "runner_used": "opencode",
-        "scan_agent": "scan-general",
-        "model_used": "kimi-for-coding/k2p5"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -990,8 +990,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "opencode",
         "scan_agent": "scan-general",
+        "runner_used": "opencode",
         "model_used": "kimi-for-coding/k2p5"
       }
     },
@@ -1039,9 +1039,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "opencode",
         "model_used": "kimi-for-coding/k2p5",
-        "scan_agent": "scan-general",
-        "runner_used": "opencode"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -1083,8 +1083,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "kimi-code/kimi-for-coding",
+        "scan_agent": "scan-general",
         "runner_used": "kimi"
       }
     },
@@ -1130,8 +1130,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "kimi"
       }
     },
     {
@@ -1177,8 +1177,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-general",
-        "model_used": "kimi-code/kimi-for-coding",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "model_used": "kimi-code/kimi-for-coding"
       }
     },
     {
@@ -1223,8 +1223,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "kimi-code/kimi-for-coding",
-        "scan_agent": "scan-general",
-        "runner_used": "kimi"
+        "runner_used": "kimi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -1254,21 +1254,22 @@
         "Run `cargo test -p ralph --lib -- runner::error` to verify"
       ],
       "notes": [
-        "Added 22 new unit tests for runner error classification functions",
-        "All 24 tests passing (including 2 existing)",
-        "Coverage: looks_like_rate_limit, looks_like_temporary_unavailable, looks_like_auth_required, classify() method"
+        "Verified: 24 tests already implemented and passing",
+        "Covers all required functions: looks_like_rate_limit, looks_like_temporary_unavailable, looks_like_auth_required, classify",
+        "All tests pass: cargo test -p ralph --lib -- runner::error (24 passed)",
+        "No modifications needed - task already complete"
       ],
       "request": "scan finding",
       "created_at": "2026-02-17T19:44:50Z",
-      "updated_at": "2026-02-21T05:01:03.616696000Z",
-      "completed_at": "2026-02-21T05:01:03.616696000Z",
+      "updated_at": "2026-02-21T12:47:43.629163000Z",
+      "completed_at": "2026-02-21T12:47:43.629163000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "kimi-code/kimi-for-coding",
         "runner_used": "kimi",
-        "scan_agent": "scan-general",
-        "model_used": "kimi-code/kimi-for-coding"
+        "scan_agent": "scan-general"
       }
     }
   ]
