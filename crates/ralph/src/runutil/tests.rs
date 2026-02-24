@@ -195,6 +195,7 @@ fn safeguard_dump_created_for_stderr_on_terminated_by_signal() {
             _plugins: Option<&crate::plugins::registry::PluginRegistry>,
         ) -> anyhow::Result<crate::runner::RunnerOutput, crate::runner::RunnerError> {
             Err(crate::runner::RunnerError::TerminatedBySignal {
+                signal: Some(15),
                 stdout: RedactedString::from("stdout content"),
                 stderr: RedactedString::from("stderr content with API_KEY=secret123"),
                 session_id: None,

@@ -43,8 +43,8 @@ use git_ops::{finalize_git_state, push_if_ahead, warn_if_modified_lfs};
 use notify::build_notification_config;
 pub(crate) use queue_ops::find_task_status;
 use queue_ops::{
-    QueueMaintenanceSaveMode, ensure_task_done_clean_or_bail, ensure_task_done_dirty_or_revert,
-    maintain_and_validate_queues, require_task_status,
+    ensure_task_done_clean_or_bail, ensure_task_done_dirty_or_revert, maintain_and_validate_queues,
+    require_task_status,
 };
 
 // Re-export from submodules
@@ -60,6 +60,57 @@ pub(crate) enum PushPolicy {
     RequireUpstream,
     /// Allow creating an upstream (e.g., `git push -u origin HEAD`) when missing.
     AllowCreateUpstream,
+}
+
+pub(super) fn enforce_post_run_ci_gate<F>(
+    resolved: &crate::config::Resolved,
+    git_revert_mode: GitRevertMode,
+    revert_prompt: Option<&runutil::RevertPromptHandler>,
+    ci_continue: Option<CiContinueContext<'_>>,
+    plugins: Option<&crate::plugins::registry::PluginRegistry>,
+    mut on_ci_failure: F,
+) -> Result<()>
+where
+    F: FnMut(&anyhow::Error),
+{
+    let mut ci_continue = ci_continue;
+    let ci_gate_result = if let Some(ci_continue) = ci_continue.as_mut() {
+        let continue_session = &mut *ci_continue.continue_session;
+        let on_resume = &mut *ci_continue.on_resume;
+        ci::run_ci_gate_with_continue_session(
+            resolved,
+            git_revert_mode,
+            revert_prompt,
+            continue_session,
+            |output, elapsed| on_resume(output, elapsed),
+            plugins,
+        )
+    } else {
+        run_ci_gate(resolved).map(|_| ())
+    };
+
+    if let Err(err) = ci_gate_result {
+        on_ci_failure(&err);
+        let outcome = runutil::apply_git_revert_mode(
+            &resolved.repo_root,
+            git_revert_mode,
+            "CI gate failure",
+            revert_prompt,
+        )?;
+        anyhow::bail!(
+            "{} Error: {:#}",
+            runutil::format_revert_failure_message(
+                &format!(
+                    "CI gate failed: '{}' did not pass after the task completed.",
+                    ci_gate_command_label(resolved)
+                ),
+                outcome,
+            ),
+            err
+        );
+    }
+
+    Ok(())
 }
 
 /// Main post-run supervision entry point.
@@ -91,8 +142,7 @@ pub(crate) fn post_run_supervise(
         let is_dirty = !status.trim().is_empty();
 
         let (mut queue_file, mut done_file) =
-            maintain_and_validate_queues(resolved, QueueMaintenanceSaveMode::SaveBothIfAnyRepaired)
-                .context("Initial queue maintenance failed")?;
+            maintain_and_validate_queues(resolved).context("Initial queue maintenance failed")?;
 
         let (mut task_status, task_title, mut in_done) =
             require_task_status(&queue_file, &done_file, task_id)?;
@@ -104,89 +154,17 @@ pub(crate) fn post_run_supervise(
                     err
                 ));
             }
-            let mut ci_continue = ci_continue;
-            if let Some(ci_continue) = ci_continue.as_mut() {
-                let continue_session = &mut *ci_continue.continue_session;
-                let on_resume = &mut *ci_continue.on_resume;
-                if continue_session
-                    .session_id
-                    .as_deref()
-                    .unwrap_or("")
-                    .is_empty()
-                {
-                    log::warn!(
-                        "CI gate continue requested but no session id; falling back to standard CI gate handling."
-                    );
-                    if let Err(err) = run_ci_gate(resolved) {
-                        let outcome = runutil::apply_git_revert_mode(
-                            &resolved.repo_root,
-                            git_revert_mode,
-                            "CI gate failure",
-                            revert_prompt.as_ref(),
-                        )?;
-                        anyhow::bail!(
-                            "{} Error: {:#}",
-                            runutil::format_revert_failure_message(
-                                &format!(
-                                    "CI gate failed: '{}' did not pass after the task completed.",
-                                    ci_gate_command_label(resolved)
-                                ),
-                                outcome,
-                            ),
-                            err
-                        );
-                    }
-                } else if let Err(err) = ci::run_ci_gate_with_continue_session(
-                    resolved,
-                    git_revert_mode,
-                    revert_prompt.as_ref(),
-                    continue_session,
-                    |output, elapsed| on_resume(output, elapsed),
-                    plugins,
-                ) {
-                    let outcome = runutil::apply_git_revert_mode(
-                        &resolved.repo_root,
-                        git_revert_mode,
-                        "CI gate failure",
-                        revert_prompt.as_ref(),
-                    )?;
-                    anyhow::bail!(
-                        "{} Error: {:#}",
-                        runutil::format_revert_failure_message(
-                            &format!(
-                                "CI gate failed: '{}' did not pass after the task completed.",
-                                ci_gate_command_label(resolved)
-                            ),
-                            outcome,
-                        ),
-                        err
-                    );
-                }
-            } else if let Err(err) = run_ci_gate(resolved) {
-                let outcome = runutil::apply_git_revert_mode(
-                    &resolved.repo_root,
-                    git_revert_mode,
-                    "CI gate failure",
-                    revert_prompt.as_ref(),
-                )?;
-                anyhow::bail!(
-                    "{} Error: {:#}",
-                    runutil::format_revert_failure_message(
-                        &format!(
-                            "CI gate failed: '{}' did not pass after the task completed.",
-                            ci_gate_command_label(resolved)
-                        ),
-                        outcome,
-                    ),
-                    err
-                );
-            }
-
-            let (q, d) = maintain_and_validate_queues(
+            enforce_post_run_ci_gate(
                 resolved,
-                QueueMaintenanceSaveMode::SaveEachIfRepaired,
-            )
-            .context("Post-CI queue maintenance failed")?;
+                git_revert_mode,
+                revert_prompt.as_ref(),
+                ci_continue,
+                plugins,
+                |_| {},
+            )?;
+
+            let (q, d) = maintain_and_validate_queues(resolved)
+                .context("Post-CI queue maintenance failed")?;
             queue_file = q;
             done_file = d;
 

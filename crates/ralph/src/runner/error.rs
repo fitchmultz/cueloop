@@ -84,8 +84,9 @@ pub enum RunnerError {
         session_id: Option<String>,
     },
 
-    #[error("runner terminated by signal\nstdout: {stdout}\nstderr: {stderr}")]
+    #[error("runner terminated by signal (signal={signal:?})\nstdout: {stdout}\nstderr: {stderr}")]
     TerminatedBySignal {
+        signal: Option<i32>,
         stdout: RedactedString,
         stderr: RedactedString,
         session_id: Option<String>,

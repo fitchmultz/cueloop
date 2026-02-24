@@ -147,6 +147,18 @@ fn extract_display_lines_opencode_text() {
 }
 
 #[test]
+fn extract_display_lines_opencode_reasoning() {
+    let payload = json!({
+        "type": "reasoning",
+        "part": { "text": "Considering tool strategy" }
+    });
+    let lines = extract_display_lines(&payload);
+    assert_eq!(lines.len(), 1);
+    assert!(lines[0].contains("[Reasoning]"));
+    assert!(lines[0].contains("Considering tool strategy"));
+}
+
+#[test]
 fn extract_display_lines_opencode_tool_use() {
     let payload = json!({
         "type": "tool_use",
@@ -195,6 +207,31 @@ fn extract_display_lines_gemini_message_assistant() {
         "content": "hi"
     });
     assert_eq!(extract_display_lines(&payload), vec!["hi"]);
+}
+
+#[test]
+fn extract_display_lines_claude_result_error_payload() {
+    let payload = json!({
+        "type": "result",
+        "is_error": true,
+        "errors": ["invalid session id"]
+    });
+    assert_eq!(
+        extract_display_lines(&payload),
+        vec!["[Error] invalid session id"]
+    );
+}
+
+#[test]
+fn extract_display_lines_codex_error_event() {
+    let payload = json!({
+        "type": "error",
+        "message": "Session stream failed"
+    });
+    assert_eq!(
+        extract_display_lines(&payload),
+        vec!["[Error] Session stream failed"]
+    );
 }
 
 #[test]

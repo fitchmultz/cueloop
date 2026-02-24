@@ -24,6 +24,8 @@ use std::sync::Mutex;
 
 use tempfile::TempDir;
 
+static PI_ENV_MUTEX: Mutex<()> = Mutex::new(());
+
 fn write_queue(repo_root: &Path, status: TaskStatus) -> anyhow::Result<()> {
     let task = Task {
         id: "RQ-0001".to_string(),
@@ -125,22 +127,27 @@ fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
 }
 
 #[test]
-fn resume_continue_session_requires_session_id() -> anyhow::Result<()> {
+fn resume_continue_session_falls_back_to_fresh_invocation_without_session_id() -> anyhow::Result<()>
+{
     let temp_dir = TempDir::new()?;
-    let resolved = crate::config::Resolved {
-        config: Config::default(),
-        repo_root: temp_dir.path().to_path_buf(),
-        queue_path: temp_dir.path().join("queue.json"),
-        done_path: temp_dir.path().join("done.json"),
-        id_prefix: "RQ".to_string(),
-        id_width: 4,
-        global_config_path: None,
-        project_config_path: None,
-    };
+    let args_path = temp_dir.path().join("runner-args.txt");
+    let runner_script = format!(
+        r#"#!/bin/sh
+set -e
+echo "$@" > "{args_path}"
+echo '{{"type":"text","part":{{"text":"fresh"}}}}'
+echo '{{"sessionID":"sess-fresh"}}'
+"#,
+        args_path = args_path.display()
+    );
+    let runner_path = create_fake_runner(temp_dir.path(), "opencode", &runner_script)?;
+
+    let mut resolved = resolved_for_repo(temp_dir.path());
+    resolved.config.agent.opencode_bin = Some(runner_path.to_string_lossy().to_string());
 
     let mut session = ContinueSession {
-        runner: Runner::Codex,
-        model: crate::contracts::Model::Gpt52Codex,
+        runner: Runner::Opencode,
+        model: crate::contracts::Model::Custom("test-model".to_string()),
         reasoning_effort: None,
         runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
         phase_type: crate::commands::run::PhaseType::Implementation,
@@ -153,9 +160,221 @@ fn resume_continue_session_requires_session_id() -> anyhow::Result<()> {
         consecutive_same_error_count: 0,
     };
 
-    let err = resume_continue_session(&resolved, &mut session, "hello", None)
-        .expect_err("expected missing session id error");
-    assert!(err.to_string().contains("no session id"));
+    let (_output, _elapsed) = resume_continue_session(&resolved, &mut session, "hello", None)?;
+    let args = std::fs::read_to_string(&args_path)?;
+    assert!(
+        !args.split_whitespace().any(|arg| arg == "-s"),
+        "fresh invocation should not include resume session args, got: {args}"
+    );
+    assert_eq!(session.session_id.as_deref(), Some("sess-fresh"));
+    Ok(())
+}
+
+#[test]
+fn resume_continue_session_pi_falls_back_to_fresh_when_resume_lookup_fails() -> anyhow::Result<()> {
+    let _env_guard = PI_ENV_MUTEX.lock().expect("pi env mutex poisoned");
+    let temp_dir = TempDir::new()?;
+    let args_path = temp_dir.path().join("pi-runner-args.txt");
+    let runner_script = format!(
+        r#"#!/bin/sh
+set -e
+echo "$@" > "{args_path}"
+echo '{{"type":"result","result":"fresh"}}'
+echo '{{"sessionID":"sess-pi-fresh"}}'
+"#,
+        args_path = args_path.display()
+    );
+    let runner_path = create_fake_runner(temp_dir.path(), "pi", &runner_script)?;
+
+    let previous_pi_root = std::env::var_os("PI_CODING_AGENT_DIR");
+    let pi_root = temp_dir.path().join("pi-root");
+    std::fs::create_dir_all(&pi_root)?;
+    // SAFETY: Test serializes PI env mutation with PI_ENV_MUTEX.
+    unsafe { std::env::set_var("PI_CODING_AGENT_DIR", &pi_root) };
+
+    let mut resolved = resolved_for_repo(temp_dir.path());
+    resolved.config.agent.pi_bin = Some(runner_path.to_string_lossy().to_string());
+
+    let mut session = ContinueSession {
+        runner: Runner::Pi,
+        model: crate::contracts::Model::Custom("test-model".to_string()),
+        reasoning_effort: None,
+        runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
+        phase_type: crate::commands::run::PhaseType::Implementation,
+        session_id: Some("missing-session-id".to_string()),
+        output_handler: None,
+        output_stream: crate::runner::OutputStream::Terminal,
+        ci_failure_retry_count: 0,
+        task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
+    };
+
+    let result = resume_continue_session(&resolved, &mut session, "hello", None);
+
+    match previous_pi_root {
+        Some(value) => {
+            // SAFETY: Test serializes PI env mutation with PI_ENV_MUTEX.
+            unsafe { std::env::set_var("PI_CODING_AGENT_DIR", value) };
+        }
+        None => {
+            // SAFETY: Test serializes PI env mutation with PI_ENV_MUTEX.
+            unsafe { std::env::remove_var("PI_CODING_AGENT_DIR") };
+        }
+    }
+
+    let (_output, _elapsed) = result?;
+    let args = std::fs::read_to_string(&args_path)?;
+    assert!(
+        !args.split_whitespace().any(|arg| arg == "--session"),
+        "fresh invocation should not include --session args, got: {args}"
+    );
+    assert_eq!(session.session_id.as_deref(), Some("sess-pi-fresh"));
+    Ok(())
+}
+
+#[test]
+fn resume_continue_session_gemini_falls_back_to_fresh_on_invalid_resume() -> anyhow::Result<()> {
+    let temp_dir = TempDir::new()?;
+    let args_path = temp_dir.path().join("gemini-runner-args.txt");
+    let runner_script = format!(
+        r#"#!/bin/sh
+set -e
+if printf '%s' "$*" | grep -q -- '--resume'; then
+  echo 'Error resuming session: Invalid session identifier "does-not-exist".' >&2
+  echo '  Use --list-sessions to see available sessions.' >&2
+  exit 42
+fi
+echo "$*" > "{args_path}"
+echo '{{"type":"message","role":"assistant","content":"fresh"}}'
+echo '{{"session_id":"sess-gemini-fresh"}}'
+"#,
+        args_path = args_path.display()
+    );
+    let runner_path = create_fake_runner(temp_dir.path(), "gemini", &runner_script)?;
+
+    let mut resolved = resolved_for_repo(temp_dir.path());
+    resolved.config.agent.gemini_bin = Some(runner_path.to_string_lossy().to_string());
+
+    let mut session = ContinueSession {
+        runner: Runner::Gemini,
+        model: crate::contracts::Model::Custom("test-model".to_string()),
+        reasoning_effort: None,
+        runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
+        phase_type: crate::commands::run::PhaseType::Implementation,
+        session_id: Some("does-not-exist".to_string()),
+        output_handler: None,
+        output_stream: crate::runner::OutputStream::Terminal,
+        ci_failure_retry_count: 0,
+        task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
+    };
+
+    let (_output, _elapsed) = resume_continue_session(&resolved, &mut session, "hello", None)?;
+    let args = std::fs::read_to_string(&args_path)?;
+    assert!(
+        !args.split_whitespace().any(|arg| arg == "--resume"),
+        "fresh invocation should not include --resume args, got: {args}"
+    );
+    assert_eq!(session.session_id.as_deref(), Some("sess-gemini-fresh"));
+    Ok(())
+}
+
+#[test]
+fn resume_continue_session_claude_falls_back_to_fresh_on_invalid_uuid() -> anyhow::Result<()> {
+    let temp_dir = TempDir::new()?;
+    let args_path = temp_dir.path().join("claude-runner-args.txt");
+    let runner_script = format!(
+        r#"#!/bin/sh
+set -e
+if printf '%s' "$*" | grep -q -- '--resume'; then
+  echo '{{"type":"result","is_error":true,"errors":["--resume requires a valid session ID"]}}'
+  exit 1
+fi
+echo "$*" > "{args_path}"
+echo '{{"type":"assistant","session_id":"sess-claude-fresh","message":{{"content":[{{"type":"text","text":"fresh"}}]}}}}'
+"#,
+        args_path = args_path.display()
+    );
+    let runner_path = create_fake_runner(temp_dir.path(), "claude", &runner_script)?;
+
+    let mut resolved = resolved_for_repo(temp_dir.path());
+    resolved.config.agent.claude_bin = Some(runner_path.to_string_lossy().to_string());
+
+    let mut session = ContinueSession {
+        runner: Runner::Claude,
+        model: crate::contracts::Model::Custom("test-model".to_string()),
+        reasoning_effort: None,
+        runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
+        phase_type: crate::commands::run::PhaseType::Implementation,
+        session_id: Some("not-a-uuid".to_string()),
+        output_handler: None,
+        output_stream: crate::runner::OutputStream::Terminal,
+        ci_failure_retry_count: 0,
+        task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
+    };
+
+    let (_output, _elapsed) = resume_continue_session(&resolved, &mut session, "hello", None)?;
+    let args = std::fs::read_to_string(&args_path)?;
+    assert!(
+        !args.split_whitespace().any(|arg| arg == "--resume"),
+        "fresh invocation should not include --resume args, got: {args}"
+    );
+    assert_eq!(session.session_id.as_deref(), Some("sess-claude-fresh"));
+    Ok(())
+}
+
+#[test]
+fn resume_continue_session_opencode_falls_back_when_resume_errors_with_exit_zero()
+-> anyhow::Result<()> {
+    let temp_dir = TempDir::new()?;
+    let args_path = temp_dir.path().join("opencode-runner-args.txt");
+    let runner_script = format!(
+        r#"#!/bin/sh
+set -e
+for arg in "$@"; do
+  if [ "$arg" = "-s" ] || [ "$arg" = "--session" ]; then
+    echo 'ZodError: invalid_format sessionID' >&2
+    echo 'Invalid string: must start with "ses"' >&2
+    exit 0
+  fi
+done
+echo "$*" > "{args_path}"
+echo '{{"type":"text","part":{{"text":"fresh"}}}}'
+echo '{{"sessionID":"sess-opencode-fresh"}}'
+"#,
+        args_path = args_path.display()
+    );
+    let runner_path = create_fake_runner(temp_dir.path(), "opencode", &runner_script)?;
+
+    let mut resolved = resolved_for_repo(temp_dir.path());
+    resolved.config.agent.opencode_bin = Some(runner_path.to_string_lossy().to_string());
+
+    let mut session = ContinueSession {
+        runner: Runner::Opencode,
+        model: crate::contracts::Model::Custom("test-model".to_string()),
+        reasoning_effort: None,
+        runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
+        phase_type: crate::commands::run::PhaseType::Implementation,
+        session_id: Some("bad-session".to_string()),
+        output_handler: None,
+        output_stream: crate::runner::OutputStream::Terminal,
+        ci_failure_retry_count: 0,
+        task_id: "RQ-0001".to_string(),
+        last_ci_error_pattern: None,
+        consecutive_same_error_count: 0,
+    };
+
+    let (_output, _elapsed) = resume_continue_session(&resolved, &mut session, "hello", None)?;
+    let args = std::fs::read_to_string(&args_path)?;
+    assert!(
+        !args.split_whitespace().any(|arg| arg == "-s"),
+        "fresh invocation should not include -s args, got: {args}"
+    );
+    assert_eq!(session.session_id.as_deref(), Some("sess-opencode-fresh"));
     Ok(())
 }
 

@@ -64,7 +64,6 @@ impl ResponseParserRegistry {
 
             if let Some(text) = parser.parse(&json, &mut streaming_buffer) {
                 final_message = Some(text);
-                streaming_buffer.clear();
             }
         }
 
@@ -102,7 +101,6 @@ pub(crate) fn extract_final_assistant_response(stdout: &str) -> Option<String> {
         // Try all parsers in order
         if let Some(text) = try_all_parsers(&json, &mut streaming_buffer, &registry) {
             final_message = Some(text);
-            streaming_buffer.clear();
         }
     }
 
@@ -195,6 +193,28 @@ mod tests {
 
         let result = registry.extract_final_response(&runner, stdout);
         assert_eq!(result, Some("Hello from Claude".to_string()));
+    }
+
+    #[test]
+    fn response_registry_extracts_cursor_result_event() {
+        let registry = ResponseParserRegistry::new();
+        let runner = Runner::Cursor;
+
+        let stdout = r#"{"type":"result","result":"Hello from Cursor"}"#;
+
+        let result = registry.extract_final_response(&runner, stdout);
+        assert_eq!(result, Some("Hello from Cursor".to_string()));
+    }
+
+    #[test]
+    fn response_registry_extracts_pi_message_end_assistant() {
+        let registry = ResponseParserRegistry::new();
+        let runner = Runner::Pi;
+
+        let stdout = r#"{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"Hello from Pi"}]}}"#;
+
+        let result = registry.extract_final_response(&runner, stdout);
+        assert_eq!(result, Some("Hello from Pi".to_string()));
     }
 
     #[test]

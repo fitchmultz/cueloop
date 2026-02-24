@@ -18,6 +18,7 @@ use crate::constants::defaults::DEFAULT_ID_WIDTH;
 use crate::constants::limits::{
     DEFAULT_SIZE_WARNING_THRESHOLD_KB, DEFAULT_TASK_COUNT_WARNING_THRESHOLD,
 };
+use crate::constants::queue::{DEFAULT_DONE_FILE, DEFAULT_QUEUE_FILE};
 use crate::constants::timeouts::DEFAULT_SESSION_TIMEOUT_HOURS;
 use crate::contracts::model::{Model, ReasoningEffort};
 use crate::contracts::runner::{
@@ -44,12 +45,12 @@ mod retry;
 mod tests;
 mod webhook;
 
-// Re-exports from submodules (backward compatibility)
+// Re-exports from submodules
 pub use agent::AgentConfig;
 pub use enums::{GitRevertMode, ProjectType, ScanPromptVersion};
 pub use loop_::LoopConfig;
 pub use notification::NotificationConfig;
-pub use parallel::{ConflictPolicy, ParallelConfig, ParallelMergeMethod, ParallelMergeWhen};
+pub use parallel::{ParallelConfig, default_push_backoff_ms};
 pub use phase::{PhaseOverrideConfig, PhaseOverrides};
 pub use plugin::{PluginConfig, PluginProcessorConfig, PluginRunnerConfig, PluginsConfig};
 pub use queue::{QueueAgingThresholds, QueueConfig};
@@ -108,8 +109,8 @@ impl Default for Config {
             version: 1,
             project_type: Some(ProjectType::Code),
             queue: QueueConfig {
-                file: Some(PathBuf::from(".ralph/queue.json")),
-                done_file: Some(PathBuf::from(".ralph/done.json")),
+                file: Some(PathBuf::from(DEFAULT_QUEUE_FILE)),
+                done_file: Some(PathBuf::from(DEFAULT_DONE_FILE)),
                 id_prefix: Some("RQ".to_string()),
                 id_width: Some(DEFAULT_ID_WIDTH as u8),
                 size_warning_threshold_kb: Some(DEFAULT_SIZE_WARNING_THRESHOLD_KB),
@@ -202,17 +203,10 @@ impl Default for Config {
             },
             parallel: ParallelConfig {
                 workers: None,
-                merge_when: Some(ParallelMergeWhen::AsCreated),
-                merge_method: Some(ParallelMergeMethod::Squash),
-                auto_pr: Some(true),
-                auto_merge: Some(true),
-                draft_on_failure: Some(true),
-                conflict_policy: Some(ConflictPolicy::AutoResolve),
-                merge_retries: Some(5),
                 workspace_root: None,
-                branch_prefix: Some("ralph/".to_string()),
-                delete_branch_on_merge: Some(true),
-                merge_runner: None,
+                max_push_attempts: Some(50),
+                push_backoff_ms: Some(default_push_backoff_ms()),
+                workspace_retention_hours: Some(24),
             },
             loop_field: LoopConfig {
                 wait_when_empty: Some(false),

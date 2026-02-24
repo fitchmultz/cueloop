@@ -23,6 +23,7 @@ use std::time::Duration;
 use crate::commands::run::PhaseType;
 use crate::constants::buffers::TIMEOUT_STDOUT_CAPTURE_MAX_BYTES;
 use crate::constants::buffers::{OUTPUT_TAIL_LINE_MAX_CHARS, OUTPUT_TAIL_LINES};
+use crate::constants::limits::MAX_SIGNAL_RESUMES;
 use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffort, Runner};
 use crate::runner::{RetryableReason, RunnerFailureClass};
 use crate::{fsutil, outpututil, runner};
@@ -266,6 +267,103 @@ fn should_retry_with_repo_state(
     Ok(false)
 }
 
+fn should_fallback_to_fresh_continue(runner_kind: &Runner, err: &runner::RunnerError) -> bool {
+    if runner_kind != &Runner::Pi {
+        return false;
+    }
+
+    let text = format!("{:#}", err).to_lowercase();
+    text.contains("pi session file not found")
+        || text.contains("no session found matching")
+        || text.contains("read pi session dir")
+}
+
+fn choose_continue_session_id<'a>(
+    error_session_id: Option<&'a str>,
+    invocation_session_id: Option<&'a str>,
+) -> Option<&'a str> {
+    error_session_id
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .or_else(|| {
+            invocation_session_id
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+        })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn continue_or_rerun(
+    backend: &mut impl RunnerBackend,
+    runner_kind: &Runner,
+    repo_root: &Path,
+    bins: runner::RunnerBinaries<'_>,
+    model: &Model,
+    reasoning_effort: Option<ReasoningEffort>,
+    runner_cli: runner::ResolvedRunnerCliOptions,
+    continue_message: &str,
+    fresh_prompt: &str,
+    timeout: Option<Duration>,
+    permission_mode: Option<ClaudePermissionMode>,
+    output_handler: Option<runner::OutputHandler>,
+    output_stream: runner::OutputStream,
+    phase_type: PhaseType,
+    invocation_session_id: Option<&str>,
+    error_session_id: Option<&str>,
+) -> Result<runner::RunnerOutput, runner::RunnerError> {
+    let continue_session_id = choose_continue_session_id(error_session_id, invocation_session_id);
+    if let Some(session_id) = continue_session_id {
+        match backend.resume_session(
+            runner_kind.clone(),
+            repo_root,
+            bins,
+            model.clone(),
+            reasoning_effort,
+            runner_cli,
+            session_id,
+            continue_message,
+            permission_mode,
+            timeout,
+            output_handler.clone(),
+            output_stream,
+            phase_type,
+            None,
+        ) {
+            Ok(output) => return Ok(output),
+            Err(err) if should_fallback_to_fresh_continue(runner_kind, &err) => {
+                log::warn!(
+                    "Continue session unavailable for runner {}; rerunning as fresh invocation: {:#}",
+                    runner_kind,
+                    err
+                );
+            }
+            Err(err) => return Err(err),
+        }
+    } else {
+        log::warn!(
+            "Continue requested without session id for runner {}; rerunning as fresh invocation.",
+            runner_kind
+        );
+    }
+
+    backend.run_prompt(
+        runner_kind.clone(),
+        repo_root,
+        bins,
+        model.clone(),
+        reasoning_effort,
+        runner_cli,
+        fresh_prompt,
+        timeout,
+        permission_mode,
+        output_handler,
+        output_stream,
+        phase_type,
+        invocation_session_id.map(str::to_string),
+        None,
+    )
+}
+
 pub(crate) fn run_prompt_with_handling_backend<FNonZero, FOther>(
     invocation: RunnerInvocation<'_>,
     messages: RunnerErrorMessages<'_, FNonZero, FOther>,
@@ -291,7 +389,7 @@ where
         output_stream,
         revert_prompt,
         phase_type,
-        session_id,
+        session_id: invocation_session_id,
         retry_policy,
     } = invocation;
     let RunnerErrorMessages {
@@ -316,6 +414,7 @@ where
     let mut attempt: u32 = 1;
     let max_attempts = retry_policy.max_attempts;
     let mut rng = SeededRng::new();
+    let mut signal_resume_attempts: u8 = 0;
 
     emit_operation(
         &effective_output_handler,
@@ -335,7 +434,7 @@ where
         effective_output_handler.clone(),
         output_stream,
         phase_type,
-        session_id.clone(),
+        invocation_session_id.clone(),
         None,
     );
 
@@ -439,7 +538,7 @@ where
                             effective_output_handler.clone(),
                             output_stream,
                             phase_type,
-                            session_id.clone(),
+                            invocation_session_id.clone(),
                             None,
                         );
                         continue;
@@ -509,7 +608,7 @@ where
                         code,
                         stdout,
                         stderr,
-                        session_id,
+                        session_id: error_session_id,
                     }) => {
                         log_stderr_tail(log_label, &stderr.to_string());
                         let base_msg = non_zero_msg(code);
@@ -555,31 +654,28 @@ where
                             )?;
                             match outcome {
                                 RevertOutcome::Continue { message } => {
-                                    let Some(session_id) = session_id.as_deref() else {
-                                        bail!(
-                                            "Catastrophic: no session id captured; cannot Continue."
-                                        );
-                                    };
                                     if let Some(capture) = timeout_stdout_capture.as_ref()
                                         && let Ok(mut buf) = capture.lock()
                                     {
                                         buf.clear();
                                     }
-                                    result = backend.resume_session(
-                                        runner_kind.clone(),
+                                    result = continue_or_rerun(
+                                        backend,
+                                        &runner_kind,
                                         repo_root,
                                         bins,
-                                        model.clone(),
+                                        &model,
                                         reasoning_effort,
                                         runner_cli,
-                                        session_id,
                                         &message,
-                                        permission_mode,
+                                        &message,
                                         timeout,
+                                        permission_mode,
                                         effective_output_handler.clone(),
                                         output_stream,
                                         phase_type,
-                                        None,
+                                        invocation_session_id.as_deref(),
+                                        error_session_id.as_deref(),
                                     );
                                     continue;
                                 }
@@ -601,10 +697,48 @@ where
                         bail!("{}{}", base_msg, safeguard_msg);
                     }
                     Err(runner::RunnerError::TerminatedBySignal {
+                        signal,
                         stdout,
                         stderr,
-                        session_id,
+                        session_id: error_session_id,
                     }) => {
+                        if signal_resume_attempts < MAX_SIGNAL_RESUMES {
+                            signal_resume_attempts = signal_resume_attempts.saturating_add(1);
+                            let signal_label = signal
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| "unknown".to_string());
+                            emit_operation(
+                                &effective_output_handler,
+                                &format!(
+                                    "Runner signal recovery {}/{} (signal={})",
+                                    signal_resume_attempts, MAX_SIGNAL_RESUMES, signal_label
+                                ),
+                            );
+                            let continue_message = format!(
+                                "The previous run was interrupted by signal {}. Continue the task from where you left off. If no prior progress exists, restart from the beginning and complete the task.",
+                                signal_label
+                            );
+                            result = continue_or_rerun(
+                                backend,
+                                &runner_kind,
+                                repo_root,
+                                bins,
+                                &model,
+                                reasoning_effort,
+                                runner_cli,
+                                &continue_message,
+                                prompt,
+                                timeout,
+                                permission_mode,
+                                effective_output_handler.clone(),
+                                output_stream,
+                                phase_type,
+                                invocation_session_id.as_deref(),
+                                error_session_id.as_deref(),
+                            );
+                            continue;
+                        }
+
                         log_stderr_tail(log_label, &stderr.to_string());
                         let mut safeguard_msg = String::new();
                         if revert_on_error {
@@ -648,31 +782,28 @@ where
                             )?;
                             match outcome {
                                 RevertOutcome::Continue { message } => {
-                                    let Some(session_id) = session_id.as_deref() else {
-                                        bail!(
-                                            "Catastrophic: no session id captured; cannot Continue."
-                                        );
-                                    };
                                     if let Some(capture) = timeout_stdout_capture.as_ref()
                                         && let Ok(mut buf) = capture.lock()
                                     {
                                         buf.clear();
                                     }
-                                    result = backend.resume_session(
-                                        runner_kind.clone(),
+                                    result = continue_or_rerun(
+                                        backend,
+                                        &runner_kind,
                                         repo_root,
                                         bins,
-                                        model.clone(),
+                                        &model,
                                         reasoning_effort,
                                         runner_cli,
-                                        session_id,
                                         &message,
-                                        permission_mode,
+                                        &message,
                                         timeout,
+                                        permission_mode,
                                         effective_output_handler.clone(),
                                         output_stream,
                                         phase_type,
-                                        None,
+                                        invocation_session_id.as_deref(),
+                                        error_session_id.as_deref(),
                                     );
                                     continue;
                                 }

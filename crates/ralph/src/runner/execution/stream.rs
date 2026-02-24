@@ -367,6 +367,39 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                         lines.push(line);
                     }
                 }
+                "web_search" => {
+                    let query = item.get("query").and_then(|q| q.as_str()).unwrap_or("");
+                    let action = item.get("action").and_then(|a| a.as_str());
+                    let details = if query.is_empty() {
+                        action.map(|a| format!("action={}", a))
+                    } else {
+                        Some(match action {
+                            Some(a) => format!("query={} action={}", query, a),
+                            None => format!("query={}", query),
+                        })
+                    };
+                    lines.push(outpututil::format_tool_call(
+                        "web_search",
+                        details.as_deref(),
+                    ));
+                }
+                "collab_tool_call" => {
+                    if let Some(tool) = item.get("tool").and_then(|t| t.as_str()) {
+                        let status = item.get("status").and_then(|s| s.as_str());
+                        let details = status.map(|s| format!("({})", s));
+                        lines.push(outpututil::format_tool_call(
+                            &format!("collab.{}", tool),
+                            details.as_deref(),
+                        ));
+                    }
+                }
+                "error" => {
+                    if let Some(message) = item.get("message").and_then(|m| m.as_str())
+                        && !message.trim().is_empty()
+                    {
+                        lines.push(format!("[Error] {}", message));
+                    }
+                }
                 _ => {}
             }
         }
@@ -378,6 +411,23 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                 .and_then(|t| t.as_str())
         {
             lines.push(text.to_string());
+        }
+
+        if event_type == "reasoning"
+            && let Some(text) = json
+                .get("part")
+                .and_then(|p| p.get("text"))
+                .and_then(|t| t.as_str())
+            && !text.is_empty()
+        {
+            lines.push(outpututil::format_reasoning(text));
+        }
+
+        if event_type == "error"
+            && let Some(message) = json.get("message").and_then(|m| m.as_str())
+            && !message.trim().is_empty()
+        {
+            lines.push(format!("[Error] {}", message));
         }
 
         if event_type == "tool_use"
@@ -476,6 +526,30 @@ pub(super) fn extract_display_lines(json: &JsonValue) -> Vec<String> {
                     ));
                 }
                 _ => {}
+            }
+        }
+
+        if event_type == "result"
+            && json
+                .get("is_error")
+                .and_then(|flag| flag.as_bool())
+                .unwrap_or(false)
+        {
+            if let Some(errors) = json.get("errors").and_then(|e| e.as_array()) {
+                for error in errors {
+                    if let Some(message) = error.as_str()
+                        && !message.trim().is_empty()
+                    {
+                        lines.push(format!("[Error] {}", message));
+                    }
+                }
+            } else if let Some(message) = json
+                .get("error")
+                .and_then(|e| e.get("message"))
+                .and_then(|m| m.as_str())
+                && !message.trim().is_empty()
+            {
+                lines.push(format!("[Error] {}", message));
             }
         }
 

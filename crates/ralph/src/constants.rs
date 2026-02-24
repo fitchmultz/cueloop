@@ -52,7 +52,10 @@ pub mod buffers {
 /// Operational limits and thresholds.
 pub mod limits {
     /// Auto-retry limit for CI gate failures.
-    pub const CI_GATE_AUTO_RETRY_LIMIT: u8 = 5;
+    pub const CI_GATE_AUTO_RETRY_LIMIT: u8 = 10;
+
+    /// Maximum automatic recovery attempts after runner signal termination.
+    pub const MAX_SIGNAL_RESUMES: u8 = 5;
 
     /// Number of consecutive CI failures with the same error pattern before escalation.
     /// After this many identical failures, Ralph stops retrying and requires intervention.

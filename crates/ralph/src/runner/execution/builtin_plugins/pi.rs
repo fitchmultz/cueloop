@@ -177,13 +177,23 @@ pub struct PiResponseParser;
 impl PiResponseParser {
     /// Parse Pi JSON response format.
     pub(crate) fn parse_json(&self, json: &JsonValue) -> Option<String> {
-        // Pi uses a generic JSON format with type="result"
-        if json.get("type").and_then(|t| t.as_str()) != Some("result") {
-            return None;
+        match json.get("type").and_then(|t| t.as_str()) {
+            // Pi emits result objects in --mode json output.
+            Some("result") => {
+                let result = json.get("result")?;
+                extract_text_content(result)
+            }
+            // Some Pi builds emit assistant output in message_end envelopes.
+            Some("message_end") => {
+                let message = json.get("message")?;
+                if message.get("role").and_then(|r| r.as_str()) != Some("assistant") {
+                    return None;
+                }
+                let content = message.get("content")?;
+                extract_text_content(content)
+            }
+            _ => None,
         }
-
-        let result = json.get("result")?;
-        extract_text_content(result)
     }
 }
 

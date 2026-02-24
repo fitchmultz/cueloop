@@ -550,40 +550,29 @@ The `parallel` section controls parallel task execution for `ralph run loop`. **
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `workers` | `number` | `null` | Concurrent workers (≥2, null = disabled) |
-| `merge_when` | `"as_created" \| "after_all"` | `"as_created"` | When to merge PRs |
-| `merge_method` | `"squash" \| "merge" \| "rebase"` | `"squash"` | PR merge method |
-| `auto_pr` | `boolean` | `true` | Auto-create PRs for completed tasks |
-| `auto_merge` | `boolean` | `true` | Auto-merge PRs when eligible |
-| `draft_on_failure` | `boolean` | `true` | Create draft PRs on worker failure |
+| `workers` | `number` | `null` | Concurrent workers (≥2, null = disabled unless `--parallel` is used) |
+| `workspace_root` | `string` | `<repo-parent>/.workspaces/<repo-name>/parallel` | Root for parallel worker workspaces |
+| `max_push_attempts` | `number` | `50` | Max integration attempts before worker becomes blocked |
+| `push_backoff_ms` | `number[]` | `[500, 2000, 5000, 10000]` | Backoff between integration retries |
+| `workspace_retention_hours` | `number` | `24` | Hours to retain completed/failed worker workspaces |
 
-### Conflict & Retry
+Parallel mode uses direct push to the coordinator base branch. Workers run agent-owned integration (`fetch/rebase/conflict-fix/commit/push`) and no PR lifecycle is used.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `conflict_policy` | `"auto_resolve" \| "retry_later" \| "reject"` | `"auto_resolve"` | Merge conflict handling |
-| `merge_retries` | `number` | `5` | Merge retry attempts (≥1) |
+> ⚠️ **Git Hygiene**: If `workspace_root` is inside the repo, you MUST gitignore it or parallel mode will fail preflight checks.
 
-### Workspace & Branch
+### Removed Legacy Keys (No Longer Supported)
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `workspace_root` | `string` | `null` | Root for parallel workspaces |
-| `branch_prefix` | `string` | `"ralph/"` | Prefix for worker branches |
-| `delete_branch_on_merge` | `boolean` | `true` | Delete branches after merge |
-
-> ⚠️ **Git Hygiene**: If `workspace_root` is inside the repo, you MUST gitignore it or parallel mode will fail.
-
-### Merge Runner
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `merge_runner` | `object` | `null` | Runner overrides for merge conflict resolution |
-
-The `merge_runner` object supports:
-- `runner`: Runner to use for merge conflicts
-- `model`: Model for merge conflict resolution
-- `reasoning_effort`: Reasoning depth for merge resolution
+The following PR-era keys were removed from parallel mode and are invalid in current configs:
+- `auto_pr`
+- `auto_merge`
+- `merge_when`
+- `merge_method`
+- `merge_retries`
+- `draft_on_failure`
+- `conflict_policy`
+- `branch_prefix`
+- `delete_branch_on_merge`
+- `merge_runner`
 
 ### Complete Parallel Example
 
@@ -592,20 +581,10 @@ The `merge_runner` object supports:
   "version": 1,
   "parallel": {
     "workers": 3,
-    "merge_when": "as_created",
-    "merge_method": "squash",
-    "auto_pr": true,
-    "auto_merge": true,
-    "draft_on_failure": true,
-    "conflict_policy": "auto_resolve",
-    "merge_retries": 5,
-    "branch_prefix": "ralph/",
-    "delete_branch_on_merge": true,
-    "merge_runner": {
-      "runner": "claude",
-      "model": "sonnet",
-      "reasoning_effort": "medium"
-    }
+    "workspace_root": ".workspaces/my-repo/parallel",
+    "max_push_attempts": 50,
+    "push_backoff_ms": [500, 2000, 5000, 10000],
+    "workspace_retention_hours": 24
   }
 }
 ```
@@ -882,11 +861,11 @@ Ralph validates configuration on load and provides detailed error messages for i
 | `agent.iterations` | Must be `≥ 1` |
 | `agent.session_timeout_hours` | Must be `≥ 1` |
 | `parallel.workers` | Must be `≥ 2` (if set) |
-| `parallel.merge_retries` | Must be `≥ 1` (if set) |
+| `parallel.max_push_attempts` | Must be `≥ 1` (if set) |
+| `parallel.workspace_retention_hours` | Must be `≥ 1` (if set) |
 | `queue.id_width` | Must be `≥ 1` (minimum 1) |
 | `queue.*_threshold*` | Must be within documented ranges |
 | Binary paths | Must be non-empty if specified |
-| Branch prefix | Must form valid git ref with task ID |
 
 ### Validation Commands
 
@@ -911,9 +890,6 @@ Solution: Change phases to 1, 2, or 3.
 
 Error: Empty queue.id_prefix: prefix is required if specified.
 Solution: Remove the field or set a non-empty prefix like "RQ".
-
-Error: Invalid parallel.branch_prefix: "ralph/feat".
-Solution: Use a simpler prefix like "ralph/".
 ```
 
 ---
@@ -1003,10 +979,10 @@ Here's a comprehensive example demonstrating all configuration sections:
   // Parallel execution (CLI-only)
   "parallel": {
     "workers": 3,
-    "auto_pr": true,
-    "auto_merge": true,
-    "merge_method": "squash",
-    "branch_prefix": "ralph/"
+    "workspace_root": ".workspaces/my-repo/parallel",
+    "max_push_attempts": 50,
+    "push_backoff_ms": [500, 2000, 5000, 10000],
+    "workspace_retention_hours": 24
   },
   
   // Queue configuration

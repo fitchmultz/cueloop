@@ -20,63 +20,12 @@ use crate::runutil;
 use crate::{queue, timeutil};
 use anyhow::{Result, anyhow, bail};
 
-/// Strategy for saving queue files after maintenance operations.
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum QueueMaintenanceSaveMode {
-    /// Save both queue and done files if any terminal task was repaired (backfilled).
-    SaveBothIfAnyRepaired,
-    /// Save each file independently if it specifically was repaired.
-    SaveEachIfRepaired,
-}
-
-/// Loads, repairs (backfills completed_at), and validates the queue and done files.
+/// Loads, conservatively repairs timestamps, and validates the queue and done files.
 pub(crate) fn maintain_and_validate_queues(
     resolved: &crate::config::Resolved,
-    save_mode: QueueMaintenanceSaveMode,
 ) -> Result<(QueueFile, QueueFile)> {
-    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-    let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
-    let repair_now = timeutil::now_utc_rfc3339()?;
-
-    match save_mode {
-        QueueMaintenanceSaveMode::SaveBothIfAnyRepaired => {
-            let mut repaired = false;
-            if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
-                repaired = true;
-            }
-            if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
-                repaired = true;
-            }
-            if repaired {
-                queue::save_queue(&resolved.queue_path, &queue_file)?;
-                if !done_file.tasks.is_empty() || resolved.done_path.exists() {
-                    queue::save_queue(&resolved.done_path, &done_file)?;
-                }
-            }
-        }
-        QueueMaintenanceSaveMode::SaveEachIfRepaired => {
-            if queue::backfill_terminal_completed_at(&mut queue_file, &repair_now) > 0 {
-                queue::save_queue(&resolved.queue_path, &queue_file)?;
-            }
-            if queue::backfill_terminal_completed_at(&mut done_file, &repair_now) > 0 {
-                queue::save_queue(&resolved.done_path, &done_file)?;
-            }
-        }
-    }
-
-    let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
-        None
-    } else {
-        Some(&done_file)
-    };
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
-    queue::validate_queue_set(
-        &queue_file,
-        done_ref,
-        &resolved.id_prefix,
-        resolved.id_width,
-        max_depth,
-    )?;
+    let (queue_file, done_file_opt) = queue::load_and_validate_queues(resolved, true)?;
+    let done_file = done_file_opt.unwrap_or_default();
 
     Ok((queue_file, done_file))
 }
@@ -289,10 +238,7 @@ mod tests {
         write_queue(temp.path(), TaskStatus::Done)?;
 
         let resolved = resolved_for_repo(temp.path());
-        let (queue_file, _done_file) = maintain_and_validate_queues(
-            &resolved,
-            QueueMaintenanceSaveMode::SaveBothIfAnyRepaired,
-        )?;
+        let (queue_file, _done_file) = maintain_and_validate_queues(&resolved)?;
 
         // Task should be in queue (not archived yet in this test)
         let task = queue_file

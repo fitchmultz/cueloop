@@ -9,6 +9,7 @@ use super::{
 };
 use crate::commands::run::supervision::ContinueSession;
 use crate::constants::defaults::PHASE2_FINAL_RESPONSE_FALLBACK;
+use crate::constants::limits::CI_GATE_AUTO_RETRY_LIMIT;
 use crate::contracts::{
     ClaudePermissionMode, Config, GitRevertMode, Model, QueueConfig, QueueFile, ReasoningEffort,
     Runner, Task, TaskPriority, TaskStatus,
@@ -1076,7 +1077,7 @@ echo '{{"sessionID":"sess-123"}}'
 
     let count_path = temp.path().join("resume-count.txt");
     let count = std::fs::read_to_string(&count_path)?;
-    assert_eq!(count.trim(), "5");
+    assert_eq!(count.trim(), CI_GATE_AUTO_RETRY_LIMIT.to_string());
 
     assert_eq!(prompt_calls.load(Ordering::SeqCst), 1);
 

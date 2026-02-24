@@ -134,13 +134,13 @@ Parallel execution runs tasks in isolated git workspace clones:
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
 │  │  Worker 1   │  │  Worker 2   │  │    Worker N     │ │
 │  │  RQ-0001    │  │  RQ-0002    │  │    RQ-000N      │ │
-│  │  (branch)   │  │  (branch)   │  │    (branch)     │ │
+│  │ (workspace) │  │ (workspace) │  │  (workspace)    │ │
 │  └──────┬──────┘  └──────┬──────┘  └────────┬────────┘ │
 │         │                │                   │          │
 │         ▼                ▼                   ▼          │
 │  ┌─────────────────────────────────────────────────────┐│
-│  │              Merge Runner Thread                     ││
-│  │   (PR polling, merge conflicts, auto-resolution)     ││
+│  │      Agent-Owned Integration Loop (per worker)       ││
+│  │   fetch/rebase/conflict-fix/commit/push to base      ││
 │  └─────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────┘
 ```
@@ -152,30 +152,21 @@ Parallel execution runs tasks in isolated git workspace clones:
 {
   "parallel": {
     "workers": 4,
-    "merge_when": "as_created",
-    "auto_pr": true,
-    "auto_merge": true,
-    "draft_on_failure": true,
-    "conflict_policy": "auto_resolve",
-    "merge_runner": {
-      "runner": "claude",
-      "model": "sonnet",
-      "reasoning_effort": "medium"
-    }
+    "max_push_attempts": 50,
+    "push_backoff_ms": [500, 2000, 5000, 10000],
+    "workspace_retention_hours": 24
   }
 }
 ```
 
-**Review-Before-Merge Workflow:**
+**Conservative Direct-Push Workflow:**
 ```json
 {
   "parallel": {
     "workers": 3,
-    "merge_when": "after_all",
-    "auto_pr": true,
-    "auto_merge": false,
-    "draft_on_failure": true,
-    "conflict_policy": "retry_later"
+    "max_push_attempts": 8,
+    "push_backoff_ms": [1000, 3000, 7000, 15000],
+    "workspace_retention_hours": 48
   }
 }
 ```
@@ -184,13 +175,13 @@ Parallel execution runs tasks in isolated git workspace clones:
 
 ```bash
 # Check state during run
-watch -n 2 'jq .tasks_in_flight .ralph/cache/parallel/state.json'
+watch -n 2 'ralph run parallel status'
 
-# Monitor PR creation
-watch -n 5 'gh pr list --author "@me" --json number,title,state'
+# JSON status output for scripting
+watch -n 2 'ralph run parallel status --json'
 
-# Check for blocked PRs
-jq '.prs[] | select(.merge_blocker != null)' .ralph/cache/parallel/state.json
+# Retry a blocked worker
+ralph run parallel retry --task RQ-0001
 ```
 
 ### Workspace Root Configuration
@@ -211,24 +202,16 @@ Or if inside repo, ensure gitignore:
 .workspaces/
 ```
 
-### Handling Merge Conflicts
+### Handling Integration Conflicts
 
-When `conflict_policy: auto_resolve`, Ralph uses the merge runner:
+Parallel workers resolve rebase conflicts inside the integration loop. If a worker is blocked after retry exhaustion:
 
 ```bash
-# View conflict resolution prompt
-ralph prompt render merge_conflicts
+# Inspect worker lifecycle and failure reason
+ralph run parallel status
 
-# Custom merge runner for complex conflicts
-{
-  "parallel": {
-    "merge_runner": {
-      "runner": "codex",
-      "model": "gpt-5.3-codex",
-      "reasoning_effort": "high"
-    }
-  }
-}
+# Retry that worker (reuses retained workspace/state)
+ralph run parallel retry --task RQ-0001
 ```
 
 ### Parallel State Recovery
@@ -239,12 +222,11 @@ If parallel run crashes:
 # Check current state
 jq '.' .ralph/cache/parallel/state.json
 
-# Clear specific merge blocker
-jq '(.prs[] | select(.task_id == "RQ-0001")).merge_blocker = null' \
-  .ralph/cache/parallel/state.json > state.tmp && \
-  mv state.tmp .ralph/cache/parallel/state.json
+# Inspect with Ralph's status command
+ralph run parallel status
 
 # Or start fresh (removes all state)
+# Only do this when no active workers are running.
 rm .ralph/cache/parallel/state.json
 ```
 
@@ -1005,22 +987,20 @@ echo ".workspaces/" >> .git/info/exclude
 # Check current branch
 git branch --show-current
 
-# View state file base branch
-jq '.base_branch' .ralph/cache/parallel/state.json
+# View state file target branch
+jq '.target_branch' .ralph/cache/parallel/state.json
 
 # If no in-flight tasks, auto-heal by running
 # Otherwise, checkout original base branch
 ```
 
-**Problem:** Merge blocker on PR
+**Problem:** Worker blocked in parallel integration
 ```bash
-# Check for blockers
-jq '.prs[] | select(.merge_blocker != null)' .ralph/cache/parallel/state.json
+# Inspect worker lifecycle + error context
+ralph run parallel status --json | jq '.workers[] | select(.lifecycle == "blocked_push")'
 
-# Clear specific blocker
-jq '(.prs[] | select(.task_id == "RQ-0001")).merge_blocker = null' \
-  .ralph/cache/parallel/state.json > state.tmp && \
-  mv state.tmp .ralph/cache/parallel/state.json
+# Retry a blocked worker explicitly
+ralph run parallel retry --task RQ-0001
 ```
 
 ### Queue Lock Issues

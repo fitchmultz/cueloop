@@ -81,18 +81,24 @@ pub struct CursorResponseParser;
 impl CursorResponseParser {
     /// Parse Cursor JSON response format.
     pub(crate) fn parse_json(&self, json: &JsonValue) -> Option<String> {
-        // Cursor uses message_end format
-        if json.get("type").and_then(|t| t.as_str()) != Some("message_end") {
-            return None;
-        }
+        match json.get("type").and_then(|t| t.as_str()) {
+            // Cursor stream-json emits a message_end envelope for final assistant output.
+            Some("message_end") => {
+                let message = json.get("message")?;
+                if message.get("role").and_then(|r| r.as_str()) != Some("assistant") {
+                    return None;
+                }
 
-        let message = json.get("message")?;
-        if message.get("role").and_then(|r| r.as_str()) != Some("assistant") {
-            return None;
+                let content = message.get("content")?;
+                super::extract_text_content(content)
+            }
+            // Some cursor builds also emit a terminal result event.
+            Some("result") => {
+                let result = json.get("result")?;
+                super::extract_text_content(result)
+            }
+            _ => None,
         }
-
-        let content = message.get("content")?;
-        super::extract_text_content(content)
     }
 }
 

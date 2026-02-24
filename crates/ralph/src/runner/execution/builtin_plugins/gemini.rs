@@ -57,11 +57,11 @@ impl RunnerPlugin for GeminiPlugin {
             .build())
     }
 
-    fn parse_response_line(&self, line: &str, _buffer: &mut String) -> Option<String> {
+    fn parse_response_line(&self, line: &str, buffer: &mut String) -> Option<String> {
         let json = serde_json::from_str(line)
             .inspect_err(|e| log::trace!("Gemini response not valid JSON: {}", e))
             .ok()?;
-        GeminiResponseParser.parse_json(&json)
+        GeminiResponseParser.parse_json(&json, buffer)
     }
 }
 
@@ -70,7 +70,7 @@ pub struct GeminiResponseParser;
 
 impl GeminiResponseParser {
     /// Parse Gemini JSON response format.
-    pub(crate) fn parse_json(&self, json: &JsonValue) -> Option<String> {
+    pub(crate) fn parse_json(&self, json: &JsonValue, buffer: &mut String) -> Option<String> {
         if json.get("type").and_then(|t| t.as_str()) != Some("message") {
             return None;
         }
@@ -80,13 +80,41 @@ impl GeminiResponseParser {
         }
 
         let content = json.get("content")?;
-        extract_text_content(content)
+        let is_delta = json.get("delta").and_then(|d| d.as_bool()).unwrap_or(false);
+
+        if is_delta {
+            let text = match content {
+                JsonValue::String(text) => Some(text.clone()),
+                JsonValue::Array(items) => {
+                    let mut parts = Vec::new();
+                    for item in items {
+                        if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                            parts.push(text.to_string());
+                        }
+                    }
+                    if parts.is_empty() {
+                        None
+                    } else {
+                        Some(parts.join(""))
+                    }
+                }
+                _ => None,
+            }?;
+            buffer.push_str(&text);
+            Some(buffer.clone())
+        } else {
+            let text = extract_text_content(content)?;
+            if !buffer.is_empty() {
+                buffer.clear();
+            }
+            Some(text)
+        }
     }
 }
 
 impl ResponseParser for GeminiResponseParser {
-    fn parse(&self, json: &JsonValue, _buffer: &mut String) -> Option<String> {
-        self.parse_json(json)
+    fn parse(&self, json: &JsonValue, buffer: &mut String) -> Option<String> {
+        self.parse_json(json, buffer)
     }
 
     fn runner_id(&self) -> &str {

@@ -3,7 +3,7 @@
 //! Responsibilities:
 //! - Post-run supervision for parallel workers without mutating queue/done.
 //! - Restore shared bookkeeping files (queue, done, productivity).
-//! - Write CI failure marker for coordinator to detect CI gate failures.
+//! - Write CI failure marker for coordinator diagnostics.
 //!
 //! Not handled here:
 //! - Standard post-run supervision (see mod.rs).
@@ -23,19 +23,22 @@ use std::io::Write as _;
 
 use super::CiContinueContext;
 use super::PushPolicy;
-use super::ci::{ci_gate_command_label, run_ci_gate, run_ci_gate_with_continue_session};
+use super::enforce_post_run_ci_gate;
 use super::git_ops::{finalize_git_state, warn_if_modified_lfs};
 
-const PARALLEL_BOOKKEEPING_PATHS: [&str; 11] = [
+const PARALLEL_BOOKKEEPING_PATHS: [&str; 14] = [
     ".ralph/queue.json",
     ".ralph/queue.jsonc",
     ".ralph/done.json",
     ".ralph/done.jsonc",
     ".ralph/cache/productivity.json",
+    ".ralph/cache/productivity.jsonc",
     ".ralph/cache/plans/",
     ".ralph/cache/phase2_final/",
     ".ralph/cache/session.json",
+    ".ralph/cache/session.jsonc",
     ".ralph/cache/migrations.json",
+    ".ralph/cache/migrations.jsonc",
     ".ralph/cache/parallel/",
     ".ralph/logs/",
 ];
@@ -43,8 +46,7 @@ const PARALLEL_BOOKKEEPING_PATHS: [&str; 11] = [
 /// Post-run supervision for parallel workers.
 ///
 /// Restores shared bookkeeping files and commits/pushes only the worker's
-/// task changes without mutating queue/done. Task finalization is handled
-/// by the merge-agent subprocess in the coordinator process.
+/// task changes without mutating workspace-local queue/done clones.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn post_run_supervise_parallel_worker(
     resolved: &crate::config::Resolved,
@@ -69,101 +71,20 @@ pub(crate) fn post_run_supervise_parallel_worker(
                     err
                 ));
             }
-            let mut ci_continue = ci_continue;
-            if let Some(ci_continue) = ci_continue.as_mut() {
-                let continue_session = &mut *ci_continue.continue_session;
-                let on_resume = &mut *ci_continue.on_resume;
-                if continue_session
-                    .session_id
-                    .as_deref()
-                    .unwrap_or("")
-                    .is_empty()
-                {
-                    log::warn!(
-                        "CI gate continue requested but no session id; falling back to standard CI gate handling."
-                    );
-                    if let Err(err) = run_ci_gate(resolved) {
-                        let outcome = runutil::apply_git_revert_mode(
-                            &resolved.repo_root,
-                            git_revert_mode,
-                            "CI gate failure",
-                            revert_prompt.as_ref(),
-                        )?;
-                        // Write CI failure marker so coordinator skips draft PR creation
-                        write_ci_failure_marker(
-                            &resolved.repo_root,
-                            task_id,
-                            &format!("CI gate failed: {:#}", err),
-                        );
-                        anyhow::bail!(
-                            "{} Error: {:#}",
-                            runutil::format_revert_failure_message(
-                                &format!(
-                                    "CI gate failed: '{}' did not pass after the task completed.",
-                                    ci_gate_command_label(resolved)
-                                ),
-                                outcome,
-                            ),
-                            err
-                        );
-                    }
-                } else if let Err(err) = run_ci_gate_with_continue_session(
-                    resolved,
-                    git_revert_mode,
-                    revert_prompt.as_ref(),
-                    continue_session,
-                    |output, elapsed| on_resume(output, elapsed),
-                    plugins,
-                ) {
-                    let outcome = runutil::apply_git_revert_mode(
-                        &resolved.repo_root,
-                        git_revert_mode,
-                        "CI gate failure",
-                        revert_prompt.as_ref(),
-                    )?;
-                    // Write CI failure marker so coordinator skips draft PR creation
+            enforce_post_run_ci_gate(
+                resolved,
+                git_revert_mode,
+                revert_prompt.as_ref(),
+                ci_continue,
+                plugins,
+                |err| {
                     write_ci_failure_marker(
                         &resolved.repo_root,
                         task_id,
-                        &format!("CI gate failed with continue session: {:#}", err),
+                        &format!("CI gate failed: {:#}", err),
                     );
-                    anyhow::bail!(
-                        "{} Error: {:#}",
-                        runutil::format_revert_failure_message(
-                            &format!(
-                                "CI gate failed: '{}' did not pass after the task completed.",
-                                ci_gate_command_label(resolved)
-                            ),
-                            outcome,
-                        ),
-                        err
-                    );
-                }
-            } else if let Err(err) = run_ci_gate(resolved) {
-                let outcome = runutil::apply_git_revert_mode(
-                    &resolved.repo_root,
-                    git_revert_mode,
-                    "CI gate failure",
-                    revert_prompt.as_ref(),
-                )?;
-                // Write CI failure marker so coordinator skips draft PR creation
-                write_ci_failure_marker(
-                    &resolved.repo_root,
-                    task_id,
-                    &format!("CI gate failed: {:#}", err),
-                );
-                anyhow::bail!(
-                    "{} Error: {:#}",
-                    runutil::format_revert_failure_message(
-                        &format!(
-                            "CI gate failed: '{}' did not pass after the task completed.",
-                            ci_gate_command_label(resolved)
-                        ),
-                        outcome,
-                    ),
-                    err
-                );
-            }
+                },
+            )?;
         }
 
         restore_parallel_worker_bookkeeping(resolved, task_id)?;
@@ -236,12 +157,18 @@ fn restore_parallel_worker_bookkeeping(
         .join(".ralph")
         .join("cache")
         .join("productivity.json");
+    let productivity_jsonc_path = resolved
+        .repo_root
+        .join(".ralph")
+        .join("cache")
+        .join("productivity.jsonc");
     let paths = vec![
         workspace_queue_path,
         workspace_queue_jsonc_path,
         workspace_done_path,
         workspace_done_jsonc_path,
         productivity_path,
+        productivity_jsonc_path,
     ];
     git::restore_tracked_paths_to_head(&resolved.repo_root, &paths)
         .context("restore queue/done/productivity to HEAD")?;
@@ -258,7 +185,9 @@ fn remove_parallel_worker_generated_artifacts(
     let generated_paths = [
         repo_root.join(".ralph/cache/phase2_final"),
         repo_root.join(".ralph/cache/session.json"),
+        repo_root.join(".ralph/cache/session.jsonc"),
         repo_root.join(".ralph/cache/migrations.json"),
+        repo_root.join(".ralph/cache/migrations.jsonc"),
         repo_root.join(".ralph/cache/parallel"),
         repo_root.join(".ralph/logs"),
     ];
@@ -316,8 +245,7 @@ fn collect_bookkeeping_status_lines(status: &str) -> Vec<String> {
 }
 
 /// Write a marker file indicating CI gate failure.
-/// The coordinator checks for this before creating draft PRs.
-/// If the marker exists, the coordinator skips draft PR creation.
+/// The coordinator can inspect this marker for CI failure diagnostics.
 fn write_ci_failure_marker(workspace_path: &std::path::Path, task_id: &str, error_message: &str) {
     let content = serde_json::json!({
         "task_id": task_id,

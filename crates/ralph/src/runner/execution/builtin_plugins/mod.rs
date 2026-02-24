@@ -169,7 +169,7 @@ impl RunnerPlugin for BuiltInRunnerPlugin {
         match self {
             Self::Codex => CodexResponseParser.parse_json(&json),
             Self::Opencode => OpencodeResponseParser.parse_json(&json, buffer),
-            Self::Gemini => GeminiResponseParser.parse_json(&json),
+            Self::Gemini => GeminiResponseParser.parse_json(&json, buffer),
             Self::Claude => ClaudeResponseParser.parse_json(&json),
             Self::Kimi => KimiResponseParser.parse_json(&json),
             Self::Pi => PiResponseParser.parse_json(&json),

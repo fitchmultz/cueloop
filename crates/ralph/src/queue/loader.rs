@@ -4,7 +4,7 @@
 //! - Load queue files from disk with standard JSONC parsing.
 //! - Load with automatic repair for common JSON errors.
 //! - Load with repair and semantic validation.
-//! - Load active and done queues together with validation.
+//! - Load active and done queues together with conservative timestamp maintenance + validation.
 //!
 //! Not handled here:
 //! - Queue file saving (see `queue::save`).
@@ -15,11 +15,150 @@
 //! - Callers must hold locks when loading mutable state.
 
 use crate::config::Resolved;
-use crate::contracts::QueueFile;
+use crate::contracts::{QueueFile, Task};
 use crate::queue::json_repair::attempt_json_repair;
 use crate::queue::validation::{self, ValidationWarning};
 use anyhow::{Context, Result};
 use std::path::Path;
+use time::UtcOffset;
+
+#[derive(Debug, Default, Clone, Copy)]
+struct QueueMaintenanceReport {
+    normalized_timestamps: usize,
+    backfilled_completed_at: usize,
+    queue_changed: bool,
+    done_changed: bool,
+}
+
+impl QueueMaintenanceReport {
+    fn has_changes(self) -> bool {
+        self.normalized_timestamps > 0 || self.backfilled_completed_at > 0
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct SingleQueueMaintenance {
+    normalized_timestamps: usize,
+    backfilled_completed_at: usize,
+    changed: bool,
+}
+
+fn normalize_timestamp_field(field: &mut Option<String>) -> Result<bool> {
+    let Some(raw) = field.as_ref() else {
+        return Ok(false);
+    };
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(false);
+    }
+
+    let dt = match crate::timeutil::parse_rfc3339(trimmed) {
+        Ok(dt) => dt,
+        Err(_) => return Ok(false),
+    };
+
+    if dt.offset() == UtcOffset::UTC {
+        return Ok(false);
+    }
+
+    let normalized = crate::timeutil::format_rfc3339(dt)?;
+    if normalized == *raw {
+        return Ok(false);
+    }
+    *field = Some(normalized);
+    Ok(true)
+}
+
+fn normalize_task_timestamps(task: &mut Task) -> Result<usize> {
+    let mut normalized = 0usize;
+
+    if normalize_timestamp_field(&mut task.created_at)? {
+        normalized += 1;
+    }
+    if normalize_timestamp_field(&mut task.updated_at)? {
+        normalized += 1;
+    }
+    if normalize_timestamp_field(&mut task.completed_at)? {
+        normalized += 1;
+    }
+    if normalize_timestamp_field(&mut task.started_at)? {
+        normalized += 1;
+    }
+    if normalize_timestamp_field(&mut task.scheduled_start)? {
+        normalized += 1;
+    }
+
+    Ok(normalized)
+}
+
+fn maintain_single_queue_timestamps(
+    queue: &mut QueueFile,
+    now_utc: &str,
+) -> Result<SingleQueueMaintenance> {
+    let mut normalized_timestamps = 0usize;
+    for task in &mut queue.tasks {
+        normalized_timestamps += normalize_task_timestamps(task)?;
+    }
+
+    let backfilled_completed_at = super::backfill_terminal_completed_at(queue, now_utc);
+    let changed = normalized_timestamps > 0 || backfilled_completed_at > 0;
+
+    Ok(SingleQueueMaintenance {
+        normalized_timestamps,
+        backfilled_completed_at,
+        changed,
+    })
+}
+
+fn log_maintenance_report(report: QueueMaintenanceReport, queue_path: &Path, done_path: &Path) {
+    if !report.has_changes() {
+        return;
+    }
+
+    log::warn!(
+        "Queue load auto-repair applied: normalized {} non-UTC timestamp(s), backfilled {} terminal completed_at value(s). Saved queue={}, done={} (queue_path={}, done_path={}).",
+        report.normalized_timestamps,
+        report.backfilled_completed_at,
+        report.queue_changed,
+        report.done_changed,
+        queue_path.display(),
+        done_path.display()
+    );
+}
+
+fn maintain_and_save_loaded_queues(
+    queue_path: &Path,
+    queue_file: &mut QueueFile,
+    done_path: &Path,
+    done_path_exists: bool,
+    done_file: &mut QueueFile,
+) -> Result<QueueMaintenanceReport> {
+    let now = crate::timeutil::now_utc_rfc3339()?;
+
+    let queue_report = maintain_single_queue_timestamps(queue_file, &now)?;
+    let done_report = maintain_single_queue_timestamps(done_file, &now)?;
+
+    if queue_report.changed {
+        super::save_queue(queue_path, queue_file)
+            .with_context(|| format!("save auto-repaired queue {}", queue_path.display()))?;
+    }
+    if done_report.changed && (done_path_exists || !done_file.tasks.is_empty()) {
+        super::save_queue(done_path, done_file)
+            .with_context(|| format!("save auto-repaired done {}", done_path.display()))?;
+    }
+
+    let report = QueueMaintenanceReport {
+        normalized_timestamps: queue_report.normalized_timestamps
+            + done_report.normalized_timestamps,
+        backfilled_completed_at: queue_report.backfilled_completed_at
+            + done_report.backfilled_completed_at,
+        queue_changed: queue_report.changed,
+        done_changed: done_report.changed,
+    };
+
+    log_maintenance_report(report, queue_path, done_path);
+    Ok(report)
+}
 
 /// Load queue from path, returning default if file doesn't exist.
 pub fn load_queue_or_default(path: &Path) -> Result<QueueFile> {
@@ -92,7 +231,20 @@ pub fn load_queue_with_repair_and_validate(
     id_width: usize,
     max_dependency_depth: u8,
 ) -> Result<(QueueFile, Vec<ValidationWarning>)> {
-    let queue = load_queue_with_repair(path)?;
+    let mut queue = load_queue_with_repair(path)?;
+    let now = crate::timeutil::now_utc_rfc3339()?;
+    let report = maintain_single_queue_timestamps(&mut queue, &now)?;
+    if report.changed {
+        super::save_queue(path, &queue)
+            .with_context(|| format!("save auto-repaired queue {}", path.display()))?;
+        log::warn!(
+            "Queue load auto-repair applied: normalized {} non-UTC timestamp(s), backfilled {} terminal completed_at value(s). Saved queue={} (queue_path={}).",
+            report.normalized_timestamps,
+            report.backfilled_completed_at,
+            report.changed,
+            path.display()
+        );
+    }
 
     let warnings = if let Some(d) = done {
         validation::validate_queue_set(&queue, Some(d), id_prefix, id_width, max_dependency_depth)
@@ -111,13 +263,26 @@ pub fn load_and_validate_queues(
     resolved: &Resolved,
     include_done: bool,
 ) -> Result<(QueueFile, Option<QueueFile>)> {
-    let queue_file = load_queue(&resolved.queue_path)?;
+    let mut queue_file = load_queue_with_repair(&resolved.queue_path)?;
 
     // Always load done file for validation context (dependency checks need it)
-    let done_for_validation = load_queue_or_default(&resolved.done_path)?;
+    let done_path_exists = resolved.done_path.exists();
+    let mut done_for_validation = if done_path_exists {
+        load_queue_with_repair(&resolved.done_path)?
+    } else {
+        QueueFile::default()
+    };
+
+    maintain_and_save_loaded_queues(
+        &resolved.queue_path,
+        &mut queue_file,
+        &resolved.done_path,
+        done_path_exists,
+        &mut done_for_validation,
+    )?;
 
     // Build reference for validation (same logic as before)
-    let done_ref = if !done_for_validation.tasks.is_empty() || resolved.done_path.exists() {
+    let done_ref = if !done_for_validation.tasks.is_empty() || done_path_exists {
         Some(&done_for_validation)
     } else {
         None
@@ -313,6 +478,182 @@ mod tests {
             err.to_string().contains("Invalid dependency"),
             "Error should mention invalid dependency: {}",
             err
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn load_and_validate_queues_normalizes_non_utc_timestamps_and_persists() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+
+        let queue_path = ralph_dir.join("queue.json");
+        let done_path = ralph_dir.join("done.json");
+
+        let mut active_task = task("RQ-0001");
+        active_task.created_at = Some("2026-01-18T12:00:00-05:00".to_string());
+        active_task.updated_at = Some("2026-01-18T13:00:00-05:00".to_string());
+        save_queue(
+            &queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![active_task],
+            },
+        )?;
+
+        let mut done_task = task("RQ-0002");
+        done_task.status = TaskStatus::Done;
+        done_task.created_at = Some("2026-01-18T10:00:00-07:00".to_string());
+        done_task.updated_at = Some("2026-01-18T11:00:00-07:00".to_string());
+        done_task.completed_at = Some("2026-01-18T12:00:00-07:00".to_string());
+        save_queue(
+            &done_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![done_task],
+            },
+        )?;
+
+        let resolved = Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.to_path_buf(),
+            queue_path: queue_path.clone(),
+            done_path: done_path.clone(),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let (queue, done) = load_and_validate_queues(&resolved, true)?;
+        let done = done.expect("done file should be present");
+
+        let expected_active_created = crate::timeutil::format_rfc3339(
+            crate::timeutil::parse_rfc3339("2026-01-18T12:00:00-05:00")?,
+        )?;
+        let expected_done_completed = crate::timeutil::format_rfc3339(
+            crate::timeutil::parse_rfc3339("2026-01-18T12:00:00-07:00")?,
+        )?;
+
+        assert_eq!(
+            queue.tasks[0].created_at.as_deref(),
+            Some(expected_active_created.as_str())
+        );
+        assert_eq!(
+            done.tasks[0].completed_at.as_deref(),
+            Some(expected_done_completed.as_str())
+        );
+
+        let persisted_queue = load_queue(&queue_path)?;
+        let persisted_done = load_queue(&done_path)?;
+        assert_eq!(
+            persisted_queue.tasks[0].created_at.as_deref(),
+            Some(expected_active_created.as_str())
+        );
+        assert_eq!(
+            persisted_done.tasks[0].completed_at.as_deref(),
+            Some(expected_done_completed.as_str())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn load_and_validate_queues_backfills_terminal_completed_at_and_persists() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+
+        let queue_path = ralph_dir.join("queue.json");
+        let done_path = ralph_dir.join("done.json");
+
+        let mut queue_task = task("RQ-0001");
+        queue_task.status = TaskStatus::Done;
+        queue_task.completed_at = None;
+        save_queue(
+            &queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![queue_task],
+            },
+        )?;
+        save_queue(&done_path, &QueueFile::default())?;
+
+        let resolved = Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.to_path_buf(),
+            queue_path: queue_path.clone(),
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let (queue, _done) = load_and_validate_queues(&resolved, true)?;
+        let completed_at = queue.tasks[0]
+            .completed_at
+            .as_deref()
+            .expect("completed_at should be backfilled");
+        crate::timeutil::parse_rfc3339(completed_at)?;
+
+        let persisted_queue = load_queue(&queue_path)?;
+        let persisted_completed = persisted_queue.tasks[0]
+            .completed_at
+            .as_deref()
+            .expect("completed_at should be saved");
+        crate::timeutil::parse_rfc3339(persisted_completed)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn load_and_validate_queues_rejects_malformed_timestamps_without_rewrite() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir)?;
+
+        let queue_path = ralph_dir.join("queue.json");
+        let done_path = ralph_dir.join("done.json");
+
+        let mut bad_task = task("RQ-0001");
+        bad_task.created_at = Some("not-a-timestamp".to_string());
+        save_queue(
+            &queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![bad_task],
+            },
+        )?;
+
+        let resolved = Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: repo_root.to_path_buf(),
+            queue_path: queue_path.clone(),
+            done_path,
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: None,
+        };
+
+        let err = load_and_validate_queues(&resolved, false)
+            .expect_err("expected malformed timestamp to fail validation");
+        let err_msg = format!("{:#}", err);
+        assert!(
+            err_msg.contains("must be a valid RFC3339 UTC timestamp"),
+            "unexpected error message: {err_msg}"
+        );
+
+        let persisted = std::fs::read_to_string(&queue_path)?;
+        assert!(
+            persisted.contains("not-a-timestamp"),
+            "malformed timestamp should not be rewritten during conservative repair"
         );
 
         Ok(())

@@ -148,6 +148,51 @@ fn runner_requires_session_id(_runner: &Runner) -> bool {
     true
 }
 
+fn semantic_failure_reason(runner: &Runner, stderr: &str) -> Option<&'static str> {
+    match runner {
+        Runner::Opencode => {
+            let stderr_lower = stderr.to_ascii_lowercase();
+            let has_zod_session_validation_error = stderr_lower.contains("zoderror")
+                && stderr_lower.contains("sessionid")
+                && ((stderr_lower.contains("must start with") && stderr_lower.contains("ses"))
+                    || stderr_lower.contains("invalid_format"));
+
+            if has_zod_session_validation_error {
+                Some("opencode rejected session_id during resume validation")
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+fn semantic_failure_error(
+    operation: &str,
+    runner: &Runner,
+    bin: &str,
+    reason: &str,
+) -> RunnerError {
+    RunnerError::Other(anyhow!(
+        "Runner execution failed (operation={}, runner={}, bin={}): semantic failure with zero exit status: {}.",
+        operation,
+        runner_label(runner.clone()),
+        bin,
+        reason
+    ))
+}
+
+#[cfg(unix)]
+fn exit_status_signal(status: &ExitStatus) -> Option<i32> {
+    use std::os::unix::process::ExitStatusExt;
+    status.signal()
+}
+
+#[cfg(not(unix))]
+fn exit_status_signal(_status: &ExitStatus) -> Option<i32> {
+    None
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn run_prompt(
     runner: Runner,
@@ -339,11 +384,16 @@ pub(crate) fn run_prompt(
             });
         } else {
             return Err(RunnerError::TerminatedBySignal {
+                signal: exit_status_signal(&output.status),
                 stdout: output.stdout.into(),
                 stderr: output.stderr.into(),
                 session_id: output.session_id.clone(),
             });
         }
+    }
+
+    if let Some(reason) = semantic_failure_reason(&runner, &output.stderr) {
+        return Err(semantic_failure_error("run_prompt", &runner, bin, reason));
     }
 
     Ok(output)
@@ -558,11 +608,21 @@ pub(crate) fn resume_session(
             });
         } else {
             return Err(RunnerError::TerminatedBySignal {
+                signal: exit_status_signal(&output.status),
                 stdout: output.stdout.into(),
                 stderr: output.stderr.into(),
                 session_id: output.session_id.clone(),
             });
         }
+    }
+
+    if let Some(reason) = semantic_failure_reason(&runner, &output.stderr) {
+        return Err(semantic_failure_error(
+            "resume_session",
+            &runner,
+            bin,
+            reason,
+        ));
     }
 
     Ok(output)
@@ -792,5 +852,22 @@ mod tests {
         assert!(msg.contains("operation=run_prompt"));
         assert!(msg.contains("runner=codex"));
         assert!(msg.contains("bin=codex"));
+    }
+
+    #[test]
+    fn semantic_failure_reason_detects_opencode_session_validation_error() {
+        let stderr = r#"ZodError: [{"path":["sessionID"],"message":"Invalid string: must start with \"ses\""}]"#;
+        let reason = semantic_failure_reason(&Runner::Opencode, stderr);
+        assert_eq!(
+            reason,
+            Some("opencode rejected session_id during resume validation")
+        );
+    }
+
+    #[test]
+    fn semantic_failure_reason_ignores_non_opencode_runners() {
+        let stderr = "ZodError sessionID invalid_format must start with \"ses\"";
+        let reason = semantic_failure_reason(&Runner::Gemini, stderr);
+        assert_eq!(reason, None);
     }
 }

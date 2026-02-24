@@ -41,6 +41,20 @@ fn extract_final_assistant_response_gemini_message_assistant() {
 }
 
 #[test]
+fn extract_final_assistant_response_gemini_delta_stream_accumulates() {
+    let stdout = concat!(
+        r#"{"type":"message","role":"assistant","delta":true,"content":"Hello "}"#,
+        "\n",
+        r#"{"type":"message","role":"assistant","delta":true,"content":"World"}"#,
+        "\n"
+    );
+    assert_eq!(
+        extract_final_assistant_response(stdout),
+        Some("Hello World".to_string())
+    );
+}
+
+#[test]
 fn extract_final_assistant_response_opencode_text_stream() {
     let stdout = concat!(
         r#"{"type":"text","part":{"text":"Hello "}}"#,

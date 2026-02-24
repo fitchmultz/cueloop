@@ -260,6 +260,8 @@ Complete reference documentation:
 | **[Environment Variables](environment.md)** | Environment variables reference |
 | **[Plugin Development](plugin-development.md)** | Creating custom plugins |
 | **[Workflow](workflow.md)** | Architecture and runtime layout |
+| [Runner CLI Inventory](runner_cli_inventory.md) | Captured CLI flag/behavior inventory for supported runners |
+| [Runner Integration Contract (2026-02-25)](runner-integration-contract-2026-02-25.md) | Runtime contract + hardening plan for runner execution |
 
 ---
 
