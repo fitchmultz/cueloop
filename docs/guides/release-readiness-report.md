@@ -5,7 +5,7 @@ Purpose: capture an evidence-based publication snapshot for Ralph.
 ## Snapshot Metadata
 
 - Date: March 5, 2026
-- Base commit before this hardening pass: `caa59e79`
+- Hardening commit: `05a141f1`
 - Environment: local macOS workstation (GNU Make + pinned Rust toolchain)
 - Scope: public-release hardening pass (CI/safety/docs/reviewer evidence)
 
@@ -15,7 +15,8 @@ Status values: `PASS`, `FAIL`, or `PENDING`.
 
 - `make agent-ci`: `PASS`
 - `make ci`: `PASS`
-- `make pre-public-check`: `PASS` on clean temporary snapshot of current changes
+- `make pre-public-check`: `PASS`
+- `make macos-ci`: `PASS`
 - Reviewer deterministic smoke sequence (CLI help + focused contract tests): `PASS`
 
 Evidence commands run:
@@ -41,8 +42,8 @@ cargo test -p ralph --test run_cli_overrides_contract_test -- --nocapture
 
 Notes:
 
-- Running `make pre-public-check` in an in-progress working tree correctly fails the clean-worktree check by design.
-- Running `make pre-public-check` on a clean temporary snapshot of these exact changes passed end-to-end.
+- `make pre-public-check` now passes end-to-end on a clean tree for this hardening commit.
+- `make macos-ci` also passed (183 app/core tests; UI automation intentionally excluded by default in this target).
 
 ## What Changed in This Pass
 
@@ -82,10 +83,10 @@ Notes:
 
 ## Go / No-Go Decision
 
-- Current decision: `CONDITIONAL GO`
-- Condition: publish from a clean tree with the same gate outcomes recorded above.
+- Current decision: `GO`
+- Condition: keep release branch clean and rerun gates if any additional changes are introduced.
 
 ## Sign-off
 
-- Technical sign-off: ready pending final clean-tree commit
-- Publication sign-off: pending maintainer approval and (optional) private-history cleanup decision
+- Technical sign-off: complete on hardening commit `05a141f1`
+- Publication sign-off: maintainer approval pending (history cleanup remains optional)
