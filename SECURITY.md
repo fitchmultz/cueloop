@@ -7,9 +7,10 @@ Purpose: Document vulnerability reporting, data handling guidelines, and redacti
 If you discover a security vulnerability in Ralph, please report it responsibly:
 
 1. **Do not open a public issue** for security vulnerabilities.
-2. Email the maintainer directly at the contact address in the repository's git history or author metadata.
-3. Include a clear description of the vulnerability and steps to reproduce.
-4. Allow reasonable time for assessment and remediation before public disclosure.
+2. Preferred: use GitHub private vulnerability reporting in the repository Security tab (`Security` → `Report a vulnerability`).
+3. If private reporting is unavailable, contact the maintainer via GitHub profile contact details: <https://github.com/mitchfultz>.
+4. Include a clear description of the vulnerability and steps to reproduce.
+5. Allow reasonable time for assessment and remediation before public disclosure.
 
 ## Data Handling Guidelines
 
@@ -119,4 +120,4 @@ Redaction logic is implemented in:
 - `crates/ralph/src/fsutil.rs`: Safeguard dump functions with redaction by default.
 - `crates/ralph/src/debuglog.rs`: Debug logging for raw runner output.
 
-For questions about security practices or to report concerns, contact the maintainer directly.
+For questions about security practices, use GitHub private vulnerability reporting when available, or contact the maintainer via <https://github.com/mitchfultz>.

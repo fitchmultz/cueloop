@@ -767,8 +767,9 @@ Use `["*"]` to subscribe to all events.
 If you discover a security vulnerability in Ralph:
 
 1. **Do not open a public issue**
-2. Email the maintainer directly (contact in repository git history)
-3. Include:
+2. Preferred: use GitHub private vulnerability reporting in the repository Security tab (`Security` → `Report a vulnerability`)
+3. If private reporting is unavailable, contact the maintainer via <https://github.com/mitchfultz>
+4. Include:
    - Clear description of the vulnerability
    - Steps to reproduce
    - Potential impact assessment

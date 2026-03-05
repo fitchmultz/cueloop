@@ -1238,7 +1238,7 @@
           "minimum": 0
         },
         "jitter_ratio": {
-          "description": "Jitter ratio in [0,1]. Default: 0.2 (20% variance).",
+          "description": "Jitter ratio in \\[0,1\\]. Default: 0.2 (20% variance).",
           "type": [
             "number",
             "null"

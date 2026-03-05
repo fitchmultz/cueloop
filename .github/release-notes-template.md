@@ -44,7 +44,11 @@ mv ralph ~/.local/bin/
 Before using the binary, verify its integrity:
 
 ```bash
+# macOS
 shasum -a 256 -c ralph-{{VERSION}}-<platform>.tar.gz.sha256
+
+# Linux
+sha256sum -c ralph-{{VERSION}}-<platform>.tar.gz.sha256
 ```
 
 ### Build from Source

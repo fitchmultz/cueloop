@@ -33,14 +33,21 @@ Suggested local checks:
 make macos-build
 make macos-test
 make macos-test-window-shortcuts
+# Shared workstation: RALPH_XCODE_JOBS=4 make macos-test-window-shortcuts
 ```
 
 ## 4) Code Quality and Test Health
 
-- [ ] Local CI passes from a clean tree:
+- [ ] Local PR-equivalent gate passes from a clean tree:
 
 ```bash
 make agent-ci
+```
+
+- [ ] Full Rust release gate passes before tagging/public release:
+
+```bash
+make ci
 ```
 
 - [ ] If app behavior changed, run ship gate:
@@ -63,7 +70,10 @@ git log --oneline -n 40
 git rebase -i HEAD~20
 ```
 
+- [ ] For the current pre-public `main` cleanup campaign, follow the exact hash-level plan in [`history-cleanup-execution-plan.md`](history-cleanup-execution-plan.md).
+
 - [ ] Ensure commit messages explain user-visible behavior changes (not only implementation details).
+- [ ] If repository is still private and solely controlled, rewrite/squash noisy history before launch; if already shared with collaborators, avoid destructive rewrites and prefer explicit cleanup commits.
 
 ## 6) Release and Community Metadata
 
@@ -74,11 +84,22 @@ git rebase -i HEAD~20
 
 ## 7) Final Pre-Public Pass
 
-Run:
+Run the automated audit (includes required-file checks, runtime-artifact checks, key markdown-link checks, and CI):
 
 ```bash
-git status --short
-make agent-ci
+make pre-public-check
+# Shared workstation: RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make pre-public-check
+```
+
+Or invoke the script directly when you want to skip selected checks:
+
+```bash
+scripts/pre-public-check.sh --help
+scripts/pre-public-check.sh --skip-clean --skip-ci
 ```
 
 If all checks pass, perform final review of README + PORTFOLIO guide, then publish.
+
+Related references:
+- [CI and Test Strategy](ci-strategy.md)
+- [Release Readiness Report](release-readiness-report.md)

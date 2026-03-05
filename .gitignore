@@ -26,6 +26,9 @@ CLAUDE.md
 # Ralph debug logs (raw/unredacted; do not commit)
 .ralph/logs/
 
+# Ralph lock files (runtime coordination artifacts)
+.ralph/lock/
+
 # Ralph runtime artifacts (cache is generated and should stay local)
 .ralph/workspaces/
 .ralph/cache/

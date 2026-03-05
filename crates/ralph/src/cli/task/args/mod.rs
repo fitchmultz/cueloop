@@ -185,14 +185,14 @@ pub enum TaskCommand {
     )]
     Relate(TaskRelateArgs),
 
-    /// Mark a task as blocking another task (shorthand for 'relate <task> blocks <blocked>').
+    /// Mark a task as blocking another task (shorthand for `relate <task> blocks <blocked>`).
     #[command(
         next_help_heading = "Relationships",
         after_long_help = "Examples:\n ralph task blocks RQ-0001 RQ-0002\n ralph task blocks RQ-0001 RQ-0002 RQ-0003"
     )]
     Blocks(TaskBlocksArgs),
 
-    /// Mark a task as a duplicate of another task (shorthand for 'relate <task> duplicates <original>').
+    /// Mark a task as a duplicate of another task (shorthand for `relate <task> duplicates <original>`).
     #[command(
         next_help_heading = "Relationships",
         name = "mark-duplicate",

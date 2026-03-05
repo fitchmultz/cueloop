@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Parse status strings into TaskStatus values.
-//! - Parse list inputs (comma or newline separated) into Vec<String>.
+//! - Parse list inputs (comma or newline separated) into `Vec<String>`.
 //! - Parse and normalize RFC3339 timestamp inputs.
 //!
 //! Does not handle:

@@ -69,7 +69,7 @@ impl TaskEditKey {
         }
     }
 
-    /// Returns whether this field is a list type (Vec<String>).
+    /// Returns whether this field is a list type (`Vec<String>`).
     pub fn is_list_field(self) -> bool {
         matches!(
             self,

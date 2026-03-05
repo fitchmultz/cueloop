@@ -4,6 +4,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 
 ## Start Here
 
+- [Architecture Overview](architecture.md): components, data flow, and design trade-offs
 - [Quick Start](quick-start.md): install, initialize, create first task, run it
 - [CLI Reference](cli.md): command map + high-value command patterns
 - [Configuration](configuration.md): full config schema and precedence
@@ -35,7 +36,11 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 
 - [Getting Started (extended)](guides/getting-started.md)
 - [Advanced Usage](guides/advanced.md)
+- [CI and Test Strategy](guides/ci-strategy.md)
 - [Public Readiness Checklist](guides/public-readiness.md)
+- [Release Readiness Report](guides/release-readiness-report.md)
+- [Public Release Hardening Investigation](guides/public-release-hardening-investigation.md)
+- [History Cleanup Execution Plan](guides/history-cleanup-execution-plan.md)
 - [Plugin Development](plugin-development.md)
 - [Workflow](workflow.md)
 
@@ -48,16 +53,27 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 
 ## Validation and CI
 
+> GNU Make >= 4 is required for project targets. On macOS, install with `brew install make` and use `gmake` unless your PATH already exposes GNU Make as `make`.
+
 Before merging documentation or code changes:
 
 ```bash
+make ci-fast
 make agent-ci
+# Optional shared-workstation caps: RALPH_CI_JOBS=4 make agent-ci
+```
+
+Full Rust release gate:
+
+```bash
+make ci
 ```
 
 Ship gate (when macOS app changes are in scope):
 
 ```bash
 make macos-ci
+# Optional caps: RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make macos-ci
 ```
 
 ## Notes on Historical Docs

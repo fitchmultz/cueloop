@@ -3,8 +3,8 @@
 //! Responsibilities:
 //! - Verify the Makefile `ci` and `macos-ci` targets define the exact required
 //!   dependency sequence (no missing, reordered, or duplicated steps).
-//! - Verify `agent-ci` routes to `ci` by default and escalates to `macos-ci`
-//!   only for app-path changes (or explicit force).
+//! - Verify `agent-ci` routes to `ci-fast` by default and escalates to
+//!   `macos-ci` only for app-path changes (or explicit force).
 //! - Ensure documentation (CONTRIBUTING.md, GEMINI.md) stays synchronized with
 //!   the canonical CI pipeline definition.
 //! - Validate clean target preserves user data while removing temp artifacts.
@@ -14,7 +14,8 @@
 //! - Linting/formatting/type-checking correctness (see respective tooling).
 //!
 //! Invariants/assumptions:
-//! - The `ci` target in the Makefile must exactly match `REQUIRED_CI_STEPS`.
+//! - The semantic `ci` pipeline in the Makefile must exactly match
+//!   `REQUIRED_CI_STEPS` (including `ci-fast` expansion when factored).
 //! - The `macos-ci` target must exactly match `REQUIRED_MACOS_CI_DEPS`.
 //! - The `agent-ci` target must include deterministic path-based routing.
 //! - Docs parity is anchored to the canonical constant, not dynamically parsed
@@ -36,6 +37,17 @@ const REQUIRED_CI_STEPS: &[&str] = &[
     "build",
     "generate",
     "install",
+];
+
+/// Canonical fast CI subset (`ci-fast`) in exact order.
+const REQUIRED_CI_FAST_STEPS: &[&str] = &[
+    "check-env-safety",
+    "check-backup-artifacts",
+    "deps",
+    "format",
+    "type-check",
+    "lint",
+    "test",
 ];
 
 /// Canonical required macos-ci dependencies in exact order (single source of truth).
@@ -274,9 +286,26 @@ members = []
     Ok(())
 }
 
-/// Extract the ordered list of targets from the `ci:` recipe in a Makefile.
-/// Handles both modern format (dependencies on the same line) and legacy format
-/// (separate $(MAKE) invocations within the target body).
+/// Expand CI target aliases in-place for semantic pipeline comparison.
+fn expand_ci_alias_steps(makefile: &str, steps: Vec<String>) -> Result<Vec<String>> {
+    let mut expanded = Vec::new();
+
+    for step in steps {
+        if step == "ci-fast" {
+            let ci_fast_steps = extract_target_dependencies(makefile, "ci-fast")
+                .context("extract ci-fast deps for ci expansion")?;
+            expanded.extend(ci_fast_steps);
+        } else {
+            expanded.push(step);
+        }
+    }
+
+    Ok(expanded)
+}
+
+/// Extract the ordered list of semantic gate steps from the `ci` target in a
+/// Makefile. Handles both modern format (header dependencies) and legacy format
+/// (recipe-level `$(MAKE)` invocations).
 fn extract_make_ci_steps(makefile: &str) -> Result<Vec<String>> {
     let lines: Vec<&str> = makefile.lines().collect();
     let mut ci_header: Option<(usize, &str)> = None;
@@ -313,11 +342,13 @@ fn extract_make_ci_steps(makefile: &str) -> Result<Vec<String>> {
         current_index += 1;
     }
 
+    let expanded_steps = expand_ci_alias_steps(makefile, steps)?;
+
     anyhow::ensure!(
-        !steps.is_empty(),
+        !expanded_steps.is_empty(),
         "failed to extract any ci steps from Makefile"
     );
-    Ok(steps)
+    Ok(expanded_steps)
 }
 
 /// Extract one target block (`target: ...` plus recipe lines) from a Makefile.
@@ -388,6 +419,26 @@ ci: check-env-safety check-backup-artifacts deps format type-check lint test bui
     assert_eq!(
         actual, expected,
         "extractor should parse only the `ci` target"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_extract_make_ci_steps_expands_ci_fast_dependencies() -> Result<()> {
+    let makefile = r#"
+ci-fast: check-env-safety check-backup-artifacts deps format type-check lint test
+ci: ci-fast build generate install
+"#;
+
+    let actual = extract_make_ci_steps(makefile)?;
+    let expected: Vec<String> = REQUIRED_CI_STEPS
+        .iter()
+        .map(|step| (*step).to_string())
+        .collect();
+    assert_eq!(
+        actual, expected,
+        "extractor should expand ci-fast alias to semantic ci steps"
     );
 
     Ok(())
@@ -484,6 +535,33 @@ fn test_makefile_ci_matches_required_sequence_exactly() -> Result<()> {
         "Makefile `ci` must exactly match required CI gate sequence.\n\
          Expected: {:?}\n\
          Actual:   {:?}",
+        expected, actual
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_makefile_ci_fast_matches_required_subset() -> Result<()> {
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir
+        .parent()
+        .and_then(|p| p.parent())
+        .context("resolve repo root")?;
+    let makefile = std::fs::read_to_string(repo_root.join("Makefile")).context("read Makefile")?;
+
+    let actual =
+        extract_target_dependencies(&makefile, "ci-fast").context("extract ci-fast deps")?;
+    let expected: Vec<String> = REQUIRED_CI_FAST_STEPS
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    assert_eq!(
+        actual, expected,
+        "`ci-fast` must exactly match required fast CI subset.\n\
+			Expected: {:?}\n\
+			Actual:   {:?}",
         expected, actual
     );
 
@@ -632,12 +710,11 @@ fn test_makefile_test_target_uses_nextest_and_keeps_doc_tests() -> Result<()> {
 
     let test_block = extract_target_block(&makefile, "test").context("extract test block")?;
     assert!(
-        test_block
-            .contains("cargo nextest run --workspace --all-targets --locked -- --include-ignored"),
+        test_block.contains("cargo nextest run --workspace --all-targets --locked"),
         "test target should run cargo-nextest for non-doc tests"
     );
     assert!(
-        test_block.contains("cargo test --workspace --doc --locked -- --include-ignored"),
+        test_block.contains("cargo test --workspace --doc --locked"),
         "test target should keep explicit doc test coverage"
     );
     assert!(
@@ -645,8 +722,12 @@ fn test_makefile_test_target_uses_nextest_and_keeps_doc_tests() -> Result<()> {
         "test target should check for nextest availability"
     );
     assert!(
-        test_block.contains("cargo test --workspace --all-targets --locked -- --include-ignored"),
+        test_block.contains("cargo test --workspace --all-targets --locked"),
         "test target should keep cargo test fallback coverage when nextest is unavailable"
+    );
+    assert!(
+        test_block.contains("-- --include-ignored"),
+        "test target should keep include-ignored coverage for workspace and doc tests"
     );
     assert!(
         test_block.contains("cargo install cargo-nextest --locked"),
@@ -669,14 +750,21 @@ fn test_macos_targets_gate_with_preflight_and_isolate_derived_data() -> Result<(
         makefile.contains("macos-preflight:"),
         "Makefile should define macos-preflight target"
     );
+
+    let macos_build_deps = extract_target_dependencies(&makefile, "macos-build")
+        .context("extract macos-build deps")?;
     assert!(
-        makefile.contains("macos-build:\n\t@$(MAKE) --no-print-directory macos-preflight"),
-        "macos-build should run macos-preflight first"
+        macos_build_deps.contains(&"macos-preflight".to_string()),
+        "macos-build should depend on macos-preflight"
     );
+
+    let macos_test_deps =
+        extract_target_dependencies(&makefile, "macos-test").context("extract macos-test deps")?;
     assert!(
-        makefile.contains("macos-test:\n\t@$(MAKE) --no-print-directory macos-preflight"),
-        "macos-test should run macos-preflight first"
+        macos_test_deps.contains(&"macos-preflight".to_string()),
+        "macos-test should depend on macos-preflight"
     );
+
     assert!(
         makefile.contains("macos-ci: macos-preflight"),
         "macos-ci should depend on macos-preflight"
@@ -714,8 +802,8 @@ fn test_agent_ci_routes_between_ci_and_macos_ci() -> Result<()> {
         "agent-ci must route based on app path changes under apps/RalphMac/"
     );
     assert!(
-        agent_ci_block.contains("$(MAKE) --no-print-directory ci"),
-        "agent-ci must invoke the full Rust/CLI gate"
+        agent_ci_block.contains("$(MAKE) --no-print-directory ci-fast"),
+        "agent-ci must invoke the fast Rust/CLI gate for non-app changes"
     );
     assert!(
         agent_ci_block.contains("$(MAKE) --no-print-directory macos-ci"),

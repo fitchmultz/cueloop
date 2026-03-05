@@ -1,9 +1,9 @@
 //! Small logging helpers for the outer supervisor (`commands::run`).
 //!
 //! Goal: consistent, human-readable lifecycle logs for supervisor scopes:
-//! - "<Scope>: start"
-//! - "<Scope>: end"
-//! - "<Scope>: error: <message>"
+//! - `"<scope>: start"`
+//! - `"<scope>: end"`
+//! - `"<scope>: error: <message>"`
 
 use anyhow::Result;
 

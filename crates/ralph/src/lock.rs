@@ -17,7 +17,7 @@
 //! - The lock directory path is stable for the resource being protected.
 //! - The "task" label is reserved for shared lock semantics.
 //! - Labels are informational and should be trimmed before evaluation.
-//! - Task lock sidecar files use unique names (owner_task_<pid>_<counter>) to prevent
+//! - Task lock sidecar files use unique names (`owner_task_<pid>_<counter>`) to prevent
 //!   collisions when multiple task locks are acquired from the same process.
 //! - Indeterminate PID liveness is treated conservatively as lock-owned to prevent
 //!   concurrent supervisors and unsafe state cleanup.

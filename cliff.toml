@@ -113,7 +113,7 @@ sort_commits = "oldest"
 
 # Link parsers for issue/PR references
 link_parsers = [
-    { pattern = "RQ-([0-9]+)", href = "https://github.com/mitchfultz/ralph/issues/$1" },
+    { pattern = "RQ-([0-9]+)", href = "https://github.com/mitchfultz/ralph/search?q=RQ-$1&type=commits" },
 ]
 
 [bump]

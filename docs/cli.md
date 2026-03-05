@@ -8,6 +8,7 @@ These are available on most commands:
 
 - `--force`
 - `-v, --verbose`
+- `--debug` (supported on run/scan flows; writes raw logs to `.ralph/logs/debug.log`)
 - `--color <auto|always|never>`
 - `--no-color`
 - `--auto-fix`
@@ -53,6 +54,7 @@ ralph init --non-interactive
 ```bash
 ralph task "Stabilize flaky CI test"
 ralph run one
+ralph run one --debug
 ralph run loop --max-tasks 5
 ```
 

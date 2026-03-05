@@ -9,8 +9,21 @@ XCODE_DERIVED_DATA_ROOT ?= target/tmp/xcode-deriveddata
 XCODE_DESTINATION ?= platform=macOS,arch=$(shell uname -m)
 # UI tests: Set to 1 to include UI tests (headed, mouse-interactive), 0 to skip (default for CI)
 RALPH_UI_TESTS ?= 0
+# Constrain local gate resource usage to keep machines responsive while multitasking.
+# Set to 0 to let cargo/nextest use tool defaults (max throughput).
+RALPH_CI_JOBS ?= 4
+# Cap xcodebuild parallelism for local friendliness (set 0 for xcodebuild default).
+RALPH_XCODE_JOBS ?= 4
+# Build stamp path to avoid duplicate release builds in a single make invocation.
+RALPH_STAMP_DIR ?= target/tmp/stamps
+RALPH_RELEASE_BUILD_STAMP := $(RALPH_STAMP_DIR)/ralph-release-build.stamp
 # Command prefix placeholder for consistency across targets.
 RALPH_ENV_RESET := :
+
+CARGO_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
+NEXTEST_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
+CARGO_TEST_THREADS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--test-threads $(RALPH_CI_JOBS),)
+XCODE_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_XCODE_JOBS)),-jobs $(RALPH_XCODE_JOBS),)
 
 .DELETE_ON_ERROR:
 .ONESHELL:
@@ -19,19 +32,21 @@ SHELL := bash
 
 # Require GNU Make >= 4.x (Homebrew `make` provides `gmake`, plus a `make` shim under `.../gnubin`).
 ifeq ($(filter 4.% 5.%,$(MAKE_VERSION)),)
-$(error GNU Make >= 4 is required (found: $(MAKE_VERSION)). On macOS: `brew install make` then run `gmake <target>` or add `$(HOME)/.zshrc`: export PATH="/opt/homebrew/opt/make/libexec/gnubin:$$PATH")
+$(error GNU Make >= 4 is required (found: $(MAKE_VERSION)). On macOS: `brew install make` then run `gmake <target>` or add Homebrew gnubin to PATH (Apple Silicon: /opt/homebrew/opt/make/libexec/gnubin, Intel: /usr/local/opt/make/libexec/gnubin).)
 endif
 
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: help install update lint lint-fix format type-check clean clean-temp test generate build ci deps \
+.PHONY: help install update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast deps \
+	changelog changelog-preview changelog-check release release-dry-run release-artifacts pre-commit pre-public-check \
 	agent-ci check-env-safety check-backup-artifacts macos-preflight macos-build macos-test macos-ci macos-test-ui \
-	macos-test-window-shortcuts coverage coverage-clean
+	macos-test-window-shortcuts coverage coverage-clean FORCE
 
 help:
 	@echo "Common targets:"
-	@echo "  make ci          # Rust-only local CI gate (formats code, builds+installs release)"
+	@echo "  make ci-fast     # Fast deterministic Rust/CLI gate for day-to-day development"
+	@echo "  make ci          # Full Rust release gate (ci-fast + build/generate/install)"
 	@echo "  make agent-ci    # Agent gate: Rust/CLI always; macOS app gate only on apps/RalphMac changes"
 	@echo "  make macos-ci     # Rust gate + macOS app build+test (requires Xcode)"
 	@echo "  make test         # Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing)"
@@ -41,6 +56,19 @@ help:
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
 	@echo "  make install      # Install release binary to BIN_DIR"
+	@echo ""
+	@echo "Resource knobs (optional):"
+	@echo "  RALPH_CI_JOBS=4     # Caps cargo/nextest parallelism (0 = tool default)"
+	@echo "  RALPH_XCODE_JOBS=4  # Caps xcodebuild parallelism (0 = xcodebuild default)"
+
+FORCE:
+
+$(RALPH_RELEASE_BUILD_STAMP): FORCE
+	@mkdir -p "$(RALPH_STAMP_DIR)"
+	@echo "→ Release build..."
+	@$(RALPH_ENV_RESET); cargo build --workspace --release --locked $(CARGO_JOBS_FLAG)
+	@touch "$(RALPH_RELEASE_BUILD_STAMP)"
+	@echo "  ✓ Release build complete"
 
 # Optional but cheap: fail fast if lockfile or network access is busted
 deps:
@@ -48,7 +76,7 @@ deps:
 	@$(RALPH_ENV_RESET); cargo fetch --locked
 	@echo "  ✓ Deps fetched"
 
-install: build
+install: $(RALPH_RELEASE_BUILD_STAMP)
 	@bin_dir="$(BIN_DIR)"; \
 	if [ ! -w "$$bin_dir" ]; then \
 		bin_dir="$(HOME)/.local/bin"; \
@@ -66,19 +94,24 @@ format:
 	@$(RALPH_ENV_RESET); cargo fmt --all
 	@echo "  ✓ Formatting complete"
 
+format-check:
+	@echo "→ Checking formatting..."
+	@$(RALPH_ENV_RESET); cargo fmt --all --check
+	@echo "  ✓ Formatting OK"
+
 type-check:
 	@echo "→ Type-checking..."
-	@$(RALPH_ENV_RESET); cargo check --workspace --all-targets --all-features --locked
+	@$(RALPH_ENV_RESET); cargo check --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG)
 	@echo "  ✓ Type-checking complete"
 
 lint:
 	@echo "→ Linting (clippy, non-mutating)..."
-	@$(RALPH_ENV_RESET); cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+	@$(RALPH_ENV_RESET); cargo clippy --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG) -- -D warnings
 	@echo "  ✓ Linting complete"
 
 lint-fix:
 	@echo "→ Clippy autofix (optional)..."
-	@$(RALPH_ENV_RESET); cargo clippy --fix --allow-dirty --workspace --all-targets --all-features --locked -- -D warnings
+	@$(RALPH_ENV_RESET); cargo clippy --fix --allow-dirty --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG) -- -D warnings
 	@echo "  ✓ Lint autofix complete"
 
 test:
@@ -93,7 +126,7 @@ test:
 		fi; \
 		rm -rf "$$run_dir" 2>/dev/null || true; \
 	}; \
-	trap cleanup INT TERM; \
+	trap cleanup EXIT INT TERM; \
 	export TMPDIR="$$run_dir"; \
 	export TEMP="$$run_dir"; \
 	export TMP="$$run_dir"; \
@@ -105,7 +138,7 @@ test:
 	exit_code=0; \
 	if cargo nextest --version >/dev/null 2>&1; then \
 		echo "  → Using cargo-nextest for non-doc tests"; \
-		if cargo nextest run --workspace --all-targets --locked -- --include-ignored >"$$unit_log" 2>&1; then \
+		if cargo nextest run --workspace --all-targets --locked $(NEXTEST_JOBS_FLAG) -- --include-ignored >"$$unit_log" 2>&1; then \
 			grep -E "^(test result:|running|     Running|Summary|PASS|FAIL)" "$$unit_log" | tail -5 || true; \
 		else \
 			unit_log_content="$$(cat "$$unit_log" 2>/dev/null || true)"; \
@@ -115,7 +148,7 @@ test:
 	else \
 		echo "  ⚠ cargo-nextest not found; falling back to cargo test --workspace --all-targets"; \
 		echo "    Install with: cargo install cargo-nextest --locked"; \
-		if cargo test --workspace --all-targets --locked -- --include-ignored >"$$unit_log" 2>&1; then \
+		if cargo test --workspace --all-targets --locked $(CARGO_JOBS_FLAG) -- --include-ignored $(CARGO_TEST_THREADS_FLAG) >"$$unit_log" 2>&1; then \
 			grep -E "^(test result:|running|     Running)" "$$unit_log" || true; \
 		else \
 			unit_log_content="$$(cat "$$unit_log" 2>/dev/null || true)"; \
@@ -124,7 +157,7 @@ test:
 		fi; \
 	fi; \
 	if [ "$$exit_code" -eq 0 ]; then \
-		if cargo test --workspace --doc --locked -- --include-ignored >"$$doc_log" 2>&1; then \
+		if cargo test --workspace --doc --locked $(CARGO_JOBS_FLAG) -- --include-ignored $(CARGO_TEST_THREADS_FLAG) >"$$doc_log" 2>&1; then \
 			grep -E "^(test result:|running|     Running)" "$$doc_log" || true; \
 		else \
 			doc_log_content="$$(cat "$$doc_log" 2>/dev/null || true)"; \
@@ -135,22 +168,57 @@ test:
 	if [ "$$exit_code" -eq 0 ]; then \
 		echo "  ✓ Tests passed"; \
 	fi; \
-	cleanup; \
 	exit "$$exit_code"
 
-# Required every time
-build:
-	@echo "→ Release build..."
-	@$(RALPH_ENV_RESET); cargo build --workspace --release --locked
-	@echo "  ✓ Release build complete"
+# Required every time (deduplicated via release-build stamp)
+build: $(RALPH_RELEASE_BUILD_STAMP)
+	@true
 
 # Use the already-built release binary (no cargo run, no debug compile)
-generate: build
+generate: $(RALPH_RELEASE_BUILD_STAMP)
 	@echo "→ Generating schemas (via release binary)..."
 	@mkdir -p schemas
 	@./target/release/$(BIN_NAME) config schema > schemas/config.schema.json
 	@./target/release/$(BIN_NAME) queue schema > schemas/queue.schema.json
 	@echo "  ✓ Schemas generated"
+
+docs:
+	@echo "→ Generating rustdocs..."
+	@$(RALPH_ENV_RESET); cargo doc --workspace --all-features --no-deps --locked $(CARGO_JOBS_FLAG)
+	@echo "  ✓ Rustdocs generated in target/doc"
+
+changelog:
+	@scripts/generate-changelog.sh
+
+changelog-preview:
+	@scripts/generate-changelog.sh --dry-run
+
+changelog-check:
+	@scripts/generate-changelog.sh --check
+
+release:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Usage: make release VERSION=x.y.z"; \
+		exit 2; \
+	fi
+	@scripts/release.sh "$(VERSION)"
+
+release-dry-run:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Usage: make release-dry-run VERSION=x.y.z"; \
+		exit 2; \
+	fi
+	@RELEASE_DRY_RUN=1 scripts/release.sh "$(VERSION)"
+
+release-artifacts:
+	@if [ -n "$(VERSION)" ]; then \
+		scripts/build-release-artifacts.sh "$(VERSION)"; \
+	else \
+		scripts/build-release-artifacts.sh; \
+	fi
+
+pre-public-check:
+	@scripts/pre-public-check.sh
 
 clean: clean-temp
 	@cargo clean
@@ -178,9 +246,19 @@ check-backup-artifacts:
 		exit 1; \
 	fi
 
-# Speed-first local CI that always builds release + installs
-ci: check-env-safety check-backup-artifacts deps format type-check lint test build generate install
-	@echo "→ Local CI (formats code, always builds+installs release)..."
+pre-commit: check-env-safety check-backup-artifacts format-check
+	@echo "→ Pre-commit checks complete"
+	@echo "  ✓ Pre-commit checks passed"
+
+# Fast deterministic Rust/CLI gate for routine development and PR-equivalent checks.
+ci-fast: check-env-safety check-backup-artifacts deps format type-check lint test
+	@echo "→ Fast CI gate (format/type/lint/test)..."
+	@echo ""
+	@echo "  ✓ Fast CI completed"
+
+# Full Rust release gate (includes release build/schema generation/install checks).
+ci: ci-fast build generate install
+	@echo "→ Full CI gate (ci-fast + release build/generate/install)..."
 	@echo ""
 	@echo "  ✓ CI completed"
 
@@ -210,8 +288,8 @@ agent-ci:
 		echo "  → app changes detected under apps/RalphMac/; running macOS gate"; \
 		$(MAKE) --no-print-directory macos-ci; \
 	else \
-		echo "  → no app changes detected; running Rust/CLI gate"; \
-		$(MAKE) --no-print-directory ci; \
+		echo "  → no app changes detected; running fast Rust/CLI gate"; \
+		$(MAKE) --no-print-directory ci-fast; \
 	fi
 
 macos-preflight:
@@ -225,9 +303,7 @@ macos-preflight:
 		exit 1; \
 	fi
 
-macos-build:
-	@$(MAKE) --no-print-directory macos-preflight
-	@$(MAKE) --no-print-directory build
+macos-build: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/build"; \
 	echo "→ macOS build (Xcode build)..."; \
 	rm -rf "$$derived_data_path" 2>/dev/null || true; \
@@ -237,43 +313,65 @@ macos-build:
 		-configuration Release \
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
+		$(XCODE_JOBS_FLAG) \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		build
 
-macos-test:
-	@$(MAKE) --no-print-directory macos-preflight
-	@$(MAKE) --no-print-directory build
+macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/test"; \
 	ralph_bin_path="$$(pwd)/target/release/ralph"; \
 	include_ui_tests="$(RALPH_UI_TESTS)"; \
 	if [ "$$include_ui_tests" = "1" ]; then \
 		echo "→ macOS tests (Xcode, including UI tests - will take over mouse/keyboard)..."; \
-		skipped_tests=""; \
+		rm -rf "$$derived_data_path" 2>/dev/null || true; \
+		RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
+			-project apps/RalphMac/RalphMac.xcodeproj \
+			-scheme RalphMac \
+			-configuration Debug \
+			-destination '$(XCODE_DESTINATION)' \
+			-derivedDataPath "$$derived_data_path" \
+			$(XCODE_JOBS_FLAG) \
+			CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+			SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
+			build-for-testing; \
+		echo "→ Clearing quarantine metadata on UI test bundles..."; \
+		xattr -dr com.apple.quarantine "$$derived_data_path/Build/Products/Debug/RalphMac.app" "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app" 2>/dev/null || true; \
+		echo "→ Re-signing UI test bundles (ad-hoc) to avoid Gatekeeper runner failures..."; \
+		codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/RalphMac.app"; \
+		codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app"; \
+		RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
+			-project apps/RalphMac/RalphMac.xcodeproj \
+			-scheme RalphMac \
+			-configuration Debug \
+			-destination '$(XCODE_DESTINATION)' \
+			-derivedDataPath "$$derived_data_path" \
+			$(XCODE_JOBS_FLAG) \
+			test-without-building; \
 	else \
 		echo "→ macOS tests (Xcode, skipping UI tests - use RALPH_UI_TESTS=1 to include)..."; \
 		skipped_tests="-skip-testing RalphMacUITests"; \
+		rm -rf "$$derived_data_path" 2>/dev/null || true; \
+		RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
+			-project apps/RalphMac/RalphMac.xcodeproj \
+			-scheme RalphMac \
+			-configuration Debug \
+			-destination '$(XCODE_DESTINATION)' \
+			-derivedDataPath "$$derived_data_path" \
+			$(XCODE_JOBS_FLAG) \
+			CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+			SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
+			$$skipped_tests \
+			test; \
 	fi; \
-	rm -rf "$$derived_data_path" 2>/dev/null || true; \
-	RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
-		-project apps/RalphMac/RalphMac.xcodeproj \
-		-scheme RalphMac \
-		-configuration Debug \
-		-destination '$(XCODE_DESTINATION)' \
-		-derivedDataPath "$$derived_data_path" \
-		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
-		$$skipped_tests \
-		test
+	true
 
 # Run macOS UI tests (interactive - will take over mouse/keyboard)
 macos-test-ui:
 	@$(MAKE) --no-print-directory macos-test RALPH_UI_TESTS=1
 
 # Run targeted UI regressions for window/tab shortcut scoping.
-macos-test-window-shortcuts:
-	@$(MAKE) --no-print-directory macos-preflight
-	@$(MAKE) --no-print-directory build
+macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui-shortcuts"; \
 	ralph_bin_path="$$(pwd)/target/release/ralph"; \
 	echo "→ macOS UI shortcut regressions (focused window/tab behavior)..."; \
@@ -284,11 +382,27 @@ macos-test-window-shortcuts:
 		-configuration Debug \
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
+		$(XCODE_JOBS_FLAG) \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		-only-testing:RalphMacUITests/RalphMacUITests/test_windowShortcuts_affectOnlyFocusedWindow \
 		-only-testing:RalphMacUITests/RalphMacUITests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
-		test
+		build-for-testing; \
+	echo "→ Clearing quarantine metadata on UI test bundles..."; \
+	xattr -dr com.apple.quarantine "$$derived_data_path/Build/Products/Debug/RalphMac.app" "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app" 2>/dev/null || true; \
+	echo "→ Re-signing UI test bundles (ad-hoc) to avoid Gatekeeper runner failures..."; \
+	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/RalphMac.app"; \
+	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app"; \
+	RALPH_BIN_PATH="$$ralph_bin_path" xcodebuild \
+		-project apps/RalphMac/RalphMac.xcodeproj \
+		-scheme RalphMac \
+		-configuration Debug \
+		-destination '$(XCODE_DESTINATION)' \
+		-derivedDataPath "$$derived_data_path" \
+		$(XCODE_JOBS_FLAG) \
+		-only-testing:RalphMacUITests/RalphMacUITests/test_windowShortcuts_affectOnlyFocusedWindow \
+		-only-testing:RalphMacUITests/RalphMacUITests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
+		test-without-building
 
 macos-ci: macos-preflight ci macos-build macos-test
 	@echo "→ macOS ship gate (Rust CI + macOS app build+test)..."

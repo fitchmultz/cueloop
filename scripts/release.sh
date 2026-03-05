@@ -1,24 +1,20 @@
 #!/usr/bin/env bash
 #
-# Release script for Ralph - Local release workflow without GitHub Actions
-#
-# This script handles the complete release process:
-# - Pre-release validation (clean working dir, main branch, CI passes)
-# - Version bumping in Cargo.toml
-# - CHANGELOG.md updates
-# - Multi-platform release artifact builds
-# - Checksum generation (SHA256)
-# - Git commit and annotated tag creation
-# - GitHub release creation with asset upload via gh CLI
-#
+# Purpose: Execute Ralph's local-only release workflow (no GitHub Actions).
+# Responsibilities:
+# - Validate release preconditions (branch, cleanliness, auth/tooling, tag availability).
+# - Update release metadata (Cargo version + CHANGELOG sections/links).
+# - Run local CI, package artifacts, generate checksums, and publish via GitHub CLI.
+# Scope:
+# - Operates on repository metadata and release artifacts only.
+# - Does not perform dependency upgrades or unrelated refactors.
 # Usage:
-#   scripts/release.sh <version>              # Full release
-#   RELEASE_DRY_RUN=1 scripts/release.sh <version>  # Dry run (no side effects)
-#
-# Requirements:
-#   - gh CLI installed and authenticated
-#   - cargo and Rust toolchain
-#   - git with access to the repository
+# - scripts/release.sh <version>
+# - RELEASE_DRY_RUN=1 scripts/release.sh <version>
+# Invariants/assumptions:
+# - Version must be strict semver (x.y.z).
+# - Release flow runs from repository root on the main branch.
+# - CI and release artifact steps must be reproducible (`--locked`).
 
 set -euo pipefail
 
@@ -36,6 +32,12 @@ CARGO_TOML="$REPO_ROOT/crates/ralph/Cargo.toml"
 CHANGELOG="$REPO_ROOT/CHANGELOG.md"
 RELEASE_NOTES_TEMPLATE="$REPO_ROOT/.github/release-notes-template.md"
 RELEASE_ARTIFACTS_DIR="$REPO_ROOT/target/release-artifacts"
+ALLOWED_RELEASE_DIRTY_PATHS=(
+    "crates/ralph/Cargo.toml"
+    "CHANGELOG.md"
+    "schemas/config.schema.json"
+    "schemas/queue.schema.json"
+)
 
 # Show usage information
 usage() {
@@ -50,6 +52,7 @@ usage() {
     echo ""
     echo "Environment Variables:"
     echo "  RELEASE_DRY_RUN    Set to 1 for dry run mode (no side effects)"
+    echo "  RALPH_MAKE_CMD     Override make executable for CI step (e.g., gmake)"
     echo ""
     echo "Examples:"
     echo "  # Full release"
@@ -67,11 +70,16 @@ usage() {
     echo "  - cargo and Rust toolchain"
     echo "  - git with access to the repository"
     echo ""
+    echo "Exit codes:"
+    echo "  0  Success"
+    echo "  1  Runtime or unexpected failure"
+    echo "  2  Usage/validation error"
+    echo ""
     echo "Release Process:"
     echo "  1. Pre-release validation (clean working dir, main branch, CI passes)"
     echo "  2. Version bumping in Cargo.toml"
     echo "  3. CHANGELOG.md updates"
-    echo "  4. Multi-platform release artifact builds"
+    echo "  4. Release artifact build for the current platform"
     echo "  5. Checksum generation (SHA256)"
     echo "  6. Git commit and annotated tag creation"
     echo "  7. GitHub release creation with asset upload via gh CLI"
@@ -106,6 +114,87 @@ log_step() {
     echo ""
 }
 
+resolve_make_cmd() {
+    if [ -n "${RALPH_MAKE_CMD:-}" ]; then
+        echo "$RALPH_MAKE_CMD"
+        return
+    fi
+
+    if command -v gmake >/dev/null 2>&1; then
+        echo "gmake"
+        return
+    fi
+
+    if command -v make >/dev/null 2>&1 && make --version 2>/dev/null | grep -q "GNU Make"; then
+        echo "make"
+        return
+    fi
+
+    echo "GNU Make is required to run the release CI step. Install with 'brew install make' and use gmake." >&2
+    exit 1
+}
+
+get_rust_host_target() {
+    local host
+    host=$(rustc --print host-tuple 2>/dev/null || true)
+    if [ -n "$host" ]; then
+        echo "$host"
+        return 0
+    fi
+
+    host=$(rustc --version --verbose 2>/dev/null | sed -n 's/^host: //p' | head -1 || true)
+    if [ -n "$host" ]; then
+        echo "$host"
+        return 0
+    fi
+
+    log_error "Unable to determine rustc host target"
+    exit 1
+}
+
+mktemp_file() {
+    local prefix="$1"
+    local base="${TMPDIR:-/tmp}"
+    base="${base%/}"
+    mktemp "${base}/${prefix}.XXXXXX"
+}
+
+sha256_file() {
+    local file="$1"
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$file"
+    elif command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$file"
+    else
+        log_error "No SHA256 checksum tool found (expected shasum or sha256sum)"
+        exit 1
+    fi
+}
+
+render_release_notes_template() {
+    local template_path="$1"
+    local output_path="$2"
+    local version="$3"
+    local changelog_path="$4"
+    local checksums_path="$5"
+
+    python3 - "$template_path" "$output_path" "$version" "$changelog_path" "$checksums_path" <<'PY'
+from pathlib import Path
+import sys
+
+template_path, output_path, version, changelog_path, checksums_path = sys.argv[1:6]
+template = Path(template_path).read_text(encoding="utf-8")
+changelog = Path(changelog_path).read_text(encoding="utf-8").rstrip("\n")
+checksums = Path(checksums_path).read_text(encoding="utf-8").rstrip("\n")
+rendered = (
+    template.replace("{{VERSION}}", version)
+    .replace("{{CHANGELOG_SECTION}}", changelog)
+    .replace("{{CHECKSUMS}}", checksums)
+)
+Path(output_path).write_text(rendered, encoding="utf-8")
+PY
+}
+
 # Dry run aware command execution
 run_cmd() {
     if [ "$DRY_RUN" = "1" ]; then
@@ -120,8 +209,68 @@ validate_version() {
     local version="$1"
     if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         log_error "VERSION must be in semver format (e.g., 0.2.0)"
+        exit 2
+    fi
+}
+
+is_allowed_release_dirty_path() {
+    local path="$1"
+    local allowed
+    for allowed in "${ALLOWED_RELEASE_DIRTY_PATHS[@]}"; do
+        if [ "$path" = "$allowed" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+assert_release_dirty_paths_allowed() {
+    log_info "Validating post-CI dirty paths are release-expected"
+
+    local line
+    local path
+    local disallowed=()
+    local dirty_lines
+    dirty_lines=$(git -C "$REPO_ROOT" status --porcelain | grep -vE '^..[[:space:]]+\.ralph/' || true)
+
+    if [ -z "$dirty_lines" ]; then
+        log_success "No tracked changes after CI"
+        return 0
+    fi
+
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        path=$(echo "$line" | awk '{print $NF}')
+        if ! is_allowed_release_dirty_path "$path"; then
+            disallowed+=("$line")
+        fi
+    done <<< "$dirty_lines"
+
+    if [ ${#disallowed[@]} -ne 0 ]; then
+        log_error "CI introduced unexpected tracked changes"
+        printf '  %s\n' "${disallowed[@]}"
+        echo "  Allowed release-dirty paths are:"
+        printf '    - %s\n' "${ALLOWED_RELEASE_DIRTY_PATHS[@]}"
+        echo "  Resolve these changes before releasing."
         exit 1
     fi
+
+    log_success "Post-CI tracked changes are release-expected"
+}
+
+ensure_release_binary() {
+    local binary_path="$REPO_ROOT/target/release/ralph"
+
+    if [ -x "$binary_path" ]; then
+        log_info "Using existing release binary: $binary_path"
+        return 0
+    fi
+
+    log_info "Release binary missing; building with locked dependencies"
+    (
+        cd "$REPO_ROOT"
+        cargo build --release -p ralph --locked --quiet
+    )
 }
 
 # Check if required tools are installed
@@ -177,7 +326,7 @@ validate_repo_state() {
 
     # Check working directory is clean (excluding .ralph/* files)
     local dirty_files
-    dirty_files=$(git status --porcelain | grep -v '^\.ralph/' || true)
+    dirty_files=$(git status --porcelain | grep -vE '^..[[:space:]]+\.ralph/' || true)
     if [ -n "$dirty_files" ]; then
         log_error "Working directory is not clean"
         echo "  Dirty files:"
@@ -250,13 +399,37 @@ update_changelog() {
         echo "    [DRY RUN] Would update $CHANGELOG"
         echo "    [DRY RUN]   - Move Unreleased content to version $VERSION section"
         echo "    [DRY RUN]   - Update comparison links"
+
+        # Validate changelog link assumptions even in dry-run mode.
+        local dry_run_base_version
+        dry_run_base_version=$(sed -n -E 's|^\[Unreleased\]: .*compare/v([0-9]+\.[0-9]+\.[0-9]+)\.\.\.HEAD.*|\1|p' "$CHANGELOG" | head -1 || true)
+        if [ -z "$dry_run_base_version" ]; then
+            dry_run_base_version=$(sed -n -E 's|^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*|\1|p' "$CHANGELOG" | head -1 || true)
+        fi
+        if [ -z "$dry_run_base_version" ]; then
+            log_error "Dry-run validation failed: could not determine previous release version from CHANGELOG.md"
+            exit 1
+        fi
+        log_success "Dry-run validated changelog base release version: $dry_run_base_version"
     else
         # Move Unreleased content to new version section
         # This preserves the generated entries and creates a new empty Unreleased section
 
         # Create temp file for processing
         local temp_file
-        temp_file=$(mktemp)
+        temp_file=$(mktemp_file "ralph-release")
+
+        # Resolve current base version from existing Unreleased compare link.
+        local unreleased_base_version
+        unreleased_base_version=$(sed -n -E 's|^\[Unreleased\]: .*compare/v([0-9]+\.[0-9]+\.[0-9]+)\.\.\.HEAD.*|\1|p' "$CHANGELOG" | head -1 || true)
+        if [ -z "$unreleased_base_version" ]; then
+            unreleased_base_version=$(sed -n -E 's|^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*|\1|p' "$CHANGELOG" | head -1 || true)
+        fi
+        if [ -z "$unreleased_base_version" ]; then
+            log_error "Could not determine previous release version from CHANGELOG.md"
+            rm -f "$temp_file"
+            exit 1
+        fi
 
         # Read current changelog and transform it
         local in_unreleased=0
@@ -298,10 +471,6 @@ update_changelog() {
         # Clean up unreleased content (remove leading/trailing blank lines)
         unreleased_content=$(echo "$unreleased_content" | sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;};/\n$/ba')
 
-        # Get current base version from comparison link
-        local current_base
-        current_base=$(echo "$before_unreleased" | grep '^\[Unreleased\]:' | sed 's/.*compare\/v\([0-9.]*\)\.\.\.HEAD.*/\1/' || echo "0.1.0")
-
         # Write new changelog
         {
             # Header and everything before Unreleased
@@ -329,14 +498,24 @@ update_changelog() {
             # Then add the new version link
         } > "$temp_file"
 
-        # Update the comparison links
-        sed -i.bak \
-            -e "s|^\[Unreleased\]: .*|[Unreleased]: https://github.com/mitchfultz/ralph/compare/v$VERSION...HEAD|" \
-            -e "/^\[$current_base\]: /a\\
-[$VERSION]: https://github.com/mitchfultz/ralph/releases/tag/v$VERSION" \
-            "$temp_file"
-
-        rm -f "$temp_file.bak"
+        # Update comparison links (Keep a Changelog style):
+        # - Unreleased now compares from new release tag to HEAD
+        # - New release compares previous base release to new release
+        if grep -q '^\[Unreleased\]:' "$temp_file"; then
+            sed -i.bak \
+                -e "/^\[$VERSION\]: /d" \
+                -e "s|^\[Unreleased\]: .*|[Unreleased]: https://github.com/mitchfultz/ralph/compare/v$VERSION...HEAD|" \
+                -e "/^\[Unreleased\]: /a\\
+[$VERSION]: https://github.com/mitchfultz/ralph/compare/v$unreleased_base_version...v$VERSION" \
+                "$temp_file"
+            rm -f "$temp_file.bak"
+        else
+            {
+                echo ""
+                echo "[Unreleased]: https://github.com/mitchfultz/ralph/compare/v$VERSION...HEAD"
+                echo "[$VERSION]: https://github.com/mitchfultz/ralph/compare/v$unreleased_base_version...v$VERSION"
+            } >> "$temp_file"
+        fi
 
         # Replace original with updated
         mv "$temp_file" "$CHANGELOG"
@@ -350,15 +529,21 @@ run_ci() {
     log_step "Running CI validation"
 
     if [ "$DRY_RUN" = "1" ]; then
-        echo "    [DRY RUN] Would run: make ci"
+        local make_cmd
+        make_cmd=$(resolve_make_cmd)
+        echo "    [DRY RUN] Would run: ${make_cmd} ci"
+        echo "    [DRY RUN] Would validate dirty paths after CI are release-expected"
     else
+        local make_cmd
+        make_cmd=$(resolve_make_cmd)
         cd "$REPO_ROOT"
-        if ! make ci; then
+        if ! "$make_cmd" ci; then
             log_error "CI validation failed"
             echo "  Fix issues before releasing"
             exit 1
         fi
         log_success "CI validation passed"
+        assert_release_dirty_paths_allowed
     fi
 }
 
@@ -367,17 +552,15 @@ build_release_artifacts() {
     log_step "Building release artifacts"
 
     local target_triple
-    target_triple=$(rustc --print host-tuple)
+    target_triple=$(get_rust_host_target)
 
     log_info "Building for target: $target_triple"
 
     if [ "$DRY_RUN" = "1" ]; then
-        echo "    [DRY RUN] Would build release binary with: cargo build --release -p ralph"
+        echo "    [DRY RUN] Would ensure release binary exists (locked build if needed)"
         echo "    [DRY RUN] Would create tarball in: $RELEASE_ARTIFACTS_DIR"
     else
-        # Build release binary
-        cd "$REPO_ROOT"
-        cargo build --release -p ralph --quiet
+        ensure_release_binary
 
         # Create artifacts directory
         mkdir -p "$RELEASE_ARTIFACTS_DIR"
@@ -413,7 +596,7 @@ build_release_artifacts() {
 
         # Generate checksum
         cd "$RELEASE_ARTIFACTS_DIR"
-        shasum -a 256 "$tarball_name" > "$tarball_name.sha256"
+        sha256_file "$tarball_name" > "$tarball_name.sha256"
         log_success "Generated SHA256 checksum"
     fi
 }
@@ -426,6 +609,35 @@ generate_release_notes() {
 
     if [ "$DRY_RUN" = "1" ]; then
         echo "    [DRY RUN] Would generate release notes from template"
+
+        if [ -f "$RELEASE_NOTES_TEMPLATE" ] && command -v python3 >/dev/null 2>&1; then
+            local preview_file
+            local preview_changelog
+            local preview_checksums
+            preview_file=$(mktemp_file "ralph-release-notes-preview")
+            preview_changelog=$(mktemp_file "ralph-release-notes-preview-changelog")
+            preview_checksums=$(mktemp_file "ralph-release-notes-preview-checksums")
+            printf 'Dry-run preview changelog section\n' > "$preview_changelog"
+            printf 'ralph-%s-sample.tar.gz  abcdef\n' "$VERSION" > "$preview_checksums"
+
+            render_release_notes_template \
+                "$RELEASE_NOTES_TEMPLATE" \
+                "$preview_file" \
+                "$VERSION" \
+                "$preview_changelog" \
+                "$preview_checksums"
+
+            if ! grep -q "$VERSION" "$preview_file"; then
+                log_error "Dry-run validation failed: rendered release notes missing version marker"
+                rm -f "$preview_file" "$preview_changelog" "$preview_checksums"
+                exit 1
+            fi
+
+            rm -f "$preview_file" "$preview_changelog" "$preview_checksums"
+            log_success "Dry-run validated release-notes template rendering"
+        elif [ -f "$RELEASE_NOTES_TEMPLATE" ]; then
+            log_warn "Dry-run could not validate template rendering because python3 is unavailable"
+        fi
     else
         # Extract changelog section for this version
         local changelog_section
@@ -441,16 +653,16 @@ generate_release_notes() {
             checksums=$(cd "$RELEASE_ARTIFACTS_DIR" && cat ./*.sha256 2>/dev/null || echo "Checksums not available")
         fi
 
-        # Read template and substitute
-        if [ -f "$RELEASE_NOTES_TEMPLATE" ]; then
-            # Use template
-            sed -e "s/{{VERSION}}/$VERSION/g" \
-                -e "s/{{CHANGELOG_SECTION}}/$changelog_section/g" \
-                -e "s/{{CHECKSUMS}}/$checksums/g" \
-                "$RELEASE_NOTES_TEMPLATE" > "$release_notes_file"
-        else
-            # Generate simple release notes
-            cat > "$release_notes_file" << EOF
+        # Render release notes.
+        local changelog_tmp
+        local checksums_tmp
+        changelog_tmp=$(mktemp_file "ralph-release-notes-changelog")
+        checksums_tmp=$(mktemp_file "ralph-release-notes-checksums")
+        printf '%s\n' "$changelog_section" > "$changelog_tmp"
+        printf '%s\n' "$checksums" > "$checksums_tmp"
+
+        render_fallback_release_notes() {
+            cat > "$release_notes_file" << EOF_RELEASE_NOTES
 ## What's Changed
 
 $changelog_section
@@ -469,8 +681,24 @@ mv ralph ~/.local/bin/
 \`\`\`
 $checksums
 \`\`\`
-EOF
+EOF_RELEASE_NOTES
+        }
+
+        if [ -f "$RELEASE_NOTES_TEMPLATE" ] && command -v python3 >/dev/null 2>&1; then
+            render_release_notes_template \
+                "$RELEASE_NOTES_TEMPLATE" \
+                "$release_notes_file" \
+                "$VERSION" \
+                "$changelog_tmp" \
+                "$checksums_tmp"
+        elif [ -f "$RELEASE_NOTES_TEMPLATE" ]; then
+            log_warn "python3 not found; using fallback release notes format"
+            render_fallback_release_notes
+        else
+            render_fallback_release_notes
         fi
+
+        rm -f "$changelog_tmp" "$checksums_tmp"
 
         log_success "Generated release notes: $release_notes_file"
         echo "$release_notes_file"
@@ -482,14 +710,14 @@ create_git_tag() {
     log_step "Creating git commit and tag"
 
     if [ "$DRY_RUN" = "1" ]; then
-        echo "    [DRY RUN] Would stage: crates/ralph/Cargo.toml CHANGELOG.md"
+        echo "    [DRY RUN] Would stage: crates/ralph/Cargo.toml CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json"
         echo "    [DRY RUN] Would commit: Release v$VERSION"
         echo "    [DRY RUN] Would tag: v$VERSION (annotated)"
     else
         cd "$REPO_ROOT"
 
-        # Stage changes
-        git add crates/ralph/Cargo.toml CHANGELOG.md
+        # Stage release metadata + generated schemas (if changed by CI/generate)
+        git add crates/ralph/Cargo.toml CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json
 
         # Create commit
         git commit -m "Release v$VERSION"
@@ -571,8 +799,8 @@ rollback() {
 
     cd "$REPO_ROOT"
 
-    # Reset changes to Cargo.toml and CHANGELOG.md
-    git checkout -- crates/ralph/Cargo.toml CHANGELOG.md 2>/dev/null || true
+    # Reset release metadata changes
+    git checkout -- crates/ralph/Cargo.toml CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json 2>/dev/null || true
 
     # Delete local tag if created
     if git rev-parse "v$VERSION" &> /dev/null; then
@@ -637,7 +865,7 @@ main() {
         log_error "VERSION is required"
         echo ""
         usage
-        exit 1
+        exit 2
     fi
 
     validate_version "$VERSION"

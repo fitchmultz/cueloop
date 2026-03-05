@@ -1,20 +1,16 @@
 #!/usr/bin/env bash
 #
-# Build release artifacts for multiple platforms
-#
-# This script builds release binaries for supported platforms:
-# - x86_64-unknown-linux-gnu (Linux x64)
-# - x86_64-apple-darwin (macOS x64)
-# - aarch64-apple-darwin (macOS ARM64)
-#
+# Purpose: Build and package Ralph release artifacts for supported platforms.
+# Responsibilities:
+# - Build release binaries (native or cross target) with locked dependencies.
+# - Produce tarball artifacts and SHA256 checksums under target/release-artifacts.
+# Scope:
+# - Artifact packaging only; no tagging/release publication.
 # Usage:
-#   scripts/build-release-artifacts.sh [version]
-#
-# If version is not provided, it reads from crates/ralph/Cargo.toml
-#
-# Requirements:
-#   - cargo and Rust toolchain
-#   - Cross-compilation targets installed (for non-native builds)
+# - scripts/build-release-artifacts.sh [--current|--all] [version]
+# Invariants/assumptions:
+# - Cargo and Rust toolchain are installed.
+# - Cross targets must already be installed for non-native builds.
 
 set -euo pipefail
 
@@ -57,6 +53,18 @@ log_step() {
     echo ""
 }
 
+sha256_file() {
+    local file="$1"
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$file"
+    elif command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$file"
+    else
+        log_error "No SHA256 checksum tool found (expected shasum or sha256sum)"
+        exit 1
+    fi
+}
+
 # Get version from Cargo.toml
 get_version_from_cargo() {
     grep '^version = ' "$CARGO_TOML" | head -1 | sed 's/version = "\(.*\)"/\1/'
@@ -64,7 +72,21 @@ get_version_from_cargo() {
 
 # Detect current platform
 get_current_target() {
-    rustc --print host-tuple
+    local host
+    host=$(rustc --print host-tuple 2>/dev/null || true)
+    if [ -n "$host" ]; then
+        echo "$host"
+        return 0
+    fi
+
+    host=$(rustc --version --verbose 2>/dev/null | sed -n 's/^host: //p' | head -1 || true)
+    if [ -n "$host" ]; then
+        echo "$host"
+        return 0
+    fi
+
+    log_error "Failed to detect rustc host target"
+    exit 1
 }
 
 # Map target triple to platform name
@@ -113,7 +135,7 @@ build_for_target() {
     cd "$REPO_ROOT"
 
     # Build release binary
-    if cargo build --release -p ralph --target "$target" --quiet; then
+    if cargo build --release -p ralph --target "$target" --locked --quiet; then
         log_success "Build successful for $target"
     else
         log_error "Build failed for $target"
@@ -130,7 +152,7 @@ build_for_target() {
 
         # Generate checksum
         cd "$RELEASE_ARTIFACTS_DIR"
-        shasum -a 256 "$tarball_name" > "$tarball_name.sha256"
+        sha256_file "$tarball_name" > "$tarball_name.sha256"
         log_success "Generated SHA256 checksum for $tarball_name"
     else
         log_error "Binary not found at $binary_path"
@@ -149,7 +171,7 @@ build_current() {
     cd "$REPO_ROOT"
 
     # Build release binary
-    cargo build --release -p ralph --quiet
+    cargo build --release -p ralph --locked --quiet
 
     # Create tarball
     local binary_path="$REPO_ROOT/target/release/ralph"
@@ -165,7 +187,7 @@ build_current() {
 
         # Generate checksum
         cd "$RELEASE_ARTIFACTS_DIR"
-        shasum -a 256 "$tarball_name" > "$tarball_name.sha256"
+        sha256_file "$tarball_name" > "$tarball_name.sha256"
         log_success "Generated SHA256 checksum"
     else
         log_error "Binary not found at $binary_path"
@@ -245,6 +267,11 @@ Options:
   --all      Build for all supported platforms (requires cross-compilation targets)
   --help     Show this help message
 
+Exit codes:
+  0  Success
+  1  Runtime or unexpected failure
+  2  Usage/validation error
+
 Examples:
   scripts/build-release-artifacts.sh              # Build current platform, auto-detect version
   scripts/build-release-artifacts.sh 0.2.0        # Build current platform with specific version
@@ -280,7 +307,7 @@ main() {
             -*)
                 log_error "Unknown option: $1"
                 print_usage
-                exit 1
+                exit 2
                 ;;
             *)
                 VERSION="$1"
@@ -299,7 +326,7 @@ main() {
     if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         log_error "Invalid version format: $VERSION"
         echo "  Version must be in semver format (e.g., 0.2.0)"
-        exit 1
+        exit 2
     fi
 
     echo "═══════════════════════════════════════════════════"

@@ -35,6 +35,10 @@ Before creating a release, ensure you have:
    - On `main` branch
    - Remote is accessible
 
+4. **GNU Make >= 4 available** (for wrapper targets)
+   - On macOS, install with `brew install make`
+   - Use `gmake ...` unless `make --version` reports GNU Make
+
 ## Changelog Generation
 
 Ralph uses [git-cliff](https://git-cliff.org/) to automatically generate changelog entries from commits following the `RQ-####: <summary>` pattern.
@@ -50,12 +54,24 @@ cargo install git-cliff
 Before releasing, preview what entries will be generated:
 
 ```bash
+scripts/generate-changelog.sh --dry-run
+```
+
+Convenience wrapper:
+
+```bash
 make changelog-preview
 ```
 
 ### Generate Changelog
 
 To update the `CHANGELOG.md` Unreleased section with entries from commits:
+
+```bash
+scripts/generate-changelog.sh
+```
+
+Convenience wrapper:
 
 ```bash
 make changelog
@@ -105,10 +121,10 @@ The release script automatically generates changelog entries, but you can previe
 
 ```bash
 # Preview what will be added
-make changelog-preview
+scripts/generate-changelog.sh --dry-run
 
 # Or manually generate entries
-make changelog
+scripts/generate-changelog.sh
 # Then edit CHANGELOG.md as needed
 ```
 
@@ -122,6 +138,14 @@ scripts/release.sh 0.2.0
 
 # Dry run first (recommended for testing)
 RELEASE_DRY_RUN=1 scripts/release.sh 0.2.0
+```
+
+Equivalent Makefile wrappers:
+
+```bash
+make release VERSION=0.2.0
+make release-dry-run VERSION=0.2.0
+# macOS/Homebrew users: gmake release VERSION=0.2.0
 ```
 
 ### 4. What the Script Does
@@ -140,7 +164,8 @@ The release script performs these steps:
    - Updates `CHANGELOG.md` with new version section
 
 3. **CI Validation**
-   - Runs `make ci` to ensure everything passes
+   - Runs `make ci` (or `RALPH_MAKE_CMD` override in script) to ensure everything passes
+   - Verifies post-CI tracked changes are limited to release-expected files (`Cargo.toml`, `CHANGELOG.md`, generated schemas)
 
 4. **Build Artifacts**
    - Builds release binary for current platform
@@ -192,6 +217,7 @@ today=$(date +%Y-%m-%d)
 
 ```bash
 make ci
+# macOS/Homebrew users: gmake ci
 ```
 
 ### Step 4: Build Artifacts
@@ -207,7 +233,7 @@ scripts/build-release-artifacts.sh --all $VERSION
 ### Step 5: Commit and Tag
 
 ```bash
-git add crates/ralph/Cargo.toml CHANGELOG.md
+git add crates/ralph/Cargo.toml CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json
 git commit -m "Release v$VERSION"
 git tag -a "v$VERSION" -m "Release v$VERSION"
 git push origin main
@@ -358,13 +384,19 @@ make ci  # See what's failing
 scripts/release.sh 0.2.0  # Retry
 ```
 
+If GNU Make is not your default `make`, set:
+
+```bash
+RALPH_MAKE_CMD=gmake scripts/release.sh 0.2.0
+```
+
 ## Release Checklist
 
 Before running the release script:
 
 - [ ] All changes for this release are merged to `main`
 - [ ] `make ci` passes locally
-- [ ] `CHANGELOG.md` has content under `## [Unreleased]` (run `make changelog` to generate)
+- [ ] `CHANGELOG.md` has content under `## [Unreleased]` (run `scripts/generate-changelog.sh` to generate)
 - [ ] Changelog entries are categorized correctly (Added/Changed/Fixed/etc.)
 - [ ] Version follows semver (e.g., `0.2.0`)
 - [ ] `gh auth status` shows you're authenticated
@@ -378,17 +410,20 @@ After the release:
 - [ ] Checksums are available
 - [ ] Installation instructions work
 
-## Makefile Targets
+## Convenience Makefile Wrappers
+
+Scripts are the canonical release entrypoints. Makefile targets below wrap those scripts for discoverability.
 
 | Target | Description |
 |--------|-------------|
-| `make release VERSION=0.2.0` | Run full release process |
+| `make release VERSION=0.2.0` | Run full release process (`scripts/release.sh`) |
 | `make release-dry-run VERSION=0.2.0` | Test release without side effects |
 | `make release-artifacts` | Build release artifacts only |
-| `make build` | Build release binary |
+| `make release-artifacts VERSION=0.2.0` | Build artifacts with explicit version |
 | `make changelog` | Generate changelog entries from commits |
 | `make changelog-preview` | Preview changelog changes without modifying files |
-| `make changelog-check` | Check if changelog is up to date (CI) |
+| `make changelog-check` | Check if changelog is up to date |
+| `make docs` | Generate rustdocs in `target/doc` |
 
 ## Related Files
 

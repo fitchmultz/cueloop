@@ -44,7 +44,7 @@ The app centers around workspace navigation and fast task handling:
 
 ## Keyboard Shortcuts
 
-Documented from `apps/RalphMac/RalphMac/RalphMacApp.swift` command registrations (verified on 2026-03-04, commit `46194ff4`).
+Documented from `apps/RalphMac/RalphMac/RalphMacApp.swift` command registrations.
 
 ### Navigation
 - `⌘1`: Show Queue
@@ -83,6 +83,28 @@ Practical implications:
 - CLI and app should remain behaviorally aligned for core task/run operations.
 - Most data and execution issues can be reproduced via CLI commands.
 - `ralph doctor` remains the primary diagnostics entry point.
+
+## Automated UI Testing
+
+UI automation exists and is intentionally separated from the default macOS CI path because UI tests are headed and can take over mouse/keyboard.
+The Makefile now clears quarantine metadata and then re-signs UI test bundles ad-hoc before execution to avoid macOS Gatekeeper flagging `RalphMacUITests-Runner.app` as damaged.
+
+Run all UI tests:
+
+```bash
+make macos-test-ui
+# Shared workstation: RALPH_XCODE_JOBS=4 make macos-test-ui
+# macOS/Homebrew GNU Make users: gmake macos-test-ui
+```
+
+Run the focused window/tab shortcut regression suite:
+
+```bash
+make macos-test-window-shortcuts
+# Shared workstation: RALPH_XCODE_JOBS=4 make macos-test-window-shortcuts
+```
+
+Test sources live in `apps/RalphMac/RalphMacUITests/`.
 
 ## Troubleshooting
 

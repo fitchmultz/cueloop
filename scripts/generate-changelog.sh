@@ -49,6 +49,13 @@ NC='\033[0m' # No Color
 DRY_RUN=0
 CHECK_MODE=0
 
+mktemp_file() {
+    local prefix="$1"
+    local base="${TMPDIR:-/tmp}"
+    base="${base%/}"
+    mktemp "${base}/${prefix}.XXXXXX"
+}
+
 # Logging functions
 log_info() {
     echo -e "${BLUE}ℹ${NC} $1"
@@ -127,7 +134,7 @@ update_changelog() {
 
     # Create a temporary file
     local temp_file
-    temp_file=$(mktemp)
+    temp_file=$(mktemp_file "ralph-changelog")
 
     # Clean up the entries - remove leading/trailing blank lines but preserve structure
     local cleaned_entries

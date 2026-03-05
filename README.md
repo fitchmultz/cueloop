@@ -44,10 +44,13 @@ cargo install ralph
 
 From source:
 
+> Requires GNU Make >= 4 for project targets. On macOS, install via `brew install make` and use `gmake` (or add Homebrew gnubin to `PATH`).
+
 ```bash
 git clone https://github.com/mitchfultz/ralph
 cd ralph
 make install
+# macOS (Homebrew GNU Make): gmake install
 ```
 
 ## Quick Start
@@ -132,26 +135,52 @@ CLI workflow sample:
 Start here:
 
 - [Documentation Index](docs/index.md)
+- [Architecture Overview](docs/architecture.md)
 - [Quick Start](docs/quick-start.md)
 - [CLI Reference](docs/cli.md)
 - [Configuration](docs/configuration.md)
+- [CI and Test Strategy](docs/guides/ci-strategy.md)
 - [Portfolio / Reviewer Guide](PORTFOLIO.md)
 - [Public Readiness Checklist](docs/guides/public-readiness.md)
+- [Release Readiness Report](docs/guides/release-readiness-report.md)
 
 Reference and policies:
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - [SECURITY.md](SECURITY.md)
 - [CHANGELOG.md](CHANGELOG.md)
+
+## Repository Runtime State
+
+This repository intentionally keeps a sanitized `.ralph/` state for dogfooding and reproducible examples.
+In most consumer repositories, `.ralph/` is project-local runtime state managed by `ralph init`.
 
 ## Development
 
 ```bash
-# fast local checks
+# fastest deterministic Rust/CLI checks
+make ci-fast
+
+# path-aware developer gate (auto-escalates to macOS checks if app paths changed)
 make agent-ci
+
+# optional explicit caps while multitasking
+RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make agent-ci
+
+# full Rust release gate
+make ci
 
 # full ship gate (includes macOS app checks)
 make macos-ci
+
+# generate API docs
+make docs
+
+# run publication audit checklist
+make pre-public-check
+
+# macOS/Homebrew GNU Make users: substitute gmake for make
 ```
 
 ## License

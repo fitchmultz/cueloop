@@ -24,6 +24,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 | CLI reference | `docs/cli.md` |
 | Public launch checklist | `docs/guides/public-readiness.md` |
 | Portfolio reviewer map | `PORTFOLIO.md` |
+| Public audit automation | `scripts/pre-public-check.sh` |
 | Core source | `crates/ralph/src/` |
 | Tests | `crates/ralph/tests/` |
 | macOS app | `apps/RalphMac/` |
@@ -32,7 +33,10 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 
 ## User Preferences
 
-- **CI-first**: Run `make agent-ci` before claiming completion; reserve `make macos-ci` as the ship gate
+- **CI-first**: Run `make agent-ci` before claiming completion (`ci-fast` for non-app changes, `macos-ci` when app paths change)
+- **Full Rust gate**: Run `make ci` before release tagging/public launch windows
+- **Public-readiness gate**: Use `make pre-public-check` before making broad visibility changes
+- **Resource controls**: Prefer `RALPH_CI_JOBS` / `RALPH_XCODE_JOBS` caps on shared workstations
 - **Minimal APIs**: Default to private; prefer `pub(crate)` over `pub`
 - **Small files**: Target <500 LOC; hard limit at 1,000 LOC (must split)
 - **Explicit over implicit**: Prefer explicit, minimal usage patterns

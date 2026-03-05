@@ -454,7 +454,7 @@ pub fn check_lfs_status(repo_root: &Path) -> Result<LfsStatusSummary, GitError> 
 /// Validates LFS pointer files for correctness.
 ///
 /// This function checks if files that should be LFS pointers are valid:
-/// - Valid LFS pointers start with "version https://git-lfs.github.com/spec/v1"
+/// - Valid LFS pointers start with `version <https://git-lfs.github.com/spec/v1>`
 /// - Detects files that should be pointers but contain binary content
 /// - Detects corrupted pointer files
 ///

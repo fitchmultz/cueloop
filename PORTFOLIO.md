@@ -4,8 +4,8 @@ Purpose: give human reviewers a fast, high-signal tour of the repository.
 
 ## If You Only Read 3 Things
 
-1. [README.md](README.md) — product overview, architecture, quickstart.
-2. [docs/workflow.md](docs/workflow.md) — 3-phase execution model and supervision flow.
+1. [README.md](README.md) — product overview, quickstart, and docs map.
+2. [docs/architecture.md](docs/architecture.md) — component boundaries, data/control flow, trade-offs.
 3. [apps/RalphMac/RalphCore/RalphCLIClient.swift](apps/RalphMac/RalphCore/RalphCLIClient.swift) — macOS app ↔ CLI bridge.
 
 ## 2-Minute Architecture Tour
@@ -17,8 +17,12 @@ Purpose: give human reviewers a fast, high-signal tour of the repository.
 
 ## Quality and Verification Signals
 
-- Local CI gate: `make agent-ci`
+- Fast Rust/CLI gate: `make ci-fast`
+- Local CI gate (path-aware): `make agent-ci`
 - Ship gate (includes macOS): `make macos-ci`
+- Resource-aware knobs for shared workstations: `RALPH_CI_JOBS` and `RALPH_XCODE_JOBS`
+- API docs generation: `make docs`
+- Pre-public audit automation: `make pre-public-check`
 - Integration test suite: `crates/ralph/tests/`
 - Snapshot tests: `crates/ralph/tests/snapshots/`
 - Security policy: [SECURITY.md](SECURITY.md)
@@ -26,7 +30,7 @@ Purpose: give human reviewers a fast, high-signal tour of the repository.
 ## Suggested Reviewer Walkthrough
 
 ```bash
-# install from source
+# install from source (GNU Make >=4 required; macOS/Homebrew users should run gmake)
 make install
 
 # evaluate queue workflows without external runner setup
@@ -37,8 +41,8 @@ ralph queue graph
 ralph queue validate
 ralph doctor
 
-# run the quality gate
-make agent-ci
+# run the quality gate with explicit resource caps (optional)
+RALPH_CI_JOBS=4 make agent-ci
 ```
 
 ## Where the Interesting Engineering Lives

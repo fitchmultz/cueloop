@@ -6,7 +6,8 @@ This file is a fast path for contributors/agents; for deeper detail start at `do
 ## TL;DR
 
 - Run `make agent-ci` before claiming completion, committing, or merging.
-- `make agent-ci` is the default contributor gate; it currently runs the Rust/CLI pipeline:
+- `make agent-ci` is the default contributor gate; for non-app changes it runs `make ci-fast`, and for changes under `apps/RalphMac/` (or `RALPH_AGENT_CI_FORCE_MACOS=1`) it escalates to `make macos-ci`.
+- Canonical full `make ci` pipeline:
   `check-env-safety → check-backup-artifacts → deps → format → type-check → lint → test → build → generate → install`
 - `make macos-ci` remains the ship gate for full macOS app build+test.
 - Keep secrets out of git/logs; `.env` is for local use only and MUST remain untracked (CI enforces this).
@@ -33,10 +34,10 @@ This file is a fast path for contributors/agents; for deeper detail start at `do
 - `docs/`: CLI + workflow + configuration docs (`docs/index.md` is the entry point)
 - `schemas/`: generated JSON schemas (committed)
 - `scripts/`: maintenance + release helper scripts
-- `.ralph/`: repo-local runtime state (partially committed; queue.json is tracked)
-  - `.ralph/queue.json`: active tasks (source of truth)
-  - `.ralph/done.json`: archived tasks
-  - `.ralph/config.json`: project config (overrides global)
+- `.ralph/`: repo-local runtime state (partially committed; queue/done defaults are `.jsonc`, with `.json` fallback)
+  - `.ralph/queue.jsonc` (`.json` fallback): active tasks (source of truth)
+  - `.ralph/done.jsonc` (`.json` fallback): archived tasks
+  - `.ralph/config.jsonc` (`.json` fallback): project config (overrides global)
   - `.ralph/prompts/*.md`: optional prompt overrides
 
 ## Build, Test, and CI
@@ -71,12 +72,12 @@ Useful iteration commands (not a substitute for `make agent-ci`):
 
 - Unit tests: colocate with implementation via `#[cfg(test)]`.
 - Integration tests: use `crates/ralph/tests/` when cross-module behavior is the subject.
-- Temp dirs: CI tests run in `target/tmp/ralph-ci-tmp/` (set `RALPH_CI_KEEP_TMP=1` to keep).
+- Temp dirs: CI tests run in `${TMPDIR:-/tmp}/ralph-ci.*` (set `RALPH_CI_KEEP_TMP=1` to keep).
 - **Init tests**: when calling `ralph init` in integration tests, always use `--non-interactive` (e.g., `ralph init --force --non-interactive`). Without this flag, TTY detection may trigger the interactive wizard in test environments, breaking the CI gate.
 
 ## Queue, Prompts, and Workflow Contracts
 
-- Queue is the source of truth: `.ralph/queue.json` (active) and `.ralph/done.json` (archive).
+- Queue is the source of truth: `.ralph/queue.jsonc` (`.json` fallback) for active tasks and `.ralph/done.jsonc` (`.json` fallback) for archive.
 - Task ordering: queue file order is execution order (top runs first). Draft tasks are skipped unless `--include-draft`.
 - Prompt composition: embedded defaults in `crates/ralph/assets/prompts/`, overridden by `.ralph/prompts/*.md`.
 - Planning cache: Phase 1 plans are written to `.ralph/cache/plans/<TASK_ID>.md` (do not print inline).
@@ -89,8 +90,8 @@ See `docs/workflow.md` and `docs/queue-and-tasks.md` for the full contract and s
 Config precedence (highest to lowest):
 
 1. CLI flags
-2. Project config: `.ralph/config.json`
-3. Global config: `~/.config/ralph/config.json`
+2. Project config: `.ralph/config.jsonc` (`.json` fallback)
+3. Global config: `~/.config/ralph/config.jsonc` (`.json` fallback)
 4. Schema defaults: `schemas/config.schema.json`
 
 See `docs/configuration.md` for key fields (runner/model/phases/RepoPrompt toggles/CI gate settings).

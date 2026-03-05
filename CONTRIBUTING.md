@@ -9,7 +9,7 @@ Thank you for your interest in contributing to Ralph! This document provides gui
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (latest stable)
-- Make
+- GNU Make >= 4 (`make` on Linux, `gmake` on many macOS setups)
 - Git
 
 ### Installation from Source
@@ -24,6 +24,8 @@ make install
 ```
 
 This installs the `ralph` binary to `~/.local/bin/ralph` (or a writable fallback).
+
+> macOS note: install GNU Make with `brew install make` and use `gmake ...` unless your PATH already points `make` to Homebrew gnubin.
 
 ### Your First Contribution (Suggested Path)
 
@@ -44,7 +46,7 @@ make agent-ci
 # 5) Open a PR with verification notes
 ```
 
-For docs-only work, still run `make agent-ci` to ensure generated artifacts and formatting remain consistent.
+For docs-only work, still run `make agent-ci` to ensure formatting/lint/tests stay green.
 
 ## Development Workflow
 
@@ -64,25 +66,63 @@ cargo run -p ralph -- queue validate
 
 # List queue contents
 cargo run -p ralph -- queue list
+
+# Generate rustdocs for API review
+make docs
 ```
 
 ### The CI Gate
 
 **All contributions MUST pass `make agent-ci` before being considered complete.** This is a hard requirement.
 
-The CI gate runs the full validation pipeline:
+`make agent-ci` behavior:
+
+- Non-app changes: runs fast deterministic Rust/CLI gate (`make ci-fast`)
+- App changes under `apps/RalphMac/`: escalates to `make macos-ci`
+
+Fast gate (`ci-fast`) pipeline:
+
+```
+check-env-safety → check-backup-artifacts → deps → format → type-check → lint → test
+```
+
+Full Rust release gate (`ci`) adds:
+
+```
+build → generate → install
+```
+
+Canonical full `make ci` pipeline:
 
 ```
 check-env-safety → check-backup-artifacts → deps → format → type-check → lint → test → build → generate → install
 ```
 
-Run it with:
+Run required gate with:
 
 ```bash
 make agent-ci
+# Optional (shared workstation): RALPH_CI_JOBS=4 make agent-ci
 ```
 
 Do not commit or push changes if `make agent-ci` is failing. Fix all issues first.
+
+### Fast Hygiene Checks (Before Commit)
+
+For quick local verification before a full CI run:
+
+```bash
+make pre-commit
+```
+
+This runs environment safety checks, backup-artifact checks, and formatting validation.
+
+For public-release verification:
+
+```bash
+make pre-public-check
+# Optional (shared workstation): RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make pre-public-check
+```
 
 ## Contribution Guidelines
 
@@ -296,6 +336,7 @@ If app changes are included in the release branch:
 
 ```bash
 make macos-ci
+# Optional caps while multitasking: RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make macos-ci
 ```
 
 ## Repository Structure

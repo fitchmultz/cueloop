@@ -33,7 +33,7 @@ pub struct RunnerRetryConfig {
     #[schemars(range(min = 0, max = 600_000))]
     pub max_backoff_ms: Option<u32>,
 
-    /// Jitter ratio in [0,1]. Default: 0.2 (20% variance).
+    /// Jitter ratio in \[0,1\]. Default: 0.2 (20% variance).
     #[schemars(range(min = 0.0, max = 1.0))]
     pub jitter_ratio: Option<f64>,
 }

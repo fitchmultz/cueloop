@@ -38,7 +38,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at the contact address in the repository's git history or author metadata (see [SECURITY.md](./SECURITY.md) for reference).
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported privately to the project maintainers via GitHub profile contact details: <https://github.com/mitchfultz> (see [SECURITY.md](./SECURITY.md) for security-specific reporting).
 
 All complaints will be reviewed and investigated promptly and fairly.
 

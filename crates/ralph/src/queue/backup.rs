@@ -10,7 +10,7 @@
 //!
 //! Invariants/assumptions:
 //! - Backup directory is writable; failures are logged but not fatal.
-//! - Backup file names follow the pattern: queue.json.backup.<timestamp>
+//! - Backup file names follow the pattern: `queue.json.backup.<timestamp>`.
 
 use crate::constants::limits::MAX_QUEUE_BACKUP_FILES;
 use anyhow::{Context, Result};
