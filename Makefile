@@ -411,20 +411,63 @@ macos-test-ui-artifacts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		mkdir -p "$$attachments_dir"; \
 		echo "→ Exporting xcresult attachments..."; \
 		xcrun xcresulttool export attachments --path "$$result_bundle_path" --output-path "$$attachments_dir" > "$$artifact_dir/attachments-export.log" 2>&1 || true; \
-		attachment_count="$$(find "$$attachments_dir" -type f ! -name manifest.json | wc -l | tr -d ' ')"; \
-		image_count="$$(find "$$attachments_dir" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) | wc -l | tr -d ' ')"; \
-		{ \
-			echo "Ralph macOS UI visual artifact summary"; \
-			echo "timestamp: $$timestamp"; \
-			echo "result_bundle: $$result_bundle_path"; \
-			echo "attachments_dir: $$attachments_dir"; \
-			echo "attachments_export_log: $$artifact_dir/attachments-export.log"; \
-			echo "attachment_files: $$attachment_count"; \
-			echo "image_files: $$image_count"; \
-			echo ""; \
-			echo "image attachment paths:"; \
-			find "$$attachments_dir" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) | sed 's#^#- #' || true; \
-		} > "$$summary_path"; \
+		python3 - "$$attachments_dir/manifest.json" "$$summary_path" "$$timestamp" "$$result_bundle_path" "$$attachments_dir" "$$artifact_dir/attachments-export.log" <<-'PY'; \
+		import json
+		import pathlib
+		import sys
+		
+		manifest_path = pathlib.Path(sys.argv[1])
+		summary_path = pathlib.Path(sys.argv[2])
+		timestamp = sys.argv[3]
+		result_bundle = sys.argv[4]
+		attachments_dir = sys.argv[5]
+		export_log = sys.argv[6]
+		
+		entries = []
+		if manifest_path.exists():
+			entries = json.loads(manifest_path.read_text())
+		
+		total_attachments = 0
+		video_attachments = 0
+		ui_snapshot_attachments = 0
+		attachment_lines = []
+		
+		for entry in entries:
+			test_identifier = entry.get("testIdentifier", "<unknown-test>")
+			attachments = entry.get("attachments", [])
+			if not attachments:
+				continue
+			attachment_lines.append(f"- {test_identifier}")
+			for attachment in attachments:
+				total_attachments += 1
+				suggested_name = attachment.get("suggestedHumanReadableName", "<unnamed-attachment>")
+				exported_name = attachment.get("exportedFileName", "<missing-file>")
+				if suggested_name.lower().endswith(".mp4"):
+					video_attachments += 1
+				if "UI Snapshot" in suggested_name:
+					ui_snapshot_attachments += 1
+				attachment_lines.append(f"  - {suggested_name} -> attachments/{exported_name}")
+		
+		summary_lines = [
+			"Ralph macOS UI visual artifact summary",
+			f"timestamp: {timestamp}",
+			f"result_bundle: {result_bundle}",
+			f"attachments_dir: {attachments_dir}",
+			f"attachments_export_log: {export_log}",
+			f"attachment_files: {total_attachments}",
+			f"video_files_mp4: {video_attachments}",
+			f"ui_snapshot_attachments: {ui_snapshot_attachments}",
+			"",
+			"attachments_by_test:",
+		]
+		
+		if attachment_lines:
+			summary_lines.extend(attachment_lines)
+		else:
+			summary_lines.append("- none")
+		
+		summary_path.write_text("\n".join(summary_lines) + "\n")
+		PY
 		echo "  ✓ Result bundle: $$result_bundle_path"; \
 		echo "  ✓ Attachment export: $$attachments_dir"; \
 		echo "  ✓ Summary: $$summary_path"; \
