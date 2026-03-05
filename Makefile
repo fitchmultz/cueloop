@@ -40,7 +40,7 @@ MAKEFLAGS += --no-builtin-rules
 
 .PHONY: help install update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast deps \
 	changelog changelog-preview changelog-check release release-dry-run release-artifacts pre-commit pre-public-check \
-	agent-ci check-env-safety check-backup-artifacts macos-preflight macos-build macos-test macos-ci macos-test-ui \
+	agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-test-window-shortcuts coverage coverage-clean FORCE
 
 help:
@@ -56,6 +56,8 @@ help:
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
 	@echo "  make install      # Install release binary to BIN_DIR"
+	@echo "  make check-repo-safety # Fast required-files + env/runtime + secret checks"
+	@echo "  make pre-public-check # Publication audit + full local CI"
 	@echo ""
 	@echo "Resource knobs (optional):"
 	@echo "  RALPH_CI_JOBS=4     # Caps cargo/nextest parallelism (0 = tool default)"
@@ -232,10 +234,7 @@ clean-temp:
 	@rm -rf target/tmp
 
 check-env-safety:
-	@if git ls-files .env | grep -q .env; then \
-		echo "ERROR: .env is tracked in git. Remove it with '\''git rm --cached .env'\'' and ensure .env is in .gitignore."; \
-		exit 1; \
-	fi
+	@scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean
 
 check-backup-artifacts:
 	@bak_files="$$(find crates/ralph/src/ -name '*.bak' -type f 2>/dev/null || true)"; \
@@ -245,6 +244,9 @@ check-backup-artifacts:
 		echo "Remove these files before committing."; \
 		exit 1; \
 	fi
+
+check-repo-safety: check-env-safety
+	@true
 
 pre-commit: check-env-safety check-backup-artifacts format-check
 	@echo "→ Pre-commit checks complete"

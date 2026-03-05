@@ -1,74 +1,91 @@
-# Release Readiness Report (March 4, 2026)
+# Release Readiness Report
 
-Purpose: capture the current public-release hardening status, major risks addressed, and remaining follow-ups.
+Purpose: capture an evidence-based publication snapshot for Ralph.
 
-## Top Risks Found and Mitigations Applied
+## Snapshot Metadata
 
-1. **Duplicate release builds during CI/macOS gates**
-   - Mitigation: added a release-build stamp target in `Makefile` to deduplicate release build work within a single invocation.
+- Date: March 5, 2026
+- Base commit before this hardening pass: `caa59e79`
+- Environment: local macOS workstation (GNU Make + pinned Rust toolchain)
+- Scope: public-release hardening pass (CI/safety/docs/reviewer evidence)
 
-2. **Unbounded cargo/nextest/xcodebuild parallelism impacting workstation responsiveness**
-   - Mitigation: added `RALPH_CI_JOBS` and `RALPH_XCODE_JOBS` knobs with conservative defaults and documented usage.
+## Gate Results
 
-3. **CI contract drift after introducing `ci-fast` factoring**
-   - Mitigation: updated `makefile_ci_contract_test.rs` to validate semantic `ci` expansion, assert `ci-fast` contract explicitly, and align `agent-ci` routing expectations.
+Status values: `PASS`, `FAIL`, or `PENDING`.
 
-4. **Release workflow brittleness (changelog links, multiline notes templating, and dry-run blind spots)**
-   - Mitigation: hardened `scripts/release.sh` with robust changelog base detection, safe template rendering, and dry-run validation of key transforms.
+- `make agent-ci`: `PASS`
+- `make ci`: `PASS`
+- `make pre-public-check`: `PASS` on clean temporary snapshot of current changes
+- Reviewer deterministic smoke sequence (CLI help + focused contract tests): `PASS`
 
-5. **UI test runner Gatekeeper failures (“damaged” runner app)**
-   - Mitigation: Makefile UI-test flows now clear quarantine metadata and perform ad-hoc re-signing before test execution.
+Evidence commands run:
 
-6. **Pre-public scan noise and limited runtime-artifact checks**
-   - Mitigation: `scripts/pre-public-check.sh` now supports fixture allowlisting, iterative `--skip-clean` audits, and explicit checks for tracked `.ralph/cache`, `.ralph/lock`, and `.ralph/logs` artifacts.
+```bash
+make check-repo-safety
+make agent-ci
+make ci
+scripts/pre-public-check.sh --skip-clean
 
-7. **Runtime lock artifacts were not ignored by default**
-   - Mitigation: added `.ralph/lock/` to `.gitignore`.
+# clean-snapshot verification of full strict gate
+make pre-public-check
 
-8. **Docs drift in reviewer-facing onboarding/policy references**
-   - Mitigation: added `CODE_OF_CONDUCT.md` link in README, GNU Make caveat in quick-start, and `--debug` usage coverage in CLI docs.
+# skeptical reviewer deterministic sequence
+cargo run -p ralph -- --help
+cargo run -p ralph -- run one --help
+cargo run -p ralph -- scan --help
+cargo test -p ralph --bin ralph normalize_repo_prompt_args -- --nocapture
+cargo test -p ralph cli_parses_run_ -- --nocapture
+cargo test -p ralph cli_rejects_run_loop_with_id_flag -- --nocapture
+cargo test -p ralph --test run_cli_overrides_contract_test -- --nocapture
+```
 
-9. **Security/CoC reporting paths were too implicit**
-   - Mitigation: updated `SECURITY.md`, `CODE_OF_CONDUCT.md`, and security feature docs to point to explicit reporting flows (GitHub private vulnerability reporting + maintainer profile contact path).
+Notes:
 
-10. **Publish-readiness warning: yanked transitive dependencies in lockfile**
-   - Mitigation: updated `Cargo.lock` (`js-sys`/`wasm-bindgen` family) and re-verified `cargo publish --dry-run --allow-dirty` without yanked warnings.
+- Running `make pre-public-check` in an in-progress working tree correctly fails the clean-worktree check by design.
+- Running `make pre-public-check` on a clean temporary snapshot of these exact changes passed end-to-end.
 
-## Remaining Known Issues / Follow-ups
+## What Changed in This Pass
 
-- Final publish rehearsal still requires a clean tree run of `scripts/pre-public-check.sh` and `RELEASE_DRY_RUN=1 scripts/release.sh <version>` (currently blocked by active in-flight changes).
-- Decide long-term policy for committed `.ralph/done.jsonc` history (keep as sanitized dogfooding evidence vs reduce committed runtime state surface).
-- Expand dedicated architecture documentation with sequence diagrams for parallel-worker integration and session recovery internals.
-- Add a tracked benchmark log for gate runtimes across representative hardware profiles.
-- Add optional secret scanning integration with a dedicated tool (for example, gitleaks) in pre-public checks.
+- Hardened publication guardrails:
+  - Fixed secret-scan allowlist false-positive behavior in `scripts/pre-public-check.sh`
+  - Expanded tracked runtime artifact checks (`.ralph/workspaces`, `.ralph/undo`, `.ralph/webhooks`)
+  - Added `.ralph` tracked-file allowlist policy checks
+  - Tightened tracked env-file detection to catch `.env*` patterns (excluding `.env.example`)
+- Promoted safety checks into required local gates:
+  - Updated `check-env-safety` to delegate to `scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean`
+  - Added `check-repo-safety` alias target for explicit safety runs
+- Strengthened ignore policy for runtime-only local paths:
+  - Added `.ralph/undo/` and `.ralph/webhooks/` to `.gitignore`
+- Improved reviewer-facing docs:
+  - README cold-start clarity (scope, non-goals, limitations, security/data handling)
+  - Architecture trust boundaries + failure/recovery details
+  - Public checklist + portfolio evidence alignment
+  - Added support/version/security/troubleshooting/runbook/smoke-test docs
+  - Added role evidence pack under `docs/role-evidence/`
+- Determinism upgrade:
+  - Added `rust-toolchain.toml`
+  - Added crate-level `rust-version = "1.93"`
 
-## Private-History Cleanup Plan (Safe While Repo Is Private)
+## Open Risks
 
-An execution-ready, hash-specific rebase plan is now tracked in:
+- Risk: Full gate runtimes may exceed target on constrained machines
+  - Severity: Medium
+  - Owner: Maintainer
+  - Mitigation: use `RALPH_CI_JOBS` / `RALPH_XCODE_JOBS` caps; track runtime trends
+  - Due: before first public release tag
 
-- [`docs/guides/history-cleanup-execution-plan.md`](history-cleanup-execution-plan.md)
+- Risk: Optional history rewrite not yet executed
+  - Severity: Low (unless noisy/sensitive history remains)
+  - Owner: Repo owner
+  - Mitigation: follow `history-cleanup-execution-plan.md` only if still private and safe
+  - Due: before making repository broadly public
 
-That plan includes:
+## Go / No-Go Decision
 
-- exact commit grouping map from current `main` log (`HEAD~50` as of `f96ab95b`)
-- a ready-to-paste `git rebase -i` todo list (`pick/reword/fixup/drop` actions)
-- explicit backup/rollback commands and post-rewrite verification gates
+- Current decision: `CONDITIONAL GO`
+- Condition: publish from a clean tree with the same gate outcomes recorded above.
 
-If collaborators already depend on this history, avoid force-push and use forward cleanup commits instead.
+## Sign-off
 
-## Before/After DX Summary
-
-### Before
-
-- CI and macOS checks performed redundant release-build work.
-- Resource usage could spike during routine validation.
-- Public docs did not consistently explain GNU Make expectations.
-
-### After
-
-- Fast/regular/full validation paths are clearer and more intentional.
-- Default gate execution is less disruptive on shared developer machines.
-- Release and public-readiness workflows are better documented and less brittle.
-- Iterative audits can run without stashing work (`--skip-clean`) while final publish gates remain strict.
-- Security and conduct reporting paths are explicit enough for external reporters.
-- Publish-readiness checks no longer surface yanked-lockfile warnings.
+- Technical sign-off: ready pending final clean-tree commit
+- Publication sign-off: pending maintainer approval and (optional) private-history cleanup decision

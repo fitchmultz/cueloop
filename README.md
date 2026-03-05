@@ -1,29 +1,28 @@
 # Ralph
 
-Ralph is a Rust CLI for running AI agent loops against a structured JSON task queue.
+Ralph is a Rust CLI that runs AI-agent work loops against a structured task queue stored in your repository.
 
 ![Ralph - AI Conductor](docs/assets/ralph-hero.png)
 
-## Why This Project
+## What Ralph Is For
 
-Ralph demonstrates practical AI-agent orchestration for real software work:
+Ralph is designed for engineering teams that want repeatable, auditable AI-assisted development workflows.
 
-- Structured task queue with explicit lifecycle, dependencies, and auditability
+It provides:
+
+- A structured task queue with explicit lifecycle and dependency links
 - Multi-runner execution (`codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, `pi`)
-- Multi-phase supervision workflow (plan, implement, review)
-- Parallel execution model with workspace isolation and direct-push integration
-- Built-in safety rails (sanity checks, CI gating, retries, session recovery, undo snapshots)
+- Supervised 1/2/3-phase execution (plan, implement, review)
+- Parallel execution with workspace isolation
+- Guardrails around queue validity, retries, session recovery, and local CI gates
 
-## Core Capabilities
+### Non-goals
 
-- Queue operations: validate, search, graph, tree, archive, repair, import/export
-- Task operations: create/build, edit, clone, split, relate, schedule, batch updates
-- Run supervision: `run one`, `run loop`, `run resume`, `run parallel status/retry`
-- Prompt tooling: inspect/export/sync embedded prompts
-- Integrations: plugins, webhooks, notifications, daemon/watch automation, macOS app bridge
-- Operational visibility: doctor diagnostics, runner capabilities, productivity analytics
+- Hosted SaaS orchestration (Ralph is local-first)
+- Hidden black-box state (queue and done files are plain JSONC in `.ralph/`)
+- Replacing your existing developer tooling; Ralph integrates with it
 
-## Architecture
+## Architecture at a Glance
 
 ```mermaid
 flowchart LR
@@ -44,19 +43,25 @@ cargo install ralph
 
 From source:
 
-> Requires GNU Make >= 4 for project targets. On macOS, install via `brew install make` and use `gmake` (or add Homebrew gnubin to `PATH`).
+> GNU Make >= 4 is required for project targets. On macOS, install via `brew install make` and use `gmake` unless GNU Make is already your default `make`.
 
 ```bash
 git clone https://github.com/mitchfultz/ralph
 cd ralph
 make install
-# macOS (Homebrew GNU Make): gmake install
+# macOS/Homebrew GNU Make users: gmake install
 ```
+
+## Supported Platforms & Toolchain
+
+- Supported OS: macOS and Linux
+- Rust toolchain: pinned by `rust-toolchain.toml` (for deterministic fmt/clippy/test behavior)
+- SwiftUI app: macOS only (`apps/RalphMac/`)
 
 ## Quick Start
 
 ```bash
-# 1) Initialize a repository
+# 1) Initialize in your repo
 ralph init
 
 # 2) Add a task
@@ -69,66 +74,57 @@ ralph run one
 ralph queue list
 ```
 
-### Reviewer Quickstart (No AI runner required)
+## Public Reviewer Smoke Test (5 minutes)
 
-Use queue and graph commands to evaluate behavior without configuring external runner CLIs:
+No external runner setup required:
 
 ```bash
 ralph init
-ralph task "Create an initial queue item"
+ralph --help
+ralph run one --help
+ralph scan --help
 ralph queue list
 ralph queue graph
 ralph queue validate
 ralph doctor
+make agent-ci
 ```
 
-macOS app (optional):
+Expected signals:
 
-```bash
-ralph app open
-```
+- Help and queue commands succeed
+- `ralph doctor` exits successfully
+- `make agent-ci` completes with passing format/type/lint/test checks
 
-## Workflow Model
+Full scripted version: [docs/guides/reviewer-smoke-test.md](docs/guides/reviewer-smoke-test.md)
 
-Ralph supports three execution shapes:
+## Security & Data Handling
 
-- `--phases 1` (or `--quick`): single-pass execution
-- `--phases 2`: plan + implement
-- `--phases 3` (default): plan + implement + review
+Ralph is local-first, but selected runner CLIs may transmit prompts/context to external APIs depending on your runner configuration.
 
-Phase-specific runner/model overrides are supported with:
+- Do not place secrets in task text, notes, or tracked config
+- Keep runtime artifacts local (`.ralph/cache/`, `.ralph/logs/`, `.ralph/workspaces/`, `.ralph/undo/`, `.ralph/webhooks/`)
+- Use `make pre-public-check` before public release windows
 
-- `--runner-phase1/2/3`
-- `--model-phase1/2/3`
-- `--effort-phase1/2/3`
+Security references:
 
-## Configuration
+- [SECURITY.md](SECURITY.md)
+- [Security Model](docs/security-model.md)
 
-Configuration precedence:
+## Known Limitations
 
-1. CLI flags
-2. Project config: `.ralph/config.jsonc` (`.json` fallback)
-3. Global config: `~/.config/ralph/config.jsonc` (`.json` fallback)
-4. Schema defaults
+- Quality/speed depend on selected runner model and prompts
+- UI tests are intentionally not part of default `make macos-ci` (headed interaction)
+- Parallel execution introduces additional branch/workspace complexity in very large repos
 
-Minimal project config example:
+## Versioning & Compatibility
 
-```jsonc
-{
-  "version": 1,
-  "agent": {
-    "runner": "claude",
-    "model": "sonnet",
-    "phases": 3
-  }
-}
-```
+Ralph follows semantic versioning.
 
-## Screenshots
+- Minor/patch releases preserve existing behavior unless explicitly documented
+- Breaking CLI/config behavior changes are called out in changelog and migration notes
 
-CLI workflow sample:
-
-![Ralph CLI sample output](docs/assets/images/2026-02-07-cli-commands.png)
+Details: [docs/versioning-policy.md](docs/versioning-policy.md)
 
 ## Documentation
 
@@ -139,12 +135,13 @@ Start here:
 - [Quick Start](docs/quick-start.md)
 - [CLI Reference](docs/cli.md)
 - [Configuration](docs/configuration.md)
+- [Troubleshooting](docs/troubleshooting.md)
 - [CI and Test Strategy](docs/guides/ci-strategy.md)
-- [Portfolio / Reviewer Guide](PORTFOLIO.md)
 - [Public Readiness Checklist](docs/guides/public-readiness.md)
 - [Release Readiness Report](docs/guides/release-readiness-report.md)
+- [Portfolio / Reviewer Guide](PORTFOLIO.md)
 
-Reference and policies:
+Policies:
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
@@ -159,28 +156,20 @@ In most consumer repositories, `.ralph/` is project-local runtime state managed 
 ## Development
 
 ```bash
-# fastest deterministic Rust/CLI checks
+# Fast deterministic Rust/CLI checks
 make ci-fast
 
-# path-aware developer gate (auto-escalates to macOS checks if app paths changed)
+# Path-aware gate (auto-escalates to macOS checks when app paths changed)
 make agent-ci
 
-# optional explicit caps while multitasking
-RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make agent-ci
-
-# full Rust release gate
+# Full Rust release gate
 make ci
 
-# full ship gate (includes macOS app checks)
+# Full ship gate (includes macOS app checks)
 make macos-ci
 
-# generate API docs
-make docs
-
-# run publication audit checklist
+# Public-readiness audit
 make pre-public-check
-
-# macOS/Homebrew GNU Make users: substitute gmake for make
 ```
 
 ## License

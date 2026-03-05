@@ -23,7 +23,7 @@ Behavior:
 
 Fast Rust/CLI gate is `make ci-fast`:
 
-- `check-env-safety`
+- `check-env-safety` (delegates to pre-public safety checks: required-files + secret/runtime/env validation)
 - `check-backup-artifacts`
 - `deps`
 - `format`

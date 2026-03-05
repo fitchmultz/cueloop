@@ -7,7 +7,7 @@
 # - Run lightweight link checks on key reviewer-facing docs.
 # - Optionally run the local CI gate (`make ci`).
 # Scope:
-# - This script does not mutate project files.
+# - This script may run `make ci`, which can update formatted/generated files.
 # - This script does not create tags/releases.
 # Usage:
 # - scripts/pre-public-check.sh
@@ -15,7 +15,7 @@
 # - scripts/pre-public-check.sh --skip-links --skip-secrets
 # Invariants/assumptions:
 # - Run from any location; script resolves repo root automatically.
-# - Git worktree should be clean before publication (excluding `.ralph/` runtime drift).
+# - Git worktree should be clean before publication; `--skip-clean` is for iterative local audits only.
 
 set -euo pipefail
 
@@ -57,7 +57,7 @@ Usage:
   scripts/pre-public-check.sh [OPTIONS]
 
 Options:
-  --skip-ci       Skip `make ci`
+  --skip-ci       Skip `make ci` (use this for non-mutating audits)
   --skip-links    Skip markdown link checks
   --skip-secrets  Skip secret-pattern scan
   --skip-clean    Skip clean-worktree checks (for iterative local audits)
@@ -159,18 +159,79 @@ check_tracked_runtime_artifacts() {
         return 1
     fi
 
+    local tracked_workspaces
+    tracked_workspaces=$(git -C "$REPO_ROOT" ls-files -- '.ralph/workspaces' || true)
+    if [ -n "$tracked_workspaces" ]; then
+        log_error "Tracked .ralph/workspaces artifacts detected"
+        return 1
+    fi
+
+    local tracked_undo
+    tracked_undo=$(git -C "$REPO_ROOT" ls-files -- '.ralph/undo' || true)
+    if [ -n "$tracked_undo" ]; then
+        log_error "Tracked .ralph/undo artifacts detected"
+        return 1
+    fi
+
+    local tracked_webhooks
+    tracked_webhooks=$(git -C "$REPO_ROOT" ls-files -- '.ralph/webhooks' || true)
+    if [ -n "$tracked_webhooks" ]; then
+        log_error "Tracked .ralph/webhooks artifacts detected"
+        return 1
+    fi
+
+    local tracked_ralph
+    tracked_ralph=$(git -C "$REPO_ROOT" ls-files -- '.ralph' || true)
+    if [ -n "$tracked_ralph" ]; then
+        local -a allowlist=(
+            ".ralph/README.md"
+            ".ralph/queue.jsonc"
+            ".ralph/queue.json"
+            ".ralph/done.jsonc"
+            ".ralph/done.json"
+            ".ralph/config.jsonc"
+            ".ralph/config.json"
+        )
+
+        local -a unexpected=()
+        local path
+        while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            local allowed=0
+            local keep
+            for keep in "${allowlist[@]}"; do
+                if [ "$path" = "$keep" ]; then
+                    allowed=1
+                    break
+                fi
+            done
+            if [ "$allowed" -eq 0 ]; then
+                unexpected+=("$path")
+            fi
+        done <<< "$tracked_ralph"
+
+        if [ "${#unexpected[@]}" -ne 0 ]; then
+            log_error "Tracked .ralph files outside allowlist detected"
+            printf '  %s\n' "${unexpected[@]}"
+            return 1
+        fi
+    fi
+
     log_success "No tracked runtime/build artifacts detected"
 }
 
 check_env_tracking() {
     log_info "Checking .env tracking"
 
-    if git -C "$REPO_ROOT" ls-files .env | grep -q .env; then
-        log_error ".env is tracked; remove with: git rm --cached .env"
+    local tracked_env
+    tracked_env=$(git -C "$REPO_ROOT" ls-files | grep -E '(^|/)\.env($|\.)' | grep -Ev '(^|/)\.env\.example$' || true)
+    if [ -n "$tracked_env" ]; then
+        log_error "Tracked env files detected; remove with: git rm --cached <path>"
+        printf '  %s\n' "$tracked_env"
         return 1
     fi
 
-    log_success ".env is not tracked"
+    log_success "No tracked env files detected"
 }
 
 check_worktree_clean() {
@@ -179,10 +240,10 @@ check_worktree_clean() {
         return 0
     fi
 
-    log_info "Checking git worktree cleanliness (excluding .ralph/)"
+    log_info "Checking git worktree cleanliness"
 
     local dirty
-    dirty=$(git -C "$REPO_ROOT" status --porcelain | grep -vE '^..[[:space:]]+\.ralph/' || true)
+    dirty=$(git -C "$REPO_ROOT" status --porcelain || true)
     if [ -n "$dirty" ]; then
         log_error "Working tree is not clean"
         echo "$dirty" | sed 's/^/  /'
@@ -202,7 +263,7 @@ is_allowlisted_secret_match() {
         docs/features/security.md:*)
             return 0
             ;;
-        crates/ralph/src/fsutil.rs:*AKIAIOSFODNN7EXAMPLE*)
+        crates/ralph/src/fsutil.rs:*AKIA*EXAMPLE*)
             return 0
             ;;
         crates/ralph/src/fsutil.rs:*BEGIN\ OPENSSH\ PRIVATE\ KEY*)

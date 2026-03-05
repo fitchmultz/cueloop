@@ -1,5 +1,6 @@
 .env
 **/*.env.*
+!.env.example
 .venv/
 **/__pycache__/
 **/.ruff_cache/
@@ -29,8 +30,10 @@ CLAUDE.md
 # Ralph lock files (runtime coordination artifacts)
 .ralph/lock/
 
-# Ralph runtime artifacts (cache is generated and should stay local)
+# Ralph runtime artifacts (generated/session data should stay local)
 .ralph/workspaces/
 .ralph/cache/
+.ralph/undo/
+.ralph/webhooks/
 .scratchpad.md
 .FIX_TRACKING.md

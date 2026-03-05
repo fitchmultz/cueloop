@@ -140,4 +140,9 @@ Every source file MUST start with `//!` docs covering:
 - CI temp dirs: `${TMPDIR:-/tmp}/ralph-ci.*` (set `RALPH_CI_KEEP_TMP=1` to keep)
 
 ### Secrets
-Never commit or print secrets. `.env` is local-only and MUST remain untracked.
+Never commit or print secrets. `.env` and `.env.*` are local-only and MUST remain untracked (`.env.example` is the only exception).
+
+### Public-Release Guardrails
+- Required fast safety gate in CI: `check-env-safety` target now delegates to `scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean`.
+- Convenience alias: `make check-repo-safety`.
+- `scripts/pre-public-check.sh` enforces `.ralph` tracked-file allowlist (`README.md`, queue/done/config json/jsonc) and blocks tracked runtime dirs (`cache`, `logs`, `lock`, `workspaces`, `undo`, `webhooks`).

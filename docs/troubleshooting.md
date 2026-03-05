@@ -1,0 +1,70 @@
+# Troubleshooting
+
+Purpose: provide fast resolution paths for common setup and CI failures.
+
+## GNU Make Errors on macOS
+
+Symptom: Makefile errors about GNU Make version.
+
+Fix:
+
+```bash
+brew install make
+gmake agent-ci
+```
+
+## `make agent-ci` Fails on Env Safety
+
+Symptom: tracked env file detected.
+
+Fix:
+
+```bash
+git rm --cached <env-file>
+# keep only .env.example tracked
+```
+
+## `make pre-public-check` Fails on Runtime Artifacts
+
+Symptom: tracked `.ralph/...` runtime paths or build outputs detected.
+
+Fix:
+
+```bash
+git rm --cached -r apps/RalphMac/build .ralph/cache .ralph/logs .ralph/lock .ralph/workspaces .ralph/undo .ralph/webhooks
+```
+
+Then rerun:
+
+```bash
+make pre-public-check
+```
+
+## Test Failures in Temporary Directory Logic
+
+Symptom: flaky integration tests around temp paths or queue fixtures.
+
+Fixes:
+
+- ensure `ralph init --non-interactive` is used in tests
+- rerun with `make test` to use the project harness
+- inspect `crates/ralph/tests/test_support.rs` helpers for deterministic setup
+
+## macOS App Build/Test Failures
+
+Symptom: xcodebuild failures or UI test runner signing/quarantine issues.
+
+Fixes:
+
+```bash
+make macos-build
+make macos-test
+# for interactive UI runs only
+make macos-test-ui
+```
+
+If running on shared workstation, cap parallelism:
+
+```bash
+RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make macos-ci
+```

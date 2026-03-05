@@ -7,9 +7,11 @@ Use this checklist before each public release window.
 ## 1) Repository Hygiene
 
 - [ ] Ensure local machine artifacts are ignored (`apps/RalphMac/build/`, `.DS_Store`, Xcode user data).
-- [ ] Ensure no secrets are tracked:
-  - `git grep -nE '(API_KEY|SECRET|TOKEN|PASSWORD)' -- ':!docs/'`
+- [ ] Run best-effort secret-pattern scan:
+  - `scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean`
 - [ ] Ensure no temporary scratch files are tracked (`.scratchpad.md`, backup files).
+- [ ] Run fast safety gate:
+  - `make check-repo-safety`
 - [ ] Ensure working tree is clean before tagging/public push.
 
 ## 2) Documentation Quality
@@ -96,6 +98,8 @@ Or invoke the script directly when you want to skip selected checks:
 ```bash
 scripts/pre-public-check.sh --help
 scripts/pre-public-check.sh --skip-clean --skip-ci
+# fast safety-only gate
+make check-repo-safety
 ```
 
 If all checks pass, perform final review of README + PORTFOLIO guide, then publish.

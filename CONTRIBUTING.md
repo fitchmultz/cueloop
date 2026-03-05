@@ -8,7 +8,7 @@ Thank you for your interest in contributing to Ralph! This document provides gui
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/) (latest stable)
+- [Rust](https://rustup.rs/) (toolchain pinned via `rust-toolchain.toml`)
 - GNU Make >= 4 (`make` on Linux, `gmake` on many macOS setups)
 - Git
 
@@ -214,7 +214,7 @@ The terminal output shows:
 
 Coverage helps identify untested code paths but does not replace thoughtful test design.
 
-For troubleshooting coverage issues, see [Troubleshooting](docs/index.md#troubleshooting).
+For troubleshooting coverage issues, see [Troubleshooting](docs/troubleshooting.md).
 
 ### Integration Testing (CLI)
 
@@ -282,13 +282,20 @@ cargo run -p ralph -- <command> --help
 
 ### Commit Message Format
 
-Use the format: `RQ-####: <short summary>`
+Preferred format: `RQ-####: <short summary>`
 
 Where `####` is the task ID from `.ralph/queue.json`.
+
+If no task ID exists (for example, first external contribution), use:
+
+- `chore: <short summary>`
+- `fix: <short summary>`
+- `docs: <short summary>`
 
 Examples:
 - `RQ-0042: Add CI schema validation`
 - `RQ-0007: Fix queue archive race condition`
+- `docs: clarify run-loop troubleshooting step`
 
 ### Pull Request Expectations
 
@@ -300,7 +307,7 @@ Include in your PR description:
 
 Example:
 
-```markdown
+````markdown
 ## Summary
 Added validation for task ID format in queue operations.
 
@@ -311,8 +318,7 @@ make agent-ci
 
 ## Breaking Changes
 None.
-
-```
+````
 
 ### Local-CI-First Philosophy
 
@@ -369,5 +375,7 @@ If you have questions not covered here:
 1. Check the existing documentation in `docs/`
 2. Review [AGENTS.md](./AGENTS.md) for contributor expectations
 3. Open an issue for discussion before investing significant effort
+
+By contributing to Ralph, you agree that your contributions are licensed under the project's MIT License.
 
 Thank you for contributing to Ralph!

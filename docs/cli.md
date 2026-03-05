@@ -8,7 +8,7 @@ These are available on most commands:
 
 - `--force`
 - `-v, --verbose`
-- `--debug` (supported on run/scan flows; writes raw logs to `.ralph/logs/debug.log`)
+- `--debug` (supported on run flows; writes raw logs to `.ralph/logs/debug.log`)
 - `--color <auto|always|never>`
 - `--no-color`
 - `--auto-fix`
