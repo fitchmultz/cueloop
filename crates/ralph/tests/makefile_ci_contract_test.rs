@@ -5,7 +5,7 @@
 //!   dependency sequence (no missing, reordered, or duplicated steps).
 //! - Verify `agent-ci` routes to `ci-fast` by default and escalates to
 //!   `macos-ci` only for app-path changes (or explicit force).
-//! - Ensure documentation (CONTRIBUTING.md, GEMINI.md) stays synchronized with
+//! - Ensure contributor-facing documentation stays synchronized with
 //!   the canonical CI pipeline definition.
 //! - Validate clean target preserves user data while removing temp artifacts.
 //!
@@ -637,28 +637,6 @@ fn test_contributing_ci_step_list_matches_canonical_pipeline() -> Result<()> {
     assert!(
         contributing.contains(&pipeline),
         "CONTRIBUTING.md CI pipeline must match canonical sequence.\n\
-         Expected to find: {}\n",
-        pipeline
-    );
-
-    Ok(())
-}
-
-#[test]
-fn test_gemini_ci_step_list_matches_canonical_pipeline() -> Result<()> {
-    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let repo_root = manifest_dir
-        .parent()
-        .and_then(|p| p.parent())
-        .context("resolve repo root")?;
-
-    let gemini = std::fs::read_to_string(repo_root.join("GEMINI.md")).context("read GEMINI.md")?;
-
-    let pipeline = required_ci_pipeline_text();
-
-    assert!(
-        gemini.contains(&pipeline),
-        "GEMINI.md CI pipeline must match canonical sequence.\n\
          Expected to find: {}\n",
         pipeline
     );

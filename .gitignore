@@ -10,6 +10,10 @@ target/
 .learnings
 .vscode/settings.json
 debug/
+CLAUDE.md
+GEMINI.md
+.cursorrules
+.cursorignore
 
 # Xcode / Swift local build artifacts
 apps/RalphMac/build/
@@ -21,8 +25,6 @@ apps/RalphMac/build/
 # Coverage artifacts (LLVM profiling data can appear anywhere)
 *.profraw
 *.profdata
-
-CLAUDE.md
 
 # Ralph debug logs (raw/unredacted; do not commit)
 .ralph/logs/
