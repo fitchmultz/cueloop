@@ -154,3 +154,6 @@ Never commit or print secrets. `.env` and `.env.*` are local-only and MUST remai
 - UI screenshot capture is opt-in only (`RALPH_UI_SCREENSHOTS=1` or `RALPH_UI_SCREENSHOT_MODE`); default `make macos-test-ui` stays lightweight.
 - Post-review cleanup is explicit: `make macos-ui-artifacts-clean`.
 - UI-test window geometry is part of the contract: keep normal UI-test launches at one visible workspace window, multiwindow launches at two, and avoid widths below the split-view practical minimum (~950pt) or sidebars/detail panes become cropped/non-hittable.
+- UI tests must never write into the production app defaults domain. `RalphAppDefaults` isolates `--uitesting` launches into a dedicated suite and normal launches prune stale `ralph-ui-tests` workspace/restoration keys from `com.mitchfultz.ralph`.
+- `ralph app open` should launch with a single `ralph://open?...` URL when workspace context exists. Pre-launching the bundle and then dispatching the URL creates duplicate SwiftUI `WindowGroup` scenes on macOS.
+- `make install` on macOS is expected to update both the CLI and `/Applications/RalphMac.app`; otherwise `ralph app open` can keep launching a stale bundle.

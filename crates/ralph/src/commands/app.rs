@@ -159,65 +159,44 @@ fn percent_encode(input: &[u8]) -> String {
     result
 }
 
+fn resolve_workspace_path(args: &AppOpenArgs) -> Result<Option<std::path::PathBuf>> {
+    if let Some(ref workspace) = args.workspace {
+        if !workspace.exists() {
+            bail!("Workspace path does not exist: {}", workspace.display());
+        }
+        return Ok(Some(workspace.clone()));
+    }
+
+    Ok(std::env::current_dir().ok().filter(|path| path.exists()))
+}
+
 /// Open the Ralph macOS app.
 ///
-/// On macOS, this:
-/// 1. Launches the installed app via the system `open` command
-/// 2. Sends a URL with workspace context via `ralph://open?workspace=<path>`
-///
-/// The URL is delivered to the running app (or launches it if not running).
+/// On macOS, this prefers a single URL launch (`ralph://open?...`) when workspace
+/// context is available. That lets LaunchServices both launch the app and deliver
+/// the workspace in one step, which avoids SwiftUI opening a second scene for a
+/// follow-up external-event dispatch.
 pub fn open(args: AppOpenArgs) -> Result<()> {
     let cli_executable = current_executable_for_gui();
 
-    // Step 1: Open the app
-    let spec = plan_open_command(cfg!(target_os = "macos"), &args, cli_executable.as_deref())?;
-    let launch_output = spec
+    let spec = if let Some(workspace_path) = resolve_workspace_path(&args)? {
+        plan_url_command(&workspace_path, cli_executable.as_deref())?
+    } else {
+        plan_open_command(cfg!(target_os = "macos"), &args, cli_executable.as_deref())?
+    };
+
+    let output = spec
         .to_command()
         .output()
         .context("spawn macOS `open` command for app launch")?;
 
-    if !launch_output.status.success() {
-        let stderr = String::from_utf8_lossy(&launch_output.stderr);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
         bail!(
             "Failed to launch app (exit status: {}). {}",
-            launch_output.status,
+            output.status,
             stderr.trim()
         );
-    }
-
-    // Step 2: Send URL with workspace context
-    let workspace = if let Some(ref ws) = args.workspace {
-        // User explicitly provided workspace - validate it exists
-        if !ws.exists() {
-            bail!("Workspace path does not exist: {}", ws.display());
-        }
-        Some(ws.clone())
-    } else {
-        // Use current directory
-        std::env::current_dir().ok().filter(|p| p.exists())
-    };
-
-    if let Some(workspace_path) = workspace {
-        let url_spec = plan_url_command(&workspace_path, cli_executable.as_deref())?;
-
-        // Small delay to ensure app has started registering for URL events
-        // This is a best-effort approach; macOS handles URL delivery to running apps
-        std::thread::sleep(std::time::Duration::from_millis(100));
-
-        let url_output = url_spec
-            .to_command()
-            .output()
-            .context("spawn macOS `open` command for URL")?;
-
-        if !url_output.status.success() {
-            // Log but don't fail - the app launched, which is the primary goal
-            let stderr = String::from_utf8_lossy(&url_output.stderr);
-            eprintln!(
-                "Warning: Failed to send workspace URL to app (exit status: {}). {}",
-                url_output.status,
-                stderr.trim()
-            );
-        }
     }
 
     Ok(())
@@ -227,7 +206,7 @@ pub fn open(args: AppOpenArgs) -> Result<()> {
 mod tests {
     use super::{
         DEFAULT_BUNDLE_ID, GUI_CLI_BIN_ENV, env_assignment_for_path, percent_encode,
-        percent_encode_path, plan_open_command, plan_url_command,
+        percent_encode_path, plan_open_command, plan_url_command, resolve_workspace_path,
     };
     use crate::cli::app::AppOpenArgs;
     use std::ffi::{OsStr, OsString};
@@ -428,5 +407,34 @@ mod tests {
         let text = assignment.to_string_lossy();
         assert!(text.starts_with(&format!("{GUI_CLI_BIN_ENV}=")));
         assert!(text.ends_with("/tmp/ralph"));
+    }
+
+    #[test]
+    fn resolve_workspace_path_prefers_explicit_workspace() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
+        let args = AppOpenArgs {
+            bundle_id: None,
+            path: None,
+            workspace: Some(temp.path().to_path_buf()),
+        };
+
+        let resolved = resolve_workspace_path(&args)?;
+        assert_eq!(resolved.as_deref(), Some(temp.path()));
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_workspace_path_errors_for_missing_workspace() {
+        let args = AppOpenArgs {
+            bundle_id: None,
+            path: None,
+            workspace: Some(PathBuf::from("/definitely/not/a/real/workspace")),
+        };
+
+        let err = resolve_workspace_path(&args).expect_err("expected error");
+        assert!(
+            err.to_string().contains("Workspace path does not exist"),
+            "unexpected error: {err:#}"
+        );
     }
 }

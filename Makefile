@@ -19,6 +19,7 @@ RALPH_UI_ONLY_TESTING ?=
 XCODE_RESULT_BUNDLE_PATH ?=
 # Root directory for exported UI visual artifacts.
 RALPH_UI_ARTIFACTS_ROOT ?= target/ui-artifacts
+MACOS_APP_INSTALL_DIR ?= /Applications
 # Constrain local gate resource usage to keep machines responsive while multitasking.
 # Set to 0 to let cargo/nextest use tool defaults (max throughput).
 RALPH_CI_JOBS ?= 4
@@ -48,7 +49,7 @@ endif
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: help install update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast deps \
+.PHONY: help install macos-install-app update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast deps \
 	changelog changelog-preview changelog-check release release-dry-run release-artifacts pre-commit pre-public-check \
 	agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
@@ -69,7 +70,8 @@ help:
 	@echo "  make macos-ui-artifacts-clean # Remove exported UI visual artifacts"
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
-	@echo "  make install      # Install release binary to BIN_DIR"
+	@echo "  make install      # Install release CLI; on macOS also installs RalphMac.app"
+	@echo "  make macos-install-app # Copy latest Release RalphMac.app into Applications"
 	@echo "  make check-repo-safety # Fast required-files + env/runtime + secret checks"
 	@echo "  make pre-public-check # Publication audit + full local CI"
 	@echo ""
@@ -103,7 +105,10 @@ install: $(RALPH_RELEASE_BUILD_STAMP)
 	fi; \
 	mkdir -p "$$bin_dir"; \
 	install -m 0755 target/release/$(BIN_NAME) "$$bin_dir/$(BIN_NAME)"; \
-	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
+	"$$bin_dir/$(BIN_NAME)" --help >/dev/null; \
+	if [ "$$(uname -s)" = "Darwin" ] && command -v xcodebuild >/dev/null 2>&1; then \
+		$(MAKE) --no-print-directory macos-install-app; \
+	fi
 
 update:
 	@CARGO_HTTP_MULTIPLEXING=$(CARGO_HTTP_MULTIPLEXING) cargo update
@@ -336,6 +341,22 @@ macos-build: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		build
+
+macos-install-app: macos-build
+	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/build"; \
+	app_bundle="$$derived_data_path/Build/Products/Release/RalphMac.app"; \
+	install_dir="$(MACOS_APP_INSTALL_DIR)"; \
+	if [ ! -w "$$install_dir" ]; then \
+		install_dir="$(HOME)/Applications"; \
+		echo "macos-install-app: $(MACOS_APP_INSTALL_DIR) not writable; using $$install_dir"; \
+	fi; \
+	mkdir -p "$$install_dir"; \
+	dest_bundle="$$install_dir/RalphMac.app"; \
+	echo "→ Installing RalphMac.app to $$dest_bundle"; \
+	rm -rf "$$dest_bundle"; \
+	ditto "$$app_bundle" "$$dest_bundle"; \
+	/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f "$$dest_bundle" >/dev/null 2>&1 || true; \
+	echo "  ✓ RalphMac.app installed"
 
 macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	@derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/test"; \

@@ -409,7 +409,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     // MARK: - State Persistence
 
     private func loadState() {
-        let defaults = UserDefaults.standard
+        let defaults = RalphAppDefaults.userDefaults
 
         // Load recent directories
         if let stored = defaults.array(forKey: defaultsKey("recentPaths")) as? [String] {
@@ -438,7 +438,7 @@ public final class Workspace: ObservableObject, @preconcurrency Identifiable, @p
     }
 
     private func persistState() {
-        let defaults = UserDefaults.standard
+        let defaults = RalphAppDefaults.userDefaults
         defaults.set(workingDirectoryURL.path, forKey: defaultsKey("workingPath"))
         defaults.set(recentWorkingDirectories.map(\.path), forKey: defaultsKey("recentPaths"))
         defaults.set(name, forKey: defaultsKey("name"))
@@ -2646,7 +2646,7 @@ extension Workspace {
         // Persist to UserDefaults
         do {
             let data = try JSONEncoder().encode(tasks)
-            UserDefaults.standard.set(data, forKey: defaultsKey("cachedTasks"))
+            RalphAppDefaults.userDefaults.set(data, forKey: defaultsKey("cachedTasks"))
         } catch {
             RalphLogger.shared.error("Failed to cache tasks: \(error)", category: .workspace)
         }
@@ -2655,7 +2655,7 @@ extension Workspace {
     /// Load cached tasks from UserDefaults
     @MainActor
     public func loadCachedTasks() {
-        guard let data = UserDefaults.standard.data(forKey: defaultsKey("cachedTasks")) else {
+        guard let data = RalphAppDefaults.userDefaults.data(forKey: defaultsKey("cachedTasks")) else {
             cachedTasks = []
             return
         }
@@ -2681,6 +2681,6 @@ extension Workspace {
     @MainActor
     public func clearCachedTasks() {
         cachedTasks = []
-        UserDefaults.standard.removeObject(forKey: defaultsKey("cachedTasks"))
+        RalphAppDefaults.userDefaults.removeObject(forKey: defaultsKey("cachedTasks"))
     }
 }

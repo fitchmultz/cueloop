@@ -78,7 +78,7 @@ public final class ConsoleOutputBuffer: Sendable {
 
     /// Load settings from UserDefaults, falling back to defaults if not set.
     public static func loadFromUserDefaults() -> ConsoleOutputBuffer {
-        let defaults = UserDefaults.standard
+        let defaults = RalphAppDefaults.userDefaults
         let maxChars = defaults.integer(forKey: defaultsKey)
         let indicator = defaults.string(forKey: indicatorDefaultsKey)
 
@@ -90,7 +90,7 @@ public final class ConsoleOutputBuffer: Sendable {
 
     /// Save current settings to UserDefaults.
     public func saveToUserDefaults() {
-        let defaults = UserDefaults.standard
+        let defaults = RalphAppDefaults.userDefaults
         defaults.set(maxCharacters, forKey: Self.defaultsKey)
         defaults.set(truncationIndicator, forKey: Self.indicatorDefaultsKey)
     }

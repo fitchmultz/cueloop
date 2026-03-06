@@ -52,6 +52,7 @@ struct RalphMacApp: App {
         }
         // Limit external event matching to the Ralph URL scheme route.
         .handlesExternalEvents(matching: ["ralph"])
+        .restorationBehavior(.disabled)
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))
         .defaultSize(width: 1400, height: 900)
@@ -474,12 +475,18 @@ struct WindowViewContainer: View {
     private static let uiTestingWorkspacePathEnvKey = "RALPH_UI_TEST_WORKSPACE_PATH"
     private static let isUITestingLaunch = ProcessInfo.processInfo.arguments.contains("--uitesting")
     private static let isUITestingMultiwindowLaunch = ProcessInfo.processInfo.arguments.contains("--uitesting-multiwindow")
+    private static let minimumWorkspaceWindowSize = NSSize(width: 1200, height: 640)
 
     var body: some View {
         Group {
             if let state = windowState {
                 WindowView(windowState: state)
-                    .background(UITestingWindowAnchor(isEnabled: Self.isUITestingLaunch))
+                    .background(
+                        WorkspaceWindowAnchor(
+                            minimumSize: Self.minimumWorkspaceWindowSize,
+                            uiTestingEnabled: Self.isUITestingLaunch
+                        )
+                    )
             } else {
                 ProgressView("Initializing...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -576,24 +583,26 @@ private enum UITestingWindowBootstrap {
     static var didOpenSecondaryWindow = false
 }
 
-/// Ensures UI-test windows are visible and frontmost before XCTest begins clicking screen coordinates.
-private struct UITestingWindowAnchor: NSViewRepresentable {
-    let isEnabled: Bool
+/// Applies app-level window constraints and optional UI-test layout adjustments.
+private struct WorkspaceWindowAnchor: NSViewRepresentable {
+    let minimumSize: NSSize
+    let uiTestingEnabled: Bool
 
     func makeNSView(context: Context) -> NSView {
         NSView(frame: .zero)
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        guard isEnabled else { return }
-
         DispatchQueue.main.async {
             guard let window = nsView.window else { return }
-            configure(window: window)
+            configure(window: window, nsView: nsView)
         }
     }
 
-    private func configure(window: NSWindow) {
+    private func configure(window: NSWindow, nsView: NSView) {
+        applyMinimumSize(to: window, contentView: nsView)
+
+        guard uiTestingEnabled else { return }
         let screen = window.screen ?? NSScreen.main
         let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let workspaceWindows = NSApp.windows
@@ -606,16 +615,17 @@ private struct UITestingWindowAnchor: NSViewRepresentable {
         let windowCount = max(min(workspaceWindows.count, expectedWindowCount), 1)
         let horizontalSpacing: CGFloat = 24
         let verticalInset: CGFloat = 40
+        let minimumFrameSize = window.frameRect(forContentRect: NSRect(origin: .zero, size: minimumSize)).size
 
         let width: CGFloat
-        let height = max(700, min(900, visibleFrame.height - (verticalInset * 2)))
+        let height = max(minimumFrameSize.height, min(900, visibleFrame.height - (verticalInset * 2)))
         let origin: NSPoint
 
         if windowCount > 1 {
-            let preferredWidth = min(1200, max(1024, visibleFrame.width - 120))
+            let preferredWidth = max(minimumFrameSize.width, min(1200, visibleFrame.width - 120))
             let sideBySideWidth = (visibleFrame.width - (horizontalSpacing * 3)) / 2
 
-            if sideBySideWidth >= 1024 {
+            if sideBySideWidth >= minimumFrameSize.width {
                 width = min(preferredWidth, sideBySideWidth)
                 let x = visibleFrame.minX + horizontalSpacing + CGFloat(min(windowIndex, 1)) * (width + horizontalSpacing)
                 let y = visibleFrame.maxY - verticalInset - height
@@ -636,7 +646,7 @@ private struct UITestingWindowAnchor: NSViewRepresentable {
                 origin = NSPoint(x: x, y: y)
             }
         } else {
-            width = max(960, min(1400, visibleFrame.width - 80))
+            width = max(minimumFrameSize.width, min(1400, visibleFrame.width - 80))
             origin = NSPoint(
                 x: visibleFrame.midX - (width / 2),
                 y: visibleFrame.midY - (height / 2)
@@ -649,6 +659,28 @@ private struct UITestingWindowAnchor: NSViewRepresentable {
         window.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    private func applyMinimumSize(to window: NSWindow, contentView: NSView) {
+        let contentMinimumRect = NSRect(origin: .zero, size: minimumSize)
+        let frameMinimumSize = window.frameRect(forContentRect: contentMinimumRect).size
+        if window.contentMinSize != minimumSize {
+            window.contentMinSize = minimumSize
+        }
+        if window.minSize != frameMinimumSize {
+            window.minSize = frameMinimumSize
+        }
+
+        let currentFrame = window.frame
+        let resizedFrame = NSRect(
+            x: currentFrame.origin.x,
+            y: currentFrame.origin.y,
+            width: max(currentFrame.width, frameMinimumSize.width),
+            height: max(currentFrame.height, frameMinimumSize.height)
+        )
+        if resizedFrame.size != currentFrame.size {
+            window.setFrame(resizedFrame, display: true)
+        }
     }
 }
 

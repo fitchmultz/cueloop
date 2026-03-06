@@ -188,13 +188,13 @@ final class NavigationViewModel: ObservableObject {
             )
 
             if let data = try? JSONEncoder().encode(state) {
-                UserDefaults.standard.set(data, forKey: stateKey)
+                RalphAppDefaults.userDefaults.set(data, forKey: stateKey)
             }
         }
     }
 
     private func loadNavigationState() {
-        guard let data = UserDefaults.standard.data(forKey: stateKey),
+        guard let data = RalphAppDefaults.userDefaults.data(forKey: stateKey),
               let state = try? JSONDecoder().decode(NavigationState.self, from: data),
               state.version == navigationStateVersion else {
             // Use defaults if no saved state or version mismatch

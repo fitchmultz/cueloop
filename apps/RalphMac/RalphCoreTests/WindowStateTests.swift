@@ -319,6 +319,33 @@ final class WindowStateTests: XCTestCase {
         XCTAssertNotEqual(secondClaim.id, state1.id)
     }
 
+    func test_prepareForLaunch_prunesUITestingWorkspaceStateFromProductionDefaults() throws {
+        let defaults = UserDefaults.standard
+        let workspaceID = UUID()
+        let navigationKey = "com.mitchfultz.ralph.navigationState.\(workspaceID.uuidString)"
+        let workingPathKey = "com.mitchfultz.ralph.workspace.\(workspaceID.uuidString).workingPath"
+        let cachedTasksKey = "com.mitchfultz.ralph.workspace.\(workspaceID.uuidString).cachedTasks"
+        let tempUITestPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ralph-ui-tests")
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .path
+
+        defaults.set(tempUITestPath, forKey: workingPathKey)
+        defaults.set(Data("cached".utf8), forKey: cachedTasksKey)
+        defaults.set(Data("navigation".utf8), forKey: navigationKey)
+        defaults.set(
+            try JSONEncoder().encode([WindowState(workspaceIDs: [workspaceID])]),
+            forKey: testRestorationKey
+        )
+
+        RalphAppDefaults.prepareForLaunch()
+
+        XCTAssertNil(defaults.object(forKey: workingPathKey))
+        XCTAssertNil(defaults.object(forKey: cachedTasksKey))
+        XCTAssertNil(defaults.object(forKey: navigationKey))
+        XCTAssertTrue(manager.loadAllWindowStates().isEmpty)
+    }
+
     // MARK: - Codable Tests
 
     func test_windowState_encodeDecode_preservesAllFields() throws {

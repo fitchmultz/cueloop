@@ -26,6 +26,92 @@ public import Combine
 import SwiftUI
 import OSLog
 
+public enum RalphAppDefaults {
+    public static let productionDomainIdentifier = "com.mitchfultz.ralph"
+    public static let uiTestingDomainIdentifier = productionDomainIdentifier + ".uitesting"
+
+    private static let uiTestingPathMarker = "/ralph-ui-tests/"
+    private static let workspaceKeyPrefix = productionDomainIdentifier + ".workspace."
+    private static let navigationKeyPrefix = productionDomainIdentifier + ".navigationState."
+    private static let restorationKey = productionDomainIdentifier + ".windowRestorationState"
+
+    public static var isUITesting: Bool {
+        ProcessInfo.processInfo.arguments.contains("--uitesting")
+    }
+
+    public static var userDefaults: UserDefaults {
+        if isUITesting, let suiteDefaults = UserDefaults(suiteName: uiTestingDomainIdentifier) {
+            return suiteDefaults
+        }
+        return .standard
+    }
+
+    @MainActor
+    public static func prepareForLaunch() {
+        if isUITesting {
+            resetUITestingDefaults()
+            return
+        }
+
+        pruneUITestingStateFromProductionDefaults()
+    }
+
+    private static func resetUITestingDefaults() {
+        guard let suiteDefaults = UserDefaults(suiteName: uiTestingDomainIdentifier) else { return }
+        suiteDefaults.removePersistentDomain(forName: uiTestingDomainIdentifier)
+    }
+
+    private static func pruneUITestingStateFromProductionDefaults() {
+        let defaults = UserDefaults.standard
+        let dictionary = defaults.dictionaryRepresentation()
+        let contaminatedWorkspaceIDs = dictionary.keys.reduce(into: Set<UUID>()) { ids, key in
+            guard key.hasPrefix(workspaceKeyPrefix),
+                  key.hasSuffix(".workingPath"),
+                  let path = dictionary[key] as? String,
+                  path.contains(uiTestingPathMarker),
+                  let workspaceID = workspaceID(fromWorkspaceKey: key) else {
+                return
+            }
+            ids.insert(workspaceID)
+        }
+
+        guard !contaminatedWorkspaceIDs.isEmpty else { return }
+
+        for workspaceID in contaminatedWorkspaceIDs {
+            removeWorkspaceState(workspaceID, from: defaults)
+        }
+
+        if let data = defaults.data(forKey: restorationKey),
+           let states = try? JSONDecoder().decode([WindowState].self, from: data) {
+            let filteredStates = states.compactMap { state -> WindowState? in
+                var updated = state
+                updated.workspaceIDs.removeAll { contaminatedWorkspaceIDs.contains($0) }
+                updated.validateSelection()
+                return updated.workspaceIDs.isEmpty ? nil : updated
+            }
+
+            if let filteredData = try? JSONEncoder().encode(filteredStates) {
+                defaults.set(filteredData, forKey: restorationKey)
+            }
+        }
+    }
+
+    private static func removeWorkspaceState(_ workspaceID: UUID, from defaults: UserDefaults) {
+        let workspacePrefix = workspaceKeyPrefix + workspaceID.uuidString + "."
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(workspacePrefix) {
+            defaults.removeObject(forKey: key)
+        }
+
+        defaults.removeObject(forKey: navigationKeyPrefix + workspaceID.uuidString)
+    }
+
+    private static func workspaceID(fromWorkspaceKey key: String) -> UUID? {
+        let suffix = key.dropFirst(workspaceKeyPrefix.count)
+        guard let separatorIndex = suffix.firstIndex(of: ".") else { return nil }
+        return UUID(uuidString: String(suffix[..<separatorIndex]))
+    }
+}
+
 @MainActor
 public final class WorkspaceManager: ObservableObject {
     public static let shared = WorkspaceManager()
@@ -44,6 +130,8 @@ public final class WorkspaceManager: ObservableObject {
     private var restorationPoolInitialized = false
 
     private init() {
+        RalphAppDefaults.prepareForLaunch()
+
         if !configureInitialClient() {
             return
         }
@@ -200,7 +288,7 @@ public final class WorkspaceManager: ObservableObject {
         allStates.append(state)
 
         if let data = try? JSONEncoder().encode(allStates) {
-            UserDefaults.standard.set(data, forKey: restorationKey)
+            RalphAppDefaults.userDefaults.set(data, forKey: restorationKey)
         }
 
         if restorationPoolInitialized {
@@ -209,7 +297,7 @@ public final class WorkspaceManager: ObservableObject {
     }
 
     public func loadAllWindowStates() -> [WindowState] {
-        guard let data = UserDefaults.standard.data(forKey: restorationKey),
+        guard let data = RalphAppDefaults.userDefaults.data(forKey: restorationKey),
               let states = try? JSONDecoder().decode([WindowState].self, from: data) else {
             return []
         }
@@ -222,7 +310,7 @@ public final class WorkspaceManager: ObservableObject {
         unclaimedWindowStates.removeAll { $0.id == windowID }
 
         if let data = try? JSONEncoder().encode(allStates) {
-            UserDefaults.standard.set(data, forKey: restorationKey)
+            RalphAppDefaults.userDefaults.set(data, forKey: restorationKey)
         }
     }
 
@@ -306,7 +394,7 @@ public final class WorkspaceManager: ObservableObject {
     // MARK: - Legacy Migration
 
     private func migrateLegacyStateIfNeeded() {
-        let defaults = UserDefaults.standard
+        let defaults = RalphAppDefaults.userDefaults
         let migratedKey = "com.mitchfultz.ralph.legacyMigrated"
 
         guard !defaults.bool(forKey: migratedKey) else { return }
@@ -336,7 +424,7 @@ public final class WorkspaceManager: ObservableObject {
 
     private func cleanWorkspaceDefaults(_ workspaceID: UUID) {
         let prefix = "com.mitchfultz.ralph.workspace.\(workspaceID.uuidString)."
-        let defaults = UserDefaults.standard
+        let defaults = RalphAppDefaults.userDefaults
 
         for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
             defaults.removeObject(forKey: key)
@@ -345,7 +433,7 @@ public final class WorkspaceManager: ObservableObject {
 
     private func workspaceWorkingDirectory(_ workspaceID: UUID) -> URL? {
         let key = "com.mitchfultz.ralph.workspace.\(workspaceID.uuidString).workingPath"
-        guard let path = UserDefaults.standard.string(forKey: key) else {
+        guard let path = RalphAppDefaults.userDefaults.string(forKey: key) else {
             return nil
         }
         let url = URL(fileURLWithPath: path, isDirectory: true)
@@ -447,7 +535,7 @@ public final class WorkspaceManager: ObservableObject {
 
     /// Check if we have a recent cached version result
     private func checkCachedVersionResult() -> VersionValidator.VersionCheckResult? {
-        guard let data = UserDefaults.standard.data(forKey: versionCheckCacheKey),
+        guard let data = RalphAppDefaults.userDefaults.data(forKey: versionCheckCacheKey),
               let cached = try? JSONDecoder().decode(CachedVersionResult.self, from: data) else {
             return nil
         }
@@ -455,7 +543,7 @@ public final class WorkspaceManager: ObservableObject {
         // Check if cache is still valid
         let age = Date().timeIntervalSince(cached.timestamp)
         guard age < VersionCompatibility.cacheDuration else {
-            UserDefaults.standard.removeObject(forKey: versionCheckCacheKey)
+            RalphAppDefaults.userDefaults.removeObject(forKey: versionCheckCacheKey)
             return nil
         }
 
@@ -478,7 +566,7 @@ public final class WorkspaceManager: ObservableObject {
         )
 
         if let data = try? JSONEncoder().encode(cached) {
-            UserDefaults.standard.set(data, forKey: versionCheckCacheKey)
+            RalphAppDefaults.userDefaults.set(data, forKey: versionCheckCacheKey)
         }
     }
 
@@ -486,7 +574,7 @@ public final class WorkspaceManager: ObservableObject {
     @MainActor
     public func checkForCLIUpdates() async -> VersionValidator.VersionCheckResult? {
         // Clear cache to force fresh check
-        UserDefaults.standard.removeObject(forKey: versionCheckCacheKey)
+        RalphAppDefaults.userDefaults.removeObject(forKey: versionCheckCacheKey)
 
         guard let result = await executeVersionCheck() else {
             return nil

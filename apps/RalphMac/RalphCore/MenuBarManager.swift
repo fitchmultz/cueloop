@@ -36,21 +36,21 @@ public final class MenuBarManager: ObservableObject {
     /// Whether to show task status notifications (persisted to UserDefaults)
     @Published public var showStatusNotifications: Bool {
         didSet {
-            UserDefaults.standard.set(showStatusNotifications, forKey: Self.notificationsKey)
+            RalphAppDefaults.userDefaults.set(showStatusNotifications, forKey: Self.notificationsKey)
         }
     }
     
     /// Whether to show recent tasks in the menu bar (persisted to UserDefaults)
     @Published public var showRecentTasks: Bool {
         didSet {
-            UserDefaults.standard.set(showRecentTasks, forKey: Self.recentTasksKey)
+            RalphAppDefaults.userDefaults.set(showRecentTasks, forKey: Self.recentTasksKey)
         }
     }
     
     /// Maximum number of recent tasks to show (persisted to UserDefaults)
     @Published public var maxRecentTasks: Int {
         didSet {
-            UserDefaults.standard.set(maxRecentTasks, forKey: Self.maxRecentTasksKey)
+            RalphAppDefaults.userDefaults.set(maxRecentTasks, forKey: Self.maxRecentTasksKey)
         }
     }
     
@@ -65,10 +65,10 @@ public final class MenuBarManager: ObservableObject {
     
     private init() {
         // Initialize from UserDefaults with sensible defaults
-        self._isMenuBarExtraVisible = UserDefaults.standard.object(forKey: Self.visibilityKey) as? Bool ?? true
-        self.showStatusNotifications = UserDefaults.standard.object(forKey: Self.notificationsKey) as? Bool ?? false
-        self.showRecentTasks = UserDefaults.standard.object(forKey: Self.recentTasksKey) as? Bool ?? true
-        self.maxRecentTasks = UserDefaults.standard.object(forKey: Self.maxRecentTasksKey) as? Int ?? 5
+        self._isMenuBarExtraVisible = RalphAppDefaults.userDefaults.object(forKey: Self.visibilityKey) as? Bool ?? true
+        self.showStatusNotifications = RalphAppDefaults.userDefaults.object(forKey: Self.notificationsKey) as? Bool ?? false
+        self.showRecentTasks = RalphAppDefaults.userDefaults.object(forKey: Self.recentTasksKey) as? Bool ?? true
+        self.maxRecentTasks = RalphAppDefaults.userDefaults.object(forKey: Self.maxRecentTasksKey) as? Int ?? 5
         
         RalphLogger.shared.debug("MenuBarManager initialized", category: .lifecycle)
     }
@@ -95,7 +95,7 @@ public final class MenuBarManager: ObservableObject {
         guard _isMenuBarExtraVisible != newValue else { return }
         objectWillChange.send()
         _isMenuBarExtraVisible = newValue
-        UserDefaults.standard.set(newValue, forKey: Self.visibilityKey)
+        RalphAppDefaults.userDefaults.set(newValue, forKey: Self.visibilityKey)
         RalphLogger.shared.debug("Menu bar extra visibility changed to: \(newValue)", category: .lifecycle)
     }
 }
