@@ -1,6 +1,6 @@
 # Ralph
 
-Ralph is a Rust CLI that runs AI-agent work loops against a structured task queue stored in your repository.
+Ralph is a local-first AI coding workflow tool with a Rust CLI and a SwiftUI macOS app, both built around a structured task queue stored in your repository.
 
 Teams use Ralph when ad-hoc AI coding stops being enough and they need a repeatable way to turn requests into queued work, run that work through Codex/Claude/Gemini-style agents, and keep the result reviewable with local files, local CI, and explicit task history instead of hidden SaaS state.
 
