@@ -330,16 +330,16 @@ Valid values: `1`, `2`, or `3`
 Ralph includes phase-optimized profiles:
 
 ```bash
-# Quick profile: 1 phase, kimi runner
+# Quick profile: 1 phase, Codex low-effort runner
 ralph run one --profile quick
 
-# Thorough profile: 3 phases, claude/opus
+# Thorough profile: 3 phases, Codex high-effort runner
 ralph run one --profile thorough
 ```
 
 Profile definitions (always available):
-- `quick`: `phases=1`, `runner=kimi`, `model=kimi-for-coding`
-- `thorough`: `phases=3`, `runner=claude`, `model=opus`
+- `quick`: `phases=1`, `runner=codex`, `model=gpt-5.4`, `reasoning_effort=low`
+- `thorough`: `phases=3`, `runner=codex`, `model=gpt-5.4`, `reasoning_effort=high`
 
 ### Custom Profiles
 
@@ -352,12 +352,12 @@ Define your own phase configurations:
     "fast-review": {
       "phases": 2,
       "runner": "codex",
-      "model": "gpt-5.2-codex"
+      "model": "gpt-5.4"
     },
     "deep-think": {
       "phases": 3,
-      "runner": "claude",
-      "model": "opus",
+      "runner": "codex",
+      "model": "gpt-5.4",
       "reasoning_effort": "high"
     }
   }
@@ -371,14 +371,14 @@ Define your own phase configurations:
 Override runner, model, or reasoning effort for specific phases:
 
 ```bash
-# Phase 1: Use powerful model for planning
-ralph run one --runner-phase1 codex --model-phase1 gpt-5.3-codex --effort-phase1 high
+# Phase 1: Use powerful Codex settings for planning
+ralph run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high
 
-# Phase 2: Use fast model for implementation
-ralph run one --runner-phase2 kimi --model-phase2 kimi-for-coding
+# Phase 2: Use balanced Codex settings for implementation
+ralph run one --runner-phase2 codex --model-phase2 gpt-5.4 --effort-phase2 medium
 
-# Phase 3: Use thorough model for review
-ralph run one --runner-phase3 claude --model-phase3 opus --effort-phase3 high
+# Phase 3: Use thorough Codex settings for review
+ralph run one --runner-phase3 codex --model-phase3 gpt-5.4 --effort-phase3 high
 ```
 
 ### Configuration
@@ -390,19 +390,20 @@ Set per-phase overrides in `.ralph/config.jsonc`:
   "version": 1,
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.3-codex",
+    "model": "gpt-5.4",
     "phase_overrides": {
       "phase1": {
-        "model": "gpt-5.2",
+        "model": "gpt-5.4",
         "reasoning_effort": "high"
       },
       "phase2": {
-        "runner": "kimi",
-        "model": "kimi-code/kimi-for-coding"
+        "runner": "codex",
+        "model": "gpt-5.4",
+        "reasoning_effort": "medium"
       },
       "phase3": {
-        "runner": "claude",
-        "model": "claude-opus-4",
+        "runner": "codex",
+        "model": "gpt-5.4",
         "reasoning_effort": "high"
       }
     }

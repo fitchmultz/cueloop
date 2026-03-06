@@ -24,7 +24,12 @@
     "Model": {
       "oneOf": [
         {
-          "description": "OpenAI GPT-5.3 Codex (default)",
+          "description": "OpenAI GPT-5.4 (default Codex model)",
+          "type": "string",
+          "const": "gpt-5.4"
+        },
+        {
+          "description": "OpenAI GPT-5.3 Codex",
           "type": "string",
           "const": "gpt-5.3-codex"
         },

@@ -37,7 +37,8 @@ When writing files, Ralph always outputs standard JSON format (comments are not 
   "agent": {
     /* Runner configuration
        Choose from: codex, opencode, gemini, claude, cursor */
-    "runner": "claude",
+    "runner": "codex",
+    "model": "gpt-5.4",
     "phases": 3, // 1 = single-pass, 2 = plan+implement, 3 = plan+implement+review
   }
 }
@@ -130,7 +131,7 @@ Example:
   "version": 1,
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.3-codex",
+    "model": "gpt-5.4",
     "phases": 3,
     "iterations": 2,
     "reasoning_effort": "high",
@@ -234,7 +235,7 @@ Each phase config can specify:
 {
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.3-codex",
+    "model": "gpt-5.4",
     "reasoning_effort": "medium",
     "phase_overrides": {
       "phase1": {
@@ -242,12 +243,13 @@ Each phase config can specify:
         "reasoning_effort": "high"
       },
       "phase2": {
-        "runner": "kimi",
-        "model": "kimi-code/kimi-for-coding"
+        "runner": "codex",
+        "model": "gpt-5.4",
+        "reasoning_effort": "medium"
       },
       "phase3": {
         "runner": "codex",
-        "model": "gpt-5.3-codex",
+        "model": "gpt-5.4",
         "reasoning_effort": "high"
       }
     }
@@ -527,8 +529,8 @@ Phase and loop events include additional context metadata:
   "timestamp": "2024-01-15T10:30:00Z",
   "task_id": "RQ-0001",
   "task_title": "Add webhook support",
-  "runner": "claude",
-  "model": "sonnet",
+  "runner": "codex",
+  "model": "gpt-5.4",
   "phase": 2,
   "phase_count": 3,
   "duration_ms": 12500,
@@ -700,13 +702,15 @@ A profile is an `AgentConfig`-shaped patch that is applied over the base `agent`
 Ralph includes two built-in profiles that are always available:
 
 - **`quick`**: Fast, single-pass execution
-  - `runner`: `kimi`
-  - `model`: `kimi-for-coding`
+  - `runner`: `codex`
+  - `model`: `gpt-5.4`
+  - `reasoning_effort`: `low`
   - `phases`: `1`
 
 - **`thorough`**: Deep, multi-phase execution with powerful models
-  - `runner`: `claude`
-  - `model`: `opus`
+  - `runner`: `codex`
+  - `model`: `gpt-5.4`
+  - `reasoning_effort`: `high`
   - `phases`: `3`
 
 ### Custom Profiles
@@ -719,7 +723,7 @@ Define custom profiles in your config file under the `profiles` key:
   "profiles": {
     "codex-review": {
       "runner": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "phases": 2
     },
     "gemini-audit": {

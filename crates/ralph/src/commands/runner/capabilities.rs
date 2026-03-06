@@ -200,6 +200,7 @@ pub(crate) fn get_runner_features(runner: &Runner) -> RunnerFeatures {
 fn get_allowed_models(runner: &Runner) -> Option<Vec<String>> {
     match runner {
         Runner::Codex => Some(vec![
+            "gpt-5.4".into(),
             "gpt-5.3-codex".into(),
             "gpt-5.3-codex-spark".into(),
             "gpt-5.3".into(),
@@ -347,6 +348,7 @@ mod tests {
         let report = get_runner_capabilities(&Runner::Codex, "codex");
         assert!(report.allowed_models.is_some());
         let models = report.allowed_models.unwrap();
+        assert!(models.contains(&"gpt-5.4".to_string()));
         assert!(models.contains(&"gpt-5.3-codex".to_string()));
         assert!(!models.contains(&"sonnet".to_string()));
     }

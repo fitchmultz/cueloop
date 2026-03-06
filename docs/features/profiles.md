@@ -1,7 +1,5 @@
 # Ralph Configuration Profiles
 
-![Configuration Profiles](../assets/images/2026-02-07-11-32-24-profiles.png)
-
 Purpose: Document Ralph's configuration profiles feature for quick workflow switching between different AI runner presets.
 
 ---
@@ -55,8 +53,9 @@ Optimized for **fast, single-pass execution**:
 
 | Setting | Value | Description |
 |---------|-------|-------------|
-| `runner` | `kimi` | Kimi CLI runner |
-| `model` | `kimi-for-coding` | Optimized coding model |
+| `runner` | `codex` | Codex CLI runner |
+| `model` | `gpt-5.4` | Default Codex model |
+| `reasoning_effort` | `low` | Favor speed for small tasks |
 | `phases` | `1` | Single-pass execution |
 
 **Best for:**
@@ -78,8 +77,9 @@ Optimized for **deep, multi-phase execution** with powerful models:
 
 | Setting | Value | Description |
 |---------|-------|-------------|
-| `runner` | `claude` | Claude CLI runner |
-| `model` | `opus` | Most capable Claude model |
+| `runner` | `codex` | Codex CLI runner |
+| `model` | `gpt-5.4` | Default Codex model |
+| `reasoning_effort` | `high` | Favor depth for complex tasks |
 | `phases` | `3` | Full 3-phase workflow |
 
 **Best for:**
@@ -104,8 +104,9 @@ ralph scan --profile thorough "security audit"
 │                                                                 │
 │  quick (fast)                     thorough (deep)               │
 │  ─────────────────                ─────────────────             │
-│  runner: kimi                     runner: claude                │
-│  model: kimi-for-coding           model: opus                   │
+│  runner: codex                    runner: codex                 │
+│  model: gpt-5.4                   model: gpt-5.4                │
+│  effort: low                      effort: high                  │
 │  phases: 1 (single-pass)          phases: 3 (plan/impl/review)  │
 │                                                                 │
 │  Use for:                         Use for:                      │
@@ -150,7 +151,7 @@ Define your own profiles in `.ralph/config.jsonc` under the `profiles` key.
   "profiles": {
     "codex-review": {
       "runner": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "phases": 2,
       "reasoning_effort": "high"
     }
@@ -191,24 +192,25 @@ ralph scan --profile gemini-audit "production security audit"
   "version": 1,
   "profiles": {
     "fast-fix": {
-      "runner": "kimi",
-      "model": "kimi-for-coding",
+      "runner": "codex",
+      "model": "gpt-5.4",
+      "reasoning_effort": "low",
       "phases": 1
     },
     "standard": {
-      "runner": "claude",
-      "model": "sonnet",
+      "runner": "codex",
+      "model": "gpt-5.4",
       "phases": 2
     },
     "deep-analysis": {
-      "runner": "claude",
-      "model": "opus",
+      "runner": "codex",
+      "model": "gpt-5.4",
       "phases": 3,
       "reasoning_effort": "high"
     },
     "codex-iterate": {
       "runner": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "phases": 2,
       "reasoning_effort": "high",
       "iterations": 3
@@ -235,14 +237,14 @@ User-defined profiles with the **same name as built-ins** override the built-in:
   "profiles": {
     "quick": {
       "runner": "codex",
-      "model": "gpt-5.2-codex",
+      "model": "gpt-5.4",
       "phases": 1
     }
   }
 }
 ```
 
-Now `ralph run one --profile quick` uses Codex instead of Kimi.
+Now `ralph run one --profile quick` uses your custom Codex quick preset instead of the built-in one.
 
 ---
 
@@ -406,15 +408,15 @@ Final Resolved Config
 {
   "version": 1,
   "agent": {
-    "runner": "claude",
-    "model": "sonnet",
+    "runner": "codex",
+    "model": "gpt-5.4",
     "phases": 3,
     "reasoning_effort": "medium"
   },
   "profiles": {
     "codex-high": {
       "runner": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "reasoning_effort": "high"
     }
   }
@@ -430,7 +432,7 @@ ralph run one --profile codex-high
 ```json
 {
   "runner": "codex",           // From profile
-  "model": "gpt-5.3-codex",    // From profile
+  "model": "gpt-5.4",          // From profile
   "phases": 3,                 // Inherited from base
   "reasoning_effort": "high"   // From profile
 }
@@ -449,9 +451,9 @@ ralph config profiles list
 Output example:
 ```
 Available profiles:
-  quick (built-in) - runner=kimi, model=kimi-for-coding, phases=1
-  thorough (built-in) - runner=claude, model=opus, phases=3
-  codex-high - runner=codex, model=gpt-5.3-codex, effort=high
+  quick (built-in) - runner=codex, model=gpt-5.4, effort=low, phases=1
+  thorough (built-in) - runner=codex, model=gpt-5.4, effort=high, phases=3
+  codex-high - runner=codex, model=gpt-5.4, effort=high
   fast-fix - phases=1
 ```
 
@@ -470,8 +472,9 @@ Output example:
 Profile: quick
 Source: built-in
 
-runner: kimi
-model: kimi-for-coding
+runner: codex
+model: gpt-5.4
+reasoning_effort: low
 phases: 1
 ```
 
@@ -498,23 +501,25 @@ ralph config show --format json
 {
   "version": 1,
   "agent": {
-    "runner": "claude",
-    "model": "sonnet",
+    "runner": "codex",
+    "model": "gpt-5.4",
     "phases": 2
   },
   "profiles": {
     "fix": {
-      "runner": "kimi",
-      "model": "kimi-for-coding",
+      "runner": "codex",
+      "model": "gpt-5.4",
+      "reasoning_effort": "low",
       "phases": 1
     },
     "feature": {
       "phases": 3,
-      "model": "opus"
+      "model": "gpt-5.4",
+      "reasoning_effort": "high"
     },
     "audit": {
       "runner": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "phases": 2,
       "reasoning_effort": "high"
     }
@@ -527,7 +532,7 @@ ralph config show --format json
 # Quick bug fix
 ralph run one --profile fix
 
-# New feature (uses Claude/opus with 3 phases)
+# New feature (uses Codex high-effort 3-phase flow)
 ralph run one --profile feature
 
 # Security audit
@@ -542,13 +547,14 @@ ralph scan --profile audit "security review"
   "version": 1,
   "profiles": {
     "team-standard": {
-      "runner": "claude",
-      "model": "sonnet",
+      "runner": "codex",
+      "model": "gpt-5.4",
       "phases": 2
     },
     "team-deep": {
-      "runner": "claude",
-      "model": "opus",
+      "runner": "codex",
+      "model": "gpt-5.4",
+      "reasoning_effort": "high",
       "phases": 3
     }
   }
@@ -568,8 +574,9 @@ ralph run one --profile team-standard
   "version": 1,
   "profiles": {
     "ci-check": {
-      "runner": "kimi",
-      "model": "kimi-for-coding",
+      "runner": "codex",
+      "model": "gpt-5.4",
+      "reasoning_effort": "low",
       "phases": 1,
       "git_revert_mode": "enabled",
       "git_commit_push_enabled": false
@@ -597,15 +604,17 @@ jobs:
 {
   "version": 1,
   "profiles": {
-    "plan-with-codex": {
+    "codex-plan": {
       "runner": "codex",
-      "model": "gpt-5.3-codex",
-      "phases": 1
+      "model": "gpt-5.4",
+      "phases": 1,
+      "reasoning_effort": "high"
     },
-    "implement-with-kimi": {
-      "runner": "kimi",
-      "model": "kimi-for-coding",
-      "phases": 2
+    "codex-ship": {
+      "runner": "codex",
+      "model": "gpt-5.4",
+      "phases": 3,
+      "reasoning_effort": "medium"
     }
   }
 }
@@ -614,10 +623,10 @@ jobs:
 **Workflow**:
 ```bash
 # Phase 1: Generate plan with Codex
-ralph run one --profile plan-with-codex
+ralph run one --profile codex-plan
 
-# Phase 2: Implement with Kimi (using cached plan)
-ralph run one --profile implement-with-kimi
+# Phase 2+: Run the full Codex implementation/review flow
+ralph run one --profile codex-ship
 ```
 
 ### Example 5: Debugging Profile Issues

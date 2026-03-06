@@ -226,7 +226,7 @@ fn resolve_phase_settings_uses_code_default_when_nothing_specified() {
     let (matrix, _warnings) =
         resolve_phase_settings_matrix(&overrides, &config_agent, None, 3).unwrap();
 
-    // Should use default runner (Claude) and its default model
+    // Should use the low-level runner default when no config/default layer is provided
     assert_eq!(matrix.phase1.runner, Runner::Claude);
 }
 

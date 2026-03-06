@@ -11,7 +11,7 @@
 //! - CLI option resolution (see `runner/execution/cli_options.rs`).
 //!
 //! Assumptions/invariants:
-//! - Codex runner only supports `gpt-5.3-codex`, `gpt-5.3-codex-spark`,
+//! - Codex runner only supports `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`,
 //!   `gpt-5.3`, `gpt-5.2-codex`, and `gpt-5.2`.
 //! - Non-Codex runners must never "inherit" Codex-only defaults.
 
@@ -24,7 +24,7 @@ use crate::contracts::{Model, ReasoningEffort, Runner};
 
 pub(crate) fn default_model_for_runner(runner: &Runner) -> Model {
     match runner {
-        Runner::Codex => Model::Gpt53Codex,
+        Runner::Codex => Model::Gpt54,
         Runner::Opencode => Model::Glm47,
         Runner::Gemini => Model::Custom(DEFAULT_GEMINI_MODEL.to_string()),
         Runner::Cursor => Model::Custom(DEFAULT_CURSOR_MODEL.to_string()),
@@ -99,7 +99,8 @@ pub(super) fn resolve_model_for_phase(
 fn normalize_model_for_runner(runner: &Runner, model: Model) -> Model {
     if runner == &Runner::Codex {
         match model {
-            Model::Gpt53Codex
+            Model::Gpt54
+            | Model::Gpt53Codex
             | Model::Gpt53CodexSpark
             | Model::Gpt53
             | Model::Gpt52Codex
@@ -119,7 +120,8 @@ fn normalize_model_for_runner(runner: &Runner, model: Model) -> Model {
 pub(crate) fn validate_model_for_runner(runner: &Runner, model: &Model) -> Result<()> {
     if runner == &Runner::Codex {
         match model {
-            Model::Gpt53Codex
+            Model::Gpt54
+            | Model::Gpt53Codex
             | Model::Gpt53CodexSpark
             | Model::Gpt53
             | Model::Gpt52Codex
@@ -128,7 +130,7 @@ pub(crate) fn validate_model_for_runner(runner: &Runner, model: &Model) -> Resul
                 bail!("model zai-coding-plan/glm-4.7 is not supported for codex runner")
             }
             Model::Custom(name) => bail!(
-                "model {} is not supported for codex runner (allowed: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2)",
+                "model {} is not supported for codex runner (allowed: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2)",
                 name
             ),
         }
@@ -210,7 +212,7 @@ mod tests {
             Some(Model::Custom("sonnet".to_string())),
             false,
         );
-        assert_eq!(model, Model::Gpt53Codex);
+        assert_eq!(model, Model::Gpt54);
     }
 
     #[test]
@@ -222,7 +224,7 @@ mod tests {
             None,
             false,
         );
-        assert_eq!(model, Model::Gpt53Codex);
+        assert_eq!(model, Model::Gpt54);
     }
 
     #[test]
@@ -303,6 +305,12 @@ mod tests {
         let model =
             resolve_model_for_runner(&Runner::Codex, None, None, Some(Model::Gpt53Codex), false);
         assert_eq!(model, Model::Gpt53Codex);
+    }
+
+    #[test]
+    fn resolve_model_for_runner_defaults_for_codex() {
+        let model = resolve_model_for_runner(&Runner::Codex, None, None, None, false);
+        assert_eq!(model, Model::Gpt54);
     }
 
     #[test]

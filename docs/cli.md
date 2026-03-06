@@ -74,9 +74,9 @@ ralph run one --phases 3
 ### Runner Overrides
 
 ```bash
-ralph run one --runner codex --model gpt-5.3-codex --effort high
-ralph run one --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high
-ralph run one --runner-phase2 claude --model-phase2 opus
+ralph run one --runner codex --model gpt-5.4 --effort high
+ralph run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high
+ralph run one --runner-phase2 codex --model-phase2 gpt-5.4 --effort-phase2 medium
 ```
 
 ### Queue Operations

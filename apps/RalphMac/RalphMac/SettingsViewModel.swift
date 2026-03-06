@@ -5,7 +5,7 @@
  - Load and cache current configuration from CLI.
  - Provide @Published properties for Settings UI binding.
  - Debounce and persist config changes via CLI.
- - Handle per-workspace config (project .ralph/config.json).
+ - Handle per-workspace config (project .ralph/config.jsonc).
 
  Does not handle:
  - Settings view layout (see SettingsView).
@@ -23,8 +23,8 @@ import RalphCore
 @Observable
 final class SettingsViewModel {
     // MARK: - Runner Settings
-    var runner: String = "claude"
-    var model: String = "sonnet"
+    var runner: String = "codex"
+    var model: String = "gpt-5.4"
     var phases: Int = 3
     var iterations: Int = 1
     var reasoningEffort: String = "medium"
@@ -46,6 +46,7 @@ final class SettingsViewModel {
     private let workspace: Workspace
     private var saveTask: Task<Void, Never>?
     private var client: RalphCLIClient? { WorkspaceManager.shared.client }
+    private var loadedConfigDict: [String: Any] = [:]
 
     // MARK: - Constants
     let availableRunners = ConfigRunner.allCases
@@ -55,7 +56,7 @@ final class SettingsViewModel {
     // Common model options per runner
     let commonModels: [String: [String]] = [
         "claude": ["sonnet", "opus", "haiku"],
-        "codex": ["gpt-5.3-codex", "o4-mini", "o3"],
+        "codex": ["gpt-5.4", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.3"],
         "opencode": ["default"],
         "gemini": ["gemini-2.0-flash", "gemini-1.5-pro"],
         "cursor": ["default"],
@@ -95,12 +96,20 @@ final class SettingsViewModel {
                 throw NSError(domain: "ConfigLoad", code: Int(result.status.code))
             }
 
+            if let rawConfig = try JSONSerialization.jsonObject(with: Data(result.stdout.utf8))
+                as? [String: Any]
+            {
+                self.loadedConfigDict = rawConfig
+            } else {
+                self.loadedConfigDict = [:]
+            }
+
             let config = try JSONDecoder().decode(RalphConfig.self, from: Data(result.stdout.utf8))
 
             // Apply to properties
             if let agent = config.agent {
-                self.runner = agent.runner ?? "claude"
-                self.model = agent.model ?? "sonnet"
+                self.runner = agent.runner ?? "codex"
+                self.model = agent.model ?? "gpt-5.4"
                 self.phases = agent.phases ?? 3
                 self.iterations = agent.iterations ?? 1
                 self.reasoningEffort = agent.reasoningEffort ?? "medium"
@@ -161,7 +170,7 @@ final class SettingsViewModel {
             ]
         ]
 
-        let configURL = workspace.workingDirectoryURL.appendingPathComponent(".ralph/config.json")
+        let configURL = workspace.workingDirectoryURL.appendingPathComponent(".ralph/config.jsonc")
 
         do {
             // Ensure .ralph directory exists
@@ -170,14 +179,10 @@ final class SettingsViewModel {
                 try FileManager.default.createDirectory(at: ralphDir, withIntermediateDirectories: true)
             }
 
-            // Read existing config to merge
-            var existingDict: [String: Any] = [:]
-            if FileManager.default.fileExists(atPath: configURL.path) {
-                if let data = try? Data(contentsOf: configURL),
-                   let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    existingDict = existing
-                }
-            }
+            // Merge against the last config payload from `ralph config show --format json`
+            // so we preserve fields that Settings UI does not manage, even when the repo
+            // uses JSONC comments on disk.
+            var existingDict = loadedConfigDict
 
             // Deep merge: preserve existing agent fields not managed by Settings UI
             // (e.g., runner_cli, runner_retry, webhook, phase_overrides, etc.)
@@ -210,8 +215,8 @@ final class SettingsViewModel {
     }
 
     func resetToDefaults() {
-        runner = "claude"
-        model = "sonnet"
+        runner = "codex"
+        model = "gpt-5.4"
         phases = 3
         iterations = 1
         reasoningEffort = "medium"

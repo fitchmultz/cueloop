@@ -60,9 +60,9 @@ Config example (.ralph/config.jsonc):
   {
     "version": 1,
     "agent": {
-      "runner": "opencode",
-      "model": "gpt-5.2",
-      "opencode_bin": "opencode",
+      "runner": "codex",
+      "model": "gpt-5.4",
+      "codex_bin": "codex",
       "gemini_bin": "gemini",
       "claude_bin": "claude"
     }
@@ -70,7 +70,7 @@ Config example (.ralph/config.jsonc):
 
 Notes:
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi
-  - Allowed models: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
+  - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
   - On macOS: use `ralph app open` to launch the GUI (requires an installed Ralph.app)
 
 Examples:
@@ -79,7 +79,7 @@ Examples:
   ralph queue show RQ-0008
   ralph queue next --with-title
   ralph scan --runner opencode --model gpt-5.2 --focus "CI gaps"
-  ralph task --runner codex --model gpt-5.3-codex --effort high "Fix the flaky test"
+  ralph task --runner codex --model gpt-5.4 --effort high "Fix the flaky test"
   ralph scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
   ralph scan --runner claude --model sonnet --focus "risk audit"
   ralph task --runner claude --model opus "Add tests for X"

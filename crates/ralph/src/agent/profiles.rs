@@ -22,8 +22,9 @@ pub(crate) fn builtin_profiles() -> BTreeMap<&'static str, AgentConfig> {
         (
             BUILTIN_QUICK,
             AgentConfig {
-                runner: Some(Runner::Kimi),
-                model: Some(Model::Custom("kimi-for-coding".to_string())),
+                runner: Some(Runner::Codex),
+                model: Some(Model::Gpt54),
+                reasoning_effort: Some(crate::contracts::ReasoningEffort::Low),
                 phases: Some(1),
                 ..Default::default()
             },
@@ -31,8 +32,9 @@ pub(crate) fn builtin_profiles() -> BTreeMap<&'static str, AgentConfig> {
         (
             BUILTIN_THOROUGH,
             AgentConfig {
-                runner: Some(Runner::Claude),
-                model: Some(Model::Custom("opus".to_string())),
+                runner: Some(Runner::Codex),
+                model: Some(Model::Gpt54),
+                reasoning_effort: Some(crate::contracts::ReasoningEffort::High),
                 phases: Some(3),
                 ..Default::default()
             },
@@ -82,10 +84,11 @@ mod tests {
     fn builtin_quick_has_expected_values() {
         let profiles = builtin_profiles();
         let quick = profiles.get(BUILTIN_QUICK).unwrap();
-        assert_eq!(quick.runner, Some(Runner::Kimi));
+        assert_eq!(quick.runner, Some(Runner::Codex));
+        assert_eq!(quick.model, Some(Model::Gpt54));
         assert_eq!(
-            quick.model,
-            Some(Model::Custom("kimi-for-coding".to_string()))
+            quick.reasoning_effort,
+            Some(crate::contracts::ReasoningEffort::Low)
         );
         assert_eq!(quick.phases, Some(1));
     }
@@ -94,8 +97,12 @@ mod tests {
     fn builtin_thorough_has_expected_values() {
         let profiles = builtin_profiles();
         let thorough = profiles.get(BUILTIN_THOROUGH).unwrap();
-        assert_eq!(thorough.runner, Some(Runner::Claude));
-        assert_eq!(thorough.model, Some(Model::Custom("opus".to_string())));
+        assert_eq!(thorough.runner, Some(Runner::Codex));
+        assert_eq!(thorough.model, Some(Model::Gpt54));
+        assert_eq!(
+            thorough.reasoning_effort,
+            Some(crate::contracts::ReasoningEffort::High)
+        );
         assert_eq!(thorough.phases, Some(3));
     }
 
@@ -142,7 +149,7 @@ mod tests {
     #[test]
     fn resolve_profile_patch_falls_back_to_builtin() {
         let resolved = resolve_profile_patch(BUILTIN_QUICK, None).unwrap();
-        assert_eq!(resolved.runner, Some(Runner::Kimi));
+        assert_eq!(resolved.runner, Some(Runner::Codex));
     }
 
     #[test]

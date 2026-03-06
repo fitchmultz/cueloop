@@ -597,9 +597,9 @@ public enum RalphTaskExecutionPreset: String, CaseIterable, Sendable, Identifiab
         case .codexBalanced:
             return "Codex Balanced"
         case .kimiFast:
-            return "Kimi Fast"
+            return "Codex Fast"
         case .hybridCodexKimi:
-            return "Hybrid Codex+Kimi"
+            return "Codex Phased"
         case .inheritFromConfig:
             return "Inherit Config"
         }
@@ -612,9 +612,9 @@ public enum RalphTaskExecutionPreset: String, CaseIterable, Sendable, Identifiab
         case .codexBalanced:
             return "Codex with medium effort and a 2-phase flow."
         case .kimiFast:
-            return "Kimi coding model with 3 phases and 1 iteration."
+            return "Codex with low reasoning and a 1-phase flow."
         case .hybridCodexKimi:
-            return "Codex planning, Kimi implementation and review."
+            return "Codex with phase-specific effort tuning across the 3-phase flow."
         case .inheritFromConfig:
             return "Remove task overrides and use .ralph/config.jsonc."
         }
@@ -625,7 +625,7 @@ public enum RalphTaskExecutionPreset: String, CaseIterable, Sendable, Identifiab
         case .codexDeep:
             return RalphTaskAgent(
                 runner: "codex",
-                model: "gpt-5.3-codex",
+                model: "gpt-5.4",
                 modelEffort: "high",
                 phases: 3,
                 iterations: 1
@@ -633,16 +633,17 @@ public enum RalphTaskExecutionPreset: String, CaseIterable, Sendable, Identifiab
         case .codexBalanced:
             return RalphTaskAgent(
                 runner: "codex",
-                model: "gpt-5.3-codex",
+                model: "gpt-5.4",
                 modelEffort: "medium",
                 phases: 2,
                 iterations: 1
             )
         case .kimiFast:
             return RalphTaskAgent(
-                runner: "kimi",
-                model: "kimi-code/kimi-for-coding",
-                phases: 3,
+                runner: "codex",
+                model: "gpt-5.4",
+                modelEffort: "low",
+                phases: 1,
                 iterations: 1
             )
         case .hybridCodexKimi:
@@ -652,16 +653,18 @@ public enum RalphTaskExecutionPreset: String, CaseIterable, Sendable, Identifiab
                 phaseOverrides: RalphTaskPhaseOverrides(
                     phase1: RalphTaskPhaseOverride(
                         runner: "codex",
-                        model: "gpt-5.3-codex",
+                        model: "gpt-5.4",
                         reasoningEffort: "high"
                     ),
                     phase2: RalphTaskPhaseOverride(
-                        runner: "kimi",
-                        model: "kimi-code/kimi-for-coding"
+                        runner: "codex",
+                        model: "gpt-5.4",
+                        reasoningEffort: "medium"
                     ),
                     phase3: RalphTaskPhaseOverride(
-                        runner: "kimi",
-                        model: "kimi-code/kimi-for-coding"
+                        runner: "codex",
+                        model: "gpt-5.4",
+                        reasoningEffort: "medium"
                     )
                 )
             )

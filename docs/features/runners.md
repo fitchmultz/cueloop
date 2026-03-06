@@ -13,7 +13,7 @@ Ralph supports 7 built-in runners and a plugin system for custom runners:
 | Runner | Provider | Best For | Default Model |
 |--------|----------|----------|---------------|
 | **Claude** | Anthropic | Complex reasoning, code review | sonnet |
-| **Codex** | OpenAI | OpenAI ecosystem integration | gpt-5.3-codex |
+| **Codex** | OpenAI | Expert coding workflows, fastest path to production changes | gpt-5.4 |
 | **OpenCode** | Flexible | Custom model selection | zai-coding-plan/glm-4.7 |
 | **Gemini** | Google | Google ecosystem integration | gemini-3-pro-preview |
 | **Cursor** | Cursor | IDE-integrated workflows | (cursor-specific) |
@@ -67,11 +67,12 @@ Ralph supports 7 built-in runners and a plugin system for custom runners:
 
 ### Codex (OpenAI)
 
-**Best for:** Teams already using OpenAI's ecosystem, with built-in reasoning effort control.
+**Best for:** Expert coding work with built-in reasoning effort control and Ralph's strongest default workflow.
 
 **Allowed Models (Restricted):**
-Codex only supports these five models:
-- `gpt-5.3-codex` (default)
+Codex only supports this restricted model list:
+- `gpt-5.4` (default)
+- `gpt-5.3-codex`
 - `gpt-5.3-codex-spark`
 - `gpt-5.3`
 - `gpt-5.2-codex`
@@ -99,7 +100,7 @@ Codex only supports these five models:
 {
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.3-codex",
+    "model": "gpt-5.4",
     "reasoning_effort": "high",
     "runner_cli": {
       "defaults": {
@@ -316,7 +317,7 @@ Configure different runners/models for different phases:
 | Runner | Model Type | Examples |
 |--------|------------|----------|
 | **Claude** | Named + Arbitrary | `sonnet`, `opus`, `claude-opus-4` |
-| **Codex** | Restricted list only | `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` |
+| **Codex** | Restricted list only | `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` |
 | **OpenCode** | Arbitrary | `zai-coding-plan/glm-4.7`, `provider/model` |
 | **Gemini** | Named + Arbitrary | `gemini-3-pro-preview`, `custom-model` |
 | **Cursor** | Arbitrary | Any valid Cursor model ID |
@@ -328,7 +329,7 @@ Configure different runners/models for different phases:
 When a model is incompatible with a runner, Ralph automatically normalizes:
 
 - Codex-only models (`gpt-5.*-codex`) → runner's default when used with other runners
-- Non-Codex models → `gpt-5.3-codex` when used with Codex
+- Non-Codex models → `gpt-5.4` when used with Codex
 
 ### Using Arbitrary Model IDs
 
@@ -651,19 +652,21 @@ See [Plugin Development Guide](../plugin-development.md) for creating custom plu
   "version": 1,
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.3-codex",
+    "model": "gpt-5.4",
     "phase_overrides": {
       "phase1": {
-        "runner": "claude",
-        "model": "opus"
+        "runner": "codex",
+        "model": "gpt-5.4",
+        "reasoning_effort": "high"
       },
       "phase2": {
-        "runner": "kimi",
-        "model": "kimi-for-coding"
+        "runner": "codex",
+        "model": "gpt-5.4",
+        "reasoning_effort": "medium"
       },
       "phase3": {
         "runner": "codex",
-        "model": "gpt-5.3-codex",
+        "model": "gpt-5.4",
         "reasoning_effort": "high"
       }
     }
@@ -681,7 +684,7 @@ ralph run one --runner claude --model opus
 ralph run one --approval-mode safe
 
 # Single-phase quick execution
-ralph run one --phases 1 --runner kimi
+ralph run one --phases 1 --runner codex --model gpt-5.4 --effort low
 
 # Use custom model with OpenCode
 ralph task "Add tests" --runner opencode --model custom/model-v2
@@ -708,7 +711,7 @@ ralph run one
   "version": 1,
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.3-codex",
+    "model": "gpt-5.4",
     "runner_retry": {
       "max_attempts": 5,
       "base_backoff_ms": 2000,

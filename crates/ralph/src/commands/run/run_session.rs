@@ -14,7 +14,7 @@
 
 use crate::agent::AgentOverrides;
 use crate::config;
-use crate::contracts::{PhaseSettingsSnapshot, SessionState, TaskStatus};
+use crate::contracts::{Config, PhaseSettingsSnapshot, SessionState, TaskStatus};
 use crate::runner::PhaseSettingsMatrix;
 use crate::session;
 use crate::timeutil;
@@ -32,11 +32,14 @@ pub(crate) fn create_session_for_task(
     let git_commit = session::get_git_head_commit(&resolved.repo_root);
 
     // Resolve runner from overrides or config
+    let default_config = Config::default();
+
     let runner = agent_overrides
         .runner
         .clone()
         .or(resolved.config.agent.runner.clone())
-        .unwrap_or(crate::contracts::Runner::Claude);
+        .or(default_config.agent.runner.clone())
+        .unwrap_or_default();
 
     // Resolve model string from overrides or config
     let model = agent_overrides
@@ -51,7 +54,14 @@ pub(crate) fn create_session_for_task(
                 .as_ref()
                 .map(|m| m.as_str().to_string())
         })
-        .unwrap_or_else(|| "sonnet".to_string());
+        .or_else(|| {
+            default_config
+                .agent
+                .model
+                .as_ref()
+                .map(|m| m.as_str().to_string())
+        })
+        .unwrap_or_else(|| "gpt-5.4".to_string());
 
     // Generate a simple session ID using timestamp and task ID
     let session_id = format!("{}-{}", now.replace([':', '.', '-'], ""), task_id);

@@ -331,7 +331,7 @@ Ralph supports multiple AI runners. Choose based on your needs:
 | Runner | Best For | Model Options | Speed | Reasoning |
 |--------|----------|---------------|-------|-----------|
 | **Claude** | General purpose, complex reasoning | `sonnet` (default), `opus` | Medium | ⭐⭐⭐ Excellent |
-| **Codex** | Code generation, OpenAI fans | `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2-codex` | Fast | ⭐⭐⭐ Excellent |
+| **Codex** | Expert coding workflows, best default path | `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.2-codex` | Fast | ⭐⭐⭐ Excellent |
 | **Gemini** | Cost efficiency, speed | `gemini-3-pro-preview`, `gemini-3-flash-preview` | ⚡ Fast | ⭐⭐ Good |
 | **OpenCode** | Flexible/custom endpoints | Arbitrary model IDs | Varies | Varies |
 | **Cursor** | Cursor IDE users | Uses Cursor's `agent` binary | Medium | ⭐⭐⭐ Excellent |
@@ -345,7 +345,8 @@ Ralph supports multiple AI runners. Choose based on your needs:
 - `opus` - Maximum capability for complex tasks
 
 **Codex:**
-- `gpt-5.3-codex` - Latest and most capable
+- `gpt-5.4` - Default and recommended for Codex in Ralph
+- `gpt-5.3-codex` - Prior Codex-tuned option
 - `gpt-5.3-codex-spark` - Spark variant for coding workflows
 - `gpt-5.2-codex` - Good balance, slightly faster
 
@@ -365,7 +366,7 @@ Override for a single task:
 ralph run one --runner claude --model sonnet
 
 # Use Codex with high reasoning effort
-ralph run one --runner codex --model gpt-5.3-codex --effort high
+ralph run one --runner codex --model gpt-5.4 --effort high
 ```
 
 Set default in config:
@@ -427,8 +428,8 @@ A minimal effective configuration:
 {
   "version": 1,
   "agent": {
-    "runner": "claude",
-    "model": "sonnet",
+    "runner": "codex",
+    "model": "gpt-5.4",
     "phases": 3,
     "ci_gate_enabled": true,
     "git_commit_push_enabled": false
@@ -447,8 +448,8 @@ A minimal effective configuration:
 ```json
 {
   "agent": {
-    "runner": "claude",           // Default runner
-    "model": "sonnet",            // Default model
+    "runner": "codex",            // Default runner
+    "model": "gpt-5.4",           // Default model
     "phases": 3,                  // Default phase count (1, 2, or 3)
     "iterations": 1,              // Iterations per task
     "reasoning_effort": "medium", // Codex: low/medium/high/xhigh
@@ -493,8 +494,8 @@ Ralph includes built-in profiles for quick workflow switching:
 
 | Profile | Runner | Model | Phases | Use Case |
 |---------|--------|-------|--------|----------|
-| `quick` | Kimi | kimi-for-coding | 1 | Fast fixes |
-| `thorough` | Claude | opus | 3 | Deep review |
+| `quick` | Codex | gpt-5.4 | 1 | Fast fixes |
+| `thorough` | Codex | gpt-5.4 | 3 | Deep review |
 
 Use a profile:
 
@@ -510,7 +511,7 @@ Define custom profiles:
   "profiles": {
     "my-profile": {
       "runner": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "phases": 2,
       "reasoning_effort": "high"
     }

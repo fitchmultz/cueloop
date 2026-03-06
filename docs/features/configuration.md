@@ -49,7 +49,7 @@ Stored in your user configuration directory:
 | Platform | Path |
 |----------|------|
 | Linux/macOS | `~/.config/ralph/config.jsonc` |
-| With XDG | `$XDG_CONFIG_HOME/ralph/config.json` |
+| With XDG | `$XDG_CONFIG_HOME/ralph/config.jsonc` |
 
 Create this file manually. A minimal example:
 
@@ -57,8 +57,8 @@ Create this file manually. A minimal example:
 {
   "version": 1,
   "agent": {
-    "runner": "claude",
-    "model": "sonnet",
+    "runner": "codex",
+    "model": "gpt-5.4",
     "phases": 3
   }
 }
@@ -226,8 +226,8 @@ The `agent` section controls how Ralph executes tasks and interacts with AI runn
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `runner` | `string` | `"claude"` | Default runner: `claude`, `codex`, `gemini`, `opencode`, `cursor`, `kimi`, `pi` |
-| `model` | `string` | `"sonnet"` | Default model identifier |
+| `runner` | `string` | `"codex"` | Default runner: `claude`, `codex`, `gemini`, `opencode`, `cursor`, `kimi`, `pi` |
+| `model` | `string` | `"gpt-5.4"` | Default model identifier |
 | `phases` | `1 \| 2 \| 3` | `3` | Execution phases: 1=single-pass, 2=plan+implement, 3=plan+implement+review |
 | `iterations` | `number` | `1` | Number of iterations per task (≥1) |
 | `reasoning_effort` | `"low" \| "medium" \| "high" \| "xhigh"` | `"medium"` | Reasoning depth (Codex only) |
@@ -424,20 +424,20 @@ Per-phase overrides for runner, model, and reasoning effort. Allows different se
 {
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.3-codex",
+    "model": "gpt-5.4",
     "reasoning_effort": "medium",
     "phase_overrides": {
       "phase1": {
-        "model": "o3-mini",
+        "model": "gpt-5.4",
         "reasoning_effort": "high"
       },
       "phase2": {
-        "runner": "claude",
-        "model": "sonnet"
+        "runner": "codex",
+        "model": "gpt-5.4"
       },
       "phase3": {
         "runner": "codex",
-        "model": "gpt-5.3-codex",
+        "model": "gpt-5.4",
         "reasoning_effort": "high"
       }
     }
@@ -746,8 +746,8 @@ Ralph provides two built-in profiles:
 
 | Profile | Runner | Model | Phases | Use Case |
 |---------|--------|-------|--------|----------|
-| `quick` | `kimi` | `kimi-for-coding` | `1` | Fast single-pass execution |
-| `thorough` | `claude` | `opus` | `3` | Deep multi-phase analysis |
+| `quick` | `codex` | `gpt-5.4` | `1` | Fast single-pass execution |
+| `thorough` | `codex` | `gpt-5.4` | `3` | Deep multi-phase analysis |
 
 ### Defining Custom Profiles
 
@@ -757,7 +757,7 @@ Ralph provides two built-in profiles:
   "profiles": {
     "codex-review": {
       "runner": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "phases": 2,
       "reasoning_effort": "high"
     },

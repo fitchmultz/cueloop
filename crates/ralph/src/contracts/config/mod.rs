@@ -124,8 +124,8 @@ impl Default for Config {
                 }),
             },
             agent: AgentConfig {
-                runner: Some(Runner::Claude),
-                model: Some(Model::Custom("sonnet".to_string())),
+                runner: Some(Runner::Codex),
+                model: Some(Model::Gpt54),
                 reasoning_effort: Some(ReasoningEffort::Medium),
                 iterations: Some(1),
                 followup_reasoning_effort: None,

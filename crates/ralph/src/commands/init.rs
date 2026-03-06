@@ -375,11 +375,8 @@ mod tests {
         );
         assert_eq!(cfg.queue.id_prefix, Some("RQ".to_string()));
         assert_eq!(cfg.queue.id_width, Some(4));
-        assert_eq!(cfg.agent.runner, Some(crate::contracts::Runner::Claude));
-        assert_eq!(
-            cfg.agent.model,
-            Some(crate::contracts::Model::Custom("sonnet".to_string()))
-        );
+        assert_eq!(cfg.agent.runner, Some(crate::contracts::Runner::Codex));
+        assert_eq!(cfg.agent.model, Some(crate::contracts::Model::Gpt54));
         assert_eq!(
             cfg.agent.reasoning_effort,
             Some(crate::contracts::ReasoningEffort::Medium)
@@ -561,7 +558,7 @@ mod tests {
 
         let wizard_answers = WizardAnswers {
             runner: crate::contracts::Runner::Codex,
-            model: "gpt-5.3-codex".to_string(),
+            model: "gpt-5.4".to_string(),
             phases: 2,
             create_first_task: true,
             first_task_title: Some("Test task".to_string()),

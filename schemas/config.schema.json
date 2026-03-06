@@ -21,7 +21,7 @@
         "instruction_files": null,
         "iterations": 1,
         "kimi_bin": "kimi",
-        "model": "sonnet",
+        "model": "gpt-5.4",
         "notification": {
           "enabled": true,
           "notify_on_complete": true,
@@ -39,7 +39,7 @@
         "reasoning_effort": "medium",
         "repoprompt_plan_required": false,
         "repoprompt_tool_injection": false,
-        "runner": "claude",
+        "runner": "codex",
         "runner_cli": {
           "defaults": {
             "approval_mode": "yolo",
@@ -568,7 +568,12 @@
     "Model": {
       "oneOf": [
         {
-          "description": "OpenAI GPT-5.3 Codex (default)",
+          "description": "OpenAI GPT-5.4 (default Codex model)",
+          "type": "string",
+          "const": "gpt-5.4"
+        },
+        {
+          "description": "OpenAI GPT-5.3 Codex",
           "type": "string",
           "const": "gpt-5.3-codex"
         },

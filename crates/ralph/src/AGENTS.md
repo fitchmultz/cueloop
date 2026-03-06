@@ -64,7 +64,7 @@ scripts/              # Maintenance + release helper scripts
 .ralph/               # Repo-local runtime state
   queue.json          # Active tasks (source of truth)
   done.json           # Archived tasks
-  config.json         # Project config (overrides global)
+  config.jsonc        # Project config (overrides global; .json fallback still supported)
   prompts/*.md        # Optional prompt overrides
 ```
 
@@ -294,8 +294,8 @@ The CI runs `check-env-safety` which fails if `.env` is tracked in git.
 Config precedence (highest to lowest):
 
 1. CLI flags
-2. Project config: `.ralph/config.json`
-3. Global config: `~/.config/ralph/config.json`
+2. Project config: `.ralph/config.jsonc` (`.json` fallback)
+3. Global config: `~/.config/ralph/config.jsonc` (`.json` fallback)
 4. Schema defaults: `schemas/config.schema.json`
 
 See `docs/configuration.md` for key fields (runner/model/phases/RepoPrompt toggles/CI gate settings).

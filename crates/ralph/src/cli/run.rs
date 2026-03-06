@@ -167,7 +167,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
  \n\
  Notes:\n\
 	  - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
-	  - Allowed models: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
+	  - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
 	  - `--effort` is codex-only and is ignored for other runners.\n\
 	  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
 	  - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
@@ -191,8 +191,8 @@ Phase-specific overrides:\n\
  To change defaults for this repo, edit .ralph/config.jsonc:\n\
   version: 1\n\
   agent:\n\
-  runner: claude\n\
-  model: sonnet\n\
+  runner: codex\n\
+  model: gpt-5.4\n\
   gemini_bin: gemini\n\
  \n\
 Examples:\n\
@@ -200,8 +200,8 @@ Examples:\n\
  ralph run one --phases 2\n\
  ralph run one --phases 1\n\
  ralph run one --runner opencode --model gpt-5.2\n\
- ralph run one --runner codex --model gpt-5.3-codex --effort high\n\
- ralph run one --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high\n\
+ ralph run one --runner codex --model gpt-5.4 --effort high\n\
+ ralph run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high\n\
  ralph run one --runner-phase2 claude --model-phase2 opus\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
  ralph run one --runner pi --model gpt-5.2\n\
@@ -248,8 +248,8 @@ Examples:\n\
  ralph run one\n\
  ralph run one --id RQ-0001\n\
  ralph run one --debug\n\
- ralph run one --profile quick (kimi, 1-phase)\n\
- ralph run one --profile thorough (claude/opus, 3-phase)\n\
+ ralph run one --profile quick (codex/gpt-5.4, 1-phase, low effort)\n\
+ ralph run one --profile thorough (codex/gpt-5.4, 3-phase, high effort)\n\
  ralph run one --phases 3 (plan/implement+CI/review+complete)\n\
  ralph run one --phases 2 (plan/implement)\n\
  ralph run one --phases 1 (single-pass)\n\
@@ -257,8 +257,8 @@ Examples:\n\
  ralph run one --runner opencode --model gpt-5.2\n\
  ralph run one --runner gemini --model gemini-3-flash-preview\n\
  ralph run one --runner pi --model gpt-5.2\n\
- ralph run one --runner codex --model gpt-5.3-codex --effort high\n\
- ralph run one --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high\n\
+ ralph run one --runner codex --model gpt-5.4 --effort high\n\
+ ralph run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high\n\
  ralph run one --runner-phase2 claude --model-phase2 opus\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode enabled\n\
@@ -276,8 +276,8 @@ Examples:\n\
         about = "Run tasks repeatedly until no todo remain (or --max-tasks is reached)",
         after_long_help = "Examples:\n\
  ralph run loop --max-tasks 0\n\
- ralph run loop --profile quick --max-tasks 5 (kimi, 1-phase)\n\
- ralph run loop --profile thorough --max-tasks 5 (claude/opus, 3-phase)\n\
+ ralph run loop --profile quick --max-tasks 5 (codex/gpt-5.4, 1-phase, low effort)\n\
+ ralph run loop --profile thorough --max-tasks 5 (codex/gpt-5.4, 3-phase, high effort)\n\
  ralph run loop --phases 3 --max-tasks 0 (plan/implement+CI/review+complete)\n\
  ralph run loop --phases 2 --max-tasks 0 (plan/implement)\n\
  ralph run loop --phases 1 --max-tasks 1 (single-pass)\n\
@@ -285,7 +285,7 @@ Examples:\n\
  ralph run loop --max-tasks 3\n\
  ralph run loop --max-tasks 1 --debug\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.2\n\
- ralph run loop --runner-phase1 codex --model-phase1 gpt-5.2-codex --effort-phase1 high --max-tasks 1\n\
+ ralph run loop --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high --max-tasks 1\n\
  ralph run loop --runner-phase2 claude --model-phase2 opus --max-tasks 1\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode disabled --max-tasks 1\n\
