@@ -4,7 +4,7 @@
 # Responsibilities:
 # - Validate required public-facing metadata files are present.
 # - Detect tracked runtime/build artifacts that should stay local.
-# - Run lightweight link checks on key reviewer-facing docs.
+# - Run lightweight link checks on key public-facing docs.
 # - Optionally run the local CI gate (`make ci`).
 # Scope:
 # - This script may run `make ci`, which can update formatted/generated files.
@@ -106,7 +106,6 @@ check_required_files() {
         "CONTRIBUTING.md"
         "SECURITY.md"
         "CODE_OF_CONDUCT.md"
-        "PORTFOLIO.md"
         "docs/guides/public-readiness.md"
         ".github/ISSUE_TEMPLATE/bug_report.md"
         ".github/ISSUE_TEMPLATE/feature_request.md"
@@ -322,7 +321,6 @@ check_markdown_links() {
 
     local files=(
         "$REPO_ROOT/README.md"
-        "$REPO_ROOT/PORTFOLIO.md"
         "$REPO_ROOT/CONTRIBUTING.md"
         "$REPO_ROOT/docs/index.md"
         "$REPO_ROOT/docs/releasing.md"

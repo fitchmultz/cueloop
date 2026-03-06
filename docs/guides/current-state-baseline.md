@@ -39,7 +39,7 @@ make pre-public-check
 - Secret-scan false positives due to allowlist pattern shape in pre-public script
 - Incomplete tracked artifact checks for some `.ralph` runtime directories
 - Weaker tracked env-file detection (`.env` only)
-- Docs gaps for trust boundaries, limitations, version/support policy, and reviewer evidence mapping
+- Docs gaps for trust boundaries, limitations, version/support policy, and verification guidance
 
 ## Top Risks
 
@@ -49,7 +49,7 @@ P0:
 
 P1:
 
-- Reviewer friction due to docs drift or unclear verification pathways
+- Public-facing friction due to docs drift or unclear verification pathways
 - Determinism drift without explicit toolchain policy
 
 P2:
@@ -61,4 +61,4 @@ P2:
 - Required gates are green and reproducible (`make agent-ci`, `make ci`, `make pre-public-check`)
 - No tracked runtime/build artifacts outside policy allowlist
 - No tracked env files except `.env.example`
-- Docs provide cold-start onboarding, architecture clarity, and reviewer evidence path
+- Docs provide cold-start onboarding, architecture clarity, and a clear verification path

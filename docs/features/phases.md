@@ -236,7 +236,7 @@ Phase 3 generates a code review prompt that includes:
 - Summary of changes (from git diff)
 - Files modified
 - Potential risks or suspicious patterns
-- Questions for the reviewer
+- Questions for the operator
 
 ### Completion Signals
 

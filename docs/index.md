@@ -4,14 +4,13 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 
 ## Start Here
 
-- [README](../README.md): product pitch, why it matters, and first end-to-end workflow
-- [Portfolio Guide](../PORTFOLIO.md): fast reviewer path
+- [README](../README.md): product overview, first end-to-end workflow, and verification path
 - [Architecture Overview](architecture.md): components, data/control flow, trust boundaries
 - [Quick Start](quick-start.md): install, initialize, create first task, run it
 - [CLI Reference](cli.md): command map + high-value workflows
 - [Configuration](configuration.md): config schema, precedence, and defaults
 - [Queue and Tasks](queue-and-tasks.md): task model and queue semantics
-- [Reviewer Smoke Test](guides/reviewer-smoke-test.md): deterministic evaluation path
+- [Local Smoke Test](guides/local-smoke-test.md): deterministic install and verification path
 
 ## Core Command Areas
 
@@ -25,13 +24,12 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 - `ralph daemon` + `ralph watch`: background automation
 - `ralph webhook`: test/status/replay for event delivery
 
-## Reviewer Path
+## Verification and Operations
 
-Use these if you are evaluating whether Ralph feels public-ready:
+Use these when you want to validate a clone, understand the operational model, or prepare for a public release:
 
 - [README](../README.md)
-- [Portfolio Guide](../PORTFOLIO.md)
-- [Reviewer Smoke Test](guides/reviewer-smoke-test.md)
+- [Local Smoke Test](guides/local-smoke-test.md)
 - [Architecture Overview](architecture.md)
 - [Public Readiness Checklist](guides/public-readiness.md)
 - [Security Model](security-model.md)
@@ -49,15 +47,8 @@ Use these if you are evaluating whether Ralph feels public-ready:
 
 - [Release Runbook](guides/release-runbook.md)
 - [Current State Baseline](guides/current-state-baseline.md)
-- [Public Release Hardening Investigation](guides/public-release-hardening-investigation.md)
-- [History Cleanup Execution Plan](guides/history-cleanup-execution-plan.md)
-
-## Public Evidence Pack
-
 - [Release Readiness Report](guides/release-readiness-report.md)
-- [Reviewer Smoke Test](guides/reviewer-smoke-test.md)
-- [Role Evidence Index](role-evidence/index.md)
-- [Portfolio Guide](../PORTFOLIO.md)
+- [Public Release Hardening Investigation](guides/public-release-hardening-investigation.md)
 
 ## Runtime Paths (Defaults)
 

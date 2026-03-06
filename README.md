@@ -101,7 +101,7 @@ ralph doctor
 
 What this gives the team: one tracked queue, one explicit task lifecycle, one local verification path, and the flexibility to swap runners without changing the repo workflow.
 
-## Public Reviewer Smoke Test (5 minutes)
+## Local Smoke Test (5 minutes)
 
 No external runner setup required:
 
@@ -123,7 +123,7 @@ Expected signals:
 - `ralph doctor` exits successfully
 - `make agent-ci` completes with passing format/type/lint/test checks
 
-Full scripted version: [docs/guides/reviewer-smoke-test.md](docs/guides/reviewer-smoke-test.md)
+Full scripted version: [docs/guides/local-smoke-test.md](docs/guides/local-smoke-test.md)
 
 ## Security & Data Handling
 
@@ -160,13 +160,12 @@ Start here:
 - [Documentation Index](docs/index.md)
 - [Architecture Overview](docs/architecture.md)
 - [Quick Start](docs/quick-start.md)
-- [Reviewer Smoke Test](docs/guides/reviewer-smoke-test.md)
+- [Local Smoke Test](docs/guides/local-smoke-test.md)
 - [CLI Reference](docs/cli.md)
 - [Configuration](docs/configuration.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [CI and Test Strategy](docs/guides/ci-strategy.md)
 - [Public Readiness Checklist](docs/guides/public-readiness.md)
-- [Portfolio / Reviewer Guide](PORTFOLIO.md)
 
 Policies:
 
@@ -177,7 +176,7 @@ Policies:
 
 ## Repository Runtime State
 
-This repository intentionally keeps a small sanitized `.ralph/` state for reproducible examples.
+This repository intentionally keeps a small sanitized `.ralph/` state for reproducible examples and documentation.
 In most consumer repositories, `.ralph/` is project-local runtime state managed by `ralph init`.
 
 ## Development

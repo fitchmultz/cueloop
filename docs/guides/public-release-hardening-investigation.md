@@ -3,11 +3,11 @@
 Date: March 4, 2026
 
 ## Summary
-The repository is structurally strong (local CI contracts, release flow, docs hub), but had reviewer-visible friction in policy clarity, security/contact ergonomics, pre-public guardrails, and minor packaging/documentation drift. This pass hardened those gaps and re-validated CI-equivalent gates.
+The repository is structurally strong (local CI contracts, release flow, docs hub), but had public-facing friction in policy clarity, security/contact ergonomics, pre-public guardrails, and minor packaging/documentation drift. This pass hardened those gaps and re-validated CI-equivalent gates.
 
 ## Symptoms
 - Public-readiness checks were improving, but still had avoidable friction for iterative use and potential blind spots.
-- Reviewer-facing docs had minor policy/onboarding inconsistencies.
+- Public-facing docs had minor policy/onboarding inconsistencies.
 - Publish-readiness dry-runs surfaced lockfile quality warnings.
 
 ## Investigation Log
@@ -73,7 +73,7 @@ The remaining friction came from **contract coverage asymmetry**:
 - CI pipeline parity had strong enforcement (Makefile + contract tests),
 - but adjacent areas (security/community reporting text, quick-start caveats, release artifact UX, pre-public ergonomics, lockfile hygiene) relied more on manual alignment.
 
-This created small but reviewer-visible inconsistencies despite otherwise strong engineering controls.
+This created small but externally visible inconsistencies despite otherwise strong engineering controls.
 
 ## Recommendations
 1. Keep CI/docs contracts explicit and test-backed where feasible (especially release/public-readiness docs).

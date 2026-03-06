@@ -23,7 +23,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 | Configuration | `docs/configuration.md` |
 | CLI reference | `docs/cli.md` |
 | Public launch checklist | `docs/guides/public-readiness.md` |
-| Portfolio reviewer map | `PORTFOLIO.md` |
+| Local verification guide | `docs/guides/local-smoke-test.md` |
 | Public audit automation | `scripts/pre-public-check.sh` |
 | Core source | `crates/ralph/src/` |
 | Tests | `crates/ralph/tests/` |

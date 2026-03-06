@@ -1,13 +1,13 @@
 # Release Readiness Report
 
-Purpose: capture an evidence-based publication snapshot for Ralph.
+Purpose: capture a point-in-time publication snapshot for Ralph.
 
 ## Snapshot Metadata
 
 - Date: March 5, 2026
 - Hardening commit: `05a141f1`
 - Environment: local macOS workstation (GNU Make + pinned Rust toolchain)
-- Scope: public-release hardening pass (CI/safety/docs/reviewer evidence)
+- Scope: public-release hardening pass (CI, safety, and docs)
 
 ## Gate Results
 
@@ -17,7 +17,7 @@ Status values: `PASS`, `FAIL`, or `PENDING`.
 - `make ci`: `PASS`
 - `make pre-public-check`: `PASS`
 - `make macos-ci`: `PASS`
-- Reviewer deterministic smoke sequence (CLI help + focused contract tests): `PASS`
+- Local smoke sequence (CLI help + focused contract tests): `PASS`
 
 Evidence commands run:
 
@@ -30,7 +30,7 @@ scripts/pre-public-check.sh --skip-clean
 # clean-snapshot verification of full strict gate
 make pre-public-check
 
-# skeptical reviewer deterministic sequence
+# local smoke sequence
 cargo run -p ralph -- --help
 cargo run -p ralph -- run one --help
 cargo run -p ralph -- scan --help
@@ -57,12 +57,11 @@ Notes:
   - Added `check-repo-safety` alias target for explicit safety runs
 - Strengthened ignore policy for runtime-only local paths:
   - Added `.ralph/undo/` and `.ralph/webhooks/` to `.gitignore`
-- Improved reviewer-facing docs:
+- Improved public-facing docs:
   - README cold-start clarity (scope, non-goals, limitations, security/data handling)
   - Architecture trust boundaries + failure/recovery details
-  - Public checklist + portfolio evidence alignment
+  - Public checklist + verification guide alignment
   - Added support/version/security/troubleshooting/runbook/smoke-test docs
-  - Added role evidence pack under `docs/role-evidence/`
 - Determinism upgrade:
   - Added `rust-toolchain.toml`
   - Added crate-level `rust-version = "1.93"`
@@ -75,12 +74,6 @@ Notes:
   - Mitigation: use `RALPH_CI_JOBS` / `RALPH_XCODE_JOBS` caps; track runtime trends
   - Due: before first public release tag
 
-- Risk: Optional history rewrite not yet executed
-  - Severity: Low (unless noisy/sensitive history remains)
-  - Owner: Repo owner
-  - Mitigation: follow `history-cleanup-execution-plan.md` only if still private and safe
-  - Due: before making repository broadly public
-
 ## Go / No-Go Decision
 
 - Current decision: `GO`
@@ -89,4 +82,4 @@ Notes:
 ## Sign-off
 
 - Technical sign-off: complete on hardening commit `05a141f1`
-- Publication sign-off: maintainer approval pending (history cleanup remains optional)
+- Publication sign-off: maintainer approval pending

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Purpose: provide a reviewer-friendly view of Ralph’s components, runtime data flow, trust boundaries, and failure handling model.
+Purpose: describe Ralph’s components, runtime data flow, trust boundaries, and failure handling model.
 
 ## System Boundary
 

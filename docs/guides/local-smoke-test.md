@@ -1,6 +1,6 @@
-# Reviewer Smoke Test (5–10 minutes)
+# Local Smoke Test (5-10 minutes)
 
-Purpose: give skeptical reviewers a deterministic validation path without external runner setup.
+Purpose: provide a deterministic install and verification path without requiring external runner setup.
 
 ## Preconditions
 
