@@ -2,6 +2,7 @@ RUST_WORKSPACE := .
 PREFIX ?= $(HOME)/.local
 BIN_DIR ?= $(PREFIX)/bin
 BIN_NAME ?= ralph
+CARGO_PACKAGE_NAME ?= ralph-cli
 CARGO_HTTP_MULTIPLEXING ?= false
 XCODE_DERIVED_DATA_ROOT ?= target/tmp/xcode-deriveddata
 # Pin destination arch to avoid xcodebuild's "first of multiple matching destinations" warning.
@@ -50,7 +51,7 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
 .PHONY: help install macos-install-app update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast deps \
-	changelog changelog-preview changelog-check release release-dry-run release-artifacts pre-commit pre-public-check \
+	changelog changelog-preview changelog-check publish-check publish-crate release release-dry-run release-artifacts pre-commit pre-public-check \
 	agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
 	macos-test-window-shortcuts coverage coverage-clean FORCE
@@ -73,6 +74,8 @@ help:
 	@echo "  make update       # Update Rust deps to latest stable; use macos-ci to verify the bundled Swift app toolchain"
 	@echo "  make install      # Install release CLI; on macOS also installs RalphMac.app"
 	@echo "  make macos-install-app # Copy latest Release RalphMac.app into Applications"
+	@echo "  make publish-check # Run cargo package review + crates.io dry-run for $(CARGO_PACKAGE_NAME)"
+	@echo "  make publish-crate # Publish the current $(CARGO_PACKAGE_NAME) manifest version to crates.io"
 	@echo "  make check-repo-safety # Fast required-files + env/runtime + secret checks"
 	@echo "  make pre-public-check # Publication audit + full local CI"
 	@echo ""
@@ -225,6 +228,17 @@ changelog-preview:
 
 changelog-check:
 	@scripts/generate-changelog.sh --check
+
+publish-check:
+	@echo "→ Validating crates.io package ($(CARGO_PACKAGE_NAME))..."
+	@$(RALPH_ENV_RESET); cargo package --list -p $(CARGO_PACKAGE_NAME) --allow-dirty
+	@$(RALPH_ENV_RESET); cargo publish --dry-run -p $(CARGO_PACKAGE_NAME) --locked --allow-dirty
+	@echo "  ✓ crates.io package dry-run passed"
+
+publish-crate: publish-check
+	@echo "→ Publishing $(CARGO_PACKAGE_NAME) to crates.io..."
+	@$(RALPH_ENV_RESET); cargo publish -p $(CARGO_PACKAGE_NAME) --locked --allow-dirty
+	@echo "  ✓ crates.io publication complete"
 
 release:
 	@if [ -z "$(VERSION)" ]; then \

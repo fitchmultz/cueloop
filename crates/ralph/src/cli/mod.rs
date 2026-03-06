@@ -566,7 +566,7 @@ mod tests {
             .expect("expected clap to render version and exit");
         assert_eq!(err.kind(), ErrorKind::DisplayVersion);
         let rendered = err.to_string();
-        assert!(rendered.contains(env!("CARGO_PKG_NAME")));
+        assert!(rendered.contains("ralph"));
         assert!(rendered.contains(env!("CARGO_PKG_VERSION")));
     }
 
@@ -577,7 +577,7 @@ mod tests {
             .expect("expected clap to render version and exit");
         assert_eq!(err.kind(), ErrorKind::DisplayVersion);
         let rendered = err.to_string();
-        assert!(rendered.contains(env!("CARGO_PKG_NAME")));
+        assert!(rendered.contains("ralph"));
         assert!(rendered.contains(env!("CARGO_PKG_VERSION")));
     }
 }

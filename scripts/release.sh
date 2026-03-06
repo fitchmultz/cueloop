@@ -32,6 +32,7 @@ CARGO_TOML="$REPO_ROOT/crates/ralph/Cargo.toml"
 CHANGELOG="$REPO_ROOT/CHANGELOG.md"
 RELEASE_NOTES_TEMPLATE="$REPO_ROOT/.github/release-notes-template.md"
 RELEASE_ARTIFACTS_DIR="$REPO_ROOT/target/release-artifacts"
+CRATE_PACKAGE_NAME="ralph-cli"
 ALLOWED_RELEASE_DIRTY_PATHS=(
     "crates/ralph/Cargo.toml"
     "CHANGELOG.md"
@@ -51,8 +52,9 @@ usage() {
     echo "  <version>   Version number in semver format (e.g., 0.2.0, 1.0.0)"
     echo ""
     echo "Environment Variables:"
-    echo "  RELEASE_DRY_RUN    Set to 1 for dry run mode (no side effects)"
-    echo "  RALPH_MAKE_CMD     Override make executable for CI step (e.g., gmake)"
+    echo "  RELEASE_DRY_RUN            Set to 1 for dry run mode (no side effects)"
+    echo "  RALPH_RELEASE_SKIP_PUBLISH Set to 1 to skip crates.io publication"
+    echo "  RALPH_MAKE_CMD             Override make executable for CI step (e.g., gmake)"
     echo ""
     echo "Examples:"
     echo "  # Full release"
@@ -79,14 +81,18 @@ usage() {
     echo "  1. Pre-release validation (clean working dir, main branch, CI passes)"
     echo "  2. Version bumping in Cargo.toml"
     echo "  3. CHANGELOG.md updates"
-    echo "  4. Release artifact build for the current platform"
-    echo "  5. Checksum generation (SHA256)"
-    echo "  6. Git commit and annotated tag creation"
-    echo "  7. GitHub release creation with asset upload via gh CLI"
+    echo "  4. crates.io packaging review + publish dry-run"
+    echo "  5. crates.io publication for $CRATE_PACKAGE_NAME (unless skipped)"
+    echo "  6. Release artifact build for the current platform"
+    echo "  7. Checksum generation (SHA256)"
+    echo "  8. Git commit and annotated tag creation"
+    echo "  9. GitHub release creation with asset upload via gh CLI"
 }
 
 # Dry run mode
 DRY_RUN="${RELEASE_DRY_RUN:-0}"
+SKIP_PUBLISH="${RALPH_RELEASE_SKIP_PUBLISH:-0}"
+CRATE_PUBLISHED=0
 
 # Version from argument
 VERSION="${1:-}"
@@ -269,13 +275,45 @@ ensure_release_binary() {
     log_info "Release binary missing; building with locked dependencies"
     (
         cd "$REPO_ROOT"
-        cargo build --release -p ralph --locked --quiet
+        cargo build --release -p ralph-cli --locked --quiet
     )
+}
+
+publish_crate() {
+    log_step "Publishing crate to crates.io"
+
+    if [ "$SKIP_PUBLISH" = "1" ]; then
+        log_warn "Skipping crates.io publication because RALPH_RELEASE_SKIP_PUBLISH=1"
+        return 0
+    fi
+
+    if [ "$DRY_RUN" = "1" ]; then
+        echo "    [DRY RUN] Would review packaged files: cargo package --list -p $CRATE_PACKAGE_NAME"
+        echo "    [DRY RUN] Would run publish dry-run: cargo publish --dry-run -p $CRATE_PACKAGE_NAME --locked --allow-dirty"
+        echo "    [DRY RUN] Would publish crate: cargo publish -p $CRATE_PACKAGE_NAME --locked --allow-dirty"
+        return 0
+    fi
+
+    cd "$REPO_ROOT"
+
+    log_info "Reviewing packaged files for $CRATE_PACKAGE_NAME"
+    cargo package --list -p "$CRATE_PACKAGE_NAME"
+
+    log_info "Running crates.io publish dry-run"
+    cargo publish --dry-run -p "$CRATE_PACKAGE_NAME" --locked --allow-dirty
+
+    log_info "Publishing $CRATE_PACKAGE_NAME to crates.io"
+    cargo publish -p "$CRATE_PACKAGE_NAME" --locked --allow-dirty
+    CRATE_PUBLISHED=1
+
+    log_success "Published $CRATE_PACKAGE_NAME to crates.io"
 }
 
 # Check if required tools are installed
 check_prerequisites() {
     log_step "Checking prerequisites"
+
+    local cargo_token_file="${CARGO_HOME:-$HOME/.cargo}/credentials.toml"
 
     # Check gh CLI
     if ! command -v gh &> /dev/null; then
@@ -299,6 +337,17 @@ check_prerequisites() {
         exit 1
     fi
     log_success "cargo found"
+
+    if [ "$SKIP_PUBLISH" != "1" ]; then
+        if [ -n "${CARGO_REGISTRY_TOKEN:-}" ] || [ -f "$cargo_token_file" ]; then
+            log_success "crates.io publish credentials found"
+        else
+            log_error "crates.io publish credentials not found"
+            echo "  Run: cargo login"
+            echo "  Or set CARGO_REGISTRY_TOKEN for this release"
+            exit 1
+        fi
+    fi
 
     # Check git
     if ! command -v git &> /dev/null; then
@@ -811,6 +860,13 @@ rollback() {
     rm -rf "$RELEASE_ARTIFACTS_DIR"
     rm -f "$REPO_ROOT/target/release-notes-v$VERSION.md"
 
+    if [ "$CRATE_PUBLISHED" = "1" ]; then
+        log_warn "crates.io publication already succeeded for $CRATE_PACKAGE_NAME v$VERSION"
+        echo "  The registry version is immutable and was not rolled back."
+        echo "  Fix the failure, then rerun with:"
+        echo "    RALPH_RELEASE_SKIP_PUBLISH=1 scripts/release.sh $VERSION"
+    fi
+
     log_info "Rollback complete"
 }
 
@@ -835,9 +891,11 @@ print_summary() {
         echo "  Release v$VERSION has been created and published!"
         echo ""
         echo "  Next steps:"
-        echo "    1. Verify the release on GitHub:"
+        echo "    1. Verify the crate on crates.io:"
+        echo "       cargo install $CRATE_PACKAGE_NAME"
+        echo "    2. Verify the release on GitHub:"
         echo "       gh release view v$VERSION"
-        echo "    2. Install the new version:"
+        echo "    3. Install the new version locally:"
         echo "       make install"
     fi
     echo "═══════════════════════════════════════════════════"
@@ -887,6 +945,7 @@ main() {
     generate_changelog_entries
     update_changelog
     run_ci
+    publish_crate
     build_release_artifacts
     generate_release_notes
     create_git_tag

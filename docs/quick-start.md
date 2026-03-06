@@ -5,8 +5,10 @@ Get Ralph running in a repository in a few minutes.
 ## 1) Install
 
 ```bash
-cargo install ralph
+cargo install ralph-cli
 ```
+
+This installs the `ralph` executable.
 
 Or from source:
 

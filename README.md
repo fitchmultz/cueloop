@@ -38,8 +38,10 @@ flowchart LR
 From crates.io:
 
 ```bash
-cargo install ralph
+cargo install ralph-cli
 ```
+
+This installs the `ralph` executable.
 
 From source:
 
@@ -80,7 +82,7 @@ Here is a concrete repo workflow for a team using Codex or Claude Code in a norm
 
 ```bash
 # install Ralph in your application repo
-cargo install ralph
+cargo install ralph-cli
 cd your-service
 ralph init
 

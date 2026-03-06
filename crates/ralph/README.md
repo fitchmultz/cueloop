@@ -7,8 +7,10 @@ Repository: https://github.com/mitchfultz/ralph
 ## Install
 
 ```bash
-cargo install ralph
+cargo install ralph-cli
 ```
+
+This installs the `ralph` executable.
 
 ## Quick Start
 

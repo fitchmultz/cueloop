@@ -2,11 +2,19 @@
 
 ![Release Process](assets/images/2026-02-07-release-process.png)
 
-Purpose: Document the complete local release workflow for Ralph without GitHub Actions.
+Purpose: Document Ralph's complete local-only release workflow, including crates.io publication of the `ralph-cli` package that installs the `ralph` executable.
 
 ## Overview
 
-Ralph uses a local-only release process that leverages the GitHub CLI (`gh`) for release creation and artifact publishing. This approach avoids GitHub Actions while still providing automated versioning, changelog generation, and binary distribution.
+Ralph uses a local-only release process that publishes the crate to crates.io and then creates the GitHub release with `gh`. This keeps distribution aligned across Rust ecosystem install flows (`cargo install ralph-cli`) and the project’s tarball releases while avoiding GitHub Actions.
+
+Release order matters:
+
+1. Publish `ralph-cli` to crates.io.
+2. Build release artifacts and push git metadata.
+3. Create the GitHub release and upload assets.
+
+That ordering means the irreversible step happens first. If crates.io publication succeeds and a later step fails, rerun the release flow with `RALPH_RELEASE_SKIP_PUBLISH=1` after fixing the issue.
 
 ## Prerequisites
 
@@ -30,12 +38,21 @@ Before creating a release, ensure you have:
    cargo --version
    ```
 
-3. **Clean working directory**
+3. **crates.io authentication configured**
+
+   ```bash
+   # Create or refresh your crates.io token
+   cargo login
+   ```
+
+   The release script checks for either `CARGO_REGISTRY_TOKEN` or the standard Cargo credentials file before attempting publication.
+
+4. **Clean working directory**
    - All changes committed
    - On `main` branch
    - Remote is accessible
 
-4. **GNU Make >= 4 available** (for wrapper targets)
+5. **GNU Make >= 4 available** (for wrapper targets)
    - On macOS, install with `brew install make`
    - Use `gmake ...` unless `make --version` reports GNU Make
 
@@ -138,6 +155,9 @@ scripts/release.sh 0.2.0
 
 # Dry run first (recommended for testing)
 RELEASE_DRY_RUN=1 scripts/release.sh 0.2.0
+
+# Retry after crates.io publication already succeeded
+RALPH_RELEASE_SKIP_PUBLISH=1 scripts/release.sh 0.2.0
 ```
 
 Equivalent Makefile wrappers:
@@ -154,6 +174,7 @@ The release script performs these steps:
 
 1. **Pre-release Validation**
    - Checks `gh` CLI is installed and authenticated
+   - Checks crates.io publish credentials are available unless publication is explicitly skipped
    - Validates working directory is clean (excluding `.ralph/*`)
    - Confirms on `main` branch
    - Verifies remote is accessible
@@ -167,17 +188,22 @@ The release script performs these steps:
    - Runs `make ci` (or `RALPH_MAKE_CMD` override in script) to ensure everything passes
    - Verifies post-CI tracked changes are limited to release-expected files (`Cargo.toml`, `CHANGELOG.md`, generated schemas)
 
-4. **Build Artifacts**
+4. **crates.io Publication**
+   - Reviews packaged files with `cargo package --list -p ralph-cli`
+   - Runs `cargo publish --dry-run -p ralph-cli --locked --allow-dirty`
+   - Publishes `ralph-cli` to crates.io, which installs the `ralph` executable
+
+5. **Build Artifacts**
    - Builds release binary for current platform
    - Creates tarball (`ralph-{version}-{platform}.tar.gz`)
    - Generates SHA256 checksum
 
-5. **Git Operations**
+6. **Git Operations**
    - Commits version and changelog changes
    - Creates annotated git tag (`v{version}`)
    - Pushes commit and tag to remote
 
-6. **GitHub Release**
+7. **GitHub Release**
    - Creates GitHub release using `gh release create`
    - Uploads release artifacts (binaries + checksums)
    - Uses template from `.github/release-notes-template.md`
@@ -187,6 +213,10 @@ The release script performs these steps:
 After the script completes:
 
 ```bash
+# Verify the published crate
+cargo install ralph-cli
+ralph --help
+
 # View the release on GitHub
 gh release view v0.2.0
 
@@ -220,7 +250,23 @@ make ci
 # macOS/Homebrew users: gmake ci
 ```
 
-### Step 4: Build Artifacts
+### Step 4: Review and Publish the Crate
+
+```bash
+cargo package --list -p ralph-cli
+cargo publish --dry-run -p ralph-cli --locked
+cargo publish -p ralph-cli --locked
+```
+
+Users install the published package with:
+
+```bash
+cargo install ralph-cli
+```
+
+That command installs the `ralph` executable.
+
+### Step 5: Build Artifacts
 
 ```bash
 # Build for current platform
@@ -230,7 +276,7 @@ scripts/build-release-artifacts.sh $VERSION
 scripts/build-release-artifacts.sh --all $VERSION
 ```
 
-### Step 5: Commit and Tag
+### Step 6: Commit and Tag
 
 ```bash
 git add crates/ralph/Cargo.toml CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json
@@ -240,7 +286,7 @@ git push origin main
 git push origin "v$VERSION"
 ```
 
-### Step 6: Create GitHub Release
+### Step 7: Create GitHub Release
 
 ```bash
 # Create release with notes from tag
@@ -314,6 +360,7 @@ RELEASE_DRY_RUN=1 scripts/release.sh 0.2.0
 This will:
 - Print all actions that would be taken
 - Skip git commits and tags
+- Skip crates.io publication
 - Skip GitHub release creation
 - Skip file modifications
 
@@ -335,9 +382,12 @@ gh release delete "v$VERSION" --yes
 
 # Revert changes to Cargo.toml and CHANGELOG.md
 git checkout -- crates/ralph/Cargo.toml CHANGELOG.md
+```
 
-# Or reset to last commit if changes were committed
-git reset --hard HEAD~1
+If crates.io publication already succeeded, do not attempt to republish the same version. Fix the later failure, then rerun with:
+
+```bash
+RALPH_RELEASE_SKIP_PUBLISH=1 scripts/release.sh $VERSION
 ```
 
 ## Troubleshooting
@@ -345,6 +395,15 @@ git reset --hard HEAD~1
 ### "gh CLI is not authenticated"
 
 Run `gh auth login` and follow the prompts.
+
+### "crates.io publish credentials not found"
+
+Authenticate before retrying:
+
+```bash
+cargo login
+# or export CARGO_REGISTRY_TOKEN=...
+```
 
 ### "Not on main branch"
 
@@ -390,21 +449,34 @@ If GNU Make is not your default `make`, set:
 RALPH_MAKE_CMD=gmake scripts/release.sh 0.2.0
 ```
 
+### crates.io Publish Succeeds, Later Step Fails
+
+The published version is immutable. After fixing the later failure, rerun the release flow without attempting a second publish:
+
+```bash
+RALPH_RELEASE_SKIP_PUBLISH=1 scripts/release.sh 0.2.0
+```
+
 ## Release Checklist
 
 Before running the release script:
 
 - [ ] All changes for this release are merged to `main`
 - [ ] `make ci` passes locally
+- [ ] `cargo package --list -p ralph-cli` succeeds
+- [ ] `cargo publish --dry-run -p ralph-cli --locked` succeeds
 - [ ] `CHANGELOG.md` has content under `## [Unreleased]` (run `scripts/generate-changelog.sh` to generate)
 - [ ] Changelog entries are categorized correctly (Added/Changed/Fixed/etc.)
 - [ ] Version follows semver (e.g., `0.2.0`)
 - [ ] `gh auth status` shows you're authenticated
+- [ ] `cargo login` or `CARGO_REGISTRY_TOKEN` is configured
 - [ ] Working directory is clean (`git status`)
 - [ ] On `main` branch (`git branch --show-current`)
 
 After the release:
 
+- [ ] `cargo install ralph-cli` succeeds
+- [ ] `ralph --help` works from the installed crate
 - [ ] GitHub release page shows the new version
 - [ ] Release artifacts are attached
 - [ ] Checksums are available
@@ -418,6 +490,8 @@ Scripts are the canonical release entrypoints. Makefile targets below wrap those
 |--------|-------------|
 | `make release VERSION=0.2.0` | Run full release process (`scripts/release.sh`) |
 | `make release-dry-run VERSION=0.2.0` | Test release without side effects |
+| `make publish-check` | Review packaged files and run crates.io dry-run publication for `ralph-cli` |
+| `make publish-crate` | Publish `ralph-cli` to crates.io after running `make publish-check` |
 | `make release-artifacts` | Build release artifacts only |
 | `make release-artifacts VERSION=0.2.0` | Build artifacts with explicit version |
 | `make changelog` | Generate changelog entries from commits |
@@ -433,4 +507,4 @@ Scripts are the canonical release entrypoints. Makefile targets below wrap those
 - `cliff.toml` - git-cliff configuration for RQ-#### pattern
 - `.github/release-notes-template.md` - Release notes template
 - `CHANGELOG.md` - Version history
-- `crates/ralph/Cargo.toml` - Package manifest
+- `crates/ralph/Cargo.toml` - `ralph-cli` package manifest for the `ralph` executable

@@ -560,7 +560,7 @@ Migration functionality includes comprehensive tests:
 
 Run tests:
 ```bash
-cargo test -p ralph migration
+cargo test -p ralph-cli migration
 ```
 
 ### Safety Features
