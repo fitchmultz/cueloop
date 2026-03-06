@@ -472,4 +472,3 @@ ralph run parallel retry --task <task-id>
 
 - [Configuration](../configuration.md) - Full configuration reference
 - [CLI Reference](../cli.md) - Command-line options
-- [Direct-Push Rewrite Spec](parallel-direct-push-rewrite-spec.md) - Implementation specification

@@ -46,9 +46,6 @@ Use these when you want to validate a clone, understand the operational model, o
 ## Maintainer Runbooks
 
 - [Release Runbook](guides/release-runbook.md)
-- [Current State Baseline](guides/current-state-baseline.md)
-- [Release Readiness Report](guides/release-readiness-report.md)
-- [Public Release Hardening Investigation](guides/public-release-hardening-investigation.md)
 
 ## Runtime Paths (Defaults)
 

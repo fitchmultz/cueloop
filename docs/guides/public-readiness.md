@@ -100,4 +100,3 @@ If all checks pass, perform a final review of README, screenshots/demo assets, a
 
 Related references:
 - [CI and Test Strategy](ci-strategy.md)
-- [Release Readiness Report](release-readiness-report.md)
