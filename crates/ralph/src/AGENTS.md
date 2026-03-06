@@ -116,7 +116,7 @@ The CI gate runs: `check-env-safety → check-backup-artifacts → deps → form
 | `make format` | Run `cargo fmt --all` |
 | `make type-check` | Run `cargo check --workspace --all-targets` |
 | `make generate` | Regenerate JSON schemas into `schemas/` |
-| `make update` | Update Cargo dependencies (`cargo update`) |
+| `make update` | Upgrade direct Cargo requirements (`cargo upgrade --incompatible`) and refresh the lockfile (`cargo update`); use `make macos-ci` to verify the Swift/Xcode app because it has no external package manifest |
 | `make clean` | Remove build artifacts, logs, and most cache entries |
 
 ### Development Iteration

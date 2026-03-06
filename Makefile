@@ -70,6 +70,7 @@ help:
 	@echo "  make macos-ui-artifacts-clean # Remove exported UI visual artifacts"
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
+	@echo "  make update       # Update Rust deps to latest stable; use macos-ci to verify the bundled Swift app toolchain"
 	@echo "  make install      # Install release CLI; on macOS also installs RalphMac.app"
 	@echo "  make macos-install-app # Copy latest Release RalphMac.app into Applications"
 	@echo "  make check-repo-safety # Fast required-files + env/runtime + secret checks"
@@ -111,7 +112,12 @@ install: $(RALPH_RELEASE_BUILD_STAMP)
 	fi
 
 update:
-	@CARGO_HTTP_MULTIPLEXING=$(CARGO_HTTP_MULTIPLEXING) cargo update
+	@echo "→ Updating direct dependencies to latest stable requirements..."
+	@$(RALPH_ENV_RESET); cargo upgrade --incompatible
+	@echo "→ Refreshing lockfile to latest compatible transitive versions..."
+	@$(RALPH_ENV_RESET); CARGO_HTTP_MULTIPLEXING=$(CARGO_HTTP_MULTIPLEXING) cargo update
+	@echo "  ℹ Swift/Xcode has no external package manifest here; use make macos-ci to verify the app against the current toolchain"
+	@echo "  ✓ Dependency update complete"
 
 format:
 	@echo "→ Formatting code..."

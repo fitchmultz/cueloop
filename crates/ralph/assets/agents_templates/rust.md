@@ -30,7 +30,7 @@ The Makefile is the contract; keep these targets working:
 - `make format`: `cargo fmt --all`
 - `make type-check`: `cargo check --workspace --all-targets`
 - `make generate`: regenerates any generated artifacts (schemas, etc.).
-- `make update`: updates Rust dependencies (e.g., `cargo update`).
+- `make update`: upgrades direct Rust dependencies (`cargo upgrade --incompatible`) and refreshes transitive pins (`cargo update`); pair with `make macos-ci` when a bundled Swift/Xcode app is in scope because there may be no separate Swift package manifest to bump.
 - `make clean`: removes build artifacts, logs, and cache entries.
 
 Useful iteration commands (not a substitute for `make ci`):
