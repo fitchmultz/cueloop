@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-06
+
 ### Added
 
 - macOS SwiftUI app (`apps/RalphMac/`) that drives Ralph by executing the bundled `ralph` CLI.
@@ -45,5 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure credential handling: Secrets redaction in logs and queue entries.
 - Lock file isolation: Prevents concurrent queue modifications.
 
-[Unreleased]: https://github.com/fitchmultz/ralph/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/fitchmultz/ralph/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/fitchmultz/ralph/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/fitchmultz/ralph/releases/tag/v0.1.0
