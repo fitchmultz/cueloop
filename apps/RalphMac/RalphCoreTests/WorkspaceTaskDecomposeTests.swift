@@ -215,8 +215,16 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
         LOG_FILE=\"${MOCK_RALPH_LOG_FILE:?}\"
         QUEUE_FILE=\"${MOCK_RALPH_QUEUE_FILE:?}\"
         printf '%s\n' "$*" >> "$LOG_FILE"
+        if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
+          echo "ralph \(VersionCompatibility.minimumCLIVersion)"
+          exit 0
+        fi
         if [ "$1" = "--no-color" ]; then
           shift
+        fi
+        if [ "$1" = "config" ] && [ "$2" = "show" ] && [ "$3" = "--format" ] && [ "$4" = "json" ]; then
+          echo '{"agent":{"model":"gpt-5.3-codex","phases":2,"iterations":3}}'
+          exit 0
         fi
         if [ "$1" = "task" ] && [ "$2" = "decompose" ]; then
           if printf '%s\n' "$*" | grep -q -- '--write'; then

@@ -101,6 +101,7 @@ If all checks pass, perform a final review of README, screenshots/demo assets, a
 Release-specific reminders:
 
 - Prefer `make release-verify VERSION=<x.y.z>` before any real release.
+- `make release-verify` is safe to rerun for the current released version; its dry-run release-script phase explicitly tolerates an already-existing local tag while real releases still do not.
 - Run the public-readiness audit before the final release mutation so the working tree is still clean.
 - `Cargo.lock` is expected release metadata when `VERSION` changes; review it, do not discard it.
 - `target/release-artifacts/` is disposable build output owned by `scripts/release.sh`.

@@ -185,6 +185,10 @@ E2E tests look for the `ralph` binary in this order:
 
 Tests create temporary directories that are cleaned up after each test.
 
+### Mock CLI Fixtures
+
+- Workspace/WorkspaceManager tests that use mock CLI scripts should implement both `--version`/`version` and `--no-color config show --format json` when the workspace may auto-load version or runner configuration. Missing either path creates noisy async logger output that can mask real failures.
+
 ## Module Responsibilities
 
 ### RalphCore Framework

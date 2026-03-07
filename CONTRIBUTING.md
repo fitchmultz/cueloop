@@ -120,9 +120,12 @@ This runs environment safety checks, backup-artifact checks, and formatting vali
 For public-release verification:
 
 ```bash
+make release-verify VERSION=<x.y.z>
 make pre-public-check
 # Optional (shared workstation): RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make pre-public-check
 ```
+
+`make release-verify` is the full release preflight. It also deliberately tolerates an already-existing local `v<version>` tag during the dry-run release-script phase so shipped releases can be revalidated without hand-editing tag state.
 
 ## Contribution Guidelines
 

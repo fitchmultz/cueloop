@@ -369,18 +369,26 @@ final class WorkspacePerformanceTests: XCTestCase {
 
     // MARK: - WorkspaceManager CLI Adoption Tests
 
-    func test_workspaceManager_adoptCLIExecutable_updatesClientWithValidPath() {
+    func test_workspaceManager_adoptCLIExecutable_updatesClientWithValidPath() async throws {
         let manager = WorkspaceManager.shared
         let originalPath = manager.client?.executableURL.path
-        let overridePath = "/bin/echo"
+        let tempDir = try Self.makeTempDir(prefix: "ralph-workspace-manager-cli-")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let overrideURL = try Self.makeVersionAwareMockCLI(in: tempDir, name: "mock-ralph-version-ok")
+        let overridePath = overrideURL.path
 
         manager.adoptCLIExecutable(path: overridePath)
+
+        await Self.waitFor(timeout: 2.0) {
+            manager.versionCheckResult?.isCompatible == true
+        }
 
         XCTAssertEqual(
             manager.client?.executableURL.standardizedFileURL.resolvingSymlinksInPath().path,
             URL(fileURLWithPath: overridePath).standardizedFileURL.resolvingSymlinksInPath().path
         )
         XCTAssertNil(manager.errorMessage)
+        XCTAssertEqual(manager.versionCheckResult?.rawVersion, "ralph \(VersionCompatibility.minimumCLIVersion)")
 
         if let originalPath {
             manager.adoptCLIExecutable(path: originalPath)
@@ -437,6 +445,7 @@ final class WorkspacePerformanceTests: XCTestCase {
         )
         let client = try RalphCLIClient(executableURL: scriptURL)
         let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
         workspace.runNextTask()
 
@@ -487,6 +496,7 @@ final class WorkspacePerformanceTests: XCTestCase {
         )
         let client = try RalphCLIClient(executableURL: scriptURL)
         let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
         workspace.runNextTask(taskIDOverride: "RQ-5555", forceDirtyRepo: true)
 
@@ -545,6 +555,7 @@ final class WorkspacePerformanceTests: XCTestCase {
         )
         let client = try RalphCLIClient(executableURL: scriptURL)
         let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
         workspace.run(arguments: ["60"])
 
@@ -817,6 +828,19 @@ final class WorkspacePerformanceTests: XCTestCase {
             ofItemAtPath: scriptURL.path
         )
         return scriptURL
+    }
+
+    private static func makeVersionAwareMockCLI(in directory: URL, name: String) throws -> URL {
+        let script = """
+            #!/bin/sh
+            if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
+              echo "ralph \(VersionCompatibility.minimumCLIVersion)"
+              exit 0
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        return try makeExecutableScript(in: directory, name: name, body: script)
     }
 
     private static func writeEmptyQueueFile(in workspaceDir: URL) throws {
