@@ -116,6 +116,12 @@ Every source file MUST start with `//!` docs covering:
 - Opencode may emit fatal session validation errors on stderr while still exiting with code `0`; treat this as semantic failure rather than success.
 - Gemini `stream-json` assistant messages may arrive as delta chunks (`"delta": true`); final-response parsing must accumulate deltas rather than overwriting with the latest chunk.
 
+### Watch Task Identity
+- `watch.version = "2"` is the durable watch-task metadata contract: `watch.file`, `watch.line`, `watch.comment_type`, `watch.content_hash`, `watch.location_key`, and `watch.identity_key`.
+- Watch deduplication/reconciliation must never rely on title/notes heuristics or content-only fingerprints.
+- Removal reconciliation is scoped to the files processed in the current scan batch; untouched files must not be auto-closed.
+- Move/rename policy is intentional cutover behavior: moved comments and renamed files close the old watch task and create a new one; structured legacy watch tasks may upgrade in place only on exact same-file same-line matches.
+
 ### Signal Recovery
 - Signal-terminated runner invocations should auto-attempt recovery up to `MAX_SIGNAL_RESUMES` (default `5`) before surfacing terminal failure handling.
 - Signal recovery should reuse session resume when possible and rerun fresh when no resumable session exists.

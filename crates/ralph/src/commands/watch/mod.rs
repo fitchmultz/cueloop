@@ -31,6 +31,7 @@ use std::time::{Duration, Instant};
 mod comments;
 mod debounce;
 mod event_loop;
+mod identity;
 mod paths;
 mod processor;
 mod state;

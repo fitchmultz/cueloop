@@ -3,15 +3,17 @@
 //! Responsibilities:
 //! - Process pending files and detect comments.
 //! - Coordinate between debounce logic, comment detection, and task handling.
+//! - Scope removal reconciliation to files processed in the current batch.
 //!
 //! Not handled here:
 //! - File watching or event handling (see `event_loop.rs`).
 //! - Low-level comment detection (see `comments.rs`).
-//! - Task creation (see `tasks.rs`).
+//! - Task creation or identity rules (see `tasks.rs` / `identity.rs`).
 //!
 //! Invariants/assumptions:
 //! - Files are skipped if recently processed (within debounce window).
-//! - Errors reading individual files are logged but don't stop processing.
+//! - Missing files are treated as zero-comment scans for reconciliation.
+//! - Generic read failures do not trigger removal reconciliation.
 //! - Old entries in `last_processed` are cleaned up periodically.
 
 use crate::commands::watch::comments::detect_comments;
@@ -49,6 +51,7 @@ pub fn process_pending_files(
 
     let debounce = Duration::from_millis(opts.debounce_ms);
     let mut all_comments: Vec<DetectedComment> = Vec::new();
+    let mut processed_files: Vec<PathBuf> = Vec::new();
 
     for file_path in files {
         // Skip if file was recently processed (within debounce window)
@@ -58,6 +61,7 @@ pub fn process_pending_files(
 
         match detect_comments(&file_path, comment_regex) {
             Ok(comments) => {
+                processed_files.push(file_path.clone());
                 if !comments.is_empty() {
                     log::debug!(
                         "Detected {} comments in {}",
@@ -69,6 +73,15 @@ pub fn process_pending_files(
                 // Record when this file was processed
                 last_processed.insert(file_path, Instant::now());
             }
+            Err(e) if !file_path.exists() => {
+                log::debug!(
+                    "Treating missing file {} as removed for watch reconciliation: {}",
+                    file_path.display(),
+                    e
+                );
+                processed_files.push(file_path.clone());
+                last_processed.insert(file_path, Instant::now());
+            }
             Err(e) => {
                 log::warn!("Failed to process file {}: {}", file_path.display(), e);
             }
@@ -78,8 +91,8 @@ pub fn process_pending_files(
     // Periodically clean up old entries to prevent unbounded growth
     cleanup_old_entries(last_processed, debounce);
 
-    if !all_comments.is_empty() {
-        handle_detected_comments(resolved, &all_comments, opts)?;
+    if !processed_files.is_empty() {
+        handle_detected_comments(resolved, &all_comments, &processed_files, opts)?;
     }
 
     Ok(())
@@ -335,6 +348,42 @@ mod tests {
         );
 
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn process_pending_files_records_missing_file_for_reconciliation() {
+        let temp_dir = TempDir::new().unwrap();
+        let resolved = create_test_resolved(&temp_dir);
+        let state = Arc::new(Mutex::new(WatchState::new(100)));
+
+        let missing_path = temp_dir.path().join("does_not_exist.rs");
+        state.lock().unwrap().add_file(missing_path.clone());
+
+        let opts = WatchOptions {
+            patterns: vec!["*.rs".to_string()],
+            debounce_ms: 100,
+            auto_queue: false,
+            notify: false,
+            ignore_patterns: vec![],
+            comment_types: vec![CommentType::Todo],
+            paths: vec![PathBuf::from(".")],
+            force: false,
+            close_removed: true,
+        };
+
+        let comment_regex = build_comment_regex(&opts.comment_types).unwrap();
+        let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+
+        let result = process_pending_files(
+            &resolved,
+            &state,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+        );
+
+        assert!(result.is_ok());
+        assert!(last_processed.contains_key(&missing_path));
     }
 
     #[test]
