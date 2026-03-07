@@ -38,6 +38,7 @@ RELEASE_ARTIFACTS_DIR="$REPO_ROOT/target/release-artifacts"
 CRATE_PACKAGE_NAME="ralph-agent-loop"
 ALLOWED_RELEASE_DIRTY_PATHS=(
     "VERSION"
+    "Cargo.lock"
     "crates/ralph/Cargo.toml"
     "apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
     "apps/RalphMac/RalphCore/VersionValidator.swift"
@@ -813,14 +814,14 @@ create_git_tag() {
     log_step "Creating git commit and tag"
 
     if [ "$DRY_RUN" = "1" ]; then
-        echo "    [DRY RUN] Would stage: VERSION crates/ralph/Cargo.toml apps/RalphMac/RalphMac.xcodeproj/project.pbxproj apps/RalphMac/RalphCore/VersionValidator.swift CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json"
+        echo "    [DRY RUN] Would stage: VERSION Cargo.lock crates/ralph/Cargo.toml apps/RalphMac/RalphMac.xcodeproj/project.pbxproj apps/RalphMac/RalphCore/VersionValidator.swift CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json"
         echo "    [DRY RUN] Would commit: Release v$VERSION"
         echo "    [DRY RUN] Would tag: v$VERSION (annotated)"
     else
         cd "$REPO_ROOT"
 
         # Stage release metadata + generated schemas (if changed by CI/generate)
-        git add VERSION crates/ralph/Cargo.toml apps/RalphMac/RalphMac.xcodeproj/project.pbxproj apps/RalphMac/RalphCore/VersionValidator.swift CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json
+        git add VERSION Cargo.lock crates/ralph/Cargo.toml apps/RalphMac/RalphMac.xcodeproj/project.pbxproj apps/RalphMac/RalphCore/VersionValidator.swift CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json
 
         # Create commit
         git commit -m "Release v$VERSION"
@@ -904,7 +905,7 @@ rollback() {
     cd "$REPO_ROOT"
 
     # Reset release metadata changes
-    git checkout -- VERSION crates/ralph/Cargo.toml apps/RalphMac/RalphMac.xcodeproj/project.pbxproj apps/RalphMac/RalphCore/VersionValidator.swift CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json 2>/dev/null || true
+    git checkout -- VERSION Cargo.lock crates/ralph/Cargo.toml apps/RalphMac/RalphMac.xcodeproj/project.pbxproj apps/RalphMac/RalphCore/VersionValidator.swift CHANGELOG.md schemas/config.schema.json schemas/queue.schema.json 2>/dev/null || true
 
     # Delete local tag if created
     if git rev-parse "v$VERSION" &> /dev/null; then
