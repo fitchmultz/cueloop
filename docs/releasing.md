@@ -165,10 +165,20 @@ RALPH_RELEASE_SKIP_PUBLISH=1 scripts/release.sh 0.2.0
 Equivalent Makefile wrappers:
 
 ```bash
+make release-verify VERSION=0.2.0
 make release VERSION=0.2.0
 make release-dry-run VERSION=0.2.0
 # macOS/Homebrew users: gmake release VERSION=0.2.0
 ```
+
+Preferred path:
+
+```bash
+make release-verify VERSION=0.2.0
+make release VERSION=0.2.0
+```
+
+`make release-verify` syncs version metadata, runs the release safety checks, runs the ship gate, and dry-runs `scripts/release.sh` so the real release path is exercised before publication.
 
 ### 4. What the Script Does
 
@@ -493,6 +503,7 @@ Scripts are the canonical release entrypoints. Makefile targets below wrap those
 | Target | Description |
 |--------|-------------|
 | `make release VERSION=0.2.0` | Run full release process (`scripts/release.sh`) |
+| `make release-verify VERSION=0.2.0` | Recommended preflight: sync metadata, run ship gate, and dry-run the release |
 | `make release-dry-run VERSION=0.2.0` | Test release without side effects |
 | `make version-check` | Verify VERSION, Cargo, and app version metadata are synchronized |
 | `make version-sync VERSION=0.2.0` | Synchronize all derived version metadata from one canonical semver |

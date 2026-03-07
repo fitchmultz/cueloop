@@ -18,6 +18,7 @@
 //!   `REQUIRED_CI_STEPS` (including `ci-fast` expansion when factored).
 //! - The `macos-ci` target must exactly match `REQUIRED_MACOS_CI_DEPS`.
 //! - The `agent-ci` target must include deterministic path-based routing.
+//! - The `release-verify` target must remain the canonical Makefile release preflight.
 //! - Docs parity is anchored to the canonical constant, not dynamically parsed
 //!   Makefile output, to prevent lockstep drift.
 
@@ -790,6 +791,79 @@ fn test_agent_ci_routes_between_ci_and_macos_ci() -> Result<()> {
     assert!(
         agent_ci_block.contains("RALPH_AGENT_CI_FORCE_MACOS"),
         "agent-ci must support explicit macOS forcing via env var"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_makefile_auto_prefers_pinned_rustup_toolchain() -> Result<()> {
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir
+        .parent()
+        .and_then(|p| p.parent())
+        .context("resolve repo root")?;
+    let makefile = std::fs::read_to_string(repo_root.join("Makefile")).context("read Makefile")?;
+
+    assert!(
+        makefile.contains("rustup which rustc --toolchain"),
+        "Makefile should resolve the pinned rustup toolchain from rust-toolchain.toml"
+    );
+    assert!(
+        makefile.contains("export PATH=\"$(RALPH_PINNED_RUST_BIN_DIR):$$PATH\"; export RUSTC=\"$(RALPH_PINNED_RUSTC)\""),
+        "Makefile should inject the pinned Rust toolchain into PATH and RUSTC"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_release_verify_target_orchestrates_release_preflight() -> Result<()> {
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir
+        .parent()
+        .and_then(|p| p.parent())
+        .context("resolve repo root")?;
+    let makefile = std::fs::read_to_string(repo_root.join("Makefile")).context("read Makefile")?;
+
+    let release_verify_block = extract_target_block(&makefile, "release-verify")
+        .context("extract release-verify block")?;
+
+    assert!(
+        makefile.contains("release-verify"),
+        "Makefile should define a release-verify target"
+    );
+    assert!(
+        release_verify_block.contains("Usage: make release-verify VERSION=x.y.z"),
+        "release-verify should require VERSION explicitly"
+    );
+    assert!(
+        release_verify_block.contains("./scripts/versioning.sh sync --version \"$(VERSION)\""),
+        "release-verify should sync version metadata first"
+    );
+    assert!(
+        release_verify_block.contains("./scripts/versioning.sh check"),
+        "release-verify should validate synchronized version metadata"
+    );
+    assert!(
+        release_verify_block.contains("scripts/pre-public-check.sh --skip-ci --skip-clean"),
+        "release-verify should rerun publication safety checks in a post-sync-safe mode"
+    );
+    assert!(
+        release_verify_block.contains("$(MAKE) --no-print-directory macos-ci"),
+        "release-verify should prefer the macOS ship gate when Xcode is available"
+    );
+    assert!(
+        release_verify_block.contains("$(MAKE) --no-print-directory ci"),
+        "release-verify should fall back to the Rust release gate when macOS tooling is unavailable"
+    );
+    assert!(
+        release_verify_block.contains("RELEASE_DRY_RUN=1 scripts/release.sh \"$(VERSION)\""),
+        "release-verify should exercise the real release script in dry-run mode"
+    );
+    assert!(
+        makefile.contains("make release-verify VERSION=x.y.z"),
+        "Makefile help output should advertise release-verify"
     );
 
     Ok(())

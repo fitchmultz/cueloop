@@ -150,9 +150,10 @@ Every source file MUST start with `//!` docs covering:
 - Canonical repo version source is the top-level `VERSION` file.
 - Use `./scripts/versioning.sh check` (or `make version-check`) to verify Cargo, Xcode, and app compatibility metadata stay in sync.
 - Use `./scripts/versioning.sh sync --version <x.y.z>` (or `make version-sync VERSION=<x.y.z>`) for release bumps; do not hand-edit Cargo/Xcode/version-range files independently.
+- Prefer `make release-verify VERSION=<x.y.z>` before any real release; it syncs version metadata, runs the release safety checks, runs the appropriate ship gate, and dry-runs `scripts/release.sh`.
 - `scripts/versioning.sh sync` also refreshes `Cargo.lock`; treat lockfile drift as a release/versioning failure, not incidental noise.
 - `scripts/release.sh` is expected to sync `VERSION`, `Cargo.lock`, `crates/ralph/Cargo.toml`, `apps/RalphMac/RalphMac.xcodeproj/project.pbxproj`, and `apps/RalphMac/RalphCore/VersionValidator.swift` together.
-- Release work should run on the pinned toolchain from `rust-toolchain.toml` (`1.94.0` currently). If the shell resolves an older Homebrew `rustc`, prefer the rustup toolchain bin dir explicitly for `make ci`, `make macos-ci`, `make pre-public-check`, and `scripts/release.sh`.
+- Make targets automatically prefer the rustup-managed toolchain pinned by `rust-toolchain.toml` when available; use the same pinned toolchain explicitly for direct script invocations if your shell resolves an older Homebrew `rustc`.
 - `scripts/release.sh` owns `target/release-artifacts/`: it clears stale artifacts before packaging and on rollback/exit, so do not rely on leftover tarballs in that directory.
 
 ### Secrets

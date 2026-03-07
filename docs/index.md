@@ -48,6 +48,7 @@ Use these when you want to validate a clone, understand the operational model, o
 ## Maintainer Runbooks
 
 - [Release Runbook](guides/release-runbook.md)
+- [Full Release Guide](releasing.md)
 
 ## Runtime Paths (Defaults)
 

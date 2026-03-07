@@ -16,9 +16,26 @@ TOOL="$HOME/.rustup/toolchains/1.94.0-aarch64-apple-darwin/bin"
 PATH="$TOOL:$PATH" RUSTC="$TOOL/rustc"
 ```
 
+For Makefile-driven gates, Ralph now auto-prefers the pinned `rust-toolchain.toml` toolchain when `rustup` is available.
+
 ## Release Steps
 
-1. Run required gates:
+1. Run the preferred automated preflight:
+
+```bash
+make release-verify VERSION=<version>
+# macOS/Homebrew users: gmake release-verify VERSION=<version>
+```
+
+This target:
+
+- syncs version metadata
+- verifies version drift is gone
+- runs public-readiness checks that still make sense after version mutation
+- runs the ship gate (`macos-ci` on macOS with Xcode, otherwise `ci`)
+- dry-runs `scripts/release.sh`
+
+2. If you need the underlying manual sequence instead:
 
 ```bash
 make agent-ci
@@ -70,7 +87,7 @@ make release-artifacts VERSION=<version>
 ## Known Gotchas
 
 - `Cargo.lock` is part of release metadata. If it changes during `versioning.sh sync`, that is expected and must be committed.
-- `make pre-public-check` expects a clean tree when run in full mode. Run it before the final release mutation, or use the script flags intentionally.
+- `make release-verify` intentionally uses `scripts/pre-public-check.sh --skip-ci --skip-clean` after version sync so post-sync metadata changes do not cause a false failure.
 - `scripts/release.sh` clears `target/release-artifacts/` before packaging so stale tarballs are not uploaded.
 - `cargo package --list` runs with `--allow-dirty` during release prep because the release commit is created after packaging review.
 

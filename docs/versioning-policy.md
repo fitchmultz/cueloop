@@ -43,6 +43,7 @@ Release/versioning invariants:
 
 - `VERSION` is the canonical source of truth.
 - `scripts/versioning.sh sync --version <x.y.z>` is the only supported way to bump release metadata.
+- `make release-verify VERSION=<x.y.z>` is the preferred preflight before `make release`.
 - `Cargo.lock` is part of synchronized version metadata and must be committed with release bumps.
 - `scripts/release.sh` owns `target/release-artifacts/` and clears stale tarballs before packaging.
-- Prefer the pinned toolchain from [`rust-toolchain.toml`](../rust-toolchain.toml) when running release gates; if your shell resolves an older `rustc`, use the rustup toolchain bin dir explicitly.
+- Make targets automatically prefer the pinned toolchain from [`rust-toolchain.toml`](../rust-toolchain.toml) when `rustup` is available; use the rustup toolchain bin dir explicitly for direct script invocations if your shell resolves an older `rustc`.

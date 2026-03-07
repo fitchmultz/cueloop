@@ -29,8 +29,16 @@ RALPH_XCODE_JOBS ?= 4
 # Build stamp path to avoid duplicate release builds in a single make invocation.
 RALPH_STAMP_DIR ?= target/tmp/stamps
 RALPH_RELEASE_BUILD_STAMP := $(RALPH_STAMP_DIR)/ralph-release-build.stamp
+# Prefer the rustup-managed pinned toolchain from rust-toolchain.toml when present.
+RALPH_RUST_TOOLCHAIN_FILE := rust-toolchain.toml
+RALPH_PINNED_RUST_TOOLCHAIN := $(shell sed -n 's/^[[:space:]]*channel = "\(.*\)"/\1/p' $(RALPH_RUST_TOOLCHAIN_FILE) 2>/dev/null | head -1)
+RALPH_PINNED_RUSTC := $(shell if command -v rustup >/dev/null 2>&1 && [ -n "$(RALPH_PINNED_RUST_TOOLCHAIN)" ]; then rustup which rustc --toolchain "$(RALPH_PINNED_RUST_TOOLCHAIN)" 2>/dev/null; fi)
+RALPH_PINNED_RUST_BIN_DIR := $(patsubst %/,%,$(dir $(RALPH_PINNED_RUSTC)))
 # Command prefix placeholder for consistency across targets.
 RALPH_ENV_RESET := :
+ifneq ($(strip $(RALPH_PINNED_RUST_BIN_DIR)),)
+RALPH_ENV_RESET := export PATH="$(RALPH_PINNED_RUST_BIN_DIR):$$PATH"; export RUSTC="$(RALPH_PINNED_RUSTC)"
+endif
 
 CARGO_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
 NEXTEST_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
@@ -51,7 +59,7 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
 .PHONY: help install macos-install-app update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast deps \
-	changelog changelog-preview changelog-check version-check version-sync publish-check publish-crate release release-dry-run release-artifacts pre-commit pre-public-check \
+	changelog changelog-preview changelog-check version-check version-sync publish-check publish-crate release release-dry-run release-verify release-artifacts pre-commit pre-public-check \
 	agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
 	macos-test-window-shortcuts coverage coverage-clean FORCE
@@ -78,12 +86,14 @@ help:
 	@echo "  make version-sync VERSION=x.y.z # Sync repo version metadata from one canonical semver"
 	@echo "  make publish-check # Run cargo package review + crates.io dry-run for $(CARGO_PACKAGE_NAME)"
 	@echo "  make publish-crate # Publish the current $(CARGO_PACKAGE_NAME) manifest version to crates.io"
+	@echo "  make release-verify VERSION=x.y.z # Sync version metadata, run ship gates, and dry-run the release"
 	@echo "  make check-repo-safety # Fast required-files + env/runtime + secret checks"
 	@echo "  make pre-public-check # Publication audit + full local CI"
 	@echo ""
 	@echo "Resource knobs (optional):"
 	@echo "  RALPH_CI_JOBS=4     # Caps cargo/nextest parallelism (0 = tool default)"
 	@echo "  RALPH_XCODE_JOBS=4  # Caps xcodebuild parallelism (0 = xcodebuild default)"
+	@echo "  rust-toolchain.toml is respected automatically when rustup is available"
 	@echo "  RALPH_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (used by macos-test-ui-artifacts)"
 	@echo "  RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUITests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
 	@echo "  RALPH_UI_ARTIFACTS_ROOT=target/ui-artifacts # Export root for visual artifacts"
@@ -266,6 +276,26 @@ release-dry-run:
 		exit 2; \
 	fi
 	@RELEASE_DRY_RUN=1 scripts/release.sh "$(VERSION)"
+
+release-verify:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Usage: make release-verify VERSION=x.y.z"; \
+		exit 2; \
+	fi
+	@echo "→ Release verification preflight for $(VERSION)..."
+	@./scripts/versioning.sh sync --version "$(VERSION)"
+	@./scripts/versioning.sh check
+	@scripts/pre-public-check.sh --skip-ci --skip-clean
+	@if [ "$$(uname -s)" = "Darwin" ] && command -v xcodebuild >/dev/null 2>&1; then \
+		echo "  → Running macOS ship gate"; \
+		$(MAKE) --no-print-directory macos-ci; \
+	else \
+		echo "  → xcodebuild unavailable; running Rust release gate only"; \
+		$(MAKE) --no-print-directory ci; \
+	fi
+	@RELEASE_DRY_RUN=1 scripts/release.sh "$(VERSION)"
+	@echo "  ✓ Release verification passed for $(VERSION)"
+	@echo "  ✓ Safe to run: make release VERSION=$(VERSION)"
 
 release-artifacts:
 	@if [ -n "$(VERSION)" ]; then \
