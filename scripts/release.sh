@@ -11,6 +11,7 @@
 # Usage:
 # - scripts/release.sh <version>
 # - RELEASE_DRY_RUN=1 scripts/release.sh <version>
+# - RELEASE_DRY_RUN=1 RALPH_RELEASE_ALLOW_EXISTING_TAG=1 scripts/release.sh <version>
 # Invariants/assumptions:
 # - Version must be strict semver (x.y.z).
 # - Release flow runs from repository root on the main branch.
@@ -59,9 +60,11 @@ usage() {
     echo "  <version>   Version number in semver format (e.g., 0.2.0, 1.0.0)"
     echo ""
     echo "Environment Variables:"
-    echo "  RELEASE_DRY_RUN            Set to 1 for dry run mode (no side effects)"
-    echo "  RALPH_RELEASE_SKIP_PUBLISH Set to 1 to skip crates.io publication"
-    echo "  RALPH_MAKE_CMD             Override make executable for CI step (e.g., gmake)"
+    echo "  RELEASE_DRY_RUN                 Set to 1 for dry run mode (no side effects)"
+    echo "  RALPH_RELEASE_ALLOW_EXISTING_TAG Set to 1 to allow dry-run verification"
+    echo "                                   when v<version> already exists locally"
+    echo "  RALPH_RELEASE_SKIP_PUBLISH      Set to 1 to skip crates.io publication"
+    echo "  RALPH_MAKE_CMD                  Override make executable for CI step (e.g., gmake)"
     echo ""
     echo "Examples:"
     echo "  # Full release"
@@ -69,6 +72,9 @@ usage() {
     echo ""
     echo "  # Dry run mode (preview without making changes)"
     echo "  RELEASE_DRY_RUN=1 scripts/release.sh 0.2.0"
+    echo ""
+    echo "  # Re-verify an already tagged release candidate"
+    echo "  RELEASE_DRY_RUN=1 RALPH_RELEASE_ALLOW_EXISTING_TAG=1 scripts/release.sh 0.2.0"
     echo ""
     echo "  # Show this help"
     echo "  scripts/release.sh --help"
@@ -102,6 +108,7 @@ usage() {
 
 # Dry run mode
 DRY_RUN="${RELEASE_DRY_RUN:-0}"
+ALLOW_EXISTING_TAG="${RALPH_RELEASE_ALLOW_EXISTING_TAG:-0}"
 SKIP_PUBLISH="${RALPH_RELEASE_SKIP_PUBLISH:-0}"
 CRATE_PUBLISHED=0
 REPO_HTTP_URL=""
@@ -444,11 +451,17 @@ validate_repo_state() {
 
     # Check if tag already exists
     if git rev-parse "v$VERSION" &> /dev/null; then
-        log_error "Tag v$VERSION already exists"
-        echo "  Delete existing tag with: git tag -d v$VERSION"
-        exit 1
+        if [ "$DRY_RUN" = "1" ] && [ "$ALLOW_EXISTING_TAG" = "1" ]; then
+            log_warn "Tag v$VERSION already exists; continuing because dry-run verification explicitly allows it"
+        else
+            log_error "Tag v$VERSION already exists"
+            echo "  Delete existing tag with: git tag -d v$VERSION"
+            echo "  Or rerun dry-run verification with: RELEASE_DRY_RUN=1 RALPH_RELEASE_ALLOW_EXISTING_TAG=1 scripts/release.sh $VERSION"
+            exit 1
+        fi
+    else
+        log_success "Tag v$VERSION does not exist"
     fi
-    log_success "Tag v$VERSION does not exist"
 }
 
 # Update canonical and derived version metadata.

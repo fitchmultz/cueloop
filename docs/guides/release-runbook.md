@@ -34,6 +34,7 @@ This target:
 - runs public-readiness checks that still make sense after version mutation
 - runs the ship gate (`macos-ci` on macOS with Xcode, otherwise `ci`)
 - dry-runs `scripts/release.sh`
+- explicitly allows an already-existing local `v<version>` tag during that dry-run so re-verifying a cut release does not fail on tag state alone
 
 2. If you need the underlying manual sequence instead:
 
@@ -88,6 +89,7 @@ make release-artifacts VERSION=<version>
 
 - `Cargo.lock` is part of release metadata. If it changes during `versioning.sh sync`, that is expected and must be committed.
 - `make release-verify` intentionally uses `scripts/pre-public-check.sh --skip-ci --skip-clean` after version sync so post-sync metadata changes do not cause a false failure.
+- `make release-verify` also sets `RALPH_RELEASE_ALLOW_EXISTING_TAG=1` for the dry-run release script invocation. Real releases still fail on an existing tag; only explicit dry-run verification is allowed to continue.
 - `scripts/release.sh` clears `target/release-artifacts/` before packaging so stale tarballs are not uploaded.
 - `cargo package --list` runs with `--allow-dirty` during release prep because the release commit is created after packaging review.
 

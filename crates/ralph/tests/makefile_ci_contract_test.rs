@@ -884,8 +884,10 @@ fn test_release_verify_target_orchestrates_release_preflight() -> Result<()> {
         "release-verify should fall back to the Rust release gate when macOS tooling is unavailable"
     );
     assert!(
-        release_verify_block.contains("RELEASE_DRY_RUN=1 scripts/release.sh \"$(VERSION)\""),
-        "release-verify should exercise the real release script in dry-run mode"
+        release_verify_block.contains(
+            "RELEASE_DRY_RUN=1 RALPH_RELEASE_ALLOW_EXISTING_TAG=1 scripts/release.sh \"$(VERSION)\""
+        ),
+        "release-verify should exercise the real release script in dry-run mode and tolerate an already-cut local tag"
     );
     assert!(
         makefile.contains("make release-verify VERSION=x.y.z"),

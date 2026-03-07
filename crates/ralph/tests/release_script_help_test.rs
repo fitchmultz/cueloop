@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Assert that scripts/release.sh --help exits successfully.
-//! - Verify help output contains expected sections (EXAMPLES, RELEASE_DRY_RUN).
+//! - Verify help output contains expected sections (EXAMPLES, RELEASE_DRY_RUN, verification overrides).
 //!
 //! Not handled here:
 //! - Full validation of release process behavior.
@@ -77,6 +77,7 @@ fn release_script_help_exits_successfully() {
     // Verify key sections are present
     assert_contains(&combined, "Examples:");
     assert_contains(&combined, "RELEASE_DRY_RUN");
+    assert_contains(&combined, "RALPH_RELEASE_ALLOW_EXISTING_TAG");
     assert_contains(&combined, "Usage:");
     assert_contains(&combined, "Arguments:");
     assert_contains(&combined, "Environment Variables:");
@@ -98,6 +99,7 @@ fn release_script_short_help_exits_successfully() {
     // Verify key sections are present
     assert_contains(&combined, "Examples:");
     assert_contains(&combined, "RELEASE_DRY_RUN");
+    assert_contains(&combined, "RALPH_RELEASE_ALLOW_EXISTING_TAG");
 }
 
 #[test]
@@ -124,6 +126,10 @@ fn release_script_help_contains_examples() {
     assert_contains(&combined, "scripts/release.sh 0.2.0");
     assert_contains(&combined, "Dry run mode");
     assert_contains(&combined, "RELEASE_DRY_RUN=1 scripts/release.sh 0.2.0");
+    assert_contains(
+        &combined,
+        "RELEASE_DRY_RUN=1 RALPH_RELEASE_ALLOW_EXISTING_TAG=1 scripts/release.sh 0.2.0",
+    );
     assert_contains(&combined, "Show this help");
 }
 

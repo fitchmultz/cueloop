@@ -276,7 +276,7 @@ release-dry-run:
 		echo "Usage: make release-dry-run VERSION=x.y.z"; \
 		exit 2; \
 	fi
-	@RELEASE_DRY_RUN=1 scripts/release.sh "$(VERSION)"
+	@RELEASE_DRY_RUN=1 RALPH_RELEASE_ALLOW_EXISTING_TAG=1 scripts/release.sh "$(VERSION)"
 
 release-verify:
 	@if [ -z "$(VERSION)" ]; then \
@@ -294,7 +294,7 @@ release-verify:
 		echo "  → xcodebuild unavailable; running Rust release gate only"; \
 		$(MAKE) --no-print-directory ci; \
 	fi
-	@RELEASE_DRY_RUN=1 scripts/release.sh "$(VERSION)"
+	@RELEASE_DRY_RUN=1 RALPH_RELEASE_ALLOW_EXISTING_TAG=1 scripts/release.sh "$(VERSION)"
 	@echo "  ✓ Release verification passed for $(VERSION)"
 	@echo "  ✓ Safe to run: make release VERSION=$(VERSION)"
 

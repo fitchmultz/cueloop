@@ -115,3 +115,22 @@ fn release_script_allows_dirty_packaging_review_before_release_commit() {
         "release.sh should dry-run crates.io publish with --allow-dirty before the release commit exists"
     );
 }
+
+#[test]
+fn release_script_only_allows_existing_tags_for_explicit_dry_run_verification() {
+    let script = read_repo_file("scripts/release.sh");
+    assert!(
+        script.contains("ALLOW_EXISTING_TAG=\"${RALPH_RELEASE_ALLOW_EXISTING_TAG:-0}\""),
+        "release.sh should require an explicit env var to allow existing tags during verification"
+    );
+    assert!(
+        script.contains("if [ \"$DRY_RUN\" = \"1\" ] && [ \"$ALLOW_EXISTING_TAG\" = \"1\" ]; then"),
+        "release.sh should only bypass existing-tag failure for explicit dry-run verification"
+    );
+    assert!(
+        script.contains(
+            "RELEASE_DRY_RUN=1 RALPH_RELEASE_ALLOW_EXISTING_TAG=1 scripts/release.sh $VERSION"
+        ),
+        "release.sh should document the explicit verification override when an existing tag blocks release execution"
+    );
+}
