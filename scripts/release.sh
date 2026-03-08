@@ -91,7 +91,7 @@ print_reconcile_hint() {
 
 run_verify() {
     release_check_prerequisites 0
-    release_validate_repo_state 1
+    release_validate_repo_state 1 1
     release_verify_plan
     ralph_log_success "Release verification passed for v$VERSION"
 }

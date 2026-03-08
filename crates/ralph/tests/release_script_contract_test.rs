@@ -127,3 +127,12 @@ fn release_script_reconciles_without_legacy_skip_flags() {
         "release.sh should not retain the old existing-tag override flag"
     );
 }
+
+#[test]
+fn release_verify_allows_release_metadata_drift_after_version_sync() {
+    let script = read_repo_file("scripts/release.sh");
+    assert!(
+        script.contains("release_validate_repo_state 1 1"),
+        "verify mode should allow release-only metadata drift so make release-verify can validate a bumped version"
+    );
+}

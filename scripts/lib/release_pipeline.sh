@@ -52,6 +52,7 @@ release_check_prerequisites() {
 
 release_validate_repo_state() {
     local allow_existing_tag="${1:-0}"
+    local allow_release_metadata_drift="${2:-0}"
 
     ralph_log_step "Validating repository state"
     cd "$REPO_ROOT"
@@ -67,11 +68,16 @@ release_validate_repo_state() {
     local dirty_files
     dirty_files=$(git status --porcelain | grep -vE '^..[[:space:]]+\.ralph/' || true)
     if [ -n "$dirty_files" ]; then
-        ralph_log_error "Working directory is not clean"
-        echo "$dirty_files" | sed 's/^/  /' >&2
-        return 1
+        if [ "$allow_release_metadata_drift" = "1" ] && release_assert_dirty_paths_allowed "$dirty_files"; then
+            ralph_log_success "Working directory contains only release metadata drift"
+        else
+            ralph_log_error "Working directory is not clean"
+            echo "$dirty_files" | sed 's/^/  /' >&2
+            return 1
+        fi
+    else
+        ralph_log_success "Working directory is clean"
     fi
-    ralph_log_success "Working directory is clean"
 
     if ! git ls-remote origin >/dev/null 2>&1; then
         ralph_log_error "Cannot access git remote"

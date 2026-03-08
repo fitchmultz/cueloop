@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Durable watch-task identity metadata and reconciliation rules so scan/remove flows only mutate the files processed in the current batch.
+- Atomic task mutation support for the macOS app through `ralph task mutate`, including optimistic locking and status-derived field updates in a single transaction path.
+- Repo execution trust controls for project-local CI gate, runner override, and plugin execution settings.
+
+### Changed
+
+- Release automation now uses an explicit transaction workflow with `scripts/release.sh verify`, `execute`, and `reconcile`, transaction state under `target/release-transactions/`, and local-finalization-before-publication semantics.
+- Public-readiness checks now scan the whole repository for markdown-link breakage, tracked runtime artifacts, tracked env files, and obvious secret material instead of relying on a hardcoded document subset.
+- Agent CI routing now follows dependency surface changes instead of `apps/RalphMac/` path prefixes, escalating shared CLI/build/runtime contract changes to `macos-ci`.
+- The macOS app, Makefile, and release artifact builder now share one CLI bundling/build entrypoint to keep app-bundled and shipped binaries on the same toolchain contract.
+- Queue loading, managed subprocess execution, runner/runtime modules, and macOS app window/task presentation flows were refactored into smaller focused components for more predictable behavior and recovery.
+
+### Security
+
+- CI gate execution now rejects shell-string launchers and untrusted repo-local execution settings, and webhook failure diagnostics store only redacted destinations.
+
 ## [0.2.1] - 2026-03-06
 
 ## [0.2.0] - 2026-03-06
