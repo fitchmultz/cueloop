@@ -97,10 +97,10 @@ run_verify() {
 }
 
 run_execute() {
-    release_state_init "execute"
     if ! release_check_prerequisites 1 || ! release_validate_repo_state 0 || ! release_verify_plan; then
         return 1
     fi
+    release_state_init "execute"
 
     if ! release_prepare_local_state; then
         return 1
