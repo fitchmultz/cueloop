@@ -99,6 +99,13 @@ Every source file MUST start with `//!` docs covering:
 ### Managed Subprocesses
 - Non-runner operational subprocesses (CI, git/gh, doctor probes, processor hooks, integration sync checks) should flow through `runutil::shell` managed execution with timeout classes, bounded capture, and SIGINT-before-SIGKILL escalation. Do not reintroduce raw `Command::output()` in those paths.
 
+### Runtime Module Boundaries
+- `runner.rs` is a thin facade only; shared invocation/resume dispatch lives in `runner/invoke.rs`, and external plugin registry/bootstrap lives in `runner/plugin_dispatch.rs`.
+- Runner stream handling is split by concern: `execution/stream.rs` wires the sink API, `stream_reader.rs` owns IO loops, `stream_buffer.rs` owns truncation, `stream_events.rs` owns event extraction/correlation, `stream_tool_details.rs` owns compact tool formatting, and `stream_render.rs` owns sink/handler fanout.
+- `cli/task/batch.rs` is a router only; shared batch context, selection, dry-run rendering, status handling, and mutations live under `cli/task/batch/`.
+- `commands/run/parallel/worker.rs` is a facade only; keep selection in `worker_selection.rs`, command construction in `worker_command.rs`, and child lifecycle in `worker_process.rs`.
+- `commands/run/supervision/ci.rs` owns CI execution/retry/escalation only; pattern detection is in `ci_patterns.rs` and formatting is in `ci_format.rs`.
+
 ### Notification Audio
 - Windows custom notification sounds are `.wav`-only and play through WinMM; do not reintroduce PowerShell-based playback.
 

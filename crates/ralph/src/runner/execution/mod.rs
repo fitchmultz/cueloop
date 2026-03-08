@@ -58,7 +58,7 @@ pub(super) use response::extract_final_assistant_response;
 // New plugin trait system exports
 // Note: These are exported for use by runner.rs and tests
 pub(crate) use builtin_plugins::BuiltInRunnerPlugin;
-pub(crate) use plugin_executor::{PluginExecutor, run_builtin_prompt, run_builtin_resume};
+pub(crate) use plugin_executor::PluginExecutor;
 pub(crate) use plugin_trait::RunnerPlugin;
 
 pub(crate) use cli_options::{ResolvedRunnerCliOptions, resolve_runner_cli_options};

@@ -186,6 +186,7 @@ make type-check
 - **Formatting**: `cargo fmt` + Clippy with `-D warnings` (CI treats warnings as errors)
 - **Visibility**: Keep APIs small; default to private, prefer `pub(crate)` over `pub`
 - **Cohesion**: Keep modules/files focused; split large files rather than growing grab-bags
+- **Facade modules**: Keep top-level runtime facades (`runner.rs`, `commands/run/parallel/worker.rs`, `commands/run/supervision/ci.rs`, `cli/task/batch.rs`) thin; move real logic into same-directory helper modules rather than rebuilding monoliths
 - **Documentation**: Every module/file MUST have module docs (`//!`) stating:
   - What the file is responsible for
   - What it explicitly does NOT handle
