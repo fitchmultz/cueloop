@@ -1,8 +1,18 @@
 //! Unit tests for timeutil.rs (timestamp parsing, formatting, edge cases).
 
 use ralph::timeutil;
-use std::thread;
-use std::time::Duration;
+
+fn next_distinct_timestamp(after: &str) -> String {
+    for _ in 0..10_000 {
+        let candidate = timeutil::now_utc_rfc3339().unwrap();
+        if candidate != after {
+            return candidate;
+        }
+        std::hint::spin_loop();
+    }
+
+    panic!("failed to observe a distinct RFC3339 timestamp");
+}
 
 #[test]
 fn test_now_utc_rfc3339_success() {
@@ -43,8 +53,7 @@ fn test_now_utc_rfc3339_format() {
 #[test]
 fn test_now_utc_rfc3339_monotonic() {
     let timestamp1 = timeutil::now_utc_rfc3339().unwrap();
-    thread::sleep(Duration::from_millis(100));
-    let timestamp2 = timeutil::now_utc_rfc3339().unwrap();
+    let timestamp2 = next_distinct_timestamp(&timestamp1);
 
     // timestamp2 should be >= timestamp1
     assert!(timestamp2 >= timestamp1);
@@ -139,8 +148,7 @@ fn test_fallback_constant_format() {
 #[test]
 fn test_now_utc_rfc3339_idempotent() {
     let timestamp1 = timeutil::now_utc_rfc3339().unwrap();
-    thread::sleep(Duration::from_millis(50));
-    let timestamp2 = timeutil::now_utc_rfc3339().unwrap();
+    let timestamp2 = next_distinct_timestamp(&timestamp1);
 
     // Same format, different times
     assert_eq!(timestamp1.len(), timestamp2.len());

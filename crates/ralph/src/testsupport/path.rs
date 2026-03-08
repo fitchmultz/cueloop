@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Prevent concurrent `PATH` mutations across tests.
 //! - Provide scoped PATH prepend helpers that always restore.
+//! - Provide portable absolute-path fixtures for tests.
 //!
 //! Not handled:
 //! - Production PATH manipulation.
@@ -49,4 +50,12 @@ pub(crate) fn with_path<T>(path_value: &str, f: impl FnOnce() -> T) -> T {
     let _path_guard = PathGuard(original);
     unsafe { std::env::set_var("PATH", path_value) };
     f()
+}
+
+/// Build a portable absolute path fixture rooted in the host temp directory.
+///
+/// The returned path is stable for assertions and does not assume a Unix `/tmp`
+/// layout, so tests remain portable across platforms.
+pub(crate) fn portable_abs_path(label: impl AsRef<std::path::Path>) -> std::path::PathBuf {
+    std::env::temp_dir().join("ralph-test-paths").join(label)
 }

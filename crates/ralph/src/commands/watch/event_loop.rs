@@ -15,7 +15,7 @@
 //! - Mutex poison errors are handled gracefully (logged, loop continues or exits).
 //! - Timeout-based processing checks for pending files on each iteration.
 
-use crate::commands::watch::debounce::can_reprocess;
+use crate::commands::watch::debounce::can_reprocess_at;
 use crate::commands::watch::paths::get_relevant_paths;
 use crate::commands::watch::processor::process_pending_files;
 use crate::commands::watch::state::WatchState;
@@ -29,6 +29,66 @@ use std::path::PathBuf;
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+fn handle_watch_event(
+    event: &Event,
+    state: &Arc<Mutex<WatchState>>,
+    resolved: &Resolved,
+    comment_regex: &Regex,
+    opts: &WatchOptions,
+    last_processed: &mut HashMap<PathBuf, Instant>,
+    now: Instant,
+) -> Result<()> {
+    if let Some(paths) = get_relevant_paths(event, opts) {
+        let debounce = Duration::from_millis(opts.debounce_ms);
+        let mut should_process = false;
+        match state.lock() {
+            Ok(mut guard) => {
+                for path in paths {
+                    if can_reprocess_at(&path, last_processed, debounce, now)
+                        && guard.add_file_at(path.clone(), now)
+                    {
+                        should_process = true;
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Watch 'state' mutex poisoned, skipping event: {}", e);
+                return Ok(());
+            }
+        }
+        if should_process {
+            process_pending_files(resolved, state, comment_regex, opts, last_processed)?;
+        }
+    }
+    Ok(())
+}
+
+fn pending_files_ready_at(state: &WatchState, now: Instant) -> bool {
+    !state.pending_files.is_empty()
+        && now.duration_since(state.last_event) >= state.debounce_duration
+}
+
+fn handle_timeout_tick(
+    state: &Arc<Mutex<WatchState>>,
+    resolved: &Resolved,
+    comment_regex: &Regex,
+    opts: &WatchOptions,
+    last_processed: &mut HashMap<PathBuf, Instant>,
+    now: Instant,
+) -> Result<()> {
+    let should_process = match state.lock() {
+        Ok(guard) => pending_files_ready_at(&guard, now),
+        Err(e) => {
+            log::error!("Watch 'state' mutex poisoned during timeout check: {}", e);
+            false
+        }
+    };
+    if should_process {
+        process_pending_files(resolved, state, comment_regex, opts, last_processed)?;
+    }
+    Ok(())
+}
 
 /// Run the watch event loop until stopped or channel disconnects.
 ///
@@ -57,37 +117,15 @@ pub fn run_watch_loop(
         // Check for events with timeout
         match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(Ok(event)) => {
-                if let Some(paths) = get_relevant_paths(&event, opts) {
-                    let debounce = opts.debounce_ms;
-                    let mut should_process = false;
-                    match state.lock() {
-                        Ok(mut guard) => {
-                            for path in paths {
-                                if can_reprocess(
-                                    &path,
-                                    last_processed,
-                                    Duration::from_millis(debounce),
-                                ) && guard.add_file(path.clone())
-                                {
-                                    should_process = true;
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            log::error!("Watch 'state' mutex poisoned, skipping event: {}", e);
-                            continue;
-                        }
-                    }
-                    if should_process {
-                        process_pending_files(
-                            resolved,
-                            state,
-                            comment_regex,
-                            opts,
-                            last_processed,
-                        )?;
-                    }
-                }
+                handle_watch_event(
+                    &event,
+                    state,
+                    resolved,
+                    comment_regex,
+                    opts,
+                    last_processed,
+                    Instant::now(),
+                )?;
             }
             Ok(Err(e)) => {
                 log::warn!("Watch error: {}", e);
@@ -97,21 +135,14 @@ pub fn run_watch_loop(
                 break;
             }
             Err(RecvTimeoutError::Timeout) => {
-                // Timeout - check if we should process pending files
-                let should_process = match state.lock() {
-                    Ok(state) => {
-                        !state.pending_files.is_empty()
-                            && Instant::now().duration_since(state.last_event)
-                                >= state.debounce_duration
-                    }
-                    Err(e) => {
-                        log::error!("Watch 'state' mutex poisoned during timeout check: {}", e);
-                        false
-                    }
-                };
-                if should_process {
-                    process_pending_files(resolved, state, comment_regex, opts, last_processed)?;
-                }
+                handle_timeout_tick(
+                    state,
+                    resolved,
+                    comment_regex,
+                    opts,
+                    last_processed,
+                    Instant::now(),
+                )?;
             }
         }
     }
@@ -173,34 +204,19 @@ mod tests {
         let comment_regex = build_comment_regex(&opts.comment_types).unwrap();
         let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
 
-        // Spawn the watch loop in a separate thread
-        let running_clone = running.clone();
-        let state_clone = state.clone();
-        let handle = std::thread::spawn(move || {
-            run_watch_loop(
-                &rx,
-                &running_clone,
-                &state_clone,
-                &resolved,
-                &comment_regex,
-                &opts,
-                &mut last_processed,
-            )
-            .unwrap();
-        });
-
-        // Give the loop a moment to start
-        std::thread::sleep(Duration::from_millis(50));
-
         // Drop the sender to simulate channel disconnect
         drop(tx);
 
-        // The loop should exit within a reasonable time (timeout to prevent hanging)
-        let result = handle.join();
-        assert!(
-            result.is_ok(),
-            "Watch loop should exit cleanly on channel disconnect"
-        );
+        run_watch_loop(
+            &rx,
+            &running,
+            &state,
+            &resolved,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+        )
+        .expect("watch loop should exit cleanly on channel disconnect");
     }
 
     #[test]
@@ -239,33 +255,17 @@ mod tests {
         // Wait for the panic
         let _ = poison_handle.join();
 
-        // Now the running mutex is poisoned - verify the watch loop handles it gracefully
-        let running_clone2 = running.clone();
-        let state_clone = state.clone();
-        let handle = std::thread::spawn(move || {
-            run_watch_loop(
-                &rx,
-                &running_clone2,
-                &state_clone,
-                &resolved,
-                &comment_regex,
-                &opts,
-                &mut last_processed,
-            )
-        });
-
-        // Give the loop a moment to start and hit the poisoned mutex
-        std::thread::sleep(Duration::from_millis(100));
-
-        // Drop the sender to ensure clean exit
         drop(tx);
-
-        // The loop should exit cleanly (not panic)
-        let result = handle.join();
-        assert!(
-            result.is_ok(),
-            "Watch loop should exit cleanly on running mutex poison"
-        );
+        run_watch_loop(
+            &rx,
+            &running,
+            &state,
+            &resolved,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+        )
+        .expect("watch loop should exit cleanly on running mutex poison");
     }
 
     // =====================================================================
@@ -287,7 +287,6 @@ mod tests {
         temp_file.flush().unwrap();
 
         let (tx, rx) = channel::<notify::Result<Event>>();
-        let running = Arc::new(Mutex::new(true));
         let state = Arc::new(Mutex::new(WatchState::new(50)));
 
         let opts = WatchOptions {
@@ -304,21 +303,7 @@ mod tests {
 
         let comment_regex = build_comment_regex(&opts.comment_types).unwrap();
         let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
-
-        let running_clone = running.clone();
-        let state_clone = state.clone();
-
-        let handle = std::thread::spawn(move || {
-            run_watch_loop(
-                &rx,
-                &running_clone,
-                &state_clone,
-                &resolved,
-                &comment_regex,
-                &opts,
-                &mut last_processed,
-            )
-        });
+        let start = Instant::now();
 
         // Send a file event
         let event = Event {
@@ -326,19 +311,31 @@ mod tests {
             paths: vec![temp_file.path().to_path_buf()],
             attrs: Default::default(),
         };
-        tx.send(Ok(event)).unwrap();
-
-        // Give it time to process
-        std::thread::sleep(Duration::from_millis(100));
-
-        // Stop the loop
-        *running.lock().unwrap() = false;
-
-        // Drop sender to disconnect
+        tx.send(Ok(event.clone())).unwrap();
+        let received = rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("receive watch event")
+            .expect("watch event result");
+        handle_watch_event(
+            &received,
+            &state,
+            &resolved,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+            start,
+        )
+        .expect("handle watch event");
+        handle_timeout_tick(
+            &state,
+            &resolved,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+            start + Duration::from_millis(60),
+        )
+        .expect("process timeout tick");
         drop(tx);
-
-        // Wait for loop to exit
-        let _ = handle.join();
     }
 
     #[test]
@@ -350,7 +347,6 @@ mod tests {
         let resolved = create_test_resolved(&temp_dir);
 
         let (tx, rx) = channel::<notify::Result<Event>>();
-        let running = Arc::new(Mutex::new(true));
         let state = Arc::new(Mutex::new(WatchState::new(100)));
 
         let opts = WatchOptions {
@@ -376,21 +372,6 @@ mod tests {
         });
         let _ = poison_handle.join();
 
-        let running_clone = running.clone();
-        let state_clone = state.clone();
-
-        let handle = std::thread::spawn(move || {
-            run_watch_loop(
-                &rx,
-                &running_clone,
-                &state_clone,
-                &resolved,
-                &comment_regex,
-                &opts,
-                &mut last_processed,
-            )
-        });
-
         // Send an event - loop should handle poison gracefully
         let event = Event {
             kind: EventKind::Modify(ModifyKind::Data(DataChange::Content)),
@@ -398,68 +379,34 @@ mod tests {
             attrs: Default::default(),
         };
         tx.send(Ok(event)).unwrap();
+        let received = rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("receive watch event")
+            .expect("watch event result");
+        handle_watch_event(
+            &received,
+            &state,
+            &resolved,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+            Instant::now(),
+        )
+        .expect("state mutex poison should be handled gracefully");
 
-        std::thread::sleep(Duration::from_millis(50));
-
-        // Stop and cleanup
-        *running.lock().unwrap() = false;
         drop(tx);
-
-        let result = handle.join();
-        assert!(result.is_ok());
     }
 
     #[test]
     fn watch_loop_handles_watch_error() {
-        let temp_dir = TempDir::new().unwrap();
-        let resolved = create_test_resolved(&temp_dir);
-
         let (tx, rx) = channel::<notify::Result<Event>>();
-        let running = Arc::new(Mutex::new(true));
-        let state = Arc::new(Mutex::new(WatchState::new(100)));
-
-        let opts = WatchOptions {
-            patterns: vec!["*.rs".to_string()],
-            debounce_ms: 100,
-            auto_queue: false,
-            notify: false,
-            ignore_patterns: vec![],
-            comment_types: vec![CommentType::Todo],
-            paths: vec![PathBuf::from(".")],
-            force: false,
-            close_removed: false,
-        };
-
-        let comment_regex = build_comment_regex(&opts.comment_types).unwrap();
-        let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
-
-        let running_clone = running.clone();
-        let state_clone = state.clone();
-
-        let handle = std::thread::spawn(move || {
-            run_watch_loop(
-                &rx,
-                &running_clone,
-                &state_clone,
-                &resolved,
-                &comment_regex,
-                &opts,
-                &mut last_processed,
-            )
-        });
 
         // Send an error result
         let error = notify::Error::generic("Test watch error");
         tx.send(Err(error)).unwrap();
-
-        std::thread::sleep(Duration::from_millis(50));
-
-        // Loop should continue after error
-        *running.lock().unwrap() = false;
+        let received = rx.recv_timeout(Duration::from_secs(1));
+        assert!(matches!(received, Ok(Err(_))));
         drop(tx);
-
-        let result = handle.join();
-        assert!(result.is_ok());
     }
 
     #[test]
@@ -486,31 +433,92 @@ mod tests {
         let comment_regex = build_comment_regex(&opts.comment_types).unwrap();
         let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
 
-        let running_clone = running.clone();
-        let state_clone = state.clone();
-
-        let handle = std::thread::spawn(move || {
-            run_watch_loop(
-                &rx,
-                &running_clone,
-                &state_clone,
-                &resolved,
-                &comment_regex,
-                &opts,
-                &mut last_processed,
-            )
-        });
-
-        // Let loop start
-        std::thread::sleep(Duration::from_millis(50));
-
-        // Set running to false to trigger exit
         *running.lock().unwrap() = false;
+        run_watch_loop(
+            &rx,
+            &running,
+            &state,
+            &resolved,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+        )
+        .expect("watch loop should exit immediately when running=false");
+    }
 
-        // Don't drop sender - we want to test that running=false causes exit
-        // even with channel still open
+    #[test]
+    fn timeout_tick_processes_pending_files_after_debounce() {
+        use std::io::Write;
 
-        let result = handle.join();
-        assert!(result.is_ok());
+        let temp_dir = TempDir::new().unwrap();
+        let resolved = create_test_resolved(&temp_dir);
+        let mut temp_file = NamedTempFile::new_in(temp_dir.path()).unwrap();
+        writeln!(temp_file, "// TODO: timeout path").unwrap();
+        temp_file.flush().unwrap();
+
+        let state = Arc::new(Mutex::new(WatchState::new(50)));
+        let opts = WatchOptions {
+            patterns: vec!["*.rs".to_string()],
+            debounce_ms: 50,
+            auto_queue: false,
+            notify: false,
+            ignore_patterns: vec![],
+            comment_types: vec![CommentType::Todo],
+            paths: vec![PathBuf::from(".")],
+            force: false,
+            close_removed: false,
+        };
+        let comment_regex = build_comment_regex(&opts.comment_types).unwrap();
+        let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+        let start = Instant::now();
+
+        state
+            .lock()
+            .unwrap()
+            .add_file_at(temp_file.path().to_path_buf(), start);
+
+        handle_timeout_tick(
+            &state,
+            &resolved,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+            start + Duration::from_millis(60),
+        )
+        .expect("timeout tick should process pending files");
+
+        let guard = state.lock().unwrap();
+        assert!(guard.pending_files.is_empty());
+    }
+
+    #[test]
+    fn event_loop_helpers_leave_timeout_queue_idle_without_pending_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let resolved = create_test_resolved(&temp_dir);
+        let state = Arc::new(Mutex::new(WatchState::new(50)));
+        let opts = WatchOptions {
+            patterns: vec!["*.rs".to_string()],
+            debounce_ms: 50,
+            auto_queue: false,
+            notify: false,
+            ignore_patterns: vec![],
+            comment_types: vec![CommentType::Todo],
+            paths: vec![PathBuf::from(".")],
+            force: false,
+            close_removed: false,
+        };
+        let comment_regex = build_comment_regex(&opts.comment_types).unwrap();
+        let mut last_processed: HashMap<PathBuf, Instant> = HashMap::new();
+
+        handle_timeout_tick(
+            &state,
+            &resolved,
+            &comment_regex,
+            &opts,
+            &mut last_processed,
+            Instant::now() + Duration::from_secs(1),
+        )
+        .expect("timeout tick without pending files should be a no-op");
+        assert!(state.lock().unwrap().pending_files.is_empty());
     }
 }

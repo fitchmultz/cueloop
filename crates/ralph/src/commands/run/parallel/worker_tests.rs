@@ -15,7 +15,6 @@ use crate::git::WorkspaceSpec;
 use crate::queue;
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 #[test]
@@ -273,11 +272,12 @@ fn build_worker_command_emits_git_commit_push_off_when_overridden() -> Result<()
 fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Result<()> {
     let mut state_file =
         state::ParallelStateFile::new("2026-02-20T00:00:00Z".to_string(), "main".to_string());
+    let workspace_root = crate::testsupport::path::portable_abs_path("workspace");
 
     // Running worker (should be selectable for explicit retry flows)
     let running_worker = state::WorkerRecord::new(
         "RQ-0001",
-        PathBuf::from("/tmp/workspace/RQ-0001"),
+        workspace_root.join("RQ-0001"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     state_file.upsert_worker(running_worker);
@@ -285,7 +285,7 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
     // Integrating worker (should be selectable; true active workers are tracked in-flight)
     let mut integrating_worker = state::WorkerRecord::new(
         "RQ-0002",
-        PathBuf::from("/tmp/workspace/RQ-0002"),
+        workspace_root.join("RQ-0002"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     integrating_worker.start_integration();
@@ -294,7 +294,7 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
     // Completed worker (retained for status/reporting; not excluded by default)
     let mut completed_worker = state::WorkerRecord::new(
         "RQ-0003",
-        PathBuf::from("/tmp/workspace/RQ-0003"),
+        workspace_root.join("RQ-0003"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     completed_worker.mark_completed("2026-02-20T01:00:00Z".to_string());
@@ -303,7 +303,7 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
     // Failed worker (retained for status/retry; not excluded by default)
     let mut failed_worker = state::WorkerRecord::new(
         "RQ-0004",
-        PathBuf::from("/tmp/workspace/RQ-0004"),
+        workspace_root.join("RQ-0004"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     failed_worker.mark_failed("2026-02-20T01:00:00Z".to_string(), "error");
@@ -312,7 +312,7 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
     // Blocked worker (must stay excluded until explicit retry)
     let mut blocked_worker = state::WorkerRecord::new(
         "RQ-0006",
-        PathBuf::from("/tmp/workspace/RQ-0006"),
+        workspace_root.join("RQ-0006"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     blocked_worker.mark_blocked("2026-02-20T01:00:00Z".to_string(), "blocked");
@@ -326,7 +326,7 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
             task_id: "RQ-0005".to_string(),
             task_title: "title".to_string(),
             workspace: WorkspaceSpec {
-                path: PathBuf::from("/tmp/workspaces/RQ-0005"),
+                path: crate::testsupport::path::portable_abs_path("workspaces/RQ-0005"),
                 branch: "main".to_string(),
             },
             child,
@@ -696,7 +696,7 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
     // Completed worker for RQ-0003 (should NOT block selection)
     let mut completed_worker = state::WorkerRecord::new(
         "RQ-0003",
-        std::path::PathBuf::from("/tmp/workspace/RQ-0003"),
+        crate::testsupport::path::portable_abs_path("workspace/RQ-0003"),
         "2026-01-01T00:00:00Z".to_string(),
     );
     completed_worker.mark_completed("2026-01-01T01:00:00Z".to_string());
@@ -705,7 +705,7 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
     // Failed worker for RQ-0001 (should NOT block selection)
     let mut failed_worker = state::WorkerRecord::new(
         "RQ-0001",
-        std::path::PathBuf::from("/tmp/workspace/RQ-0001"),
+        crate::testsupport::path::portable_abs_path("workspace/RQ-0001"),
         "2026-01-01T00:00:00Z".to_string(),
     );
     failed_worker.mark_failed("2026-01-01T01:00:00Z".to_string(), "test error");
@@ -831,7 +831,7 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
         state::ParallelStateFile::new("2026-01-01T00:00:00Z".to_string(), "main".to_string());
     let mut blocked_worker = state::WorkerRecord::new(
         "RQ-0001",
-        std::path::PathBuf::from("/tmp/workspace/RQ-0001"),
+        crate::testsupport::path::portable_abs_path("workspace/RQ-0001"),
         "2026-01-01T00:00:00Z".to_string(),
     );
     blocked_worker.mark_blocked("2026-01-01T01:00:00Z".to_string(), "merge conflict");

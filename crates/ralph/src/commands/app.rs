@@ -371,7 +371,7 @@ mod tests {
             path: None,
             workspace: None,
         };
-        let cli = PathBuf::from("/tmp/ralph-bin");
+        let cli = crate::testsupport::path::portable_abs_path("ralph-bin");
 
         let spec = plan_open_command(true, &args, Some(&cli))?;
         assert_eq!(spec.program, OsString::from("open"));
@@ -396,11 +396,11 @@ mod tests {
 
     #[test]
     fn env_assignment_prefixes_variable_name() {
-        let cli = PathBuf::from("/tmp/ralph");
+        let cli = crate::testsupport::path::portable_abs_path("ralph");
         let assignment = env_assignment_for_path(&cli);
         let text = assignment.to_string_lossy();
         assert!(text.starts_with(&format!("{GUI_CLI_BIN_ENV}=")));
-        assert!(text.ends_with("/tmp/ralph"));
+        assert!(text.ends_with(&*cli.to_string_lossy()));
     }
 
     #[test]

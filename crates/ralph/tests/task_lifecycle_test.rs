@@ -353,20 +353,22 @@ fn task_start_reset_updates_timestamp() -> Result<()> {
     let task = find_task(&queue.tasks, task_id).unwrap();
     let first_started_at = task.started_at.clone().unwrap();
 
-    // Wait a moment to ensure different timestamp
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    let mut second_started_at = first_started_at.clone();
+    for _ in 0..8 {
+        let (status, _, stderr) =
+            test_support::run_in_dir(dir.path(), &["task", "start", task_id, "--reset"]);
+        anyhow::ensure!(
+            status.success(),
+            "task start --reset failed\nstderr:\n{stderr}"
+        );
 
-    // Start again with --reset flag
-    let (status, _, stderr) =
-        test_support::run_in_dir(dir.path(), &["task", "start", task_id, "--reset"]);
-    anyhow::ensure!(
-        status.success(),
-        "task start --reset failed\nstderr:\n{stderr}"
-    );
-
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, task_id).unwrap();
-    let second_started_at = task.started_at.clone().unwrap();
+        let queue = test_support::read_queue(dir.path())?;
+        let task = find_task(&queue.tasks, task_id).unwrap();
+        second_started_at = task.started_at.clone().unwrap();
+        if second_started_at != first_started_at {
+            break;
+        }
+    }
 
     // Timestamps should be different
     assert_ne!(

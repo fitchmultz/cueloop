@@ -880,12 +880,14 @@ mod tests {
 
     #[test]
     fn integration_prompt_contains_mandatory_contract() {
+        let queue_path = crate::testsupport::path::portable_abs_path("queue.json");
+        let done_path = crate::testsupport::path::portable_abs_path("done.json");
         let prompt = build_agent_integration_prompt(
             "RQ-0001",
             "Implement feature",
             "main",
-            Path::new("/tmp/queue.json"),
-            Path::new("/tmp/done.json"),
+            &queue_path,
+            &done_path,
             1,
             5,
             "phase summary",
@@ -903,12 +905,14 @@ mod tests {
 
     #[test]
     fn integration_prompt_uses_explicit_target_branch_for_push() {
+        let queue_path = crate::testsupport::path::portable_abs_path("queue.json");
+        let done_path = crate::testsupport::path::portable_abs_path("done.json");
         let prompt = build_agent_integration_prompt(
             "RQ-0001",
             "Implement feature",
             "release/2026",
-            Path::new("/tmp/queue.json"),
-            Path::new("/tmp/done.json"),
+            &queue_path,
+            &done_path,
             1,
             5,
             "phase summary",
@@ -925,12 +929,14 @@ mod tests {
 
     #[test]
     fn integration_prompt_sanitizes_nul_bytes() {
+        let queue_path = crate::testsupport::path::portable_abs_path("queue.json");
+        let done_path = crate::testsupport::path::portable_abs_path("done.json");
         let prompt = build_agent_integration_prompt(
             "RQ-0001",
             "NUL test",
             "main",
-            Path::new("/tmp/queue.json"),
-            Path::new("/tmp/done.json"),
+            &queue_path,
+            &done_path,
             1,
             5,
             "phase\0summary",

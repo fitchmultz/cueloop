@@ -183,6 +183,8 @@ Every source file MUST start with `//!` docs covering:
 - Integration: `crates/ralph/tests/`
 - Init tests: Always use `--non-interactive` flag
 - CI temp dirs: `${TMPDIR:-/tmp}/ralph-ci.*` (set `RALPH_CI_KEEP_TMP=1` to keep)
+- Prefer deterministic waits/signals over `sleep` in tests; inject logical time or use condition-style helpers when coordination matters.
+- Portable absolute test paths should come from temp-root helpers (`std::env::temp_dir()` / test-support builders), never hardcoded `/tmp` literals.
 
 ### Task Decompose
 - `ralph task decompose` is preview-first; queue mutation requires `--write`.

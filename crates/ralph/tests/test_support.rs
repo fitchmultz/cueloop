@@ -15,10 +15,9 @@ use anyhow::{Context, Result};
 use ralph::config;
 use ralph::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 use serde_json::Value;
-use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Condvar, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
@@ -28,31 +27,34 @@ pub fn path_has_repo_markers(path: &Path) -> bool {
 }
 
 pub fn find_non_repo_temp_base() -> PathBuf {
-    let cwd = env::current_dir().expect("resolve current dir");
+    let cwd = std::env::current_dir().expect("resolve current dir");
     let repo_root = config::find_repo_root(&cwd);
-    let mut candidates = Vec::new();
-    if let Some(parent) = repo_root.parent() {
-        candidates.push(parent.to_path_buf());
-    }
-    candidates.push(env::temp_dir());
-    candidates.push(PathBuf::from("/tmp"));
 
-    for candidate in candidates {
-        if candidate.as_os_str().is_empty() {
-            continue;
-        }
-        if !path_has_repo_markers(&candidate) {
-            return candidate;
-        }
+    let temp_base = ralph::fsutil::ralph_temp_root().join("integration-tests");
+    if !path_has_repo_markers(&temp_base) {
+        return temp_base;
     }
 
-    repo_root
+    if let Some(parent) = repo_root.parent()
+        && !path_has_repo_markers(parent)
+    {
+        return parent.join(".ralph-integration-tests");
+    }
+
+    panic!(
+        "failed to find a portable temp base outside repo markers for {}",
+        repo_root.display()
+    );
 }
 
 pub fn temp_dir_outside_repo() -> TempDir {
     let base = find_non_repo_temp_base();
     std::fs::create_dir_all(&base).expect("ensure temp base exists");
     TempDir::new_in(&base).expect("create temp dir outside repo")
+}
+
+pub fn portable_abs_path(label: impl AsRef<Path>) -> PathBuf {
+    find_non_repo_temp_base().join(label)
 }
 
 pub fn env_lock() -> &'static Mutex<()> {
@@ -262,6 +264,54 @@ pub fn wait_until(
     }
 
     condition()
+}
+
+pub struct Signal<T> {
+    value: Mutex<Option<T>>,
+    ready: Condvar,
+}
+
+impl<T> Signal<T> {
+    pub fn new() -> Self {
+        Self {
+            value: Mutex::new(None),
+            ready: Condvar::new(),
+        }
+    }
+
+    pub fn notify(&self, value: T) {
+        let mut slot = self.value.lock().expect("lock signal");
+        *slot = Some(value);
+        self.ready.notify_all();
+    }
+
+    pub fn wait(&self, timeout: Duration) -> Option<T>
+    where
+        T: Clone,
+    {
+        let deadline = Instant::now() + timeout;
+        let mut slot = self.value.lock().expect("lock signal");
+        while slot.is_none() {
+            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                break;
+            };
+            let (next_slot, wait_result) = self
+                .ready
+                .wait_timeout(slot, remaining)
+                .expect("wait on signal condvar");
+            slot = next_slot;
+            if wait_result.timed_out() {
+                break;
+            }
+        }
+        slot.clone()
+    }
+}
+
+impl<T> Default for Signal<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Poll a shared `Mutex<Option<T>>` until populated or timeout.

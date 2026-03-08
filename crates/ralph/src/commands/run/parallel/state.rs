@@ -286,20 +286,30 @@ mod tests {
     fn state_migration_v2_to_v3() -> Result<()> {
         let temp = TempDir::new()?;
         let path = temp.path().join("state.json");
+        let workspace_path = crate::testsupport::path::portable_abs_path("ws");
 
         // v2 state with legacy fields (will be dropped)
-        let v2_state = r#"{
+        let v2_state = serde_json::json!({
             "schema_version": 2,
             "started_at": "2026-02-01T00:00:00Z",
             "base_branch": "main",
             "merge_method": "squash",
             "merge_when": "as_created",
-            "tasks_in_flight": [{"task_id": "RQ-0001", "workspace_path": "/tmp/ws", "branch": "b", "pid": 123}],
+            "tasks_in_flight": [{
+                "task_id": "RQ-0001",
+                "workspace_path": workspace_path,
+                "branch": "b",
+                "pid": 123
+            }],
             "prs": [{"task_id": "RQ-0001", "pr_number": 5}],
-            "pending_merges": [{"task_id": "RQ-0001", "pr_number": 5, "queued_at": "2026-02-01T00:00:00Z"}]
-        }"#;
+            "pending_merges": [{
+                "task_id": "RQ-0001",
+                "pr_number": 5,
+                "queued_at": "2026-02-01T00:00:00Z"
+            }]
+        });
 
-        std::fs::write(&path, v2_state)?;
+        std::fs::write(&path, serde_json::to_string_pretty(&v2_state)?)?;
 
         let state = load_state(&path)?.expect("state");
         assert_eq!(state.schema_version, PARALLEL_STATE_SCHEMA_VERSION);
@@ -314,11 +324,9 @@ mod tests {
 
     #[test]
     fn worker_record_lifecycle_transitions() {
-        let mut worker = WorkerRecord::new(
-            "RQ-0001",
-            PathBuf::from("/tmp/ws"),
-            "2026-02-20T00:00:00Z".into(),
-        );
+        let workspace_path = crate::testsupport::path::portable_abs_path("ws");
+        let mut worker =
+            WorkerRecord::new("RQ-0001", workspace_path, "2026-02-20T00:00:00Z".into());
 
         assert!(matches!(worker.lifecycle, WorkerLifecycle::Running));
         assert!(!worker.is_terminal());
@@ -335,11 +343,9 @@ mod tests {
 
     #[test]
     fn worker_record_mark_failed() {
-        let mut worker = WorkerRecord::new(
-            "RQ-0001",
-            PathBuf::from("/tmp/ws"),
-            "2026-02-20T00:00:00Z".into(),
-        );
+        let workspace_path = crate::testsupport::path::portable_abs_path("ws");
+        let mut worker =
+            WorkerRecord::new("RQ-0001", workspace_path, "2026-02-20T00:00:00Z".into());
 
         worker.mark_failed("2026-02-20T01:00:00Z".into(), "CI failed");
 
@@ -350,11 +356,9 @@ mod tests {
 
     #[test]
     fn worker_record_mark_blocked() {
-        let mut worker = WorkerRecord::new(
-            "RQ-0001",
-            PathBuf::from("/tmp/ws"),
-            "2026-02-20T00:00:00Z".into(),
-        );
+        let workspace_path = crate::testsupport::path::portable_abs_path("ws");
+        let mut worker =
+            WorkerRecord::new("RQ-0001", workspace_path, "2026-02-20T00:00:00Z".into());
 
         worker.mark_blocked("2026-02-20T01:00:00Z".into(), "merge conflict");
 
@@ -365,11 +369,9 @@ mod tests {
 
     #[test]
     fn worker_record_push_attempts() {
-        let mut worker = WorkerRecord::new(
-            "RQ-0001",
-            PathBuf::from("/tmp/ws"),
-            "2026-02-20T00:00:00Z".into(),
-        );
+        let workspace_path = crate::testsupport::path::portable_abs_path("ws");
+        let mut worker =
+            WorkerRecord::new("RQ-0001", workspace_path, "2026-02-20T00:00:00Z".into());
 
         assert_eq!(worker.push_attempts, 0);
         worker.increment_push_attempt();
@@ -385,44 +387,32 @@ mod tests {
     #[test]
     fn state_upsert_worker_replaces_existing() {
         let mut state = ParallelStateFile::new("2026-02-20T00:00:00Z", "main");
+        let ws1 = crate::testsupport::path::portable_abs_path("ws1");
+        let ws2 = crate::testsupport::path::portable_abs_path("ws2");
+        let ws1_new = crate::testsupport::path::portable_abs_path("ws1-new");
 
-        state.upsert_worker(WorkerRecord::new(
-            "RQ-0001",
-            PathBuf::from("/tmp/ws1"),
-            "t1".into(),
-        ));
-        state.upsert_worker(WorkerRecord::new(
-            "RQ-0002",
-            PathBuf::from("/tmp/ws2"),
-            "t2".into(),
-        ));
+        state.upsert_worker(WorkerRecord::new("RQ-0001", ws1, "t1".into()));
+        state.upsert_worker(WorkerRecord::new("RQ-0002", ws2, "t2".into()));
 
         // Update RQ-0001 with new path
-        let mut updated =
-            WorkerRecord::new("RQ-0001", PathBuf::from("/tmp/ws1-new"), "t1-new".into());
+        let mut updated = WorkerRecord::new("RQ-0001", ws1_new.clone(), "t1-new".into());
         updated.start_integration();
         state.upsert_worker(updated);
 
         assert_eq!(state.workers.len(), 2);
         let w1 = state.get_worker("RQ-0001").unwrap();
-        assert_eq!(w1.workspace_path, PathBuf::from("/tmp/ws1-new"));
+        assert_eq!(w1.workspace_path, ws1_new);
         assert!(matches!(w1.lifecycle, WorkerLifecycle::Integrating));
     }
 
     #[test]
     fn state_remove_worker() {
         let mut state = ParallelStateFile::new("2026-02-20T00:00:00Z", "main");
+        let ws1 = crate::testsupport::path::portable_abs_path("ws1");
+        let ws2 = crate::testsupport::path::portable_abs_path("ws2");
 
-        state.upsert_worker(WorkerRecord::new(
-            "RQ-0001",
-            PathBuf::from("/tmp/ws1"),
-            "t1".into(),
-        ));
-        state.upsert_worker(WorkerRecord::new(
-            "RQ-0002",
-            PathBuf::from("/tmp/ws2"),
-            "t2".into(),
-        ));
+        state.upsert_worker(WorkerRecord::new("RQ-0001", ws1, "t1".into()));
+        state.upsert_worker(WorkerRecord::new("RQ-0002", ws2, "t2".into()));
 
         state.remove_worker("RQ-0001");
 
@@ -434,10 +424,13 @@ mod tests {
     #[test]
     fn state_active_worker_count() {
         let mut state = ParallelStateFile::new("2026-02-20T00:00:00Z", "main");
+        let ws1 = crate::testsupport::path::portable_abs_path("ws1");
+        let ws2 = crate::testsupport::path::portable_abs_path("ws2");
+        let ws3 = crate::testsupport::path::portable_abs_path("ws3");
 
-        let w1 = WorkerRecord::new("RQ-0001", PathBuf::from("/tmp/ws1"), "t1".into());
-        let mut w2 = WorkerRecord::new("RQ-0002", PathBuf::from("/tmp/ws2"), "t2".into());
-        let mut w3 = WorkerRecord::new("RQ-0003", PathBuf::from("/tmp/ws3"), "t3".into());
+        let w1 = WorkerRecord::new("RQ-0001", ws1, "t1".into());
+        let mut w2 = WorkerRecord::new("RQ-0002", ws2, "t2".into());
+        let mut w3 = WorkerRecord::new("RQ-0003", ws3, "t3".into());
 
         w2.mark_completed("t".into());
         w3.mark_blocked("t".into(), "error");
@@ -454,11 +447,12 @@ mod tests {
     fn state_round_trips() -> Result<()> {
         let temp = TempDir::new()?;
         let path = temp.path().join("state.json");
+        let workspace_path = crate::testsupport::path::portable_abs_path("ws");
 
         let mut state = ParallelStateFile::new("2026-02-20T00:00:00Z", "main");
         let mut worker = WorkerRecord::new(
             "RQ-0001",
-            PathBuf::from("/tmp/ws"),
+            workspace_path.clone(),
             "2026-02-20T00:00:00Z".into(),
         );
         worker.start_integration();
@@ -474,7 +468,7 @@ mod tests {
 
         let w = &loaded.workers[0];
         assert_eq!(w.task_id, "RQ-0001");
-        assert_eq!(w.workspace_path, PathBuf::from("/tmp/ws"));
+        assert_eq!(w.workspace_path, workspace_path);
         assert!(matches!(w.lifecycle, WorkerLifecycle::Integrating));
         assert_eq!(w.push_attempts, 1);
 
@@ -483,20 +477,20 @@ mod tests {
 
     #[test]
     fn state_deserialization_ignores_unknown_fields() -> Result<()> {
-        let raw = r#"{
+        let raw = serde_json::json!({
             "schema_version": 3,
             "started_at": "2026-02-20T00:00:00Z",
             "target_branch": "main",
             "unknown_top": "ignored",
             "workers": [{
                 "task_id": "RQ-0001",
-                "workspace_path": "/tmp/ws",
+                "workspace_path": crate::testsupport::path::portable_abs_path("ws"),
                 "started_at": "2026-02-20T00:00:00Z",
                 "unknown_worker": "ignored"
             }]
-        }"#;
+        });
 
-        let state: ParallelStateFile = serde_json::from_str(raw)?;
+        let state: ParallelStateFile = serde_json::from_value(raw)?;
         assert_eq!(state.workers.len(), 1);
         assert_eq!(state.workers[0].task_id, "RQ-0001");
 

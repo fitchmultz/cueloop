@@ -35,9 +35,14 @@ impl WatchState {
     }
 
     /// Add a file to pending set. Returns true if debounce window has elapsed.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn add_file(&mut self, path: PathBuf) -> bool {
+        self.add_file_at(path, Instant::now())
+    }
+
+    /// Add a file to pending set using an injected timestamp.
+    pub fn add_file_at(&mut self, path: PathBuf, now: Instant) -> bool {
         self.pending_files.insert(path);
-        let now = Instant::now();
         if now.duration_since(self.last_event) >= self.debounce_duration {
             self.last_event = now;
             true
@@ -48,8 +53,13 @@ impl WatchState {
 
     /// Take all pending files and reset the event timer.
     pub fn take_pending(&mut self) -> Vec<PathBuf> {
+        self.take_pending_at(Instant::now())
+    }
+
+    /// Take all pending files and reset the event timer using an injected timestamp.
+    pub fn take_pending_at(&mut self, now: Instant) -> Vec<PathBuf> {
         let files: Vec<PathBuf> = self.pending_files.drain().collect();
-        self.last_event = Instant::now();
+        self.last_event = now;
         files
     }
 }
@@ -57,8 +67,6 @@ impl WatchState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
-    use std::time::Duration;
 
     #[test]
     fn watch_state_new_initializes_empty() {
@@ -81,15 +89,16 @@ mod tests {
     fn add_file_returns_true_when_debounce_elapsed() {
         let mut state = WatchState::new(50); // 50ms debounce
         let path = PathBuf::from("/test/file.rs");
+        let start = state.last_event;
 
         // First add sets last_event to now
-        state.add_file(path.clone());
-
-        // Wait for debounce to elapse
-        thread::sleep(Duration::from_millis(60));
+        state.add_file_at(path.clone(), start);
 
         // Second add should return true (debounce elapsed)
-        let should_process = state.add_file(PathBuf::from("/test/other.rs"));
+        let should_process = state.add_file_at(
+            PathBuf::from("/test/other.rs"),
+            start + Duration::from_millis(60),
+        );
         assert!(should_process);
     }
 
@@ -136,10 +145,9 @@ mod tests {
         let mut state = WatchState::new(100);
         let before = state.last_event;
 
-        // Small sleep to ensure time difference
-        thread::sleep(Duration::from_millis(10));
-        state.add_file(PathBuf::from("/test/file.rs"));
-        state.take_pending();
+        let now = before + Duration::from_millis(10);
+        state.add_file_at(PathBuf::from("/test/file.rs"), now);
+        state.take_pending_at(now);
 
         assert!(state.last_event > before);
     }

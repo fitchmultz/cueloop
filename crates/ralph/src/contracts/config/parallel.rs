@@ -64,6 +64,7 @@ mod tests {
 
     #[test]
     fn parallel_config_merge_prefers_other_when_some() {
+        let workspace_root = crate::testsupport::path::portable_abs_path("ws");
         let mut base = ParallelConfig {
             workers: Some(2),
             workspace_root: None,
@@ -74,7 +75,7 @@ mod tests {
 
         let other = ParallelConfig {
             workers: Some(4),
-            workspace_root: Some(PathBuf::from("/tmp/ws")),
+            workspace_root: Some(workspace_root.clone()),
             max_push_attempts: None,
             push_backoff_ms: Some(vec![1000, 2000]),
             workspace_retention_hours: None,
@@ -83,7 +84,7 @@ mod tests {
         base.merge_from(other);
 
         assert_eq!(base.workers, Some(4));
-        assert_eq!(base.workspace_root, Some(PathBuf::from("/tmp/ws")));
+        assert_eq!(base.workspace_root, Some(workspace_root));
         assert_eq!(base.max_push_attempts, Some(3)); // unchanged
         assert_eq!(base.push_backoff_ms, Some(vec![1000, 2000]));
         assert_eq!(base.workspace_retention_hours, Some(12)); // unchanged

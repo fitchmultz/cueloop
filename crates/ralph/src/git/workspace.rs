@@ -360,26 +360,24 @@ mod tests {
             },
             ..Config::default()
         };
-        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
         let root = workspace_root(&repo_root, &cfg);
-        assert_eq!(
-            root,
-            PathBuf::from("/tmp/ralph-test/.ralph/workspaces/custom")
-        );
+        assert_eq!(root, repo_root.join(".ralph/workspaces/custom"));
     }
 
     #[test]
     fn workspace_root_accepts_absolute_path() {
+        let absolute_root = crate::testsupport::path::portable_abs_path("ralph-workspaces");
         let cfg = Config {
             parallel: ParallelConfig {
-                workspace_root: Some(PathBuf::from("/tmp/ralph-workspaces")),
+                workspace_root: Some(absolute_root.clone()),
                 ..ParallelConfig::default()
             },
             ..Config::default()
         };
-        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
         let root = workspace_root(&repo_root, &cfg);
-        assert_eq!(root, PathBuf::from("/tmp/ralph-workspaces"));
+        assert_eq!(root, absolute_root);
     }
 
     #[test]
@@ -388,9 +386,17 @@ mod tests {
             parallel: ParallelConfig::default(),
             ..Config::default()
         };
-        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
         let root = workspace_root(&repo_root, &cfg);
-        assert_eq!(root, PathBuf::from("/tmp/.workspaces/ralph-test/parallel"));
+        assert_eq!(
+            root,
+            repo_root
+                .parent()
+                .unwrap()
+                .join(".workspaces")
+                .join("ralph-test")
+                .join("parallel")
+        );
     }
 
     #[test]
@@ -640,7 +646,7 @@ mod tests {
             },
             ..Config::default()
         };
-        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
         let root = workspace_root(&repo_root, &cfg);
         assert_eq!(root, PathBuf::from("/custom/home/ralph-workspaces"));
 
@@ -666,7 +672,7 @@ mod tests {
             },
             ..Config::default()
         };
-        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
         let root = workspace_root(&repo_root, &cfg);
         assert_eq!(root, PathBuf::from("/custom/home"));
 
@@ -693,10 +699,10 @@ mod tests {
             },
             ..Config::default()
         };
-        let repo_root = PathBuf::from("/tmp/ralph-test");
+        let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
         let root = workspace_root(&repo_root, &cfg);
         // When HOME is unset, ~/workspaces is treated as relative to repo_root
-        assert_eq!(root, PathBuf::from("/tmp/ralph-test/~/workspaces"));
+        assert_eq!(root, repo_root.join("~/workspaces"));
 
         // Restore HOME
         if let Some(v) = original_home {

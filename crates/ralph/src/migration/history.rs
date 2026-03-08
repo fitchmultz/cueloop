@@ -159,13 +159,10 @@ mod tests {
 
     #[test]
     fn migration_history_path_is_correct() {
-        let dir = PathBuf::from("/tmp/test_repo");
+        let dir = crate::testsupport::path::portable_abs_path("test_repo");
         let path = migration_history_path(&dir);
 
-        assert_eq!(
-            path,
-            PathBuf::from("/tmp/test_repo/.ralph/cache/migrations.jsonc")
-        );
+        assert_eq!(path, dir.join(".ralph/cache/migrations.jsonc"));
     }
 
     #[test]

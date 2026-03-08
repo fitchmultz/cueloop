@@ -27,8 +27,17 @@ pub fn can_reprocess(
     last_processed: &HashMap<PathBuf, Instant>,
     debounce: Duration,
 ) -> bool {
+    can_reprocess_at(path, last_processed, debounce, Instant::now())
+}
+
+pub fn can_reprocess_at(
+    path: &Path,
+    last_processed: &HashMap<PathBuf, Instant>,
+    debounce: Duration,
+    now: Instant,
+) -> bool {
     match last_processed.get(path) {
-        Some(last_time) => Instant::now().duration_since(*last_time) >= debounce,
+        Some(last_time) => now.duration_since(*last_time) >= debounce,
         None => true,
     }
 }
@@ -37,7 +46,15 @@ pub fn can_reprocess(
 ///
 /// Removes entries older than 10x the debounce duration.
 pub fn cleanup_old_entries(last_processed: &mut HashMap<PathBuf, Instant>, debounce: Duration) {
-    let cutoff = Instant::now() - debounce * 10;
+    cleanup_old_entries_at(last_processed, debounce, Instant::now())
+}
+
+pub fn cleanup_old_entries_at(
+    last_processed: &mut HashMap<PathBuf, Instant>,
+    debounce: Duration,
+    now: Instant,
+) {
+    let cutoff = now - debounce * 10;
     last_processed.retain(|_, timestamp| *timestamp >= cutoff);
 }
 

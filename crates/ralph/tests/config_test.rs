@@ -211,7 +211,7 @@ fn test_resolve_queue_path_absolute() {
     let _guard = env_lock().lock().expect("env lock");
 
     let dir = TempDir::new().expect("create temp dir");
-    let absolute = PathBuf::from("/tmp/absolute/queue.json");
+    let absolute = test_support::portable_abs_path("absolute/queue.json");
     let repo_root = dir.path();
     let mut cfg = Config::default();
     cfg.queue.file = Some(absolute.clone());
@@ -267,7 +267,7 @@ fn test_resolve_done_path_absolute() {
     let _guard = env_lock().lock().expect("env lock");
 
     let dir = TempDir::new().expect("create temp dir");
-    let absolute = PathBuf::from("/tmp/absolute/done.json");
+    let absolute = test_support::portable_abs_path("absolute/done.json");
     let repo_root = dir.path();
     let mut cfg = Config::default();
     cfg.queue.done_file = Some(absolute.clone());

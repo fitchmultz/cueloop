@@ -40,11 +40,15 @@ fn git_init_creates_initial_commit_head() {
 #[test]
 fn wait_until_returns_true_when_condition_becomes_true() {
     let flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let started = Arc::new(test_support::Signal::new());
     let writer_flag = Arc::clone(&flag);
+    let writer_started = Arc::clone(&started);
     let writer = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(100));
+        writer_started.notify(());
         writer_flag.store(true, std::sync::atomic::Ordering::SeqCst);
     });
+
+    assert_eq!(started.wait(Duration::from_secs(1)), Some(()));
 
     let ok = test_support::wait_until(Duration::from_secs(5), Duration::from_millis(25), || {
         flag.load(std::sync::atomic::Ordering::SeqCst)
@@ -69,11 +73,15 @@ fn wait_until_returns_false_on_timeout() {
 #[test]
 fn wait_for_mutex_value_returns_some_when_populated() {
     let shared = Arc::new(Mutex::new(None::<u8>));
+    let started = Arc::new(test_support::Signal::new());
     let writer_shared = Arc::clone(&shared);
+    let writer_started = Arc::clone(&started);
     let writer = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(100));
+        writer_started.notify(());
         *writer_shared.lock().expect("lock shared value") = Some(7);
     });
+
+    assert_eq!(started.wait(Duration::from_secs(1)), Some(()));
 
     let value = test_support::wait_for_mutex_value(
         &shared,

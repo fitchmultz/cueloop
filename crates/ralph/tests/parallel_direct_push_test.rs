@@ -232,6 +232,7 @@ fn parallel_retry_blocked_worker() -> Result<()> {
     // Create state file with a blocked worker
     let state_dir = temp.path().join(".ralph/cache/parallel");
     std::fs::create_dir_all(&state_dir)?;
+    let blocked_workspace = test_support::portable_abs_path("ws/RQ-0001");
 
     let state = serde_json::json!({
         "schema_version": 3,
@@ -239,7 +240,7 @@ fn parallel_retry_blocked_worker() -> Result<()> {
         "target_branch": "main",
         "workers": [{
             "task_id": "RQ-0001",
-            "workspace_path": "/tmp/ws/RQ-0001",
+            "workspace_path": blocked_workspace,
             "lifecycle": "blocked_push",
             "started_at": "2026-02-20T00:00:00Z",
             "completed_at": null,
@@ -295,6 +296,7 @@ fn parallel_retry_completed_worker_fails() -> Result<()> {
     // Create state file with a completed worker
     let state_dir = temp.path().join(".ralph/cache/parallel");
     std::fs::create_dir_all(&state_dir)?;
+    let completed_workspace = test_support::portable_abs_path("ws/RQ-0001");
 
     let state = serde_json::json!({
         "schema_version": 3,
@@ -302,7 +304,7 @@ fn parallel_retry_completed_worker_fails() -> Result<()> {
         "target_branch": "main",
         "workers": [{
             "task_id": "RQ-0001",
-            "workspace_path": "/tmp/ws/RQ-0001",
+            "workspace_path": completed_workspace,
             "lifecycle": "completed",
             "started_at": "2026-02-20T00:00:00Z",
             "completed_at": "2026-02-20T01:00:00Z",
@@ -631,6 +633,9 @@ fn parallel_status_shows_correct_summary() -> Result<()> {
     // Create state with workers in different lifecycles
     let state_dir = temp.path().join(".ralph/cache/parallel");
     std::fs::create_dir_all(&state_dir)?;
+    let ws1 = test_support::portable_abs_path("ws1");
+    let ws2 = test_support::portable_abs_path("ws2");
+    let ws3 = test_support::portable_abs_path("ws3");
 
     let state = serde_json::json!({
         "schema_version": 3,
@@ -639,7 +644,7 @@ fn parallel_status_shows_correct_summary() -> Result<()> {
         "workers": [
             {
                 "task_id": "RQ-0001",
-                "workspace_path": "/tmp/ws1",
+                "workspace_path": ws1,
                 "lifecycle": "completed",
                 "started_at": "2026-02-20T00:00:00Z",
                 "completed_at": "2026-02-20T01:00:00Z",
@@ -648,7 +653,7 @@ fn parallel_status_shows_correct_summary() -> Result<()> {
             },
             {
                 "task_id": "RQ-0002",
-                "workspace_path": "/tmp/ws2",
+                "workspace_path": ws2,
                 "lifecycle": "failed",
                 "started_at": "2026-02-20T00:00:00Z",
                 "completed_at": "2026-02-20T01:00:00Z",
@@ -657,7 +662,7 @@ fn parallel_status_shows_correct_summary() -> Result<()> {
             },
             {
                 "task_id": "RQ-0003",
-                "workspace_path": "/tmp/ws3",
+                "workspace_path": ws3,
                 "lifecycle": "blocked_push",
                 "started_at": "2026-02-20T00:00:00Z",
                 "completed_at": null,
