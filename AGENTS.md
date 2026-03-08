@@ -102,9 +102,12 @@ Every source file MUST start with `//!` docs covering:
 ### Runtime Module Boundaries
 - `runner.rs` is a thin facade only; shared invocation/resume dispatch lives in `runner/invoke.rs`, and external plugin registry/bootstrap lives in `runner/plugin_dispatch.rs`.
 - Runner stream handling is split by concern: `execution/stream.rs` wires the sink API, `stream_reader.rs` owns IO loops, `stream_buffer.rs` owns truncation, `stream_events.rs` owns event extraction/correlation, `stream_tool_details.rs` owns compact tool formatting, and `stream_render.rs` owns sink/handler fanout.
+- `queue/loader/mod.rs` is a facade only; read/load entrypoints live in `loader/read.rs`, explicit repair flows in `loader/maintenance.rs`, queue-set validation in `loader/validation.rs`, and loader tests under `loader/tests/`.
 - `cli/task/batch.rs` is a router only; shared batch context, selection, dry-run rendering, status handling, and mutations live under `cli/task/batch/`.
+- `commands/context/mod.rs` is a facade only; project detection lives in `context/detect.rs`, markdown parsing in `context/markdown.rs`, template rendering in `context/render.rs`, command workflows in `context/workflow.rs`, validation in `context/validate.rs`, shared data types in `context/types.rs`, and context tests under `context/tests/`.
 - `commands/run/parallel/worker.rs` is a facade only; keep selection in `worker_selection.rs`, command construction in `worker_command.rs`, and child lifecycle in `worker_process.rs`.
 - `commands/run/supervision/ci.rs` owns CI execution/retry/escalation only; pattern detection is in `ci_patterns.rs` and formatting is in `ci_format.rs`.
+- Large Rust scenario suites should keep a thin root hub and move behavior-grouped cases into adjacent subdirectories (for example `runtime_tests/`, `ci_tests/`, `worker_tests/`, `config_test/`, `doctor_contract_test/`, `queue_stats_history_test/`) so failure locality stays sharp.
 
 ### Notification Audio
 - Windows custom notification sounds are `.wav`-only and play through WinMM; do not reintroduce PowerShell-based playback.

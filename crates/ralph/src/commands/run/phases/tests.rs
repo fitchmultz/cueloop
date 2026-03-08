@@ -1,6 +1,7 @@
 //! Phase execution scenario coverage.
 //!
 //! Responsibilities:
-//! - Include the extracted phase scenario suite in the original test module scope.
+//! - Host the extracted phase scenario suite in a dedicated test submodule.
 
-include!("runtime_tests.rs");
+#[path = "runtime_tests.rs"]
+mod runtime_tests;
