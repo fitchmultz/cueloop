@@ -16,29 +16,12 @@
 import XCTest
 @testable import RalphCore
 
-#if canImport(Darwin)
-import Darwin
-#endif
-
 enum ErrorRecoveryTestSupport {
     static func makeTempDir(prefix: String) throws -> URL {
-        let tempRoot = FileManager.default.temporaryDirectory
-        let directory = tempRoot.appendingPathComponent("\(prefix)-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory
+        try RalphCoreTestSupport.makeTemporaryDirectory(prefix: prefix)
     }
 
-    static func waitForProcessExit(_ pid: pid_t, timeout: TimeInterval) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            #if canImport(Darwin)
-            if kill(pid, 0) != 0 && errno == ESRCH {
-                return true
-            }
-            #endif
-
-            Thread.sleep(forTimeInterval: 0.05)
-        }
-        return false
+    static func waitForProcessExit(_ pid: pid_t, timeout: TimeInterval) async -> Bool {
+        await RalphCoreTestSupport.waitForProcessExit(pid, timeout: .seconds(timeout))
     }
 }

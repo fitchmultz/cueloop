@@ -105,7 +105,14 @@ final class RalphMacUILaunchAndTaskFlowTests: RalphMacUITestCase {
         currentWorkspaceWindow().typeKey(XCUIKeyboardKey.return, modifierFlags: .command)
 
         XCTAssertTrue(
-            waitUntil(timeout: 5) { (try? uiTestWorkspaceTasks().contains(where: { $0.status.lowercased() == "doing" })) == true },
+            waitUntil(timeout: 5) {
+                do {
+                    return try uiTestWorkspaceTasks().contains(where: { $0.status.lowercased() == "doing" })
+                } catch {
+                    XCTFail("Failed to read UI test workspace tasks: \(error)")
+                    return false
+                }
+            },
             "Task status should change to 'Doing' after Cmd+Enter"
         )
     }

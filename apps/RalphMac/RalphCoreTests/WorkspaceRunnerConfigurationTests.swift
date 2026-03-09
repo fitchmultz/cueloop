@@ -18,7 +18,7 @@ import XCTest
 final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
     func test_loadRunnerConfiguration_setsCurrentRunnerConfig() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-config-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let script = """
             #!/bin/sh
@@ -44,7 +44,7 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
 
     func test_loadRunnerConfiguration_onFailure_clearsCurrentRunnerConfig() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-config-failure-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let successScript = """
             #!/bin/sh
@@ -79,16 +79,17 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
         let failClient = try RalphCLIClient(executableURL: failScriptURL)
         workspace.injectClient(failClient)
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
+        let clearedRunnerConfig = await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
             workspace.currentRunnerConfig == nil
         }
+        XCTAssertTrue(clearedRunnerConfig)
 
         XCTAssertNil(workspace.currentRunnerConfig)
     }
 
     func test_setWorkingDirectory_refreshesRunnerConfiguration() async throws {
         let rootDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-config-switch-")
-        defer { try? FileManager.default.removeItem(at: rootDir) }
+        defer { RalphCoreTestSupport.assertRemoved(rootDir) }
         let workspaceADir = rootDir.appendingPathComponent("workspace-a", isDirectory: true)
         let workspaceBDir = rootDir.appendingPathComponent("workspace-b", isDirectory: true)
         try FileManager.default.createDirectory(at: workspaceADir, withIntermediateDirectories: true)
@@ -127,11 +128,12 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
 
         workspace.setWorkingDirectory(workspaceBDir)
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
+        let switchedRunnerConfig = await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
             workspace.currentRunnerConfig?.model == "model-b"
                 && workspace.currentRunnerConfig?.phases == 2
                 && workspace.currentRunnerConfig?.maxIterations == 4
         }
+        XCTAssertTrue(switchedRunnerConfig)
 
         XCTAssertEqual(workspace.currentRunnerConfig?.model, "model-b")
         XCTAssertEqual(workspace.currentRunnerConfig?.phases, 2)
@@ -142,7 +144,7 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
         let manager = WorkspaceManager.shared
         let baselinePath = manager.client?.executableURL.standardizedFileURL.resolvingSymlinksInPath().path
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-manager-cli-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         let overrideURL = try WorkspacePerformanceTestSupport.makeVersionAwareMockCLI(in: tempDir, name: "mock-ralph-version-ok")
 
         manager.adoptCLIExecutable(path: overrideURL.path)

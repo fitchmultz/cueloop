@@ -24,7 +24,7 @@ import XCTest
 final class WorkspaceTaskDecomposeTests: XCTestCase {
     func test_previewTaskDecomposition_decodesPreviewAndPassesExpectedArguments() async throws {
         let fixture = try Self.makeMockCLIFixture()
-        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
 
         let workspace = Workspace(
             workingDirectoryURL: fixture.workspaceURL,
@@ -57,7 +57,7 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
 
     func test_writeTaskDecomposition_decodesWriteResultAndReloadsTasks() async throws {
         let fixture = try Self.makeMockCLIFixture()
-        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
 
         let workspace = Workspace(
             workingDirectoryURL: fixture.workspaceURL,
@@ -264,9 +264,6 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
     }
 
     private static func makeTempDir(prefix: String) throws -> URL {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent(prefix + UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return root
+        try RalphCoreTestSupport.makeTemporaryDirectory(prefix: prefix)
     }
 }

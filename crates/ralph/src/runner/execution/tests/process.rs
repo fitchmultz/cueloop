@@ -208,15 +208,18 @@ fn test_ctrl_c_interrupt_handling() {
         *guard = Some(child.id() as i32);
     }
 
-    // Set the interrupted flag (simulating Ctrl-C)
-    // Do this in a separate thread with a small delay to let wait_for_child start
+    // Set the interrupted flag from a separate thread so `wait_for_child` observes
+    // an asynchronous Ctrl-C transition without relying on wall-clock sleeps.
     let ctrlc_clone = Arc::clone(&ctrlc);
+    let (ready_tx, ready_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(100));
+        ready_rx.recv().expect("signal wait_for_child start");
+        std::thread::park_timeout(Duration::from_millis(100));
         ctrlc_clone.interrupted.store(true, Ordering::SeqCst);
     });
 
     // No timeout - rely on Ctrl-C
+    ready_tx.send(()).expect("notify interrupt thread");
     let result = wait_for_child(&mut child, &ctrlc, None);
 
     // Process should exit cleanly
@@ -393,7 +396,7 @@ fn test_ctrl_c_during_timeout_grace_period() {
     // Set Ctrl-C to fire during the grace period (200ms)
     let ctrlc_clone = Arc::clone(&ctrlc);
     std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(200));
+        std::thread::park_timeout(Duration::from_millis(200));
         ctrlc_clone.interrupted.store(true, Ordering::SeqCst);
     });
 

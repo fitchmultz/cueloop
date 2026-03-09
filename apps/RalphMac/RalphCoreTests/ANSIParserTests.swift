@@ -26,7 +26,7 @@ final class ANSIParserTests: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
-        workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        workspace = Workspace(workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "ansi-parser"))
     }
 
     override func tearDown() async throws {

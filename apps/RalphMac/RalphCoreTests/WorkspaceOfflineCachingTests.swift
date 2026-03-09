@@ -17,36 +17,39 @@ import XCTest
 @MainActor
 final class WorkspaceOfflineCachingTests: XCTestCase {
     func testShowOfflineBannerWhenUnavailable() {
-        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "offline-banner-unavailable")
+        let workspace = Workspace(workingDirectoryURL: workspaceURL)
         XCTAssertFalse(workspace.showOfflineBanner)
 
         workspace.cliHealthStatus = CLIHealthStatus(
             availability: .unavailable(reason: .cliNotFound),
             lastChecked: Date(),
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: workspaceURL
         )
 
         XCTAssertTrue(workspace.showOfflineBanner)
     }
 
     func testShowOfflineBannerWhenAvailable() {
-        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "offline-banner-available")
+        let workspace = Workspace(workingDirectoryURL: workspaceURL)
         workspace.cliHealthStatus = CLIHealthStatus(
             availability: .available,
             lastChecked: Date(),
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: workspaceURL
         )
         XCTAssertFalse(workspace.showOfflineBanner)
     }
 
     func testIsShowingCachedTasks() {
-        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "offline-cached-tasks")
+        let workspace = Workspace(workingDirectoryURL: workspaceURL)
         XCTAssertFalse(workspace.isShowingCachedTasks)
 
         workspace.cliHealthStatus = CLIHealthStatus(
             availability: .unavailable(reason: .cliNotFound),
             lastChecked: Date(),
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: workspaceURL
         )
         workspace.cachedTasks = [
             RalphTask(id: "RQ-TEST", status: .todo, title: "Test", priority: .medium)
@@ -56,7 +59,8 @@ final class WorkspaceOfflineCachingTests: XCTestCase {
     }
 
     func testDisplayTasksWhenOffline() {
-        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "offline-display")
+        let workspace = Workspace(workingDirectoryURL: workspaceURL)
         let onlineTask = RalphTask(id: "RQ-ONLINE", status: .todo, title: "Online", priority: .medium)
         let cachedTask = RalphTask(id: "RQ-CACHED", status: .done, title: "Cached", priority: .low)
 
@@ -65,7 +69,7 @@ final class WorkspaceOfflineCachingTests: XCTestCase {
         workspace.cliHealthStatus = CLIHealthStatus(
             availability: .unavailable(reason: .cliNotFound),
             lastChecked: Date(),
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: workspaceURL
         )
 
         let displayTasks = workspace.displayTasks()
@@ -74,7 +78,8 @@ final class WorkspaceOfflineCachingTests: XCTestCase {
     }
 
     func testDisplayTasksWhenOnline() {
-        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "online-display")
+        let workspace = Workspace(workingDirectoryURL: workspaceURL)
         let onlineTask = RalphTask(id: "RQ-ONLINE", status: .todo, title: "Online", priority: .medium)
 
         workspace.tasks = [onlineTask]
@@ -82,7 +87,7 @@ final class WorkspaceOfflineCachingTests: XCTestCase {
         workspace.cliHealthStatus = CLIHealthStatus(
             availability: .available,
             lastChecked: Date(),
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: workspaceURL
         )
 
         let displayTasks = workspace.displayTasks()
@@ -91,7 +96,7 @@ final class WorkspaceOfflineCachingTests: XCTestCase {
     }
 
     func testClearCachedTasks() {
-        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        let workspace = Workspace(workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "clear-cached"))
         workspace.cachedTasks = [
             RalphTask(id: "RQ-TEST", status: .todo, title: "Test", priority: .medium)
         ]

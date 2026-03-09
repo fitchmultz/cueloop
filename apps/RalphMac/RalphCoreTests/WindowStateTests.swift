@@ -71,6 +71,22 @@ final class WindowStateTests: XCTestCase {
         workspaceSnapshotPrefix + workspaceID.uuidString + ".snapshot"
     }
 
+    private func makeWorkspaceDirectory(prefix: String) throws -> URL {
+        try RalphCoreTestSupport.makeTemporaryDirectory(prefix: prefix)
+    }
+
+    private func makeSeededWorkspaceDirectory(prefix: String) throws -> URL {
+        let directory = try makeWorkspaceDirectory(prefix: prefix)
+        let ralphDirectory = directory.appendingPathComponent(".ralph", isDirectory: true)
+        try FileManager.default.createDirectory(at: ralphDirectory, withIntermediateDirectories: true)
+        try #"{"version":1,"tasks":[]}"#.write(
+            to: ralphDirectory.appendingPathComponent("queue.jsonc", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        return directory
+    }
+
     // MARK: - WindowState Persistence Tests
 
     func test_saveAndLoadWindowState_roundTrip() throws {
@@ -180,11 +196,10 @@ final class WindowStateTests: XCTestCase {
         XCTAssertEqual(restored.first?.workspaceIDs.count, 1)
     }
 
-    func test_restoreWindows_withNoSavedState_usesExistingWorkspace() {
+    func test_restoreWindows_withNoSavedState_usesExistingWorkspace() throws {
         UserDefaults.standard.removeObject(forKey: testRestorationKey)
-        let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: temp) }
+        let temp = try makeWorkspaceDirectory(prefix: "restore-windows-existing")
+        defer { RalphCoreTestSupport.assertRemoved(temp) }
 
         let workspace = manager.createWorkspace(workingDirectory: temp)
         let restored = manager.restoreWindows()
@@ -193,27 +208,22 @@ final class WindowStateTests: XCTestCase {
         XCTAssertEqual(restored.first?.workspaceIDs, [workspace.id])
     }
 
-    func test_createWorkspace_persistsInitialWorkingDirectory() {
-        let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: temp) }
+    func test_createWorkspace_persistsInitialWorkingDirectory() throws {
+        let temp = try makeWorkspaceDirectory(prefix: "persist-working-directory")
+        defer { RalphCoreTestSupport.assertRemoved(temp) }
 
         let workspace = manager.createWorkspace(workingDirectory: temp)
         let key = workspaceSnapshotKey(for: workspace.id)
-        let snapshotData = UserDefaults.standard.data(forKey: key)
-        let snapshot = try? snapshotData.flatMap {
-            try JSONDecoder().decode(RalphWorkspaceDefaultsSnapshot.self, from: $0)
-        }
+        let snapshotData = try XCTUnwrap(UserDefaults.standard.data(forKey: key))
+        let snapshot = try JSONDecoder().decode(RalphWorkspaceDefaultsSnapshot.self, from: snapshotData)
 
-        XCTAssertEqual(snapshot?.workingDirectoryURL, temp)
-        XCTAssertEqual(snapshot?.name, temp.lastPathComponent)
+        XCTAssertEqual(snapshot.workingDirectoryURL, temp)
+        XCTAssertEqual(snapshot.name, temp.lastPathComponent)
     }
 
     func test_workspaceProjectDisplayName_prefersWorkingDirectoryLeafName() throws {
-        let temp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ralph-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: temp) }
+        let temp = try makeWorkspaceDirectory(prefix: "workspace-project-display-name")
+        defer { RalphCoreTestSupport.assertRemoved(temp) }
 
         let workspace = Workspace(workingDirectoryURL: temp)
         workspace.name = "RalphMac"
@@ -235,27 +245,13 @@ final class WindowStateTests: XCTestCase {
         XCTAssertEqual(restored.first?.workspaceIDs.count, 2)
     }
 
-    func test_claimWindowState_returnsDistinctStates_forMultipleClaims() {
-        let dir1 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        let dir2 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir1, withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: dir2, withIntermediateDirectories: true)
+    func test_claimWindowState_returnsDistinctStates_forMultipleClaims() throws {
+        let dir1 = try makeSeededWorkspaceDirectory(prefix: "claim-window-state-a")
+        let dir2 = try makeSeededWorkspaceDirectory(prefix: "claim-window-state-b")
         defer {
-            try? FileManager.default.removeItem(at: dir1)
-            try? FileManager.default.removeItem(at: dir2)
+            RalphCoreTestSupport.assertRemoved(dir1)
+            RalphCoreTestSupport.assertRemoved(dir2)
         }
-        try? FileManager.default.createDirectory(at: dir1.appendingPathComponent(".ralph"), withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: dir2.appendingPathComponent(".ralph"), withIntermediateDirectories: true)
-        try? #"{"version":1,"tasks":[]}"#.write(
-            to: dir1.appendingPathComponent(".ralph/queue.jsonc"),
-            atomically: true,
-            encoding: .utf8
-        )
-        try? #"{"version":1,"tasks":[]}"#.write(
-            to: dir2.appendingPathComponent(".ralph/queue.jsonc"),
-            atomically: true,
-            encoding: .utf8
-        )
 
         let ws1 = manager.createWorkspace(workingDirectory: dir1)
         let ws2 = manager.createWorkspace(workingDirectory: dir2)
@@ -272,27 +268,13 @@ final class WindowStateTests: XCTestCase {
         XCTAssertTrue([state1.id, state2.id].contains(secondClaim.id))
     }
 
-    func test_claimWindowState_prefersProvidedID_whenAvailable() {
-        let dir1 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        let dir2 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir1, withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: dir2, withIntermediateDirectories: true)
+    func test_claimWindowState_prefersProvidedID_whenAvailable() throws {
+        let dir1 = try makeSeededWorkspaceDirectory(prefix: "claim-preferred-a")
+        let dir2 = try makeSeededWorkspaceDirectory(prefix: "claim-preferred-b")
         defer {
-            try? FileManager.default.removeItem(at: dir1)
-            try? FileManager.default.removeItem(at: dir2)
+            RalphCoreTestSupport.assertRemoved(dir1)
+            RalphCoreTestSupport.assertRemoved(dir2)
         }
-        try? FileManager.default.createDirectory(at: dir1.appendingPathComponent(".ralph"), withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: dir2.appendingPathComponent(".ralph"), withIntermediateDirectories: true)
-        try? #"{"version":1,"tasks":[]}"#.write(
-            to: dir1.appendingPathComponent(".ralph/queue.jsonc"),
-            atomically: true,
-            encoding: .utf8
-        )
-        try? #"{"version":1,"tasks":[]}"#.write(
-            to: dir2.appendingPathComponent(".ralph/queue.jsonc"),
-            atomically: true,
-            encoding: .utf8
-        )
 
         let ws1 = manager.createWorkspace(workingDirectory: dir1)
         let ws2 = manager.createWorkspace(workingDirectory: dir2)
@@ -306,27 +288,13 @@ final class WindowStateTests: XCTestCase {
         XCTAssertEqual(claimed.id, state2.id)
     }
 
-    func test_claimWindowState_withSamePreferredIDTwice_returnsUniqueStates() {
-        let dir1 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        let dir2 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir1, withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: dir2, withIntermediateDirectories: true)
+    func test_claimWindowState_withSamePreferredIDTwice_returnsUniqueStates() throws {
+        let dir1 = try makeSeededWorkspaceDirectory(prefix: "claim-same-preferred-a")
+        let dir2 = try makeSeededWorkspaceDirectory(prefix: "claim-same-preferred-b")
         defer {
-            try? FileManager.default.removeItem(at: dir1)
-            try? FileManager.default.removeItem(at: dir2)
+            RalphCoreTestSupport.assertRemoved(dir1)
+            RalphCoreTestSupport.assertRemoved(dir2)
         }
-        try? FileManager.default.createDirectory(at: dir1.appendingPathComponent(".ralph"), withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: dir2.appendingPathComponent(".ralph"), withIntermediateDirectories: true)
-        try? #"{"version":1,"tasks":[]}"#.write(
-            to: dir1.appendingPathComponent(".ralph/queue.jsonc"),
-            atomically: true,
-            encoding: .utf8
-        )
-        try? #"{"version":1,"tasks":[]}"#.write(
-            to: dir2.appendingPathComponent(".ralph/queue.jsonc"),
-            atomically: true,
-            encoding: .utf8
-        )
 
         let ws1 = manager.createWorkspace(workingDirectory: dir1)
         let ws2 = manager.createWorkspace(workingDirectory: dir2)
@@ -348,9 +316,7 @@ final class WindowStateTests: XCTestCase {
         let navigationKey = "com.mitchfultz.ralph.navigationState.\(workspaceID.uuidString)"
         let snapshotKey = workspaceSnapshotKey(for: workspaceID)
         let cachedTasksKey = "com.mitchfultz.ralph.workspace.\(workspaceID.uuidString).cachedTasks"
-        let tempUITestPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ralph-ui-tests")
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let tempUITestPath = RalphCoreTestSupport.workspaceURL(label: "ui-test-state-prune")
         let snapshot = RalphWorkspaceDefaultsSnapshot(
             name: "UI Test Workspace",
             workingDirectoryURL: tempUITestPath,

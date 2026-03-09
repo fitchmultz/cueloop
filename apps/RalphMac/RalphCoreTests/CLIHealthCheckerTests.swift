@@ -16,67 +16,33 @@ import Foundation
 import XCTest
 @testable import RalphCore
 
-#if canImport(Darwin)
-import Darwin
-#endif
-
 final class CLIHealthCheckerTests: XCTestCase {
-    private static func makeTempDir(prefix: String) throws -> URL {
-        let tempRoot = FileManager.default.temporaryDirectory
-        let directory = tempRoot.appendingPathComponent("\(prefix)-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory
-    }
-
-    private static func waitForProcessExit(_ pid: pid_t, timeout: TimeInterval) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            #if canImport(Darwin)
-            if kill(pid, 0) != 0 && errno == ESRCH {
-                return true
-            }
-            #endif
-
-            Thread.sleep(forTimeInterval: 0.05)
-        }
-        return false
-    }
-
-    private static func waitForFile(_ url: URL, timeout: TimeInterval) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if FileManager.default.fileExists(atPath: url.path) {
-                return true
-            }
-
-            Thread.sleep(forTimeInterval: 0.05)
-        }
-        return false
-    }
-
     func testHealthStatusAvailable() {
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "cli-health-available")
         let status = CLIHealthStatus(
             availability: .available,
             lastChecked: Date(),
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: workspaceURL
         )
         XCTAssertTrue(status.isAvailable)
     }
 
     func testHealthStatusUnavailableCLI() {
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "cli-health-unavailable")
         let status = CLIHealthStatus(
             availability: .unavailable(reason: .cliNotFound),
             lastChecked: Date(),
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: workspaceURL
         )
         XCTAssertFalse(status.isAvailable)
     }
 
     func testHealthStatusUnknown() {
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "cli-health-unknown")
         let status = CLIHealthStatus(
             availability: .unknown,
             lastChecked: Date(),
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: workspaceURL
         )
         XCTAssertFalse(status.isAvailable)
     }
@@ -91,7 +57,9 @@ final class CLIHealthCheckerTests: XCTestCase {
         let notFoundError = RalphCLIClientError.executableNotFound(URL(fileURLWithPath: "/nonexistent"))
         XCTAssertTrue(CLIHealthChecker.isCLIUnavailableError(notFoundError))
 
-        let notExecError = RalphCLIClientError.executableNotExecutable(URL(fileURLWithPath: "/tmp"))
+        let notExecError = RalphCLIClientError.executableNotExecutable(
+            RalphCoreTestSupport.workspaceURL(label: "cli-health-not-executable")
+        )
         XCTAssertTrue(CLIHealthChecker.isCLIUnavailableError(notExecError))
 
         let genericError = NSError(domain: "Test", code: 1)
@@ -103,8 +71,8 @@ final class CLIHealthCheckerTests: XCTestCase {
     }
 
     func testCheckHealth_usesProvidedExecutableOverride() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "ralph-health-override")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = try RalphCoreTestSupport.makeTemporaryDirectory(prefix: "ralph-health-override")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let script = """
@@ -133,8 +101,8 @@ final class CLIHealthCheckerTests: XCTestCase {
     }
 
     func testCheckHealth_fallsBackToVersionSubcommandWhenDashVersionUnsupported() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "ralph-health-fallback")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = try RalphCoreTestSupport.makeTemporaryDirectory(prefix: "ralph-health-fallback")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let script = """
@@ -167,8 +135,8 @@ final class CLIHealthCheckerTests: XCTestCase {
     }
 
     func testCheckHealth_invalidProvidedExecutableReportsCliNotFound() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "ralph-health-missing")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = try RalphCoreTestSupport.makeTemporaryDirectory(prefix: "ralph-health-missing")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let checker = CLIHealthChecker()
         let status = await checker.checkHealth(
@@ -185,15 +153,15 @@ final class CLIHealthCheckerTests: XCTestCase {
     }
 
     func testCheckHealth_timeoutTerminatesUnderlyingProcess() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "ralph-health-timeout")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = try RalphCoreTestSupport.makeTemporaryDirectory(prefix: "ralph-health-timeout")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let pidFileURL = tempDir.appendingPathComponent("health.pid", isDirectory: false)
         let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let script = """
         #!/bin/sh
+        echo $$ > "\(pidFileURL.path)"
         if [ "$1" = "--version" ]; then
-          echo $$ > "\(pidFileURL.path)"
           trap '' TERM INT
           sleep 30
           exit 0
@@ -216,8 +184,9 @@ final class CLIHealthCheckerTests: XCTestCase {
             )
         }
 
+        let recordedPID = await RalphCoreTestSupport.waitForFile(pidFileURL, timeout: .seconds(2))
         XCTAssertTrue(
-            Self.waitForFile(pidFileURL, timeout: 2),
+            recordedPID,
             "Health-check timeout fixture should record its process identifier before the deadline expires"
         )
 
@@ -229,9 +198,7 @@ final class CLIHealthCheckerTests: XCTestCase {
         )
         let pidText = try XCTUnwrap(String(contentsOf: pidFileURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines))
         let pid = pid_t(try XCTUnwrap(Int32(pidText)))
-        XCTAssertTrue(
-            Self.waitForProcessExit(pid, timeout: 3),
-            "Health-check timeout should terminate the launched process"
-        )
+        let terminated = await RalphCoreTestSupport.waitForProcessExit(pid, timeout: .seconds(3))
+        XCTAssertTrue(terminated, "Health-check timeout should terminate the launched process")
     }
 }

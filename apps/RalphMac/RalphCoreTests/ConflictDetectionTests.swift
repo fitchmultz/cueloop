@@ -25,7 +25,7 @@ final class ConflictDetectionTests: XCTestCase {
     
     override func setUp() async throws {
         try await super.setUp()
-        workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        workspace = Workspace(workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "conflict-detection"))
     }
     
     override func tearDown() async throws {

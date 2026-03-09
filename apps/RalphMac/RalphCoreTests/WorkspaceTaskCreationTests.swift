@@ -24,7 +24,7 @@ import XCTest
 final class WorkspaceTaskCreationTests: XCTestCase {
     func test_createTask_importsStructuredTaskImmediately() async throws {
         let workspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-create-")
-        defer { try? FileManager.default.removeItem(at: workspaceURL) }
+        defer { RalphCoreTestSupport.assertRemoved(workspaceURL) }
 
         let client = try RalphCLIClient(executableURL: try Self.resolveRalphBinaryURL())
         try await Self.runChecked(
@@ -55,65 +55,43 @@ final class WorkspaceTaskCreationTests: XCTestCase {
     }
 
     func test_queueFileWatcher_rapidStartStopWithMutationsDoesNotCrash() async throws {
-        let workspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-watcher-")
-        defer { try? FileManager.default.removeItem(at: workspaceURL) }
-
-        let ralphURL = workspaceURL.appendingPathComponent(".ralph", isDirectory: true)
-        try FileManager.default.createDirectory(at: ralphURL, withIntermediateDirectories: true)
-        let doneURL = ralphURL.appendingPathComponent("done.jsonc", isDirectory: false)
-        let configURL = ralphURL.appendingPathComponent("config.jsonc", isDirectory: false)
-        try "[]\n".write(to: doneURL, atomically: true, encoding: .utf8)
-        try "{}\n".write(to: configURL, atomically: true, encoding: .utf8)
-
         for index in 0..<20 {
-            do {
-                let watcher = QueueFileWatcher(workingDirectoryURL: workspaceURL)
-                let notification = expectation(description: "watcher-notification-\(index)")
-                notification.assertForOverFulfill = false
-                let eventTask = Task {
-                    for await event in watcher.events {
-                        if case .filesChanged(let batch) = event,
-                           batch.fileNames.contains("queue.jsonc") {
-                            notification.fulfill()
-                            return
-                        }
+            let workspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-watcher-")
+            defer { RalphCoreTestSupport.assertRemoved(workspaceURL) }
+            let ralphURL = try Self.prepareWatcherFixture(at: workspaceURL)
+
+            let watcher = QueueFileWatcher(workingDirectoryURL: workspaceURL)
+            let notification = expectation(description: "watcher-notification-\(index)")
+            notification.assertForOverFulfill = false
+            let eventTask = Task {
+                for await event in watcher.events {
+                    if case .filesChanged(let batch) = event,
+                       batch.fileNames.contains("queue.jsonc") {
+                        notification.fulfill()
+                        return
                     }
                 }
-
-                await watcher.start()
-                let queueURL = ralphURL.appendingPathComponent("queue.jsonc", isDirectory: false)
-                try """
-                [
-                  { "id": "RQ-\(String(format: "%04d", index))", "title": "iteration \(index)", "status": "todo" }
-                ]
-                """.write(to: queueURL, atomically: true, encoding: .utf8)
-
-                await fulfillment(of: [notification], timeout: 5.0)
-                eventTask.cancel()
-                await watcher.stop()
             }
 
-            // Let any queued FSEvents callback work drain before the next lifecycle.
-            try await Task.sleep(nanoseconds: 50_000_000)
+            await watcher.start()
+            let queueURL = ralphURL.appendingPathComponent("queue.jsonc", isDirectory: false)
+            try """
+            [
+              { "id": "RQ-\(String(format: "%04d", index))", "title": "iteration \(index)", "status": "todo" }
+            ]
+            """.write(to: queueURL, atomically: true, encoding: .utf8)
+
+            await fulfillment(of: [notification], timeout: 5.0)
+            eventTask.cancel()
+            await watcher.stop()
         }
     }
 
     func test_queueFileWatcher_stopBeforeDebounceSuppressesNotification() async throws {
         let workspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-watcher-stop-")
-        defer { try? FileManager.default.removeItem(at: workspaceURL) }
+        defer { RalphCoreTestSupport.assertRemoved(workspaceURL) }
 
-        let ralphURL = workspaceURL.appendingPathComponent(".ralph", isDirectory: true)
-        try FileManager.default.createDirectory(at: ralphURL, withIntermediateDirectories: true)
-        try "[]\n".write(
-            to: ralphURL.appendingPathComponent("done.jsonc", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "{}\n".write(
-            to: ralphURL.appendingPathComponent("config.jsonc", isDirectory: false),
-            atomically: true,
-            encoding: .utf8
-        )
+        let ralphURL = try Self.prepareWatcherFixture(at: workspaceURL)
 
         let watcher = QueueFileWatcher(workingDirectoryURL: workspaceURL)
         let invertedNotification = expectation(description: "watcher-stopped-before-debounce")
@@ -145,7 +123,7 @@ final class WorkspaceTaskCreationTests: XCTestCase {
 
     func test_queueFileWatcher_surfacesFailureAfterRetryExhaustion() async throws {
         let workspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-watcher-fail-")
-        defer { try? FileManager.default.removeItem(at: workspaceURL) }
+        defer { RalphCoreTestSupport.assertRemoved(workspaceURL) }
 
         let watcher = QueueFileWatcher(
             workingDirectoryURL: workspaceURL,
@@ -195,6 +173,22 @@ final class WorkspaceTaskCreationTests: XCTestCase {
         XCTAssertEqual(result.status.code, 0, "Command failed: \(arguments.joined(separator: " "))\nstderr:\n\(result.stderr)")
     }
 
+    private static func prepareWatcherFixture(at workspaceURL: URL) throws -> URL {
+        let ralphURL = workspaceURL.appendingPathComponent(".ralph", isDirectory: true)
+        try FileManager.default.createDirectory(at: ralphURL, withIntermediateDirectories: true)
+        try "[]\n".write(
+            to: ralphURL.appendingPathComponent("done.jsonc", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "{}\n".write(
+            to: ralphURL.appendingPathComponent("config.jsonc", isDirectory: false),
+            atomically: true,
+            encoding: .utf8
+        )
+        return ralphURL
+    }
+
     private static func resolveRalphBinaryURL() throws -> URL {
         if let override = ProcessInfo.processInfo.environment["RALPH_BIN_PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines),
            !override.isEmpty {
@@ -227,9 +221,6 @@ final class WorkspaceTaskCreationTests: XCTestCase {
     }
 
     private static func makeTempDir(prefix: String) throws -> URL {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent(prefix + UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return root
+        try RalphCoreTestSupport.makeTemporaryDirectory(prefix: prefix)
     }
 }

@@ -19,7 +19,7 @@ import XCTest
 final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
     func test_updateTask_agentOverride_emitsAgentEditCommand() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-agent-edit-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         try WorkspacePerformanceTestSupport.writeEmptyQueueFile(in: tempDir)
         let logURL = tempDir.appendingPathComponent("commands.log")
 
@@ -111,7 +111,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
 
     func test_updateTask_clearingAgentOverride_emitsEmptyAgentValue() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-agent-clear-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         try WorkspacePerformanceTestSupport.writeEmptyQueueFile(in: tempDir)
         let logURL = tempDir.appendingPathComponent("commands.log")
 
@@ -188,7 +188,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
 
     func test_updateTask_semanticallyEmptyAgentOverride_doesNotEmitAgentEdit() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-agent-noop-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         try WorkspacePerformanceTestSupport.writeEmptyQueueFile(in: tempDir)
         let logURL = tempDir.appendingPathComponent("commands.log")
 

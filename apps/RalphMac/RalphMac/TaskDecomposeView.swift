@@ -455,5 +455,5 @@ struct TaskDecomposeView: View {
 }
 
 #Preview {
-    TaskDecomposeView(workspace: Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp")))
+    TaskDecomposeView(workspace: PreviewWorkspaceSupport.makeWorkspace(label: "task-decompose"))
 }

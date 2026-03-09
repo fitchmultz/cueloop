@@ -66,7 +66,7 @@ final class ErrorRecoveryCategoryTests: XCTestCase {
             underlyingError: "Underlying details",
             operation: "testOperation",
             suggestions: ["Suggestion 1", "Suggestion 2"],
-            workspaceURL: URL(fileURLWithPath: "/tmp")
+            workspaceURL: RalphCoreTestSupport.workspaceURL(label: "recovery-error-creation")
         )
 
         XCTAssertEqual(error.category, .cliUnavailable)

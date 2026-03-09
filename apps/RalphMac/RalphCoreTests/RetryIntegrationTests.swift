@@ -19,13 +19,11 @@ final class RetryIntegrationTests: XCTestCase {
     
     override func setUp() async throws {
         try await super.setUp()
-        tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("retry-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        tempDir = try RalphCoreTestSupport.makeTemporaryDirectory(prefix: "retry-tests")
     }
     
     override func tearDown() async throws {
-        try? FileManager.default.removeItem(at: tempDir)
+        RalphCoreTestSupport.assertRemoved(tempDir)
         try await super.tearDown()
     }
     

@@ -98,7 +98,7 @@ struct TaskDetailView: View {
 // Preview
 #Preview {
     TaskDetailView(
-        workspace: Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp")),
+        workspace: PreviewWorkspaceSupport.makeWorkspace(label: "task-detail"),
         task: RalphTask(
             id: "RQ-0001",
             status: .todo,

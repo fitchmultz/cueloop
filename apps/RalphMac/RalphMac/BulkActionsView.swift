@@ -380,7 +380,7 @@ struct BulkActionsView: View {
 
 #Preview("Bulk Actions") {
     BulkActionsView(
-        workspace: Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp")),
+        workspace: PreviewWorkspaceSupport.makeWorkspace(label: "bulk-actions"),
         selectedTaskIDs: ["RQ-0001", "RQ-0002", "RQ-0003"],
         onCompletion: nil
     )

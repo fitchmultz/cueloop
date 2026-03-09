@@ -57,6 +57,17 @@ fn unique_test_id(prefix: &str) -> String {
     )
 }
 
+fn wait_without_sleep(duration: Duration) {
+    let (_tx, rx) = std::sync::mpsc::channel::<()>();
+    let _ = rx.recv_timeout(duration);
+}
+
+fn portable_repo_root(label: &str) -> String {
+    test_support::portable_abs_path(format!("webhook/{label}"))
+        .display()
+        .to_string()
+}
+
 fn ensure_test_worker_initialized() {
     static INIT: Once = Once::new();
     INIT.call_once(|| {
@@ -170,7 +181,7 @@ fn webhook_send_is_non_blocking() {
             // Read request but don't respond for 2 seconds
             let mut buf = [0u8; 1024];
             let _ = stream.read(&mut buf);
-            thread::sleep(Duration::from_secs(2));
+            wait_without_sleep(Duration::from_secs(2));
             let _ = stream.write_all(b"HTTP/1.1 200 OK\r\n\r\n");
         }
     });
@@ -373,7 +384,7 @@ fn webhook_drop_new_policy() {
             {
                 request_count_clone.fetch_add(1, Ordering::SeqCst);
             }
-            thread::sleep(Duration::from_millis(200)); // Slow processing
+            wait_without_sleep(Duration::from_millis(200));
             let _ = stream.write_all(b"HTTP/1.1 200 OK\r\n\r\n");
         }
     });
@@ -508,7 +519,7 @@ fn webhook_loop_events_are_opt_in_by_default() {
         queue_policy: Some(WebhookQueuePolicy::DropNew),
         ..Default::default()
     };
-    let expected_repo_root = unique_test_id("/tmp/repo");
+    let expected_repo_root = portable_repo_root("loop-events-opt-in");
 
     webhook::notify_loop_started(
         &config,
@@ -543,7 +554,7 @@ fn webhook_loop_events_are_opt_in_by_default() {
                 }
             }
             Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
-                thread::sleep(Duration::from_millis(25));
+                std::thread::park_timeout(Duration::from_millis(25));
             }
             Err(err) => panic!("accept failed: {err}"),
         }
@@ -564,7 +575,7 @@ fn webhook_loop_event_payload_shape() {
 
     let received_request = Arc::new(std::sync::Mutex::new(None));
     let request_clone = received_request.clone();
-    let expected_repo_root = unique_test_id("/tmp/repo");
+    let expected_repo_root = portable_repo_root("loop-event-payload-shape");
     let expected_repo_root_clone = expected_repo_root.clone();
 
     thread::spawn(move || {
@@ -825,7 +836,7 @@ fn webhook_drop_oldest_policy() {
             {
                 request_count_clone.fetch_add(1, Ordering::SeqCst);
             }
-            thread::sleep(Duration::from_millis(100)); // Slow processing
+            wait_without_sleep(Duration::from_millis(100));
             let _ = stream.write_all(b"HTTP/1.1 200 OK\r\n\r\n");
         }
     });

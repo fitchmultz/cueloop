@@ -204,6 +204,10 @@ Every source file MUST start with `//!` docs covering:
 - CI temp dirs: `${TMPDIR:-/tmp}/ralph-ci.*` (set `RALPH_CI_KEEP_TMP=1` to keep)
 - Prefer deterministic waits/signals over `sleep` in tests; inject logical time or use condition-style helpers when coordination matters.
 - Portable absolute test paths should come from temp-root helpers (`std::env::temp_dir()` / test-support builders), never hardcoded `/tmp` literals.
+- Rust integration support should stay split into focused `crates/ralph/tests/test_support_*` modules with `test_support.rs` as a thin re-export surface only.
+- macOS test fixtures should use `RalphCoreTestSupport` for temp workspaces, readiness polling, and cleanup assertions; do not add per-file sleep/poll helpers.
+- SwiftUI previews that need workspace URLs should derive them from `PreviewWorkspaceSupport`, not hardcoded temp paths.
+- Test cleanup must fail loudly: avoid `try?` for fixture setup/teardown in tests unless the assertion explicitly expects cleanup best-effort behavior.
 
 ### Task Decompose
 - `ralph task decompose` is preview-first; queue mutation requires `--write`.

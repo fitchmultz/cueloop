@@ -416,5 +416,5 @@ struct TaskCreationView: View {
 
 // MARK: - Preview
 #Preview {
-    TaskCreationView(workspace: Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp")))
+    TaskCreationView(workspace: PreviewWorkspaceSupport.makeWorkspace(label: "task-creation"))
 }

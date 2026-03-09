@@ -53,7 +53,7 @@ final class RalphE2ESmokeTests: XCTestCase {
         }
 
         let tempDir = try Self.makeTempDir(prefix: "ralph-e2e-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let initRun = await Self.runAndCollect(
             client: client,
@@ -111,7 +111,7 @@ final class RalphE2ESmokeTests: XCTestCase {
 
     func test_resolveRalphBinaryURL_envOverride_success() throws {
         let tempDir = try Self.makeTempDir(prefix: "ralph-resolver-env-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let binaryURL = tempDir.appendingPathComponent("ralph", isDirectory: false)
         try Self.writeExecutableScript(at: binaryURL)
@@ -128,7 +128,7 @@ final class RalphE2ESmokeTests: XCTestCase {
 
     func test_resolveRalphBinaryURL_missingEnv_fallbackDisabled_failsFast() throws {
         let tempDir = try Self.makeTempDir(prefix: "ralph-resolver-no-fallback-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         XCTAssertThrowsError(
             try Self.resolveRalphBinaryURL(
@@ -146,7 +146,7 @@ final class RalphE2ESmokeTests: XCTestCase {
 
     func test_resolveRalphBinaryURL_fallbackEnabled_failsFastWithoutCargoBuild() throws {
         let tempDir = try Self.makeTempDir(prefix: "ralph-resolver-fallback-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         // With the env var set but no binary present, it should still fail fast
         // (no opportunistic cargo builds during tests)
@@ -214,13 +214,11 @@ final class RalphE2ESmokeTests: XCTestCase {
 
             group.addTask {
                 do {
-                    try await Task.sleep(nanoseconds: timeoutNanoseconds(from: timeoutSeconds))
+                    try await ContinuousClock().sleep(for: .seconds(timeoutSeconds))
                 } catch {
                     return nil
                 }
                 await run.cancel()
-                // Wait a brief moment for cancellation to propagate
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
                 let command = arguments.joined(separator: " ")
                 return Collected(
                     status: RalphCLIExitStatus(code: -1, reason: .exit),
@@ -362,10 +360,7 @@ final class RalphE2ESmokeTests: XCTestCase {
     }
 
     private static func makeTempDir(prefix: String) throws -> URL {
-        let base = FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("\(prefix)\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
+        try RalphCoreTestSupport.makeTemporaryDirectory(prefix: prefix)
     }
 
     private static func writeExecutableScript(at url: URL) throws {

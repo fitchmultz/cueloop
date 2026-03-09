@@ -90,7 +90,7 @@ final class RalphCLIClientTests: XCTestCase {
 
     func test_currentDirectoryURL_used() async throws {
         let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-client-cwd-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let client = try RalphCLIClient(executableURL: URL(fileURLWithPath: "/bin/sh"))
         let run = try client.start(
@@ -116,9 +116,6 @@ final class RalphCLIClientTests: XCTestCase {
         let client = try RalphCLIClient(executableURL: URL(fileURLWithPath: "/bin/sleep"))
         let run = try client.start(arguments: ["60"])
 
-        // Small delay to ensure process has actually started before cancel
-        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-
         await run.cancel()
         for await _ in await run.events {
             // Drain until process exits.
@@ -134,7 +131,7 @@ final class RalphCLIClientTests: XCTestCase {
     func test_runAndCollect_versionOutput_parsableByVersionValidator() async throws {
         // Simulate a CLI that outputs a version string
         let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-version-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         let compatibleVersion = VersionCompatibility.minimumCLIVersion
 
         let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
@@ -165,7 +162,7 @@ final class RalphCLIClientTests: XCTestCase {
     func test_runAndCollect_versionOutput_withVPrefix_parsable() async throws {
         // Simulate a CLI that outputs version with v prefix
         let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-version-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         let compatibleVersion = VersionCompatibility.maximumCLIVersion
 
         let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
@@ -192,7 +189,7 @@ final class RalphCLIClientTests: XCTestCase {
     func test_runAndCollect_incompatibleVersion_detected() async throws {
         // Simulate a CLI with an incompatible (too new) version
         let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-version-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let scriptContent = """
@@ -217,9 +214,6 @@ final class RalphCLIClientTests: XCTestCase {
     }
 
     private static func makeTempDir(prefix: String) throws -> URL {
-        let base = FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("\(prefix)\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
+        try RalphCoreTestSupport.makeTemporaryDirectory(prefix: prefix)
     }
 }

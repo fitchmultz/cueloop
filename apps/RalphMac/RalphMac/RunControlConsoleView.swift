@@ -200,8 +200,7 @@ struct RunControlConsoleView: View {
 }
 
 #Preview {
-    // Create a mock workspace for preview
-    let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+    let workspace = PreviewWorkspaceSupport.makeWorkspace(label: "run-control-console")
     workspace.output = "Sample console output line 1\nSample console output line 2\n"
     return RunControlConsoleView(workspace: workspace)
         .padding()

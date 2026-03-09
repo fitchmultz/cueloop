@@ -69,7 +69,7 @@ class RalphMacUITestCase: XCTestCase {
         static let ralphBinPath = "RALPH_BIN_PATH"
     }
 
-    let timelineIntervalNanos: UInt64 = 1_000_000_000
+    let timelineInterval: TimeInterval = 1
     let timelineMaxFrames: Int = 180
 
     var app: XCUIApplication!
@@ -117,7 +117,7 @@ class RalphMacUITestCase: XCTestCase {
         app.terminate()
         app = nil
         if let uiTestWorkspaceURL {
-            try? FileManager.default.removeItem(at: uiTestWorkspaceURL)
+            XCTAssertNoThrow(try removeItemIfExists(uiTestWorkspaceURL))
             self.uiTestWorkspaceURL = nil
         }
         ralphExecutableURL = nil
@@ -278,7 +278,7 @@ class RalphMacUITestCase: XCTestCase {
         ]
         """#
         try seededTasks.write(to: importURL, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: importURL) }
+        defer { XCTAssertNoThrow(try removeItemIfExists(importURL)) }
 
         try runRalph(
             arguments: ["queue", "import", "--format", "json", "--input", importURL.path],
@@ -400,7 +400,15 @@ class RalphMacUITestCase: XCTestCase {
             guard let self else { return }
             var frameIndex = 0
             while !Task.isCancelled && frameIndex < self.timelineMaxFrames {
-                try? await Task.sleep(nanoseconds: self.timelineIntervalNanos)
+                await MainActor.run {
+                    let frameDeadline = Date().addingTimeInterval(self.timelineInterval)
+                    while !Task.isCancelled && Date() < frameDeadline {
+                        RunLoop.current.run(
+                            mode: .default,
+                            before: min(frameDeadline, Date().addingTimeInterval(0.1))
+                        )
+                    }
+                }
                 guard !Task.isCancelled else { break }
                 self.captureScreenshot(named: "timeline-\(frameIndex)")
                 frameIndex += 1
@@ -467,6 +475,13 @@ class RalphMacUITestCase: XCTestCase {
             }
         }
         return window.tabs.count
+    }
+
+    func removeItemIfExists(_ url: URL) throws {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return
+        }
+        try FileManager.default.removeItem(at: url)
     }
 
     @discardableResult

@@ -99,7 +99,7 @@ struct DependencyGraphView: View {
         }
 
         func previewWorkspace() -> Workspace {
-            Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+            PreviewWorkspaceSupport.makeWorkspace(label: "dependency-graph")
         }
     }
 

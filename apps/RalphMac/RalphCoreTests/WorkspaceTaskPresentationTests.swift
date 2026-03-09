@@ -19,7 +19,7 @@ import XCTest
 @MainActor
 final class WorkspaceTaskPresentationTests: XCTestCase {
     func testTaskPresentation_prioritySortIsDeterministicAscendingAndDescending() {
-        let workspace = Workspace(workingDirectoryURL: FileManager.default.temporaryDirectory)
+        let workspace = Workspace(workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "task-presentation-priority"))
         let timestamp = Date(timeIntervalSince1970: 1_700_000_000)
 
         workspace.tasks = [
@@ -43,7 +43,7 @@ final class WorkspaceTaskPresentationTests: XCTestCase {
     }
 
     func testTaskPresentation_groupsTasksByStatusWithoutReorderingColumns() {
-        let workspace = Workspace(workingDirectoryURL: FileManager.default.temporaryDirectory)
+        let workspace = Workspace(workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "task-presentation-grouping"))
         workspace.tasks = [
             RalphTask(id: "RQ-010", status: .doing, title: "Doing B", priority: .medium, tags: [], createdAt: Date(timeIntervalSince1970: 20), updatedAt: Date(timeIntervalSince1970: 20)),
             RalphTask(id: "RQ-002", status: .todo, title: "Todo A", priority: .medium, tags: [], createdAt: Date(timeIntervalSince1970: 10), updatedAt: Date(timeIntervalSince1970: 10)),

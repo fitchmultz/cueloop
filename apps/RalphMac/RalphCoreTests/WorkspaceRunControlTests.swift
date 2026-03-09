@@ -19,7 +19,7 @@ import XCTest
 final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
     func test_runNextTask_resolvesCLISelection_andStreamsOutput() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-run-stream-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let script = """
             #!/bin/sh
@@ -53,17 +53,19 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
 
         workspace.runNextTask()
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
+        let startedStreaming = await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
             workspace.currentTaskID == "RQ-4242" && workspace.output.contains("PHASE 1")
         }
+        XCTAssertTrue(startedStreaming)
 
         XCTAssertEqual(workspace.currentTaskID, "RQ-4242")
         XCTAssertTrue(workspace.output.contains("PHASE 1"))
         XCTAssertTrue(workspace.isRunning)
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 4.0) {
+        let finishedStreaming = await WorkspacePerformanceTestSupport.waitFor(timeout: 4.0) {
             !workspace.isRunning
         }
+        XCTAssertTrue(finishedStreaming)
 
         XCTAssertFalse(workspace.isRunning)
         XCTAssertEqual(workspace.lastExitStatus?.code, 0)
@@ -74,7 +76,7 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
 
     func test_runNextTask_withExplicitIDAndForce_usesExpectedArguments() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-run-explicit-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let script = """
             #!/bin/sh
@@ -104,12 +106,14 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
 
         workspace.runNextTask(taskIDOverride: "RQ-5555", forceDirtyRepo: true)
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
+        let explicitRunStarted = await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
             workspace.currentTaskID == "RQ-5555" && workspace.isRunning
         }
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 3.0) {
+        XCTAssertTrue(explicitRunStarted)
+        let explicitRunFinished = await WorkspacePerformanceTestSupport.waitFor(timeout: 3.0) {
             !workspace.isRunning
         }
+        XCTAssertTrue(explicitRunFinished)
 
         XCTAssertEqual(workspace.currentTaskID, nil)
         XCTAssertEqual(workspace.lastExitStatus?.code, 0)
@@ -118,7 +122,7 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
     }
 
     func test_runControlPreviewTask_prefersSelectedTodoTask() {
-        let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        let workspace = Workspace(workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "run-control-preview"))
         workspace.tasks = [
             RalphTask(id: "RQ-1001", status: .todo, title: "First", priority: .medium),
             RalphTask(id: "RQ-1002", status: .todo, title: "Second", priority: .high)
@@ -133,7 +137,7 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
 
     func test_cancel_stopsActiveRun_andRecordsCancellation() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-run-cancel-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         let script = """
             #!/bin/sh
             if [ "$2" = "config" ] && [ "$3" = "show" ]; then
@@ -153,17 +157,18 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
 
         workspace.run(arguments: ["60"])
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 1.0) {
+        let cancelRunStarted = await WorkspacePerformanceTestSupport.waitFor(timeout: 1.0) {
             workspace.isRunning
         }
+        XCTAssertTrue(cancelRunStarted)
         XCTAssertTrue(workspace.isRunning)
-        try await Task.sleep(nanoseconds: 150_000_000)
 
         workspace.cancel()
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 6.0) {
+        let cancelRunFinished = await WorkspacePerformanceTestSupport.waitFor(timeout: 6.0) {
             !workspace.isRunning
         }
+        XCTAssertTrue(cancelRunFinished)
 
         XCTAssertFalse(workspace.isRunning)
         XCTAssertEqual(workspace.executionHistory.first?.wasCancelled, true)
@@ -174,7 +179,7 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
 
     func test_startLoop_schedulesNextRunWithoutSleepDelay() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-loop-")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         let stateURL = tempDir.appendingPathComponent("loop-state.txt")
 
         let script = """
@@ -221,15 +226,17 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
         let startedAt = Date()
         workspace.startLoop()
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 0.75) {
+        let loopAdvanced = await WorkspacePerformanceTestSupport.waitFor(timeout: 0.75) {
             workspace.output.contains("running second")
         }
+        XCTAssertTrue(loopAdvanced)
 
         XCTAssertLessThan(Date().timeIntervalSince(startedAt), 0.9)
 
-        await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
+        let loopFinished = await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
             !workspace.isRunning
         }
+        XCTAssertTrue(loopFinished)
 
         XCTAssertTrue(workspace.output.contains("running first"))
         XCTAssertTrue(workspace.output.contains("running second"))
@@ -239,7 +246,7 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
 
     func test_updateWatcherHealth_surfacesOperationalIssue() {
         let workspace = Workspace(
-            workingDirectoryURL: URL(fileURLWithPath: "/tmp/ralph-operational-\(UUID().uuidString)")
+            workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "watcher-health-operational")
         )
 
         workspace.updateWatcherHealth(

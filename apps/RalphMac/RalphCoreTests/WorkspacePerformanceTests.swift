@@ -22,7 +22,11 @@ class WorkspacePerformanceTestCase: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
-        workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+        workspace = Workspace(
+            workingDirectoryURL: RalphCoreTestSupport.workspaceURL(
+                label: "\(type(of: self)).\(name)"
+            )
+        )
     }
 
     override func tearDown() async throws {
@@ -46,8 +50,8 @@ class WorkspacePerformanceTestCase: XCTestCase {
     }
 
     func generateTasks(count: Int, mutateFrom base: [RalphTask]) -> [RalphTask] {
-        base.map { task in
-            if Int.random(in: 1...10) == 1 {
+        base.enumerated().map { index, task in
+            if index.isMultiple(of: 10) {
                 return RalphTask(
                     id: task.id,
                     status: task.status == .todo ? .doing : .todo,
@@ -98,10 +102,7 @@ class WorkspacePerformanceTestCase: XCTestCase {
 
 enum WorkspacePerformanceTestSupport {
     static func makeTempDir(prefix: String) throws -> URL {
-        let base = FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("\(prefix)\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
+        try RalphCoreTestSupport.makeTemporaryDirectory(prefix: prefix)
     }
 
     static func makeExecutableScript(in directory: URL, name: String, body: String) throws -> URL {
@@ -136,15 +137,14 @@ enum WorkspacePerformanceTestSupport {
 
     static func waitFor(
         timeout: TimeInterval,
-        pollIntervalNanoseconds: UInt64 = 50_000_000,
+        pollInterval: Duration = .milliseconds(50),
         condition: @escaping @MainActor () -> Bool
-    ) async {
-        let start = Date()
-        while !(await MainActor.run { condition() }) {
-            if Date().timeIntervalSince(start) >= timeout {
-                break
-            }
-            try? await Task.sleep(nanoseconds: pollIntervalNanoseconds)
+    ) async -> Bool {
+        await RalphCoreTestSupport.waitUntil(
+            timeout: .seconds(timeout),
+            pollInterval: pollInterval
+        ) {
+            await MainActor.run { condition() }
         }
     }
 }

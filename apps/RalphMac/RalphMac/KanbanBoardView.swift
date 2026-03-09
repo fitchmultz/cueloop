@@ -206,7 +206,7 @@ struct KanbanBoardView: View {
         }
 
         func previewWorkspace() -> Workspace {
-            let workspace = Workspace(workingDirectoryURL: URL(fileURLWithPath: "/tmp"))
+            let workspace = PreviewWorkspaceSupport.makeWorkspace(label: "kanban-board")
             // Note: In real usage, tasks would be loaded from the CLI
             return workspace
         }

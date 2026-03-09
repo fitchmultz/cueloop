@@ -100,9 +100,10 @@ mod tests {
 
     #[test]
     fn stop_signal_path_construction() {
-        let cache_dir = Path::new("/tmp/test/.ralph/cache");
-        let path = stop_signal_path(cache_dir);
-        assert_eq!(path, PathBuf::from("/tmp/test/.ralph/cache/stop_requested"));
+        let repo_root = crate::testsupport::path::portable_abs_path("signal-path-construction");
+        let cache_dir = repo_root.join(".ralph/cache");
+        let path = stop_signal_path(&cache_dir);
+        assert_eq!(path, cache_dir.join("stop_requested"));
     }
 
     #[test]
@@ -126,20 +127,18 @@ mod tests {
     fn create_stop_signal_is_idempotent() -> anyhow::Result<()> {
         let temp = TempDir::new()?;
         let cache_dir = temp.path().join("cache");
-
-        create_stop_signal(&cache_dir)?;
         let path = stop_signal_path(&cache_dir);
-        let first_content = fs::read_to_string(&path)?;
 
-        // Small delay to ensure different timestamp
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        fs::create_dir_all(&cache_dir)?;
+        fs::write(&path, "Stop requested at stale-timestamp")?;
 
         create_stop_signal(&cache_dir)?;
-        let second_content = fs::read_to_string(&path)?;
+        let refreshed_content = fs::read_to_string(&path)?;
 
         // File should still exist and have updated content
         assert!(stop_signal_exists(&cache_dir));
-        assert_ne!(first_content, second_content);
+        assert_ne!(refreshed_content, "Stop requested at stale-timestamp");
+        assert!(refreshed_content.contains("Stop requested at"));
 
         Ok(())
     }

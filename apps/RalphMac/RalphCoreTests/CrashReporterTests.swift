@@ -7,8 +7,7 @@ final class CrashReporterTests: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
-        reportsDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ralph-crash-tests-\(UUID().uuidString)", isDirectory: true)
+        reportsDirectory = try RalphCoreTestSupport.makeTemporaryDirectory(prefix: "ralph-crash-tests")
         CrashReporter.shared.setStorageForTesting(makeStorage(directoryURL: reportsDirectory))
         CrashReporter.shared.clearAllReports()
         CrashReporter.shared.clearOperationalIssues()
@@ -18,7 +17,7 @@ final class CrashReporterTests: XCTestCase {
         CrashReporter.shared.setStorageForTesting(makeStorage(directoryURL: reportsDirectory))
         CrashReporter.shared.clearAllReports()
         CrashReporter.shared.clearOperationalIssues()
-        try? FileManager.default.removeItem(at: reportsDirectory)
+        RalphCoreTestSupport.assertRemoved(reportsDirectory)
         try await super.tearDown()
     }
 
