@@ -3,4 +3,5 @@
 //! Responsibilities:
 //! - Include the extracted queue validation suite in the original test module scope.
 
-include!("../validation_runtime_tests.rs");
+#[path = "../validation_runtime_tests.rs"]
+mod validation_runtime_tests;
