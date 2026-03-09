@@ -16,12 +16,14 @@
 //! - The guard owns resources and releases them during cleanup.
 
 use crate::commands::run::parallel::state;
-use crate::commands::run::parallel::worker::{WorkerState, terminate_workers};
+use crate::commands::run::parallel::worker::{WorkerExitEvent, WorkerState, terminate_workers};
 use crate::commands::run::parallel::workspace_cleanup::remove_workspace_best_effort;
 use crate::git::WorkspaceSpec;
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::time::Duration;
 
 /// Guard that ensures cleanup of parallel run resources on any exit path.
 ///
@@ -40,6 +42,9 @@ pub(crate) struct ParallelCleanupGuard {
     workspaces: HashMap<String, WorkspaceSpec>,
     /// Root directory for workspaces.
     workspace_root: PathBuf,
+    /// Worker-exit event channel shared with monitor threads.
+    worker_events_tx: Sender<WorkerExitEvent>,
+    worker_events_rx: Receiver<WorkerExitEvent>,
     /// Whether cleanup has already been performed.
     completed: bool,
 }
@@ -51,12 +56,15 @@ impl ParallelCleanupGuard {
         state_file: state::ParallelStateFile,
         workspace_root: PathBuf,
     ) -> Self {
+        let (worker_events_tx, worker_events_rx) = mpsc::channel();
         Self {
             state_path,
             state_file,
             in_flight: HashMap::new(),
             workspaces: HashMap::new(),
             workspace_root,
+            worker_events_tx,
+            worker_events_rx,
             completed: false,
         }
     }
@@ -83,29 +91,51 @@ impl ParallelCleanupGuard {
         &self.in_flight
     }
 
-    /// Poll all workers and return IDs of finished workers along with their exit status.
-    ///
-    /// This method takes &mut self to allow calling try_wait on child processes.
-    pub fn poll_workers(
+    /// Clone the shared worker-event sender for new monitor threads.
+    pub fn worker_event_sender(&self) -> Sender<WorkerExitEvent> {
+        self.worker_events_tx.clone()
+    }
+
+    /// Drain worker-exit events that are already available.
+    pub fn drain_finished_workers(
         &mut self,
     ) -> Vec<(String, String, WorkspaceSpec, std::process::ExitStatus)> {
         let mut finished = Vec::new();
-        let task_ids: Vec<String> = self.in_flight.keys().cloned().collect();
-
-        for task_id in task_ids {
-            if let Some(worker) = self.in_flight.get_mut(&task_id)
-                && let Ok(Some(status)) = worker.child.try_wait()
-            {
+        while let Ok(event) = self.worker_events_rx.try_recv() {
+            if let Some(worker) = self.in_flight.get(&event.task_id) {
                 finished.push((
-                    task_id,
+                    event.task_id,
                     worker.task_title.clone(),
                     worker.workspace.clone(),
-                    status,
+                    event.status,
                 ));
             }
         }
-
         finished
+    }
+
+    /// Wait for at least one worker-exit event up to the provided timeout, then drain the rest.
+    pub fn wait_for_finished_workers(
+        &mut self,
+        timeout: Duration,
+    ) -> Vec<(String, String, WorkspaceSpec, std::process::ExitStatus)> {
+        match self.worker_events_rx.recv_timeout(timeout) {
+            Ok(first) => {
+                let mut finished = Vec::new();
+                if let Some(worker) = self.in_flight.get(&first.task_id) {
+                    finished.push((
+                        first.task_id,
+                        worker.task_title.clone(),
+                        worker.workspace.clone(),
+                        first.status,
+                    ));
+                }
+                finished.extend(self.drain_finished_workers());
+                finished
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => Vec::new(),
+            Err(mpsc::RecvTimeoutError::Disconnected) => Vec::new(),
+        }
     }
 
     /// Register a workspace for cleanup.
@@ -187,6 +217,7 @@ impl Drop for ParallelCleanupGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::commands::run::parallel::worker::start_worker_monitor;
     use crate::lock;
     use std::process::{Child, Command};
     use tempfile::TempDir;
@@ -216,15 +247,16 @@ mod tests {
         std::fs::create_dir_all(&workspace_path)?;
 
         // Create worker state
-        let worker = WorkerState {
-            task_id: "RQ-0001".to_string(),
-            task_title: "Test task".to_string(),
-            workspace: WorkspaceSpec {
+        let worker = start_worker_monitor(
+            "RQ-0001",
+            "Test task".to_string(),
+            WorkspaceSpec {
                 path: workspace_path.clone(),
                 branch: "main".to_string(),
             },
             child,
-        };
+            guard.worker_event_sender(),
+        );
 
         // Register worker and add to state
         guard.register_worker("RQ-0001".to_string(), worker);
@@ -276,15 +308,16 @@ mod tests {
         let workspace_path = temp.path().join("workspaces").join("RQ-0001");
         std::fs::create_dir_all(&workspace_path)?;
 
-        let worker = WorkerState {
-            task_id: "RQ-0001".to_string(),
-            task_title: "Test task".to_string(),
-            workspace: WorkspaceSpec {
+        let worker = start_worker_monitor(
+            "RQ-0001",
+            "Test task".to_string(),
+            WorkspaceSpec {
                 path: workspace_path.clone(),
                 branch: "main".to_string(),
             },
             child,
-        };
+            guard.worker_event_sender(),
+        );
 
         guard.register_worker("RQ-0001".to_string(), worker);
 
@@ -322,15 +355,16 @@ mod tests {
         let workspace_path = temp.path().join("workspaces").join("RQ-0001");
         std::fs::create_dir_all(&workspace_path)?;
 
-        let worker = WorkerState {
-            task_id: "RQ-0001".to_string(),
-            task_title: "Test task".to_string(),
-            workspace: WorkspaceSpec {
+        let worker = start_worker_monitor(
+            "RQ-0001",
+            "Test task".to_string(),
+            WorkspaceSpec {
                 path: workspace_path.clone(),
                 branch: "main".to_string(),
             },
             child,
-        };
+            guard.worker_event_sender(),
+        );
 
         guard.register_worker("RQ-0001".to_string(), worker);
 
@@ -363,15 +397,16 @@ mod tests {
         let workspace_path = temp.path().join("workspaces").join("RQ-0001");
         std::fs::create_dir_all(&workspace_path)?;
 
-        let worker = WorkerState {
-            task_id: "RQ-0001".to_string(),
-            task_title: "Test task".to_string(),
-            workspace: WorkspaceSpec {
+        let worker = start_worker_monitor(
+            "RQ-0001",
+            "Test task".to_string(),
+            WorkspaceSpec {
                 path: workspace_path,
                 branch: "main".to_string(),
             },
             child,
-        };
+            guard.worker_event_sender(),
+        );
 
         guard.register_worker("RQ-0001".to_string(), worker);
 

@@ -38,7 +38,9 @@ pub(crate) use ci_gate::execute_ci_gate;
 
 pub(crate) use execution::{RunnerErrorMessages, RunnerInvocation, run_prompt_with_handling};
 
-pub(crate) use retry::{RunnerRetryPolicy, SeededRng, compute_backoff, format_duration};
+pub(crate) use retry::{
+    FixedBackoffSchedule, RunnerRetryPolicy, SeededRng, compute_backoff, format_duration,
+};
 pub(crate) use shell::{
     ManagedCommand, TimeoutClass, execute_managed_command, sleep_with_cancellation,
 };
