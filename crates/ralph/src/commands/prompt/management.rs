@@ -143,10 +143,14 @@ pub fn sync_prompts(repo_root: &Path, dry_run: bool, force: bool) -> Result<()> 
     let mut created = 0;
 
     for (name, id) in outdated {
-        match prompt_mgmt::export_template(repo_root, id, true, ralph_version) {
-            Ok(_) => {
+        match prompt_mgmt::sync_template(repo_root, id, false, ralph_version) {
+            Ok((true, _)) => {
                 updated += 1;
                 println!("Updated {} (outdated)", name);
+            }
+            Ok((false, _)) => {
+                skipped += 1;
+                println!("Skipped {} (outdated)", name);
             }
             Err(error) => {
                 skipped += 1;
@@ -156,10 +160,14 @@ pub fn sync_prompts(repo_root: &Path, dry_run: bool, force: bool) -> Result<()> 
     }
 
     for (name, id) in missing {
-        match prompt_mgmt::export_template(repo_root, id, false, ralph_version) {
-            Ok(_) => {
+        match prompt_mgmt::sync_template(repo_root, id, false, ralph_version) {
+            Ok((true, _)) => {
                 created += 1;
                 println!("Created {}", name);
+            }
+            Ok((false, _)) => {
+                skipped += 1;
+                println!("Skipped {}: already exists", name);
             }
             Err(error) => {
                 skipped += 1;
@@ -169,20 +177,19 @@ pub fn sync_prompts(repo_root: &Path, dry_run: bool, force: bool) -> Result<()> 
     }
 
     for (name, id) in user_modified {
-        if force {
-            match prompt_mgmt::export_template(repo_root, id, true, ralph_version) {
-                Ok(_) => {
-                    updated += 1;
-                    println!("Overwrote {} (user modified, --force)", name);
-                }
-                Err(error) => {
-                    skipped += 1;
-                    eprintln!("Error overwriting {}: {}", name, error);
-                }
+        match prompt_mgmt::sync_template(repo_root, id, force, ralph_version) {
+            Ok((true, _)) => {
+                updated += 1;
+                println!("Overwrote {} (user modified, --force)", name);
             }
-        } else {
-            skipped += 1;
-            println!("Skipped {} (user modified, use --force to overwrite)", name);
+            Ok((false, _)) => {
+                skipped += 1;
+                println!("Skipped {} (user modified, use --force to overwrite)", name);
+            }
+            Err(error) => {
+                skipped += 1;
+                eprintln!("Error overwriting {}: {}", name, error);
+            }
         }
     }
 
