@@ -545,3 +545,128 @@ fn timeout_stdout_capture_survives_mutex_poison() {
         err_msg
     );
 }
+
+#[test]
+fn pi_continue_falls_back_to_fresh_run_when_resume_session_lookup_fails() {
+    use crate::redaction::RedactedString;
+
+    #[derive(Default)]
+    struct MockPiFallbackBackend {
+        run_calls: usize,
+        resume_calls: usize,
+    }
+
+    impl RunnerBackend for MockPiFallbackBackend {
+        fn run_prompt<'a>(
+            &mut self,
+            _runner_kind: Runner,
+            _work_dir: &std::path::Path,
+            _bins: crate::runner::RunnerBinaries<'a>,
+            _model: Model,
+            _reasoning_effort: Option<ReasoningEffort>,
+            _runner_cli: crate::runner::ResolvedRunnerCliOptions,
+            _prompt: &str,
+            _timeout: Option<std::time::Duration>,
+            _permission_mode: Option<ClaudePermissionMode>,
+            _output_handler: Option<crate::runner::OutputHandler>,
+            _output_stream: crate::runner::OutputStream,
+            _phase_type: crate::commands::run::PhaseType,
+            _session_id: Option<String>,
+            _plugins: Option<&crate::plugins::registry::PluginRegistry>,
+        ) -> anyhow::Result<crate::runner::RunnerOutput, crate::runner::RunnerError> {
+            self.run_calls += 1;
+            if self.run_calls == 1 {
+                Err(crate::runner::RunnerError::TerminatedBySignal {
+                    signal: Some(15),
+                    stdout: RedactedString::from(""),
+                    stderr: RedactedString::from(""),
+                    session_id: Some("pi-session-123".to_string()),
+                })
+            } else {
+                Ok(crate::runner::RunnerOutput {
+                    status: std::process::Command::new("sh")
+                        .arg("-c")
+                        .arg("exit 0")
+                        .status()
+                        .expect("status"),
+                    stdout: "fresh rerun output".to_string(),
+                    stderr: String::new(),
+                    session_id: Some("fresh-session".to_string()),
+                })
+            }
+        }
+
+        fn resume_session<'a>(
+            &mut self,
+            _runner_kind: Runner,
+            _work_dir: &std::path::Path,
+            _bins: crate::runner::RunnerBinaries<'a>,
+            _model: Model,
+            _reasoning_effort: Option<ReasoningEffort>,
+            _runner_cli: crate::runner::ResolvedRunnerCliOptions,
+            _session_id: &str,
+            _message: &str,
+            _permission_mode: Option<ClaudePermissionMode>,
+            _timeout: Option<std::time::Duration>,
+            _output_handler: Option<crate::runner::OutputHandler>,
+            _output_stream: crate::runner::OutputStream,
+            _phase_type: crate::commands::run::PhaseType,
+            _plugins: Option<&crate::plugins::registry::PluginRegistry>,
+        ) -> anyhow::Result<crate::runner::RunnerOutput, crate::runner::RunnerError> {
+            self.resume_calls += 1;
+            Err(crate::runner::RunnerError::Other(anyhow::anyhow!(
+                "pi session file not found"
+            )))
+        }
+    }
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let invocation = RunnerInvocation {
+        repo_root: temp_dir.path(),
+        runner_kind: Runner::Pi,
+        bins: crate::runner::RunnerBinaries {
+            codex: "codex",
+            opencode: "opencode",
+            gemini: "gemini",
+            claude: "claude",
+            cursor: "cursor",
+            kimi: "kimi",
+            pi: "pi",
+        },
+        model: Model::Gpt52,
+        reasoning_effort: None,
+        runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
+        prompt: "resume task",
+        timeout: None,
+        permission_mode: None,
+        revert_on_error: false,
+        git_revert_mode: GitRevertMode::Disabled,
+        output_handler: None,
+        output_stream: crate::runner::OutputStream::HandlerOnly,
+        revert_prompt: None,
+        phase_type: crate::commands::run::PhaseType::Implementation,
+        session_id: Some("pi-session-123".to_string()),
+        retry_policy: super::RunnerRetryPolicy::default(),
+    };
+
+    let messages = RunnerErrorMessages {
+        log_label: "pi-fallback",
+        interrupted_msg: "interrupted",
+        timeout_msg: "timeout",
+        terminated_msg: "terminated",
+        non_zero_msg: |code| format!("non-zero exit: {}", code),
+        other_msg: |err| format!("other error: {}", err),
+    };
+
+    let mut backend = MockPiFallbackBackend::default();
+    let output = run_prompt_with_handling_backend(invocation, messages, &mut backend)
+        .expect("fallback should rerun fresh");
+
+    assert_eq!(backend.resume_calls, 1, "resume should be attempted once");
+    assert_eq!(
+        backend.run_calls, 2,
+        "fresh rerun should execute after fallback"
+    );
+    assert_eq!(output.stdout, "fresh rerun output");
+    assert_eq!(output.session_id.as_deref(), Some("fresh-session"));
+}

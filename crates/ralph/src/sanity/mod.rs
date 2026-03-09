@@ -276,9 +276,9 @@ mod tests {
     }
 
     #[test]
-    fn sanity_options_can_prompt_defaults_false() {
+    fn sanity_options_default_matches_current_tty_state() {
         let opts = SanityOptions::default();
-        assert!(!opts.can_prompt());
+        assert_eq!(opts.can_prompt(), is_tty());
     }
 
     #[test]

@@ -28,7 +28,7 @@ pub(crate) use error::{
 };
 
 pub(crate) use execution::{
-    BuiltInRunnerPlugin, ResolvedRunnerCliOptions, RunnerPlugin, ctrlc_state,
+    BuiltInRunnerPlugin, CtrlCState, ResolvedRunnerCliOptions, RunnerPlugin, ctrlc_state,
 };
 
 pub(crate) use model::{
