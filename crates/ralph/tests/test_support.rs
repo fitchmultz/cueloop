@@ -25,6 +25,8 @@ mod test_support_fixtures;
 mod test_support_parallel;
 #[path = "test_support/test_support_path.rs"]
 mod test_support_path;
+#[path = "test_support/test_support_queue.rs"]
+mod test_support_queue;
 #[path = "test_support/test_support_snapshot.rs"]
 mod test_support_snapshot;
 #[path = "test_support/test_support_sync.rs"]
@@ -35,5 +37,6 @@ pub use test_support_config::*;
 pub use test_support_fixtures::*;
 pub use test_support_parallel::*;
 pub use test_support_path::*;
+pub use test_support_queue::*;
 pub use test_support_snapshot::*;
 pub use test_support_sync::*;

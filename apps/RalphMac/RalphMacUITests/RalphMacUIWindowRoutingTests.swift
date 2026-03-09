@@ -1,15 +1,18 @@
 /**
- RalphMacUIWindowRoutingTests
+ Purpose:
+ - Validate focused-scene tab and window routing regressions.
 
  Responsibilities:
- - Validate tab and window routing behaviors remain scoped to the focused scene.
- - Cover command-palette and keyboard shortcut multi-window behavior.
+ - Cover menu, keyboard, and command-palette multi-window behavior.
 
- Does not handle:
- - Task editing or navigation-within-a-single-window flows.
+ Scope:
+ - Multi-window routing only.
 
- Invariants/assumptions callers must respect:
- - Tests run with multiwindow launch arguments inherited from `RalphMacUITestCase`.
+ Usage:
+ - Runs with `--uitesting-multiwindow` inherited from `RalphMacUITestCase`.
+
+ Invariants/Assumptions:
+ - Tests rely on shared workspace-window probing helpers for window/tab counts.
  */
 
 import XCTest
@@ -18,7 +21,7 @@ import XCTest
 final class RalphMacUIWindowRoutingTests: RalphMacUITestCase {
     func test_createNewTab_andSwitchBetweenTabs() throws {
         let window = app.windows.firstMatch
-        XCTAssertTrue(window.waitForExistence(timeout: 5))
+        assertExists(window, message: "Main window should appear")
         let before = tabCount(in: window)
 
         app.menuBars.menuBarItems["Workspace"].click()
@@ -77,8 +80,8 @@ final class RalphMacUIWindowRoutingTests: RalphMacUITestCase {
         let firstWindow = windows[0]
         let secondWindow = windows[1]
 
-        XCTAssertTrue(taskViewModePicker(in: firstWindow).waitForExistence(timeout: 5))
-        XCTAssertTrue(taskViewModePicker(in: secondWindow).waitForExistence(timeout: 5))
+        assertExists(taskViewModePicker(in: firstWindow), message: "First window view picker should appear")
+        assertExists(taskViewModePicker(in: secondWindow), message: "Second window view picker should appear")
 
         firstWindow.click()
         firstWindow.typeKey("5", modifierFlags: .command)
@@ -111,7 +114,7 @@ final class RalphMacUIWindowRoutingTests: RalphMacUITestCase {
         firstWindow.typeKey("k", modifierFlags: .command)
 
         let searchField = app.textFields["Type a command or search..."]
-        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Command palette should appear")
+        assertExists(searchField, message: "Command palette should appear")
         searchField.click()
         searchField.typeText("New Tab")
         searchField.typeKey(XCUIKeyboardKey.return, modifierFlags: [])

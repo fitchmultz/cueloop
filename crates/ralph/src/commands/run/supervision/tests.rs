@@ -1,6 +1,7 @@
 //! Supervision scenario coverage.
 //!
 //! Responsibilities:
-//! - Include the extracted supervision scenario suite in the original test module scope.
+//! - Register extracted supervision runtime coverage through a thin root module.
 
-include!("runtime_tests.rs");
+#[path = "runtime_tests.rs"]
+mod runtime_tests;

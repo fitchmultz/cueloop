@@ -92,6 +92,51 @@ impl<T> Default for Signal<T> {
     }
 }
 
+pub struct Gate {
+    open: Mutex<bool>,
+    ready: Condvar,
+}
+
+impl Gate {
+    pub fn new_closed() -> Self {
+        Self {
+            open: Mutex::new(false),
+            ready: Condvar::new(),
+        }
+    }
+
+    pub fn open(&self) {
+        let mut open = self.open.lock().expect("lock gate");
+        *open = true;
+        self.ready.notify_all();
+    }
+
+    pub fn wait(&self, timeout: Duration) -> bool {
+        let deadline = Instant::now() + timeout;
+        let mut open = self.open.lock().expect("lock gate");
+        while !*open {
+            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                break;
+            };
+            let (next_open, wait_result) = self
+                .ready
+                .wait_timeout(open, remaining)
+                .expect("wait on gate condvar");
+            open = next_open;
+            if wait_result.timed_out() {
+                break;
+            }
+        }
+        *open
+    }
+}
+
+impl Default for Gate {
+    fn default() -> Self {
+        Self::new_closed()
+    }
+}
+
 /// Poll a shared `Mutex<Option<T>>` until populated or timeout.
 pub fn wait_for_mutex_value<T: Clone>(
     value: &Arc<Mutex<Option<T>>>,

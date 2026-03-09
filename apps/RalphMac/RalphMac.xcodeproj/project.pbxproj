@@ -124,6 +124,11 @@
 		SETTINGSVIEWMODEL001234567 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = SETTINGSVIEWMODELREF001234567 /* SettingsViewModel.swift */; };
 		UITESTSBB0012345678901234 /* RalphMacUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF1123456789012345 /* RalphMacUITests.swift */; };
 		UITESTSBB2234567890123456 /* RalphMacUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF3345678901234567 /* RalphMacUITestsLaunchTests.swift */; };
+		UITESTSBB4455667788990001 /* RalphMacUITestCase+Synchronization.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF4455667788990001 /* RalphMacUITestCase+Synchronization.swift */; };
+		UITESTSBB4455667788990002 /* RalphMacUITestCase+Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF4455667788990002 /* RalphMacUITestCase+Workspace.swift */; };
+		UITESTSBB4455667788990003 /* RalphMacUITestCase+Queries.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF4455667788990003 /* RalphMacUITestCase+Queries.swift */; };
+		UITESTSBB4455667788990004 /* RalphMacUITestCase+Screenshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF4455667788990004 /* RalphMacUITestCase+Screenshots.swift */; };
+		UITESTSBB4455667788990005 /* RalphMacUIAppStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF4455667788990005 /* RalphMacUIAppStateTests.swift */; };
 		WCROUTEBLD1234567890ABCD /* WindowCommandRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = WCROUTEFREF1234567890ABC /* WindowCommandRouting.swift */; };
 		1BF9E79F4485071E68C96DFC /* GraphLayoutEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3850ED3FCAE584917AB31A /* GraphLayoutEngine.swift */; };
 		90AE38428DE5F70186892FFF /* GraphPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D730C2592B7B52A7F996C839 /* GraphPresentation.swift */; };
@@ -334,6 +339,11 @@
 		UITESTSFF0012345678901234 /* RalphMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RalphMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		UITESTSFF1123456789012345 /* RalphMacUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUITests.swift; sourceTree = "<group>"; };
 		UITESTSFF3345678901234567 /* RalphMacUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		UITESTSFF4455667788990001 /* RalphMacUITestCase+Synchronization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphMacUITestCase+Synchronization.swift"; sourceTree = "<group>"; };
+		UITESTSFF4455667788990002 /* RalphMacUITestCase+Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphMacUITestCase+Workspace.swift"; sourceTree = "<group>"; };
+		UITESTSFF4455667788990003 /* RalphMacUITestCase+Queries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphMacUITestCase+Queries.swift"; sourceTree = "<group>"; };
+		UITESTSFF4455667788990004 /* RalphMacUITestCase+Screenshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphMacUITestCase+Screenshots.swift"; sourceTree = "<group>"; };
+		UITESTSFF4455667788990005 /* RalphMacUIAppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUIAppStateTests.swift; sourceTree = "<group>"; };
 		WCROUTEFREF1234567890ABC /* WindowCommandRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCommandRouting.swift; sourceTree = "<group>"; };
 		AD3850ED3FCAE584917AB31A /* GraphLayoutEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphLayoutEngine.swift; sourceTree = "<group>"; };
 		D730C2592B7B52A7F996C839 /* GraphPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphPresentation.swift; sourceTree = "<group>"; };
@@ -621,7 +631,12 @@
 			isa = PBXGroup;
 			children = (
 				UITESTSFF1123456789012345 /* RalphMacUITests.swift */,
+				UITESTSFF4455667788990001 /* RalphMacUITestCase+Synchronization.swift */,
+				UITESTSFF4455667788990002 /* RalphMacUITestCase+Workspace.swift */,
+				UITESTSFF4455667788990003 /* RalphMacUITestCase+Queries.swift */,
+				UITESTSFF4455667788990004 /* RalphMacUITestCase+Screenshots.swift */,
 				UITESTSFF3345678901234567 /* RalphMacUITestsLaunchTests.swift */,
+				UITESTSFF4455667788990005 /* RalphMacUIAppStateTests.swift */,
 				38AF699276C60CB8F9BE71F3 /* RalphMacUIConflictTests.swift */,
 				88A3280F3774A438F9AF9EA5 /* RalphMacUILaunchAndTaskFlowTests.swift */,
 				B457CE53E5E32E8183834647 /* RalphMacUINavigationAndKeyboardTests.swift */,
@@ -974,7 +989,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				UITESTSBB0012345678901234 /* RalphMacUITests.swift in Sources */,
+				UITESTSBB4455667788990001 /* RalphMacUITestCase+Synchronization.swift in Sources */,
+				UITESTSBB4455667788990002 /* RalphMacUITestCase+Workspace.swift in Sources */,
+				UITESTSBB4455667788990003 /* RalphMacUITestCase+Queries.swift in Sources */,
+				UITESTSBB4455667788990004 /* RalphMacUITestCase+Screenshots.swift in Sources */,
 				UITESTSBB2234567890123456 /* RalphMacUITestsLaunchTests.swift in Sources */,
+				UITESTSBB4455667788990005 /* RalphMacUIAppStateTests.swift in Sources */,
 				06BA76F596A10AC6CFB3053A /* RalphMacUIConflictTests.swift in Sources */,
 				B9B5C4321751543C95899B9C /* RalphMacUILaunchAndTaskFlowTests.swift in Sources */,
 				84D2C60236102E8F761A2C09 /* RalphMacUINavigationAndKeyboardTests.swift in Sources */,
