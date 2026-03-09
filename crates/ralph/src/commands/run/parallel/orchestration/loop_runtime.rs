@@ -113,9 +113,7 @@ fn drive_parallel_loop(
                     &mut prepared.guard,
                     &prepared.state_path,
                     &prepared.settings.workspace_root,
-                    &mut prepared.tasks_attempted,
-                    &mut prepared.tasks_succeeded,
-                    &mut prepared.tasks_failed,
+                    &mut prepared.stats,
                 )?;
             }
         }
@@ -184,7 +182,7 @@ fn spawn_available_workers(
 
         let worker = start_worker_monitor(
             &task_id,
-            task_title.clone(),
+            task_title,
             workspace.clone(),
             child,
             prepared.guard.worker_event_sender(),
@@ -204,9 +202,7 @@ fn drain_and_handle_finished(prepared: &mut PreparedParallelRun) -> Result<()> {
         &mut prepared.guard,
         &prepared.state_path,
         &prepared.settings.workspace_root,
-        &mut prepared.tasks_attempted,
-        &mut prepared.tasks_succeeded,
-        &mut prepared.tasks_failed,
+        &mut prepared.stats,
     )
 }
 

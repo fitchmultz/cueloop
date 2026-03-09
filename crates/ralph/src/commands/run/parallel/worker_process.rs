@@ -16,9 +16,13 @@
 use crate::agent::AgentOverrides;
 use crate::config;
 use crate::git::WorkspaceSpec;
+#[cfg(windows)]
+use crate::runutil::{ManagedCommand, TimeoutClass, execute_managed_command};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
+#[cfg(windows)]
+use std::process::Command;
 use std::process::{Child, ExitStatus};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
@@ -30,15 +34,15 @@ const WORKER_INTERRUPT_GRACE: Duration = Duration::from_millis(1_500);
 const WORKER_EXIT_WAIT_SLICE: Duration = Duration::from_millis(100);
 
 #[derive(Debug)]
-pub(crate) struct WorkerExitEvent {
+pub(crate) struct FinishedWorker {
     pub task_id: String,
+    pub task_title: String,
+    pub workspace: WorkspaceSpec,
     pub status: ExitStatus,
 }
 
 pub(crate) struct WorkerState {
     pub task_id: String,
-    pub task_title: String,
-    pub workspace: WorkspaceSpec,
     pub pid: u32,
     exit_rx: Receiver<std::io::Result<ExitStatus>>,
 }
@@ -53,32 +57,51 @@ impl WorkerState {
             ))),
         }
     }
+
+    fn terminate(&mut self) {
+        #[cfg(unix)]
+        {
+            request_worker_interrupt(self.pid, &self.task_id);
+            if self.recv_exit_timeout(WORKER_INTERRUPT_GRACE).is_some() {
+                return;
+            }
+
+            force_kill_worker(self.pid, &self.task_id);
+            let _ = self.recv_exit_timeout(WORKER_EXIT_WAIT_SLICE);
+        }
+
+        #[cfg(windows)]
+        {
+            terminate_worker_process_windows(self.pid, &self.task_id);
+            let _ = self.recv_exit_timeout(WORKER_INTERRUPT_GRACE + WORKER_EXIT_WAIT_SLICE);
+            return;
+        }
+
+        #[cfg(all(not(unix), not(windows)))]
+        {
+            log::warn!(
+                "Worker {} has no explicit termination support on this platform; waiting for exit only.",
+                self.task_id
+            );
+            let _ = self.recv_exit_timeout(WORKER_INTERRUPT_GRACE + WORKER_EXIT_WAIT_SLICE);
+        }
+    }
 }
 
 pub(crate) fn terminate_workers(in_flight: &mut HashMap<String, WorkerState>) {
     for worker in in_flight.values_mut() {
-        terminate_worker_process(worker);
+        worker.terminate();
     }
 }
 
-fn terminate_worker_process(worker: &mut WorkerState) {
-    #[cfg(unix)]
-    {
-        let pid = worker.pid as i32;
-        send_signal(pid, libc::SIGINT, &worker.task_id, "SIGINT");
+#[cfg(unix)]
+fn request_worker_interrupt(pid: u32, task_id: &str) {
+    send_signal(pid as i32, libc::SIGINT, task_id, "SIGINT");
+}
 
-        if worker.recv_exit_timeout(WORKER_INTERRUPT_GRACE).is_some() {
-            return;
-        }
-
-        send_signal(pid, libc::SIGKILL, &worker.task_id, "SIGKILL");
-        let _ = worker.recv_exit_timeout(WORKER_EXIT_WAIT_SLICE);
-    }
-
-    #[cfg(not(unix))]
-    {
-        let _ = worker.recv_exit_timeout(WORKER_INTERRUPT_GRACE);
-    }
+#[cfg(unix)]
+fn force_kill_worker(pid: u32, task_id: &str) {
+    send_signal(pid as i32, libc::SIGKILL, task_id, "SIGKILL");
 }
 
 #[cfg(unix)]
@@ -105,6 +128,26 @@ fn send_signal(pid: i32, signal: i32, task_id: &str, label: &str) {
             pid,
             direct_err
         );
+    }
+}
+
+#[cfg(windows)]
+fn terminate_worker_process_windows(pid: u32, task_id: &str) {
+    let mut command = Command::new("taskkill");
+    command.args(["/PID", &pid.to_string(), "/T", "/F"]);
+    match execute_managed_command(ManagedCommand::new(
+        command,
+        format!("taskkill worker {task_id}"),
+        TimeoutClass::Probe,
+    )) {
+        Ok(output) if output.status.success() => {}
+        Ok(output) => log::warn!(
+            "Failed to terminate worker {} with taskkill (status: {}, stderr: {}).",
+            task_id,
+            output.status,
+            output.stderr_lossy()
+        ),
+        Err(err) => log::warn!("Failed to launch taskkill for worker {}: {}", task_id, err),
     }
 }
 
@@ -139,19 +182,23 @@ pub(crate) fn start_worker_monitor(
     task_title: String,
     workspace: WorkspaceSpec,
     mut child: Child,
-    worker_events: Sender<WorkerExitEvent>,
+    worker_events: Sender<FinishedWorker>,
 ) -> WorkerState {
     let pid = child.id();
     let task_id_owned = task_id.to_string();
     let (exit_tx, exit_rx) = mpsc::channel();
     let event_task_id = task_id_owned.clone();
+    let event_title = task_title.clone();
+    let event_workspace = workspace.clone();
 
     thread::spawn(move || {
         let result = child.wait();
         match result {
             Ok(status) => {
-                let _ = worker_events.send(WorkerExitEvent {
+                let _ = worker_events.send(FinishedWorker {
                     task_id: event_task_id.clone(),
+                    task_title: event_title,
+                    workspace: event_workspace,
                     status,
                 });
                 let _ = exit_tx.send(Ok(status));
@@ -164,8 +211,6 @@ pub(crate) fn start_worker_monitor(
 
     WorkerState {
         task_id: task_id_owned,
-        task_title,
-        workspace,
         pid,
         exit_rx,
     }

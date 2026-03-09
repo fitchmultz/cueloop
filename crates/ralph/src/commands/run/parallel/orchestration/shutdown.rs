@@ -61,7 +61,7 @@ pub(super) fn finalize_parallel_run(
         log::warn!("Failed to clear stop signal: {}", err);
     }
 
-    if prepared.tasks_attempted > 0 {
+    if prepared.stats.attempted() > 0 {
         let notify_config = crate::notification::build_notification_config(
             &resolved.config.agent.notification,
             &crate::notification::NotificationOverrides {
@@ -71,9 +71,9 @@ pub(super) fn finalize_parallel_run(
             },
         );
         crate::notification::notify_loop_complete(
-            prepared.tasks_attempted,
-            prepared.tasks_succeeded,
-            prepared.tasks_failed,
+            prepared.stats.attempted(),
+            prepared.stats.succeeded(),
+            prepared.stats.failed(),
             &notify_config,
         );
     }
@@ -82,7 +82,9 @@ pub(super) fn finalize_parallel_run(
     let loop_duration_ms = prepared.loop_start_time.elapsed().as_millis() as u64;
     let loop_note = Some(format!(
         "Parallel run completed: {}/{} succeeded, {} failed",
-        prepared.tasks_succeeded, prepared.tasks_attempted, prepared.tasks_failed
+        prepared.stats.succeeded(),
+        prepared.stats.attempted(),
+        prepared.stats.failed()
     ));
     crate::webhook::notify_loop_stopped(
         &resolved.config.agent.webhook,

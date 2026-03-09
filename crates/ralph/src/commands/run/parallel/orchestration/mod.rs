@@ -15,5 +15,6 @@ mod events;
 mod loop_runtime;
 mod preflight;
 mod shutdown;
+mod stats;
 
 pub(crate) use loop_runtime::run_loop_parallel;

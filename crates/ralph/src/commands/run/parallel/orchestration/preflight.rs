@@ -22,6 +22,7 @@ use crate::{git, queue, signal, timeutil};
 
 use super::super::cleanup_guard::ParallelCleanupGuard;
 use super::super::orchestration::events::announce_blocked_tasks_at_loop_start;
+use super::super::orchestration::stats::ParallelRunStats;
 use super::super::{
     ParallelRunOptions, ParallelSettings, initial_tasks_started, load_or_init_parallel_state,
     overrides_for_parallel_workers, preflight_parallel_workspace_root_is_gitignored,
@@ -38,9 +39,7 @@ pub(super) struct PreparedParallelRun {
     pub(super) include_draft: bool,
     pub(super) worker_overrides: crate::agent::AgentOverrides,
     pub(super) tasks_started: u32,
-    pub(super) tasks_attempted: usize,
-    pub(super) tasks_succeeded: usize,
-    pub(super) tasks_failed: usize,
+    pub(super) stats: ParallelRunStats,
     pub(super) attempted_task_ids: HashSet<String>,
     pub(super) stop_requested: bool,
     pub(super) interrupted: bool,
@@ -158,9 +157,7 @@ pub(super) fn prepare_parallel_run(
         include_draft,
         worker_overrides,
         tasks_started,
-        tasks_attempted: 0,
-        tasks_succeeded: 0,
-        tasks_failed: 0,
+        stats: ParallelRunStats::default(),
         attempted_task_ids: HashSet::new(),
         stop_requested: false,
         interrupted: false,

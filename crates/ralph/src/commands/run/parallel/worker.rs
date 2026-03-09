@@ -18,7 +18,7 @@ mod selection;
 #[cfg(test)]
 pub(crate) use command::build_worker_command;
 pub(crate) use process::{
-    WorkerExitEvent, WorkerState, spawn_worker, start_worker_monitor, terminate_workers,
+    FinishedWorker, WorkerState, spawn_worker, start_worker_monitor, terminate_workers,
 };
 pub(crate) use selection::{collect_excluded_ids, select_next_task_locked};
 

@@ -16,7 +16,7 @@
 //! - The guard owns resources and releases them during cleanup.
 
 use crate::commands::run::parallel::state;
-use crate::commands::run::parallel::worker::{WorkerExitEvent, WorkerState, terminate_workers};
+use crate::commands::run::parallel::worker::{FinishedWorker, WorkerState, terminate_workers};
 use crate::commands::run::parallel::workspace_cleanup::remove_workspace_best_effort;
 use crate::git::WorkspaceSpec;
 use anyhow::Result;
@@ -43,8 +43,8 @@ pub(crate) struct ParallelCleanupGuard {
     /// Root directory for workspaces.
     workspace_root: PathBuf,
     /// Worker-exit event channel shared with monitor threads.
-    worker_events_tx: Sender<WorkerExitEvent>,
-    worker_events_rx: Receiver<WorkerExitEvent>,
+    worker_events_tx: Sender<FinishedWorker>,
+    worker_events_rx: Receiver<FinishedWorker>,
     /// Whether cleanup has already been performed.
     completed: bool,
 }
@@ -92,44 +92,25 @@ impl ParallelCleanupGuard {
     }
 
     /// Clone the shared worker-event sender for new monitor threads.
-    pub fn worker_event_sender(&self) -> Sender<WorkerExitEvent> {
+    pub fn worker_event_sender(&self) -> Sender<FinishedWorker> {
         self.worker_events_tx.clone()
     }
 
     /// Drain worker-exit events that are already available.
-    pub fn drain_finished_workers(
-        &mut self,
-    ) -> Vec<(String, String, WorkspaceSpec, std::process::ExitStatus)> {
+    pub fn drain_finished_workers(&mut self) -> Vec<FinishedWorker> {
         let mut finished = Vec::new();
         while let Ok(event) = self.worker_events_rx.try_recv() {
-            if let Some(worker) = self.in_flight.get(&event.task_id) {
-                finished.push((
-                    event.task_id,
-                    worker.task_title.clone(),
-                    worker.workspace.clone(),
-                    event.status,
-                ));
-            }
+            finished.push(event);
         }
         finished
     }
 
     /// Wait for at least one worker-exit event up to the provided timeout, then drain the rest.
-    pub fn wait_for_finished_workers(
-        &mut self,
-        timeout: Duration,
-    ) -> Vec<(String, String, WorkspaceSpec, std::process::ExitStatus)> {
+    pub fn wait_for_finished_workers(&mut self, timeout: Duration) -> Vec<FinishedWorker> {
         match self.worker_events_rx.recv_timeout(timeout) {
             Ok(first) => {
                 let mut finished = Vec::new();
-                if let Some(worker) = self.in_flight.get(&first.task_id) {
-                    finished.push((
-                        first.task_id,
-                        worker.task_title.clone(),
-                        worker.workspace.clone(),
-                        first.status,
-                    ));
-                }
+                finished.push(first);
                 finished.extend(self.drain_finished_workers());
                 finished
             }
@@ -233,33 +214,55 @@ mod tests {
         ParallelCleanupGuard::new_simple(state_path, state_file, workspace_root)
     }
 
-    #[test]
-    fn guard_cleanup_kills_worker_and_clears_state() -> Result<()> {
-        let temp = TempDir::new()?;
-        let mut guard = create_test_guard(&temp);
-
-        // Spawn a long-lived child process
+    fn register_sleeping_worker(
+        guard: &mut ParallelCleanupGuard,
+        temp: &TempDir,
+        task_id: &str,
+    ) -> Result<u32> {
         let child: Child = Command::new("sleep").arg("10").spawn()?;
         let pid = child.id();
-
-        // Create a workspace for the worker
-        let workspace_path = temp.path().join("workspaces").join("RQ-0001");
+        let workspace_path = temp.path().join("workspaces").join(task_id);
         std::fs::create_dir_all(&workspace_path)?;
 
-        // Create worker state
         let worker = start_worker_monitor(
-            "RQ-0001",
+            task_id,
             "Test task".to_string(),
             WorkspaceSpec {
-                path: workspace_path.clone(),
+                path: workspace_path,
                 branch: "main".to_string(),
             },
             child,
             guard.worker_event_sender(),
         );
+        guard.register_worker(task_id.to_string(), worker);
+        Ok(pid)
+    }
 
-        // Register worker and add to state
-        guard.register_worker("RQ-0001".to_string(), worker);
+    #[cfg(unix)]
+    fn kill_test_process(pid: u32) {
+        // SAFETY: test-owned child pid; failure is tolerated because the process may already exit.
+        unsafe {
+            let _ = libc::kill(pid as i32, libc::SIGKILL);
+        }
+    }
+
+    #[cfg(windows)]
+    fn kill_test_process(pid: u32) {
+        let _ = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .status();
+    }
+
+    #[cfg(all(not(unix), not(windows)))]
+    fn kill_test_process(_pid: u32) {}
+
+    #[test]
+    fn guard_cleanup_kills_worker_and_clears_state() -> Result<()> {
+        let temp = TempDir::new()?;
+        let mut guard = create_test_guard(&temp);
+
+        let pid = register_sleeping_worker(&mut guard, &temp, "RQ-0001")?;
+        let workspace_path = temp.path().join("workspaces").join("RQ-0001");
         guard
             .state_file_mut()
             .upsert_worker(state::WorkerRecord::new(
@@ -300,26 +303,7 @@ mod tests {
         let temp = TempDir::new()?;
         let mut guard = create_test_guard(&temp);
 
-        // Spawn a child process
-        let child: Child = Command::new("sleep").arg("10").spawn()?;
-        let pid = child.id();
-
-        // Create workspace
-        let workspace_path = temp.path().join("workspaces").join("RQ-0001");
-        std::fs::create_dir_all(&workspace_path)?;
-
-        let worker = start_worker_monitor(
-            "RQ-0001",
-            "Test task".to_string(),
-            WorkspaceSpec {
-                path: workspace_path.clone(),
-                branch: "main".to_string(),
-            },
-            child,
-            guard.worker_event_sender(),
-        );
-
-        guard.register_worker("RQ-0001".to_string(), worker);
+        let pid = register_sleeping_worker(&mut guard, &temp, "RQ-0001")?;
 
         // Disarm the guard
         guard.mark_completed();
@@ -335,9 +319,7 @@ mod tests {
         );
 
         // Clean up the child process
-        if let Err(e) = Command::new("kill").arg(pid.to_string()).output() {
-            log::debug!("Failed to kill test process {}: {}", pid, e);
-        }
+        kill_test_process(pid);
 
         Ok(())
     }
@@ -347,26 +329,7 @@ mod tests {
         let temp = TempDir::new()?;
         let mut guard = create_test_guard(&temp);
 
-        // Spawn a child process
-        let child: Child = Command::new("sleep").arg("10").spawn()?;
-        let pid = child.id();
-
-        // Create workspace
-        let workspace_path = temp.path().join("workspaces").join("RQ-0001");
-        std::fs::create_dir_all(&workspace_path)?;
-
-        let worker = start_worker_monitor(
-            "RQ-0001",
-            "Test task".to_string(),
-            WorkspaceSpec {
-                path: workspace_path.clone(),
-                branch: "main".to_string(),
-            },
-            child,
-            guard.worker_event_sender(),
-        );
-
-        guard.register_worker("RQ-0001".to_string(), worker);
+        let pid = register_sleeping_worker(&mut guard, &temp, "RQ-0001")?;
 
         // First cleanup
         guard.cleanup()?;
@@ -391,24 +354,7 @@ mod tests {
 
         let mut guard = create_test_guard(&temp);
 
-        let child: Child = Command::new("sleep").arg("10").spawn()?;
-        let pid: u32 = child.id();
-
-        let workspace_path = temp.path().join("workspaces").join("RQ-0001");
-        std::fs::create_dir_all(&workspace_path)?;
-
-        let worker = start_worker_monitor(
-            "RQ-0001",
-            "Test task".to_string(),
-            WorkspaceSpec {
-                path: workspace_path,
-                branch: "main".to_string(),
-            },
-            child,
-            guard.worker_event_sender(),
-        );
-
-        guard.register_worker("RQ-0001".to_string(), worker);
+        let pid = register_sleeping_worker(&mut guard, &temp, "RQ-0001")?;
 
         // Verify worker is running
         assert_eq!(

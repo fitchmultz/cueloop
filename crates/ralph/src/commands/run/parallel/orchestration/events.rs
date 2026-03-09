@@ -11,14 +11,15 @@
 use anyhow::Result;
 use std::collections::HashSet;
 use std::path::Path;
-use std::process::ExitStatus;
 
 use crate::commands::run::parallel::cleanup_guard::ParallelCleanupGuard;
 use crate::commands::run::parallel::state::{self, WorkerLifecycle, WorkerRecord};
+use crate::commands::run::parallel::worker::FinishedWorker;
 use crate::commands::run::parallel::workspace_cleanup::remove_workspace_best_effort;
 use crate::contracts::QueueFile;
-use crate::git::WorkspaceSpec;
 use crate::timeutil;
+
+use super::stats::ParallelRunStats;
 
 fn summarize_block_reason(reason: &str) -> String {
     let first_line = reason.lines().next().unwrap_or(reason).trim();
@@ -77,19 +78,22 @@ pub(super) fn announce_blocked_tasks_at_loop_start(
 }
 
 pub(super) fn handle_finished_workers(
-    finished: Vec<(String, String, WorkspaceSpec, ExitStatus)>,
+    finished: Vec<FinishedWorker>,
     guard: &mut ParallelCleanupGuard,
     state_path: &Path,
     workspace_root: &Path,
-    tasks_attempted: &mut usize,
-    tasks_succeeded: &mut usize,
-    tasks_failed: &mut usize,
+    stats: &mut ParallelRunStats,
 ) -> Result<()> {
-    for (task_id, _task_title, workspace, status) in finished {
-        *tasks_attempted += 1;
+    for finished_worker in finished {
+        let FinishedWorker {
+            task_id,
+            task_title: _task_title,
+            workspace,
+            status,
+        } = finished_worker;
 
         if status.success() {
-            *tasks_succeeded += 1;
+            stats.record_success();
 
             if let Some(worker) = guard.state_file_mut().get_worker_mut(&task_id) {
                 worker.mark_completed(timeutil::now_utc_rfc3339_or_fallback());
@@ -97,7 +101,7 @@ pub(super) fn handle_finished_workers(
 
             log::info!("Worker {} completed successfully", task_id);
         } else {
-            *tasks_failed += 1;
+            stats.record_failure();
 
             let blocked_marker =
                 match super::super::integration::read_blocked_push_marker(&workspace.path) {
