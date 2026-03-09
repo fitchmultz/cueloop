@@ -48,8 +48,9 @@ Out of scope:
   - required public-facing files
   - tracked artifact detection
   - tracked env-file detection
-  - secret-pattern scan with explicit allowlisting
-  - optional full local CI gate (`make ci`)
+  - repo-wide working-tree high-confidence secret-pattern scan with explicit allowlisting
+  - repo-wide working-tree markdown link scan
+  - optional shared release gate (`make release-gate`)
 
 ## Operator Checklist
 

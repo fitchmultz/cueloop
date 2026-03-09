@@ -78,6 +78,8 @@ fn release_script_help_exits_successfully() {
     assert_contains(&combined, "verify <version>");
     assert_contains(&combined, "execute <version>");
     assert_contains(&combined, "reconcile <version>");
+    assert_contains(&combined, "GitHub draft release");
+    assert_contains(&combined, "crates.io");
     assert_contains(&combined, "Usage:");
     assert_contains(&combined, "Commands:");
     assert_contains(&combined, "Release model:");

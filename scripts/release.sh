@@ -4,6 +4,7 @@
 # Responsibilities:
 # - Prepare and record a publish-ready local release snapshot before any remote mutation.
 # - Publish only from a previously verified release snapshot.
+# - Keep crates.io as the final irreversible cutover and GitHub public release visibility behind it.
 # - Resume partially completed remote publication from recorded transaction state.
 # Scope:
 # - Local release automation only; no remote CI or GitHub Actions.
@@ -65,8 +66,10 @@ Exit codes:
 Release model:
   1. verify prepares a local publish-ready snapshot (versions, checks, artifacts, notes)
   2. execute validates that exact snapshot still matches the workspace
-  3. execute creates the release commit/tag and publishes remotely
-  4. reconcile resumes from recorded transaction state if a remote step fails
+  3. execute pushes reversible remote state first (commit/tag + GitHub draft release)
+  4. execute publishes crates.io only after the reversible state is ready
+  5. execute publishes the GitHub release after crates.io succeeds
+  6. reconcile resumes the exact recorded phase; once crates.io is published, finish immediately
 EOF
 }
 
@@ -88,7 +91,12 @@ print_reconcile_hint() {
     echo ""
     ralph_log_warn "Release transaction recorded for recovery"
     echo "  Transaction: $TRANSACTION_DIR"
-    echo "  Resume with: scripts/release.sh reconcile $VERSION"
+    if [ "${CRATE_PUBLISHED:-0}" = "1" ]; then
+        echo "  crates.io is already published; finish the transaction immediately:"
+    else
+        echo "  Resume with:"
+    fi
+    echo "    scripts/release.sh reconcile $VERSION"
 }
 
 run_verify() {
@@ -109,7 +117,12 @@ run_execute() {
     RELEASE_NOTES_FILE="$VERIFY_RELEASE_NOTES_FILE"
     release_state_write
 
-    if ! release_publish_crate || ! release_push_remote_state || ! release_create_github_release; then
+    if ! release_create_commit_and_tag \
+        || ! release_push_remote_main \
+        || ! release_push_remote_tag \
+        || ! release_create_or_update_github_release_draft \
+        || ! release_publish_crate \
+        || ! release_publish_github_release; then
         print_reconcile_hint
         return 1
     fi
@@ -125,7 +138,12 @@ run_reconcile() {
     release_state_load
     release_check_prerequisites 1
 
-    if ! release_publish_crate || ! release_push_remote_state || ! release_create_github_release; then
+    if ! release_create_commit_and_tag \
+        || ! release_push_remote_main \
+        || ! release_push_remote_tag \
+        || ! release_create_or_update_github_release_draft \
+        || ! release_publish_crate \
+        || ! release_publish_github_release; then
         print_reconcile_hint
         return 1
     fi

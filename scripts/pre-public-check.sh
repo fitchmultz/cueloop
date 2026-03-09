@@ -3,7 +3,7 @@
 # Purpose: Run a repo-wide public-readiness audit for the Ralph repository.
 # Responsibilities:
 # - Validate required public-facing files and forbid tracked runtime/build artifacts.
-# - Scan the whole repo for broken markdown links and obvious secret material.
+# - Scan the repo working tree for broken markdown links and high-confidence secret material.
 # - Run the local CI gate when requested and enforce clean or release-context worktrees.
 # Scope:
 # - Repository hygiene and publication safety only; it does not tag or publish releases.
@@ -37,8 +37,8 @@ Usage:
 
 Options:
   --skip-ci         Skip the shared release gate (`make release-gate`)
-  --skip-links      Skip repo-wide markdown link checks
-  --skip-secrets    Skip repo-wide secret-pattern scan
+  --skip-links      Skip repo-wide working-tree markdown link checks
+  --skip-secrets    Skip repo-wide working-tree secret-pattern scan
   --skip-clean      Skip worktree cleanliness checks
   --release-context Allow only canonical release metadata files to be dirty
   -h, --help        Show this help message
@@ -148,76 +148,12 @@ check_secret_patterns() {
         return 0
     fi
 
-    ralph_log_info "Scanning repo-wide files for obvious secret patterns"
+    ralph_log_info "Scanning repo-wide working-tree text files for high-confidence secret patterns"
+    export RALPH_PUBLIC_SCAN_EXCLUDES
+    RALPH_PUBLIC_SCAN_EXCLUDES="$(printf '%s\n' "${PUBLIC_SCAN_EXCLUDES[@]}")"
+    python3 "$SCRIPT_DIR/lib/public_readiness_scan.py" secrets "$REPO_ROOT"
 
-    python3 - "$REPO_ROOT" <<'PY'
-from pathlib import Path
-import re
-import subprocess
-import sys
-
-repo_root = Path(sys.argv[1])
-patterns = {
-    "aws_access_key": re.compile(r"AKIA[0-9A-Z]{16}"),
-    "github_classic_token": re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
-    "github_pat": re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
-    "slack_token": re.compile(r"xox[baprs]-[A-Za-z0-9-]{10,}"),
-    "openai_key": re.compile(r"sk-[A-Za-z0-9]{24,}"),
-    "stripe_live": re.compile(r"sk_live_[A-Za-z0-9]{16,}"),
-    "private_key": re.compile(r"BEGIN (?:RSA|OPENSSH|EC|DSA|PGP) PRIVATE KEY"),
-}
-
-def allowlisted(rel: str, line: str) -> bool:
-    if rel.startswith("crates/ralph/tests/"):
-        return True
-    if rel == "docs/features/security.md":
-        return True
-    if rel == "scripts/pre-public-check.sh" and "PRIVATE KEY" in line:
-        return True
-    if rel == "crates/ralph/src/fsutil.rs" and "AKIA" in line and "EXAMPLE" in line:
-        return True
-    if rel == "crates/ralph/src/fsutil.rs" and "OPENSSH PRIVATE KEY" in line:
-        return True
-    return False
-
-paths = subprocess.run(
-    ["git", "-C", str(repo_root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-    check=True,
-    capture_output=True,
-).stdout.split(b"\0")
-
-problems = []
-for raw in paths:
-    if not raw:
-        continue
-    rel = raw.decode("utf-8", errors="replace")
-    path = repo_root / rel
-    try:
-        data = path.read_bytes()
-    except OSError:
-        continue
-    if b"\0" in data:
-        continue
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError:
-        continue
-    for line_number, line in enumerate(text.splitlines(), start=1):
-        for name, pattern in patterns.items():
-            match = pattern.search(line)
-            if not match:
-                continue
-            if allowlisted(rel, line):
-                continue
-            problems.append(f"{rel}:{line_number}: {name}: {match.group(0)}")
-
-if problems:
-    for line in problems:
-        print(line)
-    sys.exit(1)
-PY
-
-    ralph_log_success "No obvious secret patterns found"
+    ralph_log_success "No high-confidence secret patterns found"
 }
 
 check_markdown_links() {
@@ -226,44 +162,10 @@ check_markdown_links() {
         return 0
     fi
 
-    ralph_log_info "Checking repo-wide markdown links"
-
-    python3 - "$REPO_ROOT" <<'PY'
-from pathlib import Path
-import re
-import subprocess
-import sys
-
-repo_root = Path(sys.argv[1])
-paths = subprocess.run(
-    ["git", "-C", str(repo_root), "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.md"],
-    check=True,
-    capture_output=True,
-).stdout.split(b"\0")
-pattern = re.compile(r'!?\[[^\]]*\]\(([^)]+)\)')
-missing = []
-for raw in paths:
-    if not raw:
-        continue
-    source = repo_root / raw.decode("utf-8", errors="replace")
-    text = source.read_text(encoding="utf-8")
-    for raw_target in pattern.findall(text):
-        target = raw_target.strip().split()[0].strip('<>')
-        if target.startswith(("http://", "https://", "mailto:", "#")):
-            continue
-        if "{{" in target or "}}" in target:
-            continue
-        target = target.split("#", 1)[0].split("?", 1)[0]
-        if not target:
-            continue
-        resolved = (source.parent / target).resolve()
-        if not resolved.exists():
-            missing.append(f"{source.relative_to(repo_root)}: missing target -> {raw_target}")
-if missing:
-    for line in missing:
-        print(line)
-    sys.exit(1)
-PY
+    ralph_log_info "Checking repo-wide working-tree markdown links"
+    export RALPH_PUBLIC_SCAN_EXCLUDES
+    RALPH_PUBLIC_SCAN_EXCLUDES="$(printf '%s\n' "${PUBLIC_SCAN_EXCLUDES[@]}")"
+    python3 "$SCRIPT_DIR/lib/public_readiness_scan.py" links "$REPO_ROOT"
 
     ralph_log_success "Markdown links look valid"
 }

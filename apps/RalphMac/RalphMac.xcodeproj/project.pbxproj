@@ -616,8 +616,9 @@
 			inputPaths = (
 				"$(SRCROOT)/../../Cargo.toml",
 				"$(SRCROOT)/../../Cargo.lock",
-				"$(SRCROOT)/../../target/debug/ralph",
-				"$(SRCROOT)/../../target/release/ralph",
+				"$(SRCROOT)/../../VERSION",
+				"$(SRCROOT)/../../rust-toolchain.toml",
+				"$(SRCROOT)/../../scripts/ralph-cli-bundle.sh",
 			);
 			name = "Build and Bundle ralph";
 			outputFileListPaths = (

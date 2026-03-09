@@ -2,8 +2,8 @@
 #
 # Purpose: Classify the current change set into the correct CI surface for agents.
 # Responsibilities:
-# - Inspect tracked and untracked repo changes.
-# - Route docs-only changes to `ci-fast`.
+# - Inspect local working-tree changes plus committed branch delta versus trunk.
+# - Route docs-only surfaces to `ci-fast`.
 # - Escalate CLI/build/runtime/app contract changes to `macos-ci`.
 # Scope:
 # - Classification only; it does not execute make targets itself.
@@ -11,7 +11,7 @@
 # - scripts/agent-ci-surface.sh --target
 # - scripts/agent-ci-surface.sh --reason
 # Invariants/assumptions:
-# - When no git worktree is available, callers should conservatively run `macos-ci`.
+# - When no git worktree or trunk baseline is available, callers should conservatively run `macos-ci`.
 
 set -euo pipefail
 
@@ -64,17 +64,60 @@ if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     exit 0
 fi
 
+resolve_trunk_ref() {
+    local candidate
+    for candidate in refs/remotes/origin/main refs/heads/main refs/remotes/origin/master refs/heads/master; do
+        if git -C "$REPO_ROOT" show-ref --verify --quiet "$candidate"; then
+            case "$candidate" in
+                refs/remotes/*)
+                    printf '%s\n' "${candidate#refs/remotes/}"
+                    ;;
+                refs/heads/*)
+                    printf '%s\n' "${candidate#refs/heads/}"
+                    ;;
+            esac
+            return 0
+        fi
+    done
+    return 1
+}
+
+branch_delta_paths() {
+    local trunk_ref="$1"
+    local merge_base
+    merge_base=$(git -C "$REPO_ROOT" merge-base HEAD "$trunk_ref" 2>/dev/null || true)
+    if [ -z "$merge_base" ]; then
+        return 0
+    fi
+
+    git -C "$REPO_ROOT" diff --name-only --relative "$merge_base"...HEAD
+}
+
+trunk_ref="$(resolve_trunk_ref || true)"
+
 changed_paths="$(
     {
         git -C "$REPO_ROOT" diff --name-only --relative
         git -C "$REPO_ROOT" diff --cached --name-only --relative
         git -C "$REPO_ROOT" ls-files --others --exclude-standard
+        if [ -n "$trunk_ref" ]; then
+            branch_delta_paths "$trunk_ref"
+        fi
     } | sed '/^$/d' | sort -u
 )"
 
+if [ -z "$trunk_ref" ]; then
+    if [ "$MODE" = "reason" ]; then
+        echo "no trunk baseline found; conservatively running macos-ci"
+    else
+        echo "macos-ci"
+    fi
+    exit 0
+fi
+
 if [ -z "$changed_paths" ]; then
     if [ "$MODE" = "reason" ]; then
-        echo "no pending changes; defaulting to ci-fast"
+        echo "no local or branch-delta changes; defaulting to ci-fast"
     else
         echo "ci-fast"
     fi

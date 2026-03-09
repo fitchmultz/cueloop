@@ -19,7 +19,7 @@ make agent-ci
 Behavior:
 
 - Always runs fast Rust/CLI gate for non-app changes.
-- Auto-escalates to macOS gate when paths under `apps/RalphMac/` change.
+- Auto-escalates to macOS gate when the changed dependency surface can affect the bundled app contract (CLI/runtime/config/build/app paths).
 
 Fast Rust/CLI gate is `make ci-fast`:
 

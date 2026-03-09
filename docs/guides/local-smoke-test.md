@@ -35,7 +35,7 @@ make agent-ci
 - help commands succeed
 - queue validation/list commands succeed
 - `ralph doctor` completes without critical failures in repo root
-- `make agent-ci` passes (Rust/CLI gate; app gate only if app paths changed)
+- `make agent-ci` passes (Rust/CLI gate; macOS app gate auto-runs when the dependency surface can affect the app bundle)
 
 ## Troubleshooting
 

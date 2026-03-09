@@ -204,6 +204,9 @@ Every source file MUST start with `//!` docs covering:
 - `scripts/release.sh verify <x.y.z>` prepares release metadata, checks, artifacts, and notes locally and records the snapshot under `target/release-verifications/`.
 - `scripts/release.sh execute <x.y.z>` is the only remote-publishing release entrypoint and must consume that verified snapshot.
 - `scripts/release.sh reconcile <x.y.z>` is the only supported continuation path after a partial remote failure.
+- Release publication is split across `scripts/lib/release_verify_pipeline.sh` (local snapshot prep) and `scripts/lib/release_publish_pipeline.sh` (remote phases); keep `scripts/lib/release_pipeline.sh` as the thin facade only.
+- crates.io is the final irreversible cutover: execute/reconcile must push `main`, push `v<version>`, and prepare/upload a GitHub draft release before `cargo publish`, then publish the GitHub release immediately after crates.io succeeds.
+- Canonical CLI build orchestration lives in `scripts/ralph-cli-bundle.sh` for Makefile/Xcode/release-artifact consumers; prefer extending that entrypoint over adding new direct Cargo build paths.
 - `scripts/versioning.sh sync` also refreshes `Cargo.lock`; treat lockfile drift as a release/versioning failure, not incidental noise.
 - `scripts/release.sh` is expected to sync `VERSION`, `Cargo.lock`, `crates/ralph/Cargo.toml`, `apps/RalphMac/RalphMac.xcodeproj/project.pbxproj`, and `apps/RalphMac/RalphCore/VersionValidator.swift` together.
 - Make targets automatically prefer the rustup-managed toolchain pinned by `rust-toolchain.toml` when available; use the same pinned toolchain explicitly for direct script invocations if your shell resolves an older Homebrew `rustc`.
@@ -218,7 +221,8 @@ Never commit or print secrets. `.env` and `.env.*` are local-only and MUST remai
 ### Public-Release Guardrails
 - Required fast safety gate in CI: `check-env-safety` target now delegates to `scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean`.
 - Convenience alias: `make check-repo-safety`.
-- `scripts/pre-public-check.sh` scans repo-wide markdown links and obvious secret patterns, supports `--release-context`, enforces the `.ralph` tracked-file allowlist, and blocks tracked runtime dirs (`cache`, `logs`, `lock`, `workspaces`, `undo`, `webhooks`).
+- `scripts/pre-public-check.sh` scans the repo working tree through `scripts/lib/public_readiness_scan.py`, using `PUBLIC_SCAN_EXCLUDES` for explicit local-only/runtime exclusions; keep docs honest about that scope.
+- `scripts/pre-public-check.sh` supports `--release-context`, enforces the `.ralph` tracked-file allowlist, and blocks tracked runtime dirs (`cache`, `logs`, `lock`, `workspaces`, `undo`, `webhooks`).
 - `scripts/release.sh` should derive the GitHub repo URL from `git remote origin` and set an explicit GitHub release title (`v<version>`); avoid hardcoded owner-specific release links inside automation.
 
 ### macOS UI Visual Artifacts

@@ -42,7 +42,7 @@ fn read_repo_file(relative_path: &str) -> String {
 
 #[test]
 fn release_script_derives_repo_url_from_origin_remote() {
-    let script = read_repo_file("scripts/lib/release_pipeline.sh");
+    let script = read_repo_file("scripts/lib/release_verify_pipeline.sh");
     assert!(
         script.contains("ralph_get_repo_http_url"),
         "release pipeline should derive the repo URL from git remote origin"
@@ -96,16 +96,35 @@ fn release_policy_uses_target_transaction_state() {
 
 #[test]
 fn release_script_publishes_only_after_local_release_is_prepared() {
-    let script = read_repo_file("scripts/lib/release_pipeline.sh");
+    let script = read_repo_file("scripts/lib/release_publish_pipeline.sh");
     assert!(
-        script.contains("release_prepare_verified_snapshot")
+        read_repo_file("scripts/lib/release_verify_pipeline.sh")
+            .contains("release_prepare_verified_snapshot")
             && script.contains("release_create_commit_and_tag")
+            && script.contains("release_create_or_update_github_release_draft")
             && script.contains("release_publish_crate"),
         "release pipeline should verify locally before publishing externally"
     );
     assert!(
-        script.find("release_prepare_verified_snapshot") < script.find("release_publish_crate"),
-        "release pipeline should prepare the verified snapshot before publish"
+        script.find("release_push_remote_main") < script.find("release_publish_crate"),
+        "release pipeline should push origin/main before crates.io publish"
+    );
+    assert!(
+        script.find("release_push_remote_tag") < script.find("release_publish_crate"),
+        "release pipeline should push the release tag before crates.io publish"
+    );
+    assert!(
+        script.find("release_create_or_update_github_release_draft")
+            < script.find("release_publish_crate"),
+        "release pipeline should draft the GitHub release before crates.io publish"
+    );
+    assert!(
+        script.find("release_publish_crate") < script.find("release_publish_github_release"),
+        "release pipeline should only publish the GitHub release after crates.io succeeds"
+    );
+    assert!(
+        script.contains("--draft") && script.contains("--draft=false"),
+        "release pipeline should split GitHub release draft creation from final publication"
     );
 }
 

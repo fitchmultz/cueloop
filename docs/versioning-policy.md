@@ -46,7 +46,7 @@ Release/versioning invariants:
 - `make release-verify VERSION=<x.y.z>` is the preferred preflight before `make release`.
 - `scripts/release.sh verify <x.y.z>` is the publish-ready local snapshot step; it does not publish remotely, but it does prepare release metadata, artifacts, and notes.
 - `scripts/release.sh execute <x.y.z>` is the only remote-publishing release entrypoint and must consume the verified snapshot.
-- `scripts/release.sh reconcile <x.y.z>` is the only supported continuation path after a partial remote failure.
+- `scripts/release.sh reconcile <x.y.z>` is the only supported continuation path after a partial remote failure, and it should finish the GitHub release immediately once crates.io has already been published.
 - Verified release snapshots live under `target/release-verifications/v<version>/state.env`.
 - Release transaction state lives under `target/release-transactions/v<version>/state.env`.
 - `Cargo.lock` is part of synchronized version metadata and must be committed with release bumps.

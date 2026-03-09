@@ -40,7 +40,7 @@ scripts/release.sh reconcile <version>
 
 - runs `scripts/release.sh execute <version>`
 - validates the recorded verification snapshot still matches `HEAD` and the local files
-- creates the release commit/tag and performs remote publication
+- creates the release commit/tag, pushes `main` + `v<version>`, prepares a GitHub draft release, publishes crates.io, then publishes the GitHub release
 - records transaction state under `target/release-transactions/v<version>/state.env`
 
 ## Evidence to Capture
@@ -56,3 +56,5 @@ scripts/release.sh reconcile <version>
 - A successful `make release-verify` intentionally leaves release metadata dirty until `make release` turns it into the release commit.
 - `target/release-artifacts/` is disposable output owned by the release scripts.
 - `scripts/release.sh reconcile <version>` is the only supported continuation path after a partial remote failure.
+- Failure before crates.io publication is still in the reversible phase of the transaction; finish or roll back the pushed tag/draft release before retrying broad announcement.
+- Failure after crates.io publication is urgent completion work, not a casual "resume later" state, because the irreversible cutover already happened.

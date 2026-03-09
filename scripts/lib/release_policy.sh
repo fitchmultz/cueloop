@@ -53,10 +53,15 @@ PUBLIC_REQUIRED_FILES=(
     ".github/PULL_REQUEST_TEMPLATE.md"
 )
 
-MARKDOWN_SCAN_EXCLUDES=(
+PUBLIC_SCAN_EXCLUDES=(
     ".git/"
     "target/"
+    ".ralph/"
     "apps/RalphMac/build/"
+    ".venv/"
+    ".ruff_cache/"
+    ".pytest_cache/"
+    ".ty_cache/"
 )
 
 RELEASE_TRANSACTION_DIR="$REPO_ROOT/target/release-transactions"

@@ -3,7 +3,7 @@
 # Purpose: Build and package Ralph release artifacts for supported platforms.
 # Responsibilities:
 # - Build the canonical CLI binary through the shared bundling entrypoint for native artifacts.
-# - Build optional cross-target artifacts with locked Cargo dependencies.
+# - Build optional cross-target artifacts through that same entrypoint.
 # - Produce tarballs and SHA256 checksums under target/release-artifacts.
 # Scope:
 # - Artifact packaging only; release publication happens elsewhere.
@@ -23,6 +23,7 @@ source "$SCRIPT_DIR/versioning.sh"
 RELEASE_ARTIFACTS_DIR="$REPO_ROOT/target/release-artifacts"
 MODE="current"
 VERSION=""
+JOBS="${RALPH_CI_JOBS:-}"
 
 target_to_platform() {
     local target="$1"
@@ -45,7 +46,11 @@ target_to_platform() {
 build_native_release_artifact() {
     local version="$1"
     local binary_path
-    binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --print-path)
+    if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
+        binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --jobs "$JOBS" --print-path)
+    else
+        binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --print-path)
+    fi
     local target_triple
     target_triple=$(ralph_get_rust_host_target)
     local platform_name
@@ -65,14 +70,15 @@ build_cross_target() {
     local version="$2"
     local platform_name
     platform_name=$(target_to_platform "$target")
-    local binary_path="$REPO_ROOT/target/$target/release/ralph"
+    local binary_path
     local tarball_name="ralph-${version}-${platform_name}.tar.gz"
 
-    (
-        cd "$REPO_ROOT"
-        cargo build --release -p ralph-agent-loop --target "$target" --locked
-    )
-    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$REPO_ROOT/target/$target/release" ralph
+    if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
+        binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --target "$target" --jobs "$JOBS" --print-path)
+    else
+        binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --target "$target" --print-path)
+    fi
+    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" ralph
     (
         cd "$RELEASE_ARTIFACTS_DIR"
         ralph_sha256_file "$tarball_name" > "$tarball_name.sha256"

@@ -29,8 +29,8 @@ This runs:
 - required public-file checks
 - tracked runtime/build artifact checks
 - `.env` tracking checks
-- repo-wide secret-pattern scan
-- repo-wide markdown link checks
+- repo-wide working-tree high-confidence secret-pattern scan
+- repo-wide working-tree markdown link checks
 - `make release-gate`
 
 ## Release-Context Audit
@@ -54,4 +54,4 @@ scripts/pre-public-check.sh --skip-ci --release-context
 
 - `agent-ci` now routes by dependency surface, not just `apps/RalphMac/` path prefixes.
 - `make release-verify` is the canonical preflight for real releases and now prepares the exact local snapshot that `make release` publishes.
-- Public-readiness scans the whole repo for markdown links and obvious secret patterns; do not rely on a short doc allowlist anymore.
+- Public-readiness scans the repo working tree, excluding explicit local/runtime/build directories only; do not rely on a short doc allowlist anymore.

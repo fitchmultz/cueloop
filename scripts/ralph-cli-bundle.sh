@@ -3,14 +3,15 @@
 # Purpose: Build or resolve the canonical Ralph CLI binary for app bundling.
 # Responsibilities:
 # - Select the correct Cargo profile for Debug/Release consumers.
+# - Optionally build for an explicit Rust target triple and bounded job count.
 # - Reuse the pinned rustup toolchain when available.
-# - Reuse explicit `RALPH_BIN_PATH` overrides when the caller already built the binary.
-# - Print the binary path and optionally copy it into an app bundle destination.
+# - Print the canonical binary path and optionally copy it into an app bundle destination.
 # Scope:
 # - CLI binary preparation only; Xcode and Makefile invoke this as the single bundling entrypoint.
 # Usage:
 # - scripts/ralph-cli-bundle.sh --configuration Release --print-path
 # - scripts/ralph-cli-bundle.sh --configuration Debug --bundle-dir /path/to/Contents/MacOS
+# - scripts/ralph-cli-bundle.sh --configuration Release --target x86_64-unknown-linux-gnu --jobs 4 --print-path
 # Invariants/assumptions:
 # - Cargo and the Ralph workspace are available locally.
 # - The output executable is always named `ralph`.
@@ -23,15 +24,19 @@ REPO_ROOT="$(ralph_repo_root)"
 
 CONFIGURATION=""
 BUNDLE_DIR=""
+TARGET_TRIPLE=""
+JOBS=""
 PRINT_PATH=0
 
 usage() {
     cat <<'EOF'
 Usage:
-  scripts/ralph-cli-bundle.sh --configuration Debug|Release [--print-path] [--bundle-dir DIR]
+  scripts/ralph-cli-bundle.sh --configuration Debug|Release [--target TRIPLE] [--jobs N] [--print-path] [--bundle-dir DIR]
 
 Options:
   --configuration  Xcode-style configuration name used to choose Cargo profile
+  --target         Optional Rust target triple for cross/native builds
+  --jobs           Optional cargo build job cap
   --print-path     Print the resolved executable path to stdout
   --bundle-dir     Copy the resolved executable into DIR/ralph
   -h, --help       Show this help
@@ -51,6 +56,14 @@ while [ $# -gt 0 ]; do
             ;;
         --bundle-dir)
             BUNDLE_DIR="${2:-}"
+            shift
+            ;;
+        --target)
+            TARGET_TRIPLE="${2:-}"
+            shift
+            ;;
+        --jobs)
+            JOBS="${2:-}"
             shift
             ;;
         --print-path)
@@ -92,9 +105,15 @@ case "$CONFIGURATION" in
         ;;
 esac
 
-binary_path="$REPO_ROOT/target/$profile_dir/ralph"
-if [ -n "${RALPH_BIN_PATH:-}" ]; then
-    binary_path="$RALPH_BIN_PATH"
+if [ -n "$TARGET_TRIPLE" ]; then
+    build_args+=(--target "$TARGET_TRIPLE")
+    binary_path="$REPO_ROOT/target/$TARGET_TRIPLE/$profile_dir/ralph"
+else
+    binary_path="$REPO_ROOT/target/$profile_dir/ralph"
+fi
+
+if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
+    build_args+=(--jobs "$JOBS")
 fi
 
 if [ ! -x "$binary_path" ]; then

@@ -24,7 +24,7 @@ scripts/release.sh reconcile 0.2.0
 | --- | --- |
 | `scripts/release.sh verify <version>` | Prepare and record a publish-ready local snapshot without remote publication |
 | `scripts/release.sh execute <version>` | Validate the recorded snapshot, then publish through the transaction pipeline |
-| `scripts/release.sh reconcile <version>` | Resume a previously recorded transaction for the same version |
+| `scripts/release.sh reconcile <version>` | Resume the recorded transaction at its next incomplete phase |
 
 The full release flow now runs in this order:
 
@@ -37,11 +37,12 @@ The full release flow now runs in this order:
 7. `verify` records manifests for the exact metadata, notes, and artifact files it prepared.
 8. `execute` validates that the recorded snapshot still matches `HEAD` and the local files.
 9. `execute` creates the release commit and annotated tag locally.
-10. `execute` publishes the crate to crates.io.
-11. `execute` pushes `main` and `v<version>`.
-12. `execute` creates the GitHub release and uploads artifacts.
+10. `execute` pushes `main` and `v<version>`.
+11. `execute` creates or refreshes a GitHub draft release and uploads artifacts while it is still private.
+12. `execute` publishes the crate to crates.io.
+13. `execute` publishes the GitHub release draft.
 
-That ordering is intentional: crates.io publication no longer happens before the rest of the release is locally finalized.
+That ordering is intentional: crates.io publication no longer happens before the rest of the release is locally finalized, and Ralph does not normalize "crate published, everything else later" as an acceptable steady state.
 
 ## Preflight
 
@@ -62,6 +63,8 @@ scripts/release.sh reconcile 0.2.0
 ```
 
 The script reconciles from `target/release-transactions/v0.2.0/state.env` and continues at the next incomplete remote step. Verification snapshots remain under `target/release-verifications/v0.2.0/` as evidence of the prepared publish state.
+
+If reconcile is resuming before crates.io publication, the transaction is still in the reversible portion of the flow. If crates.io publication already succeeded, finish the GitHub release publication immediately rather than treating that state as a normal pause point.
 
 ## Artifacts
 
