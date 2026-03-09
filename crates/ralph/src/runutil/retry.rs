@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Resolve `agent.runner_retry` config into a concrete policy.
 //! - Compute exponential backoff with cap + jitter.
+//! - Provide deterministic fixed backoff schedules for orchestration retry loops.
 //!
 //! Does not handle:
 //! - Deciding whether an error is retryable (see `RunnerError::classify`).
@@ -61,6 +62,34 @@ impl Default for RunnerRetryPolicy {
             max_backoff: Duration::from_millis(30_000),
             jitter_ratio: 0.2,
         }
+    }
+}
+
+/// Fixed retry schedule backed by an explicit list of delays.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FixedBackoffSchedule {
+    delays: Vec<Duration>,
+}
+
+impl FixedBackoffSchedule {
+    /// Construct a schedule from millisecond delays.
+    pub(crate) fn from_millis(delays_ms: &[u64]) -> Self {
+        Self {
+            delays: delays_ms
+                .iter()
+                .copied()
+                .map(Duration::from_millis)
+                .collect(),
+        }
+    }
+
+    /// Returns the delay for the zero-based retry index, reusing the final delay once exhausted.
+    pub(crate) fn delay_for_retry(&self, retry_index: usize) -> Duration {
+        self.delays
+            .get(retry_index)
+            .copied()
+            .or_else(|| self.delays.last().copied())
+            .unwrap_or_default()
     }
 }
 
@@ -449,5 +478,14 @@ mod tests {
         let d = compute_backoff(policy, 2, &mut rng);
         // Should be capped at Duration::MAX via max_backoff
         assert!(d <= Duration::MAX);
+    }
+
+    #[test]
+    fn fixed_schedule_reuses_last_delay() {
+        let schedule = FixedBackoffSchedule::from_millis(&[100, 250]);
+
+        assert_eq!(schedule.delay_for_retry(0), Duration::from_millis(100));
+        assert_eq!(schedule.delay_for_retry(1), Duration::from_millis(250));
+        assert_eq!(schedule.delay_for_retry(5), Duration::from_millis(250));
     }
 }

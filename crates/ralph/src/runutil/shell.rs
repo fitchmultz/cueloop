@@ -20,6 +20,8 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Output, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(unix)]
+use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -303,7 +305,18 @@ pub(crate) fn execute_managed_command(
     let stdout_handle = spawn_capture_thread(stdout, Arc::clone(&stdout_capture));
     let stderr_handle = spawn_capture_thread(stderr, Arc::clone(&stderr_capture));
 
-    let termination = wait_for_child(
+    #[cfg(unix)]
+    let outcome = wait_for_child(
+        child,
+        timeout,
+        managed.cancellation.as_ref().map(Arc::clone),
+    )
+    .map_err(|source| ManagedProcessError::Wait {
+        description: description.clone(),
+        source,
+    })?;
+    #[cfg(not(unix))]
+    let outcome = wait_for_child(
         &mut child,
         timeout,
         managed.cancellation.as_ref().map(Arc::clone),
@@ -319,7 +332,7 @@ pub(crate) fn execute_managed_command(
     let stdout_capture = unwrap_capture(stdout_capture);
     let stderr_capture = unwrap_capture(stderr_capture);
 
-    if let Some(reason) = termination {
+    if let Some(reason) = outcome.termination {
         return Err(match reason {
             TerminationReason::Timeout => ManagedProcessError::TimedOut {
                 description,
@@ -335,13 +348,8 @@ pub(crate) fn execute_managed_command(
         });
     }
 
-    let status = child.wait().map_err(|source| ManagedProcessError::Wait {
-        description,
-        source,
-    })?;
-
     Ok(ManagedOutput {
-        status,
+        status: outcome.status,
         stdout: stdout_capture.bytes,
         stderr: stderr_capture.bytes,
         stdout_truncated: stdout_capture.truncated,
@@ -353,6 +361,11 @@ pub(crate) fn sleep_with_cancellation(
     duration: Duration,
     cancellation: Option<&AtomicBool>,
 ) -> std::result::Result<(), RetryWaitError> {
+    if cancellation.is_none() {
+        thread::sleep(duration);
+        return Ok(());
+    }
+
     let deadline = Instant::now() + duration;
     while Instant::now() < deadline {
         if cancellation.is_some_and(|flag| flag.load(Ordering::SeqCst)) {
@@ -434,11 +447,77 @@ fn unwrap_capture(capture: Arc<Mutex<BoundedCapture>>) -> BoundedCapture {
     }
 }
 
+#[cfg(unix)]
+fn wait_for_child(
+    child: std::process::Child,
+    timeout: Duration,
+    cancellation: Option<Arc<AtomicBool>>,
+) -> std::io::Result<ManagedChildOutcome> {
+    wait_for_child_unix(child, timeout, cancellation)
+}
+
+#[cfg(not(unix))]
 fn wait_for_child(
     child: &mut std::process::Child,
     timeout: Duration,
     cancellation: Option<Arc<AtomicBool>>,
-) -> std::io::Result<Option<TerminationReason>> {
+) -> std::io::Result<ManagedChildOutcome> {
+    wait_for_child_polling(child, timeout, cancellation)
+}
+
+#[cfg(unix)]
+fn wait_for_child_unix(
+    child: std::process::Child,
+    timeout: Duration,
+    cancellation: Option<Arc<AtomicBool>>,
+) -> std::io::Result<ManagedChildOutcome> {
+    let pid = child.id();
+    let exit_rx = spawn_exit_waiter(child);
+    let start = Instant::now();
+    let mut termination: Option<(TerminationReason, Instant)> = None;
+
+    loop {
+        if termination.is_none() {
+            if cancellation
+                .as_ref()
+                .is_some_and(|flag| flag.load(Ordering::SeqCst))
+            {
+                signal_pid(pid, false);
+                termination = Some((TerminationReason::Cancelled, Instant::now()));
+            } else if start.elapsed() > timeout {
+                signal_pid(pid, false);
+                termination = Some((TerminationReason::Timeout, Instant::now()));
+            }
+        }
+
+        if let Some((_, interrupted_at)) = termination
+            && interrupted_at.elapsed() > timeouts::MANAGED_SUBPROCESS_INTERRUPT_GRACE
+        {
+            signal_pid(pid, true);
+        }
+
+        match recv_exit_with_timeout(&exit_rx, next_wait_slice(start, timeout, termination))? {
+            Some(status) => {
+                return Ok(ManagedChildOutcome {
+                    status,
+                    termination: if status.success() {
+                        None
+                    } else {
+                        termination.map(|(reason, _)| reason)
+                    },
+                });
+            }
+            None => continue,
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn wait_for_child_polling(
+    child: &mut std::process::Child,
+    timeout: Duration,
+    cancellation: Option<Arc<AtomicBool>>,
+) -> std::io::Result<ManagedChildOutcome> {
     let start = Instant::now();
     let mut termination: Option<(TerminationReason, Instant)> = None;
 
@@ -464,47 +543,90 @@ fn wait_for_child(
         }
 
         if let Some(status) = child.try_wait()? {
-            if status.success() {
-                return Ok(None);
-            }
-            return Ok(termination.map(|(reason, _)| reason));
+            return Ok(ManagedChildOutcome {
+                status,
+                termination: if status.success() {
+                    None
+                } else {
+                    termination.map(|(reason, _)| reason)
+                },
+            });
         }
 
         thread::sleep(timeouts::MANAGED_SUBPROCESS_POLL_INTERVAL);
     }
 }
 
-fn signal_child(child: &mut std::process::Child, hard_kill: bool) {
-    #[cfg(unix)]
-    {
-        let pid = child.id() as i32;
-        let signal = if hard_kill {
-            libc::SIGKILL
-        } else {
-            libc::SIGINT
-        };
-        // SAFETY: pid is the live child PID returned by std::process::Child. Negative pid
-        // targets the child's process group, which we created in `pre_exec`.
-        unsafe {
-            let _ = libc::kill(-pid, signal);
-        }
-    }
+#[cfg(unix)]
+fn spawn_exit_waiter(mut child: std::process::Child) -> Receiver<std::io::Result<ExitStatus>> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let result = child.wait();
+        let _ = tx.send(result);
+    });
+    rx
+}
 
-    #[cfg(not(unix))]
-    {
-        let _ = child.kill();
+#[cfg(unix)]
+fn recv_exit_with_timeout(
+    rx: &Receiver<std::io::Result<ExitStatus>>,
+    timeout: Duration,
+) -> std::io::Result<Option<ExitStatus>> {
+    match rx.recv_timeout(timeout) {
+        Ok(result) => result.map(Some),
+        Err(mpsc::RecvTimeoutError::Timeout) => Ok(None),
+        Err(mpsc::RecvTimeoutError::Disconnected) => Err(std::io::Error::other(
+            "managed subprocess waiter disconnected",
+        )),
     }
 }
 
-fn reap_killed_child(child: &mut std::process::Child) -> std::io::Result<()> {
-    let start = Instant::now();
-    while start.elapsed() <= timeouts::MANAGED_SUBPROCESS_REAP_TIMEOUT {
-        if child.try_wait()?.is_some() {
-            return Ok(());
-        }
-        thread::sleep(timeouts::MANAGED_SUBPROCESS_POLL_INTERVAL);
+struct ManagedChildOutcome {
+    status: ExitStatus,
+    termination: Option<TerminationReason>,
+}
+
+fn next_wait_slice(
+    start: Instant,
+    timeout: Duration,
+    termination: Option<(TerminationReason, Instant)>,
+) -> Duration {
+    let mut next = timeouts::MANAGED_SUBPROCESS_POLL_INTERVAL;
+    let now = Instant::now();
+    let timeout_deadline = start + timeout;
+    next = next.min(
+        timeout_deadline
+            .saturating_duration_since(now)
+            .max(Duration::from_millis(1)),
+    );
+
+    if let Some((_, interrupted_at)) = termination {
+        let grace_deadline = interrupted_at + timeouts::MANAGED_SUBPROCESS_INTERRUPT_GRACE;
+        next = next.min(
+            grace_deadline
+                .saturating_duration_since(now)
+                .max(Duration::from_millis(1)),
+        );
     }
-    Ok(())
+
+    next.max(Duration::from_millis(1))
+}
+
+#[cfg(not(unix))]
+fn signal_child(child: &mut std::process::Child, _hard_kill: bool) {
+    let _ = child.kill();
+}
+
+#[cfg(unix)]
+fn signal_pid(pid: u32, hard_kill: bool) {
+    let signal = if hard_kill {
+        libc::SIGKILL
+    } else {
+        libc::SIGINT
+    };
+    unsafe {
+        let _ = libc::kill(-(pid as i32), signal);
+    }
 }
 
 #[cfg(test)]

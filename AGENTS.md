@@ -98,6 +98,7 @@ Every source file MUST start with `//!` docs covering:
 
 ### Managed Subprocesses
 - Non-runner operational subprocesses (CI, git/gh, doctor probes, processor hooks, integration sync checks) should flow through `runutil::shell` managed execution with timeout classes, bounded capture, and SIGINT-before-SIGKILL escalation. Do not reintroduce raw `Command::output()` in those paths.
+- Managed subprocess and runner wait paths should prefer exit-event waiters plus deadline scheduling over fixed `try_wait` polling loops; if a control slice is unavoidable, keep it centralized and short-lived.
 
 ### Runtime Module Boundaries
 - `runner.rs` is a thin facade only; shared invocation/resume dispatch lives in `runner/invoke.rs`, and external plugin registry/bootstrap lives in `runner/plugin_dispatch.rs`.
@@ -105,8 +106,13 @@ Every source file MUST start with `//!` docs covering:
 - `queue/loader/mod.rs` is a facade only; read/load entrypoints live in `loader/read.rs`, explicit repair flows in `loader/maintenance.rs`, queue-set validation in `loader/validation.rs`, and loader tests under `loader/tests/`.
 - `cli/task/batch.rs` is a router only; shared batch context, selection, dry-run rendering, status handling, and mutations live under `cli/task/batch/`.
 - `commands/context/mod.rs` is a facade only; project detection lives in `context/detect.rs`, markdown parsing in `context/markdown.rs`, template rendering in `context/render.rs`, command workflows in `context/workflow.rs`, validation in `context/validate.rs`, shared data types in `context/types.rs`, and context tests under `context/tests/`.
+- `commands/run/run_loop/mod.rs` is orchestration-only; session recovery lives in `run_loop/session.rs` and queue waiting/unblocked notifications live in `run_loop/wait.rs`.
+- `commands/run/parallel/integration/mod.rs` is a facade only; keep configuration/data types in `integration/types.rs`, blocked-marker/handoff persistence in `integration/persistence.rs`, compliance checks in `integration/compliance.rs`, prompt construction in `integration/prompt.rs`, retry/control flow in `integration/driver.rs`, and regression coverage in `integration/tests.rs`.
+- `commands/run/parallel/orchestration/mod.rs` is orchestration-only; worker exit/state bookkeeping helpers live in `orchestration/events.rs`.
 - `commands/run/parallel/worker.rs` is a facade only; keep selection in `worker_selection.rs`, command construction in `worker_command.rs`, and child lifecycle in `worker_process.rs`.
+- Parallel worker completion is event-driven: monitor threads own `Child::wait()` and report exits through `ParallelCleanupGuard` channels; do not reintroduce coordinator-side child polling loops.
 - `commands/run/supervision/ci.rs` owns CI execution/retry/escalation only; pattern detection is in `ci_patterns.rs` and formatting is in `ci_format.rs`.
+- `runner/execution/process/mod.rs` is orchestration-only; process cleanup lives in `process/cleanup.rs` and wait/kill escalation lives in `process/wait.rs`.
 - Large Rust scenario suites should keep a thin root hub and move behavior-grouped cases into adjacent subdirectories (for example `runtime_tests/`, `ci_tests/`, `worker_tests/`, `config_test/`, `doctor_contract_test/`, `queue_stats_history_test/`) so failure locality stays sharp.
 
 ### Notification Audio

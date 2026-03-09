@@ -54,17 +54,19 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
 
     let mut in_flight = HashMap::new();
     let child = std::process::Command::new("true").spawn()?;
+    let (worker_events_tx, _worker_events_rx) = std::sync::mpsc::channel();
     in_flight.insert(
         "RQ-0005".to_string(),
-        WorkerState {
-            task_id: "RQ-0005".to_string(),
-            task_title: "title".to_string(),
-            workspace: WorkspaceSpec {
+        start_worker_monitor(
+            "RQ-0005",
+            "title".to_string(),
+            WorkspaceSpec {
                 path: crate::testsupport::path::portable_abs_path("workspaces/RQ-0005"),
                 branch: "main".to_string(),
             },
             child,
-        },
+            worker_events_tx,
+        ),
     );
 
     let mut attempted_in_run = HashSet::new();
@@ -107,15 +109,7 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
         "attempted task should be excluded for this invocation"
     );
 
-    for worker in in_flight.values_mut() {
-        if let Err(e) = worker.child.wait() {
-            log::debug!(
-                "Failed to wait for worker {} in test: {}",
-                worker.task_id,
-                e
-            );
-        }
-    }
+    terminate_workers(&mut in_flight);
 
     Ok(())
 }

@@ -19,7 +19,7 @@ use crate::runner::OutputStream;
 
 #[path = "stream_buffer.rs"]
 mod stream_buffer;
-#[path = "stream_events.rs"]
+#[path = "stream_events/mod.rs"]
 mod stream_events;
 #[path = "stream_reader.rs"]
 mod stream_reader;

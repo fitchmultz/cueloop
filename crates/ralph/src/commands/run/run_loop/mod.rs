@@ -18,13 +18,17 @@ use crate::agent::AgentOverrides;
 use crate::config;
 use crate::constants::limits::MAX_CONSECUTIVE_FAILURES;
 use crate::contracts::TaskStatus;
-use crate::session::{self, SessionValidationResult};
 use crate::signal;
 use crate::{queue, runutil, webhook};
 use anyhow::Result;
 
 use super::queue_lock::{clear_stale_queue_lock_for_resume, is_queue_lock_already_held_error};
 use super::run_one::{RunOutcome, run_one};
+use session::resolve_resume_state;
+use wait::{WaitExit, WaitMode, wait_for_work};
+
+mod session;
+mod wait;
 
 pub struct RunLoopOptions {
     /// 0 means "no limit"
@@ -77,48 +81,9 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
 
     let cache_dir = resolved.repo_root.join(".ralph/cache");
     let queue_file = queue::load_queue(&resolved.queue_path)?;
-
-    // Handle session recovery (use configured timeout, defaulting to 24 hours)
-    let session_timeout_hours = resolved.config.agent.session_timeout_hours;
-    let (resume_task_id, completed_count) =
-        match session::check_session(&cache_dir, &queue_file, session_timeout_hours)? {
-            SessionValidationResult::NoSession => (None, opts.starting_completed),
-            SessionValidationResult::Valid(session) => {
-                if opts.auto_resume {
-                    log::info!("Auto-resuming session for task {}", session.task_id);
-                    (Some(session.task_id), session.tasks_completed_in_loop)
-                } else {
-                    match session::prompt_session_recovery(&session, opts.non_interactive)? {
-                        true => (Some(session.task_id), session.tasks_completed_in_loop),
-                        false => {
-                            session::clear_session(&cache_dir)?;
-                            (None, opts.starting_completed)
-                        }
-                    }
-                }
-            }
-            SessionValidationResult::Stale { reason } => {
-                log::info!("Stale session cleared: {}", reason);
-                session::clear_session(&cache_dir)?;
-                (None, opts.starting_completed)
-            }
-            SessionValidationResult::Timeout { hours, session } => {
-                let threshold = session_timeout_hours
-                    .unwrap_or(crate::constants::timeouts::DEFAULT_SESSION_TIMEOUT_HOURS);
-                match session::prompt_session_recovery_timeout(
-                    &session,
-                    hours,
-                    threshold,
-                    opts.non_interactive,
-                )? {
-                    true => (Some(session.task_id), session.tasks_completed_in_loop),
-                    false => {
-                        session::clear_session(&cache_dir)?;
-                        (None, opts.starting_completed)
-                    }
-                }
-            }
-        };
+    let resume_state = resolve_resume_state(resolved, &opts)?;
+    let resume_task_id = resume_state.resume_task_id;
+    let completed_count = resume_state.completed_count;
 
     // Preemptively clear stale queue lock when resuming a session.
     // This handles the case where a previous ralph process crashed/killed
@@ -306,7 +271,7 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                     consecutive_failures = 0; // Reset on success
 
                     // Persist session progress for accurate resume limits
-                    if let Err(e) = session::increment_session_progress(&cache_dir) {
+                    if let Err(e) = crate::session::increment_session_progress(&cache_dir) {
                         log::warn!("Failed to persist session progress: {}", e);
                     }
 
@@ -359,7 +324,7 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
                     consecutive_failures += 1;
 
                     // Persist session progress for accurate resume limits
-                    if let Err(e) = session::increment_session_progress(&cache_dir) {
+                    if let Err(e) = crate::session::increment_session_progress(&cache_dir) {
                         log::warn!("Failed to persist session progress: {}", e);
                     }
 
@@ -424,305 +389,10 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
 
     // Clear session on successful completion
     if result.is_ok()
-        && let Err(e) = session::clear_session(&cache_dir)
+        && let Err(e) = crate::session::clear_session(&cache_dir)
     {
         log::warn!("Failed to clear session on loop completion: {}", e);
     }
 
     result
-}
-
-/// Wait mode for the wait loop.
-#[derive(Debug)]
-enum WaitMode {
-    /// Blocked-only mode: exit if queue becomes empty while waiting.
-    BlockedOnly,
-    /// Empty-allowed mode: keep waiting even if queue is empty.
-    EmptyAllowed,
-}
-
-/// Exit reason from the wait loop.
-enum WaitExit {
-    /// A runnable task became available.
-    RunnableAvailable {
-        summary: crate::queue::operations::QueueRunnabilitySummary,
-    },
-    /// Queue became empty while waiting (only in BlockedOnly mode).
-    NoCandidates,
-    /// Wait timeout reached.
-    TimedOut,
-    /// Stop signal was received.
-    StopRequested,
-}
-
-/// Internal file watcher for queue changes.
-struct QueueFileWatcher {
-    _watcher: notify::RecommendedWatcher,
-    rx: std::sync::mpsc::Receiver<notify::Result<notify::Event>>,
-}
-
-impl QueueFileWatcher {
-    fn new(resolved: &config::Resolved) -> anyhow::Result<Self> {
-        use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
-        use std::sync::mpsc::channel;
-
-        let (tx, rx) = channel();
-        let mut watcher = RecommendedWatcher::new(
-            move |res| {
-                let _ = tx.send(res);
-            },
-            Config::default(),
-        )?;
-
-        // Watch the `.ralph` directory so queue/done changes are seen
-        let ralph_dir = resolved.repo_root.join(".ralph");
-        if ralph_dir.exists() {
-            watcher.watch(&ralph_dir, RecursiveMode::NonRecursive)?;
-        }
-
-        Ok(Self {
-            _watcher: watcher,
-            rx,
-        })
-    }
-
-    fn recv_timeout(&self, dur: std::time::Duration) -> Result<(), ()> {
-        match self.rx.recv_timeout(dur) {
-            Ok(_) => Ok(()),
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(()),
-            Err(_) => Err(()),
-        }
-    }
-}
-
-/// Wait for runnable tasks with notify-based wake and poll fallback.
-///
-/// Supports both blocked-wait and empty-wait modes.
-#[allow(clippy::too_many_arguments)]
-fn wait_for_work(
-    resolved: &config::Resolved,
-    include_draft: bool,
-    mode: WaitMode,
-    blocked_poll_ms: u64,
-    empty_poll_ms: u64,
-    timeout_seconds: u64,
-    notify_when_unblocked: bool,
-    loop_webhook_ctx: &crate::webhook::WebhookContext,
-) -> Result<WaitExit> {
-    use std::time::{Duration, Instant};
-
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
-
-    // Clamp poll intervals
-    let blocked_poll_ms = blocked_poll_ms.max(50);
-    let empty_poll_ms = empty_poll_ms.max(50);
-
-    let start = Instant::now();
-    let tick = Duration::from_millis(250);
-
-    // Initialize Ctrl+C handler check
-    let ctrlc = crate::runner::ctrlc_state().ok();
-
-    // Best-effort file watcher
-    let watcher = QueueFileWatcher::new(resolved).ok();
-    if watcher.is_none() {
-        log::debug!("File watcher setup failed, using poll-only mode");
-    }
-
-    let poll_ms = match mode {
-        WaitMode::BlockedOnly => blocked_poll_ms,
-        WaitMode::EmptyAllowed => empty_poll_ms,
-    };
-
-    log::info!(
-        "Waiting for runnable tasks (mode={:?}, poll={}ms, timeout={}s)...",
-        mode,
-        poll_ms,
-        if timeout_seconds == 0 {
-            "none".to_string()
-        } else {
-            timeout_seconds.to_string()
-        }
-    );
-
-    let mut last_eval = Instant::now();
-    let mut pending_event = true; // Force initial eval
-
-    loop {
-        // Check for timeout
-        if timeout_seconds != 0 {
-            let elapsed = start.elapsed().as_secs();
-            if elapsed >= timeout_seconds {
-                return Ok(WaitExit::TimedOut);
-            }
-        }
-
-        // Check for stop signal
-        if signal::stop_signal_exists(&cache_dir) {
-            if let Err(e) = signal::clear_stop_signal(&cache_dir) {
-                log::warn!("Failed to clear stop signal: {}", e);
-            }
-            return Ok(WaitExit::StopRequested);
-        }
-
-        // Check for Ctrl+C
-        if ctrlc
-            .as_ref()
-            .is_some_and(|c| c.interrupted.load(std::sync::atomic::Ordering::SeqCst))
-        {
-            return Err(runutil::RunAbort::new(
-                runutil::RunAbortReason::Interrupted,
-                "Ctrl+C pressed while waiting for runnable tasks",
-            )
-            .into());
-        }
-
-        // Wait for tick or file event
-        if let Some(ref w) = watcher {
-            if w.recv_timeout(tick).is_ok() {
-                pending_event = true;
-            }
-        } else {
-            std::thread::sleep(tick);
-        }
-
-        // Decide whether to re-evaluate queue
-        let poll_dur = Duration::from_millis(poll_ms);
-        if pending_event || last_eval.elapsed() >= poll_dur {
-            pending_event = false;
-            last_eval = Instant::now();
-
-            // Load queue and done files
-            let queue_file = match queue::load_queue(&resolved.queue_path) {
-                Ok(q) => q,
-                Err(e) => {
-                    log::warn!("Failed to load queue while waiting: {}; will retry", e);
-                    continue;
-                }
-            };
-
-            let done = queue::load_queue_or_default(&resolved.done_path)?;
-            let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
-                None
-            } else {
-                Some(&done)
-            };
-
-            // Generate runnability report
-            let options = queue::RunnableSelectionOptions::new(include_draft, true);
-            let report = match crate::queue::operations::queue_runnability_report(
-                &queue_file,
-                done_ref,
-                options,
-            ) {
-                Ok(r) => r,
-                Err(e) => {
-                    log::warn!(
-                        "Failed to generate runnability report while waiting: {}; will retry",
-                        e
-                    );
-                    continue;
-                }
-            };
-
-            // Check exit conditions
-            if report.summary.candidates_total == 0 {
-                match mode {
-                    WaitMode::BlockedOnly => {
-                        return Ok(WaitExit::NoCandidates);
-                    }
-                    WaitMode::EmptyAllowed => {
-                        // Keep waiting for new tasks
-                        continue;
-                    }
-                }
-            }
-
-            if report.summary.runnable_candidates > 0 {
-                // Queue became unblocked!
-                if notify_when_unblocked {
-                    notify_queue_unblocked(&report.summary, resolved, loop_webhook_ctx);
-                }
-                return Ok(WaitExit::RunnableAvailable {
-                    summary: report.summary,
-                });
-            }
-
-            // Still blocked - continue waiting
-        }
-    }
-}
-
-/// Send notifications when queue becomes unblocked.
-fn notify_queue_unblocked(
-    summary: &crate::queue::operations::QueueRunnabilitySummary,
-    resolved: &config::Resolved,
-    loop_webhook_ctx: &crate::webhook::WebhookContext,
-) {
-    // Build summary note
-    let note = format!(
-        "ready={} blocked_deps={} blocked_schedule={}",
-        summary.runnable_candidates, summary.blocked_by_dependencies, summary.blocked_by_schedule
-    );
-
-    // Desktop notification
-    let notify_config = crate::notification::NotificationConfig {
-        enabled: true,
-        notify_on_complete: false,
-        notify_on_fail: false,
-        notify_on_loop_complete: false,
-        suppress_when_active: resolved
-            .config
-            .agent
-            .notification
-            .suppress_when_active
-            .unwrap_or(true),
-        sound_enabled: resolved
-            .config
-            .agent
-            .notification
-            .sound_enabled
-            .unwrap_or(false),
-        sound_path: resolved.config.agent.notification.sound_path.clone(),
-        timeout_ms: resolved
-            .config
-            .agent
-            .notification
-            .timeout_ms
-            .unwrap_or(8000),
-    };
-
-    #[cfg(feature = "notifications")]
-    {
-        use notify_rust::{Notification, Timeout};
-        if let Err(e) = Notification::new()
-            .summary("Ralph: tasks runnable")
-            .body(&note)
-            .timeout(Timeout::Milliseconds(notify_config.timeout_ms))
-            .show()
-        {
-            log::debug!("Failed to show unblocked notification: {}", e);
-        }
-
-        if notify_config.sound_enabled
-            && let Err(e) =
-                crate::notification::play_completion_sound(notify_config.sound_path.as_deref())
-        {
-            log::debug!("Failed to play unblocked sound: {}", e);
-        }
-    }
-
-    // Webhook notification
-    let timestamp = crate::timeutil::now_utc_rfc3339_or_fallback();
-    let payload = crate::webhook::WebhookPayload {
-        event: "queue_unblocked".to_string(),
-        timestamp,
-        task_id: None,
-        task_title: None,
-        previous_status: Some("blocked".to_string()),
-        current_status: Some("runnable".to_string()),
-        note: Some(note),
-        context: loop_webhook_ctx.clone(),
-    };
-    crate::webhook::send_webhook_payload(payload, &resolved.config.agent.webhook);
 }
