@@ -6,8 +6,7 @@
 //!
 //! Not handled here:
 //! - Deep algorithm validation (covered by graph unit tests / invariants near implementation).
-//! - Tree and List format snapshots (output ordering depends on HashMap iteration which is
-//!   non-deterministic; these formats are covered by state assertions in other tests).
+//! - Exhaustive traversal edge cases beyond the focused fixture below.
 //!
 //! Invariants/assumptions:
 //! - DOT output ordering is deterministic (nodes are collected into a Vec and sorted).
@@ -34,9 +33,25 @@ fn write_graph_fixture(dir: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-// NOTE: Tree format test removed because output ordering depends on HashMap iteration
-// which is non-deterministic. The tree format is tested functionally by the
-// `graph_rejects_unknown_task_id` test below and by unit tests in the graph module.
+#[test]
+fn graph_tree_snapshot() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    test_support::ralph_init(dir.path())?;
+    write_graph_fixture(dir.path())?;
+
+    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["queue", "graph"]);
+    anyhow::ensure!(status.success(), "graph tree failed\nstderr:\n{stderr}");
+
+    test_support::with_insta_settings(|| {
+        insta::assert_snapshot!(
+            "queue_graph_tree_full",
+            test_support::normalize_for_snapshot(&stdout)
+        );
+    });
+
+    Ok(())
+}
 
 #[test]
 fn graph_dot_focus_task_snapshot() -> Result<()> {
@@ -78,5 +93,23 @@ fn graph_rejects_unknown_task_id() -> Result<()> {
     Ok(())
 }
 
-// NOTE: List format test removed because output ordering depends on HashMap iteration
-// which is non-deterministic.
+#[test]
+fn graph_list_snapshot() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    test_support::ralph_init(dir.path())?;
+    write_graph_fixture(dir.path())?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["queue", "graph", "--format", "list"]);
+    anyhow::ensure!(status.success(), "graph list failed\nstderr:\n{stderr}");
+
+    test_support::with_insta_settings(|| {
+        insta::assert_snapshot!(
+            "queue_graph_list_full",
+            test_support::normalize_for_snapshot(&stdout)
+        );
+    });
+
+    Ok(())
+}

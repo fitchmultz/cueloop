@@ -1,0 +1,25 @@
+---
+source: crates/ralph/tests/queue_graph_snapshot_test.rs
+assertion_line: 47
+expression: "test_support::normalize_for_snapshot(&stdout)"
+---
+Task Dependency Graph
+
+Summary:
+  Total tasks: 4
+  Ready to run: 2
+  Blocked: 1
+  Critical path length: 2
+
+Dependency Chains:
+
+* RQ-0002: Depends on RQ-0001 [⏳]
+   └─ * RQ-0001: Root [⏳]
+
+  RQ-0003: Blocks RQ-0002 [🔄]
+
+  RQ-0004: Relates/duplicates [⏳]
+
+Legend:
+  * = on critical path
+  ⏳ = todo, 🔄 = doing, ✅ = done, ❌ = rejected
