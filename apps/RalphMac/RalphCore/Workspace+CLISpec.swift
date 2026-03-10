@@ -38,7 +38,10 @@ public final class WorkspaceCommandState: ObservableObject {
 
 public extension Workspace {
     func loadCLISpec(retryConfiguration: RetryConfiguration = .minimal) async {
+        let repositoryContext = currentRepositoryContext()
+
         guard let client else {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             commandState.cliSpecErrorMessage = "CLI client not available."
             return
         }
@@ -62,6 +65,7 @@ public extension Workspace {
             )
 
             guard collected.status.code == 0 else {
+                guard isCurrentRepositoryContext(repositoryContext) else { return }
                 commandState.cliSpec = nil
                 commandState.cliSpecErrorMessage = collected.stderr.isEmpty
                     ? "Failed to load CLI spec (exit \(collected.status.code))."
@@ -70,11 +74,14 @@ public extension Workspace {
                 return
             }
 
-            commandState.cliSpec = try JSONDecoder().decode(
+            let cliSpec = try JSONDecoder().decode(
                 RalphCLISpecDocument.self,
                 from: Data(collected.stdout.utf8)
             )
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
+            commandState.cliSpec = cliSpec
         } catch {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             commandState.cliSpec = nil
             let recoveryError = RecoveryError.classify(
                 error: error,
@@ -86,6 +93,7 @@ public extension Workspace {
             diagnosticsState.showErrorRecovery = true
         }
 
+        guard isCurrentRepositoryContext(repositoryContext) else { return }
         commandState.cliSpecIsLoading = false
     }
 

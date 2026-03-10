@@ -27,11 +27,21 @@ public final class WorkspaceIdentityState: ObservableObject {
     @Published public var name: String
     @Published public var workingDirectoryURL: URL
     @Published public var recentWorkingDirectories: [URL]
+    @Published public internal(set) var repositoryGeneration: UInt64
+    @Published public internal(set) var retargetRevision: UInt64
 
-    public init(name: String, workingDirectoryURL: URL, recentWorkingDirectories: [URL]) {
+    public init(
+        name: String,
+        workingDirectoryURL: URL,
+        recentWorkingDirectories: [URL],
+        repositoryGeneration: UInt64 = 0,
+        retargetRevision: UInt64 = 0
+    ) {
         self.name = name
         self.workingDirectoryURL = workingDirectoryURL
         self.recentWorkingDirectories = recentWorkingDirectories
+        self.repositoryGeneration = repositoryGeneration
+        self.retargetRevision = retargetRevision
     }
 }
 
@@ -227,24 +237,27 @@ public extension Workspace {
     }
 
     func setWorkingDirectory(_ url: URL) {
-        identityState.workingDirectoryURL = url
-        identityState.name = url.lastPathComponent
-
-        var newRecents = identityState.recentWorkingDirectories.filter { $0.path != url.path }
-        newRecents.insert(url, at: 0)
-        if newRecents.count > 12 {
-            newRecents = Array(newRecents.prefix(12))
+        let standardizedURL = url.standardizedFileURL.resolvingSymlinksInPath()
+        let currentURL = identityState.workingDirectoryURL.standardizedFileURL.resolvingSymlinksInPath()
+        guard standardizedURL != currentURL else {
+            updateRecentWorkingDirectories(with: standardizedURL)
+            persistState()
+            return
         }
-        identityState.recentWorkingDirectories = newRecents
+
+        runnerController.prepareForRepositoryRetarget()
+        queueRuntime.prepareForRepositoryRetarget()
+        resetRepositoryDerivedStateForRetarget()
+
+        let repositoryContext = beginRepositoryRetarget(to: standardizedURL)
+        updateRecentWorkingDirectories(with: standardizedURL)
 
         persistState()
         queueRuntime.restartWatching()
         refreshOperationalHealth()
 
-        if client != nil {
-            Task { @MainActor [weak self] in
-                await self?.loadRunnerConfiguration(retryConfiguration: .minimal)
-            }
+        Task { @MainActor [weak self] in
+            await self?.reloadRepositoryContext(repositoryContext)
         }
     }
 
@@ -267,6 +280,63 @@ public extension Workspace {
 }
 
 extension Workspace {
+    private func updateRecentWorkingDirectories(with url: URL) {
+        var newRecents = identityState.recentWorkingDirectories.filter { $0.path != url.path }
+        newRecents.insert(url, at: 0)
+        if newRecents.count > 12 {
+            newRecents = Array(newRecents.prefix(12))
+        }
+        identityState.recentWorkingDirectories = newRecents
+    }
+
+    func resetRepositoryDerivedStateForRetarget() {
+        clearErrorRecovery()
+        stopLoop()
+        resetExecutionState()
+        runState.isRunning = false
+        runState.stopAfterCurrent = false
+        runState.currentTaskID = nil
+        runState.errorMessage = nil
+        runState.lastExitStatus = nil
+        runState.executionHistory.removeAll(keepingCapacity: false)
+        runState.currentRunnerConfig = nil
+        runState.runnerConfigErrorMessage = nil
+        runState.runnerConfigLoading = false
+        runState.runControlSelectedTaskID = nil
+        runState.output = ""
+        runState.outputBuffer.clear()
+        runState.attributedOutput = []
+        runState.streamProcessor.reset()
+
+        taskState.tasks.removeAll(keepingCapacity: false)
+        taskState.tasksErrorMessage = nil
+        taskState.tasksLoading = false
+        taskState.lastQueueRefreshEvent = nil
+
+        commandState.cliSpec = nil
+        commandState.cliSpecErrorMessage = nil
+        commandState.cliSpecIsLoading = false
+        commandState.advancedSelectedCommandID = nil
+        resetAdvancedInputs()
+
+        let previousAnalyticsTimeRange = insightsState.analytics.timeRange
+        insightsState.graphData = nil
+        insightsState.graphDataErrorMessage = nil
+        insightsState.graphDataLoading = false
+        insightsState.analytics = AnalyticsDashboardState(timeRange: previousAnalyticsTimeRange)
+
+        clearCachedTasks()
+        diagnosticsState.cliHealthStatus = nil
+    }
+
+    func reloadRepositoryContext(_ repositoryContext: RepositoryContext) async {
+        guard isCurrentRepositoryContext(repositoryContext) else { return }
+        await loadTasks(retryConfiguration: .minimal)
+        await loadGraphData(retryConfiguration: .minimal)
+        await loadCLISpec(retryConfiguration: .minimal)
+        await loadRunnerConfiguration(retryConfiguration: .minimal)
+    }
+
     func removePersistedState() {
         WorkspaceStateStore().remove(
             id: id,

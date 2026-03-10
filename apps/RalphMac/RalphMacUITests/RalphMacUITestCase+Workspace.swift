@@ -33,6 +33,15 @@ extension RalphMacUITestCase {
         return root
     }
 
+    func makeAdditionalUITestWorkspace() throws -> URL {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ralph-ui-tests", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try runRalph(arguments: ["init", "--non-interactive"], currentDirectoryURL: root)
+        return root
+    }
+
     func seedUITestQueue(at workspaceURL: URL) throws {
         let importURL = workspaceURL.appendingPathComponent("ui-fixture-import.json", isDirectory: false)
         let seededTasks = #"""
@@ -170,6 +179,32 @@ extension RalphMacUITestCase {
         app.launch()
         app.activate()
         startTimelineCaptureIfNeeded()
+    }
+
+    func openWorkspaceURLInApp(_ workspaceURL: URL) throws {
+        let encodedPath = workspaceURL.path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? workspaceURL.path
+        let openURL = "ralph://open?workspace=\(encodedPath)"
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open", isDirectory: false)
+        process.arguments = [openURL]
+
+        let stderrPipe = Pipe()
+        process.standardError = stderrPipe
+        try process.run()
+        process.waitUntilExit()
+
+        let stderr = String(data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        guard process.terminationStatus == 0 else {
+            throw NSError(
+                domain: "RalphMacUITests",
+                code: Int(process.terminationStatus),
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Failed to open Ralph workspace URL",
+                    "stderr": stderr
+                ]
+            )
+        }
     }
 
     func removeItemIfExists(_ url: URL) throws {

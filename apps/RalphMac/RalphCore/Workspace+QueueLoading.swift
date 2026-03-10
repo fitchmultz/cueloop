@@ -75,12 +75,16 @@ public extension Workspace {
 
 public extension Workspace {
     func loadTasks(retryConfiguration: RetryConfiguration = .default) async {
+        let repositoryContext = currentRepositoryContext()
+
         guard let client else {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             taskState.tasksErrorMessage = "CLI client not available."
             return
         }
 
         guard hasRalphQueueFile else {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             stopFileWatching()
             taskState.tasks = []
             taskState.tasksErrorMessage = """
@@ -118,6 +122,7 @@ public extension Workspace {
             )
 
             guard collected.status.code == 0 else {
+                guard isCurrentRepositoryContext(repositoryContext) else { return }
                 taskState.tasksErrorMessage = collected.stderr.isEmpty
                     ? "Failed to load tasks (exit \(collected.status.code))."
                     : collected.stderr
@@ -125,12 +130,15 @@ public extension Workspace {
                 return
             }
 
-            taskState.tasks = try await WorkspaceQueueSnapshotLoader.decodeQueueTasks(
+            let decodedTasks = try await WorkspaceQueueSnapshotLoader.decodeQueueTasks(
                 fromCLIOutput: collected.stdout
             )
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
+            taskState.tasks = decodedTasks
             sanitizeRunControlSelection()
             taskState.tasksErrorMessage = nil
         } catch {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             let recoveryError = RecoveryError.classify(
                 error: error,
                 operation: "loadTasks",
@@ -141,6 +149,7 @@ public extension Workspace {
             diagnosticsState.showErrorRecovery = true
         }
 
+        guard isCurrentRepositoryContext(repositoryContext) else { return }
         taskState.tasksLoading = false
     }
 

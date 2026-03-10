@@ -27,7 +27,7 @@ struct MenuBarContentView: View {
     @ObservedObject private var menuBarManager = MenuBarManager.shared
     
     var body: some View {
-        if let workspace = manager.workspaces.first {
+        if let workspace = manager.effectiveWorkspace {
             menuContent(for: workspace)
         } else {
             emptyContent

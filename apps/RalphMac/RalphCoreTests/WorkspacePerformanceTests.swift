@@ -129,10 +129,15 @@ enum WorkspacePerformanceTestSupport {
     }
 
     static func writeEmptyQueueFile(in workspaceDir: URL) throws {
+        try writeQueueFile(in: workspaceDir, tasksJSON: "[]")
+    }
+
+    static func writeQueueFile(in workspaceDir: URL, tasksJSON: String) throws {
         let ralphDir = workspaceDir.appendingPathComponent(".ralph", isDirectory: true)
         try FileManager.default.createDirectory(at: ralphDir, withIntermediateDirectories: true)
         let queueFile = ralphDir.appendingPathComponent("queue.jsonc", isDirectory: false)
-        try #"{"version":1,"tasks":[]}"#.write(to: queueFile, atomically: true, encoding: .utf8)
+        let document = #"{"version":1,"tasks":\#(tasksJSON)}"#
+        try document.write(to: queueFile, atomically: true, encoding: .utf8)
     }
 
     static func waitFor(

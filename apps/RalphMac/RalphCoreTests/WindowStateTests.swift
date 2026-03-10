@@ -443,4 +443,52 @@ final class WindowStateTests: XCTestCase {
 
         XCTAssertEqual(receivedRoutes, [.showTaskCreation])
     }
+
+    func test_effectiveWorkspace_prefersFocusedAndLastActiveWorkspace() throws {
+        let firstDirectory = try makeWorkspaceDirectory(prefix: "effective-workspace-first")
+        let secondDirectory = try makeWorkspaceDirectory(prefix: "effective-workspace-second")
+        defer {
+            RalphCoreTestSupport.assertRemoved(firstDirectory)
+            RalphCoreTestSupport.assertRemoved(secondDirectory)
+        }
+
+        let firstWorkspace = manager.createWorkspace(workingDirectory: firstDirectory)
+        let secondWorkspace = manager.createWorkspace(workingDirectory: secondDirectory)
+
+        XCTAssertEqual(manager.effectiveWorkspace?.id, firstWorkspace.id)
+
+        manager.revealWorkspace(secondWorkspace.id)
+        XCTAssertEqual(manager.effectiveWorkspace?.id, secondWorkspace.id)
+
+        manager.markWorkspaceActive(firstWorkspace)
+        XCTAssertEqual(manager.effectiveWorkspace?.id, firstWorkspace.id)
+
+        manager.markWorkspaceActive(nil)
+        XCTAssertEqual(manager.effectiveWorkspace?.id, firstWorkspace.id)
+    }
+
+    func test_closeWorkspace_reassignsEffectiveWorkspaceWhenActiveWorkspaceCloses() throws {
+        let firstDirectory = try makeWorkspaceDirectory(prefix: "effective-workspace-close-first")
+        let secondDirectory = try makeWorkspaceDirectory(prefix: "effective-workspace-close-second")
+        let thirdDirectory = try makeWorkspaceDirectory(prefix: "effective-workspace-close-third")
+        defer {
+            RalphCoreTestSupport.assertRemoved(firstDirectory)
+            RalphCoreTestSupport.assertRemoved(secondDirectory)
+            RalphCoreTestSupport.assertRemoved(thirdDirectory)
+        }
+
+        let firstWorkspace = manager.createWorkspace(workingDirectory: firstDirectory)
+        let secondWorkspace = manager.createWorkspace(workingDirectory: secondDirectory)
+        let thirdWorkspace = manager.createWorkspace(workingDirectory: thirdDirectory)
+        _ = firstWorkspace
+
+        manager.markWorkspaceActive(secondWorkspace)
+        XCTAssertEqual(manager.effectiveWorkspace?.id, secondWorkspace.id)
+
+        manager.closeWorkspace(secondWorkspace)
+
+        XCTAssertEqual(manager.focusedWorkspace?.id, thirdWorkspace.id)
+        XCTAssertEqual(manager.effectiveWorkspace?.id, thirdWorkspace.id)
+        XCTAssertNotEqual(manager.lastActiveWorkspaceID, secondWorkspace.id)
+    }
 }

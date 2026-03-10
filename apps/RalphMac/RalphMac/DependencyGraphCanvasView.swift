@@ -27,8 +27,8 @@ struct DependencyGraphCanvasView: View {
     @ObservedObject var viewModel: DependencyGraphViewModel
     @Binding var selectedTaskID: String?
 
-    @State private var scale: CGFloat = 1.0
-    @State private var offset: CGSize = .zero
+    @State private var viewport = GraphViewportState()
+    @State private var isMagnifying = false
     @State private var lastDragLocation: CGPoint?
 
     var body: some View {
@@ -51,8 +51,8 @@ struct DependencyGraphCanvasView: View {
                     selectedTaskID = viewModel.selectNode(
                         at: location,
                         canvasSize: geometry.size,
-                        scale: scale,
-                        offset: offset,
+                        scale: viewport.scale,
+                        offset: viewport.offset,
                         nodeSize: CGSize(
                             width: DependencyGraphMetrics.nodeWidth,
                             height: DependencyGraphMetrics.nodeHeight
@@ -86,8 +86,8 @@ struct DependencyGraphCanvasView: View {
                         width: value.location.x - last.x,
                         height: value.location.y - last.y
                     )
-                    offset.width += delta.width
-                    offset.height += delta.height
+                    viewport.offset.width += delta.width
+                    viewport.offset.height += delta.height
                 }
                 lastDragLocation = value.location
             }
@@ -99,25 +99,33 @@ struct DependencyGraphCanvasView: View {
     private var canvasMagnificationGesture: some Gesture {
         MagnificationGesture()
             .onChanged { value in
-                scale = min(max(scale * value, 0.3), 3.0)
+                if !isMagnifying {
+                    viewport.beginMagnificationGesture()
+                    isMagnifying = true
+                }
+                viewport.updateMagnification(value)
+            }
+            .onEnded { _ in
+                viewport.endMagnificationGesture()
+                isMagnifying = false
             }
     }
 
     private var zoomControls: some View {
         VStack(spacing: 8) {
-            Button(action: { scale = min(scale * 1.2, 3.0) }) {
+            Button(action: { viewport.zoomIn() }) {
                 Image(systemName: "plus.magnifyingglass")
             }
             .buttonStyle(.borderedProminent)
             .accessibilityLabel("Zoom in")
 
-            Button(action: { scale = 1.0; offset = .zero }) {
+            Button(action: { viewport.reset() }) {
                 Image(systemName: "arrow.counterclockwise")
             }
             .buttonStyle(.bordered)
             .accessibilityLabel("Reset zoom")
 
-            Button(action: { scale = max(scale / 1.2, 0.3) }) {
+            Button(action: { viewport.zoomOut() }) {
                 Image(systemName: "minus.magnifyingglass")
             }
             .buttonStyle(.borderedProminent)
@@ -126,7 +134,10 @@ struct DependencyGraphCanvasView: View {
     }
 
     private func drawGraph(in context: inout GraphicsContext, size: CGSize, pulsePhase: TimeInterval) {
-        let center = CGPoint(x: size.width / 2 + offset.width, y: size.height / 2 + offset.height)
+        let center = CGPoint(
+            x: size.width / 2 + viewport.offset.width,
+            y: size.height / 2 + viewport.offset.height
+        )
 
         for edge in viewModel.edges {
             drawEdge(edge, in: &context, center: center, pulsePhase: pulsePhase)
@@ -147,12 +158,12 @@ struct DependencyGraphCanvasView: View {
               let toNode = viewModel.nodes.first(where: { $0.id == edge.to }) else { return }
 
         let fromPoint = CGPoint(
-            x: center.x + fromNode.position.x * scale,
-            y: center.y + fromNode.position.y * scale
+            x: center.x + fromNode.position.x * viewport.scale,
+            y: center.y + fromNode.position.y * viewport.scale
         )
         let toPoint = CGPoint(
-            x: center.x + toNode.position.x * scale,
-            y: center.y + toNode.position.y * scale
+            x: center.x + toNode.position.x * viewport.scale,
+            y: center.y + toNode.position.y * viewport.scale
         )
 
         var path = Path()
@@ -160,28 +171,28 @@ struct DependencyGraphCanvasView: View {
         path.addLine(to: toPoint)
 
         let isInCycle = viewModel.edgesInCycles.contains(edge.id)
-        var strokeStyle = StrokeStyle(lineWidth: 2 * scale)
+        var strokeStyle = StrokeStyle(lineWidth: 2 * viewport.scale)
         let color: Color
 
         switch edge.type {
         case .dependency:
             if isInCycle {
                 color = .red
-                strokeStyle = StrokeStyle(lineWidth: 3 * scale)
+                strokeStyle = StrokeStyle(lineWidth: 3 * viewport.scale)
             } else {
                 color = fromNode.task.isCritical && toNode.task.isCritical ? .red : .gray
             }
         case .blocks:
             if isInCycle {
                 color = .red
-                strokeStyle = StrokeStyle(lineWidth: 3 * scale, dash: [5, 5])
+                strokeStyle = StrokeStyle(lineWidth: 3 * viewport.scale, dash: [5, 5])
             } else {
                 color = .orange
-                strokeStyle = StrokeStyle(lineWidth: 2 * scale, dash: [5, 5])
+                strokeStyle = StrokeStyle(lineWidth: 2 * viewport.scale, dash: [5, 5])
             }
         case .relatesTo:
             color = .blue.opacity(0.5)
-            strokeStyle = StrokeStyle(lineWidth: 1 * scale, dash: [3, 3])
+            strokeStyle = StrokeStyle(lineWidth: 1 * viewport.scale, dash: [3, 3])
         }
 
         if isInCycle {
@@ -198,12 +209,12 @@ struct DependencyGraphCanvasView: View {
     }
 
     private func drawArrowHead(from: CGPoint, to: CGPoint, in context: inout GraphicsContext, color: Color) {
-        let arrowLength: CGFloat = 10 * scale
+        let arrowLength: CGFloat = 10 * viewport.scale
         let arrowAngle: CGFloat = .pi / 6
 
         let angle = atan2(to.y - from.y, to.x - from.x)
-        let tipX = to.x - cos(angle) * (DependencyGraphMetrics.nodeWidth / 2 * scale)
-        let tipY = to.y - sin(angle) * (DependencyGraphMetrics.nodeHeight / 2 * scale)
+        let tipX = to.x - cos(angle) * (DependencyGraphMetrics.nodeWidth / 2 * viewport.scale)
+        let tipY = to.y - sin(angle) * (DependencyGraphMetrics.nodeHeight / 2 * viewport.scale)
 
         var path = Path()
         path.move(to: CGPoint(x: tipX, y: tipY))
@@ -217,47 +228,47 @@ struct DependencyGraphCanvasView: View {
             y: tipY - arrowLength * sin(angle + arrowAngle)
         ))
 
-        context.stroke(path, with: .color(color), lineWidth: 2 * scale)
+        context.stroke(path, with: .color(color), lineWidth: 2 * viewport.scale)
     }
 
     private func drawNode(_ node: PositionedNode, in context: inout GraphicsContext, center: CGPoint) {
         let rect = CGRect(
-            x: center.x + node.position.x * scale - DependencyGraphMetrics.nodeWidth * scale / 2,
-            y: center.y + node.position.y * scale - DependencyGraphMetrics.nodeHeight * scale / 2,
-            width: DependencyGraphMetrics.nodeWidth * scale,
-            height: DependencyGraphMetrics.nodeHeight * scale
+            x: center.x + node.position.x * viewport.scale - DependencyGraphMetrics.nodeWidth * viewport.scale / 2,
+            y: center.y + node.position.y * viewport.scale - DependencyGraphMetrics.nodeHeight * viewport.scale / 2,
+            width: DependencyGraphMetrics.nodeWidth * viewport.scale,
+            height: DependencyGraphMetrics.nodeHeight * viewport.scale
         )
 
         let backgroundColor = node.isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor)
         let borderColor = node.task.isCritical ? Color.red : (node.isSelected ? Color.accentColor : Color.gray.opacity(0.3))
         let borderWidth: CGFloat = node.task.isCritical ? 3 : (node.isSelected ? 2 : 1)
 
-        let rectPath = Path(roundedRect: rect, cornerRadius: 8 * scale)
+        let rectPath = Path(roundedRect: rect, cornerRadius: 8 * viewport.scale)
         context.fill(rectPath, with: .color(backgroundColor))
         context.stroke(rectPath, with: .color(borderColor), lineWidth: borderWidth)
 
         let dotRect = CGRect(
-            x: rect.minX + 8 * scale,
-            y: rect.minY + 8 * scale,
-            width: 8 * scale,
-            height: 8 * scale
+            x: rect.minX + 8 * viewport.scale,
+            y: rect.minY + 8 * viewport.scale,
+            width: 8 * viewport.scale,
+            height: 8 * viewport.scale
         )
         context.fill(Path(ellipseIn: dotRect), with: .color(statusColor(node.task.statusEnum)))
 
-        let idText = context.resolve(Text(node.id).font(.system(size: 9 * scale)).monospaced())
+        let idText = context.resolve(Text(node.id).font(.system(size: 9 * viewport.scale)).monospaced())
         let idSize = idText.measure(in: rect.size)
         context.draw(idText, at: CGPoint(
-            x: rect.maxX - idSize.width / 2 - 8 * scale,
-            y: rect.minY + idSize.height / 2 + 4 * scale
+            x: rect.maxX - idSize.width / 2 - 8 * viewport.scale,
+            y: rect.minY + idSize.height / 2 + 4 * viewport.scale
         ))
 
         let title = node.task.title.count > 25
             ? String(node.task.title.prefix(25)) + "..."
             : node.task.title
-        let titleText = context.resolve(Text(title).font(.system(size: 11 * scale)))
+        let titleText = context.resolve(Text(title).font(.system(size: 11 * viewport.scale)))
         context.draw(titleText, at: CGPoint(
-            x: center.x + node.position.x * scale,
-            y: center.y + node.position.y * scale + 4 * scale
+            x: center.x + node.position.x * viewport.scale,
+            y: center.y + node.position.y * viewport.scale + 4 * viewport.scale
         ))
     }
 

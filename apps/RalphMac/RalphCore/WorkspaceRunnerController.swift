@@ -21,7 +21,7 @@ import Foundation
 
 @MainActor
 final class WorkspaceRunnerController {
-    private unowned let workspace: Workspace
+    private weak var workspace: Workspace?
     private var activeRun: RalphCLIRun?
     private var cancelRequested = false
     private var loopContinuationTask: Task<Void, Never>?
@@ -32,10 +32,13 @@ final class WorkspaceRunnerController {
     }
 
     func loadRunnerConfiguration(retryConfiguration: RetryConfiguration = .minimal) async {
+        guard let workspace else { return }
+        let repositoryContext = workspace.currentRepositoryContext()
         workspace.runState.runnerConfigLoading = true
         workspace.runState.runnerConfigErrorMessage = nil
 
         guard let client = workspace.client else {
+            guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
             workspace.runState.currentRunnerConfig = nil
             workspace.runState.runnerConfigErrorMessage = "CLI client not available."
             workspace.runState.runnerConfigLoading = false
@@ -59,6 +62,7 @@ final class WorkspaceRunnerController {
 
             let data = Data(collected.stdout.utf8)
             let decoded = try JSONDecoder().decode(ResolvedRunnerConfigDocument.self, from: data)
+            guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
             workspace.runState.currentRunnerConfig = Workspace.RunnerConfig(
                 model: decoded.agent?.model,
                 phases: decoded.agent?.phases,
@@ -66,6 +70,7 @@ final class WorkspaceRunnerController {
             )
             workspace.runState.runnerConfigErrorMessage = nil
         } catch {
+            guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
             workspace.runState.currentRunnerConfig = nil
             workspace.runState.runnerConfigErrorMessage = "Failed to load resolved runner configuration."
             RalphLogger.shared.error(
@@ -74,10 +79,28 @@ final class WorkspaceRunnerController {
             )
         }
 
+        guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
         workspace.runState.runnerConfigLoading = false
     }
 
+    func prepareForRepositoryRetarget() {
+        guard let workspace else { return }
+        loopContinuationTask?.cancel()
+        loopContinuationTask = nil
+        workspace.runState.isLoopMode = false
+        cancelRequested = false
+
+        let runToCancel = activeRun
+        activeRun = nil
+        if let runToCancel {
+            Task {
+                await runToCancel.cancel()
+            }
+        }
+    }
+
     func run(arguments: [String], preservingConsole: Bool = false) {
+        guard let workspace else { return }
         guard let client = workspace.client else {
             workspace.runState.errorMessage = "CLI client not available."
             return
@@ -90,7 +113,8 @@ final class WorkspaceRunnerController {
         cancelRequested = false
 
         Task { @MainActor [weak self] in
-            guard let self else { return }
+            guard let self, let workspace = self.workspace else { return }
+            let repositoryContext = workspace.currentRepositoryContext()
 
             do {
                 let run = try client.start(
@@ -100,14 +124,21 @@ final class WorkspaceRunnerController {
                 activeRun = run
 
                 for await event in run.events {
+                    guard workspace.isCurrentRepositoryContext(repositoryContext), activeRun === run else { continue }
                     workspace.runState.outputBuffer.append(event.text)
                     workspace.runState.output = workspace.runState.outputBuffer.content
                     workspace.consumeStreamTextChunk(event.text)
                 }
 
                 let status = await run.waitUntilExit()
-                finalizeRun(status: status)
+                finalizeRun(
+                    status: status,
+                    run: run,
+                    repositoryContext: repositoryContext,
+                    workspace: workspace
+                )
             } catch {
+                guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
                 let recoveryError = RecoveryError.classify(
                     error: error,
                     operation: "run",
@@ -125,6 +156,7 @@ final class WorkspaceRunnerController {
     }
 
     func cancel() {
+        guard let workspace else { return }
         guard workspace.runState.isRunning else {
             workspace.runState.isLoopMode = false
             workspace.runState.stopAfterCurrent = true
@@ -146,10 +178,11 @@ final class WorkspaceRunnerController {
         forceDirtyRepo: Bool = false,
         preservingConsole: Bool = false
     ) {
+        guard let workspace else { return }
         guard !workspace.runState.isRunning else { return }
 
         Task { @MainActor [weak self] in
-            guard let self else { return }
+            guard let self, let workspace = self.workspace else { return }
 
             workspace.resetExecutionState()
 
@@ -176,6 +209,7 @@ final class WorkspaceRunnerController {
     }
 
     func startLoop(forceDirtyRepo: Bool? = nil) {
+        guard let workspace else { return }
         workspace.runState.isLoopMode = true
         workspace.runState.stopAfterCurrent = false
         loopForceDirtyRepo = forceDirtyRepo ?? workspace.runState.runControlForceDirtyRepo
@@ -183,13 +217,20 @@ final class WorkspaceRunnerController {
     }
 
     func stopLoop() {
+        guard let workspace else { return }
         workspace.runState.isLoopMode = false
         workspace.runState.stopAfterCurrent = true
         loopContinuationTask?.cancel()
         loopContinuationTask = nil
     }
 
-    private func finalizeRun(status: RalphCLIExitStatus) {
+    private func finalizeRun(
+        status: RalphCLIExitStatus,
+        run: RalphCLIRun,
+        repositoryContext: Workspace.RepositoryContext,
+        workspace: Workspace
+    ) {
+        guard workspace.isCurrentRepositoryContext(repositoryContext), activeRun === run else { return }
         workspace.runState.lastExitStatus = status
         workspace.runState.isRunning = false
 
@@ -226,7 +267,7 @@ final class WorkspaceRunnerController {
     private func scheduleLoopContinuation() {
         loopContinuationTask?.cancel()
         loopContinuationTask = Task { @MainActor [weak self] in
-            guard let self else { return }
+            guard let self, let workspace = self.workspace else { return }
             loopContinuationTask = nil
             guard workspace.runState.isLoopMode, !workspace.runState.stopAfterCurrent else { return }
             runNextTask(forceDirtyRepo: loopForceDirtyRepo, preservingConsole: true)
@@ -234,6 +275,7 @@ final class WorkspaceRunnerController {
     }
 
     private func resolveNextRunnableTaskID() async -> String? {
+        guard let workspace else { return nil }
         guard let client = workspace.client else { return workspace.nextTask()?.id }
 
         do {

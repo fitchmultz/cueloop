@@ -74,4 +74,59 @@ final class RalphMacUIAppStateTests: RalphMacUITestCase {
             message: "Relaunch should surface CLI-imported workspace tasks through the refreshed search index"
         )
     }
+
+    func test_urlOpenBootstrapWorkspaceImmediatelyShowsNewWorkspaceQueue() throws {
+        let placeholderWorkspaceURL = try makeAdditionalUITestWorkspace()
+        let targetWorkspaceURL = try makeAdditionalUITestWorkspace()
+        defer { XCTAssertNoThrow(try removeItemIfExists(placeholderWorkspaceURL)) }
+        defer { XCTAssertNoThrow(try removeItemIfExists(targetWorkspaceURL)) }
+
+        let importURL = targetWorkspaceURL.appendingPathComponent("ui-url-open-import.json")
+        let newTitle = "UI URL Open Imported Task"
+        let payload = #"""
+        [
+          {
+            "id": "RQ-0200",
+            "status": "todo",
+            "title": "\#(newTitle)",
+            "priority": "high",
+            "created_at": "2026-03-07T01:00:00Z",
+            "updated_at": "2026-03-07T01:00:00Z"
+          }
+        ]
+        """#
+        try payload.write(to: importURL, atomically: true, encoding: .utf8)
+        defer { XCTAssertNoThrow(try removeItemIfExists(importURL)) }
+
+        try runRalph(
+            arguments: ["queue", "import", "--format", "json", "--input", importURL.path],
+            currentDirectoryURL: targetWorkspaceURL
+        )
+
+        stopTimelineCapture()
+        app.terminate()
+        let relaunchedApp = XCUIApplication()
+        relaunchedApp.launchArguments = ["--uitesting"]
+        relaunchedApp.launchEnvironment[LaunchEnvironment.uiTestWorkspacePath] =
+            placeholderWorkspaceURL.path
+        if let ralphExecutableURL {
+            relaunchedApp.launchEnvironment[LaunchEnvironment.ralphBinPath] = ralphExecutableURL.path
+        }
+        app = relaunchedApp
+        app.launch()
+        app.activate()
+        startTimelineCaptureIfNeeded()
+        _ = currentWorkspaceWindow()
+
+        try openWorkspaceURLInApp(targetWorkspaceURL)
+
+        let searchField = taskSearchField
+        assertExists(searchField, timeout: 8, message: "Task search field should appear after URL-open retarget")
+        let taskList = requireTaskList(timeout: 8)
+        assertExists(
+            taskText(newTitle, in: taskList),
+            timeout: 8,
+            message: "Bootstrap URL-open should immediately show the new workspace queue without a manual refresh"
+        )
+    }
 }

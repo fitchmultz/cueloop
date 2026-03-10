@@ -58,4 +58,54 @@ final class WorkspaceTaskPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.tasksByStatus[.doing]?.map(\.id), ["RQ-011", "RQ-010"])
         XCTAssertEqual(presentation.tasksByStatus[.todo]?.map(\.id), ["RQ-002"])
     }
+
+    func testGraphViewportState_magnificationUsesGestureBaselineInsteadOfCompounding() {
+        var viewport = GraphViewportState()
+
+        viewport.beginMagnificationGesture()
+        viewport.updateMagnification(1.1)
+        XCTAssertEqual(viewport.scale, 1.1, accuracy: 0.0001)
+
+        viewport.updateMagnification(1.2)
+        XCTAssertEqual(viewport.scale, 1.2, accuracy: 0.0001)
+
+        viewport.endMagnificationGesture()
+        XCTAssertEqual(viewport.committedScale, 1.2, accuracy: 0.0001)
+    }
+
+    func testGraphViewportState_sequentialGesturesAccumulateFromCommittedScale() {
+        var viewport = GraphViewportState()
+
+        viewport.beginMagnificationGesture()
+        viewport.updateMagnification(1.5)
+        viewport.endMagnificationGesture()
+
+        viewport.beginMagnificationGesture()
+        viewport.updateMagnification(1.2)
+        viewport.endMagnificationGesture()
+
+        XCTAssertEqual(viewport.scale, 1.8, accuracy: 0.0001)
+        XCTAssertEqual(viewport.committedScale, 1.8, accuracy: 0.0001)
+    }
+
+    func testGraphViewportState_clampsZoomAndResets() {
+        var viewport = GraphViewportState(scale: 2.9, committedScale: 2.9)
+
+        viewport.zoomIn()
+        XCTAssertEqual(viewport.scale, GraphViewportState.maximumScale, accuracy: 0.0001)
+
+        viewport.zoomOut()
+        XCTAssertEqual(viewport.scale, 2.5, accuracy: 0.05)
+
+        viewport.beginMagnificationGesture()
+        viewport.updateMagnification(0.01)
+        viewport.endMagnificationGesture()
+        XCTAssertEqual(viewport.scale, GraphViewportState.minimumScale, accuracy: 0.0001)
+
+        viewport.offset = CGSize(width: 24, height: -12)
+        viewport.reset()
+        XCTAssertEqual(viewport.scale, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(viewport.committedScale, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(viewport.offset, .zero)
+    }
 }

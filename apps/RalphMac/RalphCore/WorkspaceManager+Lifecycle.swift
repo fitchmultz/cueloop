@@ -34,6 +34,9 @@ public extension WorkspaceManager {
 
         let workspace = Workspace(id: id, workingDirectoryURL: directory, client: client)
         workspaces.append(workspace)
+        if focusedWorkspace == nil && lastActiveWorkspaceID == nil {
+            lastActiveWorkspaceID = workspace.id
+        }
 
         Task { @MainActor in
             await workspace.loadCLISpec()
@@ -46,6 +49,19 @@ public extension WorkspaceManager {
         workspace.cancel()
         workspace.removePersistedState()
         workspaces.removeAll { $0.id == workspace.id }
+        if focusedWorkspace?.id == workspace.id {
+            focusedWorkspace = nil
+        }
+        if lastActiveWorkspaceID == workspace.id {
+            lastActiveWorkspaceID = nil
+        }
+        let fallbackWorkspace = effectiveWorkspace
+        if focusedWorkspace == nil {
+            focusedWorkspace = fallbackWorkspace
+        }
+        if lastActiveWorkspaceID == nil {
+            lastActiveWorkspaceID = fallbackWorkspace?.id
+        }
         cleanWorkspaceDefaults(workspace.id)
     }
 

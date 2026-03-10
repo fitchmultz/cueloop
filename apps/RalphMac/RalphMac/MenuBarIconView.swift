@@ -23,7 +23,7 @@ struct MenuBarIconView: View {
     @ObservedObject private var manager = WorkspaceManager.shared
     
     var body: some View {
-        if let workspace = manager.workspaces.first {
+        if let workspace = manager.effectiveWorkspace {
             icon(for: workspace)
         } else {
             // Default icon when no workspace is available

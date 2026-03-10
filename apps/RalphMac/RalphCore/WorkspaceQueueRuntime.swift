@@ -21,7 +21,7 @@ import Foundation
 
 @MainActor
 final class WorkspaceQueueRuntime {
-    private unowned let workspace: Workspace
+    private weak var workspace: Workspace?
     private var watcher: QueueFileWatcher?
     private var watcherEventsTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
@@ -43,6 +43,7 @@ final class WorkspaceQueueRuntime {
     }
 
     func startWatchingIfNeeded() {
+        guard let workspace else { return }
         guard watcher == nil, workspace.hasRalphQueueFile else {
             if !workspace.hasRalphQueueFile {
                 workspace.updateWatcherHealth(.idle(for: workspace.identityState.workingDirectoryURL))
@@ -69,6 +70,16 @@ final class WorkspaceQueueRuntime {
     }
 
     func stopWatching() {
+        guard let workspace else {
+            watcherEventsTask?.cancel()
+            watcherEventsTask = nil
+            refreshTask?.cancel()
+            refreshTask = nil
+            pendingBatch = QueueFileWatcher.FileChangeBatch(fileNames: [])
+            lastTasksSnapshot.removeAll(keepingCapacity: false)
+            watcher = nil
+            return
+        }
         watcherEventsTask?.cancel()
         watcherEventsTask = nil
         refreshTask?.cancel()
@@ -92,11 +103,16 @@ final class WorkspaceQueueRuntime {
         startWatchingIfNeeded()
     }
 
+    func prepareForRepositoryRetarget() {
+        stopWatching()
+    }
+
     func repairWatching() {
         restartWatching()
     }
 
     private func handleWatcherEvent(_ event: QueueFileWatcher.Event) {
+        guard let workspace else { return }
         switch event {
         case .healthChanged(let health):
             workspace.updateWatcherHealth(health)
@@ -127,11 +143,15 @@ final class WorkspaceQueueRuntime {
     }
 
     private func process(batch: QueueFileWatcher.FileChangeBatch) async {
+        guard let workspace else { return }
+        let repositoryContext = workspace.currentRepositoryContext()
+
         if batch.affectsQueueSnapshot {
             lastTasksSnapshot = workspace.taskState.tasks
 
             switch await attemptDirectQueueParse() {
             case .success(let parsedTasks):
+                guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
                 workspace.taskState.tasks = parsedTasks
                 workspace.sanitizeRunControlSelection()
                 workspace.taskState.tasksErrorMessage = nil
@@ -141,6 +161,7 @@ final class WorkspaceQueueRuntime {
                     category: .fileWatching
                 )
             case .failure(let error):
+                guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
                 RalphLogger.shared.info(
                     "Direct parse failed, falling back to CLI: \(error.localizedDescription)",
                     category: .fileWatching
@@ -148,6 +169,7 @@ final class WorkspaceQueueRuntime {
                 await workspace.loadTasks()
             }
 
+            guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
             workspace.taskState.lastQueueRefreshEvent = Workspace.QueueRefreshEvent(
                 source: .externalFileChange,
                 previousTasks: lastTasksSnapshot,
@@ -156,11 +178,15 @@ final class WorkspaceQueueRuntime {
         }
 
         if batch.affectsRunnerConfiguration {
+            guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
             await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
         }
     }
 
     private func attemptDirectQueueParse() async -> DirectParseResult {
+        guard let workspace else {
+            return .failure(CancellationError())
+        }
         do {
             let tasks = try await WorkspaceQueueSnapshotLoader.loadQueueTasks(from: workspace.queueFileURL)
             return .success(tasks: tasks)

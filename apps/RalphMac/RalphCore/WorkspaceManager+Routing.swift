@@ -17,6 +17,23 @@
 public import Foundation
 
 public extension WorkspaceManager {
+    var effectiveWorkspace: Workspace? {
+        if let focusedWorkspaceID = focusedWorkspace?.id,
+           let focusedWorkspace = workspaces.first(where: { $0.id == focusedWorkspaceID }) {
+            return focusedWorkspace
+        }
+
+        if let lastActiveWorkspaceID,
+           let activeWorkspace = workspaces.first(where: { $0.id == lastActiveWorkspaceID }) {
+            return activeWorkspace
+        }
+
+        if let lastWorkspace = workspaces.last {
+            return lastWorkspace
+        }
+        return workspaces.first
+    }
+
     func registerWindowRouteActions(for windowID: UUID, actions: WindowRouteActions) {
         sceneRouter.registerWindowRouteActions(for: windowID, actions: actions)
     }
@@ -41,13 +58,32 @@ public extension WorkspaceManager {
         sceneRouter.route(route, to: workspaceID)
     }
 
+    func markWorkspaceActive(_ workspace: Workspace?) {
+        guard let workspace,
+              workspaces.contains(where: { $0.id == workspace.id }) else {
+            focusedWorkspace = nil
+            if let lastActiveWorkspaceID,
+               !workspaces.contains(where: { $0.id == lastActiveWorkspaceID }) {
+                self.lastActiveWorkspaceID = effectiveWorkspace?.id
+            }
+            return
+        }
+
+        focusedWorkspace = workspace
+        lastActiveWorkspaceID = workspace.id
+    }
+
     func revealWorkspace(_ workspaceID: UUID) {
         if sceneRouter.focusWorkspace(
             workspaceID,
             focusedWorkspaceID: focusedWorkspace?.id
         ) {
-            focusedWorkspace = workspaces.first(where: { $0.id == workspaceID })
+            markWorkspaceActive(workspaces.first(where: { $0.id == workspaceID }))
             return
+        }
+
+        if let workspace = workspaces.first(where: { $0.id == workspaceID }) {
+            lastActiveWorkspaceID = workspace.id
         }
     }
 

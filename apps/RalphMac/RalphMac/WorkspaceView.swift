@@ -85,6 +85,9 @@ struct WorkspaceView: View {
         .onAppear {
             registerWorkspaceRouteActions()
         }
+        .onChange(of: workspace.identityState.retargetRevision) { _, _ in
+            handleRepositoryRetarget()
+        }
         .onDisappear {
             manager.unregisterWorkspaceRouteActions(for: workspace.id)
         }
@@ -392,6 +395,12 @@ struct WorkspaceView: View {
                 RalphLogger.shared.error("Failed to start work on task: \(error)", category: .workspace)
             }
         }
+    }
+
+    private func handleRepositoryRetarget() {
+        navigation.resetForRepositoryRetarget()
+        showingTaskCreation = false
+        showingTaskDecompose = false
     }
 
     private func showTaskCreation() {

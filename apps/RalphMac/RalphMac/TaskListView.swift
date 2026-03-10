@@ -122,6 +122,10 @@ struct TaskListView: View {
         .onChange(of: selectedTaskIDs) { _, newSelection in
             syncPrimarySelection(with: newSelection)
         }
+        .onChange(of: workspace.identityState.retargetRevision) { _, _ in
+            focusedTaskID = nil
+            transientState.resetForRepositoryRetarget()
+        }
     }
 
     private func handleTaskSelection(taskID: String, modifierFlags: NSEvent.ModifierFlags) {

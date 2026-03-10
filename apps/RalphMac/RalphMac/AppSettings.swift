@@ -270,7 +270,7 @@ struct SettingsContentContainer: View {
     
     var body: some View {
         Group {
-            if let workspace = manager.focusedWorkspace ?? manager.workspaces.first {
+            if let workspace = manager.effectiveWorkspace {
                 SettingsView(workspace: workspace)
             } else {
                 NoWorkspaceSettingsView()

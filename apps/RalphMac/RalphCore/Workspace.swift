@@ -26,6 +26,16 @@ public import Foundation
 
 @MainActor
 public final class Workspace: ObservableObject, Identifiable {
+    public struct RepositoryContext: Sendable, Equatable {
+        public let generation: UInt64
+        public let workingDirectoryURL: URL
+
+        public init(generation: UInt64, workingDirectoryURL: URL) {
+            self.generation = generation
+            self.workingDirectoryURL = workingDirectoryURL
+        }
+    }
+
     public let id: UUID
 
     public let identityState: WorkspaceIdentityState
@@ -147,6 +157,28 @@ public final class Workspace: ObservableObject, Identifiable {
         if !isRunnable {
             runState.runControlSelectedTaskID = nil
         }
+    }
+
+    func currentRepositoryContext() -> RepositoryContext {
+        RepositoryContext(
+            generation: identityState.repositoryGeneration,
+            workingDirectoryURL: identityState.workingDirectoryURL
+        )
+    }
+
+    func isCurrentRepositoryContext(_ context: RepositoryContext) -> Bool {
+        context.generation == identityState.repositoryGeneration
+            && context.workingDirectoryURL.standardizedFileURL.resolvingSymlinksInPath()
+                == identityState.workingDirectoryURL.standardizedFileURL.resolvingSymlinksInPath()
+    }
+
+    func beginRepositoryRetarget(to url: URL) -> RepositoryContext {
+        let standardizedURL = url.standardizedFileURL.resolvingSymlinksInPath()
+        identityState.repositoryGeneration &+= 1
+        identityState.retargetRevision &+= 1
+        identityState.workingDirectoryURL = standardizedURL
+        identityState.name = standardizedURL.lastPathComponent
+        return currentRepositoryContext()
     }
 
     private func bindDomainStateChanges() {

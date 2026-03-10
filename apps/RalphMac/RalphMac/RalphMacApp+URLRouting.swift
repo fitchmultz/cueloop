@@ -85,6 +85,7 @@ extension RalphMacApp {
 
     func bootstrapWorkspaceForURLOpen() -> Workspace? {
         guard manager.workspaces.count == 1, let workspace = manager.workspaces.first else { return nil }
+        guard !workspace.runState.isRunning else { return nil }
 
         let homePath = FileManager.default.homeDirectoryForCurrentUser
             .standardizedFileURL
@@ -94,8 +95,17 @@ extension RalphMacApp {
             .standardizedFileURL
             .resolvingSymlinksInPath()
             .path
-        guard workspacePath == homePath else { return nil }
-        guard !workspace.hasRalphQueueFile else { return nil }
+
+        if workspacePath == homePath && !workspace.hasRalphQueueFile {
+            return workspace
+        }
+
+        guard workspace.hasRalphQueueFile else {
+            return workspace
+        }
+        guard !workspace.taskState.tasksLoading else { return nil }
+        guard workspace.taskState.tasks.isEmpty else { return nil }
+        guard workspace.taskState.tasksErrorMessage == nil else { return nil }
 
         return workspace
     }

@@ -11,6 +11,7 @@
  */
 
 public import Foundation
+import CoreGraphics
 
 /// Represents the full graph data from `ralph queue graph --format json`
 public struct RalphGraphDocument: Codable, Sendable, Equatable {
@@ -102,9 +103,70 @@ public struct PositionedNode: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Viewport transform state for the dependency-graph canvas.
+public struct GraphViewportState: Sendable, Equatable {
+    public static let minimumScale: CGFloat = 0.3
+    public static let maximumScale: CGFloat = 3.0
+    public static let zoomStep: CGFloat = 1.2
+
+    public var scale: CGFloat
+    public var committedScale: CGFloat
+    public var offset: CGSize
+
+    public init(
+        scale: CGFloat = 1.0,
+        committedScale: CGFloat = 1.0,
+        offset: CGSize? = nil
+    ) {
+        let clampedScale = Self.clamp(scale)
+        self.scale = clampedScale
+        self.committedScale = Self.clamp(committedScale)
+        self.offset = offset ?? CGSize()
+    }
+
+    public mutating func beginMagnificationGesture() {
+        committedScale = scale
+    }
+
+    public mutating func updateMagnification(_ gestureValue: CGFloat) {
+        scale = Self.clamp(committedScale * gestureValue)
+    }
+
+    public mutating func endMagnificationGesture() {
+        committedScale = scale
+    }
+
+    public mutating func zoomIn() {
+        scale = Self.clamp(scale * Self.zoomStep)
+        committedScale = scale
+    }
+
+    public mutating func zoomOut() {
+        scale = Self.clamp(scale / Self.zoomStep)
+        committedScale = scale
+    }
+
+    public mutating func reset() {
+        scale = 1.0
+        committedScale = 1.0
+        offset = .zero
+    }
+
+    public static func clamp(_ candidate: CGFloat) -> CGFloat {
+        min(max(candidate, minimumScale), maximumScale)
+    }
+}
+
 /// Extension to make CGPoint Sendable-compatible.
 /// CGPoint is a value type composed of CGFloat (Double) - inherently thread-safe.
 /// Using @unchecked Sendable for retroactive conformance since CoreGraphics may declare
 /// this in a future SDK version. This is safe because CGPoint contains no reference types
 /// and has no mutable shared state.
 extension CGPoint: @retroactive @unchecked Sendable {}
+
+/// Extension to make CGSize Sendable-compatible.
+/// CGSize is a value type composed of CGFloat (Double) - inherently thread-safe.
+/// Using @unchecked Sendable for retroactive conformance since CoreGraphics may declare
+/// this in a future SDK version. This is safe because CGSize contains no reference types
+/// and has no mutable shared state.
+extension CGSize: @retroactive @unchecked Sendable {}

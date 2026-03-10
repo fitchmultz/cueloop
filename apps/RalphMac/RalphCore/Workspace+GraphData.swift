@@ -16,7 +16,10 @@ import Foundation
 
 public extension Workspace {
     func loadGraphData(retryConfiguration: RetryConfiguration = .default) async {
+        let repositoryContext = currentRepositoryContext()
+
         guard let client else {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             insightsState.graphDataErrorMessage = "CLI client not available."
             return
         }
@@ -46,6 +49,7 @@ public extension Workspace {
             )
 
             guard collected.status.code == 0 else {
+                guard isCurrentRepositoryContext(repositoryContext) else { return }
                 insightsState.graphDataErrorMessage = collected.stderr.isEmpty
                     ? "Failed to load graph data (exit \(collected.status.code))."
                     : collected.stderr
@@ -53,11 +57,14 @@ public extension Workspace {
                 return
             }
 
-            insightsState.graphData = try JSONDecoder().decode(
+            let graphData = try JSONDecoder().decode(
                 RalphGraphDocument.self,
                 from: Data(collected.stdout.utf8)
             )
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
+            insightsState.graphData = graphData
         } catch {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             let recoveryError = RecoveryError.classify(
                 error: error,
                 operation: "loadGraphData",
@@ -68,6 +75,7 @@ public extension Workspace {
             diagnosticsState.showErrorRecovery = true
         }
 
+        guard isCurrentRepositoryContext(repositoryContext) else { return }
         insightsState.graphDataLoading = false
     }
 }

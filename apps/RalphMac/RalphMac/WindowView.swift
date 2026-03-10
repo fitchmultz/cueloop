@@ -207,7 +207,7 @@ struct WindowView: View {
     }
     
     private func updateFocusedWorkspace() {
-        manager.focusedWorkspace = activeWorkspace()
+        manager.markWorkspaceActive(activeWorkspace())
     }
 
     private func registerWindowRouteActions() {

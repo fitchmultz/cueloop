@@ -26,6 +26,7 @@ public final class WorkspaceManager: ObservableObject {
     @Published public var errorMessage: String?
     @Published public internal(set) var versionCheckResult: VersionValidator.VersionCheckResult?
     @Published public var focusedWorkspace: Workspace?
+    @Published public internal(set) var lastActiveWorkspaceID: UUID?
     @Published public internal(set) var persistenceIssue: PersistenceIssue?
 
     public internal(set) var client: RalphCLIClient?

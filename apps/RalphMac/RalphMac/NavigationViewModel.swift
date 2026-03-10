@@ -154,6 +154,11 @@ public final class NavigationViewModel: ObservableObject {
         selectedTaskIDs.removeAll()
     }
 
+    public func resetForRepositoryRetarget() {
+        selectedTaskID = nil
+        selectedTaskIDs.removeAll()
+    }
+
     public func toggleTaskViewMode() {
         switch taskViewMode {
         case .list:

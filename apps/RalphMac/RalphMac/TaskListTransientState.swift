@@ -73,4 +73,12 @@ final class TaskListTransientState: ObservableObject {
         selectedTaskIDs.wrappedValue.removeAll()
         selectedTaskID.wrappedValue = nil
     }
+
+    func resetForRepositoryRetarget() {
+        refreshFeedbackTask?.cancel()
+        refreshFeedbackTask = nil
+        highlightedTaskIDs.removeAll()
+        isExternalUpdateBannerVisible = false
+        showingBulkActions = false
+    }
 }

@@ -43,6 +43,7 @@ private struct LegacyAnalyticsFetchResult {
 
 public extension Workspace {
     func loadAnalytics(timeRange: TimeRange = .sevenDays) async {
+        let repositoryContext = currentRepositoryContext()
         let previousState = insightsState.analytics
         insightsState.analytics = AnalyticsDashboardState(
             timeRange: timeRange,
@@ -55,6 +56,7 @@ public extension Workspace {
         )
 
         guard let client else {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             insightsState.analytics = analyticsFailureState(
                 previous: previousState,
                 timeRange: timeRange,
@@ -66,6 +68,7 @@ public extension Workspace {
         let days = timeRange.days ?? 30
 
         if let dashboard = await loadDashboardAggregated(client: client, days: days) {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
             insightsState.analytics = analyticsState(
                 from: dashboard,
                 timeRange: timeRange,
@@ -75,6 +78,7 @@ public extension Workspace {
         }
 
         let legacyResult = await loadLegacyAnalytics(client: client, days: days)
+        guard isCurrentRepositoryContext(repositoryContext) else { return }
         insightsState.analytics = analyticsState(
             from: legacyResult,
             timeRange: timeRange,
