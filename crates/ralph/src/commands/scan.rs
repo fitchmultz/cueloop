@@ -335,12 +335,12 @@ mod tests {
             .queue
             .file
             .clone()
-            .unwrap_or_else(|| PathBuf::from(".ralph/queue.json"));
+            .unwrap_or_else(|| PathBuf::from(".ralph/queue.jsonc"));
         let done_rel = config
             .queue
             .done_file
             .clone()
-            .unwrap_or_else(|| PathBuf::from(".ralph/done.json"));
+            .unwrap_or_else(|| PathBuf::from(".ralph/done.jsonc"));
         let id_prefix = config
             .queue
             .id_prefix
@@ -357,7 +357,7 @@ mod tests {
                 id_prefix,
                 id_width,
                 global_config_path: None,
-                project_config_path: Some(repo_root.join(".ralph/config.json")),
+                project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
             },
             dir,
         )

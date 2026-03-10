@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Define the local trust file contract for execution-sensitive project settings.
-//! - Load `.ralph/trust.jsonc` / `.ralph/trust.json` files with JSONC support.
+//! - Load `.ralph/trust.jsonc` files with JSONC support.
 //! - Provide helpers for source-aware trust checks during config resolution.
 //!
 //! Not handled here:
@@ -38,12 +38,7 @@ impl RepoTrust {
 
 /// Preferred local trust path for a repository root.
 pub fn project_trust_path(repo_root: &Path) -> PathBuf {
-    let jsonc_path = repo_root.join(".ralph").join("trust.jsonc");
-    if jsonc_path.is_file() {
-        jsonc_path
-    } else {
-        repo_root.join(".ralph").join("trust.json")
-    }
+    repo_root.join(".ralph").join("trust.jsonc")
 }
 
 /// Load repo trust if present, otherwise return the default untrusted state.
@@ -55,4 +50,36 @@ pub fn load_repo_trust(repo_root: &Path) -> Result<RepoTrust> {
 
     let raw = fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
     crate::jsonc::parse_jsonc::<RepoTrust>(&raw, &format!("trust {}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn project_trust_path_is_jsonc_only() {
+        let repo_root = TempDir::new().expect("temp dir");
+        assert_eq!(
+            project_trust_path(repo_root.path()),
+            repo_root.path().join(".ralph/trust.jsonc")
+        );
+    }
+
+    #[test]
+    fn load_repo_trust_ignores_legacy_json_file() {
+        let repo_root = TempDir::new().expect("temp dir");
+        let ralph_dir = repo_root.path().join(".ralph");
+        fs::create_dir_all(&ralph_dir).expect("create .ralph");
+        fs::write(
+            ralph_dir.join("trust.json"),
+            r#"{"allow_project_commands":true}"#,
+        )
+        .expect("write legacy trust file");
+
+        assert_eq!(
+            load_repo_trust(repo_root.path()).expect("load trust"),
+            RepoTrust::default()
+        );
+    }
 }

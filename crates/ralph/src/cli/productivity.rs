@@ -170,7 +170,7 @@ mod tests {
         let temp = tempfile::tempdir()?;
         let repo_root = temp.path().to_path_buf();
 
-        let default_done_path = repo_root.join(".ralph/done.json");
+        let default_done_path = repo_root.join(".ralph/done.jsonc");
         let custom_done_path = repo_root.join("archive/done.jsonc");
         std::fs::create_dir_all(default_done_path.parent().expect("default parent"))?;
         std::fs::create_dir_all(custom_done_path.parent().expect("custom parent"))?;

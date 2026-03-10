@@ -116,8 +116,6 @@ Default runtime files:
 - `.ralph/done.jsonc`
 - `.ralph/config.jsonc`
 
-Each also supports a `.json` fallback.
-
 This repository intentionally keeps a sanitized `.ralph/` state for dogfooding and reproducible demos. In your own projects, treat `.ralph/` as project-local runtime state.
 
 ## Next Docs

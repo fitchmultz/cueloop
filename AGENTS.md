@@ -73,7 +73,7 @@ Every source file MUST start with `//!` docs covering:
 4. Schema defaults
 
 ### Repo Execution Trust
-- Repo-local execution settings (for example `agent.ci_gate`, runner binary overrides, plugin runner selection, and `plugins.*`) are gated by local `.ralph/trust.jsonc` / `.ralph/trust.json`, not shared config.
+- Repo-local execution settings (for example `agent.ci_gate`, runner binary overrides, plugin runner selection, and `plugins.*`) are gated by local `.ralph/trust.jsonc`, not shared config.
 - Trust file shape: `{"allow_project_commands": true, "trusted_at": "<RFC3339 optional>"}`.
 - Missing trust file means the repo is untrusted.
 - Untrusted repos ignore project-scope plugins under `.ralph/plugins`; only trusted repos may execute project-local plugins.
@@ -89,9 +89,9 @@ Every source file MUST start with `//!` docs covering:
 - `RALPH_REPO_ROOT_OVERRIDE`, `RALPH_QUEUE_PATH_OVERRIDE`, and `RALPH_DONE_PATH_OVERRIDE` are unsupported.
 
 ### Repo Execution Trust
-- Repo-local execution settings are trust-gated through local-only `.ralph/trust.jsonc` / `.ralph/trust.json`.
+- Repo-local execution settings are trust-gated through local-only `.ralph/trust.jsonc`.
 - Missing trust file means repo config may not define `agent.ci_gate`, runner binary overrides, plugin runner selections, or `plugins.*`; move those settings to trusted global config or create the local trust file.
-- `.ralph/trust.json*` must remain untracked.
+- `.ralph/trust.jsonc` must remain untracked.
 
 ### CI Gate Execution
 - `agent.ci_gate` is argv-only. Shell-string execution is unsupported; reject shell launchers such as `sh -c`, `cmd /C`, `pwsh -Command`, or `powershell -Command`.

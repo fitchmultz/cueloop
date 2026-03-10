@@ -31,11 +31,8 @@ RELEASE_METADATA_PATHS=(
 RALPH_TRACKED_ALLOWLIST=(
     ".ralph/README.md"
     ".ralph/queue.jsonc"
-    ".ralph/queue.json"
     ".ralph/done.jsonc"
-    ".ralph/done.json"
     ".ralph/config.jsonc"
-    ".ralph/config.json"
 )
 
 PUBLIC_REQUIRED_FILES=(

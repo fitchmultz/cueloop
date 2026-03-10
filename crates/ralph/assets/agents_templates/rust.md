@@ -68,8 +68,8 @@ Useful iteration commands (not a substitute for `make ci`):
 Config precedence (highest to lowest):
 
 1. CLI flags
-2. Project config: `.ralph/config.json`
-3. Global config: `~/.config/ralph/config.json`
+2. Project config: `.ralph/config.jsonc`
+3. Global config: `~/.config/ralph/config.jsonc`
 4. Schema defaults
 
 ## Git Hygiene

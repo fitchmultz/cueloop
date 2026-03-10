@@ -31,7 +31,7 @@ Only open `{{config.queue.file}}` or `{{config.queue.done_file}}` when you must 
 When running under `ralph run ...` supervision, the repo may appear “dirty” *only* because Ralph updated:
 - `{{config.queue.file}}` (e.g., setting the current task to `doing`)
 - `{{config.queue.done_file}}` (e.g., archiving/completing tasks)
-- `.ralph/config.jsonc` (or legacy `.ralph/config.json` before migration)
+- `.ralph/config.jsonc`
 - `.ralph/cache/*`
 - `.ralph/lock/*`
 
