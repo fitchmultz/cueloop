@@ -46,6 +46,8 @@ exit 2
         r#"#!/bin/sh
 # Log all args to file for assertion
 echo "$@" >> {args_file}
+# Consume resume payload so the caller does not race a closed stdin pipe.
+cat >/dev/null
 # Output JSON with session_id so resume can work
 echo '{{"session_id":"test-session-123","stdout":"runner output","status":"success"}}'
 exit 0
@@ -131,6 +133,7 @@ exit 1
     let runner_script = format!(
         r#"#!/bin/sh
 echo "$@" >> {args_file}
+cat >/dev/null
 echo '{{"session_id":"test-session-custom-123","stdout":"runner output","status":"success"}}'
 exit 0
 "#,
@@ -201,6 +204,8 @@ exit 2
         r#"#!/bin/sh
 # Increment resume counter
 echo "1" >> {count_file}
+# Consume resume payload so repeated Continue retries cannot hit a closed stdin pipe.
+cat >/dev/null
 # Output JSON with session_id so resume can work
 echo '{{"session_id":"escalation-test-session","stdout":"runner output","status":"success"}}'
 exit 0

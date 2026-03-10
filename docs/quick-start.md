@@ -66,6 +66,16 @@ ralph run one --phases 3
 ralph run one --dry-run
 ```
 
+If you have not configured a runner yet, stop at `--dry-run` and use the local smoke test instead of a real execution pass.
+
+Useful readiness checks before a real run:
+
+```bash
+ralph runner list
+ralph runner capabilities claude
+ralph doctor
+```
+
 ## 5) Inspect Queue State
 
 ```bash
@@ -112,6 +122,8 @@ This repository intentionally keeps a sanitized `.ralph/` state for dogfooding a
 
 ## Next Docs
 
+- [Evaluator Path](guides/evaluator-path.md)
+- [Local Smoke Test](guides/local-smoke-test.md)
 - [CLI Reference](cli.md)
 - [Configuration](configuration.md)
 - [Queue and Tasks](queue-and-tasks.md)

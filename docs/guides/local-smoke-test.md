@@ -12,6 +12,7 @@ Purpose: provide a deterministic install and verification path without requiring
 ```bash
 # from repo root
 make install
+# macOS/Homebrew GNU Make users: gmake install
 
 # initialize repo-local runtime state (safe to rerun)
 ralph init
@@ -29,6 +30,8 @@ ralph doctor
 # required quality gate
 make agent-ci
 ```
+
+If you want a shorter reviewer-oriented version of this flow, use [evaluator-path.md](evaluator-path.md).
 
 ## Expected Results
 

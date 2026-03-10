@@ -5,6 +5,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 ## Start Here
 
 - [README](../README.md): product overview, first end-to-end workflow, and verification path
+- [Evaluator Path](guides/evaluator-path.md): fastest reviewer-friendly path through install, queue inspection, and local verification
 - [Architecture Overview](architecture.md): components, data/control flow, trust boundaries
 - [Quick Start](quick-start.md): install, initialize, create first task, run it
 - [CLI Reference](cli.md): command map + high-value workflows
@@ -31,6 +32,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 Use these when you want to validate a clone, understand the operational model, or prepare for a public release:
 
 - [README](../README.md)
+- [Evaluator Path](guides/evaluator-path.md)
 - [Local Smoke Test](guides/local-smoke-test.md)
 - [Architecture Overview](architecture.md)
 - [Public Readiness Checklist](guides/public-readiness.md)

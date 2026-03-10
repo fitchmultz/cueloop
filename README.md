@@ -8,6 +8,17 @@ Ralph is a local-first AI coding workflow tool with a Rust CLI and a SwiftUI mac
 
 Teams use Ralph when ad-hoc AI coding stops being enough and they need a repeatable way to turn requests into queued work, run that work through Codex/Claude/Gemini-style agents, and keep the result reviewable with local files, local CI, and explicit task history instead of hidden SaaS state.
 
+## Reviewer Path
+
+If you are evaluating the repo quickly and want the fastest high-signal path:
+
+1. Read the product overview in this README.
+2. Run the no-runner-required verification flow in [docs/guides/local-smoke-test.md](docs/guides/local-smoke-test.md).
+3. Skim the command map in [docs/cli.md](docs/cli.md).
+4. Use [docs/guides/evaluator-path.md](docs/guides/evaluator-path.md) for a short "what to try, what to expect" walkthrough.
+
+That path is intentionally local-first and does not require configuring Codex/Claude/Gemini before you can validate the repo.
+
 ## What Ralph Is For
 
 Ralph is designed for engineering teams that want repeatable, auditable AI-assisted development workflows.
@@ -79,6 +90,9 @@ ralph run one
 # 4) Inspect queue state
 ralph queue list
 ```
+
+If you do not want to configure a runner yet, use the smoke-test flow instead of `ralph run one`.
+That gives you a deterministic way to verify the CLI and repo health without any external model setup.
 
 ## End-to-End Example
 
@@ -164,6 +178,7 @@ Details: [docs/versioning-policy.md](docs/versioning-policy.md)
 Start here:
 
 - [Documentation Index](docs/index.md)
+- [Evaluator Path](docs/guides/evaluator-path.md)
 - [Architecture Overview](docs/architecture.md)
 - [Quick Start](docs/quick-start.md)
 - [Local Smoke Test](docs/guides/local-smoke-test.md)
