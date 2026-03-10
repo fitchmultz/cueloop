@@ -237,8 +237,8 @@ public extension Workspace {
     }
 
     func setWorkingDirectory(_ url: URL) {
-        let standardizedURL = url.standardizedFileURL.resolvingSymlinksInPath()
-        let currentURL = identityState.workingDirectoryURL.standardizedFileURL.resolvingSymlinksInPath()
+        let standardizedURL = Self.normalizedWorkingDirectoryURL(url)
+        let currentURL = normalizedWorkingDirectoryURL
         guard standardizedURL != currentURL else {
             updateRecentWorkingDirectories(with: standardizedURL)
             persistState()

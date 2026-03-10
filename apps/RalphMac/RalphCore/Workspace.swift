@@ -126,6 +126,30 @@ public final class Workspace: ObservableObject, Identifiable {
         selectedRunControlTask ?? nextTask()
     }
 
+    public static func normalizedWorkingDirectoryURL(_ url: URL) -> URL {
+        url.standardizedFileURL.resolvingSymlinksInPath()
+    }
+
+    var normalizedWorkingDirectoryURL: URL {
+        Self.normalizedWorkingDirectoryURL(identityState.workingDirectoryURL)
+    }
+
+    public func matchesWorkingDirectory(_ url: URL) -> Bool {
+        normalizedWorkingDirectoryURL == Self.normalizedWorkingDirectoryURL(url)
+    }
+
+    public var isURLRoutingPlaceholderWorkspace: Bool {
+        guard !runState.isRunning else { return false }
+
+        if !hasRalphQueueFile {
+            return true
+        }
+
+        guard !taskState.tasksLoading else { return false }
+        guard taskState.tasksErrorMessage == nil else { return false }
+        return taskState.tasks.isEmpty
+    }
+
     public func refreshRunControlData() async {
         await loadTasks(retryConfiguration: .minimal)
         await loadRunnerConfiguration(retryConfiguration: .minimal)
@@ -168,12 +192,11 @@ public final class Workspace: ObservableObject, Identifiable {
 
     func isCurrentRepositoryContext(_ context: RepositoryContext) -> Bool {
         context.generation == identityState.repositoryGeneration
-            && context.workingDirectoryURL.standardizedFileURL.resolvingSymlinksInPath()
-                == identityState.workingDirectoryURL.standardizedFileURL.resolvingSymlinksInPath()
+            && Self.normalizedWorkingDirectoryURL(context.workingDirectoryURL) == normalizedWorkingDirectoryURL
     }
 
     func beginRepositoryRetarget(to url: URL) -> RepositoryContext {
-        let standardizedURL = url.standardizedFileURL.resolvingSymlinksInPath()
+        let standardizedURL = Self.normalizedWorkingDirectoryURL(url)
         identityState.repositoryGeneration &+= 1
         identityState.retargetRevision &+= 1
         identityState.workingDirectoryURL = standardizedURL

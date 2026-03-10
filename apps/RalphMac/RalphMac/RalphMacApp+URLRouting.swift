@@ -3,7 +3,7 @@
 
  Responsibilities:
  - Handle incoming `ralph://open` URLs and route or create workspaces.
- - Reuse bootstrap workspaces when the app launches into a placeholder home directory.
+ - Reuse bootstrap workspaces when the app launches into a placeholder workspace.
 
  Does not handle:
  - Command menu wiring.
@@ -46,9 +46,9 @@ extension RalphMacApp {
             )
         }
 
-        let workspaceURL = URL(fileURLWithPath: path, isDirectory: true)
-            .standardizedFileURL
-            .resolvingSymlinksInPath()
+        let workspaceURL = Workspace.normalizedWorkingDirectoryURL(
+            URL(fileURLWithPath: path, isDirectory: true)
+        )
 
         var isDir: ObjCBool = false
         let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
@@ -57,12 +57,7 @@ extension RalphMacApp {
             return
         }
 
-        if let existingWorkspace = manager.workspaces.first(where: {
-            $0.identityState.workingDirectoryURL
-                .standardizedFileURL
-                .resolvingSymlinksInPath()
-                .path == workspaceURL.path
-        }) {
+        if let existingWorkspace = manager.workspaces.first(where: { $0.matchesWorkingDirectory(workspaceURL) }) {
             manager.revealWorkspace(existingWorkspace.id)
             NSApp.activate(ignoringOtherApps: true)
             RalphLogger.shared.info("Activated existing workspace: \(path)", category: .workspace)
@@ -85,28 +80,6 @@ extension RalphMacApp {
 
     func bootstrapWorkspaceForURLOpen() -> Workspace? {
         guard manager.workspaces.count == 1, let workspace = manager.workspaces.first else { return nil }
-        guard !workspace.runState.isRunning else { return nil }
-
-        let homePath = FileManager.default.homeDirectoryForCurrentUser
-            .standardizedFileURL
-            .resolvingSymlinksInPath()
-            .path
-        let workspacePath = workspace.identityState.workingDirectoryURL
-            .standardizedFileURL
-            .resolvingSymlinksInPath()
-            .path
-
-        if workspacePath == homePath && !workspace.hasRalphQueueFile {
-            return workspace
-        }
-
-        guard workspace.hasRalphQueueFile else {
-            return workspace
-        }
-        guard !workspace.taskState.tasksLoading else { return nil }
-        guard workspace.taskState.tasks.isEmpty else { return nil }
-        guard workspace.taskState.tasksErrorMessage == nil else { return nil }
-
-        return workspace
+        return workspace.isURLRoutingPlaceholderWorkspace ? workspace : nil
     }
 }

@@ -231,6 +231,53 @@ final class WindowStateTests: XCTestCase {
         XCTAssertEqual(workspace.projectDisplayName, temp.lastPathComponent)
     }
 
+    func test_workspaceMatchesWorkingDirectory_normalizesInputURLs() throws {
+        let temp = try makeWorkspaceDirectory(prefix: "workspace-match-working-directory")
+        defer { RalphCoreTestSupport.assertRemoved(temp) }
+
+        let nestedPath = temp.appendingPathComponent("..", isDirectory: true)
+            .appendingPathComponent(temp.lastPathComponent, isDirectory: true)
+        let workspace = Workspace(workingDirectoryURL: nestedPath)
+
+        XCTAssertTrue(workspace.matchesWorkingDirectory(temp))
+        XCTAssertEqual(workspace.normalizedWorkingDirectoryURL.path, temp.path)
+    }
+
+    func test_isURLRoutingPlaceholderWorkspace_trueForEmptyQueueWorkspace() throws {
+        let temp = try makeSeededWorkspaceDirectory(prefix: "url-routing-placeholder-empty")
+        defer { RalphCoreTestSupport.assertRemoved(temp) }
+
+        let workspace = Workspace(workingDirectoryURL: temp)
+
+        workspace.taskState.tasks = []
+        workspace.taskState.tasksLoading = false
+        workspace.taskState.tasksErrorMessage = nil
+
+        XCTAssertTrue(workspace.isURLRoutingPlaceholderWorkspace)
+    }
+
+    func test_isURLRoutingPlaceholderWorkspace_falseWhenTasksExist() throws {
+        let temp = try makeSeededWorkspaceDirectory(prefix: "url-routing-placeholder-populated")
+        defer { RalphCoreTestSupport.assertRemoved(temp) }
+
+        let workspace = Workspace(workingDirectoryURL: temp)
+        workspace.taskState.tasks = [
+            RalphTask(
+                id: "RQ-1000",
+                title: "Existing task",
+                status: .todo,
+                priority: .medium,
+                tags: [],
+                createdAt: Date(),
+                updatedAt: Date()
+            )
+        ]
+        workspace.taskState.tasksLoading = false
+        workspace.taskState.tasksErrorMessage = nil
+
+        XCTAssertFalse(workspace.isURLRoutingPlaceholderWorkspace)
+    }
+
     func test_restoreWindows_withValidSavedState_restoresCorrectly() {
         // Create and save a window state
         let ws1 = manager.createWorkspace()

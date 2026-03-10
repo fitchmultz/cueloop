@@ -80,9 +80,9 @@ struct WindowViewContainer: View {
             return nil
         }
 
-        let workspaceURL = URL(fileURLWithPath: rawPath, isDirectory: true)
-            .standardizedFileURL
-            .resolvingSymlinksInPath()
+        let workspaceURL = Workspace.normalizedWorkingDirectoryURL(
+            URL(fileURLWithPath: rawPath, isDirectory: true)
+        )
         let workspace = manager.createWorkspace(workingDirectory: workspaceURL)
         return WindowState(workspaceIDs: [workspace.id])
     }
