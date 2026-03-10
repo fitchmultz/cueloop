@@ -23,11 +23,8 @@ use std::path::Path;
 /// These are Ralph's own configuration and state files that may change
 /// during normal operation.
 pub const RALPH_RUN_CLEAN_ALLOWED_PATHS: &[&str] = &[
-    ".ralph/queue.json",
     ".ralph/queue.jsonc",
-    ".ralph/done.json",
     ".ralph/done.jsonc",
-    ".ralph/config.json",
     ".ralph/config.jsonc",
     ".ralph/cache/",
 ];
@@ -204,13 +201,10 @@ mod clean_repo_tests {
     use tempfile::TempDir;
 
     #[test]
-    fn run_clean_allowed_paths_include_json_and_jsonc_variants() {
+    fn run_clean_allowed_paths_include_jsonc_runtime_paths() {
         for required in [
-            ".ralph/queue.json",
             ".ralph/queue.jsonc",
-            ".ralph/done.json",
             ".ralph/done.jsonc",
-            ".ralph/config.json",
             ".ralph/config.jsonc",
             ".ralph/cache/",
         ] {
@@ -226,9 +220,9 @@ mod clean_repo_tests {
         let temp = TempDir::new()?;
         git_test::init_repo(temp.path())?;
         std::fs::create_dir_all(temp.path().join(".ralph"))?;
-        let config_path = temp.path().join(".ralph/config.json");
+        let config_path = temp.path().join(".ralph/config.jsonc");
         std::fs::write(&config_path, "{ \"version\": 1 }")?;
-        git_test::git_run(temp.path(), &["add", "-f", ".ralph/config.json"])?;
+        git_test::git_run(temp.path(), &["add", "-f", ".ralph/config.jsonc"])?;
         git_test::git_run(temp.path(), &["commit", "-m", "init config"])?;
 
         std::fs::write(&config_path, "{ \"version\": 2 }")?;

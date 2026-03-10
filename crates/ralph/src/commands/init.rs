@@ -308,7 +308,7 @@ mod tests {
         let config_json = r#"{
   "version": 1,
   "queue": {
-    "file": ".ralph/queue.json"
+    "file": ".ralph/queue.jsonc"
   }
 }"#;
         std::fs::write(resolved.project_config_path.as_ref().unwrap(), config_json)?;

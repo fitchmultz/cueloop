@@ -298,7 +298,7 @@ mod tests {
     fn resolve_agent_overrides_parses_valid_args() {
         let args = AgentArgs {
             runner: Some("opencode".to_string()),
-            model: Some("gpt-5.2".to_string()),
+            model: Some("gpt-5.3".to_string()),
             effort: None,
             repo_prompt: None,
             runner_cli: RunnerCliArgs::default(),
@@ -306,7 +306,7 @@ mod tests {
 
         let overrides = resolve_agent_overrides(&args).unwrap();
         assert_eq!(overrides.runner, Some(Runner::Opencode));
-        assert_eq!(overrides.model, Some(Model::Gpt52));
+        assert_eq!(overrides.model, Some(Model::Gpt53));
         assert_eq!(overrides.reasoning_effort, None);
         assert_eq!(overrides.repoprompt_plan_required, None);
         assert_eq!(overrides.repoprompt_tool_injection, None);
@@ -390,7 +390,7 @@ mod tests {
         let args = RunAgentArgs {
             profile: None,
             runner: Some("codex".to_string()),
-            model: Some("gpt-5.2-codex".to_string()),
+            model: Some("gpt-5.3-codex".to_string()),
             effort: Some("high".to_string()),
             runner_cli: RunnerCliArgs::default(),
             phases: Some(2),
@@ -420,7 +420,7 @@ mod tests {
 
         let overrides = resolve_run_agent_overrides(&args).unwrap();
         assert_eq!(overrides.runner, Some(Runner::Codex));
-        assert_eq!(overrides.model, Some(Model::Gpt52Codex));
+        assert_eq!(overrides.model, Some(Model::Gpt53Codex));
         assert_eq!(overrides.reasoning_effort, Some(ReasoningEffort::High));
         assert_eq!(overrides.phases, Some(2));
         assert_eq!(overrides.git_revert_mode, Some(GitRevertMode::Enabled));
@@ -573,13 +573,13 @@ mod tests {
             lfs_check: false,
             no_progress: false,
             runner_phase1: Some("codex".to_string()),
-            model_phase1: Some("gpt-5.2-codex".to_string()),
+            model_phase1: Some("gpt-5.3-codex".to_string()),
             effort_phase1: Some("high".to_string()),
             runner_phase2: Some("claude".to_string()),
             model_phase2: Some("opus".to_string()),
             effort_phase2: None,
             runner_phase3: Some("codex".to_string()),
-            model_phase3: Some("gpt-5.2-codex".to_string()),
+            model_phase3: Some("gpt-5.3-codex".to_string()),
             effort_phase3: Some("medium".to_string()),
         };
 
@@ -597,7 +597,7 @@ mod tests {
         // Phase 1
         let phase1 = phase_overrides.phase1.expect("phase1 should be set");
         assert_eq!(phase1.runner, Some(Runner::Codex));
-        assert_eq!(phase1.model, Some(Model::Gpt52Codex));
+        assert_eq!(phase1.model, Some(Model::Gpt53Codex));
         assert_eq!(phase1.reasoning_effort, Some(ReasoningEffort::High));
 
         // Phase 2
@@ -609,7 +609,7 @@ mod tests {
         // Phase 3
         let phase3 = phase_overrides.phase3.expect("phase3 should be set");
         assert_eq!(phase3.runner, Some(Runner::Codex));
-        assert_eq!(phase3.model, Some(Model::Gpt52Codex));
+        assert_eq!(phase3.model, Some(Model::Gpt53Codex));
         assert_eq!(phase3.reasoning_effort, Some(ReasoningEffort::Medium));
     }
 

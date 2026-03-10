@@ -10,7 +10,7 @@
  - Workspace mutations or persistence side effects.
 
  Invariants/assumptions callers must respect:
- - Queue payloads decode from either object or array forms.
+ - Queue payloads decode from the current queue document object shape.
  - Task-agent normalization is the single cutover surface for override cleanup.
  */
 
@@ -385,7 +385,7 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
-/// Represents the top-level queue document from `ralph queue list --format json`.
+/// Represents the top-level on-disk queue document under `.ralph/queue.jsonc`.
 public struct RalphTaskQueueDocument: Codable, Sendable, Equatable {
     public let version: Int
     public let tasks: [RalphTask]
@@ -408,18 +408,11 @@ public struct RalphTaskQueueDocument: Codable, Sendable, Equatable {
             return
         }
 
-        let singleValue = try decoder.singleValueContainer()
-        if let taskArray = try? singleValue.decode([RalphTask].self) {
-            self.version = 1
-            self.tasks = taskArray
-            return
-        }
-
         throw DecodingError.typeMismatch(
             RalphTaskQueueDocument.self,
             DecodingError.Context(
                 codingPath: decoder.codingPath,
-                debugDescription: "Expected queue document object with tasks key or top-level task array"
+                debugDescription: "Expected queue document object with tasks key"
             )
         )
     }

@@ -4,7 +4,7 @@
  Responsibilities:
  - Validate direct queue file parsing for file-watcher-triggered refreshes.
  - Ensure RalphTaskQueueDocument correctly decodes valid queue files.
- - Verify both document format and legacy array format are supported.
+ - Reject legacy payload shapes that no longer match the queue contract.
 
  Does not handle:
  - Testing the CLI subprocess path (covered by integration tests).
@@ -121,9 +121,7 @@ final class QueueDirectParseTests: XCTestCase {
         XCTAssertEqual(document.tasks[2].status, .done)
     }
 
-    // MARK: - Legacy Array Format Tests
-
-    func test_decode_legacyArrayFormat_succeeds() throws {
+    func test_decode_legacyArrayFormat_throwsError() {
         // Given: Legacy array format (without version wrapper)
         let json = #"""
         [
@@ -139,15 +137,9 @@ final class QueueDirectParseTests: XCTestCase {
         ]
         """#
 
-        // When: Direct parse is attempted
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let document = try decoder.decode(RalphTaskQueueDocument.self, from: Data(json.utf8))
-
-        // Then: RalphTaskQueueDocument decodes array format correctly
-        XCTAssertEqual(document.version, 1) // Default version for legacy format
-        XCTAssertEqual(document.tasks.count, 1)
-        XCTAssertEqual(document.tasks.first?.id, "RQ-LEGACY-001")
+        XCTAssertThrowsError(try decoder.decode(RalphTaskQueueDocument.self, from: Data(json.utf8)))
     }
 
     // MARK: - Error Cases

@@ -249,7 +249,7 @@ mod tests {
         timings.record_runner_duration(
             PhaseType::Implementation,
             &Runner::Codex,
-            &Model::Gpt52, // Different model!
+            &Model::Gpt54, // Different model!
             Duration::from_secs(120),
         );
 

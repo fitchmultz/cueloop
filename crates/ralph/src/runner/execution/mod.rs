@@ -26,12 +26,12 @@
 //! - `command.rs`: Command building for runner subprocesses.
 //! - `json.rs`: JSON handling for runner input/output.
 //! - `plugin.rs`: External plugin protocol execution.
-//! - `plugin_trait.rs`: Core traits for the runner plugin system (NEW).
-//! - `builtin_plugins.rs`: Built-in runner plugin implementations (NEW).
-//! - `plugin_executor.rs`: Plugin-based execution orchestration (NEW).
+//! - `plugin_trait.rs`: Core traits for the runner plugin system.
+//! - `builtin_plugins.rs`: Built-in runner plugin implementations.
+//! - `plugin_executor.rs`: Plugin-based execution orchestration.
 //! - `process.rs`: Process management and execution.
 //! - `response.rs`: Response extraction (session IDs, assistant messages).
-//! - `runners.rs`: Individual runner implementations (legacy; migrating to plugin system).
+//! - `runners.rs`: Individual runner implementations.
 //! - `stream.rs`: Output streaming to handlers and terminals.
 //! - `tests/`: Execution-specific integration tests.
 
@@ -51,12 +51,8 @@ mod stream;
 #[cfg(test)]
 mod tests;
 
-// Legacy exports (maintained for backward compatibility during migration)
 pub(super) use response::extract_final_assistant_response;
-// Cursor now uses plugin system - legacy functions removed
 
-// New plugin trait system exports
-// Note: These are exported for use by runner.rs and tests
 pub(crate) use builtin_plugins::BuiltInRunnerPlugin;
 pub(crate) use plugin_executor::PluginExecutor;
 pub(crate) use plugin_trait::RunnerPlugin;

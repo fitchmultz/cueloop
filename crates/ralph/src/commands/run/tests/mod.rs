@@ -180,7 +180,7 @@ pub fn resolved_with_repo_root(repo_root: PathBuf) -> config::Resolved {
     let cfg = Config {
         agent: AgentConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::Medium),
             iterations: None,
             followup_reasoning_effort: None,
@@ -326,7 +326,7 @@ pub fn resolved_with_notification_config(
     let cfg = Config {
         agent: AgentConfig {
             runner: Some(Runner::Claude),
-            model: Some(Model::Gpt52),
+            model: Some(Model::Gpt53),
             reasoning_effort: None,
             iterations: None,
             followup_reasoning_effort: None,

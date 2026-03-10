@@ -191,7 +191,7 @@ ralph scan --profile quick "quick bug fixes"                        # Quick prof
 ralph scan --profile thorough "deep risk audit"                     # Thorough profile (deeper)
 
 # With runner overrides
-ralph scan --runner opencode --model gpt-5.2 "CI and safety gaps"
+ralph scan --runner opencode --model gpt-5.3 "CI and safety gaps"
 ralph scan --runner gemini --model gemini-3-flash-preview "risk audit"
 ralph scan --runner codex --model gpt-5.3-codex --effort high "queue correctness"
 ralph scan --runner claude --model opus "complex architecture review"

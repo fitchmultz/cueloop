@@ -52,7 +52,7 @@ pub use color::ColorArg;
 #[command(version)]
 #[command(after_long_help = r#"Runner selection:
   - CLI flags override project config, which overrides global config, which overrides built-in defaults.
-  - Default runner/model come from config files: project config (.ralph/config.jsonc) > global config (~/.config/ralph/config.jsonc, with .json fallback) > built-in.
+  - Default runner/model come from config files: project config (.ralph/config.jsonc) > global config (~/.config/ralph/config.jsonc) > built-in.
   - `task` and `scan` accept --runner/--model/--effort as one-off overrides.
   - `run one` and `run loop` accept --runner/--model/--effort as one-off overrides; otherwise they use task.agent overrides when present; otherwise config agent defaults.
 
@@ -70,7 +70,7 @@ Config example (.ralph/config.jsonc):
 
 Notes:
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi
-  - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, gpt-5.2-codex, gpt-5.2, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3 + gpt-5.2-codex + gpt-5.2; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
+  - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
   - On macOS: use `ralph app open` to launch the GUI (requires an installed Ralph.app)
 
 Examples:
@@ -78,7 +78,7 @@ Examples:
   ralph queue list
   ralph queue show RQ-0008
   ralph queue next --with-title
-  ralph scan --runner opencode --model gpt-5.2 --focus "CI gaps"
+  ralph scan --runner opencode --model gpt-5.3 --focus "CI gaps"
   ralph task --runner codex --model gpt-5.4 --effort high "Fix the flaky test"
   ralph scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
   ralph scan --runner claude --model sonnet --focus "risk audit"

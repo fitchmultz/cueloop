@@ -204,8 +204,6 @@ fn get_allowed_models(runner: &Runner) -> Option<Vec<String>> {
             "gpt-5.3-codex".into(),
             "gpt-5.3-codex-spark".into(),
             "gpt-5.3".into(),
-            "gpt-5.2-codex".into(),
-            "gpt-5.2".into(),
         ]),
         _ => None, // All other runners support arbitrary models
     }

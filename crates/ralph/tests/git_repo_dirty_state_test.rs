@@ -16,7 +16,7 @@ fn run_one_refuses_to_run_when_repo_is_dirty_and_a_todo_exists() -> Result<()> {
         status.success(),
         "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", None)?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", None)?;
 
     // Ensure there is a todo item so commands::run hits the clean-repo preflight.
     test_support::write_valid_single_todo_queue(dir.path())?;
@@ -66,7 +66,7 @@ fn run_one_succeeds_when_repo_is_dirty_and_force_is_used() -> Result<()> {
         "codex",
         "#!/bin/sh\ncat >/dev/null\nexit 0\n",
     )?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
     test_support::trust_project_commands(dir.path())?;
 
     // Use --force to bypass the dirty repo check.

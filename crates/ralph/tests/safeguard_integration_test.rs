@@ -72,7 +72,7 @@ fn configure_runner(dir: &Path, runner: &str, model: &str, bin_path: Option<&Pat
         let initial_config = r#"{ 
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.2-codex"
+    "model": "gpt-5.3-codex"
   },
   "queue": {
     "id_prefix": "RQ",
@@ -154,7 +154,7 @@ fn runner_fails_and_safeguards_stdout() -> Result<()> {
     // 3. Create a runner that prints and fails
     let script = "#!/bin/sh\necho 'VALUABLE_LLM_OUTPUT'\nexit 1\n";
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
-    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     // 4. Commit setup
     Command::new("git")
@@ -217,7 +217,7 @@ fn scan_fails_validation_and_safeguards_stdout() -> Result<()> {
     // The 'cat > /dev/null' drains stdin to prevent broken pipe errors.
     let script = "#!/bin/sh\ncat > /dev/null\necho 'VALUABLE_SCAN_OUTPUT'\necho 'corrupt' > .ralph/queue.jsonc\nexit 0\n";
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
-    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     // 3. Commit setup
     Command::new("git")

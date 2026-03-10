@@ -15,7 +15,7 @@ fn configure_runner(dir: &Path, runner: &str, model: &str, bin_path: Option<&Pat
         let initial_config = r#"{ 
   "agent": {
     "runner": "codex",
-    "model": "gpt-5.2-codex"
+    "model": "gpt-5.3-codex"
   },
   "queue": {
     "id_prefix": "RQ",
@@ -166,7 +166,7 @@ fn task_update_without_id_updates_all_tasks() -> Result<()> {
 
     let script = "#!/bin/sh\ncat >/dev/null\necho run >> .ralph/runner_calls.txt\nexit 0\n";
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
-    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["task", "update"]);
     anyhow::ensure!(
@@ -292,7 +292,7 @@ rm .ralph/queue.jsonc.bak
 exit 0
 "#;
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
-    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["task", "update", "RQ-0001"]);
     anyhow::ensure!(
@@ -341,7 +341,7 @@ QUEUEEOF
 exit 0
 "#;
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
-    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["task", "update", "RQ-0001"]);
     anyhow::ensure!(
@@ -407,7 +407,7 @@ rm .ralph/queue.jsonc.bak
 exit 0
 "#;
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
-    configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["task", "update", "RQ-0001"]);
     anyhow::ensure!(

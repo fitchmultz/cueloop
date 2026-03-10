@@ -99,7 +99,7 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
         let logURL = rootURL.appendingPathComponent("invocations.log", isDirectory: false)
         let ralphDirURL = workspaceURL.appendingPathComponent(".ralph", isDirectory: true)
         try FileManager.default.createDirectory(at: ralphDirURL, withIntermediateDirectories: true)
-        let queueURL = ralphDirURL.appendingPathComponent("queue.json", isDirectory: false)
+        let queueURL = ralphDirURL.appendingPathComponent("queue.jsonc", isDirectory: false)
         let scriptURL = rootURL.appendingPathComponent("mock-ralph", isDirectory: false)
 
         let queueJSON = """
@@ -209,11 +209,18 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
         }
         """
 
+        let queueListJSON = """
+        [
+          {"id":"RQ-0007","status":"todo","title":"Auth epic","priority":"high","tags":[]},
+          {"id":"RQ-0101","status":"draft","title":"Prepare OAuth app","priority":"medium","tags":[]},
+          {"id":"RQ-0102","status":"draft","title":"Wire callback flow","priority":"medium","tags":[]}
+        ]
+        """
+
         let script = """
         #!/bin/sh
         set -eu
         LOG_FILE=\"${MOCK_RALPH_LOG_FILE:?}\"
-        QUEUE_FILE=\"${MOCK_RALPH_QUEUE_FILE:?}\"
         printf '%s\n' "$*" >> "$LOG_FILE"
         if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
           echo "ralph \(VersionCompatibility.minimumCLIVersion)"
@@ -239,7 +246,9 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
           exit 0
         fi
         if [ "$1" = "queue" ] && [ "$2" = "list" ]; then
-          cat "$QUEUE_FILE"
+          cat <<'JSON'
+        \(queueListJSON)
+        JSON
           exit 0
         fi
         echo "unsupported command: $*" >&2
@@ -253,8 +262,6 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
         )
 
         setenv("MOCK_RALPH_LOG_FILE", logURL.path, 1)
-        setenv("MOCK_RALPH_QUEUE_FILE", queueURL.path, 1)
-
         return MockCLIFixture(
             rootURL: rootURL,
             workspaceURL: workspaceURL,

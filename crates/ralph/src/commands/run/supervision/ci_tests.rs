@@ -62,7 +62,7 @@ fn resolved_with_ci_command(
     let cfg = Config {
         agent: AgentConfig {
             runner: Some(Runner::Codex),
-            model: Some(crate::contracts::Model::Gpt52Codex),
+            model: Some(crate::contracts::Model::Gpt53Codex),
             reasoning_effort: Some(crate::contracts::ReasoningEffort::Medium),
             iterations: Some(1),
             followup_reasoning_effort: None,

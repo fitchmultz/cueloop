@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Load analytics data for dashboard surfaces.
-//! - Prefer the aggregated dashboard endpoint and fall back to legacy per-command loads.
+//! - Decode the aggregated dashboard endpoint into per-section dashboard state.
 //! - Preserve explicit per-section loading, empty, and failure states for analytics consumers.
 //!
 //! Does not handle:
@@ -11,9 +11,9 @@
 //! - Graph loading.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Aggregated dashboard loading is the preferred fast path.
+//! - Analytics state is derived from the dashboard endpoint only.
 //! - Each analytics section owns its own lifecycle instead of sharing a global error bit.
-//! - Fallback loading should retain stale data only when the caller has previous section content.
+//! - Failed loads should retain stale data only when the caller has previous section content.
 
 public import Foundation
 public import Combine
@@ -26,19 +26,6 @@ public final class WorkspaceInsightsState: ObservableObject {
     @Published public var analytics = AnalyticsDashboardState()
 
     public init() {}
-}
-
-private enum AnalyticsCLISectionFetch<Value: Sendable & Equatable> {
-    case loaded(Value)
-    case failed(String)
-}
-
-private struct LegacyAnalyticsFetchResult {
-    let productivitySummary: AnalyticsCLISectionFetch<ProductivitySummaryReport>
-    let productivityVelocity: AnalyticsCLISectionFetch<ProductivityVelocityReport>
-    let burndown: AnalyticsCLISectionFetch<BurndownReport>
-    let queueStats: AnalyticsCLISectionFetch<QueueStatsReport>
-    let history: AnalyticsCLISectionFetch<HistoryReport>
 }
 
 public extension Workspace {
@@ -67,23 +54,22 @@ public extension Workspace {
 
         let days = timeRange.days ?? 30
 
-        if let dashboard = await loadDashboardAggregated(client: client, days: days) {
+        do {
+            let dashboard = try await loadDashboard(client: client, days: days)
             guard isCurrentRepositoryContext(repositoryContext) else { return }
             insightsState.analytics = analyticsState(
                 from: dashboard,
                 timeRange: timeRange,
                 previous: previousState
             )
-            return
+        } catch {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
+            insightsState.analytics = analyticsFailureState(
+                previous: previousState,
+                timeRange: timeRange,
+                message: "Failed to load dashboard analytics."
+            )
         }
-
-        let legacyResult = await loadLegacyAnalytics(client: client, days: days)
-        guard isCurrentRepositoryContext(repositoryContext) else { return }
-        insightsState.analytics = analyticsState(
-            from: legacyResult,
-            timeRange: timeRange,
-            previous: previousState
-        )
     }
 }
 
@@ -140,42 +126,6 @@ private extension Workspace {
         )
     }
 
-    func analyticsState(
-        from legacy: LegacyAnalyticsFetchResult,
-        timeRange: TimeRange,
-        previous: AnalyticsDashboardState
-    ) -> AnalyticsDashboardState {
-        AnalyticsDashboardState(
-            timeRange: timeRange,
-            lastRefreshedAt: Date(),
-            productivitySummary: sectionState(
-                legacy.productivitySummary,
-                kind: .productivitySummary,
-                previous: previous.productivitySummaryValue
-            ),
-            productivityVelocity: sectionState(
-                legacy.productivityVelocity,
-                kind: .productivityVelocity,
-                previous: previous.productivityVelocityValue
-            ),
-            burndown: sectionState(
-                legacy.burndown,
-                kind: .burndown,
-                previous: previous.burndownValue
-            ),
-            queueStats: sectionState(
-                legacy.queueStats,
-                kind: .queueStats,
-                previous: previous.queueStatsValue
-            ),
-            history: sectionState(
-                legacy.history,
-                kind: .history,
-                previous: previous.historyValue
-            )
-        )
-    }
-
     func sectionState<Value: Sendable & Equatable>(
         _ result: SectionResult<Value>,
         kind: AnalyticsSectionKind,
@@ -200,112 +150,13 @@ private extension Workspace {
         }
     }
 
-    func sectionState<Value: Sendable & Equatable>(
-        _ result: AnalyticsCLISectionFetch<Value>,
-        kind: AnalyticsSectionKind,
-        previous: Value?
-    ) -> AnalyticsSectionLoadState<Value> {
-        switch result {
-        case .loaded(let value):
-            return .loaded(value)
-        case .failed(let message):
-            return .failed(message: message, previous: previous)
-        }
-    }
-
-    func loadLegacyAnalytics(client: RalphCLIClient, days: Int) async -> LegacyAnalyticsFetchResult {
-        async let summaryTask = loadProductivitySummary(client: client)
-        async let velocityTask = loadVelocity(client: client, days: days)
-        async let burndownTask = loadBurndown(client: client, days: days)
-        async let statsTask = loadQueueStats(client: client)
-        async let historyTask = loadHistory(client: client, days: days)
-
-        return await LegacyAnalyticsFetchResult(
-            productivitySummary: summaryTask,
-            productivityVelocity: velocityTask,
-            burndown: burndownTask,
-            queueStats: statsTask,
-            history: historyTask
-        )
-    }
-
-    func loadDashboardAggregated(client: RalphCLIClient, days: Int) async -> DashboardReport? {
-        do {
-            return try await self.decodeRepositoryJSON(
-                DashboardReport.self,
-                client: client,
-                arguments: ["--no-color", "queue", "dashboard", "--days", String(days)],
-                currentDirectoryURL: identityState.workingDirectoryURL,
-                retryConfiguration: .minimal
-            )
-        } catch {
-            return nil
-        }
-    }
-
-    func loadProductivitySummary(client: RalphCLIClient) async -> AnalyticsCLISectionFetch<ProductivitySummaryReport> {
-        await loadAnalyticsSection(
-            kind: .productivitySummary,
+    func loadDashboard(client: RalphCLIClient, days: Int) async throws -> DashboardReport {
+        try await self.decodeRepositoryJSON(
+            DashboardReport.self,
             client: client,
-            arguments: ["--no-color", "productivity", "summary", "--format", "json"],
-            decode: ProductivitySummaryReport.self
+            arguments: ["--no-color", "queue", "dashboard", "--days", String(days)],
+            currentDirectoryURL: identityState.workingDirectoryURL,
+            retryConfiguration: .minimal
         )
-    }
-
-    func loadVelocity(client: RalphCLIClient, days: Int) async -> AnalyticsCLISectionFetch<ProductivityVelocityReport> {
-        await loadAnalyticsSection(
-            kind: .productivityVelocity,
-            client: client,
-            arguments: ["--no-color", "productivity", "velocity", "--format", "json", "--days", String(days)],
-            decode: ProductivityVelocityReport.self
-        )
-    }
-
-    func loadBurndown(client: RalphCLIClient, days: Int) async -> AnalyticsCLISectionFetch<BurndownReport> {
-        await loadAnalyticsSection(
-            kind: .burndown,
-            client: client,
-            arguments: ["--no-color", "queue", "burndown", "--format", "json", "--days", String(days)],
-            decode: BurndownReport.self
-        )
-    }
-
-    func loadQueueStats(client: RalphCLIClient) async -> AnalyticsCLISectionFetch<QueueStatsReport> {
-        await loadAnalyticsSection(
-            kind: .queueStats,
-            client: client,
-            arguments: ["--no-color", "queue", "stats", "--format", "json"],
-            decode: QueueStatsReport.self
-        )
-    }
-
-    func loadHistory(client: RalphCLIClient, days: Int) async -> AnalyticsCLISectionFetch<HistoryReport> {
-        await loadAnalyticsSection(
-            kind: .history,
-            client: client,
-            arguments: ["--no-color", "queue", "history", "--format", "json", "--days", String(days)],
-            decode: HistoryReport.self
-        )
-    }
-
-    func loadAnalyticsSection<Value: Decodable & Sendable & Equatable>(
-        kind: AnalyticsSectionKind,
-        client: RalphCLIClient,
-        arguments: [String],
-        decode type: Value.Type
-    ) async -> AnalyticsCLISectionFetch<Value> {
-        do {
-            return .loaded(
-                try await self.decodeRepositoryJSON(
-                    type,
-                    client: client,
-                    arguments: arguments,
-                    currentDirectoryURL: identityState.workingDirectoryURL,
-                    retryConfiguration: .minimal
-                )
-            )
-        } catch {
-            return .failed(error.localizedDescription)
-        }
     }
 }

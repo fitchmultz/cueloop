@@ -20,7 +20,7 @@ fn base_scan_options() -> scan_cmd::ScanOptions {
         focus: String::new(),
         mode: ScanMode::Maintenance,
         runner_override: Some(Runner::Codex),
-        model_override: Some(Model::Gpt52Codex),
+        model_override: Some(Model::Gpt53Codex),
         reasoning_effort_override: None,
         runner_cli_overrides: RunnerCliOptionsPatch::default(),
         force: false,
@@ -38,7 +38,7 @@ fn test_scan_options_default_values() {
 
     assert!(opts.focus.is_empty());
     assert_eq!(opts.runner_override, Some(Runner::Codex));
-    assert_eq!(opts.model_override, Some(Model::Gpt52Codex));
+    assert_eq!(opts.model_override, Some(Model::Gpt53Codex));
     assert!(opts.reasoning_effort_override.is_none());
     assert!(!opts.force);
 }
@@ -78,8 +78,8 @@ fn test_scan_options_all_runners() {
 #[test]
 fn test_scan_options_all_models() {
     let models = vec![
-        Model::Gpt52Codex,
-        Model::Gpt52,
+        Model::Gpt53Codex,
+        Model::Gpt53,
         Model::Glm47,
         Model::Custom("custom-model".to_string()),
     ];

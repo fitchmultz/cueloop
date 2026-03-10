@@ -87,10 +87,7 @@ fn should_skip_ralph_runtime_path(
 
     if rel_path.components().count() == 1
         && let Some(name) = rel_path.file_name().and_then(|name| name.to_str())
-        && matches!(
-            name,
-            "queue.json" | "queue.jsonc" | "done.json" | "done.jsonc"
-        )
+        && matches!(name, "queue.jsonc" | "done.jsonc")
     {
         return true;
     }

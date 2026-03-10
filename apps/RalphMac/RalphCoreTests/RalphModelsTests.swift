@@ -238,7 +238,7 @@ final class RalphModelsTests: XCTestCase {
         XCTAssertEqual(document.tasks[0].id, "RQ-1001")
     }
 
-    func test_decode_taskQueueDocument_arrayShape() throws {
+    func test_decode_taskQueueDocument_arrayShape_fails() {
         let json = #"""
         [
           {
@@ -251,10 +251,7 @@ final class RalphModelsTests: XCTestCase {
         ]
         """#
 
-        let document = try JSONDecoder().decode(RalphTaskQueueDocument.self, from: Data(json.utf8))
-        XCTAssertEqual(document.version, 1)
-        XCTAssertEqual(document.tasks.count, 1)
-        XCTAssertEqual(document.tasks[0].id, "RQ-2001")
+        XCTAssertThrowsError(try JSONDecoder().decode(RalphTaskQueueDocument.self, from: Data(json.utf8)))
     }
 
     func test_decode_taskQueueDocument_withAgentOverrides() throws {

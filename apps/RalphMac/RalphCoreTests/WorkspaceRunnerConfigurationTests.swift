@@ -170,9 +170,9 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
 
             if [ "$2" = "queue" ] && [ "$3" = "list" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
               if [ "$workspace" = "a" ]; then
-                echo '{"version":1,"tasks":[{"id":"RQ-A","status":"todo","title":"Workspace A Task","priority":"high","tags":[],"created_at":"2026-03-05T00:00:00Z","updated_at":"2026-03-05T00:00:00Z"}]}'
+                echo '[{"id":"RQ-A","status":"todo","title":"Workspace A Task","priority":"high","tags":[],"created_at":"2026-03-05T00:00:00Z","updated_at":"2026-03-05T00:00:00Z"}]'
               else
-                echo '{"version":1,"tasks":[{"id":"RQ-B","status":"todo","title":"Workspace B Task","priority":"medium","tags":[],"created_at":"2026-03-06T00:00:00Z","updated_at":"2026-03-06T00:00:00Z"}]}'
+                echo '[{"id":"RQ-B","status":"todo","title":"Workspace B Task","priority":"medium","tags":[],"created_at":"2026-03-06T00:00:00Z","updated_at":"2026-03-06T00:00:00Z"}]'
               fi
               exit 0
             fi
@@ -274,9 +274,9 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
 
             if [ "$2" = "queue" ] && [ "$3" = "list" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
               if [ "$workspace" = "a" ]; then
-                echo '{"version":1,"tasks":[{"id":"RQ-A","status":"todo","title":"Stale A Task","priority":"high","tags":[],"created_at":"2026-03-05T00:00:00Z","updated_at":"2026-03-05T00:00:00Z"}]}'
+                echo '[{"id":"RQ-A","status":"todo","title":"Stale A Task","priority":"high","tags":[],"created_at":"2026-03-05T00:00:00Z","updated_at":"2026-03-05T00:00:00Z"}]'
               else
-                echo '{"version":1,"tasks":[{"id":"RQ-B","status":"todo","title":"Fresh B Task","priority":"medium","tags":[],"created_at":"2026-03-06T00:00:00Z","updated_at":"2026-03-06T00:00:00Z"}]}'
+                echo '[{"id":"RQ-B","status":"todo","title":"Fresh B Task","priority":"medium","tags":[],"created_at":"2026-03-06T00:00:00Z","updated_at":"2026-03-06T00:00:00Z"}]'
               fi
               exit 0
             fi
@@ -384,7 +384,7 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
             fi
 
             if [ "$2" = "queue" ] && [ "$3" = "list" ] && [ "$4" = "--format" ] && [ "$5" = "json" ]; then
-              echo '{"version":1,"tasks":[]}'
+              echo '[]'
               exit 0
             fi
 

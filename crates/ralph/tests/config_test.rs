@@ -25,14 +25,6 @@ fn setup_ralph_dir(dir: &TempDir) -> PathBuf {
     ralph_dir
 }
 
-// Helper to create a queue.json file
-fn create_queue_json(dir: &TempDir, content: &str) -> PathBuf {
-    let ralph_dir = setup_ralph_dir(dir);
-    let queue_path = ralph_dir.join("queue.json");
-    fs::write(&queue_path, content).expect("write queue.json");
-    queue_path
-}
-
 // Helper to create a queue.jsonc file
 fn create_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
     let ralph_dir = setup_ralph_dir(dir);
@@ -57,14 +49,6 @@ fn create_done_jsonc(dir: &TempDir, content: &str) -> PathBuf {
     let done_path = ralph_dir.join("done.jsonc");
     fs::write(&done_path, content).expect("write done.jsonc");
     done_path
-}
-
-// Helper to create a config.json file
-fn create_config_json(dir: &TempDir, content: &str) -> PathBuf {
-    let ralph_dir = setup_ralph_dir(dir);
-    let config_path = ralph_dir.join("config.json");
-    fs::write(&config_path, content).expect("write config.json");
-    config_path
 }
 
 // Helper to create a config.jsonc file

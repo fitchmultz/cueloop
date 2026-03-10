@@ -26,37 +26,29 @@ use super::PushPolicy;
 use super::enforce_post_run_ci_gate;
 use super::git_ops::{finalize_git_state, warn_if_modified_lfs};
 
-const RESTORED_BOOKKEEPING_FILES: [&str; 6] = [
-    ".ralph/queue.json",
+const RESTORED_BOOKKEEPING_FILES: [&str; 4] = [
     ".ralph/queue.jsonc",
-    ".ralph/done.json",
     ".ralph/done.jsonc",
     ".ralph/cache/productivity.json",
     ".ralph/cache/productivity.jsonc",
 ];
 
-const PARALLEL_BOOKKEEPING_PATHS: [&str; 14] = [
-    ".ralph/queue.json",
+const PARALLEL_BOOKKEEPING_PATHS: [&str; 10] = [
     ".ralph/queue.jsonc",
-    ".ralph/done.json",
     ".ralph/done.jsonc",
     ".ralph/cache/productivity.json",
     ".ralph/cache/productivity.jsonc",
     ".ralph/cache/plans/",
     ".ralph/cache/phase2_final/",
-    ".ralph/cache/session.json",
     ".ralph/cache/session.jsonc",
-    ".ralph/cache/migrations.json",
     ".ralph/cache/migrations.jsonc",
     ".ralph/cache/parallel/",
     ".ralph/logs/",
 ];
 
-const GENERATED_PARALLEL_PATHS: [&str; 7] = [
+const GENERATED_PARALLEL_PATHS: [&str; 5] = [
     ".ralph/cache/phase2_final",
-    ".ralph/cache/session.json",
     ".ralph/cache/session.jsonc",
-    ".ralph/cache/migrations.json",
     ".ralph/cache/migrations.jsonc",
     ".ralph/cache/parallel",
     ".ralph/logs",
@@ -383,8 +375,8 @@ mod tests {
         std::fs::create_dir_all(repo_root.join(".ralph/cache")).unwrap();
         git_test::init_repo(&repo_root).unwrap();
 
-        let workspace_queue = repo_root.join(".ralph/queue.json");
-        let workspace_done = repo_root.join(".ralph/done.json");
+        let workspace_queue = repo_root.join(".ralph/queue.jsonc");
+        let workspace_done = repo_root.join(".ralph/done.jsonc");
         let productivity = repo_root.join(".ralph/cache/productivity.json");
         std::fs::write(&workspace_queue, "{\"version\":1,\"tasks\":[]}").unwrap();
         std::fs::write(&workspace_done, "{\"version\":1,\"tasks\":[]}").unwrap();
@@ -393,8 +385,8 @@ mod tests {
 
         let coordinator_root = temp.path().join("coordinator");
         std::fs::create_dir_all(coordinator_root.join(".ralph")).unwrap();
-        let coordinator_queue = coordinator_root.join(".ralph/queue.json");
-        let coordinator_done = coordinator_root.join(".ralph/done.json");
+        let coordinator_queue = coordinator_root.join(".ralph/queue.jsonc");
+        let coordinator_done = coordinator_root.join(".ralph/done.jsonc");
         std::fs::write(
             &coordinator_queue,
             "{\"version\":1,\"tasks\":[{\"id\":\"RQ-1\"}]}",
@@ -446,16 +438,16 @@ mod tests {
     #[test]
     fn collect_bookkeeping_status_lines_matches_tracked_paths() {
         let status = "\
- M .ralph/queue.json
+ M .ralph/queue.jsonc
 M  src/lib.rs
- R .ralph/done.json -> .ralph/done-old.json
+ R .ralph/done.jsonc -> .ralph/done-old.jsonc
 ?? scratch.txt
 ";
 
         let matches = collect_bookkeeping_status_lines(status);
         assert_eq!(matches.len(), 2);
-        assert!(matches[0].contains(".ralph/queue.json"));
-        assert!(matches[1].contains(".ralph/done.json"));
+        assert!(matches[0].contains(".ralph/queue.jsonc"));
+        assert!(matches[1].contains(".ralph/done.jsonc"));
     }
 
     #[test]
@@ -493,8 +485,8 @@ M  src/lib.rs
         std::fs::create_dir_all(repo_root.join(".ralph/cache")).unwrap();
         git_test::init_repo(&repo_root).unwrap();
 
-        let workspace_queue = repo_root.join(".ralph/queue.json");
-        let workspace_done = repo_root.join(".ralph/done.json");
+        let workspace_queue = repo_root.join(".ralph/queue.jsonc");
+        let workspace_done = repo_root.join(".ralph/done.jsonc");
         let productivity = repo_root.join(".ralph/cache/productivity.json");
         std::fs::write(&workspace_queue, "{\"version\":1,\"tasks\":[]}").unwrap();
         std::fs::write(&workspace_done, "{\"version\":1,\"tasks\":[]}").unwrap();
@@ -503,7 +495,7 @@ M  src/lib.rs
 
         let generated_plan = repo_root.join(".ralph/cache/plans/RQ-0001.md");
         let generated_phase2 = repo_root.join(".ralph/cache/phase2_final/RQ-0001.md");
-        let generated_session = repo_root.join(".ralph/cache/session.json");
+        let generated_session = repo_root.join(".ralph/cache/session.jsonc");
         let generated_logs = repo_root.join(".ralph/logs/parallel.log");
         std::fs::create_dir_all(generated_plan.parent().unwrap()).unwrap();
         std::fs::create_dir_all(generated_phase2.parent().unwrap()).unwrap();
@@ -539,8 +531,8 @@ M  src/lib.rs
         std::fs::create_dir_all(repo_root.join(".ralph/cache")).unwrap();
         git_test::init_repo(&repo_root).unwrap();
 
-        let workspace_queue = repo_root.join(".ralph/queue.json");
-        let workspace_done = repo_root.join(".ralph/done.json");
+        let workspace_queue = repo_root.join(".ralph/queue.jsonc");
+        let workspace_done = repo_root.join(".ralph/done.jsonc");
         let productivity = repo_root.join(".ralph/cache/productivity.json");
         std::fs::write(&workspace_queue, "{\"version\":1,\"tasks\":[]}").unwrap();
         std::fs::write(&workspace_done, "{\"version\":1,\"tasks\":[]}").unwrap();

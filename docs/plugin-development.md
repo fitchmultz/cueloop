@@ -91,7 +91,7 @@ When you run `ralph plugin init`, the scaffold generates this layout with:
   "runner": {
     "bin": "runner.sh",
     "supports_resume": true,
-    "default_model": "gpt-5.2"
+    "default_model": "gpt-5.3"
   },
   "processors": {
     "bin": "processor.sh",

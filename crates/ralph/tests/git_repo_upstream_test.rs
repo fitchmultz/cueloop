@@ -29,7 +29,7 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
         "codex",
         "#!/bin/sh\ncat >/dev/null\nexit 0\n",
     )?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
     test_support::trust_project_commands(dir.path())?;
 
     // 4. Run `ralph run one` with the fake runner

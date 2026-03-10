@@ -105,9 +105,9 @@ fn expand_variables_expands_config_runner() -> Result<()> {
 fn expand_variables_expands_config_model() -> Result<()> {
     let template = "Model: {{config.agent.model}}";
     let mut config = default_config();
-    config.agent.model = Some(crate::contracts::Model::Gpt52Codex);
+    config.agent.model = Some(crate::contracts::Model::Gpt53Codex);
     let result = expand_variables(template, &config)?;
-    assert!(result.contains("gpt-5.2-codex"));
+    assert!(result.contains("gpt-5.3-codex"));
     Ok(())
 }
 
@@ -210,9 +210,9 @@ fn expand_variables_leaves_non_config_placeholders() -> Result<()> {
 fn expand_variables_mixed_env_and_config() -> Result<()> {
     let template = "Model: {{config.agent.model}}, Var: ${TEST:-default}";
     let mut config = default_config();
-    config.agent.model = Some(crate::contracts::Model::Gpt52Codex);
+    config.agent.model = Some(crate::contracts::Model::Gpt53Codex);
     let result = expand_variables(template, &config)?;
-    assert!(result.contains("gpt-5.2-codex"));
+    assert!(result.contains("gpt-5.3-codex"));
     assert!(result.contains("Var: default"));
     Ok(())
 }

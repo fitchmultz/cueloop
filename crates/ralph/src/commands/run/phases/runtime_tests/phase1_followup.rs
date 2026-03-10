@@ -102,14 +102,14 @@ fn phase1_followup_allows_preexisting_dirty_queue_refresh() -> Result<()> {
     git_init(temp.path())?;
     std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
     std::fs::write(
-        temp.path().join(".ralph/queue.json"),
+        temp.path().join(".ralph/queue.jsonc"),
         "{\n  \"version\": 1,\n  \"tasks\": []\n}\n",
     )?;
     let add_status = Command::new("git")
         .current_dir(temp.path())
-        .args(["add", ".ralph/queue.json"])
+        .args(["add", ".ralph/queue.jsonc"])
         .status()?;
-    anyhow::ensure!(add_status.success(), "git add .ralph/queue.json failed");
+    anyhow::ensure!(add_status.success(), "git add .ralph/queue.jsonc failed");
     let commit_status = Command::new("git")
         .current_dir(temp.path())
         .args(["commit", "--quiet", "-m", "add queue baseline"])
@@ -120,7 +120,7 @@ fn phase1_followup_allows_preexisting_dirty_queue_refresh() -> Result<()> {
         r#"#!/bin/sh
 set -e
 plan="{root}/.ralph/cache/plans/RQ-0001.md"
-queue="{root}/.ralph/queue.json"
+queue="{root}/.ralph/queue.jsonc"
 cat > "$queue" <<'EOF'
 {{
   "version": 1,
@@ -197,7 +197,7 @@ echo '{{"sessionID":"sess-123"}}'
     let mut paths = git::status_paths(temp.path())?;
     paths.sort();
     anyhow::ensure!(
-        paths == vec![".ralph/queue.json".to_string()],
+        paths == vec![".ralph/queue.jsonc".to_string()],
         "expected only dirty queue bookkeeping path, got: {:?}",
         paths
     );

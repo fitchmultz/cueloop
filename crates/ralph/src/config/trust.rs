@@ -19,8 +19,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::resolution::prefer_jsonc_then_json;
-
 /// Local trust file for execution-sensitive project configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
@@ -40,7 +38,12 @@ impl RepoTrust {
 
 /// Preferred local trust path for a repository root.
 pub fn project_trust_path(repo_root: &Path) -> PathBuf {
-    prefer_jsonc_then_json(repo_root.join(".ralph").join("trust.jsonc"))
+    let jsonc_path = repo_root.join(".ralph").join("trust.jsonc");
+    if jsonc_path.is_file() {
+        jsonc_path
+    } else {
+        repo_root.join(".ralph").join("trust.json")
+    }
 }
 
 /// Load repo trust if present, otherwise return the default untrusted state.

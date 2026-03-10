@@ -34,7 +34,7 @@ fn continue_session_preserves_runner_cli_options() {
         Some("test-session"),
         PhaseType::Implementation,
     );
-    session.model = crate::contracts::Model::Gpt52Codex;
+    session.model = crate::contracts::Model::Gpt53Codex;
     session.runner_cli = custom_runner_cli;
 
     assert_eq!(session.runner_cli.verbosity, RunnerVerbosity::Quiet);

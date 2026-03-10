@@ -1,4 +1,4 @@
-//! JSONC preference and tilde-expansion tests.
+//! JSONC runtime resolution and tilde-expansion tests.
 
 use super::*;
 
@@ -45,163 +45,50 @@ fn test_find_repo_root_via_ralph_config_jsonc() {
 }
 
 #[test]
-#[serial]
-fn test_resolve_queue_path_prefers_jsonc_over_json() {
-    let _guard = env_lock().lock().expect("env lock");
-
+fn test_resolve_queue_path_uses_jsonc_default_path() {
     let dir = TempDir::new().expect("create temp dir");
     let ralph_dir = setup_ralph_dir(&dir);
-
-    // Create both .json and .jsonc files
     fs::write(ralph_dir.join("queue.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
-    fs::write(ralph_dir.join("queue.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
 
-    // Use explicit config with the new default path to ensure is_default=true
-    let cfg = Config {
-        queue: QueueConfig {
-            file: Some(PathBuf::from(".ralph/queue.jsonc")),
-            ..Default::default()
-        },
-        ..Config::default()
-    };
-    let queue_path = config::resolve_queue_path(dir.path(), &cfg).unwrap();
-
-    // Should prefer .jsonc over .json
+    let queue_path = config::resolve_queue_path(dir.path(), &Config::default()).unwrap();
     assert_eq!(queue_path, ralph_dir.join("queue.jsonc"));
 }
 
 #[test]
-#[serial]
-fn test_resolve_queue_path_falls_back_to_json() {
-    let _guard = env_lock().lock().expect("env lock");
-
+fn test_resolve_done_path_uses_jsonc_default_path() {
     let dir = TempDir::new().expect("create temp dir");
     let ralph_dir = setup_ralph_dir(&dir);
-
-    // Create only .json file
-    fs::write(ralph_dir.join("queue.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
-
-    let cfg = Config::default();
-    let queue_path = config::resolve_queue_path(dir.path(), &cfg).unwrap();
-
-    // Should fall back to .json when .jsonc doesn't exist
-    assert_eq!(queue_path, ralph_dir.join("queue.json"));
-}
-
-#[test]
-#[serial]
-fn test_resolve_done_path_prefers_jsonc_over_json() {
-    let _guard = env_lock().lock().expect("env lock");
-
-    let dir = TempDir::new().expect("create temp dir");
-    let ralph_dir = setup_ralph_dir(&dir);
-
-    // Create both .json and .jsonc files at the default paths
-    // The default is now .jsonc, so we need to create both files to test preference
-    fs::write(ralph_dir.join("done.jsonc"), r#"{"version":1,"tasks":[]}"#).unwrap();
     fs::write(ralph_dir.join("done.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
 
-    // Use explicit config with the new default path to ensure is_default=true
-    let cfg = Config {
-        queue: QueueConfig {
-            done_file: Some(PathBuf::from(".ralph/done.jsonc")),
-            ..Default::default()
-        },
-        ..Config::default()
-    };
-    let done_path = config::resolve_done_path(dir.path(), &cfg).unwrap();
-
-    // Should prefer .jsonc over .json
+    let done_path = config::resolve_done_path(dir.path(), &Config::default()).unwrap();
     assert_eq!(done_path, ralph_dir.join("done.jsonc"));
 }
 
 #[test]
-#[serial]
-fn test_resolve_done_path_falls_back_to_json() {
-    let _guard = env_lock().lock().expect("env lock");
-
+fn test_project_config_path_uses_jsonc_path() {
     let dir = TempDir::new().expect("create temp dir");
     let ralph_dir = setup_ralph_dir(&dir);
-
-    // Create only .json file
-    fs::write(ralph_dir.join("done.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
-
-    let cfg = Config::default();
-    let done_path = config::resolve_done_path(dir.path(), &cfg).unwrap();
-
-    // Should fall back to .json when .jsonc doesn't exist
-    assert_eq!(done_path, ralph_dir.join("done.json"));
-}
-
-#[test]
-fn test_project_config_path_prefers_jsonc_over_json() {
-    let dir = TempDir::new().expect("create temp dir");
-    let ralph_dir = setup_ralph_dir(&dir);
-
-    // Create both .json and .jsonc files
     fs::write(ralph_dir.join("config.json"), r#"{"version":1}"#).unwrap();
-    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
 
     let config_path = config::project_config_path(dir.path());
-
-    // Should prefer .jsonc over .json
-    assert_eq!(config_path, ralph_dir.join("config.jsonc"));
-}
-
-#[test]
-fn test_project_config_path_falls_back_to_jsonc() {
-    let dir = TempDir::new().expect("create temp dir");
-    let ralph_dir = setup_ralph_dir(&dir);
-
-    // Create only .jsonc file
-    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
-
-    let config_path = config::project_config_path(dir.path());
-
-    // Should fall back to .jsonc when .json doesn't exist
     assert_eq!(config_path, ralph_dir.join("config.jsonc"));
 }
 
 #[test]
 #[serial]
-fn test_global_config_path_falls_back_to_jsonc() {
+fn test_global_config_path_uses_jsonc_path() {
     let _guard = env_lock().lock().expect("env lock");
     let dir = TempDir::new().expect("create temp dir");
     let xdg_config = dir.path().join(".config");
     let ralph_dir = xdg_config.join("ralph");
     fs::create_dir_all(&ralph_dir).expect("create xdg config dir");
-
-    // Create only config.jsonc (no config.json)
-    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
-
-    unsafe { env::set_var("XDG_CONFIG_HOME", &xdg_config) };
-    let config_path = config::global_config_path();
-    unsafe { env::remove_var("XDG_CONFIG_HOME") };
-
-    assert!(config_path.is_some());
-    assert_eq!(config_path.unwrap(), ralph_dir.join("config.jsonc"));
-}
-
-#[test]
-#[serial]
-fn test_global_config_path_prefers_jsonc_over_json() {
-    let _guard = env_lock().lock().expect("env lock");
-    let dir = TempDir::new().expect("create temp dir");
-    let xdg_config = dir.path().join(".config");
-    let ralph_dir = xdg_config.join("ralph");
-    fs::create_dir_all(&ralph_dir).expect("create xdg config dir");
-
-    // Create both .json and .jsonc files
     fs::write(ralph_dir.join("config.json"), r#"{"version":1}"#).unwrap();
-    fs::write(ralph_dir.join("config.jsonc"), r#"{"version":1}"#).unwrap();
 
     unsafe { env::set_var("XDG_CONFIG_HOME", &xdg_config) };
     let config_path = config::global_config_path();
     unsafe { env::remove_var("XDG_CONFIG_HOME") };
 
-    assert!(config_path.is_some());
-    // Should prefer .jsonc over .json
-    assert_eq!(config_path.unwrap(), ralph_dir.join("config.jsonc"));
+    assert_eq!(config_path, Some(ralph_dir.join("config.jsonc")));
 }
 
 #[test]

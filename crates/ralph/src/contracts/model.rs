@@ -19,8 +19,6 @@ pub enum Model {
     Gpt53Codex,
     Gpt53CodexSpark,
     Gpt53,
-    Gpt52Codex,
-    Gpt52,
     Glm47,
     Custom(String),
 }
@@ -51,8 +49,6 @@ impl Model {
             Model::Gpt53Codex => "gpt-5.3-codex",
             Model::Gpt53CodexSpark => "gpt-5.3-codex-spark",
             Model::Gpt53 => "gpt-5.3",
-            Model::Gpt52Codex => "gpt-5.2-codex",
-            Model::Gpt52 => "gpt-5.2",
             Model::Glm47 => "zai-coding-plan/glm-4.7",
             Model::Custom(value) => value.as_str(),
         }
@@ -72,8 +68,6 @@ impl std::str::FromStr for Model {
             "gpt-5.3-codex" => Model::Gpt53Codex,
             "gpt-5.3-codex-spark" => Model::Gpt53CodexSpark,
             "gpt-5.3" => Model::Gpt53,
-            "gpt-5.2-codex" => Model::Gpt52Codex,
-            "gpt-5.2" => Model::Gpt52,
             "zai-coding-plan/glm-4.7" => Model::Glm47,
             other => Model::Custom(other.to_string()),
         })
@@ -108,16 +102,6 @@ impl schemars::JsonSchema for Model {
                     "type": "string",
                     "const": "gpt-5.3",
                     "description": "OpenAI GPT-5.3"
-                },
-                {
-                    "type": "string",
-                    "const": "gpt-5.2-codex",
-                    "description": "OpenAI GPT-5.2 Codex"
-                },
-                {
-                    "type": "string",
-                    "const": "gpt-5.2",
-                    "description": "OpenAI GPT-5.2"
                 },
                 {
                     "type": "string",
@@ -184,8 +168,6 @@ mod tests {
             Model::Gpt53CodexSpark
         );
         assert_eq!("gpt-5.3".parse::<Model>().unwrap(), Model::Gpt53);
-        assert_eq!("gpt-5.2-codex".parse::<Model>().unwrap(), Model::Gpt52Codex);
-        assert_eq!("gpt-5.2".parse::<Model>().unwrap(), Model::Gpt52);
         assert_eq!(
             "zai-coding-plan/glm-4.7".parse::<Model>().unwrap(),
             Model::Glm47
@@ -219,10 +201,6 @@ mod tests {
         let model = Model::Gpt53CodexSpark;
         let json = serde_json::to_string(&model).unwrap();
         assert_eq!(json, "\"gpt-5.3-codex-spark\"");
-
-        let model = Model::Gpt52Codex;
-        let json = serde_json::to_string(&model).unwrap();
-        assert_eq!(json, "\"gpt-5.2-codex\"");
     }
 
     #[test]
@@ -287,14 +265,6 @@ mod tests {
         assert!(
             schema_json.contains("gpt-5.3"),
             "schema should list gpt-5.3"
-        );
-        assert!(
-            schema_json.contains("gpt-5.2-codex"),
-            "schema should list gpt-5.2-codex"
-        );
-        assert!(
-            schema_json.contains("gpt-5.2"),
-            "schema should list gpt-5.2"
         );
         assert!(
             schema_json.contains("zai-coding-plan/glm-4.7"),

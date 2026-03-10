@@ -185,7 +185,7 @@ fn webhook_phase_event_includes_context_fields() {
         "2024-01-01T00:00:00Z",
         webhook::WebhookContext {
             runner: Some("codex".to_string()),
-            model: Some("gpt-5.2-codex".to_string()),
+            model: Some("gpt-5.3-codex".to_string()),
             phase: Some(3),
             phase_count: Some(3),
             duration_ms: Some(42),
@@ -206,7 +206,7 @@ fn webhook_phase_event_includes_context_fields() {
     assert_eq!(json["task_id"], expected_task_id);
     assert_eq!(json["task_title"], "Test title");
     assert_eq!(json["runner"], "codex");
-    assert_eq!(json["model"], "gpt-5.2-codex");
+    assert_eq!(json["model"], "gpt-5.3-codex");
     assert_eq!(json["phase"], 3);
     assert_eq!(json["phase_count"], 3);
     assert_eq!(json["duration_ms"], 42);

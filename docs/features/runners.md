@@ -75,8 +75,6 @@ Codex only supports this restricted model list:
 - `gpt-5.3-codex`
 - `gpt-5.3-codex-spark`
 - `gpt-5.3`
-- `gpt-5.2-codex`
-- `gpt-5.2`
 
 > **Important:** Codex will reject arbitrary model IDs. Ralph automatically normalizes incompatible models to the Codex default.
 
@@ -294,7 +292,7 @@ Configure different runners/models for different phases:
     "reasoning_effort": "medium",
     "phase_overrides": {
       "phase1": {
-        "model": "gpt-5.2",
+        "model": "gpt-5.3",
         "reasoning_effort": "high"
       },
       "phase2": {
@@ -317,7 +315,7 @@ Configure different runners/models for different phases:
 | Runner | Model Type | Examples |
 |--------|------------|----------|
 | **Claude** | Named + Arbitrary | `sonnet`, `opus`, `claude-opus-4` |
-| **Codex** | Restricted list only | `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` |
+| **Codex** | Restricted list only | `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3` |
 | **OpenCode** | Arbitrary | `zai-coding-plan/glm-4.7`, `provider/model` |
 | **Gemini** | Named + Arbitrary | `gemini-3-pro-preview`, `custom-model` |
 | **Cursor** | Arbitrary | Any valid Cursor model ID |

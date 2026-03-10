@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Decode Ralph queue documents away from the main actor.
-//! - Support both file-backed queue refreshes and CLI JSON output refreshes.
+//! - Support both file-backed queue refreshes and CLI task-list JSON output refreshes.
 //! - Centralize queue decoding so watcher and manual refresh paths stay consistent.
 //!
 //! Does not handle:
@@ -11,7 +11,8 @@
 //! - Any task filtering or sorting decisions.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Queue payloads must match `RalphTaskQueueDocument`.
+//! - Queue files must match `RalphTaskQueueDocument`.
+//! - CLI `queue list --format json` output is a flat task array.
 //! - File URLs must point to the queue file to decode.
 //! - Results are returned to callers for main-actor publication.
 
@@ -28,7 +29,11 @@ enum WorkspaceQueueSnapshotLoader {
     }
 
     static func decodeQueueTasks(fromCLIOutput output: String) async throws -> [RalphTask] {
-        try await decodeQueueTasks(from: Data(output.utf8))
+        try await Task.detached(priority: .userInitiated) {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode([RalphTask].self, from: Data(output.utf8))
+        }.value
     }
 
     static func loadQueueTasks(from queueURL: URL) async throws -> [RalphTask] {

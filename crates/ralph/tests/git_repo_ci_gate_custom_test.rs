@@ -30,7 +30,7 @@ fn run_one_fails_when_custom_ci_gate_command_fails() -> Result<()> {
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)
         .context("write runner script")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     test_support::git_add_all_commit(dir.path(), "setup test env")?;
 
@@ -81,7 +81,7 @@ fn run_one_succeeds_when_ci_gate_disabled() -> Result<()> {
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)
         .context("write runner script")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     test_support::git_add_all_commit(dir.path(), "setup test env")?;
 

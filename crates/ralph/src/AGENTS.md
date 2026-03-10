@@ -62,9 +62,9 @@ docs/                 # CLI + workflow + configuration docs
 schemas/              # Generated JSON schemas (committed)
 scripts/              # Maintenance + release helper scripts
 .ralph/               # Repo-local runtime state
-  queue.json          # Active tasks (source of truth)
-  done.json           # Archived tasks
-  config.jsonc        # Project config (overrides global; .json fallback still supported)
+  queue.jsonc         # Active tasks (source of truth)
+  done.jsonc          # Archived tasks
+  config.jsonc        # Project config (overrides global)
   prompts/*.md        # Optional prompt overrides
 ```
 
@@ -295,8 +295,8 @@ The CI runs `check-env-safety` which fails if `.env` is tracked in git.
 Config precedence (highest to lowest):
 
 1. CLI flags
-2. Project config: `.ralph/config.jsonc` (`.json` fallback)
-3. Global config: `~/.config/ralph/config.jsonc` (`.json` fallback)
+2. Project config: `.ralph/config.jsonc`
+3. Global config: `~/.config/ralph/config.jsonc`
 4. Schema defaults: `schemas/config.schema.json`
 
 See `docs/configuration.md` for key fields (runner/model/phases/RepoPrompt toggles/CI gate settings).
@@ -308,7 +308,7 @@ Runner/model specifics live in `README.md`.
 
 ### Queue and Prompts
 
-- **Queue is the source of truth**: `.ralph/queue.json` (active) and `.ralph/done.json` (archive)
+- **Queue is the source of truth**: `.ralph/queue.jsonc` (active) and `.ralph/done.jsonc` (archive)
 - **Task ordering**: Queue file order is execution order (top runs first). Draft tasks are skipped unless `--include-draft`
 - **Prompt composition**: Embedded defaults in `crates/ralph/assets/prompts/`, overridden by `.ralph/prompts/*.md`
 - **Planning cache**: Phase 1 plans are written to `.ralph/cache/plans/<TASK_ID>.md`
@@ -368,7 +368,7 @@ When making changes, keep docs in sync:
 - **Test coverage**: All new/changed behavior must be covered (success + failure modes)
 - **Feature parity**: When changing user-visible workflows, maintain parity between the CLI and the macOS app (or document divergence)
 - **CLI help**: User-facing commands/flags MUST have `--help` text with examples (keep `docs/cli.md` in sync)
-- **Secrets**: Never commit or print secrets; redact runner output before copying into `.ralph/queue.json` notes
+- **Secrets**: Never commit or print secrets; redact runner output before copying into `.ralph/queue.jsonc` notes
 
 ---
 

@@ -554,7 +554,7 @@ exit 0
         marker_file.display()
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     // Create Makefile for CI gate
     std::fs::write(dir.path().join("Makefile"), "ci:\n\t@echo 'CI passed'\n")?;
@@ -623,7 +623,7 @@ fn task_runner_failure_prevents_auto_complete() -> Result<()> {
 
     // Create a runner that fails
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", "#!/bin/sh\nexit 1\n")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     std::fs::write(dir.path().join("Makefile"), "ci:\n\t@echo 'CI passed'\n")?;
     test_support::git_add_all_commit(dir.path(), "setup")?;
@@ -709,7 +709,7 @@ fn task_lifecycle_queue_state_during_run() -> Result<()> {
     test_support::write_done(dir.path(), &[])?;
 
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", "#!/bin/sh\nexit 0\n")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     std::fs::write(dir.path().join("Makefile"), "ci:\n\t@echo 'CI passed'\n")?;
     test_support::git_add_all_commit(dir.path(), "setup")?;

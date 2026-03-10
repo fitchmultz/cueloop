@@ -42,7 +42,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
                 printf '<%s>' "$arg" >> "$log_file"
               done
               printf '\n' >> "$log_file"
-              echo '{"version":1,"tasks":[]}'
+              echo '[]'
               exit 0
             fi
 
@@ -134,7 +134,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
                 printf '<%s>' "$arg" >> "$log_file"
               done
               printf '\n' >> "$log_file"
-              echo '{"version":1,"tasks":[]}'
+              echo '[]'
               exit 0
             fi
 
@@ -211,7 +211,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
                 printf '<%s>' "$arg" >> "$log_file"
               done
               printf '\n' >> "$log_file"
-              echo '{"version":1,"tasks":[]}'
+              echo '[]'
               exit 0
             fi
 

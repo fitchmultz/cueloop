@@ -31,7 +31,7 @@ fn post_run_parallel_worker_restores_bookkeeping_without_signals() -> anyhow::Re
 
     write_queue(repo_root, TaskStatus::Todo)?;
     queue::save_queue(
-        &repo_root.join(".ralph/done.json"),
+        &repo_root.join(".ralph/done.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![],
@@ -90,11 +90,11 @@ fn post_run_parallel_worker_restores_bookkeeping_without_signals() -> anyhow::Re
 
     assert!(
         !status_paths.contains(&queue_rel),
-        "queue.json should be restored to HEAD"
+        "queue.jsonc should be restored to HEAD"
     );
     assert!(
         !status_paths.contains(&done_rel),
-        "done.json should be restored to HEAD"
+        "done.jsonc should be restored to HEAD"
     );
     assert!(
         !status_paths.contains(&productivity_rel),

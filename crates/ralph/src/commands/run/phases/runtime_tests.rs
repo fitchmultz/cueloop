@@ -129,8 +129,8 @@ fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::
         argv: None,
     });
     cfg.queue = QueueConfig {
-        file: Some(PathBuf::from(".ralph/queue.json")),
-        done_file: Some(PathBuf::from(".ralph/done.json")),
+        file: Some(PathBuf::from(".ralph/queue.jsonc")),
+        done_file: Some(PathBuf::from(".ralph/done.jsonc")),
         id_prefix: Some("RQ".to_string()),
         id_width: Some(4),
         size_warning_threshold_kb: Some(500),
@@ -143,12 +143,12 @@ fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::
     crate::config::Resolved {
         config: cfg,
         repo_root: repo_root.clone(),
-        queue_path: repo_root.join(".ralph/queue.json"),
-        done_path: repo_root.join(".ralph/done.json"),
+        queue_path: repo_root.join(".ralph/queue.jsonc"),
+        done_path: repo_root.join(".ralph/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.json")),
+        project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
     }
 }
 
@@ -156,12 +156,12 @@ fn resolved_for_completion(repo_root: PathBuf) -> crate::config::Resolved {
     crate::config::Resolved {
         config: Config::default(),
         repo_root: repo_root.clone(),
-        queue_path: repo_root.join(".ralph/queue.json"),
-        done_path: repo_root.join(".ralph/done.json"),
+        queue_path: repo_root.join(".ralph/queue.jsonc"),
+        done_path: repo_root.join(".ralph/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.json")),
+        project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
     }
 }
 
@@ -196,14 +196,14 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
     };
 
     queue::save_queue(
-        &repo_root.join(".ralph/queue.json"),
+        &repo_root.join(".ralph/queue.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![],
         },
     )?;
     queue::save_queue(
-        &repo_root.join(".ralph/done.json"),
+        &repo_root.join(".ralph/done.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![task],
@@ -211,7 +211,7 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
     )?;
     let status = Command::new("git")
         .current_dir(repo_root)
-        .args(["add", ".ralph/queue.json", ".ralph/done.json"])
+        .args(["add", ".ralph/queue.jsonc", ".ralph/done.jsonc"])
         .status()?;
     anyhow::ensure!(status.success(), "git add failed");
     Ok(())

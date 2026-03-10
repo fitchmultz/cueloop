@@ -13,8 +13,8 @@
 //! Invariants/assumptions:
 //! - Config layers are applied in order: defaults, global, project (later overrides earlier).
 //! - Paths are resolved relative to repo root unless absolute.
-//! - Global config resolves from `~/.config/ralph/config.jsonc` with `.json` fallback.
-//! - Project config resolves from `.ralph/config.jsonc` with `.json` fallback.
+//! - Global config resolves from `~/.config/ralph/config.jsonc`.
+//! - Project config resolves from `.ralph/config.jsonc`.
 
 use crate::constants::defaults::DEFAULT_ID_WIDTH;
 use crate::constants::queue::{DEFAULT_DONE_FILE, DEFAULT_ID_PREFIX, DEFAULT_QUEUE_FILE};
@@ -150,26 +150,6 @@ fn apply_profile_patch(cfg: &mut Config, name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Resolve a JSON path with .json fallback.
-///
-/// Checks if the .jsonc path exists; if not, checks for .json variant.
-/// Returns the original path if neither exists (to preserve error messages).
-pub fn prefer_jsonc_then_json(base_path: PathBuf) -> PathBuf {
-    // Check .jsonc FIRST (new default)
-    let jsonc_path = base_path.with_extension("jsonc");
-    if jsonc_path.is_file() {
-        return jsonc_path;
-    }
-    // Fall back to .json (legacy support)
-    // When base_path is .jsonc, also check the .json variant
-    let json_path = base_path.with_extension("json");
-    if json_path.is_file() {
-        return json_path;
-    }
-    // Return base_path if neither exists (for error messages)
-    base_path
-}
-
 /// Resolve the queue ID prefix from config.
 pub fn resolve_id_prefix(cfg: &Config) -> Result<String> {
     validate_queue_id_prefix_override(cfg.queue.id_prefix.as_deref())?;
@@ -194,23 +174,12 @@ pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
         .clone()
         .unwrap_or_else(|| PathBuf::from(DEFAULT_QUEUE_FILE));
 
-    // Check if this is the default path (we'll apply .jsonc fallback to defaults)
-    let is_default = raw.as_os_str() == DEFAULT_QUEUE_FILE;
-
     let value = fsutil::expand_tilde(&raw);
-    let resolved = if value.is_absolute() {
+    Ok(if value.is_absolute() {
         value
     } else {
         repo_root.join(value)
-    };
-
-    if is_default {
-        // For default path, check .jsonc first, then fall back to .json
-        Ok(prefer_jsonc_then_json(resolved))
-    } else {
-        // For explicit user overrides, use the path as-is
-        Ok(resolved)
-    }
+    })
 }
 
 /// Resolve the done file path from config.
@@ -224,23 +193,12 @@ pub fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
         .clone()
         .unwrap_or_else(|| PathBuf::from(DEFAULT_DONE_FILE));
 
-    // Check if this is the default path (we'll apply .jsonc fallback to defaults)
-    let is_default = raw.as_os_str() == DEFAULT_DONE_FILE;
-
     let value = fsutil::expand_tilde(&raw);
-    let resolved = if value.is_absolute() {
+    Ok(if value.is_absolute() {
         value
     } else {
         repo_root.join(value)
-    };
-
-    if is_default {
-        // For default path, check .jsonc first, then fall back to .json
-        Ok(prefer_jsonc_then_json(resolved))
-    } else {
-        // For explicit user overrides, use the path as-is
-        Ok(resolved)
-    }
+    })
 }
 
 /// Get the path to the global config file.
@@ -252,13 +210,13 @@ pub fn global_config_path() -> Option<PathBuf> {
         PathBuf::from(home).join(".config")
     };
     let ralph_dir = base.join("ralph");
-    Some(prefer_jsonc_then_json(ralph_dir.join("config.jsonc")))
+    Some(ralph_dir.join("config.jsonc"))
 }
 
 /// Get the path to the project config file for a given repo root.
 pub fn project_config_path(repo_root: &Path) -> PathBuf {
     let ralph_dir = repo_root.join(".ralph");
-    prefer_jsonc_then_json(ralph_dir.join("config.jsonc"))
+    ralph_dir.join("config.jsonc")
 }
 
 /// Find the repository root starting from a given path.
@@ -271,7 +229,7 @@ pub fn find_repo_root(start: &Path) -> PathBuf {
         log::debug!("checking directory: {}", dir.display());
         let ralph_dir = dir.join(".ralph");
         if ralph_dir.is_dir() {
-            let has_ralph_marker = ["queue.json", "queue.jsonc", "config.json", "config.jsonc"]
+            let has_ralph_marker = ["queue.jsonc", "config.jsonc", "done.jsonc"]
                 .iter()
                 .any(|name| ralph_dir.join(name).is_file());
             if has_ralph_marker {

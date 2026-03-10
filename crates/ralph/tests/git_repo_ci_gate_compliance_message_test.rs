@@ -56,7 +56,7 @@ exit 0
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)
         .context("write runner script")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     test_support::git_add_all_commit(dir.path(), "setup test env")?;
 
@@ -141,7 +141,7 @@ exit 0
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)
         .context("write runner script")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     test_support::git_add_all_commit(dir.path(), "setup test env")?;
 
@@ -214,7 +214,7 @@ exit 0
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)
         .context("write runner script")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.2-codex", Some(&runner_path))?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
     test_support::git_add_all_commit(dir.path(), "setup test env")?;
 

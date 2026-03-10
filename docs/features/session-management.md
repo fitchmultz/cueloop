@@ -205,7 +205,7 @@ For valid sessions, Ralph displays:
 ╠══════════════════════════════════════════════════════════════╣
 ║  Phase Settings:                                             ║
 ║    Phase 1:   Claude/sonnet                                  ║
-║    Phase 2:   Codex/gpt-5.2-codex, effort=High               ║
+║    Phase 2:   Codex/gpt-5.3-codex, effort=High               ║
 ║    Phase 3:   Claude/sonnet                                  ║
 ╚══════════════════════════════════════════════════════════════╝
 

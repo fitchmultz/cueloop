@@ -35,10 +35,13 @@ fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
         .status()?;
     anyhow::ensure!(status.success(), "git commit failed");
 
-    std::fs::write(temp.path().join(".ralph/config.json"), "{ \"version\": 1 }")?;
+    std::fs::write(
+        temp.path().join(".ralph/config.jsonc"),
+        "{ \"version\": 1 }",
+    )?;
     let status = Command::new("git")
         .current_dir(temp.path())
-        .args(["add", "-f", ".ralph/config.json"])
+        .args(["add", "-f", ".ralph/config.jsonc"])
         .status()?;
     anyhow::ensure!(status.success(), "git add failed");
     let status = Command::new("git")
@@ -47,7 +50,10 @@ fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
         .status()?;
     anyhow::ensure!(status.success(), "git commit failed");
 
-    std::fs::write(temp.path().join(".ralph/config.json"), "{ \"version\": 2 }")?;
+    std::fs::write(
+        temp.path().join(".ralph/config.jsonc"),
+        "{ \"version\": 2 }",
+    )?;
 
     let resolved = resolved_for_completion(temp.path().to_path_buf());
     ensure_phase3_completion(&resolved, "RQ-0001", true)?;

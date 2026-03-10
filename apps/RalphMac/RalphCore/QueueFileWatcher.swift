@@ -2,7 +2,7 @@
  QueueFileWatcher
 
  Responsibilities:
- - Monitor `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, and `.ralph/config.{json,jsonc}` for external changes using FSEvents.
+ - Monitor `.ralph/queue.jsonc`, `.ralph/done.jsonc`, and `.ralph/config.jsonc` for external changes using FSEvents.
  - Emit typed watcher health and file-change events through a single async event stream.
  - Retry FSEvent stream creation on transient failures without exposing unsafe shared mutable state.
 
@@ -29,11 +29,11 @@ public final class QueueFileWatcher: Sendable {
         }
 
         public var affectsQueueSnapshot: Bool {
-            !fileNames.isDisjoint(with: ["queue.json", "queue.jsonc", "done.json", "done.jsonc"])
+            !fileNames.isDisjoint(with: ["queue.jsonc", "done.jsonc"])
         }
 
         public var affectsRunnerConfiguration: Bool {
-            !fileNames.isDisjoint(with: ["config.json", "config.jsonc"])
+            !fileNames.isDisjoint(with: ["config.jsonc"])
         }
 
         func merged(with other: FileChangeBatch) -> FileChangeBatch {
@@ -193,9 +193,9 @@ private actor QueueFileWatcherRuntime {
     private let callbackQueue: DispatchQueue
     private let emit: @Sendable (QueueFileWatcher.Event) -> Void
     private let relevantFiles = Set([
-        "queue.json", "queue.jsonc",
-        "done.json", "done.jsonc",
-        "config.json", "config.jsonc",
+        "queue.jsonc",
+        "done.jsonc",
+        "config.jsonc",
     ])
 
     private var workingDirectoryURL: URL

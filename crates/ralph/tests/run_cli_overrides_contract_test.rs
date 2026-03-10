@@ -30,7 +30,7 @@ fn run_one_accepts_runner_and_model_overrides_without_todo_tasks() -> Result<()>
     // With an empty queue, `run one` should return success (NoTodo), but still parse flags.
     let (status, stdout, stderr) = test_support::run_in_dir(
         dir.path(),
-        &["run", "one", "--runner", "opencode", "--model", "gpt-5.2"],
+        &["run", "one", "--runner", "opencode", "--model", "gpt-5.3"],
     );
     anyhow::ensure!(
         status.success(),
@@ -82,7 +82,7 @@ fn run_one_accepts_runner_and_model_overrides_without_todo_tasks() -> Result<()>
     let (status, stdout, stderr) = test_support::run_in_dir(
         dir.path(),
         &[
-            "run", "one", "--runner", "opencode", "--model", "gpt-5.2", "--effort", "high",
+            "run", "one", "--runner", "opencode", "--model", "gpt-5.3", "--effort", "high",
         ],
     );
     anyhow::ensure!(
@@ -189,7 +189,7 @@ fn run_one_rejects_invalid_runner_flag() -> Result<()> {
 
     let (status, stdout, stderr) = test_support::run_in_dir(
         dir.path(),
-        &["run", "one", "--runner", "nope", "--model", "gpt-5.2"],
+        &["run", "one", "--runner", "nope", "--model", "gpt-5.3"],
     );
 
     anyhow::ensure!(

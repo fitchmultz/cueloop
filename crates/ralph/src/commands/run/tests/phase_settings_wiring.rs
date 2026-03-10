@@ -10,7 +10,7 @@ use crate::runner::{ResolvedPhaseSettings, resolve_phase_settings_matrix};
 fn resolved_phase_settings_to_agent_settings_conversion() {
     let phase_settings = ResolvedPhaseSettings {
         runner: Runner::Codex,
-        model: Model::Gpt52Codex,
+        model: Model::Gpt53Codex,
         reasoning_effort: Some(ReasoningEffort::High),
         runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
     };
@@ -18,7 +18,7 @@ fn resolved_phase_settings_to_agent_settings_conversion() {
     let agent_settings = phase_settings.to_agent_settings();
 
     assert_eq!(agent_settings.runner, Runner::Codex);
-    assert_eq!(agent_settings.model, Model::Gpt52Codex);
+    assert_eq!(agent_settings.model, Model::Gpt53Codex);
     assert_eq!(agent_settings.reasoning_effort, Some(ReasoningEffort::High));
 }
 
@@ -34,7 +34,7 @@ fn per_phase_settings_different_runners_per_phase() {
     let phase_overrides = PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::High),
         }),
         phase2: Some(PhaseOverrideConfig {
@@ -56,7 +56,7 @@ fn per_phase_settings_different_runners_per_phase() {
 
     // Phase 1: Codex
     assert_eq!(matrix.phase1.runner, Runner::Codex);
-    assert_eq!(matrix.phase1.model, Model::Gpt52Codex);
+    assert_eq!(matrix.phase1.model, Model::Gpt53Codex);
     assert_eq!(matrix.phase1.reasoning_effort, Some(ReasoningEffort::High));
 
     // Phase 2: Opencode
@@ -78,7 +78,7 @@ fn single_pass_uses_phase2_settings() {
     let phase_overrides = PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: None,
         }),
         phase2: Some(PhaseOverrideConfig {

@@ -391,7 +391,6 @@ pub fn ensure_phase3_completion(
                 &resolved.repo_root,
                 false,
                 &[
-                    ".ralph/config.json",
                     ".ralph/config.jsonc",
                     ".ralph/cache/productivity.json",
                     ".ralph/cache/productivity.jsonc",

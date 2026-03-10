@@ -15,12 +15,12 @@ use crate::runner::resolve_phase_settings_matrix;
 #[test]
 fn resolve_phase_settings_cli_phase_override_beats_global() {
     // CLI phase override should beat CLI global override
-    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt53), None);
 
     let phase_overrides = PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::Low),
         }),
         ..Default::default()
@@ -38,14 +38,14 @@ fn resolve_phase_settings_cli_phase_override_beats_global() {
 
     // Phase 1 should use CLI phase override (not CLI global)
     assert_eq!(matrix.phase1.runner, Runner::Codex);
-    assert_eq!(matrix.phase1.model, Model::Gpt52Codex);
+    assert_eq!(matrix.phase1.model, Model::Gpt53Codex);
     assert_eq!(matrix.phase1.reasoning_effort, Some(ReasoningEffort::Low));
 }
 
 #[test]
 fn resolve_phase_settings_config_phase_override_beats_global() {
     // Config phase override should beat CLI global override
-    let mut config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    let mut config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt53), None);
     config_agent.phase_overrides = Some(PhaseOverrides {
         phase2: Some(PhaseOverrideConfig {
             runner: Some(Runner::Gemini),
@@ -57,7 +57,7 @@ fn resolve_phase_settings_config_phase_override_beats_global() {
 
     let overrides = test_overrides_with_phases(
         Some(Runner::Codex),
-        Some(Model::Gpt52Codex),
+        Some(Model::Gpt53Codex),
         Some(ReasoningEffort::High),
         None,
     );
@@ -72,11 +72,11 @@ fn resolve_phase_settings_config_phase_override_beats_global() {
 
 #[test]
 fn resolve_phase_settings_task_phase_override_beats_config_phase_override() {
-    let mut config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    let mut config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt53), None);
     config_agent.phase_overrides = Some(PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::Low),
         }),
         ..Default::default()
@@ -110,7 +110,7 @@ fn resolve_phase_settings_task_phase_override_beats_config_phase_override() {
 
 #[test]
 fn resolve_phase_settings_cli_phase_override_beats_task_phase_override() {
-    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt53), None);
     let task_agent = TaskAgent {
         runner: None,
         model: None,
@@ -135,7 +135,7 @@ fn resolve_phase_settings_cli_phase_override_beats_task_phase_override() {
         Some(PhaseOverrides {
             phase1: Some(PhaseOverrideConfig {
                 runner: Some(Runner::Codex),
-                model: Some(Model::Gpt52Codex),
+                model: Some(Model::Gpt53Codex),
                 reasoning_effort: Some(ReasoningEffort::High),
             }),
             ..Default::default()
@@ -146,14 +146,14 @@ fn resolve_phase_settings_cli_phase_override_beats_task_phase_override() {
         resolve_phase_settings_matrix(&overrides, &config_agent, Some(&task_agent), 3).unwrap();
 
     assert_eq!(matrix.phase1.runner, Runner::Codex);
-    assert_eq!(matrix.phase1.model, Model::Gpt52Codex);
+    assert_eq!(matrix.phase1.model, Model::Gpt53Codex);
     assert_eq!(matrix.phase1.reasoning_effort, Some(ReasoningEffort::High));
 }
 
 #[test]
 fn resolve_phase_settings_cli_global_beats_task() {
     // CLI global override should beat task override
-    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt53), None);
     let task_agent = test_task_agent(
         Some(Runner::Opencode),
         Some(Model::Glm47),
@@ -162,7 +162,7 @@ fn resolve_phase_settings_cli_global_beats_task() {
 
     let overrides = test_overrides_with_phases(
         Some(Runner::Codex),
-        Some(Model::Gpt52Codex),
+        Some(Model::Gpt53Codex),
         Some(ReasoningEffort::Medium),
         None,
     );
@@ -172,7 +172,7 @@ fn resolve_phase_settings_cli_global_beats_task() {
 
     // All phases should use CLI global override
     assert_eq!(matrix.phase1.runner, Runner::Codex);
-    assert_eq!(matrix.phase1.model, Model::Gpt52Codex);
+    assert_eq!(matrix.phase1.model, Model::Gpt53Codex);
     assert_eq!(matrix.phase2.runner, Runner::Codex);
     assert_eq!(matrix.phase3.runner, Runner::Codex);
 }
@@ -180,7 +180,7 @@ fn resolve_phase_settings_cli_global_beats_task() {
 #[test]
 fn resolve_phase_settings_task_beats_config() {
     // Task override should beat config default
-    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt53), None);
     let task_agent = test_task_agent(
         Some(Runner::Opencode),
         Some(Model::Glm47),
@@ -301,7 +301,7 @@ fn resolve_phase_settings_explicit_model_preserved_with_runner_override() {
     let phase_overrides = PhaseOverrides {
         phase2: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52), // Explicit model
+            model: Some(Model::Gpt53), // Explicit model
             reasoning_effort: None,
         }),
         ..Default::default()
@@ -314,7 +314,7 @@ fn resolve_phase_settings_explicit_model_preserved_with_runner_override() {
 
     // Phase 2 should use explicit model
     assert_eq!(matrix.phase2.runner, Runner::Codex);
-    assert_eq!(matrix.phase2.model, Model::Gpt52);
+    assert_eq!(matrix.phase2.model, Model::Gpt53);
 }
 
 // ============================================================================
@@ -324,7 +324,7 @@ fn resolve_phase_settings_explicit_model_preserved_with_runner_override() {
 #[test]
 fn resolve_phase_settings_effort_some_for_codex() {
     // Effort should be Some() for Codex runners
-    let config_agent = test_config_agent(Some(Runner::Codex), Some(Model::Gpt52Codex), None);
+    let config_agent = test_config_agent(Some(Runner::Codex), Some(Model::Gpt53Codex), None);
 
     let overrides = test_overrides_with_phases(None, None, Some(ReasoningEffort::High), None);
 
@@ -354,14 +354,14 @@ fn resolve_phase_settings_effort_precedence_within_codex() {
     // Effort should follow precedence within Codex phases
     let config_agent = test_config_agent(
         Some(Runner::Codex),
-        Some(Model::Gpt52Codex),
+        Some(Model::Gpt53Codex),
         Some(ReasoningEffort::Low),
     );
 
     let phase_overrides = PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::High), // Phase-specific effort
         }),
         ..Default::default()
@@ -385,7 +385,7 @@ fn resolve_phase_settings_effort_precedence_within_codex() {
 #[test]
 fn resolve_phase_settings_single_pass_uses_phase2_overrides() {
     // Single-pass (--phases 1) should use Phase 2 overrides
-    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt52), None);
+    let config_agent = test_config_agent(Some(Runner::Claude), Some(Model::Gpt53), None);
 
     let phase_overrides = PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
@@ -395,7 +395,7 @@ fn resolve_phase_settings_single_pass_uses_phase2_overrides() {
         }),
         phase2: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::High),
         }),
         phase3: Some(PhaseOverrideConfig {
@@ -412,7 +412,7 @@ fn resolve_phase_settings_single_pass_uses_phase2_overrides() {
 
     // Phase 2 settings should be resolved (for single-pass execution)
     assert_eq!(matrix.phase2.runner, Runner::Codex);
-    assert_eq!(matrix.phase2.model, Model::Gpt52Codex);
+    assert_eq!(matrix.phase2.model, Model::Gpt53Codex);
     assert_eq!(matrix.phase2.reasoning_effort, Some(ReasoningEffort::High));
 
     // But Phase 1 and Phase 3 overrides are unused
@@ -451,7 +451,7 @@ fn resolve_phase_settings_two_phase_warns_about_phase3() {
 #[test]
 fn resolve_phase_settings_invalid_model_for_codex() {
     // Invalid model for Codex should produce phase-specific error
-    let config_agent = test_config_agent(Some(Runner::Codex), Some(Model::Gpt52Codex), None);
+    let config_agent = test_config_agent(Some(Runner::Codex), Some(Model::Gpt53Codex), None);
 
     let phase_overrides = PhaseOverrides {
         phase2: Some(PhaseOverrideConfig {
@@ -475,7 +475,7 @@ fn resolve_phase_settings_invalid_model_for_codex() {
 #[test]
 fn resolve_phase_settings_invalid_custom_model_for_codex() {
     // Custom model that's invalid for Codex
-    let config_agent = test_config_agent(Some(Runner::Codex), Some(Model::Gpt52Codex), None);
+    let config_agent = test_config_agent(Some(Runner::Codex), Some(Model::Gpt53Codex), None);
 
     let phase_overrides = PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
@@ -596,7 +596,7 @@ fn resolve_phase_settings_full_matrix_resolution() {
     let phase_overrides = PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::High),
         }),
         phase2: Some(PhaseOverrideConfig {
@@ -618,7 +618,7 @@ fn resolve_phase_settings_full_matrix_resolution() {
 
     // Phase 1: Codex with high effort
     assert_eq!(matrix.phase1.runner, Runner::Codex);
-    assert_eq!(matrix.phase1.model, Model::Gpt52Codex);
+    assert_eq!(matrix.phase1.model, Model::Gpt53Codex);
     assert_eq!(matrix.phase1.reasoning_effort, Some(ReasoningEffort::High));
 
     // Phase 2: Opencode with default model, no effort
@@ -639,7 +639,7 @@ fn resolve_phase_settings_config_phase_overrides_only() {
     config_agent.phase_overrides = Some(PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::High),
         }),
         phase2: None,
@@ -656,7 +656,7 @@ fn resolve_phase_settings_config_phase_overrides_only() {
         resolve_phase_settings_matrix(&overrides, &config_agent, None, 3).unwrap();
 
     assert_eq!(matrix.phase1.runner, Runner::Codex);
-    assert_eq!(matrix.phase1.model, Model::Gpt52Codex);
+    assert_eq!(matrix.phase1.model, Model::Gpt53Codex);
 
     assert_eq!(matrix.phase2.runner, Runner::Claude); // Config default
 
@@ -670,7 +670,7 @@ fn resolve_phase_settings_cli_overrides_config_phase() {
     config_agent.phase_overrides = Some(PhaseOverrides {
         phase1: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
-            model: Some(Model::Gpt52Codex),
+            model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::Low),
         }),
         ..Default::default()

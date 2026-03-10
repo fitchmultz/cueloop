@@ -53,7 +53,7 @@ fn apply_layer_overrides_git_commit_push_enabled() -> Result<()> {
 #[test]
 fn save_layer_writes_version_and_round_trips() -> Result<()> {
     let temp = tempfile::TempDir::new()?;
-    let path = temp.path().join("config.json");
+    let path = temp.path().join("config.jsonc");
     let layer = ConfigLayer::default();
 
     save_layer(&path, &layer)?;

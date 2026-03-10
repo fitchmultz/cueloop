@@ -5,7 +5,7 @@ use super::*;
 #[test]
 fn test_find_repo_root_via_ralph_queue() {
     let dir = TempDir::new().expect("create temp dir");
-    create_queue_json(&dir, r#"{"version":1,"tasks":[]}"#);
+    create_queue_jsonc(&dir, r#"{"version":1,"tasks":[]}"#);
 
     let repo_root = config::find_repo_root(dir.path());
     assert_eq!(repo_root, dir.path());
@@ -14,7 +14,7 @@ fn test_find_repo_root_via_ralph_queue() {
 #[test]
 fn test_find_repo_root_via_ralph_config() {
     let dir = TempDir::new().expect("create temp dir");
-    create_config_json(&dir, r#"{"version":1}"#);
+    create_config_jsonc(&dir, r#"{"version":1}"#);
 
     let repo_root = config::find_repo_root(dir.path());
     assert_eq!(repo_root, dir.path());
@@ -33,7 +33,7 @@ fn test_find_repo_root_via_git() {
 #[test]
 fn test_find_repo_root_nested() {
     let dir = TempDir::new().expect("create temp dir");
-    create_queue_json(&dir, r#"{"version":1,"tasks":[]}"#);
+    create_queue_jsonc(&dir, r#"{"version":1,"tasks":[]}"#);
 
     let nested = dir.path().join("nested").join("deep");
     fs::create_dir_all(&nested).expect("create nested dirs");

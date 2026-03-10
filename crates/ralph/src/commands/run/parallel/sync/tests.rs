@@ -165,10 +165,10 @@ fn sync_ralph_state_copies_jsonc_config_with_agent_overrides() -> Result<()> {
   "version": 1,
   "agent": {
     "runner": "opencode",
-    "model": "gpt-5.2",
+    "model": "gpt-5.3",
     "phases": 3,
     "phase_overrides": {
-      "phase1": { "runner": "codex", "model": "gpt-5.2-codex", "reasoning_effort": "high" },
+      "phase1": { "runner": "codex", "model": "gpt-5.3-codex", "reasoning_effort": "high" },
       "phase2": { "runner": "claude", "model": "opus" },
       "phase3": { "runner": "gemini", "model": "gemini-3-pro-preview" }
     }
@@ -186,7 +186,7 @@ fn sync_ralph_state_copies_jsonc_config_with_agent_overrides() -> Result<()> {
     let config_json = fs::read_to_string(workspace_root.join(".ralph/config.jsonc"))?;
     let config: serde_json::Value = serde_json::from_str(&config_json)?;
     assert_eq!(config["agent"]["runner"], "opencode");
-    assert_eq!(config["agent"]["model"], "gpt-5.2");
+    assert_eq!(config["agent"]["model"], "gpt-5.3");
     assert_eq!(config["agent"]["phases"], 3);
     assert_eq!(
         config["agent"]["phase_overrides"]["phase1"]["runner"],

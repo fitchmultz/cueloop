@@ -55,7 +55,7 @@ pub(super) fn write_queue(repo_root: &Path, status: TaskStatus) -> anyhow::Resul
     };
 
     queue::save_queue(
-        &repo_root.join(".ralph/queue.json"),
+        &repo_root.join(".ralph/queue.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![task],
@@ -68,7 +68,7 @@ pub(super) fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
     let cfg = Config {
         agent: AgentConfig {
             runner: Some(Runner::Codex),
-            model: Some(crate::contracts::Model::Gpt52Codex),
+            model: Some(crate::contracts::Model::Gpt53Codex),
             reasoning_effort: Some(crate::contracts::ReasoningEffort::Medium),
             iterations: Some(1),
             followup_reasoning_effort: None,
@@ -102,8 +102,8 @@ pub(super) fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
             scan_prompt_version: None,
         },
         queue: QueueConfig {
-            file: Some(PathBuf::from(".ralph/queue.json")),
-            done_file: Some(PathBuf::from(".ralph/done.json")),
+            file: Some(PathBuf::from(".ralph/queue.jsonc")),
+            done_file: Some(PathBuf::from(".ralph/done.jsonc")),
             id_prefix: Some("RQ".to_string()),
             id_width: Some(4),
             size_warning_threshold_kb: Some(500),
@@ -118,12 +118,12 @@ pub(super) fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
     crate::config::Resolved {
         config: cfg,
         repo_root: repo_root.to_path_buf(),
-        queue_path: repo_root.join(".ralph/queue.json"),
-        done_path: repo_root.join(".ralph/done.json"),
+        queue_path: repo_root.join(".ralph/queue.jsonc"),
+        done_path: repo_root.join(".ralph/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.json")),
+        project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
     }
 }
 

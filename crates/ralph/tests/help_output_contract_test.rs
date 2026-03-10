@@ -34,6 +34,13 @@ fn assert_contains(haystack: &str, needle: &str) {
     );
 }
 
+fn assert_not_contains(haystack: &str, needle: &str) {
+    assert!(
+        !haystack.contains(needle),
+        "expected output not to contain {needle:?}\n--- output ---\n{haystack}\n--- end ---"
+    );
+}
+
 fn assert_occurs_once(haystack: &str, needle: &str) {
     let count = haystack.matches(needle).count();
     assert_eq!(
@@ -63,8 +70,8 @@ fn root_help_mentions_runner_and_models_and_precedence() {
     assert_contains(&combined, "gpt-5.3-codex");
     assert_contains(&combined, "gpt-5.3-codex-spark");
     assert_contains(&combined, "gpt-5.3");
-    assert_contains(&combined, "gpt-5.2-codex");
-    assert_contains(&combined, "gpt-5.2");
+    assert_not_contains(&combined, "gpt-5.2-codex");
+    assert_not_contains(&combined, "gpt-5.2");
     assert_contains(&combined, "zai-coding-plan/glm-4.7");
     assert_contains(&combined, "gemini-3-pro-preview");
     assert_contains(&combined, "gemini-3-flash-preview");

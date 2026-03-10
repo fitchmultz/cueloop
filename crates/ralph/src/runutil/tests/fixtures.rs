@@ -75,7 +75,7 @@ pub(super) fn base_invocation<'a>(repo_root: &'a Path) -> RunnerInvocation<'a> {
             kimi: "kimi",
             pi: "pi",
         },
-        model: Model::Gpt52Codex,
+        model: Model::Gpt53Codex,
         reasoning_effort: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
         prompt: "test prompt",

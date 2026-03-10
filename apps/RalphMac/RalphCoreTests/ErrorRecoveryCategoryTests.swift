@@ -163,7 +163,7 @@ final class ErrorRecoveryCategoryTests: XCTestCase {
     func testClassifyRetryableProcessErrorUsesStderr() {
         let error = RetryableError.processError(
             exitCode: 2,
-            stderr: "Error: read queue file /tmp/.ralph/queue.json: No such file or directory (os error 2)"
+            stderr: "Error: read queue file /tmp/.ralph/queue.jsonc: No such file or directory (os error 2)"
         )
 
         let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
@@ -172,7 +172,7 @@ final class ErrorRecoveryCategoryTests: XCTestCase {
     }
 
     func testCanonicalClassifierAlignsGenericAndProcessFailures() {
-        let stderr = "Error: read queue file /tmp/.ralph/queue.json: No such file or directory (os error 2)"
+        let stderr = "Error: read queue file /tmp/.ralph/queue.jsonc: No such file or directory (os error 2)"
         let genericError = NSError(
             domain: "RalphCore.CLIProcess",
             code: 2,
@@ -192,7 +192,7 @@ final class ErrorRecoveryCategoryTests: XCTestCase {
             domain: "RalphCore.CLIProcess",
             code: 2,
             userInfo: [
-                NSLocalizedDescriptionKey: "Error: read queue file /Users/test/.ralph/queue.json: No such file or directory (os error 2)"
+                NSLocalizedDescriptionKey: "Error: read queue file /Users/test/.ralph/queue.jsonc: No such file or directory (os error 2)"
             ]
         )
 

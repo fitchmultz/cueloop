@@ -103,14 +103,14 @@ fn test_apply_layer_merges_queue_config() {
 fn test_apply_layer_merges_agent_config() {
     let mut base = Config::default();
     base.agent.runner = Some(Runner::Codex);
-    base.agent.model = Some(Model::Gpt52Codex);
+    base.agent.model = Some(Model::Gpt53Codex);
 
     let layer_json = r#"{"queue":{},"agent":{"runner":"opencode"}}"#;
     let layer = serde_json::from_str(layer_json).unwrap();
 
     let result = config::apply_layer(base, layer).unwrap();
     assert_eq!(result.agent.runner, Some(Runner::Opencode));
-    assert_eq!(result.agent.model, Some(Model::Gpt52Codex)); // preserved
+    assert_eq!(result.agent.model, Some(Model::Gpt53Codex)); // preserved
 }
 
 #[test]
@@ -151,7 +151,7 @@ fn test_queue_config_merge_from_partial() {
 fn test_agent_config_merge_from_partial() {
     let mut base = AgentConfig {
         runner: Some(Runner::Codex),
-        model: Some(Model::Gpt52Codex),
+        model: Some(Model::Gpt53Codex),
         reasoning_effort: None,
         iterations: Some(1),
         followup_reasoning_effort: None,
@@ -184,7 +184,7 @@ fn test_agent_config_merge_from_partial() {
 
     let override_config = AgentConfig {
         runner: None,
-        model: Some(Model::Gpt52),
+        model: Some(Model::Gpt53),
         reasoning_effort: Some(ReasoningEffort::High),
         iterations: Some(2),
         followup_reasoning_effort: Some(ReasoningEffort::Low),
@@ -218,7 +218,7 @@ fn test_agent_config_merge_from_partial() {
     base.merge_from(override_config);
 
     assert_eq!(base.runner, Some(Runner::Codex));
-    assert_eq!(base.model, Some(Model::Gpt52));
+    assert_eq!(base.model, Some(Model::Gpt53));
     assert_eq!(base.reasoning_effort, Some(ReasoningEffort::High));
     assert_eq!(base.iterations, Some(2));
     assert_eq!(base.followup_reasoning_effort, Some(ReasoningEffort::Low));

@@ -166,7 +166,7 @@ Test sources live in `apps/RalphMac/RalphMacUITests/`.
 - Run `ralph app open` from the repository root.
 
 ### Queue data not loading
-- Confirm `.ralph/queue.jsonc` or `.ralph/queue.json` exists.
+- Confirm `.ralph/queue.jsonc` exists.
 - Run `ralph queue validate` and resolve schema errors.
 
 ### Runner commands fail

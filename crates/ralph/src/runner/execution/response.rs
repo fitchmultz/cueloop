@@ -6,8 +6,6 @@
 
 use std::collections::HashMap;
 
-use serde_json::Value as JsonValue;
-
 use crate::contracts::Runner;
 
 use super::builtin_plugins::{
@@ -71,21 +69,21 @@ impl ResponseParserRegistry {
     }
 }
 
-// All response parsers are now imported from builtin_plugins module.
+fn built_in_parsers() -> impl Iterator<Item = &'static dyn ResponseParser> {
+    [
+        &CodexResponseParser as &dyn ResponseParser,
+        &ClaudeResponseParser,
+        &GeminiResponseParser,
+        &KimiResponseParser,
+        &OpencodeResponseParser,
+        &PiResponseParser,
+        &CursorResponseParser,
+    ]
+    .into_iter()
+}
 
-// =============================================================================
-// Legacy Compatibility
-// =============================================================================
-
-/// Extract the final assistant response from stdout using the parser registry.
-///
-/// This is the legacy function that maintains backward compatibility.
-/// New code should use ResponseParserRegistry directly.
+/// Extract the final assistant response from stdout without requiring caller-side runner context.
 pub(crate) fn extract_final_assistant_response(stdout: &str) -> Option<String> {
-    let registry = ResponseParserRegistry::new();
-
-    // Try each parser until we find a match
-    // This maintains backward compatibility with the old behavior
     let mut final_message: Option<String> = None;
     let mut streaming_buffer = String::new();
 
@@ -98,65 +96,15 @@ pub(crate) fn extract_final_assistant_response(stdout: &str) -> Option<String> {
             continue;
         };
 
-        // Try all parsers in order
-        if let Some(text) = try_all_parsers(&json, &mut streaming_buffer, &registry) {
+        if let Some(text) =
+            built_in_parsers().find_map(|parser| parser.parse(&json, &mut streaming_buffer))
+        {
             final_message = Some(text);
         }
     }
 
     final_message
 }
-
-/// Try all registered parsers on a JSON value.
-fn try_all_parsers(
-    json: &JsonValue,
-    buffer: &mut String,
-    _registry: &ResponseParserRegistry,
-) -> Option<String> {
-    // Try each built-in parser directly
-    // This is more efficient than going through the registry for the legacy path
-
-    // Codex: item.completed with agent_message
-    if let Some(text) = CodexResponseParser.parse(json, buffer) {
-        return Some(text);
-    }
-
-    // Claude: assistant type with message.content
-    if let Some(text) = ClaudeResponseParser.parse(json, buffer) {
-        return Some(text);
-    }
-
-    // Gemini: message type with role=assistant
-    if let Some(text) = GeminiResponseParser.parse(json, buffer) {
-        return Some(text);
-    }
-
-    // Kimi: top-level role=assistant
-    if let Some(text) = KimiResponseParser.parse(json, buffer) {
-        return Some(text);
-    }
-
-    // Opencode: text type with streaming
-    if let Some(text) = OpencodeResponseParser.parse(json, buffer) {
-        return Some(text);
-    }
-
-    // Pi: result type
-    if let Some(text) = PiResponseParser.parse(json, buffer) {
-        return Some(text);
-    }
-
-    // Cursor: message_end type
-    if let Some(text) = CursorResponseParser.parse(json, buffer) {
-        return Some(text);
-    }
-
-    None
-}
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

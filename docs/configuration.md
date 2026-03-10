@@ -6,8 +6,8 @@ Purpose: Document Ralph's JSON configuration layout, defaults, and override prec
 
 ## Overview
 Ralph reads JSON configuration from two locations, with project config taking precedence over global:
-- Global: `~/.config/ralph/config.jsonc` (with `.json` fallback)
-- Project: `.ralph/config.jsonc` (with `.json` fallback)
+- Global: `~/.config/ralph/config.jsonc`
+- Project: `.ralph/config.jsonc`
 
 CLI flags override both for a single run. Defaults are defined by `schemas/config.schema.json`.
 
@@ -21,10 +21,8 @@ Ralph supports JSONC (JSON with Comments) for configuration and queue files. Thi
 - Trailing commas in objects and arrays
 
 ### File Extensions
-- `.jsonc` - JSON with Comments support (default for new projects)
-- `.json` - Standard JSON (legacy, backward compatible)
-
-Ralph can read both `.json` and `.jsonc` files regardless of extension. When both files exist, `.jsonc` takes precedence over `.json` (e.g., `config.jsonc` is used instead of `config.json` if both are present).
+- `.jsonc` - JSON with Comments support for runtime config and queue files
+- `.json` - Standard JSON used only where a strict JSON contract is required, such as schemas
 
 When writing files, Ralph always outputs standard JSON format (comments are not preserved on rewrite).
 
@@ -242,7 +240,7 @@ Each phase config can specify:
     "reasoning_effort": "medium",
     "phase_overrides": {
       "phase1": {
-        "model": "gpt-5.2",
+        "model": "gpt-5.3",
         "reasoning_effort": "high"
       },
       "phase2": {
@@ -393,8 +391,8 @@ Example configuration:
 
 ## Precedence
 1. CLI flags (single run)
-2. Project config (`.ralph/config.jsonc` or `.ralph/config.json`)
-3. Global config (`~/.config/ralph/config.jsonc` or `~/.config/ralph/config.json`)
+2. Project config (`.ralph/config.jsonc`)
+3. Global config (`~/.config/ralph/config.jsonc`)
 4. Schema defaults (`schemas/config.schema.json`)
 
 ## App Safety Warnings (macOS)

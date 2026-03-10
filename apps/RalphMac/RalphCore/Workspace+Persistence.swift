@@ -15,7 +15,7 @@
  Invariants/assumptions callers must respect:
  - Persistence keys remain namespaced by `Workspace.id`.
  - Working-directory changes must flow through this extension so recents and watchers stay in sync.
- - Queue-file resolution prefers `.ralph/queue.jsonc` when both formats are absent.
+ - Queue-file resolution always targets `.ralph/queue.jsonc`.
  */
 
 public import Foundation
@@ -162,11 +162,9 @@ public extension Workspace {
     }
 
     static func existingQueueFileURL(in workingDirectoryURL: URL) -> URL? {
-        for fileName in ["queue.jsonc", "queue.json"] {
-            let candidate = workingDirectoryURL.appendingPathComponent(".ralph/\(fileName)", isDirectory: false)
-            if FileManager.default.fileExists(atPath: candidate.path) {
-                return candidate
-            }
+        let candidate = workingDirectoryURL.appendingPathComponent(".ralph/queue.jsonc", isDirectory: false)
+        if FileManager.default.fileExists(atPath: candidate.path) {
+            return candidate
         }
         return nil
     }

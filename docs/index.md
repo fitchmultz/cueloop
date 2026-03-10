@@ -54,9 +54,9 @@ Use these when you want to validate a clone, understand the operational model, o
 
 ## Runtime Paths (Defaults)
 
-- Queue: `.ralph/queue.jsonc` (`.json` fallback)
-- Done archive: `.ralph/done.jsonc` (`.json` fallback)
-- Project config: `.ralph/config.jsonc` (`.json` fallback)
+- Queue: `.ralph/queue.jsonc`
+- Done archive: `.ralph/done.jsonc`
+- Project config: `.ralph/config.jsonc`
 - Prompt overrides: `.ralph/prompts/`
 
 ## Validation and CI
