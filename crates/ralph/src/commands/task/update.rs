@@ -78,6 +78,31 @@ fn restore_queue_from_backup(queue_path: &Path, backup_path: &Path) -> Result<()
     Ok(())
 }
 
+fn restore_on_failure<T>(
+    queue_path: &Path,
+    backup_path: &Path,
+    action: &str,
+    result: Result<T>,
+) -> Result<T> {
+    result.or_else(
+        |err| match restore_queue_from_backup(queue_path, backup_path) {
+            Ok(()) => Err(err).with_context(|| {
+                format!(
+                    "{action}; restored queue from backup {}",
+                    backup_path.display()
+                )
+            }),
+            Err(restore_err) => Err(err).with_context(|| {
+                format!(
+                    "{action} AND restore failed (backup {}): {:#}",
+                    backup_path.display(),
+                    restore_err
+                )
+            }),
+        },
+    )
+}
+
 /// Load, validate, and save queue after task update with automatic backup restoration on failure.
 ///
 /// This function attempts to:
@@ -92,85 +117,68 @@ fn load_validate_and_save_queue_after_update(
     backup_path: &Path,
     max_depth: u8,
 ) -> Result<QueueFile> {
-    // Step 1: Load queue after update (with repair for common JSON errors)
-    let after = queue::load_queue_with_repair(&resolved.queue_path)
-        .with_context(|| "parse queue after task update")
-        .or_else(
-            |err| match restore_queue_from_backup(&resolved.queue_path, backup_path) {
-                Ok(()) => Err(err).with_context(|| {
-                    format!(
-                        "queue parse failed after task update; restored queue from backup {}",
-                        backup_path.display()
-                    )
-                }),
-                Err(restore_err) => Err(err).with_context(|| {
-                    format!(
-                        "queue parse failed after task update AND restore failed (backup {}): {:#}",
-                        backup_path.display(),
-                        restore_err
-                    )
-                }),
-            },
-        )?;
+    let after = restore_on_failure(
+        &resolved.queue_path,
+        backup_path,
+        "queue parse failed after task update",
+        queue::load_queue_with_repair(&resolved.queue_path)
+            .with_context(|| "parse queue after task update"),
+    )?;
 
-    // Step 2: Prepare done file reference for validation
     let done_after = queue::load_queue_or_default(&resolved.done_path)
         .with_context(|| format!("read done {}", resolved.done_path.display()))?;
-    let done_after_ref = if done_after.tasks.is_empty() && !resolved.done_path.exists() {
-        None
-    } else {
-        Some(&done_after)
-    };
+    restore_on_failure(
+        &resolved.queue_path,
+        backup_path,
+        "queue validation failed after task update",
+        queue::validate_queue_set(
+            &after,
+            queue::optional_done_queue(&done_after, &resolved.done_path),
+            &resolved.id_prefix,
+            resolved.id_width,
+            max_depth,
+        )
+        .context("validate queue set after task update"),
+    )?;
 
-    // Step 3: Validate queue set (semantic validation)
-    queue::validate_queue_set(
-        &after,
-        done_after_ref,
-        &resolved.id_prefix,
-        resolved.id_width,
-        max_depth,
-    )
-    .context("validate queue set after task update")
-    .or_else(|err| {
-        match restore_queue_from_backup(&resolved.queue_path, backup_path) {
-            Ok(()) => Err(err).with_context(|| {
-                format!(
-                    "queue validation failed after task update; restored queue from backup {}",
-                    backup_path.display()
-                )
-            }),
-            Err(restore_err) => Err(err).with_context(|| {
-                format!(
-                    "queue validation failed after task update AND restore failed (backup {}): {:#}",
-                    backup_path.display(),
-                    restore_err
-                )
-            }),
-        }
-    })?;
-
-    // Step 4: Save the validated queue
-    queue::save_queue(&resolved.queue_path, &after)
-        .context("save queue after task update")
-        .or_else(
-            |err| match restore_queue_from_backup(&resolved.queue_path, backup_path) {
-                Ok(()) => Err(err).with_context(|| {
-                    format!(
-                        "queue save failed after task update; restored queue from backup {}",
-                        backup_path.display()
-                    )
-                }),
-                Err(restore_err) => Err(err).with_context(|| {
-                    format!(
-                        "queue save failed after task update AND restore failed (backup {}): {:#}",
-                        backup_path.display(),
-                        restore_err
-                    )
-                }),
-            },
-        )?;
+    restore_on_failure(
+        &resolved.queue_path,
+        backup_path,
+        "queue save failed after task update",
+        queue::save_queue(&resolved.queue_path, &after).context("save queue after task update"),
+    )?;
 
     Ok(after)
+}
+
+fn log_task_update_changes(
+    before_json: &str,
+    task_id: &str,
+    location: &str,
+    after_task: Option<&crate::contracts::Task>,
+) -> Result<()> {
+    let Some(after_task) = after_task else {
+        log::warn!(
+            "Task {} was removed during update and not found in done.jsonc.",
+            task_id
+        );
+        return Ok(());
+    };
+
+    let after_json = serde_json::to_string(after_task)?;
+    if before_json == after_json {
+        log::info!("Task {} {}. No changes detected.", task_id, location);
+        return Ok(());
+    }
+
+    let changed_fields = compare_task_fields(before_json, &after_json)?;
+    log::info!(
+        "Task {} {}. Changed fields: {}",
+        task_id,
+        location,
+        changed_fields.join(", ")
+    );
+    Ok(())
 }
 
 fn update_task_impl(
@@ -245,15 +253,10 @@ fn update_task_impl(
 
     let done = queue::load_queue_or_default(&resolved.done_path)
         .with_context(|| format!("read done {}", resolved.done_path.display()))?;
-    let done_ref = if done.tasks.is_empty() && !resolved.done_path.exists() {
-        None
-    } else {
-        Some(&done)
-    };
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
     queue::validate_queue_set(
         &before,
-        done_ref,
+        queue::optional_done_queue(&done, &resolved.done_path),
         &resolved.id_prefix,
         resolved.id_width,
         max_depth,
@@ -327,50 +330,16 @@ fn update_task_impl(
     let done_after = queue::load_queue_or_default(&resolved.done_path)
         .with_context(|| format!("read done {}", resolved.done_path.display()))?;
 
-    // Look up the task after update - it may have been moved to done.jsonc or removed
-    match after.tasks.iter().find(|t| t.id.trim() == task_id) {
-        Some(after_task) => {
-            let after_json = serde_json::to_string(after_task)?;
-
-            if before_json == after_json {
-                log::info!("Task {} updated. No changes detected.", task_id);
-            } else {
-                let changed_fields = compare_task_fields(&before_json, &after_json)?;
-                log::info!(
-                    "Task {} updated. Changed fields: {}",
-                    task_id,
-                    changed_fields.join(", ")
-                );
-            }
-        }
-        None => {
-            // Task not in queue after update - check if it was moved to done.jsonc
-            match done_after.tasks.iter().find(|t| t.id.trim() == task_id) {
-                Some(done_task) => {
-                    let after_json = serde_json::to_string(done_task)?;
-
-                    if before_json == after_json {
-                        log::info!("Task {} moved to done.jsonc. No changes detected.", task_id);
-                    } else {
-                        let changed_fields = compare_task_fields(&before_json, &after_json)?;
-                        log::info!(
-                            "Task {} moved to done.jsonc. Changed fields: {}",
-                            task_id,
-                            changed_fields.join(", ")
-                        );
-                    }
-                }
-                None => {
-                    log::warn!(
-                        "Task {} was removed during update and not found in done.jsonc.",
-                        task_id
-                    );
-                }
-            }
-        }
+    if let Some(after_task) = after.tasks.iter().find(|t| t.id.trim() == task_id) {
+        return log_task_update_changes(&before_json, task_id, "updated", Some(after_task));
     }
 
-    Ok(())
+    log_task_update_changes(
+        &before_json,
+        task_id,
+        "moved to done.jsonc",
+        done_after.tasks.iter().find(|t| t.id.trim() == task_id),
+    )
 }
 
 #[cfg(test)]

@@ -38,63 +38,35 @@ public final class WorkspaceCommandState: ObservableObject {
 
 public extension Workspace {
     func loadCLISpec(retryConfiguration: RetryConfiguration = .minimal) async {
-        let repositoryContext = currentRepositoryContext()
-
-        guard let client else {
-            guard isCurrentRepositoryContext(repositoryContext) else { return }
-            commandState.cliSpecErrorMessage = "CLI client not available."
-            return
-        }
-
-        commandState.cliSpecIsLoading = true
-        commandState.cliSpecErrorMessage = nil
-
-        do {
-            let helper = RetryHelper(configuration: retryConfiguration)
-            let collected = try await helper.execute(
-                operation: { [self] in
-                    let result = try await client.runAndCollect(
-                        arguments: ["--no-color", "__cli-spec", "--format", "json"],
-                        currentDirectoryURL: identityState.workingDirectoryURL
-                    )
-                    if result.status.code != 0 {
-                        throw result.toError()
-                    }
-                    return result
-                }
-            )
-
-            guard collected.status.code == 0 else {
-                guard isCurrentRepositoryContext(repositoryContext) else { return }
+        await performRepositoryLoad(
+            operation: "loadCLISpec",
+            retryConfiguration: retryConfiguration,
+            setLoading: { [commandState] in commandState.cliSpecIsLoading = $0 },
+            clearFailure: { [commandState] in
+                commandState.cliSpecErrorMessage = nil
+            },
+            handleMissingClient: { [commandState] in
                 commandState.cliSpec = nil
-                commandState.cliSpecErrorMessage = collected.stderr.isEmpty
-                    ? "Failed to load CLI spec (exit \(collected.status.code))."
-                    : collected.stderr
-                commandState.cliSpecIsLoading = false
-                return
+                commandState.cliSpecErrorMessage = "CLI client not available."
+            },
+            load: { [self] client, workingDirectoryURL, retryConfiguration, onRetry in
+                try await self.decodeRepositoryJSON(
+                    RalphCLISpecDocument.self,
+                    client: client,
+                    arguments: ["--no-color", "__cli-spec", "--format", "json"],
+                    currentDirectoryURL: workingDirectoryURL,
+                    retryConfiguration: retryConfiguration,
+                    onRetry: onRetry
+                )
+            },
+            apply: { [commandState] cliSpec in
+                commandState.cliSpec = cliSpec
+            },
+            handleFailure: { [commandState] recoveryError in
+                commandState.cliSpec = nil
+                commandState.cliSpecErrorMessage = recoveryError.message
             }
-
-            let cliSpec = try JSONDecoder().decode(
-                RalphCLISpecDocument.self,
-                from: Data(collected.stdout.utf8)
-            )
-            guard isCurrentRepositoryContext(repositoryContext) else { return }
-            commandState.cliSpec = cliSpec
-        } catch {
-            guard isCurrentRepositoryContext(repositoryContext) else { return }
-            commandState.cliSpec = nil
-            let recoveryError = RecoveryError.classify(
-                error: error,
-                operation: "loadCLISpec",
-                workspaceURL: identityState.workingDirectoryURL
-            )
-            commandState.cliSpecErrorMessage = recoveryError.message
-            diagnosticsState.lastRecoveryError = recoveryError
-            diagnosticsState.showErrorRecovery = true
-        }
-
-        guard isCurrentRepositoryContext(repositoryContext) else { return }
-        commandState.cliSpecIsLoading = false
+        )
     }
 
     func advancedCommands() -> [RalphCLICommandSpec] {

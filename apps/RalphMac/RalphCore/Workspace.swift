@@ -240,3 +240,86 @@ public final class Workspace: ObservableObject, Identifiable {
             .store(in: &operationalDependencyCancellables)
     }
 }
+
+extension Workspace {
+    func performRepositoryLoad<Value>(
+        operation: String,
+        retryConfiguration: RetryConfiguration,
+        setLoading: @escaping @MainActor (Bool) -> Void,
+        clearFailure: @escaping @MainActor () -> Void,
+        handleMissingClient: @escaping @MainActor () -> Void,
+        retryMessage: (@Sendable (Int, Int) -> String)? = nil,
+        load: @escaping @Sendable (RalphCLIClient, URL, RetryConfiguration, RetryProgressHandler?) async throws -> Value,
+        apply: @escaping @MainActor (Value) -> Void,
+        handleRetryMessage: (@MainActor (String) -> Void)? = nil,
+        handleFailure: @escaping @MainActor (RecoveryError) -> Void
+    ) async {
+        let repositoryContext = currentRepositoryContext()
+        guard let client else {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
+            handleMissingClient()
+            return
+        }
+
+        setLoading(true)
+        clearFailure()
+        defer {
+            if isCurrentRepositoryContext(repositoryContext) {
+                setLoading(false)
+            }
+        }
+
+        let progress: RetryProgressHandler?
+        if let retryMessage {
+            progress = { [weak self] attempt, maxAttempts, _ in
+                await MainActor.run { [weak self] in
+                    guard
+                        let self,
+                        self.isCurrentRepositoryContext(repositoryContext)
+                    else { return }
+                    handleRetryMessage?(retryMessage(attempt, maxAttempts))
+                }
+            }
+        } else {
+            progress = nil
+        }
+
+        do {
+            let value = try await load(
+                client,
+                identityState.workingDirectoryURL,
+                retryConfiguration,
+                progress
+            )
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
+            apply(value)
+        } catch {
+            guard isCurrentRepositoryContext(repositoryContext) else { return }
+            let recoveryError = RecoveryError.classify(
+                error: error,
+                operation: operation,
+                workspaceURL: identityState.workingDirectoryURL
+            )
+            diagnosticsState.lastRecoveryError = recoveryError
+            diagnosticsState.showErrorRecovery = true
+            handleFailure(recoveryError)
+        }
+    }
+
+    func decodeRepositoryJSON<T: Decodable>(
+        _ type: T.Type,
+        client: RalphCLIClient,
+        arguments: [String],
+        currentDirectoryURL: URL,
+        retryConfiguration: RetryConfiguration,
+        onRetry: RetryProgressHandler? = nil
+    ) async throws -> T {
+        let collected = try await client.runAndCollectWithRetry(
+            arguments: arguments,
+            currentDirectoryURL: currentDirectoryURL,
+            retryConfiguration: retryConfiguration,
+            onRetry: onRetry
+        )
+        return try JSONDecoder().decode(type, from: Data(collected.stdout.utf8))
+    }
+}

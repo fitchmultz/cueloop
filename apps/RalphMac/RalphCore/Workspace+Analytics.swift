@@ -230,22 +230,14 @@ private extension Workspace {
     }
 
     func loadDashboardAggregated(client: RalphCLIClient, days: Int) async -> DashboardReport? {
-        let helper = RetryHelper(configuration: .minimal)
         do {
-            let collected = try await helper.execute(
-                operation: { [self] in
-                    let result = try await client.runAndCollect(
-                        arguments: ["--no-color", "queue", "dashboard", "--days", String(days)],
-                        currentDirectoryURL: identityState.workingDirectoryURL
-                    )
-                    if result.status.code != 0 {
-                        throw result.toError()
-                    }
-                    return result
-                }
+            return try await self.decodeRepositoryJSON(
+                DashboardReport.self,
+                client: client,
+                arguments: ["--no-color", "queue", "dashboard", "--days", String(days)],
+                currentDirectoryURL: identityState.workingDirectoryURL,
+                retryConfiguration: .minimal
             )
-            guard collected.status.code == 0 else { return nil }
-            return try JSONDecoder().decode(DashboardReport.self, from: Data(collected.stdout.utf8))
         } catch {
             return nil
         }
@@ -302,36 +294,16 @@ private extension Workspace {
         arguments: [String],
         decode type: Value.Type
     ) async -> AnalyticsCLISectionFetch<Value> {
-        let helper = RetryHelper(configuration: .minimal)
         do {
-            let collected = try await helper.execute(
-                operation: { [self] in
-                    let result = try await client.runAndCollect(
-                        arguments: arguments,
-                        currentDirectoryURL: identityState.workingDirectoryURL
-                    )
-                    if result.status.code != 0 {
-                        throw result.toError()
-                    }
-                    return result
-                }
-            )
-
-            guard collected.status.code == 0 else {
-                let message = collected.stderr.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-                return .failed(
-                    message.isEmpty
-                        ? "Failed to load \(kind.displayName.lowercased()) (exit \(collected.status.code))."
-                        : message
+            return .loaded(
+                try await self.decodeRepositoryJSON(
+                    type,
+                    client: client,
+                    arguments: arguments,
+                    currentDirectoryURL: identityState.workingDirectoryURL,
+                    retryConfiguration: .minimal
                 )
-            }
-
-            do {
-                let value = try JSONDecoder().decode(type, from: Data(collected.stdout.utf8))
-                return .loaded(value)
-            } catch {
-                return .failed("Failed to decode \(kind.displayName.lowercased()): \(error.localizedDescription)")
-            }
+            )
         } catch {
             return .failed(error.localizedDescription)
         }

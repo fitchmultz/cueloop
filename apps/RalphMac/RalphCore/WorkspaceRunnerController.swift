@@ -33,54 +33,44 @@ final class WorkspaceRunnerController {
 
     func loadRunnerConfiguration(retryConfiguration: RetryConfiguration = .minimal) async {
         guard let workspace else { return }
-        let repositoryContext = workspace.currentRepositoryContext()
-        workspace.runState.runnerConfigLoading = true
-        workspace.runState.runnerConfigErrorMessage = nil
-
-        guard let client = workspace.client else {
-            guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
-            workspace.runState.currentRunnerConfig = nil
-            workspace.runState.runnerConfigErrorMessage = "CLI client not available."
-            workspace.runState.runnerConfigLoading = false
-            return
-        }
-
-        do {
-            let helper = RetryHelper(configuration: retryConfiguration)
-            let collected = try await helper.execute(
-                operation: { [workspace] in
-                    let result = try await client.runAndCollect(
-                        arguments: ["--no-color", "config", "show", "--format", "json"],
-                        currentDirectoryURL: workspace.identityState.workingDirectoryURL
-                    )
-                    if result.status.code != 0 {
-                        throw result.toError()
-                    }
-                    return result
-                }
-            )
-
-            let data = Data(collected.stdout.utf8)
-            let decoded = try JSONDecoder().decode(ResolvedRunnerConfigDocument.self, from: data)
-            guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
-            workspace.runState.currentRunnerConfig = Workspace.RunnerConfig(
-                model: decoded.agent?.model,
-                phases: decoded.agent?.phases,
-                maxIterations: decoded.agent?.iterations
-            )
-            workspace.runState.runnerConfigErrorMessage = nil
-        } catch {
-            guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
-            workspace.runState.currentRunnerConfig = nil
-            workspace.runState.runnerConfigErrorMessage = "Failed to load resolved runner configuration."
-            RalphLogger.shared.error(
-                "Failed to load runner configuration: \(error)",
-                category: .workspace
-            )
-        }
-
-        guard workspace.isCurrentRepositoryContext(repositoryContext) else { return }
-        workspace.runState.runnerConfigLoading = false
+        await workspace.performRepositoryLoad(
+            operation: "loadRunnerConfiguration",
+            retryConfiguration: retryConfiguration,
+            setLoading: { [runState = workspace.runState] in runState.runnerConfigLoading = $0 },
+            clearFailure: { [runState = workspace.runState] in
+                runState.runnerConfigErrorMessage = nil
+            },
+            handleMissingClient: { [runState = workspace.runState] in
+                runState.currentRunnerConfig = nil
+                runState.runnerConfigErrorMessage = "CLI client not available."
+            },
+            load: { client, workingDirectoryURL, retryConfiguration, onRetry in
+                try await workspace.decodeRepositoryJSON(
+                    ResolvedRunnerConfigDocument.self,
+                    client: client,
+                    arguments: ["--no-color", "config", "show", "--format", "json"],
+                    currentDirectoryURL: workingDirectoryURL,
+                    retryConfiguration: retryConfiguration,
+                    onRetry: onRetry
+                )
+            },
+            apply: { [runState = workspace.runState] decoded in
+                runState.currentRunnerConfig = Workspace.RunnerConfig(
+                    model: decoded.agent?.model,
+                    phases: decoded.agent?.phases,
+                    maxIterations: decoded.agent?.iterations
+                )
+                runState.runnerConfigErrorMessage = nil
+            },
+            handleFailure: { [runState = workspace.runState] recoveryError in
+                runState.currentRunnerConfig = nil
+                runState.runnerConfigErrorMessage = "Failed to load resolved runner configuration."
+                RalphLogger.shared.error(
+                    "Failed to load runner configuration: \(recoveryError.fullErrorDetails)",
+                    category: .workspace
+                )
+            }
+        )
     }
 
     func prepareForRepositoryRetarget() {

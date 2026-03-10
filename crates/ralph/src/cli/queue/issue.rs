@@ -16,7 +16,7 @@
 //! - Task IDs must exist in the active queue.
 //! - Queue writes occur only while queue lock is held.
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
 use regex::Regex;
 use std::collections::HashSet;
@@ -170,50 +170,42 @@ pub(crate) fn handle_publish(
     }
 
     check_gh_available()?;
-    let _lock =
-        crate::queue::acquire_queue_lock(&resolved.repo_root, "queue issue publish", force)?;
-
-    // Create undo snapshot before mutation
-    crate::undo::create_undo_snapshot(resolved, &format!("queue issue publish {}", task_id))?;
-
-    let (mut queue_file, _done_file) = crate::queue::load_and_validate_queues(resolved, false)?;
-    let result = publish_task(
+    crate::queue::with_locked_queue_mutation(
         resolved,
-        &mut queue_file,
-        task_id,
-        PublishMode::Execute,
-        &args.label,
-        &args.assignee,
-        args.repo.as_deref(),
-    )?;
+        "queue issue publish",
+        format!("queue issue publish {}", task_id),
+        force,
+        || {
+            let (mut queue_file, _done_file) =
+                crate::queue::load_and_validate_queues(resolved, false)?;
+            let result = publish_task(
+                resolved,
+                &mut queue_file,
+                task_id,
+                PublishMode::Execute,
+                &args.label,
+                &args.assignee,
+                args.repo.as_deref(),
+            )?;
 
-    match &result {
-        PublishItemResult::Created | PublishItemResult::Updated => {
-            crate::queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
-            crate::queue::save_queue(&resolved.queue_path, &queue_file)?;
-        }
-        PublishItemResult::SkippedUnchanged => {}
-        PublishItemResult::Failed(err) => return Err(anyhow!("{err}")),
-    }
-
-    match result {
-        PublishItemResult::Created | PublishItemResult::Updated => {
-            let task = find_task(&queue_file, task_id)?;
-            let url = fetch_custom_field(&task.custom_fields, GITHUB_ISSUE_URL_KEY)
-                .unwrap_or_else(|| "unknown".to_string());
-            if matches!(result, PublishItemResult::Created) {
-                println!("Created GitHub issue: {url}");
-            } else {
-                println!("Updated GitHub issue: {url}");
+            if matches!(
+                result,
+                PublishItemResult::Created | PublishItemResult::Updated
+            ) {
+                crate::queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
+                crate::queue::save_queue(&resolved.queue_path, &queue_file)?;
             }
-        }
-        PublishItemResult::SkippedUnchanged => {
-            println!("No changes for '{task_id}'; issue payload already synced.");
-        }
-        PublishItemResult::Failed(err) => return Err(anyhow!("{err}")),
-    }
 
-    Ok(())
+            print_single_publish_result(
+                &queue_file,
+                task_id,
+                result,
+                &args.label,
+                &args.assignee,
+                args.repo.as_deref(),
+            )
+        },
+    )
 }
 
 pub(crate) fn handle_publish_many(
@@ -272,58 +264,61 @@ pub(crate) fn handle_publish_many(
     }
 
     check_gh_available()?;
-    let _lock =
-        crate::queue::acquire_queue_lock(&resolved.repo_root, "queue issue publish-many", force)?;
+    crate::queue::with_locked_queue_mutation(
+        resolved,
+        "queue issue publish-many",
+        "queue issue publish-many",
+        force,
+        || {
+            let (mut queue_file, _done_file) =
+                crate::queue::load_and_validate_queues(resolved, false)?;
+            let mut final_summary = PublishManySummary {
+                selected: selected_task_ids.len(),
+                ..PublishManySummary::default()
+            };
+            let mut failures = Vec::new();
 
-    // Create undo snapshot BEFORE any mutations
-    crate::undo::create_undo_snapshot(resolved, "queue issue publish-many")?;
+            for task_id in &selected_task_ids {
+                let result = publish_task(
+                    resolved,
+                    &mut queue_file,
+                    task_id,
+                    PublishMode::Execute,
+                    &args.label,
+                    &args.assignee,
+                    args.repo.as_deref(),
+                )
+                .unwrap_or_else(PublishItemResult::Failed);
 
-    let (mut queue_file, _done_file) = crate::queue::load_and_validate_queues(resolved, false)?;
-    let mut final_summary = PublishManySummary {
-        selected: selected_task_ids.len(),
-        ..PublishManySummary::default()
-    };
-    let mut failures = Vec::new();
+                if let PublishItemResult::Failed(err) = &result {
+                    failures.push((task_id.clone(), err.to_string()));
+                }
 
-    for task_id in &selected_task_ids {
-        let result = publish_task(
-            resolved,
-            &mut queue_file,
-            task_id,
-            PublishMode::Execute,
-            &args.label,
-            &args.assignee,
-            args.repo.as_deref(),
-        )
-        .unwrap_or_else(PublishItemResult::Failed);
+                print_publish_many_task_result(task_id, &result);
+                accumulate_publish_result(&mut final_summary, &result);
+            }
 
-        if let PublishItemResult::Failed(err) = &result {
-            failures.push((task_id.clone(), err.to_string()));
-        }
+            if final_summary.has_mutations() {
+                crate::queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
+                crate::queue::save_queue(&resolved.queue_path, &queue_file)?;
+            }
 
-        print_publish_many_task_result(task_id, &result);
-        accumulate_publish_result(&mut final_summary, &result);
-    }
+            print_publish_many_summary(&final_summary, false);
+            if failures.is_empty() {
+                return Ok(());
+            }
 
-    if final_summary.has_mutations() {
-        crate::queue::validate_queue(&queue_file, &resolved.id_prefix, resolved.id_width)?;
-        crate::queue::save_queue(&resolved.queue_path, &queue_file)?;
-    }
-
-    print_publish_many_summary(&final_summary, false);
-    if !failures.is_empty() {
-        println!();
-        println!("Failures:");
-        for (task_id, reason) in failures {
-            println!("  {task_id}: {reason}");
-        }
-        bail!(
-            "publish-many completed with {} failed task(s).",
-            final_summary.failed
-        );
-    }
-
-    Ok(())
+            println!();
+            println!("Failures:");
+            for (task_id, reason) in failures {
+                println!("  {task_id}: {reason}");
+            }
+            bail!(
+                "publish-many completed with {} failed task(s).",
+                final_summary.failed
+            );
+        },
+    )
 }
 
 #[derive(Debug, Clone, Copy)]

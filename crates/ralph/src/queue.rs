@@ -56,6 +56,8 @@ pub use loader::{
 };
 pub use save::save_queue;
 
+use crate::config::Resolved;
+use crate::contracts::QueueFile;
 use crate::lock;
 use anyhow::Result;
 use std::path::Path;
@@ -63,6 +65,25 @@ use std::path::Path;
 pub fn acquire_queue_lock(repo_root: &Path, label: &str, force: bool) -> Result<lock::DirLock> {
     let lock_dir = lock::queue_lock_dir(repo_root);
     lock::acquire_dir_lock(&lock_dir, label, force)
+}
+
+pub fn optional_done_queue<'a>(
+    done_file: &'a QueueFile,
+    done_path: &Path,
+) -> Option<&'a QueueFile> {
+    (!done_file.tasks.is_empty() || done_path.exists()).then_some(done_file)
+}
+
+pub fn with_locked_queue_mutation<T>(
+    resolved: &Resolved,
+    label: &str,
+    operation: impl AsRef<str>,
+    force: bool,
+    mutate: impl FnOnce() -> Result<T>,
+) -> Result<T> {
+    let _queue_lock = acquire_queue_lock(&resolved.repo_root, label, force)?;
+    crate::undo::create_undo_snapshot(resolved, operation.as_ref())?;
+    mutate()
 }
 
 // Tests that exercise the facade re-exports

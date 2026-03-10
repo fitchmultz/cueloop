@@ -16,66 +16,38 @@ import Foundation
 
 public extension Workspace {
     func loadGraphData(retryConfiguration: RetryConfiguration = .default) async {
-        let repositoryContext = currentRepositoryContext()
-
-        guard let client else {
-            guard isCurrentRepositoryContext(repositoryContext) else { return }
-            insightsState.graphDataErrorMessage = "CLI client not available."
-            return
-        }
-
-        insightsState.graphDataLoading = true
-        insightsState.graphDataErrorMessage = nil
-
-        do {
-            let helper = RetryHelper(configuration: retryConfiguration)
-            let collected = try await helper.execute(
-                operation: { [self] in
-                    let result = try await client.runAndCollect(
-                        arguments: ["--no-color", "queue", "graph", "--format", "json"],
-                        currentDirectoryURL: identityState.workingDirectoryURL
-                    )
-                    if result.status.code != 0 {
-                        throw result.toError()
-                    }
-                    return result
-                },
-                onProgress: { [weak self] attempt, maxAttempts, _ in
-                    await MainActor.run { [weak self] in
-                        self?.insightsState.graphDataErrorMessage =
-                            "Retrying load graph (attempt \(attempt)/\(maxAttempts))..."
-                    }
-                }
-            )
-
-            guard collected.status.code == 0 else {
-                guard isCurrentRepositoryContext(repositoryContext) else { return }
-                insightsState.graphDataErrorMessage = collected.stderr.isEmpty
-                    ? "Failed to load graph data (exit \(collected.status.code))."
-                    : collected.stderr
-                insightsState.graphDataLoading = false
-                return
+        await performRepositoryLoad(
+            operation: "loadGraphData",
+            retryConfiguration: retryConfiguration,
+            setLoading: { [insightsState] in insightsState.graphDataLoading = $0 },
+            clearFailure: { [insightsState] in
+                insightsState.graphDataErrorMessage = nil
+            },
+            handleMissingClient: { [insightsState] in
+                insightsState.graphDataErrorMessage = "CLI client not available."
+            },
+            retryMessage: { attempt, maxAttempts in
+                "Retrying load graph (attempt \(attempt)/\(maxAttempts))..."
+            },
+            load: { [self] client, workingDirectoryURL, retryConfiguration, onRetry in
+                try await self.decodeRepositoryJSON(
+                    RalphGraphDocument.self,
+                    client: client,
+                    arguments: ["--no-color", "queue", "graph", "--format", "json"],
+                    currentDirectoryURL: workingDirectoryURL,
+                    retryConfiguration: retryConfiguration,
+                    onRetry: onRetry
+                )
+            },
+            apply: { [insightsState] graphData in
+                insightsState.graphData = graphData
+            },
+            handleRetryMessage: { [insightsState] in
+                insightsState.graphDataErrorMessage = $0
+            },
+            handleFailure: { [insightsState] recoveryError in
+                insightsState.graphDataErrorMessage = recoveryError.message
             }
-
-            let graphData = try JSONDecoder().decode(
-                RalphGraphDocument.self,
-                from: Data(collected.stdout.utf8)
-            )
-            guard isCurrentRepositoryContext(repositoryContext) else { return }
-            insightsState.graphData = graphData
-        } catch {
-            guard isCurrentRepositoryContext(repositoryContext) else { return }
-            let recoveryError = RecoveryError.classify(
-                error: error,
-                operation: "loadGraphData",
-                workspaceURL: identityState.workingDirectoryURL
-            )
-            insightsState.graphDataErrorMessage = recoveryError.message
-            diagnosticsState.lastRecoveryError = recoveryError
-            diagnosticsState.showErrorRecovery = true
-        }
-
-        guard isCurrentRepositoryContext(repositoryContext) else { return }
-        insightsState.graphDataLoading = false
+        )
     }
 }

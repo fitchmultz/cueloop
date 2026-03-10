@@ -106,23 +106,7 @@ pub(crate) fn post_run_supervise_parallel_worker(
             )?;
         }
 
-        restore_parallel_worker_bookkeeping(resolved, task_id)?;
-
-        let mut status = git::status_porcelain(&resolved.repo_root)?;
-        let mut bookkeeping_lines = collect_bookkeeping_status_lines(&status);
-        if !bookkeeping_lines.is_empty() {
-            // Defensive retry: if any parallel bookkeeping files still show up in status,
-            // restore once more and fail fast if they remain dirty.
-            restore_parallel_worker_bookkeeping(resolved, task_id)?;
-            status = git::status_porcelain(&resolved.repo_root)?;
-            bookkeeping_lines = collect_bookkeeping_status_lines(&status);
-            if !bookkeeping_lines.is_empty() {
-                anyhow::bail!(
-                    "parallel bookkeeping files remained dirty after restore: {}",
-                    bookkeeping_lines.join(", ")
-                );
-            }
-        }
+        let status = restore_parallel_worker_bookkeeping_and_check_clean(resolved, task_id)?;
 
         if status.trim().is_empty() {
             return Ok(());
@@ -144,6 +128,27 @@ pub(crate) fn post_run_supervise_parallel_worker(
 
         Ok(())
     })
+}
+
+fn restore_parallel_worker_bookkeeping_and_check_clean(
+    resolved: &crate::config::Resolved,
+    task_id: &str,
+) -> Result<String> {
+    for attempt in 0..2 {
+        restore_parallel_worker_bookkeeping(resolved, task_id)?;
+        let status = git::status_porcelain(&resolved.repo_root)?;
+        let bookkeeping_lines = collect_bookkeeping_status_lines(&status);
+        if bookkeeping_lines.is_empty() {
+            return Ok(status);
+        }
+        if attempt == 1 {
+            anyhow::bail!(
+                "parallel bookkeeping files remained dirty after restore: {}",
+                bookkeeping_lines.join(", ")
+            );
+        }
+    }
+    unreachable!("loop returns on success and errors on final failure")
 }
 
 fn task_title_from_queue_or_done(

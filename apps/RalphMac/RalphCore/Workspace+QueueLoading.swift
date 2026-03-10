@@ -76,8 +76,7 @@ public extension Workspace {
 public extension Workspace {
     func loadTasks(retryConfiguration: RetryConfiguration = .default) async {
         let repositoryContext = currentRepositoryContext()
-
-        guard let client else {
+        guard client != nil else {
             guard isCurrentRepositoryContext(repositoryContext) else { return }
             taskState.tasksErrorMessage = "CLI client not available."
             return
@@ -96,61 +95,44 @@ public extension Workspace {
         }
 
         startFileWatching()
-
-        taskState.tasksLoading = true
-        taskState.tasksErrorMessage = nil
-
-        do {
-            let helper = RetryHelper(configuration: retryConfiguration)
-            let collected = try await helper.execute(
-                operation: { [self] in
-                    let result = try await client.runAndCollect(
-                        arguments: ["--no-color", "queue", "list", "--format", "json"],
-                        currentDirectoryURL: identityState.workingDirectoryURL
-                    )
-                    if result.status.code != 0 {
-                        throw result.toError()
-                    }
-                    return result
-                },
-                onProgress: { [weak self] attempt, maxAttempts, _ in
-                    await MainActor.run { [weak self] in
-                        self?.taskState.tasksErrorMessage =
-                            "Retrying load tasks (attempt \(attempt)/\(maxAttempts))..."
-                    }
-                }
-            )
-
-            guard collected.status.code == 0 else {
-                guard isCurrentRepositoryContext(repositoryContext) else { return }
-                taskState.tasksErrorMessage = collected.stderr.isEmpty
-                    ? "Failed to load tasks (exit \(collected.status.code))."
-                    : collected.stderr
-                taskState.tasksLoading = false
-                return
+        await performRepositoryLoad(
+            operation: "loadTasks",
+            retryConfiguration: retryConfiguration,
+            setLoading: { [taskState] in taskState.tasksLoading = $0 },
+            clearFailure: { [taskState, diagnosticsState] in
+                taskState.tasksErrorMessage = nil
+                diagnosticsState.showErrorRecovery = false
+                diagnosticsState.lastRecoveryError = nil
+            },
+            handleMissingClient: { [taskState] in
+                taskState.tasksErrorMessage = "CLI client not available."
+            },
+            retryMessage: { attempt, maxAttempts in
+                "Retrying load tasks (attempt \(attempt)/\(maxAttempts))..."
+            },
+            load: { client, workingDirectoryURL, _, onRetry in
+                let collected = try await client.runAndCollectWithRetry(
+                    arguments: ["--no-color", "queue", "list", "--format", "json"],
+                    currentDirectoryURL: workingDirectoryURL,
+                    retryConfiguration: retryConfiguration,
+                    onRetry: onRetry
+                )
+                return try await WorkspaceQueueSnapshotLoader.decodeQueueTasks(
+                    fromCLIOutput: collected.stdout
+                )
+            },
+            apply: { [self, taskState] decodedTasks in
+                taskState.tasks = decodedTasks
+                self.sanitizeRunControlSelection()
+                taskState.tasksErrorMessage = nil
+            },
+            handleRetryMessage: { [taskState] in
+                taskState.tasksErrorMessage = $0
+            },
+            handleFailure: { [taskState] recoveryError in
+                taskState.tasksErrorMessage = recoveryError.message
             }
-
-            let decodedTasks = try await WorkspaceQueueSnapshotLoader.decodeQueueTasks(
-                fromCLIOutput: collected.stdout
-            )
-            guard isCurrentRepositoryContext(repositoryContext) else { return }
-            taskState.tasks = decodedTasks
-            sanitizeRunControlSelection()
-            taskState.tasksErrorMessage = nil
-        } catch {
-            guard isCurrentRepositoryContext(repositoryContext) else { return }
-            let recoveryError = RecoveryError.classify(
-                error: error,
-                operation: "loadTasks",
-                workspaceURL: identityState.workingDirectoryURL
-            )
-            taskState.tasksErrorMessage = recoveryError.message
-            diagnosticsState.lastRecoveryError = recoveryError
-            diagnosticsState.showErrorRecovery = true
-        }
-
-        guard isCurrentRepositoryContext(repositoryContext) else { return }
-        taskState.tasksLoading = false
+        )
     }
 
     func stopFileWatching() {

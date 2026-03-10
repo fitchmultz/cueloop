@@ -22,7 +22,7 @@ use crate::commands::task as task_cmd;
 use crate::config;
 use crate::queue;
 use crate::queue::operations::{
-    TaskFieldEdit, TaskMutationRequest, TaskMutationSpec, apply_task_mutation_request,
+    batch_apply_edit, batch_set_field, print_batch_results, resolve_task_ids,
 };
 use crate::timeutil;
 
@@ -31,8 +31,7 @@ pub fn handle_field(args: &TaskFieldArgs, force: bool, resolved: &config::Resolv
     let queue_file = queue::load_queue(&resolved.queue_path)?;
 
     // Resolve task IDs from explicit list or tag filter
-    let task_ids =
-        queue::operations::resolve_task_ids(&queue_file, &args.task_ids, &args.tag_filter)?;
+    let task_ids = resolve_task_ids(&queue_file, &args.task_ids, &args.tag_filter)?;
 
     if task_ids.is_empty() {
         bail!("No tasks specified. Provide task IDs or use --tag-filter.");
@@ -56,56 +55,48 @@ pub fn handle_field(args: &TaskFieldArgs, force: bool, resolved: &config::Resolv
         return Ok(());
     }
 
-    // Normal mode: acquire lock and apply
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task field", force)?;
-
-    // Create undo snapshot before mutation
-    let task_ids_preview = task_ids.join(", ");
-    crate::undo::create_undo_snapshot(
+    queue::with_locked_queue_mutation(
         resolved,
-        &format!(
+        "task field",
+        format!(
             "task field {}={} [{}]",
-            args.key, args.value, task_ids_preview
+            args.key,
+            args.value,
+            task_ids.join(", ")
         ),
-    )?;
-
-    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-    let now = timeutil::now_utc_rfc3339()?;
-
-    let result = queue::operations::batch_set_field(
-        &mut queue_file,
-        &task_ids,
-        &args.key,
-        &args.value,
-        &now,
-        false, // continue_on_error - default to atomic for CLI
-    )?;
-
-    queue::save_queue(&resolved.queue_path, &queue_file)?;
-    queue::operations::print_batch_results(
-        &result,
-        &format!("Field set '{}' = '{}'", args.key, args.value),
-        false,
-    );
-
-    Ok(())
+        force,
+        || {
+            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+            let now = timeutil::now_utc_rfc3339()?;
+            let result = batch_set_field(
+                &mut queue_file,
+                &task_ids,
+                &args.key,
+                &args.value,
+                &now,
+                false,
+            )?;
+            queue::save_queue(&resolved.queue_path, &queue_file)?;
+            print_batch_results(
+                &result,
+                &format!("Field set '{}' = '{}'", args.key, args.value),
+                false,
+            );
+            Ok(())
+        },
+    )
 }
 
 /// Handle the `edit` command (edit any task field).
 pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
-    let done_ref = if done_file.tasks.is_empty() && !resolved.done_path.exists() {
-        None
-    } else {
-        Some(&done_file)
-    };
+    let done_ref = queue::optional_done_queue(&done_file, &resolved.done_path);
     let now = timeutil::now_utc_rfc3339()?;
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
 
     // Resolve task IDs from explicit list or tag filter
-    let task_ids =
-        queue::operations::resolve_task_ids(&queue_file, &args.task_ids, &args.tag_filter)?;
+    let task_ids = resolve_task_ids(&queue_file, &args.task_ids, &args.tag_filter)?;
 
     if task_ids.is_empty() {
         bail!("No tasks specified. Provide task IDs or use --tag-filter.");
@@ -141,88 +132,91 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
         return Ok(());
     }
 
-    // Normal mode: acquire lock and apply
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task edit", force)?;
-
-    // Create undo snapshot before mutation
-    let task_ids_preview = task_ids.join(", ");
-    crate::undo::create_undo_snapshot(
+    queue::with_locked_queue_mutation(
         resolved,
-        &format!("task edit {} [{}]", args.field.as_str(), task_ids_preview),
-    )?;
+        "task edit",
+        format!(
+            "task edit {} [{}]",
+            args.field.as_str(),
+            task_ids.join(", ")
+        ),
+        force,
+        || {
+            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+            let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
+            let result = batch_apply_edit(
+                &mut queue_file,
+                queue::optional_done_queue(&done_file, &resolved.done_path),
+                &task_ids,
+                args.field.into(),
+                &args.value,
+                &now,
+                &resolved.id_prefix,
+                resolved.id_width,
+                max_depth,
+                false,
+            )?;
 
-    let mut queue_file = queue::load_queue(&resolved.queue_path)?;
-    let mut done_file = queue::load_queue_or_default(&resolved.done_path)?;
+            let archived_task_ids = auto_archive_if_configured(
+                resolved,
+                args.no_auto_archive,
+                &mut queue_file,
+                &mut done_file,
+                &now,
+            );
 
-    let request = TaskMutationRequest {
-        version: 1,
-        atomic: true,
-        tasks: task_ids
-            .iter()
-            .map(|task_id| TaskMutationSpec {
-                task_id: task_id.clone(),
-                expected_updated_at: None,
-                edits: vec![TaskFieldEdit {
-                    field: args.field.as_str().to_string(),
-                    value: args.value.clone(),
-                }],
-            })
-            .collect(),
-    };
-
-    let result = apply_task_mutation_request(
-        &mut queue_file,
-        Some(&done_file),
-        &request,
-        &now,
-        &resolved.id_prefix,
-        resolved.id_width,
-        max_depth,
-    )?;
-
-    // Run auto-archive sweep for terminal tasks if configured and not disabled
-    let mut archived_task_ids: Vec<String> = Vec::new();
-    if !args.no_auto_archive
-        && let Some(days) = resolved.config.queue.auto_archive_terminal_after_days
-    {
-        match queue::maybe_archive_terminal_tasks_in_memory(
-            &mut queue_file,
-            &mut done_file,
-            &now,
-            Some(days),
-        ) {
-            Ok(report) => {
-                archived_task_ids = report.moved_ids;
+            queue::save_queue(&resolved.queue_path, &queue_file)?;
+            if !archived_task_ids.is_empty() {
+                queue::save_queue(&resolved.done_path, &done_file)?;
             }
-            Err(e) => {
-                log::warn!("Auto-archive sweep failed: {}", e);
-            }
-        }
+
+            print_batch_results(
+                &result,
+                &format!("Edit field '{}'", args.field.as_str()),
+                false,
+            );
+            print_auto_archive_results(&archived_task_ids);
+            Ok(())
+        },
+    )
+}
+
+fn auto_archive_if_configured(
+    resolved: &config::Resolved,
+    disabled: bool,
+    queue_file: &mut crate::contracts::QueueFile,
+    done_file: &mut crate::contracts::QueueFile,
+    now: &str,
+) -> Vec<String> {
+    if disabled {
+        return Vec::new();
     }
 
-    queue::save_queue(&resolved.queue_path, &queue_file)?;
-    if !archived_task_ids.is_empty() {
-        queue::save_queue(&resolved.done_path, &done_file)?;
+    let Some(days) = resolved.config.queue.auto_archive_terminal_after_days else {
+        return Vec::new();
+    };
+
+    match queue::maybe_archive_terminal_tasks_in_memory(queue_file, done_file, now, Some(days)) {
+        Ok(report) => report.moved_ids,
+        Err(err) => {
+            log::warn!("Auto-archive sweep failed: {}", err);
+            Vec::new()
+        }
+    }
+}
+
+fn print_auto_archive_results(archived_task_ids: &[String]) {
+    if archived_task_ids.is_empty() {
+        return;
     }
 
     println!(
-        "Applied field '{}' to {} task(s).",
-        args.field.as_str(),
-        result.tasks.len()
+        "Auto-archived {} terminal task(s):",
+        archived_task_ids.len()
     );
-
-    if !archived_task_ids.is_empty() {
-        // List specific archived task IDs
-        println!(
-            "Auto-archived {} terminal task(s):",
-            archived_task_ids.len()
-        );
-        for task_id in &archived_task_ids {
-            println!("  - {}", task_id);
-        }
+    for task_id in archived_task_ids {
+        println!("  - {}", task_id);
     }
-
-    Ok(())
 }
 
 /// Handle the `update` command (AI-powered field updates).
