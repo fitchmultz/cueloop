@@ -22,6 +22,8 @@ import Foundation
 
 @MainActor
 final class WorkspaceRunnerController {
+    nonisolated private static let supportedMachineConfigResolveVersion = 2
+
     private weak var workspace: Workspace?
     private var activeRun: RalphCLIRun?
     private var cancelRequested = false
@@ -46,7 +48,7 @@ final class WorkspaceRunnerController {
                 runState.runnerConfigErrorMessage = "CLI client not available."
             },
             load: { client, workingDirectoryURL, retryConfiguration, onRetry in
-                try await workspace.decodeMachineRepositoryJSON(
+                let document = try await workspace.decodeMachineRepositoryJSON(
                     MachineConfigResolveDocument.self,
                     client: client,
                     machineArguments: ["config", "resolve"],
@@ -54,13 +56,27 @@ final class WorkspaceRunnerController {
                     retryConfiguration: retryConfiguration,
                     onRetry: onRetry
                 )
+                try Self.validateMachineConfigResolveVersion(document.version)
+                return document
             },
             apply: { [workspace, runState = workspace.runState] decoded in
                 workspace.updateResolvedPaths(decoded.paths)
+                let safety = decoded.safety
                 runState.currentRunnerConfig = Workspace.RunnerConfig(
                     model: decoded.config.agent?.model,
                     phases: decoded.config.agent?.phases,
-                    maxIterations: decoded.config.agent?.iterations
+                    maxIterations: decoded.config.agent?.iterations,
+                    safety: Workspace.RunnerSafetySummary(
+                        repoTrusted: safety.repoTrusted,
+                        dirtyRepo: safety.dirtyRepo,
+                        gitPublishMode: safety.gitPublishMode,
+                        approvalMode: safety.approvalMode,
+                        ciGateEnabled: safety.ciGateEnabled,
+                        gitRevertMode: safety.gitRevertMode,
+                        parallelConfigured: safety.parallelConfigured,
+                        executionInteractivity: safety.executionInteractivity,
+                        interactiveApprovalSupported: safety.interactiveApprovalSupported
+                    )
                 )
                 runState.runnerConfigErrorMessage = nil
             },
@@ -359,9 +375,22 @@ final class WorkspaceRunnerController {
         }
     }
 
-    private static func isMachineRunCommand(_ arguments: [String]) -> Bool {
+    nonisolated private static func isMachineRunCommand(_ arguments: [String]) -> Bool {
         let filtered = arguments.filter { $0 != "--no-color" }
         return filtered.starts(with: ["machine", "run"])
+    }
+
+    nonisolated private static func validateMachineConfigResolveVersion(_ version: Int) throws {
+        guard version == supportedMachineConfigResolveVersion else {
+            throw NSError(
+                domain: "RalphMachineContract",
+                code: 2,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Unsupported machine config resolve version \(version). RalphMac requires version \(supportedMachineConfigResolveVersion)."
+                ]
+            )
+        }
     }
 }
 

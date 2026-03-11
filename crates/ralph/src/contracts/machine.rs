@@ -19,11 +19,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use super::{CliSpec, Config, QueueFile, Task};
+use super::{CliSpec, Config, GitPublishMode, GitRevertMode, QueueFile, RunnerApprovalMode, Task};
 
 pub const MACHINE_SYSTEM_INFO_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_READ_VERSION: u32 = 1;
-pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 1;
+pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 2;
 pub const MACHINE_TASK_CREATE_VERSION: u32 = 1;
 pub const MACHINE_TASK_MUTATION_VERSION: u32 = 1;
 pub const MACHINE_GRAPH_READ_VERSION: u32 = 1;
@@ -33,7 +33,7 @@ pub const MACHINE_RUN_EVENT_VERSION: u32 = 1;
 pub const MACHINE_RUN_SUMMARY_VERSION: u32 = 1;
 pub const MACHINE_DOCTOR_REPORT_VERSION: u32 = 1;
 pub const MACHINE_PARALLEL_STATUS_VERSION: u32 = 1;
-pub const MACHINE_CLI_SPEC_VERSION: u32 = 1;
+pub const MACHINE_CLI_SPEC_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -72,7 +72,23 @@ pub struct MachineQueueReadDocument {
 pub struct MachineConfigResolveDocument {
     pub version: u32,
     pub paths: MachineQueuePaths,
+    pub safety: MachineConfigSafetySummary,
     pub config: Config,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineConfigSafetySummary {
+    pub repo_trusted: bool,
+    pub dirty_repo: bool,
+    pub git_publish_mode: GitPublishMode,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub approval_mode: Option<RunnerApprovalMode>,
+    pub ci_gate_enabled: bool,
+    pub git_revert_mode: GitRevertMode,
+    pub parallel_configured: bool,
+    pub execution_interactivity: String,
+    pub interactive_approval_supported: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

@@ -1,4 +1,4 @@
-//! Configuration enums for project type, git revert mode, and scan prompt version.
+//! Configuration enums for project type, git revert/publish mode, and scan prompt version.
 //!
 //! Responsibilities:
 //! - Define simple enum types used across configuration.
@@ -37,6 +37,42 @@ impl std::str::FromStr for GitRevertMode {
             "enabled" => Ok(GitRevertMode::Enabled),
             "disabled" => Ok(GitRevertMode::Disabled),
             _ => Err("git_revert_mode must be 'ask', 'enabled', or 'disabled'"),
+        }
+    }
+}
+
+/// Git publish mode for post-run repository changes.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum GitPublishMode {
+    /// Leave the repository dirty after queue/done updates.
+    #[default]
+    Off,
+    /// Create a local commit but do not push.
+    Commit,
+    /// Create a local commit and push it using Ralph's guarded push flow.
+    CommitAndPush,
+}
+
+impl GitPublishMode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            GitPublishMode::Off => "off",
+            GitPublishMode::Commit => "commit",
+            GitPublishMode::CommitAndPush => "commit_and_push",
+        }
+    }
+}
+
+impl std::str::FromStr for GitPublishMode {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.trim().to_lowercase().as_str() {
+            "off" => Ok(GitPublishMode::Off),
+            "commit" => Ok(GitPublishMode::Commit),
+            "commit_and_push" => Ok(GitPublishMode::CommitAndPush),
+            _ => Err("git_publish_mode must be 'off', 'commit', or 'commit_and_push'"),
         }
     }
 }

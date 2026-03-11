@@ -43,8 +43,8 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
     );
 
     anyhow::ensure!(
-        stderr.contains("skipping push for branch") && stderr.contains("no upstream configured"),
-        "expected warning about skipping push\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        stderr.contains("Git publish mode is off; leaving repo dirty after queue updates."),
+        "expected publish-mode-off message\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Verify task was actually marked done and archived (supervisor logic)

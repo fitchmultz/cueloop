@@ -300,11 +300,11 @@ fn get_config_value(config: &Config, path: &str) -> Result<String> {
             Ok(config.agent.ci_gate_display_string())
         }
         ["agent", "ci_gate", "enabled"] => Ok(config.agent.ci_gate_enabled().to_string()),
-        ["agent", "git_commit_push_enabled"] => config
+        ["agent", "git_publish_mode"] => config
             .agent
-            .git_commit_push_enabled
-            .map(|v| v.to_string())
-            .ok_or_else(|| anyhow::anyhow!("agent.git_commit_push_enabled not set")),
+            .effective_git_publish_mode()
+            .map(|mode| mode.as_str().to_string())
+            .ok_or_else(|| anyhow::anyhow!("agent.git_publish_mode not set")),
         ["queue", "id_prefix"] => config
             .queue
             .id_prefix

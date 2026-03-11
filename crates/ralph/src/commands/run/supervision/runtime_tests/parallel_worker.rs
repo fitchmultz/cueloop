@@ -54,7 +54,7 @@ fn post_run_parallel_worker_restores_bookkeeping_without_signals() -> anyhow::Re
         &resolved,
         "RQ-0001",
         GitRevertMode::Disabled,
-        false,
+        crate::contracts::GitPublishMode::Off,
         PushPolicy::RequireUpstream,
         None,
         None,

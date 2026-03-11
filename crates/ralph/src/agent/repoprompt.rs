@@ -124,7 +124,7 @@ mod tests {
                     argv: Some(vec!["make".to_string(), "ci".to_string()]),
                 }),
                 git_revert_mode: Some(GitRevertMode::Ask),
-                git_commit_push_enabled: Some(true),
+                git_publish_mode: Some(crate::contracts::GitPublishMode::CommitAndPush),
                 notification: NotificationConfig::default(),
                 webhook: crate::contracts::WebhookConfig::default(),
                 runner_retry: RunnerRetryConfig::default(),

@@ -26,7 +26,8 @@ When implementation is complete, you MUST:
 7. Git hygiene:
    - If `RUN_MODE=normal`: do NOT commit or push until `ralph task done` succeeds.
    - If `RUN_MODE=parallel-worker`: complete integration bookkeeping validation before commit/push.
-   - If auto commit/push is enabled ({{config.agent.git_commit_push_enabled}}), do NOT run `git commit` or `git push` manually; Ralph will commit/push after completion.
-   - If auto commit/push is disabled ({{config.agent.git_commit_push_enabled}}), leave the repo dirty and report that manual commit/push is required.
+   - If `{{config.agent.git_publish_mode}}` is `commit_and_push`, do NOT run `git commit` or `git push` manually; Ralph will commit/push after completion.
+   - If `{{config.agent.git_publish_mode}}` is `commit`, Ralph will create the local commit; do NOT push manually unless the operator explicitly asks for it.
+   - If `{{config.agent.git_publish_mode}}` is `off`, leave the repo dirty and report that manual commit/push is required.
    - Confirm repo state: when enabled, `git status --porcelain` is empty after completion; when disabled, note remaining changes.
    - If a push is required but cannot be performed (no upstream/permissions), stop and report the blocker.

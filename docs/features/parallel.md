@@ -1,8 +1,10 @@
-# Ralph Parallel Execution (Direct-Push Mode)
+# Ralph Parallel Execution (Experimental Direct-Push Mode)
 
 ![Parallel Direct Push](../assets/images/2026-03-10-12-15-29-parallel-direct-push.png)
 
 Parallel execution runs multiple tasks concurrently in isolated git workspace clones, with workers pushing directly to the target branch.
+
+> **Experimental**: Direct-push parallel execution is a power-user feature with higher branch-safety risk than sequential runs. It stays opt-in and should not be the default onboarding path.
 
 > **CLI Only**: Parallel execution is available only via CLI (`ralph run loop --parallel [N]`).
 
@@ -64,6 +66,12 @@ ralph run parallel status
 # Retry a blocked worker
 ralph run parallel retry --task RQ-0001
 ```
+
+Before enabling it, confirm that:
+
+- your branch policy allows direct pushes from automation
+- your repo can tolerate concurrent workspace clones and repeated rebase/push attempts
+- you have intentionally selected a publish mode that matches that risk
 
 ---
 
@@ -213,7 +221,7 @@ For each attempt (up to `max_push_attempts`):
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "parallel": {
     "workers": 4,
     "max_push_attempts": 50,

@@ -4,7 +4,7 @@ use super::shared::{execute_runner_pass, run_ci_gate_with_continue};
 use super::{PhaseInvocation, PhaseType, PostRunMode, phase_session_id_for_runner};
 use crate::commands::run::{logging, supervision};
 use crate::config;
-use crate::contracts::{GitRevertMode, TaskStatus};
+use crate::contracts::{GitPublishMode, GitRevertMode, TaskStatus};
 use crate::{git, promptflow, prompts, queue, runner, runutil};
 
 pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<(), anyhow::Error> {
@@ -210,7 +210,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<(), anyhow::Er
                     ctx.resolved,
                     ctx.task_id,
                     ctx.git_revert_mode,
-                    ctx.git_commit_push_enabled,
+                    ctx.git_publish_mode,
                     ctx.push_policy,
                     ctx.revert_prompt.clone(),
                     Some(supervision::CiContinueContext {
@@ -227,7 +227,7 @@ pub fn execute_phase3_review(ctx: &PhaseInvocation<'_>) -> Result<(), anyhow::Er
                 finalized = true;
             }
 
-            match ensure_phase3_completion(ctx.resolved, ctx.task_id, ctx.git_commit_push_enabled) {
+            match ensure_phase3_completion(ctx.resolved, ctx.task_id, ctx.git_publish_mode) {
                 Ok(()) => break,
                 Err(err) => {
                     let outcome = runutil::apply_git_revert_mode(
@@ -309,7 +309,7 @@ pub(crate) fn finalize_phase3_if_done(
     resolved: &config::Resolved,
     task_id: &str,
     git_revert_mode: GitRevertMode,
-    git_commit_push_enabled: bool,
+    git_publish_mode: GitPublishMode,
     push_policy: crate::commands::run::supervision::PushPolicy,
     revert_prompt: Option<runutil::RevertPromptHandler>,
     ci_continue: Option<supervision::CiContinueContext<'_>>,
@@ -331,7 +331,7 @@ pub(crate) fn finalize_phase3_if_done(
         resolved,
         task_id,
         git_revert_mode,
-        git_commit_push_enabled,
+        git_publish_mode,
         push_policy,
         revert_prompt,
         ci_continue,
@@ -347,7 +347,7 @@ pub(crate) fn finalize_phase3_if_done(
 pub fn ensure_phase3_completion(
     resolved: &config::Resolved,
     task_id: &str,
-    git_commit_push_enabled: bool,
+    git_publish_mode: GitPublishMode,
 ) -> Result<(), anyhow::Error> {
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
@@ -379,7 +379,7 @@ pub fn ensure_phase3_completion(
         );
     }
 
-    if git_commit_push_enabled {
+    if git_publish_mode != GitPublishMode::Off {
         if status == TaskStatus::Rejected {
             git::require_clean_repo_ignoring_paths(
                 &resolved.repo_root,
@@ -399,7 +399,7 @@ pub fn ensure_phase3_completion(
         }
     } else {
         log::info!(
-            "Auto git commit/push disabled; skipping clean-repo enforcement for Phase 3 completion."
+            "Git publish mode is off; skipping clean-repo enforcement for Phase 3 completion."
         );
     }
     Ok(())

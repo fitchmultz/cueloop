@@ -37,7 +37,11 @@ pub enum RunCommand {
     One(RunOneArgs),
     #[command(about = "Run tasks repeatedly until no todo remain (or --max-tasks is reached)", after_long_help = RUN_LOOP_AFTER_LONG_HELP)]
     Loop(RunLoopArgs),
-    #[command(about = "Manage parallel mode operations", after_long_help = PARALLEL_AFTER_LONG_HELP)]
+    #[command(
+        about = "Experimental: manage parallel mode operations",
+        after_long_help = PARALLEL_AFTER_LONG_HELP,
+        hide = true
+    )]
     Parallel(ParallelArgs),
 }
 

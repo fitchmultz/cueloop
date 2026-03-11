@@ -152,7 +152,7 @@ pub fn write_config(
         };
 
         serde_json::json!({
-            "version": 1,
+            "version": 2,
             "agent": {
                 "runner": runner_str,
                 "model": model_str,
@@ -160,7 +160,7 @@ pub fn write_config(
             }
         })
     } else {
-        serde_json::json!({ "version": 1 })
+        serde_json::json!({ "version": 2 })
     };
 
     let rendered = serde_json::to_string_pretty(&config_json).context("serialize config JSON")?;
@@ -224,7 +224,7 @@ mod tests {
         assert_eq!(done.version, 1);
         let raw_cfg = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
         let cfg: Config = serde_json::from_str(&raw_cfg)?;
-        assert_eq!(cfg.version, 1);
+        assert_eq!(cfg.version, 2);
 
         Ok(())
     }
@@ -272,7 +272,7 @@ mod tests {
 }"#;
         std::fs::write(&resolved.done_path, done_json)?;
         let config_json = r#"{
-  "version": 1,
+  "version": 2,
   "queue": {
     "file": ".ralph/queue.jsonc"
   }
@@ -316,7 +316,7 @@ mod tests {
         std::fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
         std::fs::write(
             resolved.project_config_path.as_ref().unwrap(),
-            r#"{"version":1,"project_type":"docs"}"#,
+            r#"{"version":2,"project_type":"docs"}"#,
         )?;
 
         let queue_status = write_queue(
@@ -374,7 +374,7 @@ mod tests {
         std::fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
         std::fs::write(
             resolved.project_config_path.as_ref().unwrap(),
-            r#"{"version":1,"project_type":"code"}"#,
+            r#"{"version":2,"project_type":"code"}"#,
         )?;
 
         let result = write_queue(
@@ -421,7 +421,7 @@ mod tests {
         std::fs::write(&resolved.done_path, done_json)?;
         std::fs::write(
             resolved.project_config_path.as_ref().unwrap(),
-            r#"{"version":1,"project_type":"code"}"#,
+            r#"{"version":2,"project_type":"code"}"#,
         )?;
 
         let result = write_done(

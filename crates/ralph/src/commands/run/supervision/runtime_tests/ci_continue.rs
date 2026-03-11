@@ -86,7 +86,7 @@ echo '{{"sessionID":"sess-123"}}'
         &resolved,
         "RQ-0001",
         GitRevertMode::Ask,
-        false,
+        crate::contracts::GitPublishMode::Off,
         PushPolicy::RequireUpstream,
         Some(prompt_handler),
         Some(CiContinueContext {

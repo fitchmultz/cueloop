@@ -50,12 +50,9 @@ pub(crate) fn build_override_args(overrides: &AgentOverrides) -> Vec<String> {
         args.push(git_revert_mode_arg(mode).to_string());
     }
 
-    if let Some(value) = overrides.git_commit_push_enabled {
-        args.push(if value {
-            "--git-commit-push-on".to_string()
-        } else {
-            "--git-commit-push-off".to_string()
-        });
+    if let Some(mode) = overrides.git_publish_mode {
+        args.push("--git-publish-mode".to_string());
+        args.push(mode.as_str().to_string());
     }
 
     if overrides.include_draft.unwrap_or(false) {
@@ -263,8 +260,8 @@ fn unsupported_option_policy_arg(mode: crate::contracts::UnsupportedOptionPolicy
 mod tests {
     use super::*;
     use crate::contracts::{
-        PhaseOverrideConfig, PhaseOverrides, ReasoningEffort, Runner, RunnerApprovalMode,
-        RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity,
+        GitPublishMode, PhaseOverrideConfig, PhaseOverrides, ReasoningEffort, Runner,
+        RunnerApprovalMode, RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity,
         UnsupportedOptionPolicy,
     };
 
@@ -278,7 +275,7 @@ mod tests {
             repoprompt_plan_required: Some(true),
             repoprompt_tool_injection: Some(true),
             git_revert_mode: Some(crate::contracts::GitRevertMode::Disabled),
-            git_commit_push_enabled: Some(true),
+            git_publish_mode: Some(GitPublishMode::CommitAndPush),
             include_draft: Some(true),
             notify_on_complete: Some(true),
             notify_on_fail: Some(false),
@@ -301,7 +298,8 @@ mod tests {
             "plan",
             "--git-revert-mode",
             "disabled",
-            "--git-commit-push-on",
+            "--git-publish-mode",
+            "commit_and_push",
             "--include-draft",
             "--notify",
             "--no-notify-fail",
@@ -315,27 +313,28 @@ mod tests {
     }
 
     #[test]
-    fn build_override_args_emits_git_commit_push_off() {
+    fn build_override_args_emits_git_publish_mode() {
         let overrides = AgentOverrides {
-            git_commit_push_enabled: Some(false),
+            git_publish_mode: Some(GitPublishMode::Off),
             ..Default::default()
         };
 
         let args = build_override_args(&overrides);
-        assert!(args.contains(&"--git-commit-push-off".to_string()));
-        assert!(!args.contains(&"--git-commit-push-on".to_string()));
+        assert_eq!(
+            args,
+            vec!["--git-publish-mode".to_string(), "off".to_string()]
+        );
     }
 
     #[test]
-    fn build_override_args_no_git_commit_push_flag_when_none() {
+    fn build_override_args_no_git_publish_flag_when_none() {
         let overrides = AgentOverrides {
-            git_commit_push_enabled: None,
+            git_publish_mode: None,
             ..Default::default()
         };
 
         let args = build_override_args(&overrides);
-        assert!(!args.contains(&"--git-commit-push-on".to_string()));
-        assert!(!args.contains(&"--git-commit-push-off".to_string()));
+        assert!(!args.contains(&"--git-publish-mode".to_string()));
     }
 
     #[test]

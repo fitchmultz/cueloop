@@ -1,6 +1,6 @@
 # CLI Reference
 
-This page documents Ralph's current command surface. For full option details, use `ralph <command> --help`.
+This page documents Ralph's current command surface. Default `ralph --help` shows the core workflow only; use `ralph help-all` or `ralph <command> --help` to reveal advanced and experimental surfaces.
 
 ## Global Flags
 
@@ -14,16 +14,20 @@ These are available on most commands:
 - `--auto-fix`
 - `--no-sanity-checks`
 
-## Top-Level Commands
+## Core Commands
 
 - `ralph queue` - Inspect and manage queue/done files
-- `ralph machine` - Versioned machine-facing JSON API for the macOS app and automation
 - `ralph config` - Show resolved config, schema, paths, profiles
 - `ralph run` - Execute tasks (`one`, `loop`, `resume`, `parallel`)
 - `ralph task` - Build/create and manage task lifecycle
 - `ralph scan` - Create tasks by scanning repository state
 - `ralph init` - Bootstrap `.ralph/` files
 - `ralph app` - macOS app integration
+- `ralph version` - Build/version info
+
+## Advanced Commands
+
+- `ralph machine` - Versioned machine-facing JSON API for the macOS app and automation
 - `ralph prompt` - Render/export/sync/diff prompts
 - `ralph doctor` - Environment diagnostics
 - `ralph context` - Manage AGENTS.md context docs
@@ -41,6 +45,10 @@ These are available on most commands:
 - `ralph tutorial` - Interactive onboarding walkthrough
 - `ralph undo` - Restore most recent queue snapshot
 
+## Experimental Commands
+
+- `ralph run parallel` - Experimental direct-push parallel worker operations
+
 ## High-Value Workflows
 
 ### Initialize
@@ -54,7 +62,7 @@ ralph init --non-interactive
 
 ```bash
 ralph task "Stabilize flaky CI test"
-ralph run one
+ralph run one --profile safe
 ralph run one --debug
 ralph run loop --max-tasks 5
 ```
@@ -125,13 +133,15 @@ ralph machine run one --id RQ-0001
 ralph machine schema
 ```
 
-### Parallel Supervision
+### Experimental Parallel Supervision
 
 ```bash
 ralph run loop --parallel 4 --max-tasks 8
 ralph run parallel status --json
 ralph run parallel retry --task RQ-0007
 ```
+
+Parallel direct-push execution is experimental. Keep it out of default onboarding paths and opt in only when the repository and branch policy are ready for it.
 
 ### Daemon and Watch
 
@@ -174,7 +184,7 @@ ralph undo
 - `resume`
 - `one`
 - `loop`
-- `parallel` (`status`, `retry`)
+- `parallel` (`status`, `retry`) - experimental
 
 ### `ralph queue`
 
@@ -205,6 +215,7 @@ For behavior that may change between releases, trust live command help first:
 
 ```bash
 ralph --help
+ralph help-all
 ralph <command> --help
 ralph <command> <subcommand> --help
 ```

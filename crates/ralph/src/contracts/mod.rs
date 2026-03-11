@@ -26,11 +26,12 @@ mod task;
 // Re-exports from config module (core config types)
 // All config types are now re-exported from config::mod.rs for backward compatibility
 pub use config::{
-    AgentConfig, CiGateConfig, Config, GitRevertMode, LoopConfig, NotificationConfig,
-    ParallelConfig, PhaseOverrideConfig, PhaseOverrides, PluginConfig, PluginsConfig, ProjectType,
-    QueueAgingThresholds, QueueConfig, RunnerRetryConfig, ScanPromptVersion, WebhookConfig,
-    WebhookEventSubscription, WebhookQueuePolicy,
+    AgentConfig, CiGateConfig, Config, GitPublishMode, GitRevertMode, LoopConfig,
+    NotificationConfig, ParallelConfig, PhaseOverrideConfig, PhaseOverrides, PluginConfig,
+    PluginsConfig, ProjectType, QueueAgingThresholds, QueueConfig, RunnerRetryConfig,
+    ScanPromptVersion, WebhookConfig, WebhookEventSubscription, WebhookQueuePolicy,
 };
+pub(crate) use config::{builtin_profile, builtin_profile_names, is_reserved_profile_name};
 
 // Re-exports from machine module (versioned app/CLI machine surfaces)
 pub use machine::{
@@ -39,9 +40,9 @@ pub use machine::{
     MACHINE_PARALLEL_STATUS_VERSION, MACHINE_QUEUE_READ_VERSION, MACHINE_RUN_EVENT_VERSION,
     MACHINE_RUN_SUMMARY_VERSION, MACHINE_SYSTEM_INFO_VERSION, MACHINE_TASK_CREATE_VERSION,
     MACHINE_TASK_MUTATION_VERSION, MachineCliSpecDocument, MachineConfigResolveDocument,
-    MachineDashboardReadDocument, MachineDecomposeDocument, MachineDoctorReportDocument,
-    MachineGraphReadDocument, MachineParallelStatusDocument, MachineQueuePaths,
-    MachineQueueReadDocument, MachineRunEventEnvelope, MachineRunEventKind,
+    MachineConfigSafetySummary, MachineDashboardReadDocument, MachineDecomposeDocument,
+    MachineDoctorReportDocument, MachineGraphReadDocument, MachineParallelStatusDocument,
+    MachineQueuePaths, MachineQueueReadDocument, MachineRunEventEnvelope, MachineRunEventKind,
     MachineRunSummaryDocument, MachineSystemInfoDocument, MachineTaskCreateDocument,
     MachineTaskCreateRequest, MachineTaskMutationDocument,
 };

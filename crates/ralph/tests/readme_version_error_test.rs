@@ -114,7 +114,7 @@ fn init_fails_on_malformed_readme_version() -> Result<()> {
     fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
     fs::write(
         resolved.project_config_path.as_ref().unwrap(),
-        r#"{"version":1}"#,
+        r#"{"version":2}"#,
     )?;
 
     // Create prompt files that reference the README (so README check is triggered)
@@ -169,7 +169,7 @@ fn init_succeeds_on_legacy_readme_without_marker() -> Result<()> {
     fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
     fs::write(
         resolved.project_config_path.as_ref().unwrap(),
-        r#"{"version":1}"#,
+        r#"{"version":2}"#,
     )?;
 
     // Create prompt files that reference the README (so README check is triggered)

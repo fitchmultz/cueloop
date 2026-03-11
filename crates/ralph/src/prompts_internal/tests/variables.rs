@@ -188,12 +188,12 @@ fn expand_variables_expands_config_ci_gate_enabled() -> Result<()> {
 }
 
 #[test]
-fn expand_variables_expands_git_commit_push_enabled() -> Result<()> {
-    let template = "Git commit/push: {{config.agent.git_commit_push_enabled}}";
+fn expand_variables_expands_git_publish_mode() -> Result<()> {
+    let template = "Git publish mode: {{config.agent.git_publish_mode}}";
     let mut config = default_config();
-    config.agent.git_commit_push_enabled = Some(false);
+    config.agent.git_publish_mode = Some(crate::contracts::GitPublishMode::Commit);
     let result = expand_variables(template, &config)?;
-    assert!(result.contains("Git commit/push: false"));
+    assert!(result.contains("Git publish mode: commit"));
     Ok(())
 }
 

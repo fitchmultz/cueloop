@@ -10,15 +10,19 @@
 //! Invariants/assumptions:
 //! - Profile values are `AgentConfig` patches: only `Some(...)` fields override.
 
-use crate::contracts::AgentConfig;
+use crate::contracts::{self, AgentConfig};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) fn all_profile_names(
     config_profiles: Option<&BTreeMap<String, AgentConfig>>,
 ) -> BTreeSet<String> {
-    config_profiles
-        .into_iter()
-        .flat_map(|map| map.keys().cloned())
+    contracts::builtin_profile_names()
+        .map(ToString::to_string)
+        .chain(
+            config_profiles
+                .into_iter()
+                .flat_map(|map| map.keys().cloned()),
+        )
         .collect()
 }
 
@@ -26,7 +30,9 @@ pub(crate) fn resolve_profile_patch(
     name: &str,
     config_profiles: Option<&BTreeMap<String, AgentConfig>>,
 ) -> Option<AgentConfig> {
-    config_profiles.and_then(|map| map.get(name).cloned())
+    config_profiles
+        .and_then(|map| map.get(name).cloned())
+        .or_else(|| contracts::builtin_profile(name))
 }
 
 #[cfg(test)]
@@ -37,7 +43,8 @@ mod tests {
     #[test]
     fn all_profile_names_is_empty_without_config_profiles() {
         let names = all_profile_names(None);
-        assert!(names.is_empty());
+        assert!(names.contains("safe"));
+        assert!(names.contains("power-user"));
     }
 
     #[test]
@@ -52,6 +59,7 @@ mod tests {
         );
         let names = all_profile_names(Some(&config_profiles));
         assert!(names.contains("custom"));
+        assert!(names.contains("safe"));
     }
 
     #[test]
@@ -73,5 +81,18 @@ mod tests {
     fn resolve_profile_patch_returns_none_for_unknown() {
         let resolved = resolve_profile_patch("unknown_profile", None);
         assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn resolve_profile_patch_returns_builtin_profile() {
+        let resolved = resolve_profile_patch("safe", None).expect("builtin profile");
+        assert_eq!(
+            resolved.git_publish_mode,
+            Some(contracts::GitPublishMode::Off)
+        );
+        assert_eq!(
+            resolved.claude_permission_mode,
+            Some(contracts::ClaudePermissionMode::AcceptEdits)
+        );
     }
 }

@@ -60,6 +60,7 @@ public struct AgentConfig: Codable, Sendable, Equatable {
     public var phases: Int?
     public var iterations: Int?
     public var reasoningEffort: String?
+    public var gitPublishMode: String?
     public var notification: NotificationConfig?
 
     private enum CodingKeys: String, CodingKey {
@@ -68,6 +69,7 @@ public struct AgentConfig: Codable, Sendable, Equatable {
         case phases
         case iterations
         case reasoningEffort = "reasoning_effort"
+        case gitPublishMode = "git_publish_mode"
         case notification
     }
 
@@ -77,6 +79,7 @@ public struct AgentConfig: Codable, Sendable, Equatable {
         phases: Int? = nil,
         iterations: Int? = nil,
         reasoningEffort: String? = nil,
+        gitPublishMode: String? = nil,
         notification: NotificationConfig? = nil
     ) {
         self.runner = runner
@@ -84,6 +87,7 @@ public struct AgentConfig: Codable, Sendable, Equatable {
         self.phases = phases
         self.iterations = iterations
         self.reasoningEffort = reasoningEffort
+        self.gitPublishMode = gitPublishMode
         self.notification = notification
     }
 }
@@ -127,7 +131,32 @@ public struct MachineSystemInfoDocument: Codable, Sendable, Equatable {
 public struct MachineConfigResolveDocument: Codable, Sendable, Equatable {
     public let version: Int
     public let paths: MachineQueuePaths
+    public let safety: MachineConfigSafetySummary
     public let config: RalphConfig
+}
+
+public struct MachineConfigSafetySummary: Codable, Sendable, Equatable {
+    public let repoTrusted: Bool
+    public let dirtyRepo: Bool
+    public let gitPublishMode: String
+    public let approvalMode: String?
+    public let ciGateEnabled: Bool
+    public let gitRevertMode: String
+    public let parallelConfigured: Bool
+    public let executionInteractivity: String
+    public let interactiveApprovalSupported: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case repoTrusted = "repo_trusted"
+        case dirtyRepo = "dirty_repo"
+        case gitPublishMode = "git_publish_mode"
+        case approvalMode = "approval_mode"
+        case ciGateEnabled = "ci_gate_enabled"
+        case gitRevertMode = "git_revert_mode"
+        case parallelConfigured = "parallel_configured"
+        case executionInteractivity = "execution_interactivity"
+        case interactiveApprovalSupported = "interactive_approval_supported"
+    }
 }
 
 // MARK: - Runner Options (for UI pickers)

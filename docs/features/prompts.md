@@ -319,7 +319,7 @@ Access configuration values via `{{config.section.key}}`:
 ```markdown
 CI Gate Command: {{config.agent.ci_gate_display}}
 CI Gate Enabled: {{config.agent.ci_gate_enabled}}
-Git Commit/Push: {{config.agent.git_commit_push_enabled}}
+Git Commit/Push: {{config.agent.git_publish_mode}}
 Runner: {{config.agent.runner}}
 Model: {{config.agent.model}}
 Queue Prefix: {{config.queue.id_prefix}}
@@ -334,7 +334,7 @@ Available config paths:
 - `config.agent.claude_permission_mode`
 - `config.agent.ci_gate_display`
 - `config.agent.ci_gate_enabled`
-- `config.agent.git_commit_push_enabled`
+- `config.agent.git_publish_mode`
 - `config.queue.id_prefix`
 - `config.queue.id_width`
 - `config.project_type`

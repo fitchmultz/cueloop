@@ -120,7 +120,7 @@ fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::
     cfg.agent.phases = Some(2);
     cfg.agent.claude_permission_mode = Some(ClaudePermissionMode::BypassPermissions);
     cfg.agent.git_revert_mode = Some(GitRevertMode::Ask);
-    cfg.agent.git_commit_push_enabled = Some(true);
+    cfg.agent.git_publish_mode = Some(crate::contracts::GitPublishMode::CommitAndPush);
     cfg.agent.repoprompt_plan_required = Some(false);
     cfg.agent.repoprompt_tool_injection = Some(false);
     cfg.agent.opencode_bin = Some(opencode_bin.display().to_string());

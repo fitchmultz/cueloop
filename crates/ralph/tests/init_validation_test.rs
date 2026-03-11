@@ -72,7 +72,7 @@ fn init_fails_on_structurally_invalid_queue() -> Result<()> {
     std::fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
     std::fs::write(
         resolved.project_config_path.as_ref().unwrap(),
-        r#"{"version":1,"project_type":"code"}"#,
+        r#"{"version":2,"project_type":"code"}"#,
     )?;
 
     let result = run_init(

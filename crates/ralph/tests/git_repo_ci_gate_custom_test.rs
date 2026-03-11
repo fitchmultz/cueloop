@@ -106,8 +106,10 @@ fn run_one_succeeds_when_ci_gate_disabled() -> Result<()> {
         "git status failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     anyhow::ensure!(
-        stdout.trim().is_empty(),
-        "repo should be clean after successful run, but git status showed:\n{stdout}"
+        stdout.contains("M .ralph/done.jsonc")
+            && stdout.contains("M .ralph/queue.jsonc")
+            && stdout.contains("?? dirty-file.txt"),
+        "expected local-only run artifacts when publish mode is off, but git status showed:\n{stdout}"
     );
 
     Ok(())

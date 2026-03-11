@@ -14,7 +14,7 @@ fn test_find_repo_root_via_ralph_queue() {
 #[test]
 fn test_find_repo_root_via_ralph_config() {
     let dir = TempDir::new().expect("create temp dir");
-    create_config_jsonc(&dir, r#"{"version":1}"#);
+    create_config_jsonc(&dir, r#"{"version":2}"#);
 
     let repo_root = config::find_repo_root(dir.path());
     assert_eq!(repo_root, dir.path());

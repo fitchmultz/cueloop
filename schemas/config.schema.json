@@ -16,12 +16,12 @@
           "enabled": true
         },
         "claude_bin": "claude",
-        "claude_permission_mode": "bypass_permissions",
+        "claude_permission_mode": "accept_edits",
         "codex_bin": "codex",
         "cursor_bin": "agent",
         "followup_reasoning_effort": null,
         "gemini_bin": "gemini",
-        "git_commit_push_enabled": true,
+        "git_publish_mode": "off",
         "git_revert_mode": "ask",
         "instruction_files": null,
         "iterations": 1,
@@ -47,7 +47,7 @@
         "runner": "codex",
         "runner_cli": {
           "defaults": {
-            "approval_mode": "yolo",
+            "approval_mode": "default",
             "output_format": "stream_json",
             "plan_mode": "default",
             "sandbox": "default",
@@ -68,22 +68,6 @@
               "output_format": null,
               "plan_mode": null,
               "sandbox": "disabled",
-              "unsupported_option_policy": null,
-              "verbosity": null
-            },
-            "kimi": {
-              "approval_mode": "yolo",
-              "output_format": null,
-              "plan_mode": null,
-              "sandbox": null,
-              "unsupported_option_policy": null,
-              "verbosity": null
-            },
-            "pi": {
-              "approval_mode": "yolo",
-              "output_format": null,
-              "plan_mode": null,
-              "sandbox": null,
               "unsupported_option_policy": null,
               "verbosity": null
             }
@@ -192,7 +176,7 @@
       "description": "Schema version for config.",
       "type": "integer",
       "format": "uint32",
-      "default": 1,
+      "default": 2,
       "minimum": 0
     }
   },
@@ -270,11 +254,15 @@
           ],
           "default": null
         },
-        "git_commit_push_enabled": {
-          "description": "Enable automatic git commit and push after successful runs (default: true).",
-          "type": [
-            "boolean",
-            "null"
+        "git_publish_mode": {
+          "description": "Post-run git publication behavior after successful runs.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitPublishMode"
+            },
+            {
+              "type": "null"
+            }
           ],
           "default": null
         },
@@ -520,6 +508,26 @@
       "enum": [
         "accept_edits",
         "bypass_permissions"
+      ]
+    },
+    "GitPublishMode": {
+      "description": "Git publish mode for post-run repository changes.",
+      "oneOf": [
+        {
+          "description": "Leave the repository dirty after queue/done updates.",
+          "type": "string",
+          "const": "off"
+        },
+        {
+          "description": "Create a local commit but do not push.",
+          "type": "string",
+          "const": "commit"
+        },
+        {
+          "description": "Create a local commit and push it using Ralph's guarded push flow.",
+          "type": "string",
+          "const": "commit_and_push"
+        }
       ]
     },
     "GitRevertMode": {

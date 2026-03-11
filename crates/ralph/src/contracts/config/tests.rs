@@ -14,7 +14,7 @@ use crate::contracts::{
 #[test]
 fn parallel_config_rejects_legacy_worktree_root_key() {
     let raw = r#"{
-            "version": 1,
+            "version": 2,
             "parallel": { "worktree_root": ".ralph/worktrees/custom" }
         }"#;
     let err = serde_json::from_str::<Config>(raw).unwrap_err();
@@ -132,7 +132,7 @@ fn test_agent_config_phase_overrides_merge() {
         repoprompt_tool_injection: None,
         ci_gate: None,
         git_revert_mode: None,
-        git_commit_push_enabled: None,
+        git_publish_mode: None,
         notification: NotificationConfig::default(),
         webhook: WebhookConfig::default(),
         runner_retry: RunnerRetryConfig::default(),
@@ -170,7 +170,7 @@ fn test_agent_config_phase_overrides_merge() {
         repoprompt_tool_injection: None,
         ci_gate: None,
         git_revert_mode: None,
-        git_commit_push_enabled: None,
+        git_publish_mode: None,
         notification: NotificationConfig::default(),
         webhook: WebhookConfig::default(),
         runner_retry: RunnerRetryConfig::default(),

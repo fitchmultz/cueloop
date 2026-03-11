@@ -28,7 +28,7 @@ pub struct RunnerCliArgs {
     #[arg(long)]
     pub verbosity: Option<String>,
 
-    /// Desired approval mode (default, auto-edits, yolo, safe). Default is yolo.
+    /// Desired approval mode (default, auto-edits, yolo, safe).
     #[arg(long)]
     pub approval_mode: Option<String>,
 
@@ -124,13 +124,13 @@ pub struct RunAgentArgs {
     #[arg(long, value_parser = ["ask", "enabled", "disabled"])]
     pub git_revert_mode: Option<String>,
 
-    /// Enable automatic git commit and push after successful runs.
-    #[arg(long, conflicts_with = "git_commit_push_off")]
-    pub git_commit_push_on: bool,
-
-    /// Disable automatic git commit and push after successful runs.
-    #[arg(long, conflicts_with = "git_commit_push_on")]
-    pub git_commit_push_off: bool,
+    /// Post-run git publication mode (off, commit, commit_and_push).
+    #[arg(
+        long,
+        value_name = "MODE",
+        value_parser = ["off", "commit", "commit_and_push"]
+    )]
+    pub git_publish_mode: Option<String>,
 
     /// Include draft tasks when selecting what to run.
     #[arg(long)]

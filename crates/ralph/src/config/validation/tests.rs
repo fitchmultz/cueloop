@@ -50,7 +50,7 @@ fn validate_queue_overrides_still_calls_threshold_validation() {
 #[test]
 fn validate_config_rejects_invalid_thresholds() {
     let cfg = Config {
-        version: 1,
+        version: 2,
         queue: QueueConfig {
             size_warning_threshold_kb: Some(50_000),
             ..Default::default()

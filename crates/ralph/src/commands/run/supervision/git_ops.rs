@@ -14,6 +14,7 @@
 //! - LFS validation respects the strict flag for error vs warn behavior.
 
 use super::PushPolicy;
+use crate::contracts::GitPublishMode;
 use crate::git;
 use crate::git::GitError;
 use crate::outpututil;
@@ -25,20 +26,24 @@ pub(crate) fn finalize_git_state(
     resolved: &crate::config::Resolved,
     task_id: &str,
     task_title: &str,
-    git_commit_push_enabled: bool,
+    git_publish_mode: GitPublishMode,
     push_policy: PushPolicy,
 ) -> Result<()> {
-    if git_commit_push_enabled {
+    if git_publish_mode != GitPublishMode::Off {
         let commit_message = outpututil::format_task_commit_message(task_id, task_title);
         git::commit_all(&resolved.repo_root, &commit_message)?;
-        push_if_ahead(&resolved.repo_root, push_policy)?;
+        if git_publish_mode == GitPublishMode::CommitAndPush {
+            push_if_ahead(&resolved.repo_root, push_policy)?;
+        } else {
+            log::info!("Git publish mode is commit-only; skipping push.");
+        }
         git::require_clean_repo_ignoring_paths(
             &resolved.repo_root,
             false,
             git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
         )?;
     } else {
-        log::info!("Auto git commit/push disabled; leaving repo dirty after queue updates.");
+        log::info!("Git publish mode is off; leaving repo dirty after queue updates.");
     }
     Ok(())
 }

@@ -16,7 +16,7 @@
 //! - Lock management (see `crate::lock`).
 //!
 //! Invariants/assumptions:
-//! - Config version must be 1; unsupported versions are rejected.
+//! - Config version must be 2; unsupported versions are rejected.
 //! - Paths are resolved relative to repo root unless absolute.
 //! - Global config resolves from `~/.config/ralph/config.jsonc`.
 //! - Project config resolves from `.ralph/config.jsonc`.

@@ -1,6 +1,7 @@
 //! Config layer loading and merge tests.
 
 use super::*;
+use ralph::contracts::GitPublishMode;
 
 #[test]
 fn test_load_layer_valid_json() {
@@ -8,27 +9,27 @@ fn test_load_layer_valid_json() {
     let config_path = dir.path().join("config.json");
     fs::write(
         &config_path,
-        r#"{"version":1,"project_type":"code","queue":{},"agent":{}}"#,
+        r#"{"version":2,"project_type":"code","queue":{},"agent":{}}"#,
     )
     .expect("write config");
 
     let layer = config::load_layer(&config_path).unwrap();
-    assert_eq!(layer.version, Some(1));
+    assert_eq!(layer.version, Some(2));
     assert_eq!(layer.project_type, Some(ProjectType::Code));
 }
 
 #[test]
-fn test_load_layer_parses_git_commit_push_enabled() {
+fn test_load_layer_parses_git_publish_mode() {
     let dir = TempDir::new().expect("create temp dir");
     let config_path = dir.path().join("config.json");
     fs::write(
         &config_path,
-        r#"{"version":1,"agent":{"git_commit_push_enabled":false}}"#,
+        r#"{"version":2,"agent":{"git_publish_mode":"commit"}}"#,
     )
     .expect("write config");
 
     let layer = config::load_layer(&config_path).unwrap();
-    assert_eq!(layer.agent.git_commit_push_enabled, Some(false));
+    assert_eq!(layer.agent.git_publish_mode, Some(GitPublishMode::Commit));
 }
 
 #[test]
@@ -53,17 +54,17 @@ fn test_load_layer_missing_file_fails() {
 #[test]
 fn test_apply_layer_version() {
     let base = Config::default();
-    let layer_json = r#"{"version":1,"queue":{},"agent":{}}"#;
+    let layer_json = r#"{"version":2,"queue":{},"agent":{}}"#;
     let layer = serde_json::from_str(layer_json).unwrap();
 
     let result = config::apply_layer(base, layer).unwrap();
-    assert_eq!(result.version, 1);
+    assert_eq!(result.version, 2);
 }
 
 #[test]
 fn test_apply_layer_unsupported_version_fails() {
     let base = Config::default();
-    let layer_json = r#"{"version":2,"queue":{},"agent":{}}"#;
+    let layer_json = r#"{"version":1,"queue":{},"agent":{}}"#;
     let layer = serde_json::from_str(layer_json).unwrap();
 
     let result = config::apply_layer(base, layer);
@@ -174,7 +175,7 @@ fn test_agent_config_merge_from_partial() {
             argv: Some(vec!["make".to_string(), "ci".to_string()]),
         }),
         git_revert_mode: Some(GitRevertMode::Ask),
-        git_commit_push_enabled: Some(true),
+        git_publish_mode: Some(GitPublishMode::CommitAndPush),
         notification: NotificationConfig::default(),
         webhook: WebhookConfig::default(),
         runner_retry: RunnerRetryConfig::default(),
@@ -207,7 +208,7 @@ fn test_agent_config_merge_from_partial() {
             argv: Some(vec!["custom".to_string(), "ci".to_string()]),
         }),
         git_revert_mode: Some(GitRevertMode::Disabled),
-        git_commit_push_enabled: Some(false),
+        git_publish_mode: Some(GitPublishMode::Off),
         notification: NotificationConfig::default(),
         webhook: WebhookConfig::default(),
         runner_retry: RunnerRetryConfig::default(),

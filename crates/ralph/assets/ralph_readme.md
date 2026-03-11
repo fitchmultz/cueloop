@@ -224,7 +224,7 @@ Defaults via config (`.ralph/config.jsonc` or `~/.config/ralph/config.jsonc`):
     "repoprompt_plan_required": false,
     "repoprompt_tool_injection": false,
     "git_revert_mode": "ask",
-    "git_commit_push_enabled": true,
+    "git_publish_mode": "commit_and_push",
     "ci_gate": {
       "enabled": true,
       "argv": ["make", "ci"]
@@ -271,8 +271,9 @@ Ralph can control whether uncommitted changes are reverted when runner/supervisi
 - `disabled`: never revert automatically.
 
 Ralph can also toggle automatic git commit/push after successful runs:
-- `agent.git_commit_push_enabled: true` (default): commit and push after completion.
-- `agent.git_commit_push_enabled: false`: skip automatic commit/push (repo may remain dirty).
+- `agent.git_publish_mode: "commit_and_push"`: commit and push after completion.
+- `agent.git_publish_mode: "commit"`: create a local commit only.
+- `agent.git_publish_mode: "off"` (default): skip automatic publish (repo may remain dirty).
 
 Examples:
 - `ralph run one --git-revert-mode disabled`

@@ -9,11 +9,13 @@
 //! - Actual runner invocation (see `crate::runner` module).
 
 use crate::contracts::config::{
-    GitRevertMode, NotificationConfig, PhaseOverrides, RunnerRetryConfig, ScanPromptVersion,
-    WebhookConfig,
+    GitPublishMode, GitRevertMode, NotificationConfig, PhaseOverrides, RunnerRetryConfig,
+    ScanPromptVersion, WebhookConfig,
 };
 use crate::contracts::model::{Model, ReasoningEffort};
-use crate::contracts::runner::{ClaudePermissionMode, Runner, RunnerCliConfigRoot};
+use crate::contracts::runner::{
+    ClaudePermissionMode, Runner, RunnerApprovalMode, RunnerCliConfigRoot, RunnerCliOptionsPatch,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -152,8 +154,8 @@ pub struct AgentConfig {
     /// Controls automatic git revert behavior when runner or supervision errors occur.
     pub git_revert_mode: Option<GitRevertMode>,
 
-    /// Enable automatic git commit and push after successful runs (default: true).
-    pub git_commit_push_enabled: Option<bool>,
+    /// Post-run git publication behavior after successful runs.
+    pub git_publish_mode: Option<GitPublishMode>,
 
     /// Number of execution phases (1, 2, or 3).
     /// 1 = single-pass, 2 = plan+implement, 3 = plan+implement+review.
@@ -180,6 +182,30 @@ pub struct AgentConfig {
 }
 
 impl AgentConfig {
+    pub fn effective_git_publish_mode(&self) -> Option<GitPublishMode> {
+        self.git_publish_mode
+    }
+
+    pub fn effective_runner_cli_patch_for_runner(&self, runner: &Runner) -> RunnerCliOptionsPatch {
+        let mut patch = self
+            .runner_cli
+            .as_ref()
+            .map(|root| root.defaults.clone())
+            .unwrap_or_default();
+        if let Some(root) = &self.runner_cli
+            && let Some(runner_patch) = root.runners.get(runner)
+        {
+            patch.merge_from(runner_patch.clone());
+        }
+        patch
+    }
+
+    pub fn effective_approval_mode(&self) -> Option<RunnerApprovalMode> {
+        let runner = self.runner.clone().unwrap_or(Runner::Codex);
+        self.effective_runner_cli_patch_for_runner(&runner)
+            .approval_mode
+    }
+
     pub fn ci_gate_enabled(&self) -> bool {
         self.ci_gate
             .as_ref()
@@ -267,8 +293,8 @@ impl AgentConfig {
         if other.git_revert_mode.is_some() {
             self.git_revert_mode = other.git_revert_mode;
         }
-        if other.git_commit_push_enabled.is_some() {
-            self.git_commit_push_enabled = other.git_commit_push_enabled;
+        if other.git_publish_mode.is_some() {
+            self.git_publish_mode = other.git_publish_mode;
         }
         self.notification.merge_from(other.notification);
         self.webhook.merge_from(other.webhook);

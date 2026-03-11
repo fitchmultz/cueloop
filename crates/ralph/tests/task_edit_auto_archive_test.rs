@@ -26,7 +26,7 @@ fn task_edit_lists_archived_task_ids_in_output() -> Result<()> {
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
-        "version": 1,
+        "version": 2,
         "queue": {
             "auto_archive_terminal_after_days": 0
         }
@@ -103,7 +103,7 @@ fn task_edit_no_auto_archive_flag_prevents_archiving() -> Result<()> {
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
-        "version": 1,
+        "version": 2,
         "queue": {
             "auto_archive_terminal_after_days": 0
         }
@@ -176,7 +176,7 @@ fn task_edit_no_archive_message_when_no_terminal_tasks() -> Result<()> {
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
-        "version": 1,
+        "version": 2,
         "queue": {
             "auto_archive_terminal_after_days": 0
         }

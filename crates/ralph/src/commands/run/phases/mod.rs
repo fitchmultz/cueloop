@@ -7,7 +7,7 @@ use std::cell::RefCell;
 
 use crate::commands::run::supervision::PushPolicy;
 use crate::config;
-use crate::contracts::{GitRevertMode, ProjectType, Runner};
+use crate::contracts::{GitPublishMode, GitRevertMode, ProjectType, Runner};
 use crate::{promptflow, runner, runutil};
 
 // Re-export execution timing types for use by phase implementations
@@ -71,7 +71,7 @@ pub struct PhaseInvocation<'a> {
     pub output_stream: runner::OutputStream,
     pub project_type: ProjectType,
     pub git_revert_mode: GitRevertMode,
-    pub git_commit_push_enabled: bool,
+    pub git_publish_mode: GitPublishMode,
     pub push_policy: PushPolicy,
     pub revert_prompt: Option<runutil::RevertPromptHandler>,
     pub iteration_context: &'a str,

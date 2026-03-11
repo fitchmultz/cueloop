@@ -20,7 +20,7 @@ fn make_resolved(temp: &TempDir) -> ralph::config::Resolved {
 
     let cfg = Config {
         profiles: None,
-        version: 1,
+        version: 2,
         project_type: Some(ProjectType::Code),
         queue: QueueConfig {
             file: Some(PathBuf::from(".ralph/queue.jsonc")),
@@ -41,7 +41,7 @@ fn make_resolved(temp: &TempDir) -> ralph::config::Resolved {
                 enabled: Some(true),
                 argv: Some(vec!["make".to_string(), "ci".to_string()]),
             }),
-            git_commit_push_enabled: Some(true),
+            git_publish_mode: Some(ralph::contracts::GitPublishMode::CommitAndPush),
             ..Default::default()
         },
         parallel: ParallelConfig::default(),

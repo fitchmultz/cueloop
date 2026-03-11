@@ -33,7 +33,7 @@ The CI gate is Ralph's primary quality enforcement mechanism. It runs after task
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "ci_gate": {
       "enabled": true,
@@ -98,7 +98,7 @@ The supervision system manages git state throughout the task lifecycle.
 
 ### Commit and Push
 
-When `git_commit_push_enabled` is true and a task completes successfully:
+When `git_publish_mode` is `commit_and_push` and a task completes successfully:
 
 1. **Commit**: All changes are committed with a formatted message:
    ```
@@ -113,9 +113,9 @@ When `git_commit_push_enabled` is true and a task completes successfully:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
-    "git_commit_push_enabled": true
+    "git_publish_mode": "commit_and_push"
   }
 }
 ```
@@ -205,14 +205,14 @@ Never revert changes automatically:
 
 ## Auto Commit/Push
 
-The `git_commit_push_enabled` setting controls whether Ralph automatically commits and pushes changes after successful task completion.
+The `git_publish_mode` setting controls whether Ralph automatically commits and pushes changes after successful task completion.
 
-### Enabled (Default)
+### `commit_and_push`
 
 ```json
 {
   "agent": {
-    "git_commit_push_enabled": true
+    "git_publish_mode": "commit_and_push"
   }
 }
 ```
@@ -222,12 +222,12 @@ The `git_commit_push_enabled` setting controls whether Ralph automatically commi
 - Pushes to upstream if ahead
 - Requires clean repo state for Phase 3 completion
 
-### Disabled
+### `off`
 
 ```json
 {
   "agent": {
-    "git_commit_push_enabled": false
+    "git_publish_mode": "off"
   }
 }
 ```
@@ -239,9 +239,13 @@ The `git_commit_push_enabled` setting controls whether Ralph automatically commi
 
 **Use Case**: Code review workflows where human review is required before committing.
 
+### App-Launched Runs
+
+The macOS app can supervise runs and display the resolved safety posture, but app-launched runs remain noninteractive. If your chosen approval mode may require per-action approval prompts, use the terminal-first CLI path instead of launching the run from the app.
+
 ### Parallel Mode Implications
 
-When `git_commit_push_enabled` is disabled:
+When `git_publish_mode` is `off`:
 - Parallel workers still run agent-owned integration (fetch/rebase/conflict-fix).
 - Final commit/push remains disabled; worker exits with dirty repo state for manual follow-up.
 
@@ -297,7 +301,7 @@ When the repository has uncommitted changes at completion:
 
 1. Mark task as Done in queue
 2. Archive to done file
-3. Commit all changes (if `git_commit_push_enabled`)
+3. Commit all changes (if `git_publish_mode` is not `off`)
 4. Push to upstream
 
 ### Clean Repo Handling
@@ -503,9 +507,9 @@ CI Failure Detected
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
-    "git_commit_push_enabled": false,
+    "git_publish_mode": "off",
     "git_revert_mode": "ask",
     "ci_gate": {
       "enabled": true,
@@ -521,9 +525,9 @@ CI Failure Detected
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
-    "git_commit_push_enabled": true,
+    "git_publish_mode": "commit_and_push",
     "git_revert_mode": "enabled",
     "ci_gate": {
       "enabled": true,
@@ -539,9 +543,9 @@ CI Failure Detected
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
-    "git_commit_push_enabled": false,
+    "git_publish_mode": "off",
     "git_revert_mode": "disabled",
     "ci_gate": { "enabled": true, "argv": ["make", "ci"] }
   }
@@ -558,10 +562,10 @@ Supervision behavior can be overridden per-run:
 
 ```bash
 # Disable git operations for this run
-ralph run one --no-git-commit-push
+ralph run one --git-publish-mode off
 
 # Force git operations
-ralph run one --git-commit-push-on
+ralph run one --git-publish-mode commit_and_push
 
 # Skip CI gate
 ralph run one --no-ci-gate
@@ -593,7 +597,7 @@ ralph run one --no-notify
 
 **Symptom**: Task in done file but repo has uncommitted changes.
 
-**Cause**: `git_commit_push_enabled` is false or push failed.
+**Cause**: `git_publish_mode` is `off` or push failed.
 
 **Resolution**:
 ```bash

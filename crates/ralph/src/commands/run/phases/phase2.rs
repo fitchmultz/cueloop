@@ -200,7 +200,7 @@ pub fn execute_phase2_implementation(
                     ctx.resolved,
                     ctx.task_id,
                     ctx.git_revert_mode,
-                    ctx.git_commit_push_enabled,
+                    ctx.git_publish_mode,
                     ctx.push_policy,
                     ctx.revert_prompt.clone(),
                     Some(supervision::CiContinueContext {

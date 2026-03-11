@@ -48,9 +48,8 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
     assert!(args.contains(&"one".to_string()));
     assert!(args.contains(&"--parallel-worker".to_string()));
     assert!(args.contains(&"--non-interactive".to_string()));
-    // Default overrides should not emit git-commit-push flags
-    assert!(!args.contains(&"--git-commit-push-on".to_string()));
-    assert!(!args.contains(&"--git-commit-push-off".to_string()));
+    // Default overrides should not emit git publish flags.
+    assert!(!args.contains(&"--git-publish-mode".to_string()));
     // Default overrides should not emit runner/model/phase flags.
     // Workers must resolve these from workspace-local .ralph/config.jsonc.
     assert!(!args.contains(&"--runner".to_string()));
@@ -178,7 +177,7 @@ fn build_worker_command_maps_custom_queue_done_paths_into_workspace() -> Result<
 }
 
 #[test]
-fn build_worker_command_emits_git_commit_push_on_when_overridden() -> Result<()> {
+fn build_worker_command_emits_git_publish_mode_commit_and_push_when_overridden() -> Result<()> {
     let temp = TempDir::new()?;
     let workspace_path = temp.path().join("workspace");
     std::fs::create_dir_all(&workspace_path)?;
@@ -197,7 +196,7 @@ fn build_worker_command_emits_git_commit_push_on_when_overridden() -> Result<()>
     };
 
     let overrides = AgentOverrides {
-        git_commit_push_enabled: Some(true),
+        git_publish_mode: Some(crate::contracts::GitPublishMode::CommitAndPush),
         ..Default::default()
     };
     let (_cmd, args) = build_worker_command(
@@ -209,14 +208,14 @@ fn build_worker_command_emits_git_commit_push_on_when_overridden() -> Result<()>
         false,
     )?;
 
-    assert!(args.contains(&"--git-commit-push-on".to_string()));
-    assert!(!args.contains(&"--git-commit-push-off".to_string()));
+    assert!(args.contains(&"--git-publish-mode".to_string()));
+    assert!(args.contains(&"commit_and_push".to_string()));
 
     Ok(())
 }
 
 #[test]
-fn build_worker_command_emits_git_commit_push_off_when_overridden() -> Result<()> {
+fn build_worker_command_emits_git_publish_mode_off_when_overridden() -> Result<()> {
     let temp = TempDir::new()?;
     let workspace_path = temp.path().join("workspace");
     std::fs::create_dir_all(&workspace_path)?;
@@ -235,7 +234,7 @@ fn build_worker_command_emits_git_commit_push_off_when_overridden() -> Result<()
     };
 
     let overrides = AgentOverrides {
-        git_commit_push_enabled: Some(false),
+        git_publish_mode: Some(crate::contracts::GitPublishMode::Off),
         ..Default::default()
     };
     let (_cmd, args) = build_worker_command(
@@ -247,8 +246,8 @@ fn build_worker_command_emits_git_commit_push_off_when_overridden() -> Result<()
         false,
     )?;
 
-    assert!(args.contains(&"--git-commit-push-off".to_string()));
-    assert!(!args.contains(&"--git-commit-push-on".to_string()));
+    assert!(args.contains(&"--git-publish-mode".to_string()));
+    assert!(args.contains(&"off".to_string()));
 
     Ok(())
 }

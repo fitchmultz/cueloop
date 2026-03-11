@@ -9,7 +9,14 @@ fn ensure_phase3_completion_requires_clean_repo_when_enabled() -> Result<()> {
     write_queue_and_done(temp.path(), TaskStatus::Done)?;
 
     let resolved = resolved_for_completion(temp.path().to_path_buf());
-    assert!(ensure_phase3_completion(&resolved, "RQ-0001", true).is_err());
+    assert!(
+        ensure_phase3_completion(
+            &resolved,
+            "RQ-0001",
+            crate::contracts::GitPublishMode::CommitAndPush
+        )
+        .is_err()
+    );
     Ok(())
 }
 
@@ -20,7 +27,11 @@ fn ensure_phase3_completion_allows_queue_files_for_rejected_status_when_enabled(
     write_queue_and_done(temp.path(), TaskStatus::Rejected)?;
 
     let resolved = resolved_for_completion(temp.path().to_path_buf());
-    ensure_phase3_completion(&resolved, "RQ-0001", true)?;
+    ensure_phase3_completion(
+        &resolved,
+        "RQ-0001",
+        crate::contracts::GitPublishMode::CommitAndPush,
+    )?;
     Ok(())
 }
 
@@ -56,7 +67,11 @@ fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
     )?;
 
     let resolved = resolved_for_completion(temp.path().to_path_buf());
-    ensure_phase3_completion(&resolved, "RQ-0001", true)?;
+    ensure_phase3_completion(
+        &resolved,
+        "RQ-0001",
+        crate::contracts::GitPublishMode::CommitAndPush,
+    )?;
     Ok(())
 }
 
@@ -92,7 +107,11 @@ fn ensure_phase3_completion_allows_config_jsonc_changes_when_enabled() -> Result
     )?;
 
     let resolved = resolved_for_completion(temp.path().to_path_buf());
-    ensure_phase3_completion(&resolved, "RQ-0001", true)?;
+    ensure_phase3_completion(
+        &resolved,
+        "RQ-0001",
+        crate::contracts::GitPublishMode::CommitAndPush,
+    )?;
     Ok(())
 }
 
@@ -104,7 +123,14 @@ fn ensure_phase3_completion_rejected_still_requires_clean_repo_for_other_changes
     std::fs::write(temp.path().join("notes.txt"), "extra")?;
 
     let resolved = resolved_for_completion(temp.path().to_path_buf());
-    assert!(ensure_phase3_completion(&resolved, "RQ-0001", true).is_err());
+    assert!(
+        ensure_phase3_completion(
+            &resolved,
+            "RQ-0001",
+            crate::contracts::GitPublishMode::CommitAndPush
+        )
+        .is_err()
+    );
     Ok(())
 }
 
@@ -115,7 +141,7 @@ fn ensure_phase3_completion_allows_dirty_repo_when_disabled() -> Result<()> {
     write_queue_and_done(temp.path(), TaskStatus::Done)?;
 
     let resolved = resolved_for_completion(temp.path().to_path_buf());
-    ensure_phase3_completion(&resolved, "RQ-0001", false)?;
+    ensure_phase3_completion(&resolved, "RQ-0001", crate::contracts::GitPublishMode::Off)?;
     Ok(())
 }
 
@@ -166,7 +192,7 @@ echo '{"sessionID":"sess-123"}'
         output_stream: runner::OutputStream::Terminal,
         project_type: crate::contracts::ProjectType::Code,
         git_revert_mode: GitRevertMode::Ask,
-        git_commit_push_enabled: true,
+        git_publish_mode: crate::contracts::GitPublishMode::CommitAndPush,
         push_policy: crate::commands::run::supervision::PushPolicy::RequireUpstream,
         revert_prompt: None,
         iteration_context: "iteration",
@@ -251,7 +277,7 @@ echo '{"sessionID":"sess-123"}'
         output_stream: runner::OutputStream::Terminal,
         project_type: crate::contracts::ProjectType::Code,
         git_revert_mode: GitRevertMode::Ask,
-        git_commit_push_enabled: true,
+        git_publish_mode: crate::contracts::GitPublishMode::CommitAndPush,
         push_policy: crate::commands::run::supervision::PushPolicy::RequireUpstream,
         revert_prompt: None,
         iteration_context: "iteration",

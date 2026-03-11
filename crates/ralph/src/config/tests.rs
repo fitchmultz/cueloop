@@ -10,7 +10,7 @@
 //! Not handled here:
 //! - Integration tests (see `tests/` directory).
 
-use super::super::contracts::{Config, GitRevertMode};
+use super::super::contracts::{Config, GitPublishMode, GitRevertMode};
 use super::super::prompts_internal::util::validate_instruction_file_paths;
 use super::RepoTrust;
 use super::layer::{ConfigLayer, apply_layer, load_layer, save_layer};
@@ -40,13 +40,13 @@ fn apply_layer_overrides_git_revert_mode() -> Result<()> {
 }
 
 #[test]
-fn apply_layer_overrides_git_commit_push_enabled() -> Result<()> {
+fn apply_layer_overrides_git_publish_mode() -> Result<()> {
     let base = Config::default();
     let mut layer = ConfigLayer::default();
-    layer.agent.git_commit_push_enabled = Some(false);
+    layer.agent.git_publish_mode = Some(GitPublishMode::Commit);
 
     let merged = apply_layer(base, layer)?;
-    assert_eq!(merged.agent.git_commit_push_enabled, Some(false));
+    assert_eq!(merged.agent.git_publish_mode, Some(GitPublishMode::Commit));
     Ok(())
 }
 
@@ -59,8 +59,22 @@ fn save_layer_writes_version_and_round_trips() -> Result<()> {
     save_layer(&path, &layer)?;
     let loaded = load_layer(&path)?;
 
-    assert_eq!(loaded.version, Some(1));
+    assert_eq!(loaded.version, Some(2));
     Ok(())
+}
+
+#[test]
+fn validate_config_rejects_reserved_profile_names() {
+    let cfg = Config {
+        profiles: Some(std::collections::BTreeMap::from([(
+            "safe".to_string(),
+            crate::contracts::AgentConfig::default(),
+        )])),
+        ..Config::default()
+    };
+
+    let err = validate_config(&cfg).expect_err("expected reserved profile name to fail");
+    assert!(err.to_string().contains("reserved built-in profile name"));
 }
 
 #[test]

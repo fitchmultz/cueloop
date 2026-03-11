@@ -12,7 +12,7 @@
 //! Invariants/assumptions:
 //! - Called after parallel worker task execution completes.
 
-use crate::contracts::GitRevertMode;
+use crate::contracts::{GitPublishMode, GitRevertMode};
 use crate::git;
 use crate::promptflow;
 use crate::queue;
@@ -63,7 +63,7 @@ pub(crate) fn post_run_supervise_parallel_worker(
     resolved: &crate::config::Resolved,
     task_id: &str,
     git_revert_mode: GitRevertMode,
-    git_commit_push_enabled: bool,
+    git_publish_mode: GitPublishMode,
     push_policy: PushPolicy,
     revert_prompt: Option<runutil::RevertPromptHandler>,
     ci_continue: Option<CiContinueContext<'_>>,
@@ -104,18 +104,18 @@ pub(crate) fn post_run_supervise_parallel_worker(
             return Ok(());
         }
 
-        if git_commit_push_enabled {
+        if git_publish_mode != GitPublishMode::Off {
             let task_title = task_title_from_queue_or_done(resolved, task_id)?.unwrap_or_default();
             finalize_git_state(
                 resolved,
                 task_id,
                 &task_title,
-                git_commit_push_enabled,
+                git_publish_mode,
                 push_policy,
             )
             .context("Git finalization failed")?;
         } else {
-            log::info!("Auto git commit/push disabled; leaving repo dirty after worker run.");
+            log::info!("Git publish mode is off; leaving repo dirty after worker run.");
         }
 
         Ok(())

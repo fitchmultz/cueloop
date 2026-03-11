@@ -18,7 +18,7 @@
 //! - Git repo state reflects task changes when is_dirty is true.
 
 use crate::celebrations;
-use crate::contracts::GitRevertMode;
+use crate::contracts::{GitPublishMode, GitRevertMode};
 use crate::git;
 use crate::notification;
 use crate::productivity;
@@ -130,7 +130,7 @@ pub(crate) fn post_run_supervise(
     resolved: &crate::config::Resolved,
     task_id: &str,
     git_revert_mode: GitRevertMode,
-    git_commit_push_enabled: bool,
+    git_publish_mode: GitPublishMode,
     push_policy: PushPolicy,
     revert_prompt: Option<runutil::RevertPromptHandler>,
     ci_continue: Option<CiContinueContext<'_>>,
@@ -206,7 +206,7 @@ pub(crate) fn post_run_supervise(
                 resolved,
                 task_id,
                 &task_title,
-                git_commit_push_enabled,
+                git_publish_mode,
                 push_policy,
             )
             .context("Git finalization failed")?;
@@ -220,10 +220,13 @@ pub(crate) fn post_run_supervise(
         }
 
         if task_status == crate::contracts::TaskStatus::Done && in_done {
-            if git_commit_push_enabled {
+            if git_publish_mode == GitPublishMode::CommitAndPush {
                 push_if_ahead(&resolved.repo_root, push_policy).context("Git push failed")?;
             } else {
-                log::info!("Auto git commit/push disabled; skipping push.");
+                log::info!(
+                    "Git publish mode is {}; skipping push.",
+                    git_publish_mode.as_str()
+                );
             }
 
             // Trigger completion notification on successful completion
@@ -271,7 +274,7 @@ pub(crate) fn post_run_supervise(
             resolved,
             task_id,
             &task_title,
-            git_commit_push_enabled,
+            git_publish_mode,
             push_policy,
         )
         .context("Git finalization failed")?;

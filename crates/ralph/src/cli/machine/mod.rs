@@ -205,9 +205,32 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
         MachineCommand::Config(args) => match args.command {
             MachineConfigCommand::Resolve => {
                 let resolved = config::resolve_from_cwd()?;
+                let repo_trust = config::load_repo_trust(&resolved.repo_root)?;
+                let dirty_repo = crate::git::status_porcelain(&resolved.repo_root)
+                    .map(|status| !status.trim().is_empty())
+                    .unwrap_or(false);
                 print_json(&MachineConfigResolveDocument {
                     version: MACHINE_CONFIG_RESOLVE_VERSION,
                     paths: queue_paths(&resolved),
+                    safety: MachineConfigSafetySummary {
+                        repo_trusted: repo_trust.is_trusted(),
+                        dirty_repo,
+                        git_publish_mode: resolved
+                            .config
+                            .agent
+                            .effective_git_publish_mode()
+                            .unwrap_or(crate::contracts::GitPublishMode::Off),
+                        approval_mode: resolved.config.agent.effective_approval_mode(),
+                        ci_gate_enabled: resolved.config.agent.ci_gate_enabled(),
+                        git_revert_mode: resolved
+                            .config
+                            .agent
+                            .git_revert_mode
+                            .unwrap_or(crate::contracts::GitRevertMode::Ask),
+                        parallel_configured: resolved.config.parallel.workers.is_some(),
+                        execution_interactivity: "noninteractive_streaming".to_string(),
+                        interactive_approval_supported: false,
+                    },
                     config: resolved.config.clone(),
                 })
             }
@@ -506,6 +529,25 @@ fn handle_run(args: MachineRunArgs) -> Result<()> {
                     "config": MachineConfigResolveDocument {
                         version: MACHINE_CONFIG_RESOLVE_VERSION,
                         paths: queue_paths(&resolved),
+                        safety: MachineConfigSafetySummary {
+                            repo_trusted: false,
+                            dirty_repo: false,
+                            git_publish_mode: resolved
+                                .config
+                                .agent
+                                .effective_git_publish_mode()
+                                .unwrap_or(crate::contracts::GitPublishMode::Off),
+                            approval_mode: resolved.config.agent.effective_approval_mode(),
+                            ci_gate_enabled: resolved.config.agent.ci_gate_enabled(),
+                            git_revert_mode: resolved
+                                .config
+                                .agent
+                                .git_revert_mode
+                                .unwrap_or(crate::contracts::GitRevertMode::Ask),
+                            parallel_configured: resolved.config.parallel.workers.is_some(),
+                            execution_interactivity: "noninteractive_streaming".to_string(),
+                            interactive_approval_supported: false,
+                        },
                         config: resolved.config.clone(),
                     }
                 })),

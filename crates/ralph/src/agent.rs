@@ -22,7 +22,7 @@ pub(crate) use profiles::{all_profile_names, resolve_profile_patch};
 
 // Public API re-exports (backward compatibility)
 pub use args::{AgentArgs, RunAgentArgs, RunnerCliArgs};
-pub use parse::{parse_git_revert_mode, parse_runner};
+pub use parse::{parse_git_publish_mode, parse_git_revert_mode, parse_runner};
 pub use repoprompt::{
     RepoPromptMode, RepopromptFlags, resolve_repoprompt_flags, resolve_rp_required,
 };

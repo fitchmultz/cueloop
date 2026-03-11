@@ -114,6 +114,10 @@ fn run() -> Result<()> {
     match cli.command {
         cli::Command::Queue(args) => cli::queue::handle_queue(args.command, cli.force),
         cli::Command::Config(args) => cli::config::handle_config(args.command),
+        cli::Command::HelpAll => {
+            cli::handle_help_all();
+            Ok(())
+        }
         cli::Command::Machine(args) => cli::machine::handle_machine(*args, cli.force),
         cli::Command::Run(args) => cli::run::handle_run(args.command, cli.force),
         cli::Command::Task(args) => cli::task::handle_task(*args, cli.force),

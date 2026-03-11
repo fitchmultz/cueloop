@@ -1,12 +1,15 @@
 //! Unit tests for contracts defaults and config types.
 
-use ralph::contracts::{ClaudePermissionMode, Config, Model, ProjectType, ReasoningEffort, Runner};
+use ralph::contracts::{
+    ClaudePermissionMode, Config, GitPublishMode, Model, ProjectType, ReasoningEffort, Runner,
+    RunnerApprovalMode,
+};
 use std::path::PathBuf;
 
 #[test]
 fn test_config_default() {
     let config = Config::default();
-    assert_eq!(config.version, 1);
+    assert_eq!(config.version, 2);
     assert_eq!(config.project_type, Some(ProjectType::Code));
     assert_eq!(config.queue.file, Some(PathBuf::from(".ralph/queue.jsonc")));
     assert_eq!(
@@ -24,9 +27,19 @@ fn test_config_default() {
     assert_eq!(config.agent.claude_bin, Some("claude".to_string()));
     assert_eq!(
         config.agent.claude_permission_mode,
-        Some(ClaudePermissionMode::BypassPermissions)
+        Some(ClaudePermissionMode::AcceptEdits)
+    );
+    assert_eq!(config.agent.git_publish_mode, Some(GitPublishMode::Off));
+    assert_eq!(
+        config
+            .agent
+            .runner_cli
+            .as_ref()
+            .and_then(|cli| cli.defaults.approval_mode),
+        Some(RunnerApprovalMode::Default)
     );
     assert_eq!(config.agent.repoprompt_plan_required, Some(false));
     assert_eq!(config.agent.repoprompt_tool_injection, Some(false));
     assert_eq!(config.agent.phases, Some(3));
+    assert!(config.profiles.is_none());
 }

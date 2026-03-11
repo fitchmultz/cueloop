@@ -228,7 +228,7 @@ ralph task reject <TASK_ID> [--note "rejection reason"]
 **Enforcement**:
 - Phase 3 loops until the task is archived to `done.json`
 - If task is not done/rejected, user is prompted based on `git_revert_mode`
-- With `git_commit_push_enabled=true`, rejected tasks allow dirty files in `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, `.ralph/config.{json,jsonc}`, and `.ralph/cache/`
+- With `git_publish_mode = "commit_and_push"`, rejected tasks allow dirty files in `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, `.ralph/config.{json,jsonc}`, and `.ralph/cache/`
 
 ### Code Review Context
 
@@ -316,7 +316,7 @@ Configure the default number of phases in `.ralph/config.jsonc`:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "phases": 3
   }
@@ -347,7 +347,7 @@ Define your own phase configurations:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "profiles": {
     "fast-review": {
       "phases": 2,
@@ -387,7 +387,7 @@ Set per-phase overrides in `.ralph/config.jsonc`:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "runner": "codex",
     "model": "gpt-5.4",
@@ -620,7 +620,7 @@ ralph run one --runner codex \
 ```json
 // .ralph/config.jsonc
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "phases": 3,
     "runner": "codex",

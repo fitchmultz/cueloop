@@ -75,7 +75,7 @@ fn test_resolve_id_width_zero_fails() {
 #[test]
 fn test_validate_config_version_unsupported() {
     let cfg = Config {
-        version: 2,
+        version: 1,
         ..Default::default()
     };
     let result = config::validate_config(&cfg);

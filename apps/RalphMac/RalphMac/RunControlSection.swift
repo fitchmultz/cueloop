@@ -55,6 +55,7 @@ struct RunControlDetailColumn: View {
                 }
 
                 RunControlRunTargetSection(workspace: workspace)
+                RunControlSafetyStatusSection(workspace: workspace)
                 RunControlRunnerConfigurationSection(workspace: workspace)
                 RunControlExecutionControlsSection(workspace: workspace)
                 RunControlExecutionHistorySection(workspace: workspace)

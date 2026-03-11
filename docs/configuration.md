@@ -30,8 +30,8 @@ When writing files, Ralph always outputs standard JSON format (comments are not 
 
 ```jsonc
 {
-  // Schema version - must be 1
-  "version": 1,
+  // Schema version - must be 2
+  "version": 2,
   "agent": {
     /* Runner configuration
        Choose from: codex, opencode, gemini, claude, cursor */
@@ -47,13 +47,13 @@ When writing files, Ralph always outputs standard JSON format (comments are not 
 - Comments are for human editing only; Ralph outputs standard JSON when saving
 
 ## Top-Level Fields
-- `version` (number): Config schema version. Default: `1`.
+- `version` (number): Config schema version. Default: `2`.
 - `project_type` (string or null): `code` or `docs`. Default: `code`.
 - `agent` (object): Runner defaults (CLI binaries, runner, model, phases, and prompt enforcement).
 - `parallel` (object): Parallel run-loop configuration for `ralph run loop` (CLI only).
 - `queue` (object): Queue file locations and task ID formatting.
 - `plugins` (object): Plugin configuration (enable/disable + per-plugin settings).
-- `profiles` (object, optional): Named configuration profiles for quick workflow switching. See [Profiles](#profiles) below.
+- `profiles` (object, optional): Named configuration profiles for quick workflow switching. Ralph also ships built-in `safe` and `power-user` profiles. See [Profiles](#profiles) below.
 
 ## Agent Configuration
 `agent` controls default execution settings. Defaults are schema-defined.
@@ -68,9 +68,9 @@ Supported fields:
 - `repoprompt_plan_required`: require RepoPrompt planning instructions (context_builder) during Phase 1.
 - `repoprompt_tool_injection`: inject RepoPrompt tooling reminders into prompts.
 - `git_revert_mode`: `ask`, `enabled`, or `disabled`.
-- `git_commit_push_enabled`: enable or disable automatic git commit/push after successful runs (default: `true`).
-  **Safety warning:** When enabled, Ralph will automatically push changes to the remote repository. This action is irreversible. Ralph will prompt for confirmation when enabling this setting.
-  **Parallel workers:** This setting is inherited by parallel workers for phase execution behavior in each workspace.
+- `git_publish_mode`: automatic git publish behavior after successful runs. Supported values: `off`, `commit`, `commit_and_push` (default: `off`).
+  **Safety note:** `commit_and_push` has the highest blast radius because it publishes to the remote repository automatically. Prefer `off` or `commit` unless you explicitly want automated publishing.
+  **Parallel workers:** Parallel workers inherit this setting inside each workspace. Parallel execution remains experimental.
 - `session_timeout_hours`: session timeout in hours for crash recovery (default: `24`). Sessions older than this threshold are considered stale and require explicit user confirmation to resume. Set to a higher value if you want to allow resuming sessions after longer periods.
 - `runner_retry`: runner invocation retry/backoff configuration for transient failure handling. See [`agent.runner_retry`](#agentrunner_retry) below.
 - `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported.
@@ -95,9 +95,11 @@ Notes:
 - Multi-phase runs (`phases >= 2`) always refresh task fields (`scope,evidence,plan,notes,tags,depends_on`) at the start of Phase 1, then generate the plan in that same Phase 1 runner session. This behavior is built in and not configurable.
 - `followup_reasoning_effort` is ignored for non-Codex runners.
 - Breaking change: `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
+- Breaking change in `0.3`: config files must use `"version": 2`, `agent.git_publish_mode`, and the built-in reserved profiles `safe` / `power-user`. `git_commit_push_enabled` is removed.
 - CI gate auto-retry: When enabled, Ralph automatically sends a strict compliance message and retries up to 2 times on CI failure during Phase 2, Phase 3, or single-phase execution. This behavior is not configurable; after 2 automatic retries, the user is prompted via the configured `git_revert_mode`. Post-run supervision prompts immediately on CI failure.
 - Phase 1 plan-only violations: when `git_revert_mode=ask`, the prompt includes a keep+continue override to proceed to the next phase without reverting changes.
 - **Runner session handling**: For runners that support session resumption (e.g., Kimi), Ralph generates unique session IDs per phase (format: `{task_id}-p{phase}-{timestamp}`) and uses explicit `--session` flags rather than runner-specific continue mechanisms. This provides deterministic session management and reliable crash recovery.
+- **macOS app boundary**: app-launched runs are noninteractive. The app can display the resolved approval posture, but interactive approvals remain terminal-only until the transport changes.
 
 ### `agent.runner_cli`
 
@@ -111,7 +113,7 @@ Supported normalized fields:
 - `output_format`: `stream_json`, `json`, `text` (execution requires `stream_json`)
 - `verbosity`: `quiet`, `normal`, `verbose`
 - `approval_mode`: `default`, `auto_edits`, `yolo`, `safe`
-  **Safety warning:** `yolo` mode bypasses all approval prompts, allowing the runner to make changes without confirmation. Use with extreme caution.
+  **Safety warning:** `yolo` mode bypasses all approval prompts, allowing the runner to make changes without confirmation. The recommended default profile is `safe`.
   
   **Codex exception**: Ralph does NOT pass approval flags to Codex, regardless of this setting. Codex will use whatever approval mode is configured in your global Codex config file (`~/.codex/config.json`). If you want YOLO behavior with Codex, configure it there, not in Ralph.
 - `sandbox`: `default`, `enabled`, `disabled`
@@ -125,7 +127,7 @@ Example:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "runner": "codex",
     "model": "gpt-5.4",
@@ -135,13 +137,13 @@ Example:
     "followup_reasoning_effort": "low",
     "repoprompt_plan_required": false,
     "repoprompt_tool_injection": false,
-    "git_commit_push_enabled": true,
+    "git_publish_mode": "off",
     "git_revert_mode": "ask",
-    "claude_permission_mode": "bypass_permissions",
+    "claude_permission_mode": "accept_edits",
     "runner_cli": {
       "defaults": {
         "output_format": "stream_json",
-        "approval_mode": "yolo",
+        "approval_mode": "default",
         "unsupported_option_policy": "warn"
       },
       "runners": {
@@ -215,6 +217,21 @@ Notes:
 - Retries only occur when the repository is clean (or dirty only in Ralph-allowed paths like `.ralph/`), or when `git_revert_mode` is `enabled` for auto-revert.
 - Retry attempt counts and backoff delays are emitted via `RALPH_OPERATION:` markers in runner output.
 - To disable retry entirely, set `max_attempts: 1`.
+
+## Profiles
+
+Ralph always exposes two built-in profiles:
+
+- `safe`: recommended default. Uses safer approval defaults and `git_publish_mode = "off"`.
+- `power-user`: preserves the higher-autonomy path with `approval_mode = "yolo"` and `git_publish_mode = "commit_and_push"`.
+
+You can inspect resolved profiles with:
+
+```bash
+ralph config profiles
+```
+
+User-defined profiles remain additive. `safe` and `power-user` are reserved names in `0.3`; defining either in config is a validation error.
 
 ### `agent.phase_overrides`
 
@@ -330,7 +347,7 @@ Example configurations:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "queue": {
     "file": ".ralph/queue.jsonc",
     "done_file": ".ralph/done.jsonc",
@@ -378,7 +395,7 @@ Tasks with missing/invalid timestamps or future timestamps are categorized as `u
 Example configuration:
 ```json
 {
-  "version": 1,
+  "version": 2,
   "queue": {
     "aging_thresholds": {
       "warning_days": 5,
@@ -399,7 +416,7 @@ Example configuration:
 
 When editing configuration in the macOS app, certain high-risk settings display inline warnings:
 
-- **Danger level** (⚠): Settings like `git_commit_push_enabled` that can cause irreversible actions. The app prompts for confirmation before enabling these.
+- **Danger level** (⚠): Settings like `git_publish_mode` that can cause irreversible actions. The app prompts for confirmation before enabling these.
 - **Warning level** (ℹ): Settings like `approval_mode` and `claude_permission_mode` that reduce safety checks. These show descriptive text but don't require confirmation.
 
 The confirmation dialog for Danger-level settings explains the risk and requires an explicit confirmation to proceed.
@@ -485,7 +502,7 @@ Example:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "webhook": {
       "enabled": true,
@@ -624,7 +641,7 @@ Example:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "notification": {
       "enabled": true,
@@ -666,7 +683,7 @@ Example:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "plugins": {
     "plugins": {
       "my.custom-runner": {
@@ -699,7 +716,7 @@ Define custom profiles in your config file under the `profiles` key:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "profiles": {
     "fast-local": {
       "runner": "codex",

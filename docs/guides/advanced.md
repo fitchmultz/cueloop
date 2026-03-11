@@ -37,7 +37,7 @@ Use different runners/models for each phase to optimize cost and quality:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "runner": "codex",
     "model": "gpt-5.3-codex",
@@ -242,7 +242,7 @@ Define standardized profiles for team consistency:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "profiles": {
     "quick-fix": {
       "runner": "kimi",
@@ -287,7 +287,7 @@ Define standardized profiles for team consistency:
       "model": "kimi-for-coding",
       "phases": 1,
       "git_revert_mode": "enabled",
-      "git_commit_push_enabled": false,
+      "git_publish_mode": "off",
       "ci_gate": { "enabled": false }
     },
     "local-dev": {
@@ -310,7 +310,7 @@ Use base profile + CLI overrides for flexibility:
 ralph run one --profile deep-review --phases 2 --runner kimi
 
 # Use CI-safe profile but enable auto-push for this run
-ralph run loop --profile ci-safe --git-commit-push-on
+ralph run loop --profile ci-safe --git-publish-mode commit_and_push
 ```
 
 ### Profile Inheritance Visualization
@@ -532,8 +532,8 @@ Use comments in config for documentation:
 
 ```jsonc
 {
-  // Schema version - must be 1
-  "version": 1,
+  // Schema version - must be 2
+  "version": 2,
   "agent": {
     /* Runner configuration
        Choose from: codex, opencode, gemini, claude, cursor */
@@ -548,7 +548,7 @@ Use comments in config for documentation:
     
     // Safety settings
     "git_revert_mode": "ask",
-    "git_commit_push_enabled": true
+    "git_publish_mode": "commit_and_push"
   },
   "parallel": {
     // Workspace isolation
@@ -563,7 +563,7 @@ Use comments in config for documentation:
 **Global config** (`~/.config/ralph/config.jsonc`):
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "runner": "claude",
     "model": "sonnet",
@@ -581,7 +581,7 @@ Use comments in config for documentation:
 **Project config** (`.ralph/config.jsonc`):
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "ci_gate": {
       "enabled": true,
@@ -1193,7 +1193,7 @@ ralph run loop --wait-when-blocked --wait-timeout-seconds 3600
 | Profile | N/A | `--profile` |
 | Parallel workers | `parallel.workers` | `--parallel` |
 | CI gate | `agent.ci_gate.enabled` | `--ci-gate-on/off` |
-| Git push | `agent.git_commit_push_enabled` | `--git-commit-push-on/off` |
+| Git publish | `agent.git_publish_mode` | `--git-publish-mode <off|commit|commit_and_push>` |
 
 ### File Locations
 

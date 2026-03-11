@@ -14,7 +14,7 @@
 //! Invariants/assumptions:
 //! - `save_layer` creates parent directories automatically if needed.
 //! - `apply_layer` merges using leaf-wise semantics for nested structures.
-//! - Version must be 1; unsupported versions are rejected during apply.
+//! - Version must be 2; unsupported versions are rejected during apply.
 
 use crate::contracts::{
     AgentConfig, Config, LoopConfig, ParallelConfig, PluginsConfig, ProjectType, QueueConfig,
@@ -50,11 +50,11 @@ pub fn load_layer(path: &Path) -> Result<ConfigLayer> {
 }
 
 /// Save a config layer to a JSON file.
-/// Automatically sets version to 1 if not specified and creates parent directories.
+/// Automatically sets version to 2 if not specified and creates parent directories.
 pub fn save_layer(path: &Path, layer: &ConfigLayer) -> Result<()> {
     let mut to_save = layer.clone();
     if to_save.version.is_none() {
-        to_save.version = Some(1);
+        to_save.version = Some(2);
     }
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -70,9 +70,9 @@ pub fn save_layer(path: &Path, layer: &ConfigLayer) -> Result<()> {
 /// Later layers override earlier ones using leaf-wise merge semantics.
 pub fn apply_layer(mut base: Config, layer: ConfigLayer) -> Result<Config> {
     if let Some(version) = layer.version {
-        if version != 1 {
+        if version != 2 {
             bail!(
-                "Unsupported config version: {}. Ralph requires version 1. Update the 'version' field in your config file.",
+                "Unsupported config version: {}. Ralph requires version 2. Upgrade your config file to the 0.3 contract and set `version` to 2.",
                 version
             );
         }

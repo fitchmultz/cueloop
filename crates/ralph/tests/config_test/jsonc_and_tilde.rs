@@ -38,7 +38,7 @@ fn test_find_repo_root_via_ralph_queue_jsonc() {
 #[test]
 fn test_find_repo_root_via_ralph_config_jsonc() {
     let dir = TempDir::new().expect("create temp dir");
-    create_config_jsonc(&dir, r#"{"version":1}"#);
+    create_config_jsonc(&dir, r#"{"version":2}"#);
 
     let repo_root = config::find_repo_root(dir.path());
     assert_eq!(repo_root, dir.path());
@@ -68,7 +68,7 @@ fn test_resolve_done_path_uses_jsonc_default_path() {
 fn test_project_config_path_uses_jsonc_path() {
     let dir = TempDir::new().expect("create temp dir");
     let ralph_dir = setup_ralph_dir(&dir);
-    fs::write(ralph_dir.join("config.json"), r#"{"version":1}"#).unwrap();
+    fs::write(ralph_dir.join("config.json"), r#"{"version":2}"#).unwrap();
 
     let config_path = config::project_config_path(dir.path());
     assert_eq!(config_path, ralph_dir.join("config.jsonc"));
@@ -82,7 +82,7 @@ fn test_global_config_path_uses_jsonc_path() {
     let xdg_config = dir.path().join(".config");
     let ralph_dir = xdg_config.join("ralph");
     fs::create_dir_all(&ralph_dir).expect("create xdg config dir");
-    fs::write(ralph_dir.join("config.json"), r#"{"version":1}"#).unwrap();
+    fs::write(ralph_dir.join("config.json"), r#"{"version":2}"#).unwrap();
 
     unsafe { env::set_var("XDG_CONFIG_HOME", &xdg_config) };
     let config_path = config::global_config_path();
@@ -99,7 +99,7 @@ fn test_load_layer_accepts_jsonc_with_comments() {
     // Write JSONC with comments
     let jsonc_content = r#"{
         // This is a single-line comment
-        "version": 1,
+        "version": 2,
         "agent": {
             /* Multi-line
                comment */
@@ -109,7 +109,7 @@ fn test_load_layer_accepts_jsonc_with_comments() {
     fs::write(&config_path, jsonc_content).expect("write config.jsonc");
 
     let layer = config::load_layer(&config_path).unwrap();
-    assert_eq!(layer.version, Some(1));
+    assert_eq!(layer.version, Some(2));
     assert_eq!(layer.agent.runner, Some(Runner::Claude));
 }
 

@@ -23,7 +23,7 @@ fn doctor_fails_with_nonexistent_runner_binary() -> Result<()> {
 
     // Configure a non-existent runner binary
     let config_path = dir.path().join(".ralph/config.jsonc");
-    let config_content = r#"{"version":1,"agent":{"runner":"opencode","opencode_bin":"this-binary-does-not-exist-xyz123"}}"#;
+    let config_content = r#"{"version":2,"agent":{"runner":"opencode","opencode_bin":"this-binary-does-not-exist-xyz123"}}"#;
     std::fs::write(&config_path, config_content)?;
 
     let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
@@ -58,7 +58,7 @@ fn doctor_fails_with_nonexistent_gemini_binary() -> Result<()> {
     trust_repo(dir.path())?;
 
     let config_path = dir.path().join(".ralph/config.jsonc");
-    let config_content = r#"{"version":1,"agent":{"runner":"gemini","gemini_bin":"this-gemini-does-not-exist-xyz123"}}"#;
+    let config_content = r#"{"version":2,"agent":{"runner":"gemini","gemini_bin":"this-gemini-does-not-exist-xyz123"}}"#;
     std::fs::write(&config_path, config_content)?;
 
     let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
@@ -91,7 +91,7 @@ fn doctor_fails_with_nonexistent_claude_binary() -> Result<()> {
     trust_repo(dir.path())?;
 
     let config_path = dir.path().join(".ralph/config.jsonc");
-    let config_content = r#"{"version":1,"agent":{"runner":"claude","claude_bin":"this-claude-does-not-exist-xyz123"}}"#;
+    let config_content = r#"{"version":2,"agent":{"runner":"claude","claude_bin":"this-claude-does-not-exist-xyz123"}}"#;
     std::fs::write(&config_path, config_content)?;
 
     let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
@@ -163,7 +163,7 @@ fn doctor_warns_when_instruction_files_missing() -> Result<()> {
     // Configure instruction file injection with a missing path.
     let config_path = dir.path().join(".ralph/config.jsonc");
     let config_content =
-        r#"{"version":1,"agent":{"instruction_files":["missing-global-agents.md"]}}"#;
+        r#"{"version":2,"agent":{"instruction_files":["missing-global-agents.md"]}}"#;
     std::fs::write(&config_path, config_content)?;
 
     let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
@@ -220,7 +220,7 @@ esac
     std::fs::create_dir_all(&global_config_dir)?;
     let config_path = global_config_dir.join("config.jsonc");
     let config_content = format!(
-        r#"{{"version":1,"agent":{{"runner":"opencode","opencode_bin":"{}"}}}}"#,
+        r#"{{"version":2,"agent":{{"runner":"opencode","opencode_bin":"{}"}}}}"#,
         runner_path.display()
     );
     std::fs::write(&config_path, config_content)?;
@@ -297,7 +297,7 @@ esac
     std::fs::create_dir_all(&global_config_dir)?;
     let config_path = global_config_dir.join("config.jsonc");
     let config_content = format!(
-        r#"{{"version":1,"agent":{{"runner":"claude","claude_bin":"{}"}}}}"#,
+        r#"{{"version":2,"agent":{{"runner":"claude","claude_bin":"{}"}}}}"#,
         runner_path.display()
     );
     std::fs::write(&config_path, config_content)?;
@@ -365,7 +365,7 @@ exit 1
     // Configure the stub runner
     let config_path = dir.path().join(".ralph/config.jsonc");
     let config_content = format!(
-        r#"{{"version":1,"agent":{{"runner":"gemini","gemini_bin":"{}"}}}}"#,
+        r#"{{"version":2,"agent":{{"runner":"gemini","gemini_bin":"{}"}}}}"#,
         runner_path.display()
     );
     std::fs::write(&config_path, config_content)?;
@@ -408,7 +408,7 @@ fn doctor_error_includes_config_key_hint() -> Result<()> {
     // Configure a non-existent runner binary
     let config_path = dir.path().join(".ralph/config.jsonc");
     let config_content =
-        r#"{"version":1,"agent":{"runner":"codex","codex_bin":"/nonexistent/path/codex"}}"#;
+        r#"{"version":2,"agent":{"runner":"codex","codex_bin":"/nonexistent/path/codex"}}"#;
     std::fs::write(&config_path, config_content)?;
 
     let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;

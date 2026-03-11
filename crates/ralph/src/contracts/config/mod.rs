@@ -38,6 +38,7 @@ mod notification;
 mod parallel;
 mod phase;
 mod plugin;
+mod profiles;
 mod queue;
 mod retry;
 #[cfg(test)]
@@ -45,12 +46,13 @@ mod tests;
 mod webhook;
 
 pub use agent::{AgentConfig, CiGateConfig};
-pub use enums::{GitRevertMode, ProjectType, ScanPromptVersion};
+pub use enums::{GitPublishMode, GitRevertMode, ProjectType, ScanPromptVersion};
 pub use loop_::LoopConfig;
 pub use notification::NotificationConfig;
 pub use parallel::{ParallelConfig, default_push_backoff_ms};
 pub use phase::{PhaseOverrideConfig, PhaseOverrides};
 pub use plugin::{PluginConfig, PluginsConfig};
+pub(crate) use profiles::{builtin_profile, builtin_profile_names, is_reserved_profile_name};
 pub use queue::{QueueAgingThresholds, QueueConfig};
 pub use retry::RunnerRetryConfig;
 pub use webhook::{WebhookConfig, WebhookEventSubscription, WebhookQueuePolicy};
@@ -91,10 +93,8 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        use std::collections::BTreeMap;
-
         Self {
-            version: 1,
+            version: 2,
             project_type: Some(ProjectType::Code),
             queue: QueueConfig {
                 file: Some(PathBuf::from(DEFAULT_QUEUE_FILE)),
@@ -125,12 +125,12 @@ impl Default for Config {
                 kimi_bin: Some("kimi".to_string()),
                 pi_bin: Some("pi".to_string()),
                 phases: Some(3),
-                claude_permission_mode: Some(ClaudePermissionMode::BypassPermissions),
+                claude_permission_mode: Some(ClaudePermissionMode::AcceptEdits),
                 runner_cli: Some(RunnerCliConfigRoot {
                     defaults: RunnerCliOptionsPatch {
                         output_format: Some(RunnerOutputFormat::StreamJson),
                         verbosity: Some(RunnerVerbosity::Normal),
-                        approval_mode: Some(RunnerApprovalMode::Yolo),
+                        approval_mode: Some(RunnerApprovalMode::Default),
                         sandbox: Some(RunnerSandboxMode::Default),
                         plan_mode: Some(RunnerPlanMode::Default),
                         unsupported_option_policy: Some(UnsupportedOptionPolicy::Warn),
@@ -150,20 +150,6 @@ impl Default for Config {
                                 ..RunnerCliOptionsPatch::default()
                             },
                         ),
-                        (
-                            Runner::Kimi,
-                            RunnerCliOptionsPatch {
-                                approval_mode: Some(RunnerApprovalMode::Yolo),
-                                ..RunnerCliOptionsPatch::default()
-                            },
-                        ),
-                        (
-                            Runner::Pi,
-                            RunnerCliOptionsPatch {
-                                approval_mode: Some(RunnerApprovalMode::Yolo),
-                                ..RunnerCliOptionsPatch::default()
-                            },
-                        ),
                     ]),
                 }),
                 phase_overrides: None,
@@ -175,7 +161,7 @@ impl Default for Config {
                     argv: Some(vec!["make".to_string(), "ci".to_string()]),
                 }),
                 git_revert_mode: Some(GitRevertMode::Ask),
-                git_commit_push_enabled: Some(true),
+                git_publish_mode: Some(GitPublishMode::Off),
                 notification: NotificationConfig {
                     enabled: Some(true),
                     notify_on_complete: Some(true),

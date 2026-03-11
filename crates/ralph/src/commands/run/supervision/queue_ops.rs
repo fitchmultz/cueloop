@@ -197,7 +197,7 @@ mod tests {
                     argv: None,
                 }),
                 git_revert_mode: Some(crate::contracts::GitRevertMode::Disabled),
-                git_commit_push_enabled: Some(true),
+                git_publish_mode: Some(crate::contracts::GitPublishMode::CommitAndPush),
                 phases: Some(2),
                 notification: NotificationConfig {
                     enabled: Some(false),

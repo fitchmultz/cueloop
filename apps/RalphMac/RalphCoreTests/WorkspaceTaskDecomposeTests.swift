@@ -236,7 +236,7 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
           shift
         fi
         if [ "$1" = "machine" ] && [ "$2" = "config" ] && [ "$3" = "resolve" ]; then
-          echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"gpt-5.3-codex","phases":2,"iterations":3}}}'
+          echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"gpt-5.3-codex","phases":2,"iterations":3}}}'
           exit 0
         fi
         if [ "$1" = "machine" ] && [ "$2" = "task" ] && [ "$3" = "decompose" ]; then
@@ -253,7 +253,7 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
         fi
         if [ "$1" = "machine" ] && [ "$2" = "queue" ] && [ "$3" = "read" ]; then
           cat <<'JSON'
-        {"version":1,"paths":{"repo_root":"REPO_ROOT","queue_path":"REPO_ROOT/.ralph/queue.jsonc","done_path":"REPO_ROOT/.ralph/done.jsonc","project_config_path":"REPO_ROOT/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":\(queueListJSON)},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-0007","runnability":{}}
+        {"version":2,"paths":{"repo_root":"REPO_ROOT","queue_path":"REPO_ROOT/.ralph/queue.jsonc","done_path":"REPO_ROOT/.ralph/done.jsonc","project_config_path":"REPO_ROOT/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":\(queueListJSON)},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-0007","runnability":{}}
         JSON
           exit 0
         fi

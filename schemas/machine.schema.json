@@ -295,13 +295,17 @@
               "null"
             ]
           },
-          "git_commit_push_enabled": {
+          "git_publish_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/GitPublishMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": null,
-            "description": "Enable automatic git commit and push after successful runs (default: true).",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "description": "Post-run git publication behavior after successful runs."
           },
           "git_revert_mode": {
             "anyOf": [
@@ -562,12 +566,12 @@
                 "enabled": true
               },
               "claude_bin": "claude",
-              "claude_permission_mode": "bypass_permissions",
+              "claude_permission_mode": "accept_edits",
               "codex_bin": "codex",
               "cursor_bin": "agent",
               "followup_reasoning_effort": null,
               "gemini_bin": "gemini",
-              "git_commit_push_enabled": true,
+              "git_publish_mode": "off",
               "git_revert_mode": "ask",
               "instruction_files": null,
               "iterations": 1,
@@ -593,7 +597,7 @@
               "runner": "codex",
               "runner_cli": {
                 "defaults": {
-                  "approval_mode": "yolo",
+                  "approval_mode": "default",
                   "output_format": "stream_json",
                   "plan_mode": "default",
                   "sandbox": "default",
@@ -614,22 +618,6 @@
                     "output_format": null,
                     "plan_mode": null,
                     "sandbox": "disabled",
-                    "unsupported_option_policy": null,
-                    "verbosity": null
-                  },
-                  "kimi": {
-                    "approval_mode": "yolo",
-                    "output_format": null,
-                    "plan_mode": null,
-                    "sandbox": null,
-                    "unsupported_option_policy": null,
-                    "verbosity": null
-                  },
-                  "pi": {
-                    "approval_mode": "yolo",
-                    "output_format": null,
-                    "plan_mode": null,
-                    "sandbox": null,
                     "unsupported_option_policy": null,
                     "verbosity": null
                   }
@@ -736,7 +724,7 @@
             "description": "Queue-related configuration."
           },
           "version": {
-            "default": 1,
+            "default": 2,
             "description": "Schema version for config.",
             "format": "uint32",
             "minimum": 0,
@@ -744,6 +732,26 @@
           }
         },
         "type": "object"
+      },
+      "GitPublishMode": {
+        "description": "Git publish mode for post-run repository changes.",
+        "oneOf": [
+          {
+            "const": "off",
+            "description": "Leave the repository dirty after queue/done updates.",
+            "type": "string"
+          },
+          {
+            "const": "commit",
+            "description": "Create a local commit but do not push.",
+            "type": "string"
+          },
+          {
+            "const": "commit_and_push",
+            "description": "Create a local commit and push it using Ralph's guarded push flow.",
+            "type": "string"
+          }
+        ]
       },
       "GitRevertMode": {
         "description": "Git revert mode for handling runner/supervision errors.",
@@ -813,6 +821,56 @@
             ]
           }
         },
+        "type": "object"
+      },
+      "MachineConfigSafetySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "approval_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerApprovalMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ci_gate_enabled": {
+            "type": "boolean"
+          },
+          "dirty_repo": {
+            "type": "boolean"
+          },
+          "execution_interactivity": {
+            "type": "string"
+          },
+          "git_publish_mode": {
+            "$ref": "#/$defs/GitPublishMode"
+          },
+          "git_revert_mode": {
+            "$ref": "#/$defs/GitRevertMode"
+          },
+          "interactive_approval_supported": {
+            "type": "boolean"
+          },
+          "parallel_configured": {
+            "type": "boolean"
+          },
+          "repo_trusted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "repo_trusted",
+          "dirty_repo",
+          "git_publish_mode",
+          "ci_gate_enabled",
+          "git_revert_mode",
+          "parallel_configured",
+          "execution_interactivity",
+          "interactive_approval_supported"
+        ],
         "type": "object"
       },
       "MachineQueuePaths": {
@@ -1747,6 +1805,9 @@
       "paths": {
         "$ref": "#/$defs/MachineQueuePaths"
       },
+      "safety": {
+        "$ref": "#/$defs/MachineConfigSafetySummary"
+      },
       "version": {
         "format": "uint32",
         "minimum": 0,
@@ -1756,6 +1817,7 @@
     "required": [
       "version",
       "paths",
+      "safety",
       "config"
     ],
     "title": "MachineConfigResolveDocument",

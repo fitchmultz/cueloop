@@ -220,7 +220,7 @@ fn render_worker_phase2_handoff_prompt_allows_placeholder_like_iteration_context
 fn render_worker_phase2_prompt_allows_placeholder_like_plan_text() -> Result<()> {
     let template = "PHASE={{TOTAL_PHASES}}\nID={{TASK_ID}}\n{{ITERATION_CONTEXT}}\n{{PLAN_TEXT}}\n{{ITERATION_COMPLETION_BLOCK}}\n{{CHECKLIST}}\n{{BASE_WORKER_PROMPT}}\n{{REPOPROMPT_BLOCK}}\n";
     let config = default_config();
-    let plan_text = "Use {{config.agent.git_commit_push_enabled}} to toggle behavior.";
+    let plan_text = "Use {{config.agent.git_publish_mode}} to describe publish behavior.";
     let rendered = render_worker_phase2_prompt(
         template,
         "BASE",

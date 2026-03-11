@@ -50,7 +50,7 @@ public extension Workspace {
                 commandState.cliSpecErrorMessage = "CLI client not available."
             },
             load: { [self] client, workingDirectoryURL, retryConfiguration, onRetry in
-                try await self.decodeMachineRepositoryJSON(
+                let document = try await self.decodeMachineRepositoryJSON(
                     MachineCLISpecDocument.self,
                     client: client,
                     machineArguments: ["cli-spec"],
@@ -58,6 +58,8 @@ public extension Workspace {
                     retryConfiguration: retryConfiguration,
                     onRetry: onRetry
                 )
+                try Self.validateMachineCLISpecVersion(document)
+                return document
             },
             apply: { [commandState] document in
                 commandState.cliSpec = document.spec
@@ -146,6 +148,33 @@ public extension Workspace {
 }
 
 private extension Workspace {
+    nonisolated static let supportedMachineCLISpecDocumentVersion = 2
+    nonisolated static let supportedCLISpecVersion = 2
+
+    nonisolated static func validateMachineCLISpecVersion(_ document: MachineCLISpecDocument) throws {
+        guard document.version == supportedMachineCLISpecDocumentVersion else {
+            throw NSError(
+                domain: "RalphMachineContract",
+                code: 3,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Unsupported machine cli-spec version \(document.version). RalphMac requires version \(supportedMachineCLISpecDocumentVersion)."
+                ]
+            )
+        }
+
+        guard document.spec.version == supportedCLISpecVersion else {
+            throw NSError(
+                domain: "RalphMachineContract",
+                code: 4,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Unsupported cli-spec schema version \(document.spec.version). RalphMac requires version \(supportedCLISpecVersion)."
+                ]
+            )
+        }
+    }
+
     func collectCommands(
         _ command: RalphCLICommandSpec,
         includeHidden: Bool,

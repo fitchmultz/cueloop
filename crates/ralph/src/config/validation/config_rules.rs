@@ -19,14 +19,14 @@ use super::{
     validate_agent_binary_paths,
 };
 use crate::constants::runner::{MAX_PHASES, MIN_ITERATIONS, MIN_PARALLEL_WORKERS, MIN_PHASES};
-use crate::contracts::Config;
+use crate::contracts::{Config, builtin_profile_names, is_reserved_profile_name};
 use anyhow::{Result, bail};
 use std::path::Component;
 
 pub fn validate_config(cfg: &Config) -> Result<()> {
-    if cfg.version != 1 {
+    if cfg.version != 2 {
         bail!(
-            "Unsupported config version: {}. Ralph requires version 1. Update the 'version' field in your config file.",
+            "Unsupported config version: {}. Ralph requires version 2. Upgrade your config file to the 0.3 contract and set `version` to 2.",
             cfg.version
         );
     }
@@ -97,6 +97,12 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
 
     if let Some(profiles) = cfg.profiles.as_ref() {
         for (name, patch) in profiles {
+            if is_reserved_profile_name(name) {
+                bail!(
+                    "Invalid profiles.{name}: `{name}` is a reserved built-in profile name. Rename your custom profile. Reserved names: {}.",
+                    builtin_profile_names().collect::<Vec<_>>().join(", ")
+                );
+            }
             validate_agent_patch(patch, &format!("profiles.{name}"))?;
         }
     }

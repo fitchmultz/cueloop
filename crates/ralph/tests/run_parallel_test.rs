@@ -321,7 +321,7 @@ fn parallel_path_map_workspace_sync() -> Result<()> {
     let config_path = temp.path().join(".ralph/config.jsonc");
     std::fs::write(
         &config_path,
-        r#"{"version":1,"agent":{"runner":"opencode","model":"test-model"}}"#,
+        r#"{"version":2,"agent":{"runner":"opencode","model":"test-model"}}"#,
     )?;
     std::fs::create_dir_all(temp.path().join(".ralph/prompts"))?;
     std::fs::write(

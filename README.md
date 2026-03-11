@@ -81,15 +81,22 @@ make install
 # 1) Initialize in your repo
 ralph init
 
-# 2) Add a task
+# 2) Inspect the default-safe profile
+ralph config profiles
+
+# 3) Add a task
 ralph task "Stabilize flaky queue integration test"
 
-# 3) Execute one task
-ralph run one
+# 4) Execute one task with the recommended safe profile
+ralph run one --profile safe
 
-# 4) Inspect queue state
+# 5) Inspect queue state
 ralph queue list
 ```
+
+`ralph init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, and parallel execution kept opt-in.
+Use `--profile power-user` only when you explicitly want the higher-blast-radius behavior, including commit_and_push automation.
+On macOS, app-launched runs remain noninteractive: the app can supervise and disclose safety posture, but interactive approvals are still terminal-only.
 
 If you do not want to configure a runner yet, use the smoke-test flow instead of `ralph run one`.
 That gives you a deterministic way to verify the CLI and repo health without any external model setup.
@@ -112,7 +119,7 @@ ralph queue list
 ralph queue show RQ-0001
 
 # let your configured runner plan, implement, and review the task
-ralph run one --phases 3
+ralph run one --profile safe --phases 3
 
 # verify the repo is still healthy and the task moved forward
 ralph queue list
@@ -128,6 +135,7 @@ No external runner setup required:
 ```bash
 ralph init
 ralph --help
+ralph help-all
 ralph run one --help
 ralph scan --help
 ralph queue list
@@ -162,7 +170,7 @@ Security references:
 
 - Quality/speed depend on selected runner model and prompts
 - UI tests are intentionally not part of default `make macos-ci` (headed interaction)
-- Parallel execution introduces additional branch/workspace complexity in very large repos
+- Parallel execution is experimental and introduces additional branch/workspace complexity in very large repos
 
 ## Versioning & Compatibility
 

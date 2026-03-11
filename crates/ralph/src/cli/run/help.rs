@@ -20,9 +20,9 @@ pub(super) const RUN_AFTER_LONG_HELP: &str = "Runner selection:\n\
   - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
   - `--effort` is codex-only and is ignored for other runners.\n\
   - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
-  - `--git-commit-push-on` / `--git-commit-push-off` control automatic git commit/push after successful runs.\n\
-  - `--parallel` runs loop tasks concurrently in workspaces (clone-based).\n\
-  - Workers push directly to the target branch after phase execution.\n\
+  - `--git-publish-mode` controls post-run git behavior: off, commit, or commit_and_push.\n\
+  - `--parallel` is experimental and runs loop tasks concurrently in workspaces (clone-based).\n\
+  - Experimental parallel workers push directly to the target branch after phase execution.\n\
   - Clean-repo checks allow changes to `.ralph/config.jsonc`, `.ralph/queue.jsonc`, and `.ralph/done.jsonc`; use `--force` to bypass entirely.\n\
  \n\
 Phase-specific overrides:\n\
@@ -39,7 +39,7 @@ Phase-specific overrides:\n\
     6) Config defaults (agent.*)\n\
  \n\
  To change defaults for this repo, edit .ralph/config.jsonc:\n\
-  version: 1\n\
+  version: 2\n\
   agent:\n\
   runner: codex\n\
   model: gpt-5.4\n\
@@ -57,13 +57,13 @@ Examples:\n\
  ralph run one --runner pi --model gpt-5.3\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode disabled\n\
- ralph run one --git-commit-push-off\n\
+ ralph run one --git-publish-mode off\n\
  ralph run one --lfs-check\n\
  ralph run loop --max-tasks 0\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.3\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode ask --max-tasks 1\n\
- ralph run loop --git-commit-push-on --max-tasks 1\n\
+ ralph run loop --git-publish-mode commit_and_push --max-tasks 1\n\
  ralph run loop --lfs-check --max-tasks 1\n\
  ralph run loop --parallel --max-tasks 4\n\
  ralph run loop --parallel 4 --max-tasks 8\n\
@@ -99,7 +99,7 @@ Examples:\n\
  ralph run one --runner-phase2 claude --model-phase2 opus\n\
  ralph run one --include-draft\n\
  ralph run one --git-revert-mode enabled\n\
- ralph run one --git-commit-push-off\n\
+ ralph run one --git-publish-mode off\n\
  ralph run one --lfs-check\n\
  ralph run one --repo-prompt plan\n\
  ralph run one --repo-prompt off\n\
@@ -123,7 +123,7 @@ pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Examples:\n\
  ralph run loop --runner-phase2 claude --model-phase2 opus --max-tasks 1\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode disabled --max-tasks 1\n\
- ralph run loop --git-commit-push-off --max-tasks 1\n\
+ ralph run loop --git-publish-mode off --max-tasks 1\n\
  ralph run loop --repo-prompt tools --max-tasks 1\n\
  ralph run loop --repo-prompt off --max-tasks 1\n\
  ralph run loop --lfs-check --max-tasks 1\n\
@@ -133,7 +133,9 @@ pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Examples:\n\
  ralph run loop --wait-when-blocked --wait-poll-ms 250\n\
  ralph run loop --wait-when-blocked --notify-when-unblocked";
 
-pub(super) const PARALLEL_AFTER_LONG_HELP: &str = "Examples:\n\
+pub(super) const PARALLEL_AFTER_LONG_HELP: &str = "Experimental direct-push parallel execution.\n\
+\n\
+Examples:\n\
  ralph run parallel status\n\
  ralph run parallel status --json\n\
  ralph run parallel retry --task RQ-0001";

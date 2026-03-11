@@ -17,14 +17,16 @@
 
 use crate::config;
 use crate::contracts::{
-    GitRevertMode, Model, PhaseOverrideConfig, PhaseOverrides, ReasoningEffort, Runner,
-    RunnerCliOptionsPatch,
+    GitPublishMode, GitRevertMode, Model, PhaseOverrideConfig, PhaseOverrides, ReasoningEffort,
+    Runner, RunnerCliOptionsPatch,
 };
 use crate::runner;
 use anyhow::Result;
 
 use super::args::{AgentArgs, RunAgentArgs};
-use super::parse::{parse_git_revert_mode, parse_runner, parse_runner_cli_patch};
+use super::parse::{
+    parse_git_publish_mode, parse_git_revert_mode, parse_runner, parse_runner_cli_patch,
+};
 use super::repoprompt::{
     RepopromptFlags, repoprompt_flags_from_mode, resolve_repoprompt_flags_from_agent_config,
 };
@@ -73,7 +75,7 @@ pub struct AgentOverrides {
     pub repoprompt_plan_required: Option<bool>,
     pub repoprompt_tool_injection: Option<bool>,
     pub git_revert_mode: Option<GitRevertMode>,
-    pub git_commit_push_enabled: Option<bool>,
+    pub git_publish_mode: Option<GitPublishMode>,
     pub include_draft: Option<bool>,
     /// Enable/disable desktop notification on task completion.
     pub notify_on_complete: Option<bool>,
@@ -126,8 +128,10 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         None => None,
     };
 
-    let git_commit_push_enabled =
-        resolve_bool_flag!(args.git_commit_push_on, args.git_commit_push_off);
+    let git_publish_mode = match args.git_publish_mode.as_deref() {
+        Some(value) => Some(parse_git_publish_mode(value)?),
+        None => None,
+    };
     let include_draft = resolve_simple_flag!(args.include_draft);
 
     // Handle --quick flag: when set, override phases to 1 (single-pass execution)
@@ -153,7 +157,7 @@ pub fn resolve_run_agent_overrides(args: &RunAgentArgs) -> Result<AgentOverrides
         repoprompt_plan_required: repoprompt_override.map(|flags| flags.plan_required),
         repoprompt_tool_injection: repoprompt_override.map(|flags| flags.tool_injection),
         git_revert_mode,
-        git_commit_push_enabled,
+        git_publish_mode,
         include_draft,
         notify_on_complete,
         notify_on_fail,
@@ -203,7 +207,7 @@ pub fn resolve_agent_overrides(args: &AgentArgs) -> Result<AgentOverrides> {
         repoprompt_plan_required: repoprompt_override.map(|flags| flags.plan_required),
         repoprompt_tool_injection: repoprompt_override.map(|flags| flags.tool_injection),
         git_revert_mode: None,
-        git_commit_push_enabled: None,
+        git_publish_mode: None,
         include_draft: None,
         notify_on_complete: None,
         notify_on_fail: None,
@@ -290,8 +294,8 @@ mod tests {
     use super::*;
     use crate::agent::args::RunnerCliArgs;
     use crate::contracts::{
-        GitRevertMode, Model, ReasoningEffort, Runner, RunnerApprovalMode, RunnerPlanMode,
-        RunnerSandboxMode,
+        GitPublishMode, GitRevertMode, Model, ReasoningEffort, Runner, RunnerApprovalMode,
+        RunnerPlanMode, RunnerSandboxMode,
     };
 
     #[test]
@@ -311,7 +315,7 @@ mod tests {
         assert_eq!(overrides.repoprompt_plan_required, None);
         assert_eq!(overrides.repoprompt_tool_injection, None);
         assert_eq!(overrides.git_revert_mode, None);
-        assert_eq!(overrides.git_commit_push_enabled, None);
+        assert_eq!(overrides.git_publish_mode, None);
         assert_eq!(overrides.include_draft, None);
     }
 
@@ -330,7 +334,7 @@ mod tests {
         assert_eq!(overrides.repoprompt_plan_required, Some(true));
         assert_eq!(overrides.repoprompt_tool_injection, Some(true));
         assert_eq!(overrides.git_revert_mode, None);
-        assert_eq!(overrides.git_commit_push_enabled, None);
+        assert_eq!(overrides.git_publish_mode, None);
         assert_eq!(overrides.include_draft, None);
     }
 
@@ -397,8 +401,7 @@ mod tests {
             quick: false,
             repo_prompt: None,
             git_revert_mode: Some("enabled".to_string()),
-            git_commit_push_on: false,
-            git_commit_push_off: true,
+            git_publish_mode: Some("off".to_string()),
             include_draft: true,
             notify: false,
             no_notify: false,
@@ -424,7 +427,7 @@ mod tests {
         assert_eq!(overrides.reasoning_effort, Some(ReasoningEffort::High));
         assert_eq!(overrides.phases, Some(2));
         assert_eq!(overrides.git_revert_mode, Some(GitRevertMode::Enabled));
-        assert_eq!(overrides.git_commit_push_enabled, Some(false));
+        assert_eq!(overrides.git_publish_mode, Some(GitPublishMode::Off));
         assert_eq!(overrides.include_draft, Some(true));
     }
 
@@ -444,8 +447,7 @@ mod tests {
             quick: false,
             repo_prompt: None,
             git_revert_mode: None,
-            git_commit_push_on: false,
-            git_commit_push_off: false,
+            git_publish_mode: None,
             include_draft: false,
             notify: false,
             no_notify: false,
@@ -488,8 +490,7 @@ mod tests {
             quick: true,
             repo_prompt: None,
             git_revert_mode: None,
-            git_commit_push_on: false,
-            git_commit_push_off: false,
+            git_publish_mode: None,
             include_draft: false,
             notify: false,
             no_notify: false,
@@ -525,8 +526,7 @@ mod tests {
             quick: false,
             repo_prompt: None,
             git_revert_mode: None,
-            git_commit_push_on: false,
-            git_commit_push_off: false,
+            git_publish_mode: None,
             include_draft: false,
             notify: false,
             no_notify: false,
@@ -562,8 +562,7 @@ mod tests {
             quick: false,
             repo_prompt: None,
             git_revert_mode: None,
-            git_commit_push_on: false,
-            git_commit_push_off: false,
+            git_publish_mode: None,
             include_draft: false,
             notify: false,
             no_notify: false,
@@ -626,8 +625,7 @@ mod tests {
             quick: false,
             repo_prompt: None,
             git_revert_mode: None,
-            git_commit_push_on: false,
-            git_commit_push_off: false,
+            git_publish_mode: None,
             include_draft: false,
             notify: false,
             no_notify: false,
@@ -677,8 +675,7 @@ mod tests {
             quick: false,
             repo_prompt: None,
             git_revert_mode: None,
-            git_commit_push_on: false,
-            git_commit_push_off: false,
+            git_publish_mode: None,
             include_draft: false,
             notify: false,
             no_notify: false,
@@ -715,8 +712,7 @@ mod tests {
             quick: false,
             repo_prompt: None,
             git_revert_mode: None,
-            git_commit_push_on: false,
-            git_commit_push_off: false,
+            git_publish_mode: None,
             include_draft: false,
             notify: false,
             no_notify: false,

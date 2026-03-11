@@ -144,11 +144,52 @@ public extension Workspace {
         public let model: String?
         public let phases: Int?
         public let maxIterations: Int?
+        public let safety: RunnerSafetySummary?
 
-        public init(model: String? = nil, phases: Int? = nil, maxIterations: Int? = nil) {
+        public init(
+            model: String? = nil,
+            phases: Int? = nil,
+            maxIterations: Int? = nil,
+            safety: RunnerSafetySummary? = nil
+        ) {
             self.model = model
             self.phases = phases
             self.maxIterations = maxIterations
+            self.safety = safety
+        }
+    }
+
+    struct RunnerSafetySummary: Sendable, Equatable {
+        public let repoTrusted: Bool
+        public let dirtyRepo: Bool
+        public let gitPublishMode: String
+        public let approvalMode: String?
+        public let ciGateEnabled: Bool
+        public let gitRevertMode: String
+        public let parallelConfigured: Bool
+        public let executionInteractivity: String
+        public let interactiveApprovalSupported: Bool
+
+        public init(
+            repoTrusted: Bool,
+            dirtyRepo: Bool,
+            gitPublishMode: String,
+            approvalMode: String?,
+            ciGateEnabled: Bool,
+            gitRevertMode: String,
+            parallelConfigured: Bool,
+            executionInteractivity: String,
+            interactiveApprovalSupported: Bool
+        ) {
+            self.repoTrusted = repoTrusted
+            self.dirtyRepo = dirtyRepo
+            self.gitPublishMode = gitPublishMode
+            self.approvalMode = approvalMode
+            self.ciGateEnabled = ciGateEnabled
+            self.gitRevertMode = gitRevertMode
+            self.parallelConfigured = parallelConfigured
+            self.executionInteractivity = executionInteractivity
+            self.interactiveApprovalSupported = interactiveApprovalSupported
         }
     }
 }

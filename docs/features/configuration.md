@@ -55,7 +55,7 @@ Create this file manually. A minimal example:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "runner": "codex",
     "model": "gpt-5.4",
@@ -139,7 +139,7 @@ Ralph supports **JSON with Comments** (JSONC) for all configuration and queue fi
 ```jsonc
 {
   // Single-line comment
-  "version": 1,
+  "version": 2,
   
   /* 
    * Multi-line comment
@@ -163,8 +163,8 @@ Ralph preserves JSONC support for runtime-edited config and queue files. Comment
 
 ```jsonc
 {
-  // Schema version - must be 1
-  "version": 1,
+  // Schema version - must be 2
+  "version": 2,
   
   // Project type affects prompt defaults
   // Options: "code" | "docs"
@@ -206,7 +206,7 @@ The configuration root contains these main sections:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "project_type": "code",
   "agent": { /* ... */ },
   "parallel": { /* ... */ },
@@ -251,11 +251,11 @@ Override executable names/paths for each runner:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `claude_permission_mode` | `"accept_edits" \| "bypass_permissions"` | `"bypass_permissions"` | Claude permission handling |
+| `claude_permission_mode` | `"accept_edits" \| "bypass_permissions"` | `"accept_edits"` | Claude permission handling |
 | `git_revert_mode` | `"ask" \| "enabled" \| "disabled"` | `"ask"` | Auto-revert behavior on errors |
-| `git_commit_push_enabled` | `boolean` | `true` | Auto-commit and push after success |
+| `git_publish_mode` | `"off" \| "commit" \| "commit_and_push"` | `"off"` | Post-run git publication mode |
 
-> ⚠️ **Safety Warning**: `bypass_permissions` allows Claude to make edits without prompting. Use with caution.
+> ⚠️ **Safety Warning**: `bypass_permissions` allows Claude to make edits without prompting. The default-safe path uses `accept_edits`.
 
 ### CI Gate
 
@@ -312,16 +312,16 @@ Paths can be:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "runner": "claude",
     "model": "sonnet",
     "phases": 3,
     "iterations": 1,
     "reasoning_effort": "high",
-    "claude_permission_mode": "bypass_permissions",
+    "claude_permission_mode": "accept_edits",
     "git_revert_mode": "ask",
-    "git_commit_push_enabled": true,
+    "git_publish_mode": "commit_and_push",
     "ci_gate": {
       "enabled": true,
       "argv": ["make", "ci"]
@@ -580,7 +580,7 @@ The following PR-era keys were removed from parallel mode and are invalid in cur
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "parallel": {
     "workers": 3,
     "workspace_root": ".workspaces/my-repo/parallel",
@@ -646,7 +646,7 @@ Semantics:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "queue": {
     "file": ".ralph/queue.jsonc",
     "done_file": ".ralph/done.jsonc",
@@ -707,7 +707,7 @@ Project-local plugin settings and project-scope plugin directories require repo 
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "plugins": {
     "plugins": {
       "my.custom-runner": {
@@ -744,7 +744,7 @@ Profiles enable quick switching between workflow presets. A profile is an `Agent
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "profiles": {
     "fast-local": {
       "runner": "codex",
@@ -873,8 +873,8 @@ Note: Configuration validation happens implicitly when loading config. There is 
 ### Common Validation Errors
 
 ```
-Error: Unsupported config version: 2. Ralph requires version 1.
-Solution: Set "version": 1 in your config file.
+Error: Unsupported config version: 1. Ralph requires version 2.
+Solution: Set "version": 2 in your config file.
 
 Error: Invalid agent.phases: 5. Supported values are 1, 2, or 3.
 Solution: Change phases to 1, 2, or 3.
@@ -892,7 +892,7 @@ Here's a comprehensive example demonstrating all configuration sections:
 ```jsonc
 {
   // Schema version (required)
-  "version": 1,
+  "version": 2,
   
   // Project type affects prompt defaults
   "project_type": "code",
@@ -912,7 +912,7 @@ Here's a comprehensive example demonstrating all configuration sections:
     // Safety settings
     "claude_permission_mode": "bypass_permissions",
     "git_revert_mode": "ask",
-    "git_commit_push_enabled": true,
+    "git_publish_mode": "commit_and_push",
     
     // CI gate
     "ci_gate": {

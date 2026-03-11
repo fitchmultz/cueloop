@@ -24,7 +24,7 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
             #!/bin/sh
             if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "config" ] && [ "$4" = "resolve" ]; then
               cat <<'JSON'
-            {"version":1,"paths":{"repo_root":"PWD","queue_path":"PWD/.ralph/queue.jsonc","done_path":"PWD/.ralph/done.jsonc","project_config_path":"PWD/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"kimi-code/kimi-for-coding","phases":2,"iterations":3}}}
+            {"version":2,"paths":{"repo_root":"PWD","queue_path":"PWD/.ralph/queue.jsonc","done_path":"PWD/.ralph/done.jsonc","project_config_path":"PWD/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"kimi-code/kimi-for-coding","phases":2,"iterations":3}}}
             JSON
               exit 0
             fi
@@ -42,6 +42,41 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.maxIterations, 3)
     }
 
+    func test_loadRunnerConfiguration_decodesSafetySummary() async throws {
+        let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-config-safety-")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
+
+        let script = """
+            #!/bin/sh
+            if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "config" ] && [ "$4" = "resolve" ]; then
+              cat <<'JSON'
+            {"version":2,"paths":{"repo_root":"PWD","queue_path":"PWD/.ralph/queue.jsonc","done_path":"PWD/.ralph/done.jsonc","project_config_path":"PWD/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":false,"dirty_repo":true,"git_publish_mode":"commit_and_push","approval_mode":"yolo","ci_gate_enabled":false,"git_revert_mode":"disabled","parallel_configured":true,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"gpt-5.4","phases":3,"iterations":2,"git_publish_mode":"commit_and_push"}}}
+            JSON
+              exit 0
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try WorkspacePerformanceTestSupport.makeExecutableScript(in: tempDir, name: "mock-ralph-safety", body: script)
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.model, "gpt-5.4")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.phases, 3)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.maxIterations, 2)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.repoTrusted, false)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.dirtyRepo, true)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.gitPublishMode, "commit_and_push")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.approvalMode, "yolo")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.ciGateEnabled, false)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.gitRevertMode, "disabled")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.parallelConfigured, true)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.executionInteractivity, "noninteractive_streaming")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.interactiveApprovalSupported, false)
+    }
+
     func test_loadRunnerConfiguration_onFailure_clearsCurrentRunnerConfig() async throws {
         let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-config-failure-")
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }
@@ -49,7 +84,7 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
         let successScript = """
             #!/bin/sh
             if [ "$2" = "machine" ] && [ "$3" = "config" ] && [ "$4" = "resolve" ]; then
-              echo '{"version":1,"paths":{"repo_root":"PWD","queue_path":"PWD/.ralph/queue.jsonc","done_path":"PWD/.ralph/done.jsonc","project_config_path":"PWD/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"kimi-initial","phases":3,"iterations":2}}}'
+              echo '{"version":2,"paths":{"repo_root":"PWD","queue_path":"PWD/.ralph/queue.jsonc","done_path":"PWD/.ralph/done.jsonc","project_config_path":"PWD/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"kimi-initial","phases":3,"iterations":2}}}'
               exit 0
             fi
             exit 64
@@ -100,13 +135,13 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
             if [ "$2" = "machine" ] && [ "$3" = "config" ] && [ "$4" = "resolve" ]; then
               case "$PWD" in
               */workspace-a)
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"model-a","phases":1,"iterations":1}}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-a","phases":1,"iterations":1}}}'
                 ;;
               */workspace-b)
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"model-b","phases":2,"iterations":4}}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-b","phases":2,"iterations":4}}}'
                 ;;
               *)
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"model-unknown","phases":3,"iterations":9}}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-unknown","phases":3,"iterations":9}}}'
                 ;;
               esac
               exit 0
@@ -171,9 +206,9 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
             case "$*" in
             *"--no-color machine queue read"*)
               if [ "$workspace" = "a" ]; then
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-A","status":"todo","title":"Workspace A Task","priority":"high","tags":[],"created_at":"2026-03-05T00:00:00Z","updated_at":"2026-03-05T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-A","runnability":{}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-A","status":"todo","title":"Workspace A Task","priority":"high","tags":[],"created_at":"2026-03-05T00:00:00Z","updated_at":"2026-03-05T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-A","runnability":{}}'
               else
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-B","status":"todo","title":"Workspace B Task","priority":"medium","tags":[],"created_at":"2026-03-06T00:00:00Z","updated_at":"2026-03-06T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-B","runnability":{}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-B","status":"todo","title":"Workspace B Task","priority":"medium","tags":[],"created_at":"2026-03-06T00:00:00Z","updated_at":"2026-03-06T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-B","runnability":{}}'
               fi
               exit 0
               ;;
@@ -189,18 +224,18 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
 
             *"--no-color machine cli-spec"*)
               if [ "$workspace" = "a" ]; then
-                echo '{"version":1,"spec":{"version":1,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"task-a","path":["ralph","machine","task-a"],"about":"A","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}]}}}'
+                echo '{"version":2,"spec":{"version":2,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"task-a","path":["ralph","machine","task-a"],"about":"A","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}]}}}'
               else
-                echo '{"version":1,"spec":{"version":1,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"task-b","path":["ralph","machine","task-b"],"about":"B","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}]}}}'
+                echo '{"version":2,"spec":{"version":2,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"task-b","path":["ralph","machine","task-b"],"about":"B","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}]}}}'
               fi
               exit 0
               ;;
 
             *"--no-color machine config resolve"*)
               if [ "$workspace" = "a" ]; then
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"model-a","phases":1,"iterations":1}}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-a","phases":1,"iterations":1}}}'
               else
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"model-b","phases":2,"iterations":4}}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-b","phases":2,"iterations":4}}}'
               fi
               exit 0
               ;;
@@ -277,9 +312,9 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
             case "$*" in
             *"--no-color machine queue read"*)
               if [ "$workspace" = "a" ]; then
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-A","status":"todo","title":"Stale A Task","priority":"high","tags":[],"created_at":"2026-03-05T00:00:00Z","updated_at":"2026-03-05T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-A","runnability":{}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-A","status":"todo","title":"Stale A Task","priority":"high","tags":[],"created_at":"2026-03-05T00:00:00Z","updated_at":"2026-03-05T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-A","runnability":{}}'
               else
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-B","status":"todo","title":"Fresh B Task","priority":"medium","tags":[],"created_at":"2026-03-06T00:00:00Z","updated_at":"2026-03-06T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-B","runnability":{}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-B","status":"todo","title":"Fresh B Task","priority":"medium","tags":[],"created_at":"2026-03-06T00:00:00Z","updated_at":"2026-03-06T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-B","runnability":{}}'
               fi
               exit 0
               ;;
@@ -295,18 +330,18 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
 
             *"--no-color machine cli-spec"*)
               if [ "$workspace" = "a" ]; then
-                echo '{"version":1,"spec":{"version":1,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"stale-a","path":["ralph","machine","stale-a"],"about":"A","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}]}}}'
+                echo '{"version":2,"spec":{"version":2,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"stale-a","path":["ralph","machine","stale-a"],"about":"A","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}]}}}'
               else
-                echo '{"version":1,"spec":{"version":1,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"fresh-b","path":["ralph","machine","fresh-b"],"about":"B","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}]}}}'
+                echo '{"version":2,"spec":{"version":2,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"fresh-b","path":["ralph","machine","fresh-b"],"about":"B","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}]}}}'
               fi
               exit 0
               ;;
 
             *"--no-color machine config resolve"*)
               if [ "$workspace" = "a" ]; then
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"model-a-stale","phases":1,"iterations":1}}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-a-stale","phases":1,"iterations":1}}}'
               else
-                echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"model-b-fresh","phases":2,"iterations":2}}}'
+                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-b-fresh","phases":2,"iterations":2}}}'
               fi
               exit 0
               ;;
@@ -378,17 +413,17 @@ final class WorkspaceRunnerConfigurationTests: WorkspacePerformanceTestCase {
             fi
 
             if [ "$2" = "machine" ] && [ "$3" = "config" ] && [ "$4" = "resolve" ]; then
-              echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"config":{"agent":{"model":"runner-model","phases":1,"iterations":1}}}'
+              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"runner-model","phases":1,"iterations":1}}}'
               exit 0
             fi
 
             if [ "$2" = "machine" ] && [ "$3" = "cli-spec" ]; then
-              echo '{"version":1,"spec":{"version":1,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}}}'
+              echo '{"version":2,"spec":{"version":2,"root":{"name":"ralph","path":["ralph"],"about":null,"long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[{"name":"machine","path":["ralph","machine"],"about":"Machine","long_about":null,"after_long_help":null,"hidden":false,"args":[],"subcommands":[]}]}}}'
               exit 0
             fi
 
             if [ "$2" = "machine" ] && [ "$3" = "queue" ] && [ "$4" = "read" ]; then
-              echo '{"version":1,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":null,"runnability":{}}'
+              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":null,"runnability":{}}'
               exit 0
             fi
 

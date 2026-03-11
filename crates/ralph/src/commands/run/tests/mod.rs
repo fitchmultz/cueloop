@@ -108,7 +108,7 @@ pub fn resolved_with_agent_defaults(
                 argv: Some(vec!["make".to_string(), "ci".to_string()]),
             }),
             git_revert_mode: Some(GitRevertMode::Ask),
-            git_commit_push_enabled: Some(true),
+            git_publish_mode: Some(crate::contracts::GitPublishMode::CommitAndPush),
             notification: NotificationConfig {
                 enabled: Some(false),
                 ..NotificationConfig::default()
@@ -203,7 +203,7 @@ pub fn resolved_with_repo_root(repo_root: PathBuf) -> config::Resolved {
                 argv: Some(vec!["make".to_string(), "ci".to_string()]),
             }),
             git_revert_mode: Some(GitRevertMode::Ask),
-            git_commit_push_enabled: Some(true),
+            git_publish_mode: Some(crate::contracts::GitPublishMode::CommitAndPush),
             notification: NotificationConfig {
                 enabled: Some(false),
                 ..NotificationConfig::default()
@@ -349,7 +349,7 @@ pub fn resolved_with_notification_config(
                 argv: Some(vec!["make".to_string(), "ci".to_string()]),
             }),
             git_revert_mode: Some(GitRevertMode::Ask),
-            git_commit_push_enabled: Some(true),
+            git_publish_mode: Some(crate::contracts::GitPublishMode::CommitAndPush),
             notification: NotificationConfig {
                 enabled: Some(true),
                 notify_on_complete,
@@ -406,7 +406,7 @@ pub fn overrides_with_notifications(
         repoprompt_plan_required: None,
         repoprompt_tool_injection: None,
         git_revert_mode: None,
-        git_commit_push_enabled: None,
+        git_publish_mode: None,
         include_draft: None,
         notify_on_complete,
         notify_on_fail,
@@ -449,7 +449,7 @@ pub fn test_config_agent(
             argv: Some(vec!["make".to_string(), "ci".to_string()]),
         }),
         git_revert_mode: Some(GitRevertMode::Ask),
-        git_commit_push_enabled: Some(true),
+        git_publish_mode: Some(crate::contracts::GitPublishMode::CommitAndPush),
         notification: NotificationConfig::default(),
         webhook: crate::contracts::WebhookConfig::default(),
         runner_retry: RunnerRetryConfig::default(),
@@ -493,7 +493,7 @@ pub fn test_overrides_with_phases(
         repoprompt_plan_required: None,
         repoprompt_tool_injection: None,
         git_revert_mode: None,
-        git_commit_push_enabled: None,
+        git_publish_mode: None,
         include_draft: None,
         notify_on_complete: None,
         notify_on_fail: None,

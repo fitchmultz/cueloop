@@ -18,7 +18,7 @@ use super::orchestration::RunOneContext;
 use crate::agent::AgentOverrides;
 use crate::commands::run::{phases::PostRunMode, supervision::PushPolicy};
 use crate::config;
-use crate::contracts::GitRevertMode;
+use crate::contracts::{GitPublishMode, GitRevertMode};
 use crate::{promptflow, queue};
 use anyhow::Result;
 
@@ -76,10 +76,10 @@ pub(crate) fn prepare_run_one_context(
         .or(resolved.config.agent.git_revert_mode)
         .unwrap_or(GitRevertMode::Ask);
 
-    let git_commit_push_enabled = agent_overrides
-        .git_commit_push_enabled
-        .or(resolved.config.agent.git_commit_push_enabled)
-        .unwrap_or(true);
+    let git_publish_mode = agent_overrides
+        .git_publish_mode
+        .or_else(|| resolved.config.agent.effective_git_publish_mode())
+        .unwrap_or(GitPublishMode::Off);
 
     let push_policy = match lock_mode {
         QueueLockMode::AcquireAllowUpstream => PushPolicy::AllowCreateUpstream,
@@ -115,7 +115,7 @@ pub(crate) fn prepare_run_one_context(
         queue_file,
         done,
         git_revert_mode,
-        git_commit_push_enabled,
+        git_publish_mode,
         push_policy,
         post_run_mode,
         parallel_target_branch,

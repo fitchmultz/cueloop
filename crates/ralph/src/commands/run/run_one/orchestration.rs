@@ -42,7 +42,7 @@ pub(crate) struct RunOneContext {
     pub queue_file: crate::contracts::QueueFile,
     pub done: crate::contracts::QueueFile,
     pub git_revert_mode: crate::contracts::GitRevertMode,
-    pub git_commit_push_enabled: bool,
+    pub git_publish_mode: crate::contracts::GitPublishMode,
     pub push_policy: crate::commands::run::supervision::PushPolicy,
     pub post_run_mode: PostRunMode,
     /// Coordinator-selected base branch for parallel worker integration.
@@ -172,7 +172,7 @@ pub fn run_one_impl(
             .project_type
             .unwrap_or(crate::contracts::ProjectType::Code),
         ctx.git_revert_mode,
-        ctx.git_commit_push_enabled,
+        ctx.git_publish_mode,
         ctx.push_policy,
         revert_prompt,
         ctx.post_run_mode,

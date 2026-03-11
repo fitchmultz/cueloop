@@ -15,8 +15,9 @@
 //! - Invalid inputs return descriptive errors via anyhow.
 
 use crate::contracts::{
-    GitRevertMode, Runner, RunnerApprovalMode, RunnerCliOptionsPatch, RunnerOutputFormat,
-    RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity, UnsupportedOptionPolicy,
+    GitPublishMode, GitRevertMode, Runner, RunnerApprovalMode, RunnerCliOptionsPatch,
+    RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity,
+    UnsupportedOptionPolicy,
 };
 use anyhow::{Result, anyhow, bail};
 
@@ -42,6 +43,11 @@ pub fn parse_runner(value: &str) -> Result<Runner> {
 
 /// Parse git revert mode from a CLI string.
 pub fn parse_git_revert_mode(value: &str) -> Result<GitRevertMode> {
+    value.parse().map_err(|err: &str| anyhow!(err))
+}
+
+/// Parse git publish mode from a CLI string.
+pub fn parse_git_publish_mode(value: &str) -> Result<GitPublishMode> {
     value.parse().map_err(|err: &str| anyhow!(err))
 }
 

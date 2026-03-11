@@ -83,6 +83,8 @@ cd your-project
 ralph init
 ```
 
+`ralph init` writes the `0.3` config contract with `"version": 2`, safe defaults, and no automatic publish side effects. If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
+
 ### Interactive Wizard
 
 When you run `ralph init` in a terminal (TTY), it launches an interactive wizard that will:
@@ -439,7 +441,7 @@ A minimal effective configuration:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": {
     "runner": "codex",
     "model": "gpt-5.4",
@@ -448,7 +450,7 @@ A minimal effective configuration:
       "enabled": true,
       "argv": ["make", "ci"]
     },
-    "git_commit_push_enabled": false
+    "git_publish_mode": "off"
   },
   "queue": {
     "file": ".ralph/queue.jsonc",
@@ -473,7 +475,7 @@ A minimal effective configuration:
       "enabled": true,
       "argv": ["make", "ci"]
     },
-    "git_commit_push_enabled": false,  // Auto-commit/push on completion
+    "git_publish_mode": "off",    // off / commit / commit_and_push
     "git_revert_mode": "ask"      // ask/enabled/disabled
   }
 }
@@ -508,7 +510,14 @@ ralph config paths
 
 ### Configuration Profiles
 
-Ralph supports custom profiles for quick workflow switching:
+Ralph always includes two built-in profiles for quick workflow switching:
+
+| Profile | Runner posture | Publish mode | Use Case |
+|---------|----------------|--------------|----------|
+| `safe` | Safer approvals | `off` | Recommended default |
+| `power-user` | High-autonomy approvals | `commit_and_push` | Explicit opt-in |
+
+Ralph also supports custom profiles:
 
 | Profile | Runner | Model | Phases | Use Case |
 |---------|--------|-------|--------|----------|
@@ -518,6 +527,8 @@ Ralph supports custom profiles for quick workflow switching:
 Use a profile:
 
 ```bash
+ralph run one --profile safe
+ralph run one --profile power-user
 ralph run one --profile fast-local
 ralph scan --profile deep-review "security audit"
 ```
@@ -575,6 +586,7 @@ ralph queue archive
 | `ralph run one` | Run next task |
 | `ralph run one --id RQ-0001` | Run specific task |
 | `ralph run loop` | Run tasks continuously |
+| `ralph help-all` | Show core, advanced, and experimental commands |
 | `ralph task "title"` | Create new task |
 | `ralph queue list` | List all tasks |
 | `ralph queue next` | Show next runnable task |
@@ -653,7 +665,7 @@ git push
 ```json
 {
   "agent": {
-    "git_commit_push_enabled": true
+    "git_publish_mode": "commit_and_push"
   }
 }
 ```

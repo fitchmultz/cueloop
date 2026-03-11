@@ -227,7 +227,7 @@ mod tests {
         assert_eq!(done.version, 1);
         let raw_cfg = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
         let cfg: Config = serde_json::from_str(&raw_cfg)?;
-        assert_eq!(cfg.version, 1);
+        assert_eq!(cfg.version, 2);
         let readme_path = resolved.repo_root.join(".ralph/README.md");
         assert!(readme_path.exists());
         let readme_raw = std::fs::read_to_string(readme_path)?;
@@ -306,7 +306,7 @@ mod tests {
 }"#;
         std::fs::write(&resolved.done_path, done_json)?;
         let config_json = r#"{
-  "version": 1,
+  "version": 2,
   "queue": {
     "file": ".ralph/queue.jsonc"
   }
@@ -344,7 +344,7 @@ mod tests {
         std::fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
         std::fs::write(
             resolved.project_config_path.as_ref().unwrap(),
-            r#"{"version":1,"project_type":"docs"}"#,
+            r#"{"version":2,"project_type":"docs"}"#,
         )?;
         let report = run_init(
             &resolved,
@@ -484,7 +484,7 @@ mod tests {
         std::fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
         std::fs::write(
             resolved.project_config_path.as_ref().unwrap(),
-            r#"{"version":1,"project_type":"code"}"#,
+            r#"{"version":2,"project_type":"code"}"#,
         )?;
 
         let result = run_init(
@@ -532,7 +532,7 @@ mod tests {
         std::fs::write(&resolved.done_path, done_json)?;
         std::fs::write(
             resolved.project_config_path.as_ref().unwrap(),
-            r#"{"version":1,"project_type":"code"}"#,
+            r#"{"version":2,"project_type":"code"}"#,
         )?;
 
         let result = run_init(
@@ -624,7 +624,7 @@ mod tests {
         fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
         fs::write(
             resolved.project_config_path.as_ref().unwrap(),
-            r#"{"version":1}"#,
+            r#"{"version":2}"#,
         )?;
 
         let report = run_init(
