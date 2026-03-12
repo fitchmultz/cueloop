@@ -12,12 +12,14 @@
 //!
 //! Invariants/assumptions:
 //! - The default bundle identifier is `com.mitchfultz.ralph`.
+//! - Standard installed app locations are `/Applications/RalphMac.app` and
+//!   `~/Applications/RalphMac.app`.
 //! - Non-macOS platforms reject `ralph app open` with a clear error and non-zero exit.
 //! - URL scheme `ralph://` must be registered in the app's Info.plist.
 
 use anyhow::{Context, Result, bail};
 use std::ffi::OsString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[cfg(unix)]
@@ -27,12 +29,19 @@ use crate::cli::app::AppOpenArgs;
 use crate::runutil::{ManagedCommand, TimeoutClass, execute_checked_command};
 
 const DEFAULT_BUNDLE_ID: &str = "com.mitchfultz.ralph";
+const DEFAULT_APP_NAME: &str = "RalphMac.app";
 const GUI_CLI_BIN_ENV: &str = "RALPH_BIN_PATH";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct OpenCommandSpec {
     program: OsString,
     args: Vec<OsString>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LaunchTarget {
+    AppPath(PathBuf),
+    BundleId(String),
 }
 
 impl OpenCommandSpec {
@@ -43,13 +52,13 @@ impl OpenCommandSpec {
     }
 }
 
-fn execute_open_command(spec: &OpenCommandSpec) -> Result<()> {
+fn execute_launch_command(spec: &OpenCommandSpec) -> Result<()> {
     execute_checked_command(ManagedCommand::new(
         spec.to_command(),
-        "launch macOS app with open",
+        "launch macOS app",
         TimeoutClass::AppLaunch,
     ))
-    .context("spawn macOS `open` command for app launch")?;
+    .context("spawn macOS app launch command")?;
     Ok(())
 }
 
@@ -57,6 +66,20 @@ fn plan_open_command(
     is_macos: bool,
     args: &AppOpenArgs,
     cli_executable: Option<&Path>,
+) -> Result<OpenCommandSpec> {
+    plan_open_command_with_installed_path(
+        is_macos,
+        args,
+        cli_executable,
+        default_installed_app_path(),
+    )
+}
+
+fn plan_open_command_with_installed_path(
+    is_macos: bool,
+    args: &AppOpenArgs,
+    cli_executable: Option<&Path>,
+    installed_app_path: Option<PathBuf>,
 ) -> Result<OpenCommandSpec> {
     if !is_macos {
         bail!("`ralph app open` is macOS-only.");
@@ -72,26 +95,8 @@ fn plan_open_command(
         args_out.push(env_assignment_for_path(cli_executable));
     }
 
-    if let Some(path) = args.path.as_deref() {
-        ensure_exists(path)?;
-        args_out.push(OsString::from(path));
-        return Ok(OpenCommandSpec {
-            program: OsString::from("open"),
-            args: args_out,
-        });
-    }
-
-    let bundle_id = args
-        .bundle_id
-        .as_deref()
-        .unwrap_or(DEFAULT_BUNDLE_ID)
-        .trim();
-    if bundle_id.is_empty() {
-        bail!("Bundle id is empty.");
-    }
-
-    args_out.push(OsString::from("-b"));
-    args_out.push(OsString::from(bundle_id));
+    let launch_target = resolve_launch_target(args, installed_app_path)?;
+    append_open_launch_target_args(&mut args_out, &launch_target);
 
     Ok(OpenCommandSpec {
         program: OsString::from("open"),
@@ -108,14 +113,107 @@ fn ensure_exists(path: &Path) -> Result<()> {
 }
 
 /// Plan the URL command to send workspace context.
-fn plan_url_command(workspace: &Path) -> Result<OpenCommandSpec> {
+fn plan_url_command(workspace: &Path, args: &AppOpenArgs) -> Result<OpenCommandSpec> {
+    plan_url_command_with_installed_path(workspace, args, default_installed_app_path())
+}
+
+fn plan_url_command_with_installed_path(
+    workspace: &Path,
+    args: &AppOpenArgs,
+    installed_app_path: Option<PathBuf>,
+) -> Result<OpenCommandSpec> {
     let encoded_path = percent_encode_path(workspace);
     let url = format!("ralph://open?workspace={}", encoded_path);
+    let launch_target = resolve_launch_target(args, installed_app_path)?;
 
-    Ok(OpenCommandSpec {
-        program: OsString::from("open"),
-        args: vec![OsString::from(url)],
+    Ok(match launch_target {
+        LaunchTarget::AppPath(path) => plan_applescript_url_command(&path, &url),
+        LaunchTarget::BundleId(bundle_id) => OpenCommandSpec {
+            program: OsString::from("open"),
+            args: vec![
+                OsString::from("-b"),
+                OsString::from(bundle_id),
+                OsString::from(url),
+            ],
+        },
     })
+}
+
+fn resolve_launch_target(
+    args: &AppOpenArgs,
+    installed_app_path: Option<PathBuf>,
+) -> Result<LaunchTarget> {
+    if let Some(path) = args.path.as_deref() {
+        ensure_exists(path)?;
+        return Ok(LaunchTarget::AppPath(path.to_path_buf()));
+    }
+
+    if let Some(bundle_id) = args.bundle_id.as_deref() {
+        let bundle_id = bundle_id.trim();
+        if bundle_id.is_empty() {
+            bail!("Bundle id is empty.");
+        }
+
+        return Ok(LaunchTarget::BundleId(bundle_id.to_string()));
+    }
+
+    if let Some(path) = installed_app_path {
+        return Ok(LaunchTarget::AppPath(path));
+    }
+
+    let bundle_id = DEFAULT_BUNDLE_ID.trim();
+    if bundle_id.is_empty() {
+        bail!("Bundle id is empty.");
+    }
+
+    Ok(LaunchTarget::BundleId(bundle_id.to_string()))
+}
+
+fn append_open_launch_target_args(args_out: &mut Vec<OsString>, launch_target: &LaunchTarget) {
+    match launch_target {
+        LaunchTarget::AppPath(path) => {
+            args_out.push(OsString::from("-a"));
+            args_out.push(path.as_os_str().to_os_string());
+        }
+        LaunchTarget::BundleId(bundle_id) => {
+            args_out.push(OsString::from("-b"));
+            args_out.push(OsString::from(bundle_id));
+        }
+    }
+}
+
+fn plan_applescript_url_command(app_path: &Path, url: &str) -> OpenCommandSpec {
+    OpenCommandSpec {
+        program: OsString::from("osascript"),
+        args: vec![
+            OsString::from("-e"),
+            OsString::from("on run argv"),
+            OsString::from("-e"),
+            OsString::from("tell application (item 1 of argv) to open location (item 2 of argv)"),
+            OsString::from("-e"),
+            OsString::from("end run"),
+            app_path.as_os_str().to_os_string(),
+            OsString::from(url),
+        ],
+    }
+}
+
+fn default_installed_app_path() -> Option<PathBuf> {
+    installed_app_candidates()
+        .into_iter()
+        .find(|candidate| candidate.exists())
+}
+
+fn installed_app_candidates() -> Vec<PathBuf> {
+    installed_app_candidates_for_home(std::env::var_os("HOME").map(PathBuf::from))
+}
+
+fn installed_app_candidates_for_home(home: Option<PathBuf>) -> Vec<PathBuf> {
+    let mut candidates = vec![PathBuf::from("/Applications").join(DEFAULT_APP_NAME)];
+    if let Some(home) = home {
+        candidates.push(home.join("Applications").join(DEFAULT_APP_NAME));
+    }
+    candidates
 }
 
 fn current_executable_for_gui() -> Option<std::path::PathBuf> {
@@ -186,12 +284,12 @@ pub fn open(args: AppOpenArgs) -> Result<()> {
     let cli_executable = current_executable_for_gui();
 
     let spec = if let Some(workspace_path) = resolve_workspace_path(&args)? {
-        plan_url_command(&workspace_path)?
+        plan_url_command(&workspace_path, &args)?
     } else {
         plan_open_command(cfg!(target_os = "macos"), &args, cli_executable.as_deref())?
     };
 
-    execute_open_command(&spec)
+    execute_launch_command(&spec)
 }
 
 #[cfg(test)]
@@ -217,27 +315,22 @@ mod tests {
     }
 
     #[test]
-    fn plan_open_command_default_bundle_id_uses_open_b() -> anyhow::Result<()> {
-        let args = AppOpenArgs {
-            bundle_id: None,
-            path: None,
-            workspace: None,
-        };
+    fn installed_app_candidates_prioritize_system_then_home() {
+        let home = PathBuf::from("/Users/tester");
+        let candidates = installed_app_candidates_for_home(Some(home.clone()));
 
-        let spec = plan_open_command(true, &args, None)?;
-        assert_eq!(spec.program, OsString::from("open"));
         assert_eq!(
-            spec.args,
+            candidates,
             vec![
-                OsStr::new("-b").to_os_string(),
-                OsStr::new(DEFAULT_BUNDLE_ID).to_os_string()
+                PathBuf::from("/Applications").join(DEFAULT_APP_NAME),
+                home.join("Applications").join(DEFAULT_APP_NAME),
             ]
         );
-        Ok(())
     }
 
     #[test]
-    fn plan_open_command_bundle_id_override_uses_open_b() -> anyhow::Result<()> {
+    fn plan_open_command_bundle_id_override_uses_open_b_when_no_installed_app() -> anyhow::Result<()>
+    {
         let args = AppOpenArgs {
             bundle_id: Some("com.example.override".to_string()),
             path: None,
@@ -257,7 +350,7 @@ mod tests {
     }
 
     #[test]
-    fn plan_open_command_path_uses_open_path() -> anyhow::Result<()> {
+    fn plan_open_command_path_uses_open_a() -> anyhow::Result<()> {
         let temp = tempfile::tempdir()?;
         let app_dir = temp.path().join("Ralph.app");
         std::fs::create_dir_all(&app_dir)?;
@@ -270,7 +363,35 @@ mod tests {
 
         let spec = plan_open_command(true, &args, None)?;
         assert_eq!(spec.program, OsString::from("open"));
-        assert_eq!(spec.args, vec![app_dir.as_os_str().to_os_string()]);
+        assert_eq!(
+            spec.args,
+            vec![
+                OsStr::new("-a").to_os_string(),
+                app_dir.as_os_str().to_os_string()
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn plan_open_command_default_prefers_injected_installed_app_path() -> anyhow::Result<()> {
+        let app_dir = PathBuf::from("/tmp/test/Applications").join(DEFAULT_APP_NAME);
+        let args = AppOpenArgs {
+            bundle_id: None,
+            path: None,
+            workspace: None,
+        };
+
+        let spec = plan_open_command_with_installed_path(true, &args, None, Some(app_dir.clone()))?;
+
+        assert_eq!(spec.program, OsString::from("open"));
+        assert_eq!(
+            spec.args,
+            vec![
+                OsStr::new("-a").to_os_string(),
+                app_dir.as_os_str().to_os_string()
+            ]
+        );
         Ok(())
     }
 
@@ -292,12 +413,20 @@ mod tests {
     #[test]
     fn plan_url_command_encodes_workspace() -> anyhow::Result<()> {
         let workspace = PathBuf::from("/Users/test/my project");
-        let spec = plan_url_command(&workspace)?;
+        let spec = plan_url_command_with_installed_path(
+            &workspace,
+            &AppOpenArgs {
+                bundle_id: None,
+                path: None,
+                workspace: None,
+            },
+            Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
+        )?;
 
-        assert_eq!(spec.program, OsString::from("open"));
-        assert_eq!(spec.args.len(), 1);
+        assert_eq!(spec.program, OsString::from("osascript"));
+        assert_eq!(spec.args.len(), 8);
 
-        let url = spec.args[0].to_str().unwrap();
+        let url = spec.args[7].to_str().unwrap();
         assert!(url.starts_with("ralph://open?workspace="));
         assert!(
             url.contains("my%20project"),
@@ -309,9 +438,17 @@ mod tests {
     #[test]
     fn plan_url_command_handles_special_chars() -> anyhow::Result<()> {
         let workspace = PathBuf::from("/path/with&special=chars");
-        let spec = plan_url_command(&workspace)?;
+        let spec = plan_url_command_with_installed_path(
+            &workspace,
+            &AppOpenArgs {
+                bundle_id: None,
+                path: None,
+                workspace: None,
+            },
+            Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
+        )?;
 
-        let url = spec.args[0].to_str().unwrap();
+        let url = spec.args[7].to_str().unwrap();
         assert!(url.contains("%26"), "& should be encoded as %26");
         assert!(url.contains("%3D"), "= should be encoded as %3D");
         Ok(())
@@ -372,19 +509,78 @@ mod tests {
         assert!(spec.args.len() >= 4);
         assert_eq!(spec.args[0], OsString::from("--env"));
         assert_eq!(spec.args[1], env_assignment_for_path(&cli));
-        assert_eq!(spec.args[2], OsString::from("-b"));
-        assert_eq!(spec.args[3], OsString::from(DEFAULT_BUNDLE_ID));
+        assert!(
+            spec.args[2] == OsString::from("-a") || spec.args[2] == OsString::from("-b"),
+            "unexpected launch args: {:?}",
+            spec.args
+        );
         Ok(())
     }
 
     #[test]
     fn plan_url_command_never_includes_cli_param() -> anyhow::Result<()> {
         let workspace = PathBuf::from("/Users/test/workspace");
-        let spec = plan_url_command(&workspace)?;
+        let spec = plan_url_command_with_installed_path(
+            &workspace,
+            &AppOpenArgs {
+                bundle_id: None,
+                path: None,
+                workspace: None,
+            },
+            Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
+        )?;
 
-        let url = spec.args[0].to_string_lossy();
+        let url = spec.args.last().unwrap().to_string_lossy();
         assert!(url.starts_with("ralph://open?workspace="));
         assert!(!url.contains("&cli="));
+        Ok(())
+    }
+
+    #[test]
+    fn plan_url_command_prefers_installed_app_path_over_bundle_lookup() -> anyhow::Result<()> {
+        let app_dir = PathBuf::from("/tmp/test/Applications").join(DEFAULT_APP_NAME);
+        let workspace = PathBuf::from("/Users/test/workspace");
+        let spec = plan_url_command_with_installed_path(
+            &workspace,
+            &AppOpenArgs {
+                bundle_id: None,
+                path: None,
+                workspace: None,
+            },
+            Some(app_dir.clone()),
+        )?;
+
+        assert_eq!(spec.program, OsString::from("osascript"));
+        assert_eq!(spec.args[6], app_dir.as_os_str().to_os_string());
+        assert!(
+            spec.args[7]
+                .to_string_lossy()
+                .starts_with("ralph://open?workspace=")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn plan_url_command_bundle_id_uses_open_launcher() -> anyhow::Result<()> {
+        let workspace = PathBuf::from("/Users/test/workspace");
+        let spec = plan_url_command_with_installed_path(
+            &workspace,
+            &AppOpenArgs {
+                bundle_id: Some("com.example.override".to_string()),
+                path: None,
+                workspace: None,
+            },
+            Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
+        )?;
+
+        assert_eq!(spec.program, OsString::from("open"));
+        assert_eq!(spec.args[0], OsString::from("-b"));
+        assert_eq!(spec.args[1], OsString::from("com.example.override"));
+        assert!(
+            spec.args[2]
+                .to_string_lossy()
+                .starts_with("ralph://open?workspace=")
+        );
         Ok(())
     }
 
@@ -399,7 +595,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn execute_open_command_surfaces_launcher_failure() {
+    fn execute_launch_command_surfaces_launcher_failure() {
         let spec = OpenCommandSpec {
             program: OsString::from("/bin/sh"),
             args: vec![
@@ -408,9 +604,9 @@ mod tests {
             ],
         };
 
-        let err = execute_open_command(&spec).expect_err("expected launcher failure");
+        let err = execute_launch_command(&spec).expect_err("expected launcher failure");
         let text = format!("{err:#}");
-        assert!(text.contains("spawn macOS `open` command for app launch"));
+        assert!(text.contains("spawn macOS app launch command"));
         assert!(text.contains("launch failed"));
     }
 
