@@ -51,7 +51,7 @@ final class WorkspaceQueueRuntime {
             return
         }
 
-        let watcher = QueueFileWatcher(workingDirectoryURL: workspace.identityState.workingDirectoryURL)
+        let watcher = QueueFileWatcher(targets: workspace.queueWatcherTargets)
         self.watcher = watcher
         workspace.updateWatcherHealth(.idle(for: workspace.identityState.workingDirectoryURL))
 
@@ -101,6 +101,26 @@ final class WorkspaceQueueRuntime {
     func restartWatching() {
         stopWatching()
         startWatchingIfNeeded()
+    }
+
+    func syncWatchTargetsIfNeeded() {
+        guard let workspace else { return }
+
+        guard workspace.hasRalphQueueFile else {
+            stopWatching()
+            workspace.updateWatcherHealth(.idle(for: workspace.identityState.workingDirectoryURL))
+            return
+        }
+
+        guard let watcher else {
+            startWatchingIfNeeded()
+            return
+        }
+
+        let targets = workspace.queueWatcherTargets
+        Task {
+            await watcher.updateTargets(targets)
+        }
     }
 
     func prepareForRepositoryRetarget() {

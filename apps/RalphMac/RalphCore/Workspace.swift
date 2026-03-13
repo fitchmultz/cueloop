@@ -371,5 +371,6 @@ extension Workspace {
 
     public func updateResolvedPaths(_ paths: MachineQueuePaths) {
         identityState.resolvedPaths = paths
+        queueRuntime.syncWatchTargetsIfNeeded()
     }
 }

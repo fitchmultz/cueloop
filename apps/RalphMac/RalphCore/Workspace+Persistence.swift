@@ -179,6 +179,15 @@ public extension Workspace {
         return identityState.workingDirectoryURL.appendingPathComponent(".ralph/config.jsonc", isDirectory: false)
     }
 
+    var queueWatcherTargets: QueueFileWatcher.WatchTargets {
+        QueueFileWatcher.WatchTargets(
+            workingDirectoryURL: identityState.workingDirectoryURL,
+            queueFileURL: queueFileURL,
+            doneFileURL: doneFileURL,
+            projectConfigFileURL: projectConfigFileURL
+        )
+    }
+
     var resolvedQueueFileURL: URL? {
         guard let path = identityState.resolvedPaths?.queuePath else { return nil }
         return URL(fileURLWithPath: path, isDirectory: false)

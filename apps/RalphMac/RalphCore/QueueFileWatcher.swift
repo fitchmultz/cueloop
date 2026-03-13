@@ -21,6 +21,55 @@ public import Foundation
 import CoreServices
 
 public final class QueueFileWatcher: Sendable {
+    public struct WatchTargets: Sendable, Equatable {
+        public let workingDirectoryURL: URL
+        public let queueFileURL: URL
+        public let doneFileURL: URL
+        public let projectConfigFileURL: URL?
+
+        public init(
+            workingDirectoryURL: URL,
+            queueFileURL: URL,
+            doneFileURL: URL,
+            projectConfigFileURL: URL?
+        ) {
+            self.workingDirectoryURL = Self.normalize(workingDirectoryURL)
+            self.queueFileURL = Self.normalize(queueFileURL)
+            self.doneFileURL = Self.normalize(doneFileURL)
+            self.projectConfigFileURL = projectConfigFileURL.map(Self.normalize)
+        }
+
+        public static func `default`(for workingDirectoryURL: URL) -> WatchTargets {
+            let baseURL = normalize(workingDirectoryURL)
+            return WatchTargets(
+                workingDirectoryURL: baseURL,
+                queueFileURL: baseURL.appendingPathComponent(".ralph/queue.jsonc", isDirectory: false),
+                doneFileURL: baseURL.appendingPathComponent(".ralph/done.jsonc", isDirectory: false),
+                projectConfigFileURL: baseURL.appendingPathComponent(".ralph/config.jsonc", isDirectory: false)
+            )
+        }
+
+        fileprivate var watchedFiles: [WatchedFileKind: URL] {
+            var files: [WatchedFileKind: URL] = [
+                .queue: queueFileURL,
+                .done: doneFileURL,
+            ]
+            if let projectConfigFileURL {
+                files[.config] = projectConfigFileURL
+            }
+            return files
+        }
+
+        fileprivate var watchedDirectories: [URL] {
+            Array(Set(watchedFiles.values.map { $0.deletingLastPathComponent().standardizedFileURL }))
+                .sorted { $0.path < $1.path }
+        }
+
+        private static func normalize(_ url: URL) -> URL {
+            url.standardizedFileURL.resolvingSymlinksInPath()
+        }
+    }
+
     public struct FileChangeBatch: Sendable, Equatable {
         public let fileNames: Set<String>
 
@@ -29,11 +78,11 @@ public final class QueueFileWatcher: Sendable {
         }
 
         public var affectsQueueSnapshot: Bool {
-            !fileNames.isDisjoint(with: ["queue.jsonc", "done.jsonc"])
+            !fileNames.isDisjoint(with: ["queue.json", "queue.jsonc", "done.json", "done.jsonc"])
         }
 
         public var affectsRunnerConfiguration: Bool {
-            !fileNames.isDisjoint(with: ["config.jsonc"])
+            !fileNames.isDisjoint(with: ["config.json", "config.jsonc"])
         }
 
         func merged(with other: FileChangeBatch) -> FileChangeBatch {
@@ -115,14 +164,37 @@ public final class QueueFileWatcher: Sendable {
         configuration: Configuration = Configuration()
     ) {
         self.init(
-            workingDirectoryURL: workingDirectoryURL,
+            targets: .default(for: workingDirectoryURL),
             configuration: configuration,
             system: .live
         )
     }
 
-    init(
+    convenience init(
+        targets: WatchTargets,
+        configuration: Configuration = Configuration()
+    ) {
+        self.init(
+            targets: targets,
+            configuration: configuration,
+            system: .live
+        )
+    }
+
+    convenience init(
         workingDirectoryURL: URL,
+        configuration: Configuration,
+        system: StreamSystem
+    ) {
+        self.init(
+            targets: .default(for: workingDirectoryURL),
+            configuration: configuration,
+            system: system
+        )
+    }
+
+    init(
+        targets: WatchTargets,
         configuration: Configuration,
         system: StreamSystem
     ) {
@@ -130,7 +202,7 @@ public final class QueueFileWatcher: Sendable {
         self.events = stream.stream
         self.continuation = stream.continuation
         self.runtime = QueueFileWatcherRuntime(
-            workingDirectoryURL: workingDirectoryURL,
+            targets: targets,
             configuration: configuration,
             system: system,
             emit: { stream.continuation.yield($0) }
@@ -154,7 +226,46 @@ public final class QueueFileWatcher: Sendable {
     }
 
     public func updateWorkingDirectory(_ url: URL) async {
-        await runtime.updateWorkingDirectory(url)
+        await runtime.updateTargets(.default(for: url))
+    }
+
+    public func updateTargets(_ targets: WatchTargets) async {
+        await runtime.updateTargets(targets)
+    }
+}
+
+private enum WatchedFileKind: Sendable, CaseIterable {
+    case queue
+    case done
+    case config
+}
+
+private struct WatchedFileSignature: Equatable, Sendable {
+    let exists: Bool
+    let fileSize: UInt64?
+    let modificationDate: Date?
+    let inode: UInt64?
+
+    static func current(at url: URL) -> WatchedFileSignature {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let fileSize = (attributes[.size] as? NSNumber)?.uint64Value
+            let modificationDate = attributes[.modificationDate] as? Date
+            let inode = (attributes[.systemFileNumber] as? NSNumber)?.uint64Value
+            return WatchedFileSignature(
+                exists: true,
+                fileSize: fileSize,
+                modificationDate: modificationDate,
+                inode: inode
+            )
+        } catch {
+            return WatchedFileSignature(
+                exists: false,
+                fileSize: nil,
+                modificationDate: nil,
+                inode: nil
+            )
+        }
     }
 }
 
@@ -192,13 +303,7 @@ private actor QueueFileWatcherRuntime {
     private let system: QueueFileWatcher.StreamSystem
     private let callbackQueue: DispatchQueue
     private let emit: @Sendable (QueueFileWatcher.Event) -> Void
-    private let relevantFiles = Set([
-        "queue.jsonc",
-        "done.jsonc",
-        "config.jsonc",
-    ])
-
-    private var workingDirectoryURL: URL
+    private var targets: QueueFileWatcher.WatchTargets
     private var stream: FSEventStreamRef?
     private var callbackContext: CallbackContext?
     private var shouldWatch = false
@@ -206,25 +311,28 @@ private actor QueueFileWatcherRuntime {
     private var debounceTask: Task<Void, Never>?
     private var retryTask: Task<Void, Never>?
     private var startAttempts = 0
+    private var lastKnownSignatures: [WatchedFileKind: WatchedFileSignature]
 
     init(
-        workingDirectoryURL: URL,
+        targets: QueueFileWatcher.WatchTargets,
         configuration: QueueFileWatcher.Configuration,
         system: QueueFileWatcher.StreamSystem,
         emit: @escaping @Sendable (QueueFileWatcher.Event) -> Void
     ) {
-        self.workingDirectoryURL = workingDirectoryURL
+        self.targets = targets
         self.configuration = configuration
         self.system = system
         self.callbackQueue = DispatchQueue(
-            label: "com.mitchfultz.ralph.filewatcher.\(workingDirectoryURL.lastPathComponent)"
+            label: "com.mitchfultz.ralph.filewatcher.\(targets.workingDirectoryURL.lastPathComponent)"
         )
         self.emit = emit
+        self.lastKnownSignatures = Self.captureSignatures(for: targets.watchedFiles)
     }
 
     func start() {
         guard !shouldWatch else { return }
         shouldWatch = true
+        lastKnownSignatures = Self.captureSignatures(for: targets.watchedFiles)
         emitHealth(.starting(attempt: max(startAttempts + 1, 1)))
         attemptStart()
     }
@@ -237,6 +345,7 @@ private actor QueueFileWatcherRuntime {
         debounceTask?.cancel()
         debounceTask = nil
         pendingChanges.removeAll()
+        lastKnownSignatures = Self.captureSignatures(for: targets.watchedFiles)
 
         if let stream {
             system.stop(stream)
@@ -247,10 +356,18 @@ private actor QueueFileWatcherRuntime {
         emitHealth(.stopped)
     }
 
-    func updateWorkingDirectory(_ url: URL) {
+    func updateTargets(_ targets: QueueFileWatcher.WatchTargets) {
+        guard self.targets != targets else {
+            if !shouldWatch {
+                emitHealth(.idle)
+            }
+            return
+        }
+
         let wasWatching = shouldWatch
         stop()
-        workingDirectoryURL = url
+        self.targets = targets
+        lastKnownSignatures = Self.captureSignatures(for: targets.watchedFiles)
         if wasWatching {
             start()
         } else {
@@ -261,7 +378,7 @@ private actor QueueFileWatcherRuntime {
     private func attemptStart() {
         guard shouldWatch, stream == nil else { return }
 
-        let queueDir = workingDirectoryURL.appendingPathComponent(".ralph", isDirectory: true)
+        let watchedDirectories = targets.watchedDirectories
         let context = CallbackContext { [weak self] paths, flags in
             guard let self else { return }
             Task {
@@ -284,7 +401,7 @@ private actor QueueFileWatcherRuntime {
         guard let createdStream = system.create(
             Self.callback,
             &streamContext,
-            [queueDir.path as NSString],
+            watchedDirectories.map(\.path) as [NSString],
             configuration.streamLatency,
             flags
         ) else {
@@ -304,7 +421,10 @@ private actor QueueFileWatcherRuntime {
         retryTask?.cancel()
         retryTask = nil
         emitHealth(.watching)
-        RalphLogger.shared.info("Started watching \(queueDir.path)", category: .fileWatching)
+        RalphLogger.shared.info(
+            "Started watching \(watchedDirectories.map(\.path).joined(separator: ", "))",
+            category: .fileWatching
+        )
     }
 
     private func handleStartFailure(reason: String) {
@@ -343,15 +463,9 @@ private actor QueueFileWatcherRuntime {
         flags: [FSEventStreamEventFlags]
     ) {
         guard shouldWatch, stream != nil else { return }
-
-        for (path, flag) in zip(paths, flags) {
-            let fileName = URL(fileURLWithPath: path).lastPathComponent
-            guard relevantFiles.contains(fileName) else { continue }
-            guard isRelevantChange(flag) else { continue }
-            pendingChanges.insert(fileName)
-        }
-
-        guard !pendingChanges.isEmpty else { return }
+        let changedKinds = changedFiles(paths: paths, flags: flags)
+        guard !changedKinds.isEmpty else { return }
+        pendingChanges.formUnion(changedKinds.map { fileName(for: $0) })
         scheduleDebounce()
     }
 
@@ -372,7 +486,7 @@ private actor QueueFileWatcherRuntime {
     }
 
     private func emitHealth(_ state: QueueWatcherHealth.State) {
-        emit(.healthChanged(QueueWatcherHealth(state: state, workingDirectoryURL: workingDirectoryURL)))
+        emit(.healthChanged(QueueWatcherHealth(state: state, workingDirectoryURL: targets.workingDirectoryURL)))
     }
 
     private func isRelevantChange(_ flag: FSEventStreamEventFlags) -> Bool {
@@ -380,6 +494,84 @@ private actor QueueFileWatcherRuntime {
             || (flag & UInt32(kFSEventStreamEventFlagItemCreated)) != 0
             || (flag & UInt32(kFSEventStreamEventFlagItemRenamed)) != 0
             || (flag & UInt32(kFSEventStreamEventFlagItemRemoved)) != 0
+    }
+
+    private func changedFiles(
+        paths: [String],
+        flags: [FSEventStreamEventFlags]
+    ) -> Set<WatchedFileKind> {
+        var changedKinds = Set<WatchedFileKind>()
+        var requiresSignatureScan = false
+
+        for (path, flag) in zip(paths, flags) {
+            guard isRelevantChange(flag) || requiresSignatureValidation(flag) else { continue }
+
+            let eventURL = URL(fileURLWithPath: path, isDirectory: false)
+                .standardizedFileURL
+                .resolvingSymlinksInPath()
+
+            if let directKind = watchedFileKind(for: eventURL), isRelevantChange(flag) {
+                changedKinds.insert(directKind)
+            }
+
+            if isWithinWatchedDirectory(eventURL) {
+                requiresSignatureScan = true
+            }
+        }
+
+        if requiresSignatureScan {
+            changedKinds.formUnion(scanForSignatureChanges())
+        } else if !changedKinds.isEmpty {
+            refreshSignatures(for: changedKinds)
+        }
+
+        return changedKinds
+    }
+
+    private func watchedFileKind(for url: URL) -> WatchedFileKind? {
+        targets.watchedFiles.first { $0.value == url }?.key
+    }
+
+    private func isWithinWatchedDirectory(_ url: URL) -> Bool {
+        let standardizedURL = url.standardizedFileURL.resolvingSymlinksInPath()
+        return targets.watchedDirectories.contains { directoryURL in
+            isSameOrDescendantPath(standardizedURL.path, of: directoryURL.path)
+        }
+    }
+
+    private func requiresSignatureValidation(_ flag: FSEventStreamEventFlags) -> Bool {
+        (flag & UInt32(kFSEventStreamEventFlagMustScanSubDirs)) != 0
+            || (flag & UInt32(kFSEventStreamEventFlagRootChanged)) != 0
+            || (flag & UInt32(kFSEventStreamEventFlagMount)) != 0
+            || (flag & UInt32(kFSEventStreamEventFlagUnmount)) != 0
+    }
+
+    private func scanForSignatureChanges() -> Set<WatchedFileKind> {
+        let currentSignatures = Self.captureSignatures(for: targets.watchedFiles)
+        let changedKinds = Set(currentSignatures.compactMap { kind, signature in
+            lastKnownSignatures[kind] == signature ? nil : kind
+        })
+        lastKnownSignatures = currentSignatures
+        return changedKinds
+    }
+
+    private func refreshSignatures(for kinds: Set<WatchedFileKind>) {
+        for kind in kinds {
+            guard let url = targets.watchedFiles[kind] else { continue }
+            lastKnownSignatures[kind] = WatchedFileSignature.current(at: url)
+        }
+    }
+
+    private func fileName(for kind: WatchedFileKind) -> String {
+        targets.watchedFiles[kind]?.lastPathComponent ?? kind.defaultFileName
+    }
+
+    private static func captureSignatures(
+        for watchedFiles: [WatchedFileKind: URL]
+    ) -> [WatchedFileKind: WatchedFileSignature] {
+        watchedFiles.reduce(into: [WatchedFileKind: WatchedFileSignature]()) { result, entry in
+            result[entry.key] = WatchedFileSignature.current(at: entry.value)
+        }
     }
 
     private func sleepUnlessCancelled(for duration: Duration) async -> Bool {
@@ -399,6 +591,26 @@ private actor QueueFileWatcherRuntime {
                 category: .fileWatching
             )
             return false
+        }
+    }
+
+    private func isSameOrDescendantPath(_ candidatePath: String, of directoryPath: String) -> Bool {
+        guard candidatePath == directoryPath || candidatePath.hasPrefix(directoryPath + "/") else {
+            return false
+        }
+        return true
+    }
+}
+
+private extension WatchedFileKind {
+    var defaultFileName: String {
+        switch self {
+        case .queue:
+            return "queue.jsonc"
+        case .done:
+            return "done.jsonc"
+        case .config:
+            return "config.jsonc"
         }
     }
 }

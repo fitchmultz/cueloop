@@ -145,6 +145,80 @@ final class WorkspaceTaskCreationTests: XCTestCase {
         XCTAssertEqual(workspace.taskState.lastQueueRefreshEvent?.highlightedTaskIDs.count, 2)
     }
 
+    func test_workspaceWatcherAtomicQueueReplacement_refreshesQueueGraphAndAnalytics() async throws {
+        let workspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-refresh-replace-")
+        defer { RalphCoreTestSupport.assertRemoved(workspaceURL) }
+
+        let client = try RalphCLIClient(executableURL: try Self.resolveRalphBinaryURL())
+        try await Self.runChecked(
+            client: client,
+            arguments: ["--no-color", "init", "--non-interactive"],
+            currentDirectoryURL: workspaceURL
+        )
+
+        let workspace = Workspace(workingDirectoryURL: workspaceURL, client: client)
+
+        let loadedEmptyState = await RalphCoreTestSupport.waitUntil(timeout: .seconds(10)) {
+            await MainActor.run {
+                workspace.taskState.tasks.isEmpty
+                    && workspace.insightsState.graphData?.summary.totalTasks == 0
+                    && workspace.insightsState.analytics.queueStatsValue?.summary.active == 0
+            }
+        }
+
+        XCTAssertTrue(loadedEmptyState)
+
+        let replacementURL = workspaceURL.appendingPathComponent("queue-replacement.jsonc", isDirectory: false)
+        try Self.writeQueueDocument(
+            to: replacementURL,
+            tasks: [
+                RalphTask(
+                    id: "RQ-9001",
+                    status: .todo,
+                    title: "Atomic replace task",
+                    priority: .high,
+                    tags: ["watcher", "replace"],
+                    createdAt: ISO8601DateFormatter().date(from: "2026-03-12T00:00:00Z"),
+                    updatedAt: ISO8601DateFormatter().date(from: "2026-03-12T00:00:00Z")
+                )
+            ]
+        )
+        defer { XCTAssertNoThrow(try Self.removeItemIfExists(replacementURL)) }
+
+        _ = try FileManager.default.replaceItemAt(
+            workspaceURL.appendingPathComponent(".ralph/queue.jsonc", isDirectory: false),
+            withItemAt: replacementURL
+        )
+
+        let queueRefreshed = await RalphCoreTestSupport.waitUntil(timeout: .seconds(10)) {
+            await MainActor.run {
+                workspace.taskState.tasks.map(\.id) == ["RQ-9001"]
+                    && workspace.taskState.lastQueueRefreshEvent?.source == .externalFileChange
+            }
+        }
+
+        let queueTaskIDs = await MainActor.run { workspace.taskState.tasks.map { $0.id } }
+        let refreshEvent = await MainActor.run { workspace.taskState.lastQueueRefreshEvent }
+        XCTAssertTrue(
+            queueRefreshed,
+            "queue tasks=\(queueTaskIDs) event=\(String(describing: refreshEvent))"
+        )
+
+        let derivedViewsRefreshed = await RalphCoreTestSupport.waitUntil(timeout: .seconds(10)) {
+            await MainActor.run {
+                workspace.insightsState.graphData?.summary.totalTasks == 1
+                    && workspace.insightsState.analytics.queueStatsValue?.summary.active == 1
+            }
+        }
+
+        let graphTotalTasks = await MainActor.run { workspace.insightsState.graphData?.summary.totalTasks }
+        let analyticsActiveCount = await MainActor.run { workspace.insightsState.analytics.queueStatsValue?.summary.active }
+        XCTAssertTrue(
+            derivedViewsRefreshed,
+            "graph=\(String(describing: graphTotalTasks)) analytics=\(String(describing: analyticsActiveCount))"
+        )
+    }
+
     func test_workspaceRetarget_refreshesQueueGraphAndAnalyticsForNewDirectory() async throws {
         let emptyWorkspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-retarget-empty-")
         let populatedWorkspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-retarget-populated-")
@@ -262,6 +336,49 @@ final class WorkspaceTaskCreationTests: XCTestCase {
         await fulfillment(of: [invertedNotification], timeout: 1.0)
     }
 
+    func test_queueFileWatcher_replaceItemAtQueueFileEmitsNotification() async throws {
+        let workspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-watcher-replace-")
+        defer { RalphCoreTestSupport.assertRemoved(workspaceURL) }
+
+        let ralphURL = try Self.prepareWatcherFixture(at: workspaceURL)
+        let queueURL = ralphURL.appendingPathComponent("queue.jsonc", isDirectory: false)
+        try Self.writeQueueDocument(
+            to: queueURL,
+            tasks: [
+                RalphTask(id: "RQ-INITIAL", status: .todo, title: "Initial", priority: .medium)
+            ]
+        )
+
+        let watcher = QueueFileWatcher(workingDirectoryURL: workspaceURL)
+        let notification = expectation(description: "watcher-replacement-notification")
+        let eventTask = Task {
+            for await event in watcher.events {
+                if case .filesChanged(let batch) = event,
+                   batch.fileNames.contains("queue.jsonc") {
+                    notification.fulfill()
+                    return
+                }
+            }
+        }
+
+        await watcher.start()
+
+        let replacementURL = workspaceURL.appendingPathComponent("queue-replacement.jsonc", isDirectory: false)
+        try Self.writeQueueDocument(
+            to: replacementURL,
+            tasks: [
+                RalphTask(id: "RQ-REPLACED", status: .todo, title: "Replacement", priority: .high)
+            ]
+        )
+        defer { XCTAssertNoThrow(try Self.removeItemIfExists(replacementURL)) }
+
+        _ = try FileManager.default.replaceItemAt(queueURL, withItemAt: replacementURL)
+
+        await fulfillment(of: [notification], timeout: 5.0)
+        eventTask.cancel()
+        await watcher.stop()
+    }
+
     func test_queueFileWatcher_surfacesFailureAfterRetryExhaustion() async throws {
         let workspaceURL = try Self.makeTempDir(prefix: "ralph-workspace-watcher-fail-")
         defer { RalphCoreTestSupport.assertRemoved(workspaceURL) }
@@ -328,6 +445,20 @@ final class WorkspaceTaskCreationTests: XCTestCase {
             encoding: .utf8
         )
         return ralphURL
+    }
+
+    private static func writeQueueDocument(to url: URL, tasks: [RalphTask]) throws {
+        let document = RalphTaskQueueDocument(tasks: tasks)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(document)
+        try data.write(to: url, options: .atomic)
+    }
+
+    private static func removeItemIfExists(_ url: URL) throws {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        try FileManager.default.removeItem(at: url)
     }
 
     private static func resolveRalphBinaryURL() throws -> URL {
