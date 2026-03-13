@@ -19,10 +19,18 @@ import AppKit
 import RalphCore
 
 @MainActor
+final class HostWindowReference {
+    weak var window: NSWindow?
+}
+
+@MainActor
 struct WindowViewContainer: View {
     private let manager = WorkspaceManager.shared
     @State private var windowState: WindowState?
-    @State private var hostWindow: NSWindow?
+    @State private var hostWindowReference = HostWindowReference()
+    @State private var resolvedHostWindowNumber: Int?
+    @State private var initialBootstrapTask: Task<Void, Never>?
+    @State private var didRunInitialBootstrap = false
     @State private var didResolveSceneWindowState = false
     @SceneStorage("windowStateID") private var persistedWindowStateID: String = ""
     @Environment(\.openWindow) private var openWindow
@@ -34,15 +42,14 @@ struct WindowViewContainer: View {
     var body: some View {
         Group {
             if let state = windowState {
-                WindowView(windowState: state, hostWindow: hostWindow)
+                WindowView(windowState: state, hostWindowReference: hostWindowReference)
                     .background(
                         WorkspaceWindowAnchor(
                             minimumSize: Self.minimumWorkspaceWindowSize,
                             uiTestingEnabled: Self.isUITestingLaunch,
                             onWindowResolved: { resolvedWindow in
-                                if hostWindow !== resolvedWindow {
-                                    hostWindow = resolvedWindow
-                                }
+                                hostWindowReference.window = resolvedWindow
+                                resolvedHostWindowNumber = resolvedWindow.windowNumber
                             }
                         )
                     )
@@ -51,11 +58,17 @@ struct WindowViewContainer: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task { @MainActor in
+        .onAppear {
             initializeWindowStateIfNeeded()
             UITestingWindowCoordinator.shared.configureIfNeeded()
             UITestingWindowCoordinator.shared.openAdditionalWindowIfNeeded(openWindow: openWindow)
-            SettingsService.initialize()
+        }
+        .task(id: resolvedHostWindowNumber) { @MainActor in
+            guard resolvedHostWindowNumber != nil else { return }
+            scheduleInitialBootstrap()
+        }
+        .onDisappear {
+            initialBootstrapTask?.cancel()
         }
     }
 
@@ -66,7 +79,6 @@ struct WindowViewContainer: View {
             windowState = uiTestingState
             persistedWindowStateID = ""
             didResolveSceneWindowState = true
-            performInitialWorkspaceHealthCheck(for: uiTestingState)
             return
         }
 
@@ -76,7 +88,6 @@ struct WindowViewContainer: View {
         persistedWindowStateID = claimedState.id.uuidString
         manager.saveWindowState(claimedState)
         didResolveSceneWindowState = true
-        performInitialWorkspaceHealthCheck(for: claimedState)
     }
 
     private func uiTestingWindowState() -> WindowState? {
@@ -99,11 +110,25 @@ struct WindowViewContainer: View {
             return
         }
 
-        Task { @MainActor in
-            _ = await workspace.checkHealth()
-            if workspace.diagnosticsState.cliHealthStatus?.isAvailable == false {
-                workspace.loadCachedTasks()
+        DispatchQueue.main.async {
+            Task { @MainActor in
+                _ = await workspace.checkHealth()
+                if workspace.diagnosticsState.cliHealthStatus?.isAvailable == false {
+                    workspace.loadCachedTasks()
+                }
             }
+        }
+    }
+
+    private func scheduleInitialBootstrap() {
+        guard !didRunInitialBootstrap, let state = windowState else { return }
+
+        didRunInitialBootstrap = true
+        initialBootstrapTask?.cancel()
+        initialBootstrapTask = Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            performInitialWorkspaceHealthCheck(for: state)
         }
     }
 }

@@ -26,8 +26,10 @@ import RalphCore
 struct WindowView: View {
     // Note: @State must be internal (not private) because WindowViewContainer initializes this view
     @State var windowState: WindowState
-    let hostWindow: NSWindow?
+    let hostWindowReference: HostWindowReference
     @ObservedObject private var manager = WorkspaceManager.shared
+    @State private var sceneSyncTask: Task<Void, Never>?
+    @State private var commandActions = WorkspaceWindowActions()
 
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
@@ -47,32 +49,30 @@ struct WindowView: View {
         .overlay(alignment: .topLeading) {
             WindowTabCountAccessibilityProbe(tabCount: windowState.workspaceIDs.count)
         }
-        .focusedSceneValue(\.workspaceWindowActions, focusedWindowActions)
+        .focusedSceneValue(\.workspaceWindowActions, commandActions)
         .onChange(of: windowState.workspaceIDs) { _, _ in
             validateAndPersistState()
-            registerWindowRouteActions()
+            scheduleSceneSync()
         }
         .onChange(of: windowState.selectedTabIndex) { _, _ in
-            updateFocusedWorkspace()
             persistState()
+            scheduleSceneSync()
         }
         .onAppear {
-            updateFocusedWorkspace()
-            registerWindowRouteActions()
-        }
-        .onChange(of: hostWindow?.windowNumber) { _, _ in
-            registerWindowRouteActions()
+            configureCommandActions()
+            scheduleSceneSync()
         }
         .onChange(of: manager.workspaces.map(\.id)) { _, _ in
             cleanupClosedWorkspaces()
         }
         .onDisappear {
+            sceneSyncTask?.cancel()
             manager.unregisterWindowRouteActions(for: windowState.id)
         }
     }
 
-    private var focusedWindowActions: WorkspaceWindowActions {
-        WorkspaceWindowActions(
+    private func configureCommandActions() {
+        commandActions.configure(
             newWindow: { openWindow(id: "main") },
             newTab: addNewTab,
             closeTab: closeActiveTab,
@@ -215,6 +215,16 @@ struct WindowView: View {
         manager.markWorkspaceActive(activeWorkspace())
     }
 
+    private func scheduleSceneSync() {
+        sceneSyncTask?.cancel()
+        sceneSyncTask = Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            updateFocusedWorkspace()
+            registerWindowRouteActions()
+        }
+    }
+
     private func registerWindowRouteActions() {
         manager.registerWindowRouteActions(
             for: windowState.id,
@@ -238,9 +248,8 @@ struct WindowView: View {
     }
 
     private func revealHostWindow() {
-        guard let hostWindow else { return }
+        guard let hostWindow = hostWindowReference.window else { return }
         hostWindow.collectionBehavior.insert(.moveToActiveSpace)
-        hostWindow.orderFrontRegardless()
         hostWindow.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

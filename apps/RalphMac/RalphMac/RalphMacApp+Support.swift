@@ -14,6 +14,7 @@
 
 import AppKit
 import Foundation
+import SwiftUI
 import RalphCore
 import UniformTypeIdentifiers
 
@@ -76,5 +77,50 @@ extension RalphMacApp {
         alert.informativeText = message
         alert.alertStyle = .informational
         alert.runModal()
+    }
+}
+
+@MainActor
+final class MainWindowService {
+    static let shared = MainWindowService()
+
+    private var openMainWindowHandler: (() -> Void)?
+
+    private init() {}
+
+    func register(openWindow: OpenWindowAction) {
+        openMainWindowHandler = { openWindow(id: "main") }
+    }
+
+    @discardableResult
+    func revealOrOpenPrimaryWindow() -> Bool {
+        if let window = workspaceWindows().first {
+            window.collectionBehavior.insert(.moveToActiveSpace)
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return true
+        }
+
+        guard let openMainWindowHandler else { return false }
+        openMainWindowHandler()
+        return true
+    }
+    private func workspaceWindows() -> [NSWindow] {
+        NSApp.windows
+            .filter { $0.identifier?.rawValue.contains("AppWindow") == true }
+            .sorted { $0.windowNumber < $1.windowNumber }
+    }
+}
+
+struct MainWindowOpenActionRegistrar: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .task {
+                MainWindowService.shared.register(openWindow: openWindow)
+            }
     }
 }

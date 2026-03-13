@@ -59,8 +59,17 @@ public extension WorkspaceManager {
     }
 
     func markWorkspaceActive(_ workspace: Workspace?) {
+        let newWorkspaceID = workspace?.id
+
+        if focusedWorkspace?.id == newWorkspaceID, lastActiveWorkspaceID == newWorkspaceID {
+            return
+        }
+
         guard let workspace,
               workspaces.contains(where: { $0.id == workspace.id }) else {
+            if focusedWorkspace == nil, lastActiveWorkspaceID == nil {
+                return
+            }
             focusedWorkspace = nil
             if let lastActiveWorkspaceID,
                !workspaces.contains(where: { $0.id == lastActiveWorkspaceID }) {

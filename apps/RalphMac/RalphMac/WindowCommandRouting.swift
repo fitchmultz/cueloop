@@ -32,31 +32,52 @@ enum WindowCommandRoute: String {
 }
 
 /// Focused-scene actions that mutate the active window's tab/window state.
-struct WorkspaceWindowActions {
-    let newWindow: () -> Void
-    let newTab: () -> Void
-    let closeTab: () -> Void
-    let closeWindow: () -> Void
-    let nextTab: () -> Void
-    let previousTab: () -> Void
-    let duplicateTab: () -> Void
+@MainActor
+final class WorkspaceWindowActions {
+    private var newWindowHandler: (() -> Void)?
+    private var newTabHandler: (() -> Void)?
+    private var closeTabHandler: (() -> Void)?
+    private var closeWindowHandler: (() -> Void)?
+    private var nextTabHandler: (() -> Void)?
+    private var previousTabHandler: (() -> Void)?
+    private var duplicateTabHandler: (() -> Void)?
+
+    init() {}
+
+    func configure(
+        newWindow: @escaping () -> Void,
+        newTab: @escaping () -> Void,
+        closeTab: @escaping () -> Void,
+        closeWindow: @escaping () -> Void,
+        nextTab: @escaping () -> Void,
+        previousTab: @escaping () -> Void,
+        duplicateTab: @escaping () -> Void
+    ) {
+        newWindowHandler = newWindow
+        newTabHandler = newTab
+        closeTabHandler = closeTab
+        closeWindowHandler = closeWindow
+        nextTabHandler = nextTab
+        previousTabHandler = previousTab
+        duplicateTabHandler = duplicateTab
+    }
 
     func perform(_ command: WindowCommandRoute) {
         switch command {
         case .newWindow:
-            newWindow()
+            newWindowHandler?()
         case .newTab:
-            newTab()
+            newTabHandler?()
         case .closeTab:
-            closeTab()
+            closeTabHandler?()
         case .closeWindow:
-            closeWindow()
+            closeWindowHandler?()
         case .nextTab:
-            nextTab()
+            nextTabHandler?()
         case .previousTab:
-            previousTab()
+            previousTabHandler?()
         case .duplicateTab:
-            duplicateTab()
+            duplicateTabHandler?()
         }
     }
 }
@@ -73,16 +94,77 @@ extension FocusedValues {
 }
 
 /// Workspace UI actions exposed to commands from the active scene.
-struct WorkspaceUIActions {
-    let showCommandPalette: () -> Void
-    let navigateToSection: (SidebarSection) -> Void
-    let toggleSidebar: () -> Void
-    let toggleTaskViewMode: () -> Void
-    let setTaskViewMode: (TaskViewMode) -> Void
-    let showTaskCreation: () -> Void
-    let showTaskDecompose: (String?) -> Void
-    let showTaskDetail: (String) -> Void
-    let startWorkOnSelectedTask: () -> Void
+@MainActor
+final class WorkspaceUIActions {
+    private var showCommandPaletteHandler: (() -> Void)?
+    private var navigateToSectionHandler: ((SidebarSection) -> Void)?
+    private var toggleSidebarHandler: (() -> Void)?
+    private var toggleTaskViewModeHandler: (() -> Void)?
+    private var setTaskViewModeHandler: ((TaskViewMode) -> Void)?
+    private var showTaskCreationHandler: (() -> Void)?
+    private var showTaskDecomposeHandler: ((String?) -> Void)?
+    private var showTaskDetailHandler: ((String) -> Void)?
+    private var startWorkOnSelectedTaskHandler: (() -> Void)?
+
+    init() {}
+
+    func configure(
+        showCommandPalette: @escaping () -> Void,
+        navigateToSection: @escaping (SidebarSection) -> Void,
+        toggleSidebar: @escaping () -> Void,
+        toggleTaskViewMode: @escaping () -> Void,
+        setTaskViewMode: @escaping (TaskViewMode) -> Void,
+        showTaskCreation: @escaping () -> Void,
+        showTaskDecompose: @escaping (String?) -> Void,
+        showTaskDetail: @escaping (String) -> Void,
+        startWorkOnSelectedTask: @escaping () -> Void
+    ) {
+        showCommandPaletteHandler = showCommandPalette
+        navigateToSectionHandler = navigateToSection
+        toggleSidebarHandler = toggleSidebar
+        toggleTaskViewModeHandler = toggleTaskViewMode
+        setTaskViewModeHandler = setTaskViewMode
+        showTaskCreationHandler = showTaskCreation
+        showTaskDecomposeHandler = showTaskDecompose
+        showTaskDetailHandler = showTaskDetail
+        startWorkOnSelectedTaskHandler = startWorkOnSelectedTask
+    }
+
+    func showCommandPalette() {
+        showCommandPaletteHandler?()
+    }
+
+    func navigateToSection(_ section: SidebarSection) {
+        navigateToSectionHandler?(section)
+    }
+
+    func toggleSidebar() {
+        toggleSidebarHandler?()
+    }
+
+    func toggleTaskViewMode() {
+        toggleTaskViewModeHandler?()
+    }
+
+    func setTaskViewMode(_ mode: TaskViewMode) {
+        setTaskViewModeHandler?(mode)
+    }
+
+    func showTaskCreation() {
+        showTaskCreationHandler?()
+    }
+
+    func showTaskDecompose(_ taskID: String?) {
+        showTaskDecomposeHandler?(taskID)
+    }
+
+    func showTaskDetail(_ taskID: String) {
+        showTaskDetailHandler?(taskID)
+    }
+
+    func startWorkOnSelectedTask() {
+        startWorkOnSelectedTaskHandler?()
+    }
 }
 
 private struct WorkspaceUIActionsKey: FocusedValueKey {

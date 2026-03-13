@@ -25,7 +25,10 @@ import RalphCore
 struct MenuBarContentView: View {
     @ObservedObject private var manager = WorkspaceManager.shared
     @ObservedObject private var menuBarManager = MenuBarManager.shared
-    
+
+    @AppStorage(MenuBarManager.visibilityDefaultsKey, store: RalphAppDefaults.userDefaults)
+    private var menuBarExtraVisible = true
+
     var body: some View {
         if let workspace = manager.effectiveWorkspace {
             menuContent(for: workspace)
@@ -126,18 +129,25 @@ struct MenuBarContentView: View {
     private func quickActionsSection(for workspace: Workspace) -> some View {
         Group {
             Button("Run Next Task") {
-                workspace.runNextTask()
+                withMenuDismissed {
+                    MainWindowService.shared.revealOrOpenPrimaryWindow()
+                    workspace.runNextTask()
+                }
             }
             .disabled(workspace.nextTask() == nil || workspace.runState.isRunning)
             
             Button("Quick Add Task...") {
-                manager.route(.showTaskCreation, to: workspace.id)
-                activateMainApp()
+                withMenuDismissed {
+                    manager.route(.showTaskCreation, to: workspace.id)
+                    MainWindowService.shared.revealOrOpenPrimaryWindow()
+                }
             }
 
             Button("Decompose Task...") {
-                manager.route(.showTaskDecompose(taskID: nil), to: workspace.id)
-                activateMainApp()
+                withMenuDismissed {
+                    manager.route(.showTaskDecompose(taskID: nil), to: workspace.id)
+                    MainWindowService.shared.revealOrOpenPrimaryWindow()
+                }
             }
         }
     }
@@ -168,16 +178,20 @@ struct MenuBarContentView: View {
     private func appActionsSection() -> some View {
         Group {
             Button("Open Ralph") {
-                activateMainApp()
+                openRalph()
             }
             
             Button("Settings...") {
-                activateMainApp()
-                SettingsService.showSettingsWindow()
+                SettingsService.showSettingsWindow(
+                    for: manager.effectiveWorkspace,
+                    source: .menuBar
+                )
             }
             .keyboardShortcut(",", modifiers: .command)
-            
-            Toggle("Show in Menu Bar", isOn: $menuBarManager.isMenuBarExtraVisible)
+
+            Button("Hide Menu Bar Icon") {
+                hideMenuBarExtra()
+            }
             
             Divider()
             
@@ -195,7 +209,7 @@ struct MenuBarContentView: View {
                 .font(.body)
             
             Button("Open Ralph") {
-                activateMainApp()
+                openRalph()
             }
             
             Divider()
@@ -229,14 +243,30 @@ struct MenuBarContentView: View {
     
     /// Activate the main app and show task detail
     private func showTaskDetail(_ taskID: String, workspaceID: UUID) {
-        manager.route(.showTaskDetail(taskID: taskID), to: workspaceID)
-        // Bring app to front
-        activateMainApp()
+        withMenuDismissed {
+            manager.route(.showTaskDetail(taskID: taskID), to: workspaceID)
+            MainWindowService.shared.revealOrOpenPrimaryWindow()
+        }
     }
-    
-    /// Activate the main app window
-    private func activateMainApp() {
-        NSApp.activate(ignoringOtherApps: true)
+
+    private func openRalph() {
+        withMenuDismissed {
+            MainWindowService.shared.revealOrOpenPrimaryWindow()
+        }
+    }
+
+    private func hideMenuBarExtra() {
+        withMenuDismissed {
+            menuBarExtraVisible = false
+        }
+    }
+
+    private func withMenuDismissed(_ action: @escaping @MainActor () -> Void) {
+        Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            action()
+        }
     }
 }
 

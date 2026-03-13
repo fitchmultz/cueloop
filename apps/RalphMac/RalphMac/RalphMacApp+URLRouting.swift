@@ -18,10 +18,18 @@ import AppKit
 import Foundation
 import RalphCore
 
-extension RalphMacApp {
-    func handleOpenURL(_ url: URL) {
+@MainActor
+enum RalphURLRouter {
+    static func handle(_ url: URL) {
         guard url.scheme == "ralph" else {
             RalphLogger.shared.info("Received URL with unexpected scheme: \(url.scheme ?? "nil")", category: .lifecycle)
+            return
+        }
+
+        if url.host == "settings" {
+            MainWindowService.shared.revealOrOpenPrimaryWindow()
+            SettingsService.showSettingsWindow(source: .appMenu)
+            RalphLogger.shared.info("Opened settings via ralph://settings", category: .lifecycle)
             return
         }
 
@@ -57,29 +65,37 @@ extension RalphMacApp {
             return
         }
 
-        if let existingWorkspace = manager.workspaces.first(where: { $0.matchesWorkingDirectory(workspaceURL) }) {
-            manager.revealWorkspace(existingWorkspace.id)
-            NSApp.activate(ignoringOtherApps: true)
+        if let existingWorkspace = WorkspaceManager.shared.workspaces.first(where: { $0.matchesWorkingDirectory(workspaceURL) }) {
+            revealWorkspaceAfterEnsuringWindow(existingWorkspace.id)
             RalphLogger.shared.info("Activated existing workspace: \(path)", category: .workspace)
             return
         }
 
         if let bootstrapWorkspace = bootstrapWorkspaceForURLOpen() {
             bootstrapWorkspace.setWorkingDirectory(workspaceURL)
-            manager.revealWorkspace(bootstrapWorkspace.id)
-            NSApp.activate(ignoringOtherApps: true)
+            revealWorkspaceAfterEnsuringWindow(bootstrapWorkspace.id)
             RalphLogger.shared.info("Repurposed bootstrap workspace for URL: \(path)", category: .workspace)
             return
         }
 
-        let workspace = manager.createWorkspace(workingDirectory: workspaceURL)
-        manager.revealWorkspace(workspace.id)
-        NSApp.activate(ignoringOtherApps: true)
+        let workspace = WorkspaceManager.shared.createWorkspace(workingDirectory: workspaceURL)
+        revealWorkspaceAfterEnsuringWindow(workspace.id)
         RalphLogger.shared.info("Created new workspace from URL: \(path)", category: .workspace)
     }
 
-    func bootstrapWorkspaceForURLOpen() -> Workspace? {
+    static func bootstrapWorkspaceForURLOpen() -> Workspace? {
+        let manager = WorkspaceManager.shared
         guard manager.workspaces.count == 1, let workspace = manager.workspaces.first else { return nil }
         return workspace.isURLRoutingPlaceholderWorkspace ? workspace : nil
+    }
+
+    private static func revealWorkspaceAfterEnsuringWindow(_ workspaceID: UUID) {
+        MainWindowService.shared.revealOrOpenPrimaryWindow()
+
+        Task { @MainActor in
+            await Task.yield()
+            WorkspaceManager.shared.revealWorkspace(workspaceID)
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 }

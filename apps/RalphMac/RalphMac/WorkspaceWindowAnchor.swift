@@ -84,29 +84,47 @@ final class UITestingWindowCoordinator {
 struct WorkspaceWindowAnchor: NSViewRepresentable {
     let minimumSize: NSSize
     let uiTestingEnabled: Bool
-    let onWindowResolved: @MainActor (NSWindow) -> Void
+    let onWindowResolved: (NSWindow) -> Void
+
+    final class Coordinator {
+        private var resolvedWindowNumbers = Set<Int>()
+
+        @MainActor
+        func markResolved(_ window: NSWindow) -> Bool {
+            resolvedWindowNumbers.insert(window.windowNumber).inserted
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
     func makeNSView(context: Context) -> NSView {
         NSView(frame: .zero)
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        Task { @MainActor in
+        DispatchQueue.main.async {
             guard let window = nsView.window else { return }
-            configure(window: window)
+            configure(window: window, coordinator: context.coordinator)
         }
     }
 
-    private func configure(window: NSWindow) {
+    private func configure(window: NSWindow, coordinator: Coordinator) {
         applyMinimumSize(to: window)
         configureWindowBehavior(window)
-        stabilizeVisiblePlacement(for: window)
-
         onWindowResolved(window)
 
         if uiTestingEnabled {
             applyUITestingPlacement(to: window)
             UITestingWindowCoordinator.shared.enforceExpectedWindowCount()
+            return
+        }
+
+        if coordinator.markResolved(window) {
+            applyInitialPlacement(to: window)
+        } else {
+            stabilizeVisiblePlacement(for: window)
         }
     }
 
@@ -116,13 +134,15 @@ struct WorkspaceWindowAnchor: NSViewRepresentable {
     }
 
     private func stabilizeVisiblePlacement(for window: NSWindow) {
-        guard !uiTestingEnabled else { return }
         guard requiresVisibleFrameReset(window) else { return }
 
         window.setFrame(centeredFrame(for: window), display: true)
-        window.orderFrontRegardless()
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        reveal(window)
+    }
+
+    private func applyInitialPlacement(to window: NSWindow) {
+        window.setFrame(centeredFrame(for: window, preferredScreen: preferredLaunchScreen()), display: true)
+        reveal(window)
     }
 
     private func requiresVisibleFrameReset(_ window: NSWindow) -> Bool {
@@ -147,8 +167,8 @@ struct WorkspaceWindowAnchor: NSViewRepresentable {
         max(180, min(frame.height * 0.4, frame.height))
     }
 
-    private func centeredFrame(for window: NSWindow) -> NSRect {
-        let targetVisibleFrame = (window.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame
+    private func centeredFrame(for window: NSWindow, preferredScreen: NSScreen? = nil) -> NSRect {
+        let targetVisibleFrame = (preferredScreen ?? window.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame
             ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let minimumFrameSize = window.frameRect(forContentRect: NSRect(origin: .zero, size: minimumSize)).size
         let width = max(minimumFrameSize.width, min(1400, targetVisibleFrame.width - 80))
@@ -211,9 +231,24 @@ struct WorkspaceWindowAnchor: NSViewRepresentable {
         }
 
         window.setFrame(NSRect(origin: origin, size: NSSize(width: width, height: height)), display: true)
-        window.orderFrontRegardless()
-        NSApp.activate(ignoringOtherApps: true)
+        reveal(window)
+    }
+
+    private func reveal(_ window: NSWindow) {
         window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func activeScreen() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+    }
+
+    private func preferredLaunchScreen() -> NSScreen? {
+        NSScreen.screens.first(where: { $0.frame.origin == .zero })
+            ?? activeScreen()
     }
 
     private func applyMinimumSize(to window: NSWindow) {

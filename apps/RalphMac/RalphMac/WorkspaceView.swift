@@ -33,6 +33,7 @@ struct WorkspaceView: View {
     @State private var showingTaskDecompose: Bool = false
     @State private var showingOperationalHealth = false
     @State private var taskDecomposeContext = TaskDecomposeView.PresentationContext()
+    @State private var commandActions = WorkspaceUIActions()
     @FocusedValue(\.workspaceWindowActions) private var workspaceWindowActions
     private let manager = WorkspaceManager.shared
 
@@ -72,7 +73,7 @@ struct WorkspaceView: View {
         }
         .frame(minWidth: 1200, minHeight: 640)
         .background(.clear)
-        .focusedSceneValue(\.workspaceUIActions, focusedWorkspaceUIActions)
+        .focusedSceneValue(\.workspaceUIActions, commandActions)
         .sheet(isPresented: showErrorRecoveryBinding) { errorRecoverySheet() }
         .sheet(isPresented: $showingCommandPalette) { commandPaletteSheet() }
         .sheet(isPresented: $showingTaskCreation) {
@@ -83,6 +84,7 @@ struct WorkspaceView: View {
         }
         .sheet(isPresented: $showingOperationalHealth) { operationalHealthSheet() }
         .onAppear {
+            configureCommandActions()
             registerWorkspaceRouteActions()
         }
         .onChange(of: workspace.identityState.retargetRevision) { _, _ in
@@ -95,8 +97,8 @@ struct WorkspaceView: View {
 
     // MARK: - Focused Actions
 
-    private var focusedWorkspaceUIActions: WorkspaceUIActions {
-        WorkspaceUIActions(
+    private func configureCommandActions() {
+        commandActions.configure(
             showCommandPalette: { showingCommandPalette = true },
             navigateToSection: { section in
                 navigation.navigate(to: section)
@@ -331,7 +333,7 @@ struct WorkspaceView: View {
     private func commandPaletteSheet() -> some View {
         CommandPaletteView(
             windowActions: workspaceWindowActions,
-            workspaceUIActions: focusedWorkspaceUIActions
+            workspaceUIActions: commandActions
         )
             .frame(minWidth: 640, minHeight: 300)
     }
