@@ -22,12 +22,16 @@ import RalphCore
 struct RalphMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
-    let manager = WorkspaceManager.shared
     @State private var menuBarManager = MenuBarManager.shared
     @State private var uiTestingMenuBarVisible = false
     let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
 
+    var manager: WorkspaceManager {
+        WorkspaceManager.shared
+    }
+
     init() {
+        _ = RalphAppDefaults.prepareForLaunch()
         CrashReporter.shared.install()
     }
 
@@ -40,7 +44,6 @@ struct RalphMacApp: App {
                 )
                 .onOpenURL(perform: handleOpenURL)
         }
-        .handlesExternalEvents(matching: ["ralph"])
         .restorationBehavior(.disabled)
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))

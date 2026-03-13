@@ -19,12 +19,14 @@
  */
 
 import SwiftUI
+import AppKit
 import RalphCore
 
 @MainActor
 struct WindowView: View {
     // Note: @State must be internal (not private) because WindowViewContainer initializes this view
     @State var windowState: WindowState
+    let hostWindow: NSWindow?
     @ObservedObject private var manager = WorkspaceManager.shared
 
     @Environment(\.openWindow) private var openWindow
@@ -56,6 +58,9 @@ struct WindowView: View {
         }
         .onAppear {
             updateFocusedWorkspace()
+            registerWindowRouteActions()
+        }
+        .onChange(of: hostWindow?.windowNumber) { _, _ in
             registerWindowRouteActions()
         }
         .onChange(of: manager.workspaces.map(\.id)) { _, _ in
@@ -226,9 +231,18 @@ struct WindowView: View {
                     guard !windowState.workspaceIDs.contains(workspaceID) else { return }
                     windowState.workspaceIDs.append(workspaceID)
                 },
+                revealWindow: revealHostWindow,
                 persistState: persistState
             )
         )
+    }
+
+    private func revealHostWindow() {
+        guard let hostWindow else { return }
+        hostWindow.collectionBehavior.insert(.moveToActiveSpace)
+        hostWindow.orderFrontRegardless()
+        hostWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
 

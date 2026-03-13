@@ -77,6 +77,8 @@ public enum RalphAppDefaults {
             return RalphAppLaunchPreparationResult(persistenceIssue: nil)
         }
 
+        clearAppWindowFrameState()
+
         return RalphAppLaunchPreparationResult(
             persistenceIssue: pruneUITestingStateFromProductionDefaults()
         )
@@ -85,6 +87,17 @@ public enum RalphAppDefaults {
     private static func resetUITestingDefaults() {
         guard let suiteDefaults = UserDefaults(suiteName: uiTestingDomainIdentifier) else { return }
         suiteDefaults.removePersistentDomain(forName: uiTestingDomainIdentifier)
+    }
+
+    private static func clearAppWindowFrameState() {
+        let defaults = UserDefaults.standard
+        let frameKeys = defaults.dictionaryRepresentation().keys.filter { key in
+            key.hasPrefix("NSWindow Frame ") && key.contains("AppWindow")
+        }
+
+        for key in frameKeys {
+            defaults.removeObject(forKey: key)
+        }
     }
 
     private static func pruneUITestingStateFromProductionDefaults() -> PersistenceIssue? {

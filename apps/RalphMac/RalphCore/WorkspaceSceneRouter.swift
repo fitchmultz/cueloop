@@ -29,17 +29,20 @@ public struct WindowRouteActions {
     public let containsWorkspace: (UUID) -> Bool
     public let focusWorkspace: (UUID) -> Void
     public let appendWorkspace: (UUID) -> Void
+    public let revealWindow: () -> Void
     public let persistState: () -> Void
 
     public init(
         containsWorkspace: @escaping (UUID) -> Bool,
         focusWorkspace: @escaping (UUID) -> Void,
         appendWorkspace: @escaping (UUID) -> Void,
+        revealWindow: @escaping () -> Void,
         persistState: @escaping () -> Void
     ) {
         self.containsWorkspace = containsWorkspace
         self.focusWorkspace = focusWorkspace
         self.appendWorkspace = appendWorkspace
+        self.revealWindow = revealWindow
         self.persistState = persistState
     }
 }
@@ -105,6 +108,7 @@ final class WorkspaceSceneRouter {
     ) -> Bool {
         if let actions = windowRouteActions(containing: workspaceID) {
             actions.focusWorkspace(workspaceID)
+            actions.revealWindow()
             actions.persistState()
             return true
         }
@@ -115,6 +119,7 @@ final class WorkspaceSceneRouter {
 
         actions.appendWorkspace(workspaceID)
         actions.focusWorkspace(workspaceID)
+        actions.revealWindow()
         actions.persistState()
         return true
     }

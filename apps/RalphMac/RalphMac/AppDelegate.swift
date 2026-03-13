@@ -17,20 +17,28 @@
  - Workspace window commands are routed through focused scene values in SwiftUI.
  */
 
+import AppKit
 import SwiftUI
 import RalphCore
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var windowObserverTokens: [any NSObjectProtocol] = []
+    private var normalizedWindowNumbers = Set<Int>()
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Disable automatic window tabbing globally
         NSWindow.allowsAutomaticWindowTabbing = false
-        
-        // Configure any existing windows
-        for window in NSApplication.shared.windows {
-            window.tabbingMode = .disallowed
+
+        configureWindowObservers()
+        stabilizeExistingWindows()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.stabilizeExistingWindows()
         }
-        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.stabilizeExistingWindows()
+        }
+
         // Settings infrastructure is initialized from the SwiftUI app entry point.
     }
     
@@ -41,5 +49,117 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         WorkspaceManager.shared.persistRegisteredWindowStates()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        stabilizeExistingWindows()
+    }
+
+    private func configureWindowObservers() {
+        guard windowObserverTokens.isEmpty else { return }
+
+        let center = NotificationCenter.default
+        windowObserverTokens = [
+            center.addObserver(
+                forName: NSWindow.didBecomeKeyNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                guard let window = notification.object as? NSWindow else { return }
+                MainActor.assumeIsolated {
+                    self?.normalizeWindow(window)
+                }
+            },
+            center.addObserver(
+                forName: NSWindow.didBecomeMainNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                guard let window = notification.object as? NSWindow else { return }
+                MainActor.assumeIsolated {
+                    self?.normalizeWindow(window)
+                }
+            }
+        ]
+    }
+
+    private func stabilizeExistingWindows() {
+        for window in NSApplication.shared.windows {
+            normalizeWindow(window)
+        }
+    }
+
+    private func normalizeWindow(_ window: NSWindow) {
+        window.tabbingMode = .disallowed
+        window.collectionBehavior.insert(.moveToActiveSpace)
+
+        guard shouldNormalizePlacement(for: window) else { return }
+        let shouldApplyInitialPlacement = normalizedWindowNumbers.insert(window.windowNumber).inserted
+        guard shouldApplyInitialPlacement || requiresPlacementReset(for: window) else { return }
+
+        let frame = centeredFrame(for: window)
+        window.collectionBehavior.insert(.canJoinAllSpaces)
+        applyRevealFrame(frame, to: window)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak window] in
+            window?.collectionBehavior.remove(.canJoinAllSpaces)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, weak window] in
+            guard let self, let window else { return }
+            self.applyRevealFrame(self.centeredFrame(for: window), to: window)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self, weak window] in
+            guard let self, let window else { return }
+            self.applyRevealFrame(self.centeredFrame(for: window), to: window)
+        }
+    }
+
+    private func shouldNormalizePlacement(for window: NSWindow) -> Bool {
+        let frame = window.frame
+        guard frame.width >= 400, frame.height >= 240 else { return false }
+        return true
+    }
+
+    private func requiresPlacementReset(for window: NSWindow) -> Bool {
+        guard let activeVisibleFrame = NSScreen.main?.visibleFrame ?? NSScreen.screens.first?.visibleFrame else {
+            return false
+        }
+
+        let intersection = window.frame.intersection(activeVisibleFrame)
+        guard !intersection.isNull else { return true }
+        let minimumVisibleWidth = max(240, min(window.frame.width * 0.4, window.frame.width))
+        let minimumVisibleHeight = max(180, min(window.frame.height * 0.4, window.frame.height))
+        return intersection.width < minimumVisibleWidth || intersection.height < minimumVisibleHeight
+    }
+
+    private func centeredFrame(for window: NSWindow) -> NSRect {
+        let activeVisibleFrame = preferredLaunchScreen()?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let width = max(900, min(window.frame.width, activeVisibleFrame.width - 80))
+        let height = max(640, min(window.frame.height, activeVisibleFrame.height - 80))
+        return NSRect(
+            x: activeVisibleFrame.midX - (width / 2),
+            y: activeVisibleFrame.midY - (height / 2),
+            width: width,
+            height: height
+        )
+    }
+
+    private func activeScreen() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+    }
+
+    private func preferredLaunchScreen() -> NSScreen? {
+        NSScreen.screens.first(where: { $0.frame.origin == .zero })
+            ?? activeScreen()
+    }
+
+    private func applyRevealFrame(_ frame: NSRect, to window: NSWindow) {
+        window.setFrame(frame, display: true)
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }

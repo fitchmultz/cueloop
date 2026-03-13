@@ -439,6 +439,7 @@ final class WindowStateTests: XCTestCase {
         let workspace = manager.createWorkspace()
         let windowID = UUID()
         var focusedWorkspaceID: UUID?
+        var revealedWindow = false
         var persistedWindowState = false
         var receivedRoute: WorkspaceSceneRoute?
 
@@ -448,6 +449,7 @@ final class WindowStateTests: XCTestCase {
                 containsWorkspace: { $0 == workspace.id },
                 focusWorkspace: { focusedWorkspaceID = $0 },
                 appendWorkspace: { _ in XCTFail("existing workspace should not append into a new window") },
+                revealWindow: { revealedWindow = true },
                 persistState: { persistedWindowState = true }
             )
         )
@@ -459,6 +461,7 @@ final class WindowStateTests: XCTestCase {
 
         XCTAssertEqual(focusedWorkspaceID, workspace.id)
         XCTAssertEqual(receivedRoute, .showTaskDetail(taskID: "RQ-123"))
+        XCTAssertTrue(revealedWindow)
         XCTAssertTrue(persistedWindowState)
         XCTAssertEqual(manager.focusedWorkspace?.id, workspace.id)
     }
@@ -468,6 +471,7 @@ final class WindowStateTests: XCTestCase {
         let windowID = UUID()
         var appendedWorkspaceID: UUID?
         var focusedWorkspaceID: UUID?
+        var revealedWindow = false
         var receivedRoutes: [WorkspaceSceneRoute] = []
 
         manager.registerWindowRouteActions(
@@ -476,6 +480,7 @@ final class WindowStateTests: XCTestCase {
                 containsWorkspace: { _ in false },
                 focusWorkspace: { focusedWorkspaceID = $0 },
                 appendWorkspace: { appendedWorkspaceID = $0 },
+                revealWindow: { revealedWindow = true },
                 persistState: {}
             )
         )
@@ -483,6 +488,7 @@ final class WindowStateTests: XCTestCase {
         manager.route(.showTaskCreation, to: workspace.id)
         XCTAssertEqual(appendedWorkspaceID, workspace.id)
         XCTAssertEqual(focusedWorkspaceID, workspace.id)
+        XCTAssertTrue(revealedWindow)
 
         manager.registerWorkspaceRouteActions(for: workspace.id) { route in
             receivedRoutes.append(route)
@@ -537,5 +543,19 @@ final class WindowStateTests: XCTestCase {
         XCTAssertEqual(manager.focusedWorkspace?.id, thirdWorkspace.id)
         XCTAssertEqual(manager.effectiveWorkspace?.id, thirdWorkspace.id)
         XCTAssertNotEqual(manager.lastActiveWorkspaceID, secondWorkspace.id)
+    }
+
+    func test_prepareForLaunch_clearsPersistedAppWindowFrameState() {
+        let defaults = UserDefaults.standard
+        let offscreenKey = "NSWindow Frame main-AppWindow-1"
+        let onscreenKey = "NSWindow Frame main-AppWindow-2"
+
+        defaults.set("490 -1280 1400 900 -314 1600 3008 1661 ", forKey: offscreenKey)
+        defaults.set("100 100 1200 800 0 0 2560 1600 ", forKey: onscreenKey)
+
+        _ = RalphAppDefaults.prepareForLaunch()
+
+        XCTAssertNil(defaults.object(forKey: offscreenKey))
+        XCTAssertNil(defaults.object(forKey: onscreenKey))
     }
 }

@@ -25,7 +25,7 @@ final class UITestingWindowCoordinator {
     private let isUITestingMultiwindowLaunch = ProcessInfo.processInfo.arguments.contains("--uitesting-multiwindow")
     private var didOpenSecondaryWindow = false
     private var isConfigured = false
-    private var observerTokens: [AnyObject] = []
+    private var observerTokens: [any NSObjectProtocol] = []
 
     private init() {}
 
@@ -84,6 +84,7 @@ final class UITestingWindowCoordinator {
 struct WorkspaceWindowAnchor: NSViewRepresentable {
     let minimumSize: NSSize
     let uiTestingEnabled: Bool
+    let onWindowResolved: @MainActor (NSWindow) -> Void
 
     func makeNSView(context: Context) -> NSView {
         NSView(frame: .zero)
@@ -98,8 +99,69 @@ struct WorkspaceWindowAnchor: NSViewRepresentable {
 
     private func configure(window: NSWindow) {
         applyMinimumSize(to: window)
+        configureWindowBehavior(window)
+        stabilizeVisiblePlacement(for: window)
 
-        guard uiTestingEnabled else { return }
+        onWindowResolved(window)
+
+        if uiTestingEnabled {
+            applyUITestingPlacement(to: window)
+            UITestingWindowCoordinator.shared.enforceExpectedWindowCount()
+        }
+    }
+
+    private func configureWindowBehavior(_ window: NSWindow) {
+        window.collectionBehavior.insert(.moveToActiveSpace)
+        window.tabbingMode = .disallowed
+    }
+
+    private func stabilizeVisiblePlacement(for window: NSWindow) {
+        guard !uiTestingEnabled else { return }
+        guard requiresVisibleFrameReset(window) else { return }
+
+        window.setFrame(centeredFrame(for: window), display: true)
+        window.orderFrontRegardless()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func requiresVisibleFrameReset(_ window: NSWindow) -> Bool {
+        let currentFrame = window.frame
+        guard currentFrame.width > 0, currentFrame.height > 0 else { return true }
+
+        guard let activeVisibleFrame = (NSScreen.main ?? window.screen ?? NSScreen.screens.first)?.visibleFrame else {
+            return false
+        }
+
+        let intersection = currentFrame.intersection(activeVisibleFrame)
+        guard !intersection.isNull else { return true }
+        return intersection.width < minimumVisibleWidth(for: currentFrame)
+            || intersection.height < minimumVisibleHeight(for: currentFrame)
+    }
+
+    private func minimumVisibleWidth(for frame: NSRect) -> CGFloat {
+        max(240, min(frame.width * 0.4, frame.width))
+    }
+
+    private func minimumVisibleHeight(for frame: NSRect) -> CGFloat {
+        max(180, min(frame.height * 0.4, frame.height))
+    }
+
+    private func centeredFrame(for window: NSWindow) -> NSRect {
+        let targetVisibleFrame = (window.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let minimumFrameSize = window.frameRect(forContentRect: NSRect(origin: .zero, size: minimumSize)).size
+        let width = max(minimumFrameSize.width, min(1400, targetVisibleFrame.width - 80))
+        let height = max(minimumFrameSize.height, min(900, targetVisibleFrame.height - 80))
+        return NSRect(
+            x: targetVisibleFrame.midX - (width / 2),
+            y: targetVisibleFrame.midY - (height / 2),
+            width: width,
+            height: height
+        )
+    }
+
+    private func applyUITestingPlacement(to window: NSWindow) {
         let screen = window.screen ?? NSScreen.main
         let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let workspaceWindows = NSApp.windows
@@ -148,14 +210,10 @@ struct WorkspaceWindowAnchor: NSViewRepresentable {
             )
         }
 
-        window.collectionBehavior.insert(.moveToActiveSpace)
-        window.tabbingMode = .disallowed
         window.setFrame(NSRect(origin: origin, size: NSSize(width: width, height: height)), display: true)
         window.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-
-        UITestingWindowCoordinator.shared.enforceExpectedWindowCount()
     }
 
     private func applyMinimumSize(to window: NSWindow) {

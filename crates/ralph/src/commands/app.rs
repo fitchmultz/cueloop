@@ -21,6 +21,8 @@ use anyhow::{Context, Result, bail};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
+use std::time::Duration;
 
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
@@ -276,20 +278,34 @@ fn resolve_workspace_path(args: &AppOpenArgs) -> Result<Option<std::path::PathBu
 
 /// Open the Ralph macOS app.
 ///
-/// On macOS, this prefers a single URL launch (`ralph://open?...`) when workspace
-/// context is available. That lets LaunchServices both launch the app and deliver
-/// the workspace in one step, which avoids SwiftUI opening a second scene for a
-/// follow-up external-event dispatch.
+/// On macOS, this always launches the app bundle first so the primary workspace
+/// window is guaranteed to exist on cold start. If workspace context is available,
+/// a follow-up URL handoff repurposes that bootstrap window for the requested
+/// workspace.
 pub fn open(args: AppOpenArgs) -> Result<()> {
     let cli_executable = current_executable_for_gui();
+    let open_spec = plan_open_command(cfg!(target_os = "macos"), &args, cli_executable.as_deref())?;
+    execute_launch_command(&open_spec)?;
 
-    let spec = if let Some(workspace_path) = resolve_workspace_path(&args)? {
-        plan_url_command(&workspace_path, &args)?
-    } else {
-        plan_open_command(cfg!(target_os = "macos"), &args, cli_executable.as_deref())?
+    let Some(workspace_path) = resolve_workspace_path(&args)? else {
+        return Ok(());
     };
 
-    execute_launch_command(&spec)
+    let url_spec = plan_url_command(&workspace_path, &args)?;
+    let mut last_error = None;
+    for attempt in 0..10 {
+        match execute_launch_command(&url_spec) {
+            Ok(()) => return Ok(()),
+            Err(error) => {
+                last_error = Some(error);
+                if attempt < 9 {
+                    thread::sleep(Duration::from_millis(250));
+                }
+            }
+        }
+    }
+
+    Err(last_error.expect("url launch attempts should record an error"))
 }
 
 #[cfg(test)]

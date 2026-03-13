@@ -22,6 +22,7 @@ import RalphCore
 struct WindowViewContainer: View {
     private let manager = WorkspaceManager.shared
     @State private var windowState: WindowState?
+    @State private var hostWindow: NSWindow?
     @State private var didResolveSceneWindowState = false
     @SceneStorage("windowStateID") private var persistedWindowStateID: String = ""
     @Environment(\.openWindow) private var openWindow
@@ -33,11 +34,16 @@ struct WindowViewContainer: View {
     var body: some View {
         Group {
             if let state = windowState {
-                WindowView(windowState: state)
+                WindowView(windowState: state, hostWindow: hostWindow)
                     .background(
                         WorkspaceWindowAnchor(
                             minimumSize: Self.minimumWorkspaceWindowSize,
-                            uiTestingEnabled: Self.isUITestingLaunch
+                            uiTestingEnabled: Self.isUITestingLaunch,
+                            onWindowResolved: { resolvedWindow in
+                                if hostWindow !== resolvedWindow {
+                                    hostWindow = resolvedWindow
+                                }
+                            }
                         )
                     )
             } else {
