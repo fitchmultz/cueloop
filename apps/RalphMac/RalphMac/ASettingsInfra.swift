@@ -59,7 +59,7 @@ final class SettingsWindowService: NSObject, NSWindowDelegate {
         if window.frame.width < 760 || window.frame.height < 520 {
             window.setContentSize(NSSize(width: 760, height: 520))
         }
-        if !RalphAppDefaults.isSettingsSmokeContract {
+        if !RalphAppDefaults.isMacOSContract {
             window.center()
         }
     }

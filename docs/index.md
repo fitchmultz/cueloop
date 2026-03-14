@@ -83,6 +83,6 @@ Ship gate (when macOS app changes are in scope):
 
 ```bash
 make macos-ci
-# Includes deterministic noninteractive Settings contract coverage in addition to the app build/tests.
+# Includes deterministic noninteractive Settings + workspace-routing contract coverage in addition to the app build/tests.
 # Optional caps: RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make macos-ci
 ```

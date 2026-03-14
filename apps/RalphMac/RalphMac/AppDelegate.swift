@@ -39,6 +39,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         configureWindowObservers()
         UITestingWorkspaceOpenBridge.shared.configureIfNeeded()
         SettingsSmokeContractRunner.shared.configureIfNeeded()
+        WorkspaceRoutingContractRunner.shared.configureIfNeeded()
         stabilizeExistingWindows()
         schedulePrimaryWindowBootstrap(after: 50_000_000)
         schedulePrimaryWindowBootstrap(after: 250_000_000)

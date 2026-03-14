@@ -40,7 +40,10 @@ pub(super) const REQUIRED_CI_FAST_STEPS: &[&str] = &[
     "test",
 ];
 
-pub(super) const REQUIRED_MACOS_TEST_CONTRACT_DEPS: &[&str] = &["macos-test-settings-smoke"];
+pub(super) const REQUIRED_MACOS_TEST_CONTRACT_DEPS: &[&str] = &[
+    "macos-test-settings-smoke",
+    "macos-test-workspace-routing-contract",
+];
 
 pub(super) const REQUIRED_MACOS_CI_DEPS: &[&str] = &[
     "macos-preflight",

@@ -64,7 +64,7 @@ MAKEFLAGS += --no-builtin-rules
 	changelog changelog-preview changelog-check version-check version-sync publish-check release release-dry-run release-verify release-artifacts pre-commit pre-public-check release-gate \
 	agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
-	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke coverage coverage-clean FORCE
+	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean FORCE
 help:
 	@echo "Common targets:"
 	@echo "  make ci-fast     # Fast deterministic Rust/CLI gate for day-to-day development"
@@ -78,6 +78,7 @@ help:
 	@echo "  make macos-test-window-shortcuts # Run focused multi-window shortcut UI regressions"
 	@echo "  make macos-test-contracts # Run deterministic non-XCTest macOS contract checks"
 	@echo "  make macos-test-settings-smoke # Run noninteractive Settings open-path contract coverage"
+	@echo "  make macos-test-workspace-routing-contract # Run noninteractive workspace routing contract coverage"
 	@echo "  make macos-ui-build-for-testing # Build/sign UI test bundles once for local iteration"
 	@echo "  make macos-ui-retest         # Re-run UI tests without rebuilding bundles"
 	@echo "  make macos-test-ui-artifacts # Run UI suite with screenshot artifacts + export summary"
@@ -655,13 +656,18 @@ macos-ui-artifacts-clean:
 	@echo "  ✓ UI visual artifacts removed"
 
 # Run deterministic non-XCTest macOS contract checks against the built app.
-macos-test-contracts: macos-test-settings-smoke
+macos-test-contracts: macos-test-settings-smoke macos-test-workspace-routing-contract
 	@echo "→ macOS deterministic contract checks completed"
 
 # Run targeted noninteractive Settings contract coverage for supported entry paths.
 macos-test-settings-smoke: macos-build
 	@echo "→ macOS Settings smoke contract coverage (keyboard, app menu, URL route; noninteractive)..."
 	@./scripts/macos-settings-smoke.sh --app-bundle "$(XCODE_DERIVED_DATA_ROOT)/build/Build/Products/Release/RalphMac.app"
+
+# Run targeted noninteractive workspace bootstrap/routing contract coverage.
+macos-test-workspace-routing-contract: macos-build
+	@echo "→ macOS workspace routing contract coverage (bootstrap, URL open, pending scene routes; noninteractive)..."
+	@./scripts/macos-workspace-routing-contract.sh --app-bundle "$(XCODE_DERIVED_DATA_ROOT)/build/Build/Products/Release/RalphMac.app"
 
 macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	@lock_dir="$(XCODE_BUILD_LOCK_DIR)"; \

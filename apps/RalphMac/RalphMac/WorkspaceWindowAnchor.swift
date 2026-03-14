@@ -12,7 +12,7 @@
 
  Invariants/assumptions callers must respect:
  - UI-testing launches target one window by default and two windows for multiwindow runs.
- - Settings-smoke contract launches must never activate the app or flash a workspace window onscreen.
+ - Noninteractive macOS contract launches must never activate the app or flash a workspace window onscreen.
  - Window sizing should preserve NavigationSplitView usability.
  */
 

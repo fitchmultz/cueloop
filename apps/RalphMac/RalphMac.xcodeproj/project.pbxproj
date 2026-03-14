@@ -161,6 +161,8 @@
 		A216D62658610CB568691F35 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDE5AEE63017EB9E3B311E0 /* SettingsService.swift */; };
 		A216D62658610CB568691F36 /* PreviewWorkspaceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDE5AEE63017EB9E3B311E1 /* PreviewWorkspaceSupport.swift */; };
 		A3100001B2C3D4E5F6071801 /* SettingsSmokeContractRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3100001B2C3D4E5F6071811 /* SettingsSmokeContractRunner.swift */; };
+		A3110001B2C3D4E5F6071801 /* WorkspaceContractPresentationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3110001B2C3D4E5F6071811 /* WorkspaceContractPresentationCoordinator.swift */; };
+		A3120001B2C3D4E5F6071801 /* WorkspaceRoutingContractRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3120001B2C3D4E5F6071811 /* WorkspaceRoutingContractRunner.swift */; };
 		EB014802778C130BF234E981 /* TaskDetailEditorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7100D4A32B0E1C4AA77D7093 /* TaskDetailEditorState.swift */; };
 		84875E094931F8B72CE837A8 /* TaskDetailPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E524E23088631B600921358 /* TaskDetailPresentation.swift */; };
 		E244CD8201DECCF668192D1C /* TaskDetailSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE3542090D89C223E29D5DD5 /* TaskDetailSections.swift */; };
@@ -394,6 +396,8 @@
 		8FDE5AEE63017EB9E3B311E0 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
 		8FDE5AEE63017EB9E3B311E1 /* PreviewWorkspaceSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewWorkspaceSupport.swift; sourceTree = "<group>"; };
 		A3100001B2C3D4E5F6071811 /* SettingsSmokeContractRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSmokeContractRunner.swift; sourceTree = "<group>"; };
+		A3110001B2C3D4E5F6071811 /* WorkspaceContractPresentationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceContractPresentationCoordinator.swift; sourceTree = "<group>"; };
+		A3120001B2C3D4E5F6071811 /* WorkspaceRoutingContractRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRoutingContractRunner.swift; sourceTree = "<group>"; };
 		7100D4A32B0E1C4AA77D7093 /* TaskDetailEditorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailEditorState.swift; sourceTree = "<group>"; };
 		6E524E23088631B600921358 /* TaskDetailPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailPresentation.swift; sourceTree = "<group>"; };
 		CE3542090D89C223E29D5DD5 /* TaskDetailSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailSections.swift; sourceTree = "<group>"; };
@@ -667,6 +671,8 @@
 				1763D1C75A9390D695AB8C40 /* RalphMacCommands.swift */,
 				8FDE5AEE63017EB9E3B311E0 /* SettingsService.swift */,
 				A3100001B2C3D4E5F6071811 /* SettingsSmokeContractRunner.swift */,
+				A3110001B2C3D4E5F6071811 /* WorkspaceContractPresentationCoordinator.swift */,
+				A3120001B2C3D4E5F6071811 /* WorkspaceRoutingContractRunner.swift */,
 				8FDE5AEE63017EB9E3B311E1 /* PreviewWorkspaceSupport.swift */,
 				7100D4A32B0E1C4AA77D7093 /* TaskDetailEditorState.swift */,
 				6E524E23088631B600921358 /* TaskDetailPresentation.swift */,
@@ -1043,6 +1049,8 @@
 				016793D1DBF90AA9EB4BFDE7 /* RalphMacCommands.swift in Sources */,
 				A216D62658610CB568691F35 /* SettingsService.swift in Sources */,
 				A3100001B2C3D4E5F6071801 /* SettingsSmokeContractRunner.swift in Sources */,
+				A3110001B2C3D4E5F6071801 /* WorkspaceContractPresentationCoordinator.swift in Sources */,
+				A3120001B2C3D4E5F6071801 /* WorkspaceRoutingContractRunner.swift in Sources */,
 				A216D62658610CB568691F36 /* PreviewWorkspaceSupport.swift in Sources */,
 				EB014802778C130BF234E981 /* TaskDetailEditorState.swift in Sources */,
 				84875E094931F8B72CE837A8 /* TaskDetailPresentation.swift in Sources */,

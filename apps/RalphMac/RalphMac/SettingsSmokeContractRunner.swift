@@ -25,7 +25,7 @@ import RalphCore
 @MainActor
 struct RalphMacPresentationRuntime {
     static var suppressUserActivation: Bool {
-        RalphAppDefaults.isSettingsSmokeContract
+        RalphAppDefaults.isMacOSContract
     }
 
     static var activationPolicy: NSApplication.ActivationPolicy {

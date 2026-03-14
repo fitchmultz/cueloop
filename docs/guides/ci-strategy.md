@@ -60,7 +60,7 @@ Includes:
 - `ci` (full Rust gate)
 - macOS app build
 - macOS app non-UI tests
-- deterministic macOS contract smoke (`make macos-test-contracts`, currently the Settings open-path smoke)
+- deterministic macOS contract smoke (`make macos-test-contracts`, currently the Settings open-path + workspace-routing contracts)
 
 Interactive XCTest UI automation is intentionally excluded from `macos-ci` by default.
 

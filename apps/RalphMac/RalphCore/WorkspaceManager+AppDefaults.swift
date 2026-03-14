@@ -12,7 +12,7 @@
 
  Invariants/assumptions callers must respect:
  - UI-testing defaults use a dedicated suite and are reset on launch.
- - Settings-smoke contract runs use a dedicated suite and are reset on launch.
+ - Noninteractive macOS contract runs use a dedicated suite and are reset on launch.
  - Unit-test defaults use a dedicated suite so test persistence cannot pollute production defaults.
  - Production defaults prune stale UI-testing state before the app boots.
  */
@@ -52,11 +52,26 @@ struct WindowStateStore {
     }
 }
 
+public enum RalphMacContractMode: String {
+    case settingsSmoke = "settings-smoke"
+    case workspaceRouting = "workspace-routing"
+
+    var launchArgument: String {
+        switch self {
+        case .settingsSmoke:
+            return "--settings-smoke-contract"
+        case .workspaceRouting:
+            return "--workspace-routing-contract"
+        }
+    }
+}
+
 public enum RalphAppDefaults {
     public static let productionDomainIdentifier = "com.mitchfultz.ralph"
     public static let uiTestingDomainIdentifier = productionDomainIdentifier + ".uitesting"
-    public static let settingsSmokeContractDomainIdentifier = productionDomainIdentifier + ".settings-smoke-contract"
-    public static let settingsSmokeContractArgument = "--settings-smoke-contract"
+    public static let macOSContractDomainIdentifier = productionDomainIdentifier + ".macos-contract"
+    public static let settingsSmokeContractArgument = RalphMacContractMode.settingsSmoke.launchArgument
+    public static let workspaceRoutingContractArgument = RalphMacContractMode.workspaceRouting.launchArgument
     static let unitTestingDomainIdentifier = productionDomainIdentifier + ".unittests"
 
     private static let uiTestingPathMarker = "/ralph-ui-tests/"
@@ -68,12 +83,31 @@ public enum RalphAppDefaults {
         ProcessInfo.processInfo.arguments.contains("--uitesting")
     }
 
+    public static var contractMode: RalphMacContractMode? {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains(settingsSmokeContractArgument) {
+            return .settingsSmoke
+        }
+        if arguments.contains(workspaceRoutingContractArgument) {
+            return .workspaceRouting
+        }
+        return nil
+    }
+
+    public static var isMacOSContract: Bool {
+        contractMode != nil
+    }
+
     public static var isSettingsSmokeContract: Bool {
-        ProcessInfo.processInfo.arguments.contains(settingsSmokeContractArgument)
+        contractMode == .settingsSmoke
+    }
+
+    public static var isWorkspaceRoutingContract: Bool {
+        contractMode == .workspaceRouting
     }
 
     static var isUnitTesting: Bool {
-        guard !isUITesting, !isSettingsSmokeContract else { return false }
+        guard !isUITesting, !isMacOSContract else { return false }
         let environment = ProcessInfo.processInfo.environment
         return environment["XCTestConfigurationFilePath"] != nil
             || environment["XCTestBundlePath"] != nil
@@ -83,8 +117,8 @@ public enum RalphAppDefaults {
         if isUITesting, let suiteDefaults = UserDefaults(suiteName: uiTestingDomainIdentifier) {
             return suiteDefaults
         }
-        if isSettingsSmokeContract,
-           let suiteDefaults = UserDefaults(suiteName: settingsSmokeContractDomainIdentifier) {
+        if isMacOSContract,
+           let suiteDefaults = UserDefaults(suiteName: macOSContractDomainIdentifier) {
             return suiteDefaults
         }
         if isUnitTesting, let suiteDefaults = UserDefaults(suiteName: unitTestingDomainIdentifier) {
@@ -100,8 +134,8 @@ public enum RalphAppDefaults {
             return RalphAppLaunchPreparationResult(persistenceIssue: nil)
         }
 
-        if isSettingsSmokeContract {
-            resetSettingsSmokeContractDefaults()
+        if isMacOSContract {
+            resetMacOSContractDefaults()
             return RalphAppLaunchPreparationResult(persistenceIssue: nil)
         }
 
@@ -117,9 +151,9 @@ public enum RalphAppDefaults {
         suiteDefaults.removePersistentDomain(forName: uiTestingDomainIdentifier)
     }
 
-    private static func resetSettingsSmokeContractDefaults() {
-        guard let suiteDefaults = UserDefaults(suiteName: settingsSmokeContractDomainIdentifier) else { return }
-        suiteDefaults.removePersistentDomain(forName: settingsSmokeContractDomainIdentifier)
+    private static func resetMacOSContractDefaults() {
+        guard let suiteDefaults = UserDefaults(suiteName: macOSContractDomainIdentifier) else { return }
+        suiteDefaults.removePersistentDomain(forName: macOSContractDomainIdentifier)
     }
 
     static func resetUnitTestingDefaults() {

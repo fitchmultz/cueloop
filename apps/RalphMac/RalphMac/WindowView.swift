@@ -229,6 +229,9 @@ struct WindowView: View {
     private func updateFocusedWorkspace() {
         manager.markWorkspaceActive(activeWorkspace())
         syncWorkspaceWindowRegistry()
+        if RalphAppDefaults.isWorkspaceRoutingContract {
+            WorkspaceContractPresentationCoordinator.shared.refresh()
+        }
     }
 
     private func scheduleSceneSync() {

@@ -24,7 +24,7 @@ use super::makefile_ci_contract_test_support::{
 fn test_extract_make_ci_steps_prefers_ci_target_over_macos_ci() -> Result<()> {
     let makefile = r#"
 macos-ci: macos-preflight ci macos-build macos-test macos-test-contracts
-macos-test-contracts: macos-test-settings-smoke
+macos-test-contracts: macos-test-settings-smoke macos-test-workspace-routing-contract
 
 ci: check-env-safety check-backup-artifacts deps format type-check lint test build generate install
 	@echo "done"
@@ -123,7 +123,7 @@ macos-ci: macos-preflight \
 	macos-build \
 	macos-test \
 	macos-test-contracts
-macos-test-contracts: macos-test-settings-smoke
+macos-test-contracts: macos-test-settings-smoke macos-test-workspace-routing-contract
 "#;
 
     let actual = extract_target_dependencies(makefile, "macos-ci")?;
@@ -142,7 +142,7 @@ macos-test-contracts: macos-test-settings-smoke
 #[test]
 fn test_extract_target_dependencies_parses_macos_test_contracts_target() -> Result<()> {
     let makefile = r#"
-macos-test-contracts: macos-test-settings-smoke
+macos-test-contracts: macos-test-settings-smoke macos-test-workspace-routing-contract
 "#;
 
     let actual = extract_target_dependencies(makefile, "macos-test-contracts")?;

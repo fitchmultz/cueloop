@@ -93,12 +93,44 @@ struct WorkspaceView: View {
         .onAppear {
             configureCommandActions()
             registerWorkspaceRouteActions()
+            refreshContractDiagnostics()
         }
         .onChange(of: workspace.identityState.retargetRevision) { _, _ in
             handleRepositoryRetarget()
+            refreshContractDiagnostics()
+        }
+        .onChange(of: navigation.selectedSection) { _, _ in
+            refreshContractDiagnostics()
+        }
+        .onChange(of: navigation.selectedTaskID) { _, _ in
+            refreshContractDiagnostics()
+        }
+        .onChange(of: navigation.selectedTaskIDs) { _, _ in
+            refreshContractDiagnostics()
+        }
+        .onChange(of: showingTaskCreation) { _, _ in
+            refreshContractDiagnostics()
+        }
+        .onChange(of: showingTaskDecompose) { _, _ in
+            refreshContractDiagnostics()
+        }
+        .onChange(of: taskDecomposeContext.selectedTaskID) { _, _ in
+            refreshContractDiagnostics()
+        }
+        .onChange(of: workspace.taskState.tasks.count) { _, _ in
+            refreshContractDiagnostics()
+        }
+        .onChange(of: workspace.taskState.tasksLoading) { _, _ in
+            refreshContractDiagnostics()
+        }
+        .onChange(of: workspace.taskState.tasksErrorMessage) { _, _ in
+            refreshContractDiagnostics()
         }
         .onDisappear {
             manager.unregisterWorkspaceRouteActions(for: workspace.id)
+            if RalphAppDefaults.isWorkspaceRoutingContract {
+                WorkspaceContractPresentationCoordinator.shared.unregister(workspaceID: workspace.id)
+            }
         }
     }
 
@@ -145,6 +177,17 @@ struct WorkspaceView: View {
                 showTaskDetail(taskID)
             }
         }
+    }
+
+    private func refreshContractDiagnostics() {
+        guard RalphAppDefaults.isWorkspaceRoutingContract else { return }
+        WorkspaceContractPresentationCoordinator.shared.capture(
+            workspace: workspace,
+            navigation: navigation,
+            showingTaskCreation: showingTaskCreation,
+            showingTaskDecompose: showingTaskDecompose,
+            taskDecomposeContext: taskDecomposeContext
+        )
     }
 
     // MARK: - Columns

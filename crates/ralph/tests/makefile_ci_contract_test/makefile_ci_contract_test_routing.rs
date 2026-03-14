@@ -47,7 +47,9 @@ fn test_macos_targets_gate_with_preflight_and_isolate_derived_data() -> Result<(
         "macos-ci should depend on macos-preflight"
     );
     assert!(
-        makefile.contains("macos-test-contracts: macos-test-settings-smoke"),
+        makefile.contains(
+            "macos-test-contracts: macos-test-settings-smoke macos-test-workspace-routing-contract"
+        ),
         "Makefile should define a deterministic macOS contract aggregate target"
     );
     assert!(
