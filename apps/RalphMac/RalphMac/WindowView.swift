@@ -267,8 +267,7 @@ struct WindowView: View {
     private func revealHostWindow() {
         guard let hostWindow = hostWindowReference.window else { return }
         hostWindow.collectionBehavior.insert(.moveToActiveSpace)
-        hostWindow.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        RalphMacPresentationRuntime.reveal(hostWindow)
     }
 }
 

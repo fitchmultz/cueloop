@@ -6,36 +6,36 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Redesign macOS Settings smoke so routine local gates no longer hijack the desktop
+### 1. Continue consolidating macOS workspace background-task ownership
 
 Why first:
-- `scripts/macos-settings-smoke.sh` is still a headed real-app workflow (`open -na ... --args --uitesting`), so routine local verification steals focus and interrupts normal workstation use.
-- The crash-loop in `WorkspaceWindowAnchor.swift` is fixed and the Settings retarget regression is now covered again, so the remaining high-value follow-up is replacing the disruptive harness shape rather than revisiting the just-stabilized window retarget logic.
-- Locking in a less disruptive Settings verification path before broader macOS lifecycle churn reduces the chance of reworking the same smoke coverage twice.
-
-Scope:
-- Decide whether the Settings smoke should stay as a headed script, move into XCTest-driven coverage, or use another deterministic in-process harness.
-- Preserve the current keyboard/app-menu/URL-retarget coverage and workspace-specific config assertions.
-- Eliminate routine desktop takeover and avoid crash-report/dialog noise during normal local gates.
-
-### 2. Continue consolidating macOS workspace background-task ownership
-
-Why second:
 - The teardown-race cutover removed the noisy failures, but more workspace entrypoints still launch ad hoc background tasks.
-- Post-run supervision coverage is now broadened, so the next highest-leverage churn reducer is finishing workspace task ownership.
-- Completing ownership cleanup after the Settings smoke stabilization reduces the chance of reintroducing nondeterministic lifecycle bugs during app verification.
+- The new noninteractive Settings contract harness lowers verification friction, so the next highest-leverage churn reducer is finishing workspace task ownership while app checks are cheaper to rerun.
+- Completing ownership cleanup before broadening more macOS contract coverage reduces the chance of encoding flaky lifecycle behavior into new harnesses.
 
 Scope:
 - Audit remaining fire-and-forget workspace/bootstrap tasks for explicit ownership and cancellation.
 - Prefer workspace-owned task slots over detached lifecycle work where repository context matters.
 - Keep close/retarget/shutdown semantics deterministic across app and tests.
 
+### 2. Broaden noninteractive macOS contract coverage beyond the Settings cutover
+
+Why second:
+- The Settings smoke now runs offscreen in-process, proving the contract-harness shape works for app-level regressions without desktop takeover.
+- The next best leverage is moving more fragile window/bootstrap/URL lifecycle checks onto the same noninteractive contract path before they drift behind headed-only coverage.
+- Doing this after the ownership audit avoids baking transient lifecycle races into new contract assertions.
+
+Scope:
+- Identify other app flows that still depend on headed-only verification and migrate the highest-value ones to deterministic in-process contracts.
+- Reuse the offscreen presentation/runtime helpers instead of adding new one-off harnesses.
+- Keep contract reports machine-readable so `make macos-ci` can stay noninteractive by default.
+
 ### 3. Split the remaining oversized macOS persistence and parsing suites after the lifecycle audit settles
 
 Why third:
 - `WindowStateTests.swift` remains above the file-size target and still mixes multiple persistence behaviors.
 - `ANSIParserTests.swift` is near the soft limit and is a good candidate for behavior-focused decomposition once lifecycle churn subsides.
-- Deferring this until after the ownership audit avoids re-splitting files that may still absorb lifecycle-driven test changes.
+- Deferring this until after the ownership audit and contract broadening avoids re-splitting files that may still absorb lifecycle-driven test changes.
 
 Scope:
 - Break large persistence/parsing suites into behavior-focused files without changing coverage.

@@ -44,9 +44,7 @@ final class SettingsWindowService: NSObject, NSWindowDelegate {
         installFreshRootView(on: controller)
         configure(window: window)
         controller.showWindow(nil)
-        window.orderFront(nil)
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        RalphMacPresentationRuntime.reveal(window, center: true)
         SettingsPresentationCoordinator.shared.capture(window: window)
         scheduleKeyWindowRefresh(for: window)
         return true
@@ -61,7 +59,9 @@ final class SettingsWindowService: NSObject, NSWindowDelegate {
         if window.frame.width < 760 || window.frame.height < 520 {
             window.setContentSize(NSSize(width: 760, height: 520))
         }
-        window.center()
+        if !RalphAppDefaults.isSettingsSmokeContract {
+            window.center()
+        }
     }
 
     func isSettingsWindow(_ window: NSWindow) -> Bool {
@@ -109,9 +109,7 @@ final class SettingsWindowService: NSObject, NSWindowDelegate {
     private func refreshPresentedWindow(_ window: NSWindow) {
         guard window === windowController?.window else { return }
         configure(window: window)
-        window.orderFront(nil)
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        RalphMacPresentationRuntime.reveal(window, center: true)
         SettingsPresentationCoordinator.shared.capture(window: window)
     }
 

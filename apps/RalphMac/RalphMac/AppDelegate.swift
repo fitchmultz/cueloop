@@ -31,13 +31,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var didRequestPrimaryWindowBootstrap = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular)
+        NSApp.setActivationPolicy(RalphMacPresentationRuntime.activationPolicy)
 
         // Disable automatic window tabbing globally
         NSWindow.allowsAutomaticWindowTabbing = false
 
         configureWindowObservers()
         UITestingWorkspaceOpenBridge.shared.configureIfNeeded()
+        SettingsSmokeContractRunner.shared.configureIfNeeded()
         stabilizeExistingWindows()
         schedulePrimaryWindowBootstrap(after: 50_000_000)
         schedulePrimaryWindowBootstrap(after: 250_000_000)
@@ -47,7 +48,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular)
+        NSApp.setActivationPolicy(RalphMacPresentationRuntime.activationPolicy)
 
         // Disable tabbing before any windows are created
         NSWindow.allowsAutomaticWindowTabbing = false
@@ -258,8 +259,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func applyRevealFrame(_ frame: NSRect, to window: NSWindow) {
-        window.setFrame(frame, display: true)
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        RalphMacPresentationRuntime.applyRevealFrame(frame, to: window)
     }
 }

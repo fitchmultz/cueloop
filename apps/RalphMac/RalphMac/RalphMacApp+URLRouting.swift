@@ -129,6 +129,6 @@ enum RalphURLRouter {
     private static func revealWorkspaceAfterEnsuringWindow(_ workspaceID: UUID) {
         MainWindowService.shared.revealOrOpenPrimaryWindow()
         WorkspaceManager.shared.scheduleWorkspaceReveal(workspaceID)
-        NSApp.activate(ignoringOtherApps: true)
+        RalphMacPresentationRuntime.activateApplicationIfAllowed()
     }
 }

@@ -77,7 +77,7 @@ help:
 	@echo "  make coverage-clean  # Remove coverage artifacts"
 	@echo "  make macos-test-window-shortcuts # Run focused multi-window shortcut UI regressions"
 	@echo "  make macos-test-contracts # Run deterministic non-XCTest macOS contract checks"
-	@echo "  make macos-test-settings-smoke # Run deterministic Settings open-path smoke coverage"
+	@echo "  make macos-test-settings-smoke # Run noninteractive Settings open-path contract coverage"
 	@echo "  make macos-ui-build-for-testing # Build/sign UI test bundles once for local iteration"
 	@echo "  make macos-ui-retest         # Re-run UI tests without rebuilding bundles"
 	@echo "  make macos-test-ui-artifacts # Run UI suite with screenshot artifacts + export summary"
@@ -658,9 +658,9 @@ macos-ui-artifacts-clean:
 macos-test-contracts: macos-test-settings-smoke
 	@echo "→ macOS deterministic contract checks completed"
 
-# Run targeted Settings smoke coverage for supported Settings entry paths.
+# Run targeted noninteractive Settings contract coverage for supported entry paths.
 macos-test-settings-smoke: macos-build
-	@echo "→ macOS Settings smoke coverage (keyboard, app menu, URL route)..."
+	@echo "→ macOS Settings smoke contract coverage (keyboard, app menu, URL route; noninteractive)..."
 	@./scripts/macos-settings-smoke.sh --app-bundle "$(XCODE_DERIVED_DATA_ROOT)/build/Build/Products/Release/RalphMac.app"
 
 macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)

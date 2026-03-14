@@ -2,7 +2,7 @@
  WorkspaceManager+AppDefaults
 
  Responsibilities:
- - Prepare app defaults for normal and UI-testing launches.
+ - Prepare app defaults for normal launches, interactive UI tests, and noninteractive contract runs.
  - Encapsulate persisted window-state storage helpers used by WorkspaceManager.
  - Resolve the initial CLI client from environment override or bundled binary.
 
@@ -12,6 +12,7 @@
 
  Invariants/assumptions callers must respect:
  - UI-testing defaults use a dedicated suite and are reset on launch.
+ - Settings-smoke contract runs use a dedicated suite and are reset on launch.
  - Unit-test defaults use a dedicated suite so test persistence cannot pollute production defaults.
  - Production defaults prune stale UI-testing state before the app boots.
  */
@@ -54,6 +55,8 @@ struct WindowStateStore {
 public enum RalphAppDefaults {
     public static let productionDomainIdentifier = "com.mitchfultz.ralph"
     public static let uiTestingDomainIdentifier = productionDomainIdentifier + ".uitesting"
+    public static let settingsSmokeContractDomainIdentifier = productionDomainIdentifier + ".settings-smoke-contract"
+    public static let settingsSmokeContractArgument = "--settings-smoke-contract"
     static let unitTestingDomainIdentifier = productionDomainIdentifier + ".unittests"
 
     private static let uiTestingPathMarker = "/ralph-ui-tests/"
@@ -65,8 +68,12 @@ public enum RalphAppDefaults {
         ProcessInfo.processInfo.arguments.contains("--uitesting")
     }
 
+    public static var isSettingsSmokeContract: Bool {
+        ProcessInfo.processInfo.arguments.contains(settingsSmokeContractArgument)
+    }
+
     static var isUnitTesting: Bool {
-        guard !isUITesting else { return false }
+        guard !isUITesting, !isSettingsSmokeContract else { return false }
         let environment = ProcessInfo.processInfo.environment
         return environment["XCTestConfigurationFilePath"] != nil
             || environment["XCTestBundlePath"] != nil
@@ -74,6 +81,10 @@ public enum RalphAppDefaults {
 
     public static var userDefaults: UserDefaults {
         if isUITesting, let suiteDefaults = UserDefaults(suiteName: uiTestingDomainIdentifier) {
+            return suiteDefaults
+        }
+        if isSettingsSmokeContract,
+           let suiteDefaults = UserDefaults(suiteName: settingsSmokeContractDomainIdentifier) {
             return suiteDefaults
         }
         if isUnitTesting, let suiteDefaults = UserDefaults(suiteName: unitTestingDomainIdentifier) {
@@ -89,6 +100,11 @@ public enum RalphAppDefaults {
             return RalphAppLaunchPreparationResult(persistenceIssue: nil)
         }
 
+        if isSettingsSmokeContract {
+            resetSettingsSmokeContractDefaults()
+            return RalphAppLaunchPreparationResult(persistenceIssue: nil)
+        }
+
         clearAppWindowFrameState()
 
         return RalphAppLaunchPreparationResult(
@@ -99,6 +115,11 @@ public enum RalphAppDefaults {
     private static func resetUITestingDefaults() {
         guard let suiteDefaults = UserDefaults(suiteName: uiTestingDomainIdentifier) else { return }
         suiteDefaults.removePersistentDomain(forName: uiTestingDomainIdentifier)
+    }
+
+    private static func resetSettingsSmokeContractDefaults() {
+        guard let suiteDefaults = UserDefaults(suiteName: settingsSmokeContractDomainIdentifier) else { return }
+        suiteDefaults.removePersistentDomain(forName: settingsSmokeContractDomainIdentifier)
     }
 
     static func resetUnitTestingDefaults() {

@@ -200,8 +200,7 @@ final class MainWindowService {
     func revealOrOpenPrimaryWindow() -> Bool {
         if let window = workspaceWindows().first {
             window.collectionBehavior.insert(.moveToActiveSpace)
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            RalphMacPresentationRuntime.reveal(window)
             return true
         }
 
