@@ -6,21 +6,56 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Triage the known unrelated `make agent-ci` Rust failures
+### 1. Fold deterministic Settings smoke coverage into the standard macOS gate
 
-Why this is the only remaining active item:
-- The macOS Settings stabilization track is complete:
-  - deterministic Settings smoke coverage now guards the first-open helper-window regression
-  - supported Settings entry paths are validated through the same smoke flow
-  - `make macos-ci` was run and only the pre-existing unrelated Rust CI failures remain
-- Keeping only the remaining Rust work here avoids reopening the completed Settings cutover.
+Why first:
+- The custom Settings window cutover is now the contract.
+- `make macos-test-settings-smoke` is the reliable guard for the fixed Settings-open paths, but it still sits outside `make macos-ci`.
+- Landing this before more Settings/window churn keeps the highest-value regression guard close to the main verification path.
 
-Known failures to address in this follow-up track:
-- `ci_gate_compliance_message_passed_to_runner_on_failure`
-- `ci_gate_custom_command_shown_in_compliance_message`
-- `ci_gate_repeated_same_error_escalates_before_retry_limit`
+Scope:
+- Decide whether the smoke belongs in `macos-ci`, `macos-test`, or a new lightweight macOS contract target.
+- Keep the deterministic smoke path separate from the still-unreliable XCTest UI automation path.
+- Make the chosen gate part of the normal local verification story.
+
+### 2. Centralize macOS mock CLI fixture generation and resolved-path payloads
+
+Why second:
+- Recent macOS test failures came from drift in inline mock CLI scripts and fake machine payloads.
+- Shared fixture builders will reduce churn before more workspace/app-surface work lands.
+- This keeps path, queue, and config payload contracts consistent across RalphCore tests.
+
+Scope:
+- Move repeated mock CLI script and JSON payload construction into shared RalphCore test support.
+- Ensure machine queue/config payloads always emit real workspace-resolved paths.
+- Remove ad hoc per-test placeholder payloads where possible.
+
+### 3. Reduce macOS test noise from fixture teardown and async refresh races
+
+Why third:
+- Once fixtures are centralized, the remaining failures/noise are easier to isolate as lifecycle issues instead of payload bugs.
+- Current passing test runs still emit benign-but-noisy runner-configuration failures after temporary fixture executables are removed.
+- Quieting that noise will make real regressions easier to spot.
+
+Scope:
+- Prevent background runner-config or watcher refresh work from outliving test fixtures.
+- Tighten workspace/test teardown so temporary CLI binaries and temp directories are not observed after cleanup.
+- Keep operational-health diagnostics meaningful instead of flooding logs with expected teardown errors.
+
+### 4. Broaden post-run supervision regression coverage around adjacent lifecycle edges
+
+Why fourth:
+- The CI enforcement fix is now in place and green.
+- Expanding coverage is safest after the macOS fixture churn above is reduced.
+- This locks in the new supervision semantics before future run-loop or queue-lifecycle changes.
+
+Scope:
+- Add focused coverage for clean/dirty combinations around rejected tasks, already-archived done tasks, queue-maintenance repairs, and publish-mode variants.
+- Keep post-run mutation/CI expectations explicit for both queue changes and repo changes.
+- Guard the supervision refactor against future regressions without reopening the implementation design.
 
 ## Sequencing rules
 
-- Do not reopen the completed Settings stabilization track unless a new regression appears.
-- Keep the remaining work focused on the unrelated Rust CI failures until they are resolved.
+- Keep completed roadmap items out of this file; replace them with the next active work only.
+- Prefer infrastructure and fixture stabilization before broader feature churn.
+- Do not reopen the completed Settings window cutover unless a new regression appears.
