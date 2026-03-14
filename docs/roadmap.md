@@ -1,28 +1,16 @@
 # Ralph Roadmap
 
-Last updated: 2026-03-13
+Last updated: 2026-03-14
 
 This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Split oversized macOS test support and runner-configuration suites after the fixture + lifecycle cutovers
+### 1. Broaden post-run supervision regression coverage around adjacent lifecycle edges
 
 Why first:
-- The mock-fixture and teardown-race cutovers are now in place.
-- `WorkspaceRunnerConfigurationTests.swift` still carries too many behaviors in one file.
-- Smaller files will keep future macOS test churn localized and easier to review.
-
-Scope:
-- Break large RalphCore test suites into behavior-focused files without changing coverage.
-- Keep `RalphCoreTestSupport.swift` and related helpers as thin facades over focused support files where needed.
-- Preserve deterministic temp-fixture, shutdown, and queue-path helpers as the single source of truth.
-
-### 2. Broaden post-run supervision regression coverage around adjacent lifecycle edges
-
-Why second:
 - The CI enforcement fix is now in place and green.
-- Expanding coverage is safest after the macOS fixture churn above is reduced.
+- The macOS fixture/suite split cutover is complete, so supervision coverage can expand without competing test-structure churn.
 - This locks in the new supervision semantics before future run-loop or queue-lifecycle changes.
 
 Scope:
@@ -30,17 +18,29 @@ Scope:
 - Keep post-run mutation/CI expectations explicit for both queue changes and repo changes.
 - Guard the supervision refactor against future regressions without reopening the implementation design.
 
-### 3. Continue consolidating macOS workspace background-task ownership
+### 2. Continue consolidating macOS workspace background-task ownership
 
-Why third:
-- The current cutover removed the noisy teardown failures, but more workspace entrypoints still launch ad hoc background tasks.
-- Finishing task-ownership cleanup after suite splitting will reduce future lifecycle regressions.
-- This can proceed with lower churn once the large test files are decomposed.
+Why second:
+- The teardown-race cutover removed the noisy failures, but more workspace entrypoints still launch ad hoc background tasks.
+- Finishing task-ownership cleanup next reduces the chance that later app changes reintroduce nondeterministic lifecycle bugs.
+- This work is safer now that the supporting macOS test fixtures and runner suites are decomposed.
 
 Scope:
 - Audit remaining fire-and-forget workspace/bootstrap tasks for explicit ownership and cancellation.
 - Prefer workspace-owned task slots over detached lifecycle work where repository context matters.
 - Keep close/retarget/shutdown semantics deterministic across app and tests.
+
+### 3. Split the remaining oversized macOS persistence and parsing suites after the lifecycle audit settles
+
+Why third:
+- `WindowStateTests.swift` remains above the file-size target and still mixes multiple persistence behaviors.
+- `ANSIParserTests.swift` is near the soft limit and is a good candidate for behavior-focused decomposition once lifecycle churn subsides.
+- Deferring this until after the ownership audit avoids re-splitting files that may still absorb lifecycle-driven test changes.
+
+Scope:
+- Break large persistence/parsing suites into behavior-focused files without changing coverage.
+- Keep suite-level facade files thin and move reusable support into focused companions only when duplication is real.
+- Preserve the current deterministic test-support entrypoints introduced by the recent cutovers.
 
 ## Sequencing rules
 

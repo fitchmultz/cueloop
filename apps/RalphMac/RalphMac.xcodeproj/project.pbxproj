@@ -169,6 +169,21 @@
 		AD182128A9C76DC60BA7ED7E /* WorkspaceWindowAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E244DB04759B1EF7B8AA9990 /* WorkspaceWindowAnchor.swift */; };
 		94A6A25C9EFCB2C4BA2EAEB5 /* CLIHealthCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8D3607BFD28F72C5E9344 /* CLIHealthCheckerTests.swift */; };
 		94A6A25C9EFCB2C4BA2EAEB6 /* RalphCoreTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8D3607BFD28F72C5E9345 /* RalphCoreTestSupport.swift */; };
+		C2F200000000000000000001 /* RalphCoreTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000001 /* RalphCoreTestCase.swift */; };
+		C2F200000000000000000002 /* RalphCoreTestSupport+Filesystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000002 /* RalphCoreTestSupport+Filesystem.swift */; };
+		C2F200000000000000000003 /* RalphCoreTestSupport+Async.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000003 /* RalphCoreTestSupport+Async.swift */; };
+		C2F200000000000000000004 /* Workspace+TestAccessors.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000004 /* Workspace+TestAccessors.swift */; };
+		C2F200000000000000000005 /* WorkspacePerformanceTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000005 /* WorkspacePerformanceTestCase.swift */; };
+		C2F200000000000000000006 /* WorkspacePerformanceTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000006 /* WorkspacePerformanceTestSupport.swift */; };
+		C2F200000000000000000007 /* WorkspaceRunnerConfigurationTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000007 /* WorkspaceRunnerConfigurationTestSupport.swift */; };
+		C2F200000000000000000008 /* WorkspaceRunnerConfigurationLoadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000008 /* WorkspaceRunnerConfigurationLoadingTests.swift */; };
+		C2F200000000000000000009 /* WorkspaceRunnerRetargetingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F100000000000000000009 /* WorkspaceRunnerRetargetingTests.swift */; };
+		C2F20000000000000000000A /* WorkspaceRunnerRetargetingRunStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F10000000000000000000A /* WorkspaceRunnerRetargetingRunStateTests.swift */; };
+		C2F20000000000000000000B /* WorkspaceManagerCLIOverrideTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F10000000000000000000B /* WorkspaceManagerCLIOverrideTests.swift */; };
+		C2F20000000000000000000C /* WorkspaceTaskCreationTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F10000000000000000000C /* WorkspaceTaskCreationTestSupport.swift */; };
+		C2F20000000000000000000D /* WorkspaceTaskCreationIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F10000000000000000000D /* WorkspaceTaskCreationIntegrationTests.swift */; };
+		C2F20000000000000000000E /* WorkspaceQueueRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F10000000000000000000E /* WorkspaceQueueRefreshTests.swift */; };
+		C2F20000000000000000000F /* QueueFileWatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F10000000000000000000F /* QueueFileWatcherTests.swift */; };
 		8845939354C5005EA32BF0BB /* ErrorRecoveryCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87DB6C6CD191F58338B4C774 /* ErrorRecoveryCategoryTests.swift */; };
 		DC16DAA1BDC57EE79483F12A /* TimeoutConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C739A307267F8D9F41171236 /* TimeoutConfigurationTests.swift */; };
 		BA4DAD1BA3631E1351694BEB /* WorkspaceCorePerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57A3F5A71B329E532B37574E /* WorkspaceCorePerformanceTests.swift */; };
@@ -385,6 +400,21 @@
 		E244DB04759B1EF7B8AA9990 /* WorkspaceWindowAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceWindowAnchor.swift; sourceTree = "<group>"; };
 		58E8D3607BFD28F72C5E9344 /* CLIHealthCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIHealthCheckerTests.swift; sourceTree = "<group>"; };
 		58E8D3607BFD28F72C5E9345 /* RalphCoreTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCoreTestSupport.swift; sourceTree = "<group>"; };
+		C2F100000000000000000001 /* RalphCoreTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCoreTestCase.swift; sourceTree = "<group>"; };
+		C2F100000000000000000002 /* RalphCoreTestSupport+Filesystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphCoreTestSupport+Filesystem.swift"; sourceTree = "<group>"; };
+		C2F100000000000000000003 /* RalphCoreTestSupport+Async.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphCoreTestSupport+Async.swift"; sourceTree = "<group>"; };
+		C2F100000000000000000004 /* Workspace+TestAccessors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workspace+TestAccessors.swift"; sourceTree = "<group>"; };
+		C2F100000000000000000005 /* WorkspacePerformanceTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePerformanceTestCase.swift; sourceTree = "<group>"; };
+		C2F100000000000000000006 /* WorkspacePerformanceTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePerformanceTestSupport.swift; sourceTree = "<group>"; };
+		C2F100000000000000000007 /* WorkspaceRunnerConfigurationTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunnerConfigurationTestSupport.swift; sourceTree = "<group>"; };
+		C2F100000000000000000008 /* WorkspaceRunnerConfigurationLoadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunnerConfigurationLoadingTests.swift; sourceTree = "<group>"; };
+		C2F100000000000000000009 /* WorkspaceRunnerRetargetingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunnerRetargetingTests.swift; sourceTree = "<group>"; };
+		C2F10000000000000000000A /* WorkspaceRunnerRetargetingRunStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunnerRetargetingRunStateTests.swift; sourceTree = "<group>"; };
+		C2F10000000000000000000B /* WorkspaceManagerCLIOverrideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceManagerCLIOverrideTests.swift; sourceTree = "<group>"; };
+		C2F10000000000000000000C /* WorkspaceTaskCreationTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTaskCreationTestSupport.swift; sourceTree = "<group>"; };
+		C2F10000000000000000000D /* WorkspaceTaskCreationIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTaskCreationIntegrationTests.swift; sourceTree = "<group>"; };
+		C2F10000000000000000000E /* WorkspaceQueueRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceQueueRefreshTests.swift; sourceTree = "<group>"; };
+		C2F10000000000000000000F /* QueueFileWatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueFileWatcherTests.swift; sourceTree = "<group>"; };
 		87DB6C6CD191F58338B4C774 /* ErrorRecoveryCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorRecoveryCategoryTests.swift; sourceTree = "<group>"; };
 		C739A307267F8D9F41171236 /* TimeoutConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeoutConfigurationTests.swift; sourceTree = "<group>"; };
 		57A3F5A71B329E532B37574E /* WorkspaceCorePerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCorePerformanceTests.swift; sourceTree = "<group>"; };
@@ -515,6 +545,8 @@
 				65F63B68A6B84D5195D20137 /* RalphE2ESmokeTests.swift */,
 				C0944A9447A23AA1748EC80A /* VersionValidatorTests.swift */,
 				DCBA4321FEDC8765EF1021FE /* WorkspacePerformanceTests.swift */,
+				C2F100000000000000000005 /* WorkspacePerformanceTestCase.swift */,
+				C2F100000000000000000006 /* WorkspacePerformanceTestSupport.swift */,
 				77F3126530AB785086AAF51A /* RetryHelperTests.swift */,
 				BF349B26CB0886708565C0A7 /* RetryIntegrationTests.swift */,
 				BF349B26CB0886708565C0A8 /* WorkspaceTaskPresentationTests.swift */,
@@ -525,16 +557,29 @@
 				QF7890123456ABCDEF012345 /* QueueDirectParseTests.swift */,
 				A9011001B2C3D4E5F6071815 /* TaskConflictResolutionTests.swift */,
 				WTCTFILEREF0012345678901 /* WorkspaceTaskCreationTests.swift */,
+				C2F10000000000000000000C /* WorkspaceTaskCreationTestSupport.swift */,
+				C2F10000000000000000000D /* WorkspaceTaskCreationIntegrationTests.swift */,
+				C2F10000000000000000000E /* WorkspaceQueueRefreshTests.swift */,
+				C2F10000000000000000000F /* QueueFileWatcherTests.swift */,
 				WTDTFILEREF0012345678901 /* WorkspaceTaskDecomposeTests.swift */,
 				58E8D3607BFD28F72C5E9344 /* CLIHealthCheckerTests.swift */,
 				87DB6C6CD191F58338B4C774 /* ErrorRecoveryCategoryTests.swift */,
 				58E8D3607BFD28F72C5E9345 /* RalphCoreTestSupport.swift */,
+				C2F100000000000000000001 /* RalphCoreTestCase.swift */,
+				C2F100000000000000000002 /* RalphCoreTestSupport+Filesystem.swift */,
+				C2F100000000000000000003 /* RalphCoreTestSupport+Async.swift */,
+				C2F100000000000000000004 /* Workspace+TestAccessors.swift */,
 				A94C0DE10000000000000002 /* RalphMockCLITestSupport.swift */,
 				C739A307267F8D9F41171236 /* TimeoutConfigurationTests.swift */,
 				57A3F5A71B329E532B37574E /* WorkspaceCorePerformanceTests.swift */,
 				E8F87AC97D36BA700C78EB3D /* WorkspaceOfflineCachingTests.swift */,
 				2E2C5883E22BDB9AE4683A0C /* WorkspaceRunControlTests.swift */,
 				13E5C2ED7D03FC4696F7E341 /* WorkspaceRunnerConfigurationTests.swift */,
+				C2F100000000000000000007 /* WorkspaceRunnerConfigurationTestSupport.swift */,
+				C2F100000000000000000008 /* WorkspaceRunnerConfigurationLoadingTests.swift */,
+				C2F100000000000000000009 /* WorkspaceRunnerRetargetingTests.swift */,
+				C2F10000000000000000000A /* WorkspaceRunnerRetargetingRunStateTests.swift */,
+				C2F10000000000000000000B /* WorkspaceManagerCLIOverrideTests.swift */,
 				30412AD055A0A3EA93DF756C /* WorkspaceTaskMutationAgentTests.swift */,
 			);
 			path = RalphCoreTests;
@@ -882,6 +927,8 @@
 			files = (
 				A1B2C3D4E5F6789012345678 /* ANSIParserTests.swift in Sources */,
 				ABCD1234EFAB5678CD9012EF /* WorkspacePerformanceTests.swift in Sources */,
+				C2F200000000000000000005 /* WorkspacePerformanceTestCase.swift in Sources */,
+				C2F200000000000000000006 /* WorkspacePerformanceTestSupport.swift in Sources */,
 				3A50AB4D19664FC7A750A366 /* RalphCLIClientTests.swift in Sources */,
 				3A50AB4D19664FC7A750A367 /* NavigationViewModelTests.swift in Sources */,
 				4531CFF0D6FF4741BB54C467 /* RalphModelsTests.swift in Sources */,
@@ -897,9 +944,17 @@
 				QD7890123456ABCDEF012345 /* QueueDirectParseTests.swift in Sources */,
 				A9011001B2C3D4E5F6071805 /* TaskConflictResolutionTests.swift in Sources */,
 				WTCTBUILD001234567890123 /* WorkspaceTaskCreationTests.swift in Sources */,
+				C2F20000000000000000000C /* WorkspaceTaskCreationTestSupport.swift in Sources */,
+				C2F20000000000000000000D /* WorkspaceTaskCreationIntegrationTests.swift in Sources */,
+				C2F20000000000000000000E /* WorkspaceQueueRefreshTests.swift in Sources */,
+				C2F20000000000000000000F /* QueueFileWatcherTests.swift in Sources */,
 				WTDTBUILD001234567890123 /* WorkspaceTaskDecomposeTests.swift in Sources */,
 				94A6A25C9EFCB2C4BA2EAEB5 /* CLIHealthCheckerTests.swift in Sources */,
 				94A6A25C9EFCB2C4BA2EAEB6 /* RalphCoreTestSupport.swift in Sources */,
+				C2F200000000000000000001 /* RalphCoreTestCase.swift in Sources */,
+				C2F200000000000000000002 /* RalphCoreTestSupport+Filesystem.swift in Sources */,
+				C2F200000000000000000003 /* RalphCoreTestSupport+Async.swift in Sources */,
+				C2F200000000000000000004 /* Workspace+TestAccessors.swift in Sources */,
 				A94C0DE10000000000000001 /* RalphMockCLITestSupport.swift in Sources */,
 				8845939354C5005EA32BF0BB /* ErrorRecoveryCategoryTests.swift in Sources */,
 				DC16DAA1BDC57EE79483F12A /* TimeoutConfigurationTests.swift in Sources */,
@@ -907,6 +962,11 @@
 				A694F3F0E2099C84A74C6E8F /* WorkspaceOfflineCachingTests.swift in Sources */,
 				F8E9C54A0D15DA15A90B7403 /* WorkspaceRunControlTests.swift in Sources */,
 				A8D48D6992FD8E5F56018280 /* WorkspaceRunnerConfigurationTests.swift in Sources */,
+				C2F200000000000000000007 /* WorkspaceRunnerConfigurationTestSupport.swift in Sources */,
+				C2F200000000000000000008 /* WorkspaceRunnerConfigurationLoadingTests.swift in Sources */,
+				C2F200000000000000000009 /* WorkspaceRunnerRetargetingTests.swift in Sources */,
+				C2F20000000000000000000A /* WorkspaceRunnerRetargetingRunStateTests.swift in Sources */,
+				C2F20000000000000000000B /* WorkspaceManagerCLIOverrideTests.swift in Sources */,
 				A23FD428E057C0453557DD4A /* WorkspaceTaskMutationAgentTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
