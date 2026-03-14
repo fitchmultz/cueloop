@@ -17,6 +17,8 @@
 mod makefile_ci_contract_test_clean;
 #[path = "makefile_ci_contract_test/makefile_ci_contract_test_contracts.rs"]
 mod makefile_ci_contract_test_contracts;
+#[path = "makefile_ci_contract_test/makefile_ci_contract_test_macos_visibility.rs"]
+mod makefile_ci_contract_test_macos_visibility;
 #[path = "makefile_ci_contract_test/makefile_ci_contract_test_parsing.rs"]
 mod makefile_ci_contract_test_parsing;
 #[path = "makefile_ci_contract_test/makefile_ci_contract_test_routing.rs"]

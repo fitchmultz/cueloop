@@ -4,6 +4,7 @@
  Responsibilities:
  - Apply minimum window geometry and deterministic UI-testing placement.
  - Enforce UI-testing window-count policy via explicit coordinator state.
+ - Route workspace-window reveal behavior through the shared presentation runtime so contract launches stay offscreen.
 
  Does not handle:
  - Workspace scene restoration or selection.
@@ -11,6 +12,7 @@
 
  Invariants/assumptions callers must respect:
  - UI-testing launches target one window by default and two windows for multiwindow runs.
+ - Settings-smoke contract launches must never activate the app or flash a workspace window onscreen.
  - Window sizing should preserve NavigationSplitView usability.
  */
 
@@ -203,13 +205,14 @@ struct WorkspaceWindowAnchor: NSViewRepresentable {
     private func stabilizeVisiblePlacement(for window: NSWindow) {
         guard requiresVisibleFrameReset(window) else { return }
 
-        window.setFrame(centeredFrame(for: window), display: true)
-        reveal(window)
+        RalphMacPresentationRuntime.applyRevealFrame(centeredFrame(for: window), to: window)
     }
 
     private func applyInitialPlacement(to window: NSWindow) {
-        window.setFrame(centeredFrame(for: window, preferredScreen: preferredLaunchScreen()), display: true)
-        reveal(window)
+        RalphMacPresentationRuntime.applyRevealFrame(
+            centeredFrame(for: window, preferredScreen: preferredLaunchScreen()),
+            to: window
+        )
     }
 
     private func requiresVisibleFrameReset(_ window: NSWindow) -> Bool {
@@ -312,8 +315,7 @@ struct WorkspaceWindowAnchor: NSViewRepresentable {
     }
 
     private func reveal(_ window: NSWindow) {
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        RalphMacPresentationRuntime.reveal(window)
     }
 
     private func activeScreen() -> NSScreen? {

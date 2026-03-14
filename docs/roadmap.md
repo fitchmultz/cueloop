@@ -9,8 +9,8 @@ This is the canonical near-term roadmap for active follow-up work.
 ### 1. Continue consolidating macOS workspace background-task ownership
 
 Why first:
+- The default macOS CI gates are now noninteractive again, so the next highest-leverage churn reducer is finishing workspace task ownership while app checks are cheap to rerun.
 - The teardown-race cutover removed the noisy failures, but more workspace entrypoints still launch ad hoc background tasks.
-- The new noninteractive Settings contract harness lowers verification friction, so the next highest-leverage churn reducer is finishing workspace task ownership while app checks are cheaper to rerun.
 - Completing ownership cleanup before broadening more macOS contract coverage reduces the chance of encoding flaky lifecycle behavior into new harnesses.
 
 Scope:
@@ -21,7 +21,7 @@ Scope:
 ### 2. Broaden noninteractive macOS contract coverage beyond the Settings cutover
 
 Why second:
-- The Settings smoke now runs offscreen in-process, proving the contract-harness shape works for app-level regressions without desktop takeover.
+- The Settings smoke now runs offscreen in-process, and the remaining CI-path foreground launch regression has been cut over to the shared presentation runtime.
 - The next best leverage is moving more fragile window/bootstrap/URL lifecycle checks onto the same noninteractive contract path before they drift behind headed-only coverage.
 - Doing this after the ownership audit avoids baking transient lifecycle races into new contract assertions.
 
