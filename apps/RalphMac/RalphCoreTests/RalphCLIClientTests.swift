@@ -134,16 +134,11 @@ final class RalphCLIClientTests: XCTestCase {
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         let compatibleVersion = VersionCompatibility.minimumCLIVersion
 
-        let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let scriptContent = """
             #!/bin/sh
             echo "ralph \(compatibleVersion)"
             """
-        try scriptContent.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: scriptContent)
 
         let client = try RalphCLIClient(executableURL: scriptURL)
         let collected = try await client.runAndCollect(arguments: ["--version"])
@@ -165,16 +160,11 @@ final class RalphCLIClientTests: XCTestCase {
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }
         let compatibleVersion = VersionCompatibility.maximumCLIVersion
 
-        let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let scriptContent = """
             #!/bin/sh
             echo "v\(compatibleVersion)"
             """
-        try scriptContent.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: scriptContent)
 
         let client = try RalphCLIClient(executableURL: scriptURL)
         let collected = try await client.runAndCollect(arguments: ["--version"])
@@ -191,16 +181,11 @@ final class RalphCLIClientTests: XCTestCase {
         let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-version-")
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
-        let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let scriptContent = """
             #!/bin/sh
             echo "1.5.0"
             """
-        try scriptContent.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: scriptContent)
 
         let client = try RalphCLIClient(executableURL: scriptURL)
         let collected = try await client.runAndCollect(arguments: ["--version"])

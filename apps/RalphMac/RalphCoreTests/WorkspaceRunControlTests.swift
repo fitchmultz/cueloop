@@ -18,18 +18,48 @@ import XCTest
 @MainActor
 final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
     func test_runNextTask_resolvesCLISelection_andStreamsOutput() async throws {
-        let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-run-stream-")
-        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
+        let queuedTask = RalphMockCLITestSupport.task(
+            id: "RQ-4242",
+            status: .todo,
+            title: "Queued task",
+            priority: .medium,
+            createdAt: "2026-03-10T00:00:00Z",
+            updatedAt: "2026-03-10T00:00:00Z"
+        )
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-run-stream",
+            scriptName: "mock-ralph-run-stream",
+            seedQueueTasks: [queuedTask]
+        )
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
+
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "model-test", iterations: 2)
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
+        let queueReadURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.queueReadDocument(
+                workspaceURL: fixture.workspaceURL,
+                activeTasks: [queuedTask],
+                nextRunnableTaskID: "RQ-4242"
+            ),
+            in: fixture.rootURL,
+            name: "queue-read.json"
+        )
 
         let script = """
             #!/bin/sh
             case "$*" in
               *"--no-color machine config resolve"*)
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-test","iterations":2}}}'
+              cat "\(configResolveURL.path)"
               exit 0
               ;;
               *"--no-color machine queue read"*)
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-4242","status":"todo","title":"Queued task","priority":"medium","tags":[],"created_at":"2026-03-10T00:00:00Z","updated_at":"2026-03-10T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-4242","runnability":{}}'
+              cat "\(queueReadURL.path)"
               exit 0
               ;;
               *"--no-color machine run one --id RQ-4242"*)
@@ -49,13 +79,13 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
             echo "unexpected args: $*" 1>&2
             exit 64
             """
-        let scriptURL = try WorkspacePerformanceTestSupport.makeExecutableScript(
-            in: tempDir,
-            name: "mock-ralph-run-stream",
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
             body: script
         )
         let client = try RalphCLIClient(executableURL: scriptURL)
-        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        let workspace = Workspace(workingDirectoryURL: fixture.workspaceURL, client: client)
         await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
         workspace.runNextTask()
@@ -85,14 +115,26 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
     }
 
     func test_runNextTask_withExplicitIDAndForce_usesExpectedArguments() async throws {
-        let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-run-explicit-")
-        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-run-explicit",
+            scriptName: "mock-ralph-run-explicit"
+        )
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
+
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "model-test", iterations: 1)
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
 
         let script = """
             #!/bin/sh
             case "$*" in
               *"--no-color machine config resolve"*)
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-test","iterations":1}}}'
+              cat "\(configResolveURL.path)"
               exit 0
               ;;
               *"--no-color machine run one --force --id RQ-5555"*)
@@ -105,13 +147,13 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
             echo "unexpected args: $*" 1>&2
             exit 64
             """
-        let scriptURL = try WorkspacePerformanceTestSupport.makeExecutableScript(
-            in: tempDir,
-            name: "mock-ralph-run-explicit",
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
             body: script
         )
         let client = try RalphCLIClient(executableURL: scriptURL)
-        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        let workspace = Workspace(workingDirectoryURL: fixture.workspaceURL, client: client)
         await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
         workspace.runNextTask(taskIDOverride: "RQ-5555", forceDirtyRepo: true)
@@ -146,23 +188,36 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
     }
 
     func test_cancel_stopsActiveRun_andRecordsCancellation() async throws {
-        let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-run-cancel-")
-        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-run-cancel",
+            scriptName: "mock-ralph-run-cancel"
+        )
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
+
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "model-test", iterations: 2)
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
+
         let script = """
             #!/bin/sh
             if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "config" ] && [ "$4" = "resolve" ]; then
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-test","iterations":2}}}'
+              cat "\(configResolveURL.path)"
               exit 0
             fi
             exec /bin/sleep "$@"
             """
-        let scriptURL = try WorkspacePerformanceTestSupport.makeExecutableScript(
-            in: tempDir,
-            name: "mock-ralph-run-cancel",
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
             body: script
         )
         let client = try RalphCLIClient(executableURL: scriptURL)
-        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        let workspace = Workspace(workingDirectoryURL: fixture.workspaceURL, client: client)
         await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
         workspace.run(arguments: ["60"])
@@ -188,9 +243,57 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
     }
 
     func test_startLoop_schedulesNextRunWithoutSleepDelay() async throws {
-        let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-loop-")
-        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
-        let stateURL = tempDir.appendingPathComponent("loop-state.txt")
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-loop",
+            scriptName: "mock-ralph-loop",
+            seedQueueTasks: []
+        )
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
+        let stateURL = fixture.rootURL.appendingPathComponent("loop-state.txt", isDirectory: false)
+
+        let loopTaskOne = RalphMockCLITestSupport.task(
+            id: "RQ-LOOP-1",
+            status: .todo,
+            title: "First loop task",
+            priority: .medium,
+            createdAt: "2026-03-10T00:00:00Z",
+            updatedAt: "2026-03-10T00:00:00Z"
+        )
+        let loopTaskTwo = RalphMockCLITestSupport.task(
+            id: "RQ-LOOP-2",
+            status: .todo,
+            title: "Second loop task",
+            priority: .medium,
+            createdAt: "2026-03-10T00:00:00Z",
+            updatedAt: "2026-03-10T00:00:00Z"
+        )
+
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "model-test", iterations: 2)
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
+        let loopQueueOneURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.queueReadDocument(
+                workspaceURL: fixture.workspaceURL,
+                activeTasks: [loopTaskOne],
+                nextRunnableTaskID: "RQ-LOOP-1"
+            ),
+            in: fixture.rootURL,
+            name: "queue-read-first.json"
+        )
+        let loopQueueTwoURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.queueReadDocument(
+                workspaceURL: fixture.workspaceURL,
+                activeTasks: [loopTaskTwo],
+                nextRunnableTaskID: "RQ-LOOP-2"
+            ),
+            in: fixture.rootURL,
+            name: "queue-read-second.json"
+        )
 
         let script = """
             #!/bin/sh
@@ -198,14 +301,14 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
 
             case "$*" in
               *"--no-color machine config resolve"*)
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"model-test","iterations":2}}}'
+              cat "\(configResolveURL.path)"
               exit 0
               ;;
               *"--no-color machine queue read"*)
               if [ ! -f "$state_file" ]; then
-                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-LOOP-1","status":"todo","title":"First loop task","priority":"medium","tags":[],"created_at":"2026-03-10T00:00:00Z","updated_at":"2026-03-10T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-LOOP-1","runnability":{}}'
+                cat "\(loopQueueOneURL.path)"
               else
-                echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[{"id":"RQ-LOOP-2","status":"todo","title":"Second loop task","priority":"medium","tags":[],"created_at":"2026-03-10T00:00:00Z","updated_at":"2026-03-10T00:00:00Z"}]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-LOOP-2","runnability":{}}'
+                cat "\(loopQueueTwoURL.path)"
               fi
               exit 0
               ;;
@@ -227,13 +330,13 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
             echo "unexpected args: $*" 1>&2
             exit 64
             """
-        let scriptURL = try WorkspacePerformanceTestSupport.makeExecutableScript(
-            in: tempDir,
-            name: "mock-ralph-loop",
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
             body: script
         )
         let client = try RalphCLIClient(executableURL: scriptURL)
-        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        let workspace = Workspace(workingDirectoryURL: fixture.workspaceURL, client: client)
         await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
         let startedAt = Date()

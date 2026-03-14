@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A94C0DE10000000000000001 /* RalphMockCLITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94C0DE10000000000000002 /* RalphMockCLITestSupport.swift */; };
 		0A91540F767F0B72B29548E4 /* RunControlSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4605921734E20A09AA113523 /* RunControlSection.swift */; };
 		0F5CF3F1723144EA83490033 /* RalphCLIExecutableLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EE8951D88274919856E798A /* RalphCLIExecutableLocator.swift */; };
 		0FFC498DAD0AE8456CBC8A74 /* AnalyticsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BB33D4574BC2AE48AE95A5 /* AnalyticsSection.swift */; };
@@ -253,6 +254,7 @@
 		3298F69D10A0636C5327AF65 /* WorkingDirectoryHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkingDirectoryHeader.swift; sourceTree = "<group>"; };
 		34FD8AC4252040E88FB002F9 /* RalphModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphModelsTests.swift; sourceTree = "<group>"; };
 		3ABCA66572BF4FE381DD0476 /* RalphCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RalphCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A94C0DE10000000000000002 /* RalphMockCLITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMockCLITestSupport.swift; sourceTree = "<group>"; };
 		3B65E12FC434490D9A617CEB /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
 		3CE6C4AFCBD2413B8BF2F723BD308B4D /* KanbanColumnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KanbanColumnView.swift; path = RalphMac/KanbanColumnView.swift; sourceTree = "<group>"; };
 		4501A6DA17EA418787F9BC9C /* WindowState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowState.swift; sourceTree = "<group>"; };
@@ -527,6 +529,7 @@
 				58E8D3607BFD28F72C5E9344 /* CLIHealthCheckerTests.swift */,
 				87DB6C6CD191F58338B4C774 /* ErrorRecoveryCategoryTests.swift */,
 				58E8D3607BFD28F72C5E9345 /* RalphCoreTestSupport.swift */,
+				A94C0DE10000000000000002 /* RalphMockCLITestSupport.swift */,
 				C739A307267F8D9F41171236 /* TimeoutConfigurationTests.swift */,
 				57A3F5A71B329E532B37574E /* WorkspaceCorePerformanceTests.swift */,
 				E8F87AC97D36BA700C78EB3D /* WorkspaceOfflineCachingTests.swift */,
@@ -897,6 +900,7 @@
 				WTDTBUILD001234567890123 /* WorkspaceTaskDecomposeTests.swift in Sources */,
 				94A6A25C9EFCB2C4BA2EAEB5 /* CLIHealthCheckerTests.swift in Sources */,
 				94A6A25C9EFCB2C4BA2EAEB6 /* RalphCoreTestSupport.swift in Sources */,
+				A94C0DE10000000000000001 /* RalphMockCLITestSupport.swift in Sources */,
 				8845939354C5005EA32BF0BB /* ErrorRecoveryCategoryTests.swift in Sources */,
 				DC16DAA1BDC57EE79483F12A /* TimeoutConfigurationTests.swift in Sources */,
 				BA4DAD1BA3631E1351694BEB /* WorkspaceCorePerformanceTests.swift in Sources */,

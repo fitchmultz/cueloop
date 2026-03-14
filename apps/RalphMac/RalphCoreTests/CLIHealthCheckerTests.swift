@@ -74,7 +74,6 @@ final class CLIHealthCheckerTests: XCTestCase {
         let tempDir = try RalphCoreTestSupport.makeTemporaryDirectory(prefix: "ralph-health-override")
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
-        let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let script = """
         #!/bin/sh
         if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "system" ] && [ "$4" = "info" ]; then
@@ -83,11 +82,7 @@ final class CLIHealthCheckerTests: XCTestCase {
         fi
         exit 1
         """
-        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: script)
 
         let checker = CLIHealthChecker()
         let status = await checker.checkHealth(
@@ -104,7 +99,6 @@ final class CLIHealthCheckerTests: XCTestCase {
         let tempDir = try RalphCoreTestSupport.makeTemporaryDirectory(prefix: "ralph-health-fallback")
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
-        let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let script = """
         #!/bin/sh
         if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "system" ] && [ "$4" = "info" ]; then
@@ -113,11 +107,7 @@ final class CLIHealthCheckerTests: XCTestCase {
         fi
         exit 1
         """
-        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: script)
 
         let checker = CLIHealthChecker()
         let status = await checker.checkHealth(
@@ -153,7 +143,6 @@ final class CLIHealthCheckerTests: XCTestCase {
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
         let pidFileURL = tempDir.appendingPathComponent("health.pid", isDirectory: false)
-        let scriptURL = tempDir.appendingPathComponent("mock-ralph", isDirectory: false)
         let script = """
         #!/bin/sh
         echo $$ > "\(pidFileURL.path)"
@@ -164,11 +153,7 @@ final class CLIHealthCheckerTests: XCTestCase {
         fi
         exit 1
         """
-        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: script)
 
         let checker = CLIHealthChecker()
         let healthTask = Task {

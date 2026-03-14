@@ -6,29 +6,29 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Centralize macOS mock CLI fixture generation and resolved-path payloads
+### 1. Reduce macOS test noise from fixture teardown and async refresh races
 
 Why first:
-- Recent macOS test failures came from drift in inline mock CLI scripts and fake machine payloads.
-- Shared fixture builders will reduce churn before more workspace/app-surface work lands.
-- This keeps path, queue, and config payload contracts consistent across RalphCore tests.
-
-Scope:
-- Move repeated mock CLI script and JSON payload construction into shared RalphCore test support.
-- Ensure machine queue/config payloads always emit real workspace-resolved paths.
-- Remove ad hoc per-test placeholder payloads where possible.
-
-### 2. Reduce macOS test noise from fixture teardown and async refresh races
-
-Why second:
-- Once fixtures are centralized, the remaining failures/noise are easier to isolate as lifecycle issues instead of payload bugs.
+- The shared mock-fixture cutover is now in place, so the remaining macOS churn is lifecycle noise rather than payload drift.
 - Current passing test runs still emit benign-but-noisy runner-configuration failures after temporary fixture executables are removed.
-- Quieting that noise will make real regressions easier to spot.
+- Quieting that noise will make real regressions easier to spot before more app-surface changes land.
 
 Scope:
 - Prevent background runner-config or watcher refresh work from outliving test fixtures.
 - Tighten workspace/test teardown so temporary CLI binaries and temp directories are not observed after cleanup.
 - Keep operational-health diagnostics meaningful instead of flooding logs with expected teardown errors.
+
+### 2. Split oversized macOS test support and runner-configuration suites after the fixture cutover
+
+Why second:
+- The new shared mock-fixture layer reduced duplication, but `WorkspaceRunnerConfigurationTests.swift` still carries too many behaviors in one file.
+- Decomposition is lower risk now that shared builders and resolved-path payloads are centralized.
+- Smaller files will keep future macOS test churn localized and easier to review.
+
+Scope:
+- Break large RalphCore test suites into behavior-focused files without changing coverage.
+- Keep `RalphCoreTestSupport.swift` and related helpers as thin facades over focused support files where needed.
+- Preserve deterministic temp-fixture and queue-path helpers as the single source of truth.
 
 ### 3. Broaden post-run supervision regression coverage around adjacent lifecycle edges
 

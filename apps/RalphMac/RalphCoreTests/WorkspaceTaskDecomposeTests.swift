@@ -93,141 +93,61 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
     }
 
     private static func makeMockCLIFixture() throws -> MockCLIFixture {
-        let rootURL = try makeTempDir(prefix: "ralph-workspace-decompose-")
-        let workspaceURL = rootURL.appendingPathComponent("workspace", isDirectory: true)
-        try FileManager.default.createDirectory(at: workspaceURL, withIntermediateDirectories: true)
-        let logURL = rootURL.appendingPathComponent("invocations.log", isDirectory: false)
-        let ralphDirURL = workspaceURL.appendingPathComponent(".ralph", isDirectory: true)
-        try FileManager.default.createDirectory(at: ralphDirURL, withIntermediateDirectories: true)
-        let queueURL = ralphDirURL.appendingPathComponent("queue.jsonc", isDirectory: false)
-        let scriptURL = rootURL.appendingPathComponent("mock-ralph", isDirectory: false)
-
-        let queueJSON = """
-        {
-          "tasks": [
-            {"id":"RQ-0007","status":"todo","title":"Auth epic","priority":"high","tags":[]},
-            {"id":"RQ-0101","status":"draft","title":"Prepare OAuth app","priority":"medium","tags":[]},
-            {"id":"RQ-0102","status":"draft","title":"Wire callback flow","priority":"medium","tags":[]}
-          ]
-        }
-        """
-        try queueJSON.write(to: queueURL, atomically: true, encoding: .utf8)
-
-        let previewJSON = """
-        {
-          "version": 1,
-          "result": {
-            "version": 1,
-            "mode": "preview",
-            "preview": {
-              "source": {"kind": "freeform", "request": "Build OAuth login"},
-              "attach_target": {
-                "task": {"id":"RQ-0042","status":"todo","title":"Auth program","priority":"high","tags":[]},
-                "has_existing_children": true
-              },
-              "plan": {
-                "root": {
-                  "planner_key": "root",
-                  "title": "Build OAuth login",
-                  "description": "Plan auth integration",
-                  "plan": ["Inspect current auth entry points"],
-                  "tags": ["auth"],
-                  "scope": ["src/auth"],
-                  "depends_on_keys": [],
-                  "children": [
-                    {
-                      "planner_key": "prepare-app",
-                      "title": "Prepare OAuth app",
-                      "description": null,
-                      "plan": [],
-                      "tags": [],
-                      "scope": [],
-                      "depends_on_keys": [],
-                      "children": []
-                    },
-                    {
-                      "planner_key": "wire-callback",
-                      "title": "Wire callback flow",
-                      "description": null,
-                      "plan": [],
-                      "tags": [],
-                      "scope": [],
-                      "depends_on_keys": ["prepare-app"],
-                      "children": []
-                    }
-                  ]
-                },
-                "warnings": ["Tree capped at two leaves for fixture output."],
-                "total_nodes": 3,
-                "leaf_nodes": 2,
-                "dependency_edges": [
-                  {"task_title": "Wire callback flow", "depends_on_title": "Prepare OAuth app"}
-                ]
-              },
-              "write_blockers": [],
-              "child_status": "todo",
-              "child_policy": "append",
-              "with_dependencies": true
-            },
-            "write": null
-          },
-        }
-        """
-
-        let writeJSON = """
-        {
-          "version": 1,
-          "result": {
-            "version": 1,
-            "mode": "write",
-            "preview": {
-              "source": {"kind": "existing_task", "task": {"id":"RQ-0007","status":"todo","title":"Auth epic","priority":"high","tags":[]}},
-              "attach_target": null,
-              "plan": {
-                "root": {
-                  "planner_key": "root",
-                  "title": "Auth epic",
-                  "description": null,
-                  "plan": [],
-                  "tags": [],
-                  "scope": [],
-                  "depends_on_keys": [],
-                  "children": []
-                },
-                "warnings": [],
-                "total_nodes": 1,
-                "leaf_nodes": 1,
-                "dependency_edges": []
-              },
-              "write_blockers": [],
-              "child_status": "draft",
-              "child_policy": "fail",
-              "with_dependencies": false
-            },
-            "write": {
-              "root_task_id": null,
-              "parent_task_id": "RQ-0007",
-              "created_ids": ["RQ-0101", "RQ-0102"],
-              "replaced_ids": [],
-              "parent_annotated": true
-            }
-          }
-        }
-        """
-
-        let queueListJSON = """
-        [
-          {"id":"RQ-0007","status":"todo","title":"Auth epic","priority":"high","tags":[]},
-          {"id":"RQ-0101","status":"draft","title":"Prepare OAuth app","priority":"medium","tags":[]},
-          {"id":"RQ-0102","status":"draft","title":"Wire callback flow","priority":"medium","tags":[]}
+        let queueTasks = [
+            RalphMockCLITestSupport.task(
+                id: "RQ-0007",
+                status: .todo,
+                title: "Auth epic",
+                priority: .high
+            ),
+            RalphMockCLITestSupport.task(
+                id: "RQ-0101",
+                status: .draft,
+                title: "Prepare OAuth app",
+                priority: .medium
+            ),
+            RalphMockCLITestSupport.task(
+                id: "RQ-0102",
+                status: .draft,
+                title: "Wire callback flow",
+                priority: .medium
+            )
         ]
-        """
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-decompose",
+            workspaceName: "workspace",
+            logFileName: "invocations.log",
+            seedQueueTasks: queueTasks
+        )
+        let logURL = try XCTUnwrap(fixture.logURL)
+
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "gpt-5.3-codex", phases: 2, iterations: 3)
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
+        let queueReadURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.queueReadDocument(
+                workspaceURL: fixture.workspaceURL,
+                activeTasks: queueTasks,
+                nextRunnableTaskID: "RQ-0007"
+            ),
+            in: fixture.rootURL,
+            name: "queue-read.json"
+        )
+
+        let previewURL = fixture.rootURL.appendingPathComponent("decompose-preview.json", isDirectory: false)
+        try Self.previewJSON.write(to: previewURL, atomically: true, encoding: .utf8)
+        let writeURL = fixture.rootURL.appendingPathComponent("decompose-write.json", isDirectory: false)
+        try Self.writeJSON.write(to: writeURL, atomically: true, encoding: .utf8)
 
         let script = """
         #!/bin/sh
         set -eu
-        LOG_FILE=\"${MOCK_RALPH_LOG_FILE:?}\"
-        printf '%s\n' "$*" >> "$LOG_FILE"
+        printf '%s\n' "$*" >> "\(logURL.path)"
         if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
           echo "ralph \(VersionCompatibility.minimumCLIVersion)"
           exit 0
@@ -236,45 +156,133 @@ final class WorkspaceTaskDecomposeTests: XCTestCase {
           shift
         fi
         if [ "$1" = "machine" ] && [ "$2" = "config" ] && [ "$3" = "resolve" ]; then
-          echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"gpt-5.3-codex","phases":2,"iterations":3}}}'
+          cat "\(configResolveURL.path)"
           exit 0
         fi
         if [ "$1" = "machine" ] && [ "$2" = "task" ] && [ "$3" = "decompose" ]; then
           if printf '%s\n' "$*" | grep -q -- '--write'; then
-            cat <<'JSON'
-        \(writeJSON)
-        JSON
+            cat "\(writeURL.path)"
           else
-            cat <<'JSON'
-        \(previewJSON)
-        JSON
+            cat "\(previewURL.path)"
           fi
           exit 0
         fi
         if [ "$1" = "machine" ] && [ "$2" = "queue" ] && [ "$3" = "read" ]; then
-          echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":\(queueListJSON)},"done":{"version":1,"tasks":[]},"next_runnable_task_id":"RQ-0007","runnability":{}}'
+          cat "\(queueReadURL.path)"
           exit 0
         fi
         echo "unsupported command: $*" >&2
         exit 1
         """
 
-        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
-
-        setenv("MOCK_RALPH_LOG_FILE", logURL.path, 1)
+        _ = try RalphMockCLITestSupport.makeExecutableScript(in: fixture.rootURL, name: fixture.scriptURL.lastPathComponent, body: script)
         return MockCLIFixture(
-            rootURL: rootURL,
-            workspaceURL: workspaceURL,
-            scriptURL: scriptURL,
+            rootURL: fixture.rootURL,
+            workspaceURL: fixture.workspaceURL,
+            scriptURL: fixture.scriptURL,
             logURL: logURL
         )
     }
 
-    private static func makeTempDir(prefix: String) throws -> URL {
-        try RalphCoreTestSupport.makeTemporaryDirectory(prefix: prefix)
+    private static let previewJSON = """
+    {
+      "version": 1,
+      "result": {
+        "version": 1,
+        "mode": "preview",
+        "preview": {
+          "source": {"kind": "freeform", "request": "Build OAuth login"},
+          "attach_target": {
+            "task": {"id":"RQ-0042","status":"todo","title":"Auth program","priority":"high","tags":[]},
+            "has_existing_children": true
+          },
+          "plan": {
+            "root": {
+              "planner_key": "root",
+              "title": "Build OAuth login",
+              "description": "Plan auth integration",
+              "plan": ["Inspect current auth entry points"],
+              "tags": ["auth"],
+              "scope": ["src/auth"],
+              "depends_on_keys": [],
+              "children": [
+                {
+                  "planner_key": "prepare-app",
+                  "title": "Prepare OAuth app",
+                  "description": null,
+                  "plan": [],
+                  "tags": [],
+                  "scope": [],
+                  "depends_on_keys": [],
+                  "children": []
+                },
+                {
+                  "planner_key": "wire-callback",
+                  "title": "Wire callback flow",
+                  "description": null,
+                  "plan": [],
+                  "tags": [],
+                  "scope": [],
+                  "depends_on_keys": ["prepare-app"],
+                  "children": []
+                }
+              ]
+            },
+            "warnings": ["Tree capped at two leaves for fixture output."],
+            "total_nodes": 3,
+            "leaf_nodes": 2,
+            "dependency_edges": [
+              {"task_title": "Wire callback flow", "depends_on_title": "Prepare OAuth app"}
+            ]
+          },
+          "write_blockers": [],
+          "child_status": "todo",
+          "child_policy": "append",
+          "with_dependencies": true
+        },
+        "write": null
+      }
     }
+    """
+
+    private static let writeJSON = """
+    {
+      "version": 1,
+      "result": {
+        "version": 1,
+        "mode": "write",
+        "preview": {
+          "source": {"kind": "existing_task", "task": {"id":"RQ-0007","status":"todo","title":"Auth epic","priority":"high","tags":[]}},
+          "attach_target": null,
+          "plan": {
+            "root": {
+              "planner_key": "root",
+              "title": "Auth epic",
+              "description": null,
+              "plan": [],
+              "tags": [],
+              "scope": [],
+              "depends_on_keys": [],
+              "children": []
+            },
+            "warnings": [],
+            "total_nodes": 1,
+            "leaf_nodes": 1,
+            "dependency_edges": []
+          },
+          "write_blockers": [],
+          "child_status": "draft",
+          "child_policy": "fail",
+          "with_dependencies": false
+        },
+        "write": {
+          "root_task_id": null,
+          "parent_task_id": "RQ-0007",
+          "created_ids": ["RQ-0101", "RQ-0102"],
+          "replaced_ids": [],
+          "parent_annotated": true
+        }
+      }
+    }
+    """
 }

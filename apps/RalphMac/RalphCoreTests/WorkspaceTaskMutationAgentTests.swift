@@ -18,54 +18,16 @@ import XCTest
 @MainActor
 final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
     func test_updateTask_agentOverride_emitsAgentEditCommand() async throws {
-        let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-agent-edit-")
-        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
-        try WorkspacePerformanceTestSupport.writeEmptyQueueFile(in: tempDir)
-        let logURL = tempDir.appendingPathComponent("commands.log")
-
-        let script = """
-            #!/bin/sh
-            log_file="\(logURL.path)"
-
-            case "$*" in
-            *"--no-color machine config resolve"*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"codex","phases":2,"iterations":1}}}'
-              exit 0
-              ;;
-            *"--no-color machine queue read"*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":null,"runnability":{}}'
-              exit 0
-              ;;
-            *"--no-color machine task mutate --input "*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              cat "$6" >> "$log_file"
-              printf '\n' >> "$log_file"
-              echo '{"version":1,"report":{"version":1,"atomic":true,"tasks":[{"task_id":"RQ-9001","applied_edits":1}]}}'
-              exit 0
-              ;;
-            esac
-
-            echo "unexpected args: $*" 1>&2
-            exit 64
-            """
-        let scriptURL = try WorkspacePerformanceTestSupport.makeExecutableScript(
-            in: tempDir,
-            name: "mock-ralph-task-mutate-agent",
-            body: script
+        let fixture = try Self.makeMutationFixture(
+            prefix: "ralph-workspace-agent-edit",
+            scriptName: "mock-ralph-task-mutate-agent",
+            mutationReportJSON: #"{"version":1,"report":{"version":1,"atomic":true,"tasks":[{"task_id":"RQ-9001","applied_edits":1}]}}"#
         )
-        let client = try RalphCLIClient(executableURL: scriptURL)
-        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
+        let workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: try RalphCLIClient(executableURL: fixture.scriptURL)
+        )
 
         let original = RalphTask(
             id: "RQ-9001",
@@ -91,7 +53,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
 
         try await workspace.updateTask(from: original, to: updated)
 
-        let log = try String(contentsOf: logURL, encoding: .utf8)
+        let log = try String(contentsOf: fixture.logURL, encoding: .utf8)
         let lines = log.split(separator: "\n").map(String.init)
         let payloadLine = lines.first { $0.contains("\"task_id\" : \"RQ-9001\"") }
 
@@ -107,54 +69,16 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
     }
 
     func test_updateTask_clearingAgentOverride_emitsEmptyAgentValue() async throws {
-        let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-agent-clear-")
-        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
-        try WorkspacePerformanceTestSupport.writeEmptyQueueFile(in: tempDir)
-        let logURL = tempDir.appendingPathComponent("commands.log")
-
-        let script = """
-            #!/bin/sh
-            log_file="\(logURL.path)"
-
-            case "$*" in
-            *"--no-color machine config resolve"*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"codex","phases":2,"iterations":1}}}'
-              exit 0
-              ;;
-            *"--no-color machine queue read"*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":null,"runnability":{}}'
-              exit 0
-              ;;
-            *"--no-color machine task mutate --input "*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              cat "$6" >> "$log_file"
-              printf '\n' >> "$log_file"
-              echo '{"version":1,"report":{"version":1,"atomic":true,"tasks":[{"task_id":"RQ-9002","applied_edits":1}]}}'
-              exit 0
-              ;;
-            esac
-
-            echo "unexpected args: $*" 1>&2
-            exit 64
-            """
-        let scriptURL = try WorkspacePerformanceTestSupport.makeExecutableScript(
-            in: tempDir,
-            name: "mock-ralph-task-mutate-agent-clear",
-            body: script
+        let fixture = try Self.makeMutationFixture(
+            prefix: "ralph-workspace-agent-clear",
+            scriptName: "mock-ralph-task-mutate-agent-clear",
+            mutationReportJSON: #"{"version":1,"report":{"version":1,"atomic":true,"tasks":[{"task_id":"RQ-9002","applied_edits":1}]}}"#
         )
-        let client = try RalphCLIClient(executableURL: scriptURL)
-        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
+        let workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: try RalphCLIClient(executableURL: fixture.scriptURL)
+        )
 
         let original = RalphTask(
             id: "RQ-9002",
@@ -172,61 +96,23 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
 
         try await workspace.updateTask(from: original, to: updated)
 
-        let log = try String(contentsOf: logURL, encoding: .utf8)
+        let log = try String(contentsOf: fixture.logURL, encoding: .utf8)
         XCTAssertTrue(log.contains("\"task_id\" : \"RQ-9002\""))
         XCTAssertTrue(log.contains("\"field\" : \"agent\""))
         XCTAssertTrue(log.contains("\"value\" : \"\""))
     }
 
     func test_updateTask_semanticallyEmptyAgentOverride_doesNotEmitAgentEdit() async throws {
-        let tempDir = try WorkspacePerformanceTestSupport.makeTempDir(prefix: "ralph-workspace-agent-noop-")
-        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
-        try WorkspacePerformanceTestSupport.writeEmptyQueueFile(in: tempDir)
-        let logURL = tempDir.appendingPathComponent("commands.log")
-
-        let script = """
-            #!/bin/sh
-            log_file="\(logURL.path)"
-
-            case "$*" in
-            *"--no-color machine config resolve"*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"safety":{"repo_trusted":true,"dirty_repo":false,"git_publish_mode":"off","approval_mode":"default","ci_gate_enabled":true,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive_streaming","interactive_approval_supported":false},"config":{"agent":{"model":"codex","phases":2,"iterations":1}}}'
-              exit 0
-              ;;
-            *"--no-color machine queue read"*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              echo '{"version":2,"paths":{"repo_root":"'"$PWD"'","queue_path":"'"$PWD"'/.ralph/queue.jsonc","done_path":"'"$PWD"'/.ralph/done.jsonc","project_config_path":"'"$PWD"'/.ralph/config.jsonc","global_config_path":null},"active":{"version":1,"tasks":[]},"done":{"version":1,"tasks":[]},"next_runnable_task_id":null,"runnability":{}}'
-              exit 0
-              ;;
-            *"--no-color machine task mutate --input "*)
-              for arg in "$@"; do
-                printf '<%s>' "$arg" >> "$log_file"
-              done
-              printf '\n' >> "$log_file"
-              cat "$6" >> "$log_file"
-              printf '\n' >> "$log_file"
-              echo '{"version":1,"report":{"version":1,"atomic":true,"tasks":[]}}'
-              exit 0
-              ;;
-            esac
-
-            echo "unexpected args: $*" 1>&2
-            exit 64
-            """
-        let scriptURL = try WorkspacePerformanceTestSupport.makeExecutableScript(
-            in: tempDir,
-            name: "mock-ralph-task-mutate-agent-noop",
-            body: script
+        let fixture = try Self.makeMutationFixture(
+            prefix: "ralph-workspace-agent-noop",
+            scriptName: "mock-ralph-task-mutate-agent-noop",
+            mutationReportJSON: #"{"version":1,"report":{"version":1,"atomic":true,"tasks":[]}}"#
         )
-        let client = try RalphCLIClient(executableURL: scriptURL)
-        let workspace = Workspace(workingDirectoryURL: tempDir, client: client)
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
+        let workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: try RalphCLIClient(executableURL: fixture.scriptURL)
+        )
 
         let original = RalphTask(
             id: "RQ-9003",
@@ -245,11 +131,96 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
 
         try await workspace.updateTask(from: original, to: updated)
 
-        if FileManager.default.fileExists(atPath: logURL.path) {
-            let log = try String(contentsOf: logURL, encoding: .utf8)
+        if FileManager.default.fileExists(atPath: fixture.logURL.path) {
+            let log = try String(contentsOf: fixture.logURL, encoding: .utf8)
             let lines = log.split(separator: "\n").map(String.init)
             XCTAssertFalse(lines.contains { $0.contains("<--no-color><machine><task><mutate><--input><") })
             XCTAssertFalse(log.contains("\"field\" : \"agent\""))
         }
+    }
+
+    private struct MutationFixture {
+        let rootURL: URL
+        let workspaceURL: URL
+        let scriptURL: URL
+        let logURL: URL
+    }
+
+    private static func makeMutationFixture(
+        prefix: String,
+        scriptName: String,
+        mutationReportJSON: String
+    ) throws -> MutationFixture {
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: prefix,
+            scriptName: scriptName,
+            logFileName: "commands.log",
+            seedQueueTasks: []
+        )
+        let logURL = try XCTUnwrap(fixture.logURL)
+
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "codex", phases: 2, iterations: 1)
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
+        let queueReadURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.queueReadDocument(
+                workspaceURL: fixture.workspaceURL,
+                activeTasks: []
+            ),
+            in: fixture.rootURL,
+            name: "queue-read.json"
+        )
+        let mutationReportURL = fixture.rootURL.appendingPathComponent("mutation-report.json", isDirectory: false)
+        try mutationReportJSON.write(to: mutationReportURL, atomically: true, encoding: .utf8)
+
+        let script = """
+            #!/bin/sh
+            log_file="\(logURL.path)"
+
+            case "$*" in
+            *"--no-color machine config resolve"*)
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              cat "\(configResolveURL.path)"
+              exit 0
+              ;;
+            *"--no-color machine queue read"*)
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              cat "\(queueReadURL.path)"
+              exit 0
+              ;;
+            *"--no-color machine task mutate --input "*)
+              for arg in "$@"; do
+                printf '<%s>' "$arg" >> "$log_file"
+              done
+              printf '\n' >> "$log_file"
+              cat "$6" >> "$log_file"
+              printf '\n' >> "$log_file"
+              cat "\(mutationReportURL.path)"
+              exit 0
+              ;;
+            esac
+
+            echo "unexpected args: $*" >&2
+            exit 64
+            """
+
+        _ = try RalphMockCLITestSupport.makeExecutableScript(in: fixture.rootURL, name: scriptName, body: script)
+        return MutationFixture(
+            rootURL: fixture.rootURL,
+            workspaceURL: fixture.workspaceURL,
+            scriptURL: fixture.scriptURL,
+            logURL: logURL
+        )
     }
 }

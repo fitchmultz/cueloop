@@ -29,7 +29,6 @@ final class RetryIntegrationTests: XCTestCase {
     
     func test_runAndCollectWithRetry_succeedsAfterTransientFailure() async throws {
         // Create a mock script that fails twice then succeeds
-        let scriptURL = tempDir.appendingPathComponent("mock-cli")
         let stateFile = tempDir.appendingPathComponent("attempt-count")
         
         let scriptContent = """
@@ -50,12 +49,7 @@ final class RetryIntegrationTests: XCTestCase {
             echo '{"tasks":[]}'
             exit 0
             """
-        
-        try scriptContent.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, name: "mock-cli", body: scriptContent)
         
         let client = try RalphCLIClient(executableURL: scriptURL)
         let result = try await client.runAndCollectWithRetry(
@@ -69,18 +63,12 @@ final class RetryIntegrationTests: XCTestCase {
     
     func test_runAndCollectWithRetry_failsOnPermanentError() async throws {
         // Create a mock script that always fails with non-retryable error
-        let scriptURL = tempDir.appendingPathComponent("mock-cli")
         let scriptContent = """
             #!/bin/bash
             echo "file not found" >&2
             exit 2
             """
-        
-        try scriptContent.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, name: "mock-cli", body: scriptContent)
         
         let client = try RalphCLIClient(executableURL: scriptURL)
         
@@ -97,7 +85,6 @@ final class RetryIntegrationTests: XCTestCase {
     
     func test_runAndCollectWithRetry_progressCallbackInvoked() async throws {
         // Create a mock script that fails once then succeeds
-        let scriptURL = tempDir.appendingPathComponent("mock-cli")
         let stateFile = tempDir.appendingPathComponent("attempt-count")
         
         let scriptContent = """
@@ -118,12 +105,7 @@ final class RetryIntegrationTests: XCTestCase {
             echo '{"tasks":[]}'
             exit 0
             """
-        
-        try scriptContent.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, name: "mock-cli", body: scriptContent)
         
         let client = try RalphCLIClient(executableURL: scriptURL)
         

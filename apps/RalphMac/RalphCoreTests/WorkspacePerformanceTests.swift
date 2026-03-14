@@ -106,42 +106,23 @@ enum WorkspacePerformanceTestSupport {
     }
 
     static func makeExecutableScript(in directory: URL, name: String, body: String) throws -> URL {
-        let scriptURL = directory.appendingPathComponent(name, isDirectory: false)
-        try body.write(to: scriptURL, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o755))],
-            ofItemAtPath: scriptURL.path
-        )
-        return scriptURL
+        try RalphMockCLITestSupport.makeExecutableScript(in: directory, name: name, body: body)
     }
 
     static func makeVersionAwareMockCLI(in directory: URL, name: String) throws -> URL {
-        let script = """
-            #!/bin/sh
-            if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
-              echo "ralph \(VersionCompatibility.minimumCLIVersion)"
-              exit 0
-            fi
-            if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "system" ] && [ "$4" = "info" ]; then
-              echo '{"version":1,"cli_version":"\(VersionCompatibility.minimumCLIVersion)"}'
-              exit 0
-            fi
-            echo "unexpected args: $*" 1>&2
-            exit 64
-            """
-        return try makeExecutableScript(in: directory, name: name, body: script)
+        try RalphMockCLITestSupport.makeVersionAwareMockCLI(in: directory, name: name)
     }
 
     static func writeEmptyQueueFile(in workspaceDir: URL) throws {
-        try writeQueueFile(in: workspaceDir, tasksJSON: "[]")
+        try RalphMockCLITestSupport.writeQueueFile(in: workspaceDir, tasks: [])
     }
 
     static func writeQueueFile(in workspaceDir: URL, tasksJSON: String) throws {
-        let ralphDir = workspaceDir.appendingPathComponent(".ralph", isDirectory: true)
-        try FileManager.default.createDirectory(at: ralphDir, withIntermediateDirectories: true)
-        let queueFile = ralphDir.appendingPathComponent("queue.jsonc", isDirectory: false)
-        let document = #"{"version":1,"tasks":\#(tasksJSON)}"#
-        try document.write(to: queueFile, atomically: true, encoding: .utf8)
+        let data = Data(tasksJSON.utf8)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let tasks = try decoder.decode([RalphTask].self, from: data)
+        try RalphMockCLITestSupport.writeQueueFile(in: workspaceDir, tasks: tasks)
     }
 
     static func waitFor(
