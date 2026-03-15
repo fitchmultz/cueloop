@@ -185,9 +185,6 @@ Plugins are **disabled by default** for security. Enable via config:
     "plugins": {
       "my.plugin": {
         "enabled": true,
-        "runner": {
-          "bin": "custom-runner"
-        },
         "config": {
           "my_setting": "value"
         }
@@ -197,7 +194,7 @@ Plugins are **disabled by default** for security. Enable via config:
 }
 ```
 
-Per-plugin configuration is passed through to the plugin via environment variables.
+Per-plugin configuration is passed through to the plugin via environment variables. Runner and processor executable paths come from `plugin.json`; config-level binary overrides are not supported.
 
 ## Runner Protocol
 
@@ -397,5 +394,5 @@ The current plugin API version is `1`. Ralph will reject plugins with incompatib
 
 **Runner not found:**
 - Verify `runner.bin` path in manifest
-- Path must stay relative to the plugin directory
+- Path must stay relative to the plugin directory and remain inside it after canonical path resolution
 - Config-level runner/processor binary overrides are not supported

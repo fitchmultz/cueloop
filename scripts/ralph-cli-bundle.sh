@@ -116,13 +116,11 @@ if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
     build_args+=(--jobs "$JOBS")
 fi
 
-if [ ! -x "$binary_path" ]; then
-    ralph_log_info "Building Ralph CLI for $CONFIGURATION"
-    (
-        cd "$REPO_ROOT"
-        cargo build "${build_args[@]}"
-    )
-fi
+ralph_log_info "Building Ralph CLI for $CONFIGURATION" >&2
+(
+    cd "$REPO_ROOT"
+    "${CARGO:-cargo}" build "${build_args[@]}"
+)
 
 if [ ! -x "$binary_path" ]; then
     ralph_log_error "Built CLI binary is missing: $binary_path"

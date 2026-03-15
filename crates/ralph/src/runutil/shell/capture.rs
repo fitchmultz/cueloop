@@ -1,3 +1,23 @@
+//! Managed subprocess output capture helpers.
+//!
+//! Purpose:
+//! - Capture bounded stdout/stderr tails for managed subprocesses.
+//!
+//! Responsibilities:
+//! - Maintain bounded in-memory output buffers.
+//! - Spawn and join dedicated reader threads for stdout/stderr pipes.
+//! - Preserve truncation metadata for higher-level error reporting.
+//!
+//! Scope:
+//! - Pipe reading and bounded buffer management only.
+//!
+//! Usage:
+//! - Used internally by `crate::runutil::shell` while executing non-runner subprocesses.
+//!
+//! Invariants/assumptions:
+//! - Capture threads must never grow buffers past the configured limit.
+//! - When output exceeds the limit, the newest bytes are retained and truncation is recorded.
+
 use std::io::Read;
 use std::sync::{Arc, Mutex};
 use std::thread;

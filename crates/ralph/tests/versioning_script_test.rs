@@ -1,16 +1,22 @@
 //! Versioning script contract tests.
 //!
-//! Responsibilities:
-//! - Verify scripts/versioning.sh can print the canonical repo version.
-//! - Verify scripts/versioning.sh check succeeds when metadata is synchronized.
+//! Purpose:
+//! - Guard the public behavior of `scripts/versioning.sh` used by release and local verification flows.
 //!
-//! Not handled here:
-//! - Full release flow behavior.
-//! - Mutating version sync operations.
+//! Responsibilities:
+//! - Verify the script prints the canonical repo version.
+//! - Verify metadata drift checks succeed in the synchronized repository state.
+//! - Confirm the check path does not require ripgrep on `PATH`.
+//!
+//! Scope:
+//! - Script contract coverage only; not end-to-end release publication.
+//!
+//! Usage:
+//! - Executed as part of the Rust integration-test suite.
 //!
 //! Invariants/assumptions:
-//! - The versioning.sh script exists at scripts/versioning.sh relative to repo root.
-//! - The checked-in repo metadata is synchronized before tests run.
+//! - The versioning script exists at `scripts/versioning.sh` relative to repo root.
+//! - Checked-in version metadata is synchronized before the test suite runs.
 
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
@@ -49,11 +55,20 @@ fn canonical_version() -> String {
 }
 
 fn run_script(args: &[&str]) -> (ExitStatus, String, String) {
-    let output = Command::new("bash")
-        .arg(version_script())
-        .args(args)
-        .output()
-        .expect("failed to execute versioning.sh");
+    run_script_with_path(args, None)
+}
+
+fn run_script_with_path(
+    args: &[&str],
+    path_override: Option<&str>,
+) -> (ExitStatus, String, String) {
+    let mut command = Command::new("bash");
+    command.arg(version_script()).args(args);
+    if let Some(path) = path_override {
+        command.env("PATH", path);
+    }
+
+    let output = command.output().expect("failed to execute versioning.sh");
     (
         output.status,
         String::from_utf8_lossy(&output.stdout).to_string(),
@@ -86,10 +101,27 @@ fn versioning_script_check_succeeds_when_metadata_is_synced() {
 }
 
 #[test]
+fn versioning_script_check_succeeds_without_ripgrep_on_path() {
+    let (status, stdout, stderr) = run_script_with_path(&["check"], Some("/usr/bin:/bin"));
+    assert!(
+        status.success(),
+        "expected versioning.sh check to succeed without ripgrep on PATH\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stdout.contains("versioning: OK"),
+        "expected success marker in stdout\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("rg: command not found"),
+        "versioning.sh should not shell out to ripgrep\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+}
+
+#[test]
 fn versioning_script_sync_refreshes_lockfile() {
     let script = std::fs::read_to_string(version_script()).expect("read versioning.sh");
     assert!(
-        script.contains("cargo update -w --offline"),
+        script.contains("update -w --offline"),
         "versioning.sh sync should refresh Cargo.lock for the workspace root package"
     );
 }

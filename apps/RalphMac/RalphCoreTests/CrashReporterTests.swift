@@ -1,3 +1,23 @@
+/*
+ Purpose:
+ - Exercise crash-report storage, formatting, and operational-issue behavior in RalphCore tests.
+
+ Responsibilities:
+ - Verify crash report model formatting and identity expectations.
+ - Verify crash-report persistence surfaces operational issues instead of silently failing.
+ - Keep crash-report test fixture setup and teardown isolated through RalphCore test support.
+
+ Scope:
+ - CrashReporter and CrashReport test coverage only.
+
+ Usage:
+ - Runs as part of the RalphCore XCTest suite.
+
+ Invariants/Assumptions:
+ - Tests execute on the main actor because CrashReporter is shared UI-adjacent state.
+ - Temporary report directories must be created through RalphCore test support and removed during teardown.
+ */
+
 import XCTest
 @testable import RalphCore
 
@@ -54,7 +74,7 @@ final class CrashReporterTests: RalphCoreTestCase {
     ) -> CrashReportStorage {
         Self.makeStorage(directoryURL: directoryURL, listFiles: listFiles)
     }
-    
+
     func testCrashReportCreation() {
         let report = CrashReport(
             id: UUID(),
@@ -66,13 +86,13 @@ final class CrashReporterTests: RalphCoreTestCase {
             osVersion: "macOS 14.0",
             deviceModel: "MacBookPro"
         )
-        
+
         XCTAssertEqual(report.exceptionName, "TestException")
         XCTAssertEqual(report.exceptionReason, "Test reason")
         XCTAssertEqual(report.stackTrace.count, 2)
         XCTAssertEqual(report.appVersion, "1.0.0")
     }
-    
+
     func testCrashReportFormatting() {
         let report = CrashReport(
             id: UUID(),
@@ -84,31 +104,31 @@ final class CrashReporterTests: RalphCoreTestCase {
             osVersion: "macOS 14.0",
             deviceModel: "MacBookPro"
         )
-        
+
         let formatted = report.formattedReport
         XCTAssertTrue(formatted.contains("Ralph Crash Report"))
         XCTAssertTrue(formatted.contains("TestException"))
         XCTAssertTrue(formatted.contains("frame1"))
         XCTAssertTrue(formatted.contains("1.0.0"))
     }
-    
+
     func testGetAllReportsEmpty() {
         let reports = CrashReporter.shared.getAllReports()
         XCTAssertTrue(reports.isEmpty)
     }
-    
+
     func testClearAllReports() {
         // After clearing, should be empty
         CrashReporter.shared.clearAllReports()
         let reports = CrashReporter.shared.getAllReports()
         XCTAssertTrue(reports.isEmpty)
     }
-    
+
     func testExportEmptyReports() {
         let export = CrashReporter.shared.exportAllReports()
         XCTAssertEqual(export, "No crash reports found.")
     }
-    
+
     func testCrashReportIDUnique() {
         let report1 = CrashReport(
             id: UUID(),
@@ -120,7 +140,7 @@ final class CrashReporterTests: RalphCoreTestCase {
             osVersion: "macOS 14.0",
             deviceModel: "MacBookPro"
         )
-        
+
         let report2 = CrashReport(
             id: UUID(),
             timestamp: Date(),
@@ -131,7 +151,7 @@ final class CrashReporterTests: RalphCoreTestCase {
             osVersion: "macOS 14.0",
             deviceModel: "MacBookPro"
         )
-        
+
         XCTAssertNotEqual(report1.id, report2.id)
     }
 

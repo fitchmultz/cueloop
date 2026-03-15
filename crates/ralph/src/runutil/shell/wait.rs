@@ -1,3 +1,23 @@
+//! Managed subprocess wait helpers.
+//!
+//! Purpose:
+//! - Own low-level child wait and signal-escalation behavior for managed subprocesses.
+//!
+//! Responsibilities:
+//! - Wait for child exit with timeout and cancellation support.
+//! - Apply SIGINT-before-SIGKILL escalation on Unix and platform-appropriate fallback elsewhere.
+//! - Return structured termination metadata to the higher-level shell orchestration.
+//!
+//! Scope:
+//! - Child waiting, timeout slicing, and termination signaling only.
+//!
+//! Usage:
+//! - Invoked exclusively by `crate::runutil::shell` during managed subprocess execution.
+//!
+//! Invariants/assumptions:
+//! - Unix children run in isolated process groups before these helpers signal them.
+//! - Timeout and cancellation state is reported back without leaf modules reimplementing wait loops.
+
 use std::process::{Child, ExitStatus};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};

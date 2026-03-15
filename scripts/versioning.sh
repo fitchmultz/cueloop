@@ -104,13 +104,23 @@ replace_once(
 )
 PY
 
-    cargo update -w --offline >/dev/null
+    "${CARGO:-cargo}" update -w --offline >/dev/null
 }
 
 get_first_match() {
     local pattern="$1"
     local path="$2"
-    rg -o --replace '$1' "$pattern" "$path" | head -1
+    python3 - "$pattern" "$path" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+pattern, path = sys.argv[1:3]
+text = Path(path).read_text(encoding="utf-8")
+match = re.search(pattern, text, re.MULTILINE)
+if match:
+    print(match.group(1))
+PY
 }
 
 check_version_metadata() {

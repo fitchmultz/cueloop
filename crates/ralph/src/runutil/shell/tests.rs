@@ -1,3 +1,23 @@
+//! Managed subprocess unit tests.
+//!
+//! Purpose:
+//! - Verify bounded capture, timeout, cancellation, and checked-error behavior for managed subprocesses.
+//!
+//! Responsibilities:
+//! - Exercise representative Unix subprocess success and failure paths.
+//! - Guard bounded capture truncation and timeout handling contracts.
+//! - Ensure checked-command failures include captured stderr context.
+//!
+//! Scope:
+//! - Unit coverage for `crate::runutil::shell` internals only.
+//!
+//! Usage:
+//! - Compiled via `#[cfg(test)]` from `crate::runutil::shell`.
+//!
+//! Invariants/assumptions:
+//! - Unix shell fixtures (`/bin/sh`) are available for these focused unit tests.
+//! - Failures should describe the managed subprocess and include useful captured output.
+
 #[cfg(unix)]
 use std::process::Command;
 #[cfg(unix)]

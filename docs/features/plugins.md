@@ -353,9 +353,9 @@ API_KEY=$(echo "$CONFIG" | jq -r '.api_key // empty')
 TIMEOUT=$(echo "$CONFIG" | jq -r '.timeout // 30')
 ```
 
-### Binary Overrides
+### Binary Location
 
-Override the runner or processor binary path in config:
+Runner and processor executable paths are defined in `plugin.json`, not in config. Use config only for enablement and plugin-specific data:
 
 ```json
 {
@@ -363,11 +363,8 @@ Override the runner or processor binary path in config:
     "plugins": {
       "my.plugin": {
         "enabled": true,
-        "runner": {
-          "bin": "custom-runner"
-        },
-        "processor": {
-          "bin": "custom-processor"
+        "config": {
+          "api_base_url": "https://api.example.com"
         }
       }
     }
@@ -376,9 +373,10 @@ Override the runner or processor binary path in config:
 ```
 
 **Path Resolution**:
-- Relative paths: resolved relative to plugin directory
-- Absolute paths: used as-is
-- Path escape (`..`) is rejected for security
+- Manifest `runner.bin` / `processors.bin` paths must be relative to the plugin directory
+- Absolute paths are rejected
+- Path escape (`..`) is rejected
+- Existing symlinked files and ancestor directories must still canonicalize inside the plugin directory
 
 ---
 
@@ -494,9 +492,10 @@ Enabling a plugin is equivalent to trusting it with full system access. Plugins 
    - Review `.ralph/plugins/` in repositories you clone
 
 4. **Binary Path Security**
-   - Relative paths cannot escape plugin directory (`..` is rejected)
-   - Absolute paths can point anywhere (use with caution)
-   - Config overrides are validated for path traversal
+   - Manifest paths cannot escape the plugin directory (`..` is rejected)
+   - Absolute manifest paths are rejected
+   - Existing symlinked files and ancestor directories must still canonicalize inside the plugin directory
+   - Config-level runner/processor binary overrides are not supported
 
 5. **Environment Variable Redaction**
    - Ralph redacts sensitive content from plugin stderr before display
@@ -887,7 +886,7 @@ ralph plugin validate --id my.plugin
 
 **Runner not found:**
 - Verify `runner.bin` path in manifest
-- Path must stay relative to the plugin directory
+- Path must stay relative to the plugin directory and remain inside it after canonical path resolution
 - Config-level runner/processor binary overrides are not supported
 
 **Processor hook failing:**

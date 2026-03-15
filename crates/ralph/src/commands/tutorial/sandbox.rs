@@ -1,13 +1,30 @@
-//! Sandbox creation utilities for tutorial.
+//! Tutorial sandbox creation helpers.
+//!
+//! Purpose:
+//! - Build the disposable git-backed project used by the interactive tutorial.
 //!
 //! Responsibilities:
-//! - Create temporary directory outside repo.
-//! - Initialize git repository with sample files.
-//! - Provide cleanup handling with --keep-sandbox support.
+//! - Create a temporary directory outside the current repository.
+//! - Seed the sandbox with sample Rust project files and `.gitignore`.
+//! - Initialize and configure git using managed subprocess execution.
+//! - Support automatic cleanup or explicit preservation via `--keep-sandbox`.
+//!
+//! Scope:
+//! - Tutorial sandbox filesystem and git bootstrap only.
+//!
+//! Usage:
+//! - Called by the tutorial workflow before guided CLI steps begin.
+//!
+//! Invariants/assumptions:
+//! - The sandbox must be a valid git repository before the tutorial continues.
+//! - Git command failures must surface as hard errors instead of being ignored.
+//! - Preserved sandboxes must not be deleted on drop.
 
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
+
+use crate::runutil::{ManagedCommand, TimeoutClass, execute_checked_command};
 
 /// Sample Rust project files for tutorial sandbox.
 const SAMPLE_CARGO_TOML: &str = r#"[package]
@@ -38,6 +55,15 @@ mod tests {
 }
 "#;
 
+fn run_tutorial_git(path: &Path, description: &str, args: &[&str]) -> Result<()> {
+    let mut command = std::process::Command::new("git");
+    command.current_dir(path).args(args);
+
+    execute_checked_command(ManagedCommand::new(command, description, TimeoutClass::Git))
+        .with_context(|| format!("{description} in tutorial sandbox {}", path.display()))?;
+    Ok(())
+}
+
 /// A tutorial sandbox with automatic or manual cleanup.
 pub struct TutorialSandbox {
     /// The temp directory (None if preserved).
@@ -53,25 +79,21 @@ impl TutorialSandbox {
             TempDir::new().context("failed to create temp directory for tutorial sandbox")?;
         let path = temp_dir.path().to_path_buf();
 
-        // Initialize git repo
-        let status = std::process::Command::new("git")
-            .current_dir(&path)
-            .args(["init", "--quiet"])
-            .status()
-            .context("run git init")?;
-        anyhow::ensure!(status.success(), "git init failed");
-
-        // Configure git user
-        std::process::Command::new("git")
-            .current_dir(&path)
-            .args(["config", "user.name", "Ralph Tutorial"])
-            .status()
-            .context("set git user.name")?;
-        std::process::Command::new("git")
-            .current_dir(&path)
-            .args(["config", "user.email", "tutorial@ralph.invalid"])
-            .status()
-            .context("set git user.email")?;
+        run_tutorial_git(
+            &path,
+            "initialize tutorial git repository",
+            &["init", "--quiet"],
+        )?;
+        run_tutorial_git(
+            &path,
+            "configure tutorial git user.name",
+            &["config", "user.name", "Ralph Tutorial"],
+        )?;
+        run_tutorial_git(
+            &path,
+            "configure tutorial git user.email",
+            &["config", "user.email", "tutorial@ralph.invalid"],
+        )?;
 
         // Create sample project files
         std::fs::write(path.join("Cargo.toml"), SAMPLE_CARGO_TOML)?;
@@ -84,17 +106,12 @@ impl TutorialSandbox {
             "/target\n.ralph/lock\n.ralph/cache/\n.ralph/logs/\n",
         )?;
 
-        // Initial commit
-        std::process::Command::new("git")
-            .current_dir(&path)
-            .args(["add", "."])
-            .status()
-            .context("git add")?;
-        std::process::Command::new("git")
-            .current_dir(&path)
-            .args(["commit", "--quiet", "-m", "Initial commit"])
-            .status()
-            .context("git commit")?;
+        run_tutorial_git(&path, "stage tutorial sandbox files", &["add", "."])?;
+        run_tutorial_git(
+            &path,
+            "create tutorial sandbox initial commit",
+            &["commit", "--quiet", "-m", "Initial commit"],
+        )?;
 
         Ok(Self {
             temp_dir: Some(temp_dir),
@@ -124,6 +141,19 @@ impl Drop for TutorialSandbox {
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
+    fn write_fake_git(bin_dir: &Path, script: &str) {
+        use std::os::unix::fs::PermissionsExt;
+
+        let path = bin_dir.join("git");
+        std::fs::write(&path, script).expect("write fake git");
+        let mut perms = std::fs::metadata(&path)
+            .expect("fake git metadata")
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&path, perms).expect("chmod fake git");
+    }
+
     #[test]
     fn sandbox_creates_files() {
         let sandbox = TutorialSandbox::create().unwrap();
@@ -132,6 +162,36 @@ mod tests {
         assert!(sandbox.path.join("src/lib.rs").exists());
         assert!(sandbox.path.join(".gitignore").exists());
         assert!(sandbox.path.join(".git").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sandbox_create_fails_when_git_configuration_fails() {
+        let temp = TempDir::new().unwrap();
+        let bin_dir = temp.path().join("bin");
+        std::fs::create_dir_all(&bin_dir).unwrap();
+        write_fake_git(
+            &bin_dir,
+            r#"#!/bin/sh
+if [ "$1" = "init" ]; then
+  exit 0
+fi
+if [ "$1" = "config" ] && [ "$2" = "user.name" ]; then
+  echo "fake git failing: config" >&2
+  exit 7
+fi
+exit 0
+"#,
+        );
+
+        let err =
+            match crate::testsupport::path::with_prepend_path(&bin_dir, TutorialSandbox::create) {
+                Ok(_) => panic!("sandbox creation should fail when git config fails"),
+                Err(err) => err,
+            };
+        let text = format!("{err:#}");
+        assert!(text.contains("configure tutorial git user.name"));
+        assert!(text.contains("fake git failing: config"));
     }
 
     #[test]
