@@ -6,36 +6,36 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Split the remaining oversized Rust command and CLI surfaces
+### 1. Split the remaining oversized Rust runtime and operational helpers
 
 Why first:
-- The current Rust file scan now reports 36 files over the 500 LOC target, and only one command/CLI hotspot remains above the line.
-- That remaining CLI surface still mixes broad scenario coverage and command-facing contracts in a single file.
-- Clearing it next removes the last oversized command/CLI blocker before deeper runtime helpers and shared foundations are split.
-
-Scope:
-- Decompose the remaining oversized command/CLI surface (`crates/ralph/src/cli/queue/tests/issue.rs` and any adjacent queue-test helpers it requires) into a thinner hub plus focused companion files/directories.
-- Preserve current CLI/help output and existing queue-command test contracts while moving broad scenario/matrix logic out of the root modules.
-- Keep moved test hubs thin and behavior-grouped when the queue split requires neighboring suite-module moves.
-
-### 2. Split the remaining oversized Rust runtime and operational helpers
-
-Why second:
-- After command entrypoints stabilize, the next maintenance risk is the runtime/support layer that still mixes orchestration, persistence, retries, and formatting.
-- Webhook, queue-maintenance, processor execution, filesystem helpers, and execution-history modules remain broad enough to create avoidable churn during feature work.
-- Sequencing this pass after the command split limits cross-cutting rename churn.
+- This is the most meaningful remaining roadmap work because it touches reliability-sensitive production paths instead of pure maintenance-only test structure.
+- Webhook, queue-maintenance, processor execution, filesystem helpers, and execution-history modules still mix orchestration, persistence, retries, and formatting in ways that increase failure risk during user-facing workflows.
+- Doing this pass first improves the production seams that future feature work and maintenance will rely on.
 
 Scope:
 - Decompose the remaining oversized operational helpers (`crates/ralph/src/webhook/worker.rs`, `crates/ralph/src/webhook/diagnostics.rs`, `crates/ralph/src/queue/prune.rs`, `crates/ralph/src/queue/hierarchy.rs`, `crates/ralph/src/plugins/processor_executor.rs`, `crates/ralph/src/runutil/execution/orchestration.rs`, `crates/ralph/src/fsutil.rs`, `crates/ralph/src/execution_history.rs`, and adjacent support modules) into focused companions.
 - Preserve webhook reload/retry contracts, queue safety behavior, and managed-subprocess invariants while extracting helpers from the root modules.
 - Keep shared helpers centralized only where duplication is real; otherwise prefer adjacent behavior-grouped modules.
 
+### 2. Split the remaining oversized Rust command and CLI surfaces
+
+Why second:
+- The current Rust file scan still reports 36 files over the 500 LOC target, and only one command/CLI hotspot remains above the line.
+- That remaining CLI surface is command-facing, but this work is still primarily maintenance compared with the runtime reliability pass above.
+- Clearing it after the runtime pass removes the last oversized command/CLI blocker before deeper shared-module cleanup.
+
+Scope:
+- Decompose the remaining oversized command/CLI surface (`crates/ralph/src/cli/queue/tests/issue.rs` and any adjacent queue-test helpers it requires) into a thinner hub plus focused companion files/directories.
+- Preserve current CLI/help output and existing queue-command test contracts while moving broad scenario/matrix logic out of the root modules.
+- Keep moved test hubs thin and behavior-grouped when the queue split requires neighboring suite-module moves.
+
 ### 3. Split the remaining oversized Rust shared-data and foundational modules
 
 Why third:
 - Foundational helpers such as migration, template, agent-resolution, redaction, ETA, undo, and task-contract modules are broadly reused, so touching them earlier would amplify churn.
-- Once command/runtime seams are thinner, the dependency picture is clearer and shared-module splits become lower-risk.
-- These files remain important debt, but they are lower-churn than the active command/runtime hotspots.
+- Once the more meaningful runtime work and the remaining command-facing hotspot are addressed, the dependency picture is clearer and shared-module splits become lower-risk.
+- These files remain important debt, but they are still maintenance-oriented compared with the earlier production-surface work.
 
 Scope:
 - Decompose the remaining oversized foundational modules (`crates/ralph/src/migration/config_migrations.rs`, `crates/ralph/src/migration/file_migrations.rs`, `crates/ralph/src/template/variables.rs`, `crates/ralph/src/template/loader.rs`, `crates/ralph/src/agent/resolve.rs`, `crates/ralph/src/redaction.rs`, `crates/ralph/src/eta_calculator.rs`, `crates/ralph/src/undo.rs`, `crates/ralph/src/contracts/task.rs`, and adjacent shared helpers) into thinner facades plus focused companions.
@@ -45,9 +45,9 @@ Scope:
 ### 4. Split the remaining oversized Rust test and fixture hubs
 
 Why fourth:
-- Once production-module facades are thinner, the largest remaining non-doc maintenance debt sits in integration/unit suites and shared test-support hubs.
-- Large files such as `task_lifecycle_test.rs`, `run_parallel_test.rs`, `prompt_cli_test.rs`, and queue-operation suites remain clear follow-on churn hotspots.
-- Sequencing test-hub splits after production refactors minimizes duplicate test moves while contracts are still settling.
+- This is the most maintenance-oriented remaining work and should stay behind production-facing refactors.
+- Large files such as `task_lifecycle_test.rs`, `run_parallel_test.rs`, `prompt_cli_test.rs`, and queue-operation suites remain clear follow-on churn hotspots, but they are less meaningful than improving runtime behavior.
+- Sequencing test-hub splits last minimizes duplicate test moves while contracts are still settling.
 
 Scope:
 - Break remaining oversized Rust test and fixture files into thin suite roots plus behavior-grouped companions/directories.
