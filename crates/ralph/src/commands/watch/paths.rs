@@ -5,7 +5,7 @@
 //! - Match filenames against glob patterns using globset.
 //!
 //! Not handled here:
-//! - File watching or event handling (see `event_loop.rs`).
+//! - File watching or event handling (see `event_loop/mod.rs`).
 //! - Comment detection (see `comments.rs`).
 //!
 //! Invariants/assumptions:

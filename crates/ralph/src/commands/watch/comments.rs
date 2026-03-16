@@ -7,7 +7,7 @@
 //! - Extract context for detected comments.
 //!
 //! Not handled here:
-//! - File watching (see `event_loop.rs`).
+//! - File watching (see `event_loop/mod.rs`).
 //! - Task creation from comments (see `tasks.rs`).
 //!
 //! Invariants/assumptions:

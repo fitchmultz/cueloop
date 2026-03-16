@@ -5,7 +5,7 @@
 //! - Clean up old entries from the processing history to prevent memory leaks.
 //!
 //! Not handled here:
-//! - File watching or event handling (see `event_loop.rs`).
+//! - File watching or event handling (see `event_loop/mod.rs`).
 //! - State management (see `state.rs`).
 //!
 //! Invariants/assumptions:

@@ -6,7 +6,7 @@
 //! - Scope removal reconciliation to files processed in the current batch.
 //!
 //! Not handled here:
-//! - File watching or event handling (see `event_loop.rs`).
+//! - File watching or event handling (see `event_loop/mod.rs`).
 //! - Low-level comment detection (see `comments.rs`).
 //! - Task creation or identity rules (see `tasks.rs` / `identity.rs`).
 //!

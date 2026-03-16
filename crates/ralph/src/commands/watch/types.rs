@@ -6,7 +6,7 @@
 //! - Define `WatchOptions` struct for watch command configuration.
 //!
 //! Not handled here:
-//! - File watching logic (see `event_loop.rs`).
+//! - File watching logic (see `event_loop/mod.rs`).
 //! - Comment detection regex building (see `comments.rs`).
 //! - Task creation from comments (see `tasks.rs`).
 //!

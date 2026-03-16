@@ -5,7 +5,7 @@
 //! - Manage debounce timing to batch rapid file changes.
 //!
 //! Not handled here:
-//! - File watching or event handling (see `event_loop.rs`).
+//! - File watching or event handling (see `event_loop/mod.rs`).
 //! - Comment detection (see `comments.rs`).
 //! - Task creation (see `tasks.rs`).
 //!
