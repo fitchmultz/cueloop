@@ -8,7 +8,7 @@
 //! - Backfill missing task fields (request, timestamps) after creation.
 //!
 //! Not handled here:
-//! - Task updating (see update.rs).
+//! - Task updating (see update/mod.rs).
 //! - Refactor task generation (see refactor.rs).
 //! - CLI argument parsing or command routing.
 //! - Direct queue file manipulation outside of runner-driven changes.

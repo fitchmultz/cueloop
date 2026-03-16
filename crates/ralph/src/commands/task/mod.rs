@@ -8,7 +8,7 @@
 //!
 //! Not handled here:
 //! - Actual task building logic (see build.rs).
-//! - Task update logic (see update.rs).
+//! - Task update logic (see update/mod.rs).
 //! - Refactor task generation and LOC scanning (see refactor.rs).
 //! - CLI argument definitions or command routing.
 //! - Runner process implementation details or output parsing.

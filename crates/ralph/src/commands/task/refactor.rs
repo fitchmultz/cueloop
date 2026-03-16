@@ -9,7 +9,7 @@
 //!
 //! Not handled here:
 //! - Task building (delegates to build.rs via build_task).
-//! - Task updating (see update.rs).
+//! - Task updating (see update/mod.rs).
 //! - CLI argument parsing or command routing.
 //! - Non-Rust file scanning.
 //!

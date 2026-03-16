@@ -313,6 +313,11 @@ final class WorkspaceBackgroundTaskOwnershipTests: RalphCoreTestCase {
         }
         XCTAssertTrue(retargetSettled)
 
+        let cancellationLogged = await RalphCoreTestSupport.waitUntil(timeout: .seconds(3)) {
+            (try? String(contentsOf: logURL, encoding: .utf8).contains("queue-read-canceled")) == true
+        }
+        XCTAssertTrue(cancellationLogged)
+
         let log = try String(contentsOf: logURL, encoding: .utf8)
         XCTAssertTrue(log.contains("queue-read-canceled"))
         XCTAssertFalse(log.contains("queue-read-finished"))
