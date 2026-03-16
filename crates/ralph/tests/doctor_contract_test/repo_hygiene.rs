@@ -1,48 +1,40 @@
 //! Doctor repo-hygiene auto-fix tests.
+//!
+//! Responsibilities:
+//! - Verify doctor detects missing `.ralph/logs/` gitignore entries.
+//! - Verify doctor auto-fix repairs repo hygiene issues in place.
+//!
+//! Not handled here:
+//! - Queue or runner-binary diagnostics.
+//!
+//! Invariants/assumptions:
+//! - Tests start from seeded doctor fixtures, then intentionally corrupt `.gitignore`.
+//! - JSON output remains the assertion surface for hygiene diagnostics.
 
 use super::*;
 
 #[test]
 fn doctor_detects_missing_ralph_logs_gitignore() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    Command::new("git")
-        .current_dir(dir.path())
-        .arg("init")
-        .status()?;
+    let dir = setup_doctor_repo()?;
 
-    // Setup ralph (which adds .ralph/logs/ to .gitignore)
-    ralph_cmd_in_dir(dir.path())
-        .current_dir(dir.path())
-        .args(["init", "--force", "--non-interactive"])
-        .status()?;
-
-    // Setup Makefile
-    std::fs::write(dir.path().join("Makefile"), "ci:\n\tcargo test\n")?;
-
-    // Overwrite .gitignore to intentionally omit .ralph/logs/
     std::fs::write(
         dir.path().join(".gitignore"),
         ".ralph/lock\n.ralph/cache/\n",
     )?;
 
-    // Run doctor with JSON output
     let output = ralph_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json"])
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-
-    // Parse JSON
     let json: serde_json::Value = serde_json::from_str(&stdout)
         .unwrap_or_else(|_| panic!("JSON should be valid. Got stdout: {}", stdout));
 
-    // Should fail because .ralph/logs/ is not gitignored
     assert_eq!(
         json["success"], false,
         "doctor should fail when .ralph/logs/ is not gitignored"
     );
 
-    // Find the gitignore_ralph_logs check
     let checks = json["checks"].as_array().unwrap();
     let logs_check = checks
         .iter()
@@ -73,39 +65,21 @@ fn doctor_detects_missing_ralph_logs_gitignore() -> Result<()> {
 
 #[test]
 fn doctor_auto_fix_adds_ralph_logs_gitignore() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    Command::new("git")
-        .current_dir(dir.path())
-        .arg("init")
-        .status()?;
+    let dir = setup_doctor_repo()?;
 
-    // Setup ralph (which adds .ralph/logs/ to .gitignore)
-    ralph_cmd_in_dir(dir.path())
-        .current_dir(dir.path())
-        .args(["init", "--force", "--non-interactive"])
-        .status()?;
-
-    // Setup Makefile
-    std::fs::write(dir.path().join("Makefile"), "ci:\n\tcargo test\n")?;
-
-    // Overwrite .gitignore to intentionally omit .ralph/logs/
     std::fs::write(
         dir.path().join(".gitignore"),
         ".ralph/lock\n.ralph/cache/\n",
     )?;
 
-    // Run doctor with --auto-fix and JSON output
     let output = ralph_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json", "--auto-fix"])
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-
-    // Parse JSON
     let json: serde_json::Value = serde_json::from_str(&stdout)
         .unwrap_or_else(|_| panic!("JSON should be valid. Got stdout: {}", stdout));
 
-    // Find the gitignore_ralph_logs check
     let checks = json["checks"].as_array().unwrap();
     let logs_check = checks
         .iter()
@@ -117,13 +91,11 @@ fn doctor_auto_fix_adds_ralph_logs_gitignore() -> Result<()> {
     );
     let logs_check = logs_check.unwrap();
 
-    // Verify fix_applied is true
     assert_eq!(
         logs_check["fix_applied"], true,
         "fix_applied should be true after auto-fix"
     );
 
-    // Verify .gitignore now contains .ralph/logs/
     let gitignore_content = std::fs::read_to_string(dir.path().join(".gitignore"))?;
     assert!(
         gitignore_content.contains(".ralph/logs/"),

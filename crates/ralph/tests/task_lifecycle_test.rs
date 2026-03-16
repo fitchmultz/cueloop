@@ -1,67 +1,52 @@
-//! Integration tests for complete task lifecycle.
+//! Purpose: integration coverage for complete task lifecycle flows.
 //!
 //! Responsibilities:
-//! - Test full task lifecycle: create → ready → start → run → done/reject
-//! - Verify queue/done state transitions at each step
-//! - Test runner execution integration (`ralph run` command)
-//! - Ensure status changes and timestamps are correct
+//! - Exercise end-to-end task transitions such as ready, start, done, reject, and run.
+//! - Verify queue/done file state and timestamp behavior at each lifecycle step.
+//! - Cover runner execution integration for successful and failing `ralph run one` flows.
 //!
-//! Not handled here:
-//! - Unit tests for individual commands (see task_cmd_test.rs)
-//! - Parallel execution lifecycle (see parallel_e2e_test.rs)
-//! - Task update functionality (see task_update_all_integration_test.rs)
+//! Scope:
+//! - CLI-driven lifecycle scenarios for a disposable seeded repo.
+//!
+//! Usage:
+//! - Each test creates a fresh `LifecycleRepo` fixture and drives the real `ralph` binary.
+//! - Assertions inspect queue and done files through shared test-support helpers.
+//!
+//! Invariants/assumptions callers must respect:
+//! - These tests preserve end-to-end command coverage and should not be rewritten as direct file mutations.
+//! - Fixture bootstrap comes from cached git+`.ralph/` templates, not real `ralph init` invocations.
+//! - Parallel execution and command-unit semantics are covered in other suites.
 
+#[path = "task_lifecycle_test/support.rs"]
+mod support;
 mod test_support;
 
 use anyhow::Result;
-use ralph::contracts::{Task, TaskStatus};
+use ralph::contracts::{Task, TaskPriority, TaskStatus};
+use support::{LifecycleRepo, draft_task, terminal_task};
 
 /// Helper to find a task by ID in a queue slice.
 fn find_task<'a>(tasks: &'a [Task], id: &str) -> Option<&'a Task> {
-    tasks.iter().find(|t| t.id == id)
+    tasks.iter().find(|task| task.id == id)
 }
 
-/// Test the complete happy-path lifecycle: create → ready → start → done
+/// Test the complete happy-path lifecycle: create → ready → start → done.
 #[test]
 fn task_full_lifecycle_build_ready_start_done() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
-    // Step 1: Create a task directly in the queue (simulating task build result)
-    // We write directly to queue.json to avoid needing a runner
     let task_id = "RQ-0001";
-    let task = Task {
-        id: task_id.to_string(),
-        title: "Test task for lifecycle".to_string(),
-        description: Some("Test description".to_string()),
-        status: TaskStatus::Draft,
-        priority: ralph::contracts::TaskPriority::Medium,
-        tags: vec!["test".to_string(), "lifecycle".to_string()],
-        scope: vec!["crates/ralph/tests".to_string()],
-        evidence: vec!["integration test".to_string()],
-        plan: vec!["Step 1".to_string(), "Step 2".to_string()],
-        notes: vec![],
-        request: Some("Test request".to_string()),
-        agent: None,
-        created_at: Some("2026-02-19T00:00:00Z".to_string()),
-        updated_at: Some("2026-02-19T00:00:00Z".to_string()),
-        completed_at: None,
-        started_at: None,
-        scheduled_start: None,
-        depends_on: vec![],
-        blocks: vec![],
-        relates_to: vec![],
-        duplicates: None,
-        custom_fields: std::collections::HashMap::new(),
-        parent_id: None,
-        estimated_minutes: None,
-        actual_minutes: None,
-    };
-    test_support::write_queue(dir.path(), &[task])?;
+    let mut task = draft_task(task_id, "Test task for lifecycle");
+    task.description = Some("Test description".to_string());
+    task.priority = TaskPriority::Medium;
+    task.tags = vec!["test".to_string(), "lifecycle".to_string()];
+    task.scope = vec!["crates/ralph/tests".to_string()];
+    task.evidence = vec!["integration test".to_string()];
+    task.plan = vec!["Step 1".to_string(), "Step 2".to_string()];
+    task.request = Some("Test request".to_string());
+    repo.write_queue(&[task])?;
 
-    // Verify initial state: task in queue with draft status
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert_eq!(queue.tasks.len(), 1, "expected 1 task in queue");
     let task = find_task(&queue.tasks, task_id).expect("task should exist");
     assert_eq!(
@@ -75,16 +60,9 @@ fn task_full_lifecycle_build_ready_start_done() -> Result<()> {
         "completed_at should not be set"
     );
 
-    // Step 2: Run `ralph task ready <ID>` to promote draft → todo
-    let (status, stdout, stderr) =
-        test_support::run_in_dir(dir.path(), &["task", "ready", task_id]);
-    anyhow::ensure!(
-        status.success(),
-        "task ready failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
+    repo.run_ok(&["task", "ready", task_id])?;
 
-    // Verify status changed to todo
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     let task = find_task(&queue.tasks, task_id).expect("task should exist after ready");
     assert_eq!(
         task.status,
@@ -96,16 +74,9 @@ fn task_full_lifecycle_build_ready_start_done() -> Result<()> {
         "started_at should still not be set"
     );
 
-    // Step 3: Run `ralph task start <ID>`
-    let (status, stdout, stderr) =
-        test_support::run_in_dir(dir.path(), &["task", "start", task_id]);
-    anyhow::ensure!(
-        status.success(),
-        "task start failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
+    repo.run_ok(&["task", "start", task_id])?;
 
-    // Verify status is doing and started_at is set
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     let task = find_task(&queue.tasks, task_id).expect("task should exist after start");
     assert_eq!(
         task.status,
@@ -117,29 +88,22 @@ fn task_full_lifecycle_build_ready_start_done() -> Result<()> {
         "started_at should be set after start"
     );
     assert!(
-        task.started_at.as_ref().unwrap().contains('T'),
+        task.started_at
+            .as_ref()
+            .expect("started_at set")
+            .contains('T'),
         "started_at should be a valid RFC3339 timestamp"
     );
 
-    // Step 4: Run `ralph task done <ID> --note "Completed successfully"`
-    let (status, stdout, stderr) = test_support::run_in_dir(
-        dir.path(),
-        &["task", "done", task_id, "--note", "Completed successfully"],
-    );
-    anyhow::ensure!(
-        status.success(),
-        "task done failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
+    repo.run_ok(&["task", "done", task_id, "--note", "Completed successfully"])?;
 
-    // Verify: Task is removed from queue.json
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert!(
         find_task(&queue.tasks, task_id).is_none(),
         "task should be removed from queue after done"
     );
 
-    // Verify: Task exists in done.json with status done
-    let done = test_support::read_done(dir.path())?;
+    let done = repo.read_done()?;
     assert_eq!(done.tasks.len(), 1, "expected 1 task in done.json");
     let done_task = find_task(&done.tasks, task_id).expect("task should exist in done.json");
     assert_eq!(done_task.status, TaskStatus::Done, "status should be done");
@@ -148,16 +112,18 @@ fn task_full_lifecycle_build_ready_start_done() -> Result<()> {
         "completed_at should be set after done"
     );
     assert!(
-        done_task.completed_at.as_ref().unwrap().contains('T'),
+        done_task
+            .completed_at
+            .as_ref()
+            .expect("completed_at set")
+            .contains('T'),
         "completed_at should be a valid RFC3339 timestamp"
     );
-
-    // Verify: Note is added to task notes
     assert!(
         done_task
             .notes
             .iter()
-            .any(|n| n.contains("Completed successfully")),
+            .any(|note| note.contains("Completed successfully")),
         "completion note should be added to task notes: {:?}",
         done_task.notes
     );
@@ -165,54 +131,41 @@ fn task_full_lifecycle_build_ready_start_done() -> Result<()> {
     Ok(())
 }
 
-/// Test the reject path: create → ready → start → reject
+/// Test the reject path: create → ready → start → reject.
 #[test]
 fn task_full_lifecycle_with_reject() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
-    // Create task directly in queue with todo status
     let task_id = "RQ-0002";
     let task = test_support::make_test_task(task_id, "Task to reject", TaskStatus::Todo);
-    test_support::write_queue(dir.path(), &[task])?;
-    test_support::write_done(dir.path(), &[])?;
+    repo.write_queue(&[task])?;
 
-    // Verify initial state
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert_eq!(queue.tasks.len(), 1);
-    let task = find_task(&queue.tasks, task_id).unwrap();
+    let task = find_task(&queue.tasks, task_id).expect("task should exist before reject");
     assert_eq!(task.status, TaskStatus::Todo);
 
-    // Start the task
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "start", task_id]);
-    anyhow::ensure!(status.success(), "task start failed\nstderr:\n{stderr}");
+    repo.run_ok(&["task", "start", task_id])?;
 
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, task_id).unwrap();
+    let queue = repo.read_queue()?;
+    let task = find_task(&queue.tasks, task_id).expect("task should exist after start");
     assert_eq!(task.status, TaskStatus::Doing);
 
-    // Reject the task with a note
-    let (status, _, stderr) = test_support::run_in_dir(
-        dir.path(),
-        &[
-            "task",
-            "reject",
-            task_id,
-            "--note",
-            "Won't fix - out of scope",
-        ],
-    );
-    anyhow::ensure!(status.success(), "task reject failed\nstderr:\n{stderr}");
+    repo.run_ok(&[
+        "task",
+        "reject",
+        task_id,
+        "--note",
+        "Won't fix - out of scope",
+    ])?;
 
-    // Verify: Task is in done.json with status rejected
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert!(
         find_task(&queue.tasks, task_id).is_none(),
         "task should be removed from queue"
     );
 
-    let done = test_support::read_done(dir.path())?;
+    let done = repo.read_done()?;
     assert_eq!(done.tasks.len(), 1);
     let done_task = find_task(&done.tasks, task_id).expect("task should be in done.json");
     assert_eq!(
@@ -225,7 +178,10 @@ fn task_full_lifecycle_with_reject() -> Result<()> {
         "completed_at should be set after reject"
     );
     assert!(
-        done_task.notes.iter().any(|n| n.contains("Won't fix")),
+        done_task
+            .notes
+            .iter()
+            .any(|note| note.contains("Won't fix")),
         "reject note should be preserved: {:?}",
         done_task.notes
     );
@@ -233,39 +189,23 @@ fn task_full_lifecycle_with_reject() -> Result<()> {
     Ok(())
 }
 
-/// Test queue state verification at each lifecycle step
+/// Test queue state verification at each lifecycle step.
 #[test]
 fn task_lifecycle_state_verification() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
     let task_id = "RQ-0003";
+    repo.write_queue(&[draft_task(task_id, "State verification task")])?;
 
-    // Create task with draft status
-    let task = Task {
-        id: task_id.to_string(),
-        title: "State verification task".to_string(),
-        status: TaskStatus::Draft,
-        created_at: Some("2026-02-19T00:00:00Z".to_string()),
-        updated_at: Some("2026-02-19T00:00:00Z".to_string()),
-        ..Default::default()
-    };
-    test_support::write_queue(dir.path(), &[task])?;
-    test_support::write_done(dir.path(), &[])?;
-
-    // Capture state after create (draft)
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, task_id).unwrap();
+    let queue = repo.read_queue()?;
+    let task = find_task(&queue.tasks, task_id).expect("task should exist before ready");
     assert_eq!(task.status, TaskStatus::Draft);
     assert!(task.started_at.is_none());
 
-    // After ready: status=todo, no started_at
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "ready", task_id]);
-    anyhow::ensure!(status.success(), "task ready failed\nstderr:\n{stderr}");
+    repo.run_ok(&["task", "ready", task_id])?;
 
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, task_id).unwrap();
+    let queue = repo.read_queue()?;
+    let task = find_task(&queue.tasks, task_id).expect("task should exist after ready");
     assert_eq!(
         task.status,
         TaskStatus::Todo,
@@ -280,12 +220,10 @@ fn task_lifecycle_state_verification() -> Result<()> {
         "after ready: updated_at should be set"
     );
 
-    // After start: status=doing, has started_at
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "start", task_id]);
-    anyhow::ensure!(status.success(), "task start failed\nstderr:\n{stderr}");
+    repo.run_ok(&["task", "start", task_id])?;
 
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, task_id).unwrap();
+    let queue = repo.read_queue()?;
+    let task = find_task(&queue.tasks, task_id).expect("task should exist after start");
     assert_eq!(
         task.status,
         TaskStatus::Doing,
@@ -296,26 +234,20 @@ fn task_lifecycle_state_verification() -> Result<()> {
         "after start: started_at should be set"
     );
 
-    // Record started_at for later verification
-    let started_at = task.started_at.clone().unwrap();
+    let started_at = task.started_at.clone().expect("started_at should exist");
 
-    // After done: task moved to done.json
-    let (status, _, stderr) =
-        test_support::run_in_dir(dir.path(), &["task", "done", task_id, "--note", "Done!"]);
-    anyhow::ensure!(status.success(), "task done failed\nstderr:\n{stderr}");
+    repo.run_ok(&["task", "done", task_id, "--note", "Done!"])?;
 
-    // Verify queue is empty
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert!(queue.tasks.is_empty(), "after done: queue should be empty");
 
-    // Verify task in done.json
-    let done = test_support::read_done(dir.path())?;
+    let done = repo.read_done()?;
     assert_eq!(
         done.tasks.len(),
         1,
         "after done: done.json should have 1 task"
     );
-    let done_task = find_task(&done.tasks, task_id).unwrap();
+    let done_task = find_task(&done.tasks, task_id).expect("task should exist in done.json");
     assert_eq!(
         done_task.status,
         TaskStatus::Done,
@@ -334,43 +266,33 @@ fn task_lifecycle_state_verification() -> Result<()> {
     Ok(())
 }
 
-/// Test that starting an already started task (with reset) updates started_at
+/// Test that starting an already started task (with reset) updates started_at.
 #[test]
 fn task_start_reset_updates_timestamp() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
     let task_id = "RQ-0004";
     let task = test_support::make_test_task(task_id, "Reset test task", TaskStatus::Todo);
-    test_support::write_queue(dir.path(), &[task])?;
+    repo.write_queue(&[task])?;
 
-    // Start the task
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "start", task_id]);
-    anyhow::ensure!(status.success(), "task start failed\nstderr:\n{stderr}");
+    repo.run_ok(&["task", "start", task_id])?;
 
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, task_id).unwrap();
-    let first_started_at = task.started_at.clone().unwrap();
+    let queue = repo.read_queue()?;
+    let task = find_task(&queue.tasks, task_id).expect("task should exist after initial start");
+    let first_started_at = task.started_at.clone().expect("started_at should be set");
 
     let mut second_started_at = first_started_at.clone();
     for _ in 0..8 {
-        let (status, _, stderr) =
-            test_support::run_in_dir(dir.path(), &["task", "start", task_id, "--reset"]);
-        anyhow::ensure!(
-            status.success(),
-            "task start --reset failed\nstderr:\n{stderr}"
-        );
+        repo.run_ok(&["task", "start", task_id, "--reset"])?;
 
-        let queue = test_support::read_queue(dir.path())?;
-        let task = find_task(&queue.tasks, task_id).unwrap();
-        second_started_at = task.started_at.clone().unwrap();
+        let queue = repo.read_queue()?;
+        let task = find_task(&queue.tasks, task_id).expect("task should exist after reset");
+        second_started_at = task.started_at.clone().expect("started_at should be set");
         if second_started_at != first_started_at {
             break;
         }
     }
 
-    // Timestamps should be different
     assert_ne!(
         first_started_at, second_started_at,
         "started_at should be updated after reset"
@@ -379,20 +301,15 @@ fn task_start_reset_updates_timestamp() -> Result<()> {
     Ok(())
 }
 
-/// Test that cannot start a terminal (done/rejected) task
+/// Test that cannot start a terminal (done/rejected) task.
 #[test]
 fn task_cannot_start_terminal_task() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
     let task_id = "RQ-0005";
-    let mut task = test_support::make_test_task(task_id, "Done task", TaskStatus::Done);
-    task.completed_at = Some("2026-02-19T00:00:00Z".to_string());
-    test_support::write_queue(dir.path(), &[task])?;
+    repo.write_queue(&[terminal_task(task_id, "Done task", TaskStatus::Done)])?;
 
-    // Try to start a done task
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "start", task_id]);
+    let (status, _, stderr) = repo.run(&["task", "start", task_id]);
     assert!(!status.success(), "should fail to start a done task");
     assert!(
         stderr.contains("terminal") || stderr.contains("Done") || stderr.contains("cannot"),
@@ -403,148 +320,100 @@ fn task_cannot_start_terminal_task() -> Result<()> {
     Ok(())
 }
 
-/// Test multiple tasks lifecycle independently
+/// Test multiple tasks lifecycle independently.
 #[test]
 fn task_multiple_independent_lifecycles() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
-    // Create multiple tasks
     let task1 = test_support::make_test_task("RQ-1001", "First task", TaskStatus::Todo);
     let task2 = test_support::make_test_task("RQ-1002", "Second task", TaskStatus::Todo);
     let task3 = test_support::make_test_task("RQ-1003", "Third task", TaskStatus::Todo);
-    test_support::write_queue(dir.path(), &[task1, task2, task3])?;
-    test_support::write_done(dir.path(), &[])?;
+    repo.write_queue(&[task1, task2, task3])?;
 
-    // Start task1
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "start", "RQ-1001"]);
-    anyhow::ensure!(
-        status.success(),
-        "task start RQ-1001 failed\nstderr:\n{stderr}"
-    );
+    repo.run_ok(&["task", "start", "RQ-1001"])?;
 
-    let queue = test_support::read_queue(dir.path())?;
-    let t1 = find_task(&queue.tasks, "RQ-1001").unwrap();
-    let t2 = find_task(&queue.tasks, "RQ-1002").unwrap();
-    let t3 = find_task(&queue.tasks, "RQ-1003").unwrap();
+    let queue = repo.read_queue()?;
+    let t1 = find_task(&queue.tasks, "RQ-1001").expect("task 1 should exist");
+    let t2 = find_task(&queue.tasks, "RQ-1002").expect("task 2 should exist");
+    let t3 = find_task(&queue.tasks, "RQ-1003").expect("task 3 should exist");
     assert_eq!(t1.status, TaskStatus::Doing);
     assert_eq!(t2.status, TaskStatus::Todo);
     assert_eq!(t3.status, TaskStatus::Todo);
 
-    // Complete task1
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "done", "RQ-1001"]);
-    anyhow::ensure!(
-        status.success(),
-        "task done RQ-1001 failed\nstderr:\n{stderr}"
-    );
+    repo.run_ok(&["task", "done", "RQ-1001"])?;
 
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert_eq!(queue.tasks.len(), 2);
     assert!(find_task(&queue.tasks, "RQ-1001").is_none());
 
-    // Reject task2
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "reject", "RQ-1002"]);
-    anyhow::ensure!(
-        status.success(),
-        "task reject RQ-1002 failed\nstderr:\n{stderr}"
-    );
+    repo.run_ok(&["task", "reject", "RQ-1002"])?;
 
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert_eq!(queue.tasks.len(), 1);
     assert!(find_task(&queue.tasks, "RQ-1002").is_none());
 
-    let done = test_support::read_done(dir.path())?;
+    let done = repo.read_done()?;
     assert_eq!(done.tasks.len(), 2);
-    let done_t1 = find_task(&done.tasks, "RQ-1001").unwrap();
-    let done_t2 = find_task(&done.tasks, "RQ-1002").unwrap();
+    let done_t1 = find_task(&done.tasks, "RQ-1001").expect("done task 1 should exist");
+    let done_t2 = find_task(&done.tasks, "RQ-1002").expect("done task 2 should exist");
     assert_eq!(done_t1.status, TaskStatus::Done);
     assert_eq!(done_t2.status, TaskStatus::Rejected);
 
-    // Task3 should still be in queue
-    let t3 = find_task(&queue.tasks, "RQ-1003").unwrap();
+    let t3 = find_task(&queue.tasks, "RQ-1003").expect("task 3 should remain in queue");
     assert_eq!(t3.status, TaskStatus::Todo);
 
     Ok(())
 }
 
-/// Test that task ready command requires draft status
+/// Test that task ready command requires draft status.
 #[test]
 fn task_ready_requires_draft_status() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
-    // Create a non-draft task
     let task = test_support::make_test_task("RQ-1004", "Todo task", TaskStatus::Todo);
-    test_support::write_queue(dir.path(), &[task])?;
+    repo.write_queue(&[task])?;
 
-    // Try to run ready on a todo task (should still work, no-op or success)
-    let (status, _, _stderr) = test_support::run_in_dir(dir.path(), &["task", "ready", "RQ-1004"]);
-    // The command may succeed or fail depending on implementation, but it shouldn't panic
-    // We mainly care that it doesn't corrupt the queue
+    let (status, _, _stderr) = repo.run(&["task", "ready", "RQ-1004"]);
     let _ = status;
 
-    // Verify queue is still valid
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert_eq!(queue.tasks.len(), 1);
 
     Ok(())
 }
 
-/// Test that started_at is not set by ready command
+/// Test that started_at is not set by ready command.
 #[test]
 fn task_ready_does_not_set_started_at() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
-    // Create a draft task
-    let task = Task {
-        id: "RQ-1005".to_string(),
-        title: "Draft task".to_string(),
-        status: TaskStatus::Draft,
-        created_at: Some("2026-02-19T00:00:00Z".to_string()),
-        updated_at: Some("2026-02-19T00:00:00Z".to_string()),
-        ..Default::default()
-    };
-    test_support::write_queue(dir.path(), &[task])?;
+    repo.write_queue(&[draft_task("RQ-1005", "Draft task")])?;
 
-    // Run ready
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["task", "ready", "RQ-1005"]);
-    anyhow::ensure!(status.success(), "task ready failed\nstderr:\n{stderr}");
+    repo.run_ok(&["task", "ready", "RQ-1005"])?;
 
-    // Verify status is todo but started_at is not set
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, "RQ-1005").unwrap();
+    let queue = repo.read_queue()?;
+    let task = find_task(&queue.tasks, "RQ-1005").expect("task should exist after ready");
     assert_eq!(task.status, TaskStatus::Todo);
     assert!(task.started_at.is_none(), "ready should not set started_at");
 
     Ok(())
 }
 
-/// Test full lifecycle with actual runner execution: create → ready → start → run → done
+/// Test full lifecycle with actual runner execution: create → ready → start → run → done.
 ///
 /// This test verifies that:
-/// 1. `ralph run one` selects a todo task and runs the runner
-/// 2. When CI gate passes, task is auto-completed (moved to done.json with Done status)
-/// 3. Task metadata (started_at, completed_at) is properly tracked
+/// 1. `ralph run one` selects a todo task and runs the runner.
+/// 2. When CI gate passes, task is auto-completed.
+/// 3. Task metadata (`started_at`, `completed_at`) is properly tracked.
 #[test]
 fn task_full_lifecycle_with_runner_execution() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
-    // Create task in todo status (this is what ralph run one looks for)
     let task_id = "RQ-9001";
     let task = test_support::make_test_task(task_id, "Runner test task", TaskStatus::Todo);
-    test_support::write_queue(dir.path(), &[task])?;
-    test_support::write_done(dir.path(), &[])?;
+    repo.write_queue(&[task])?;
 
-    // Create marker file path to verify runner was executed
-    let marker_file = dir.path().join(".ralph/runner_executed.marker");
-
-    // Create mock runner that creates a marker file
+    let marker_file = repo.path().join(".ralph/runner_executed.marker");
     let runner_script = format!(
         r#"#!/bin/bash
 # Mock runner that verifies it received task context
@@ -553,45 +422,30 @@ exit 0
 "#,
         marker_file.display()
     );
-    let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
+    repo.setup_runner_with_passing_ci(&runner_script)?;
 
-    // Create Makefile for CI gate
-    std::fs::write(dir.path().join("Makefile"), "ci:\n\t@echo 'CI passed'\n")?;
-    test_support::git_add_all_commit(dir.path(), "setup")?;
-
-    // Verify initial state: task is Todo
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, task_id).unwrap();
+    let queue = repo.read_queue()?;
+    let task = find_task(&queue.tasks, task_id).expect("task should exist before run");
     assert_eq!(
         task.status,
         TaskStatus::Todo,
         "Initial: status should be Todo"
     );
 
-    // Execute: Run the task
-    // Note: ralph run one selects the task, runs the runner, and when CI passes,
-    // the supervision logic auto-completes the task (moves to done.json)
-    let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["run", "one"]);
-    anyhow::ensure!(
-        status.success(),
-        "ralph run one failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
+    repo.run_ok(&["run", "one"])?;
 
-    // Verify: Runner was executed (marker file exists)
     assert!(
         marker_file.exists(),
         "Runner should have been executed (marker file should exist)"
     );
 
-    // Verify: Task is now in done.json with Done status (auto-completed by CI gate)
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert!(
         find_task(&queue.tasks, task_id).is_none(),
         "Task should not be in queue after successful run + CI gate"
     );
 
-    let done = test_support::read_done(dir.path())?;
+    let done = repo.read_done()?;
     assert_eq!(done.tasks.len(), 1, "Task should be in done.json");
     let done_task = find_task(&done.tasks, task_id).expect("task should be in done.json");
     assert_eq!(done_task.status, TaskStatus::Done, "Status should be Done");
@@ -604,46 +458,34 @@ exit 0
     Ok(())
 }
 
-/// Test that runner failure prevents task auto-completion
+/// Test that runner failure prevents task auto-completion.
 ///
 /// This test verifies that when the runner fails:
-/// 1. Task remains in the queue (not auto-completed)
-/// 2. Task status is still Doing (set by run command at start)
-/// 3. User can then reject the task manually
+/// 1. Task remains in the queue.
+/// 2. Task status is still Doing.
+/// 3. User can then reject the task manually.
 #[test]
 fn task_runner_failure_prevents_auto_complete() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
     let task_id = "RQ-9002";
     let task = test_support::make_test_task(task_id, "Task that will fail", TaskStatus::Todo);
-    test_support::write_queue(dir.path(), &[task])?;
-    test_support::write_done(dir.path(), &[])?;
+    repo.write_queue(&[task])?;
+    repo.setup_runner_with_passing_ci("#!/bin/sh\nexit 1\n")?;
 
-    // Create a runner that fails
-    let runner_path = test_support::create_fake_runner(dir.path(), "codex", "#!/bin/sh\nexit 1\n")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
-
-    std::fs::write(dir.path().join("Makefile"), "ci:\n\t@echo 'CI passed'\n")?;
-    test_support::git_add_all_commit(dir.path(), "setup")?;
-
-    // Run the task - it should fail because runner exits with 1
-    let (status, _, _stderr) = test_support::run_in_dir(dir.path(), &["run", "one"]);
-    // The run command should fail
+    let (status, _, _stderr) = repo.run(&["run", "one"]);
     assert!(
         !status.success(),
         "Run should fail when runner exits with error"
     );
 
-    // Verify task is still in queue with Doing status (run set this before runner failed)
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert_eq!(
         queue.tasks.len(),
         1,
         "Task should still be in queue after runner failure"
     );
-    let task = find_task(&queue.tasks, task_id).unwrap();
+    let task = find_task(&queue.tasks, task_id).expect("task should remain in queue");
     assert_eq!(
         task.status,
         TaskStatus::Doing,
@@ -654,69 +496,56 @@ fn task_runner_failure_prevents_auto_complete() -> Result<()> {
         "started_at should be set by run command"
     );
 
-    // Now reject the task since the runner failed
-    let (status, _, stderr) = test_support::run_in_dir(
-        dir.path(),
-        &[
-            "task",
-            "reject",
-            task_id,
-            "--note",
-            "Runner failed - won't fix",
-        ],
-    );
-    anyhow::ensure!(status.success(), "task reject failed\nstderr:\n{stderr}");
+    repo.run_ok(&[
+        "task",
+        "reject",
+        task_id,
+        "--note",
+        "Runner failed - won't fix",
+    ])?;
 
-    // Verify task moved to done.json with Rejected status
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert!(
         find_task(&queue.tasks, task_id).is_none(),
         "Task should be removed from queue"
     );
 
-    let done = test_support::read_done(dir.path())?;
+    let done = repo.read_done()?;
     assert_eq!(done.tasks.len(), 1, "Task should be in done.json");
-    let done_task = find_task(&done.tasks, task_id).unwrap();
+    let done_task = find_task(&done.tasks, task_id).expect("task should exist in done.json");
     assert_eq!(
         done_task.status,
         TaskStatus::Rejected,
         "Status should be Rejected"
     );
     assert!(
-        done_task.notes.iter().any(|n| n.contains("Runner failed")),
+        done_task
+            .notes
+            .iter()
+            .any(|note| note.contains("Runner failed")),
         "Reject note should be preserved"
     );
 
     Ok(())
 }
 
-/// Test queue state transitions during full lifecycle including runner execution
+/// Test queue state transitions during full lifecycle including runner execution.
 ///
 /// This test verifies the complete state transition sequence with CI gate auto-completion:
-/// 1. Initial: Task is Todo in queue.json
-/// 2. After `ralph run one`: Task is auto-completed and moved to done.json with Done status
-///    (The CI gate marks tasks as done when they complete successfully)
-/// 3. Timestamps (started_at, completed_at) are properly set
+/// 1. Initial: Task is Todo in queue.json.
+/// 2. After `ralph run one`: Task is auto-completed and moved to done.json with Done status.
+/// 3. Timestamps (`started_at`, `completed_at`) are properly set.
 #[test]
 fn task_lifecycle_queue_state_during_run() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    let repo = LifecycleRepo::new()?;
 
     let task_id = "RQ-9003";
     let task = test_support::make_test_task(task_id, "State tracking task", TaskStatus::Todo);
-    test_support::write_queue(dir.path(), &[task])?;
-    test_support::write_done(dir.path(), &[])?;
+    repo.write_queue(&[task])?;
+    repo.setup_runner_with_passing_ci("#!/bin/sh\nexit 0\n")?;
 
-    let runner_path = test_support::create_fake_runner(dir.path(), "codex", "#!/bin/sh\nexit 0\n")?;
-    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
-
-    std::fs::write(dir.path().join("Makefile"), "ci:\n\t@echo 'CI passed'\n")?;
-    test_support::git_add_all_commit(dir.path(), "setup")?;
-
-    // Verify initial state: Task is Todo in queue.json
-    let queue = test_support::read_queue(dir.path())?;
-    let task = find_task(&queue.tasks, task_id).unwrap();
+    let queue = repo.read_queue()?;
+    let task = find_task(&queue.tasks, task_id).expect("task should exist before run");
     assert_eq!(
         task.status,
         TaskStatus::Todo,
@@ -727,26 +556,21 @@ fn task_lifecycle_queue_state_during_run() -> Result<()> {
         "Initial: started_at should not be set"
     );
 
-    // Run the task
-    // Note: `ralph run one` executes the runner, then the CI gate auto-completes
-    // the task (moves to done.json with Done status) when CI passes
-    let (status, _, stderr) = test_support::run_in_dir(dir.path(), &["run", "one"]);
-    anyhow::ensure!(status.success(), "ralph run one failed\nstderr:\n{stderr}");
+    repo.run_ok(&["run", "one"])?;
 
-    // Verify: Task is now in done.json with Done status
-    let queue = test_support::read_queue(dir.path())?;
+    let queue = repo.read_queue()?;
     assert!(
         find_task(&queue.tasks, task_id).is_none(),
         "After run: task should not be in queue (auto-completed by CI gate)"
     );
 
-    let done = test_support::read_done(dir.path())?;
+    let done = repo.read_done()?;
     assert_eq!(
         done.tasks.len(),
         1,
         "After run: task should be in done.json"
     );
-    let done_task = find_task(&done.tasks, task_id).unwrap();
+    let done_task = find_task(&done.tasks, task_id).expect("task should be in done.json");
     assert_eq!(
         done_task.status,
         TaskStatus::Done,

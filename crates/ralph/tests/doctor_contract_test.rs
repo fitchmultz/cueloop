@@ -3,33 +3,32 @@
 //! Responsibilities:
 //! - Provide shared command helpers for doctor contract suites.
 //! - Split baseline, runner-binary, JSON, and auto-fix behavior into focused modules.
+//! - Re-export suite-local bootstrap helpers so child modules avoid repeated setup.
+//!
+//! Not handled here:
+//! - Production doctor logic or check implementation.
+//! - Generic integration-test helpers shared outside this suite.
+//!
+//! Invariants/assumptions:
+//! - Child modules use cached seeded fixtures unless a test intentionally needs a git-only repo.
+//! - `ralph_cmd_in_dir()` delegates to shared test support for environment isolation.
 
-use anyhow::Result;
+use std::path::Path;
 use std::process::Command;
 
+#[path = "doctor_contract_test/support.rs"]
+mod support;
 mod test_support;
 
-fn ralph_cmd() -> Command {
-    let mut cmd = Command::new(test_support::ralph_bin());
-    cmd.env_remove("RUST_LOG");
-    cmd
-}
+pub(crate) use anyhow::Result;
+pub(crate) use support::{
+    setup_doctor_repo, setup_git_repo, setup_trusted_doctor_repo, write_global_config,
+    write_repo_config,
+};
 
 /// Create a ralph command scoped to the given directory.
-fn ralph_cmd_in_dir(dir: &std::path::Path) -> Command {
-    let mut cmd = ralph_cmd();
-    cmd.current_dir(dir);
-    cmd
-}
-
-fn trust_repo(dir: &std::path::Path) -> Result<()> {
-    let ralph_dir = dir.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
-    std::fs::write(
-        ralph_dir.join("trust.jsonc"),
-        r#"{"allow_project_commands": true}"#,
-    )?;
-    Ok(())
+fn ralph_cmd_in_dir(dir: &Path) -> Command {
+    test_support::ralph_command(dir)
 }
 
 #[path = "doctor_contract_test/auto_fix.rs"]

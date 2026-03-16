@@ -9,7 +9,7 @@
 //!
 //! Invariants/assumptions:
 //! - The migration `config_key_rename_parallel_worktree_root_2026_02` exists in the registry.
-//! - `ralph init` creates a valid config that may or may not trigger migrations.
+//! - `seed_ralph_dir()` creates a valid baseline config that may or may not trigger migrations.
 
 use anyhow::Result;
 use std::fs;
@@ -39,7 +39,7 @@ fn write_legacy_project_config(dir: &std::path::Path, git_commit_push_enabled: b
 fn migrate_list_shows_all_migrations() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["migrate", "--list"]);
     anyhow::ensure!(status.success(), "migrate list failed\nstderr:\n{stderr}");
@@ -65,7 +65,7 @@ fn migrate_list_shows_all_migrations() -> Result<()> {
 fn migrate_status_shows_detailed_info() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["migrate", "status"]);
     anyhow::ensure!(status.success(), "migrate status failed\nstderr:\n{stderr}");
@@ -89,7 +89,7 @@ fn migrate_status_shows_detailed_info() -> Result<()> {
 fn migrate_shows_current_status() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Run migrate without args - should show current status
     let (status, stdout, _stderr) = test_support::run_in_dir(dir.path(), &["migrate"]);
@@ -111,7 +111,7 @@ fn migrate_shows_current_status() -> Result<()> {
 fn migrate_apply_runs_without_error() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Apply migrations with --force to skip confirmation prompt
     let (status, stdout, stderr) =
@@ -133,7 +133,7 @@ fn migrate_apply_runs_without_error() -> Result<()> {
 fn migrate_check_returns_appropriate_exit_code() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Run check - should either succeed (if no pending) or fail with code 1 (if pending)
     let (status, stdout, _stderr) = test_support::run_in_dir(dir.path(), &["migrate", "--check"]);
@@ -160,7 +160,7 @@ fn migrate_check_returns_appropriate_exit_code() -> Result<()> {
 fn migrate_subcommand_status_works() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Run migrate status subcommand
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["migrate", "status"]);
@@ -179,7 +179,7 @@ fn migrate_subcommand_status_works() -> Result<()> {
 fn migrate_check_detects_legacy_config_without_parse_failure() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
     write_legacy_project_config(dir.path(), true)?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["migrate", "--check"]);
@@ -208,7 +208,7 @@ fn migrate_check_detects_legacy_config_without_parse_failure() -> Result<()> {
 fn migrate_apply_upgrades_legacy_config_with_push_enabled_true() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
     write_legacy_project_config(dir.path(), true)?;
 
     let (status, stdout, stderr) =
@@ -247,7 +247,7 @@ fn migrate_apply_upgrades_legacy_config_with_push_enabled_true() -> Result<()> {
 fn migrate_apply_upgrades_legacy_config_with_push_enabled_false() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
     write_legacy_project_config(dir.path(), false)?;
 
     let (status, _stdout, stderr) =
@@ -267,7 +267,7 @@ fn migrate_apply_upgrades_legacy_config_with_push_enabled_false() -> Result<()> 
 fn migrate_apply_preserves_existing_git_publish_mode() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
     fs::write(
         dir.path().join(".ralph/config.jsonc"),
         r#"{

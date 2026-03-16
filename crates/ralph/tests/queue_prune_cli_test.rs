@@ -28,7 +28,7 @@ fn rfc3339_days_ago(days: i64) -> String {
 fn queue_prune_dry_run_does_not_modify_done_file() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let mut old = test_support::make_test_task("RQ-0100", "Old done", TaskStatus::Done);
     old.completed_at = Some(rfc3339_days_ago(45));
@@ -51,7 +51,7 @@ fn queue_prune_dry_run_does_not_modify_done_file() -> Result<()> {
 fn queue_prune_age_filter_respects_keep_last() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let mut a = test_support::make_test_task("RQ-0200", "A", TaskStatus::Done);
     a.completed_at = Some(rfc3339_days_ago(40));
@@ -89,7 +89,7 @@ fn queue_prune_age_filter_respects_keep_last() -> Result<()> {
 fn queue_prune_missing_completed_at_does_not_match_age_filter() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let mut old = test_support::make_test_task("RQ-0300", "Old", TaskStatus::Done);
     old.completed_at = Some(rfc3339_days_ago(60));
@@ -131,7 +131,7 @@ fn queue_prune_missing_completed_at_does_not_match_age_filter() -> Result<()> {
 fn queue_prune_status_filter_works() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let mut done_old = test_support::make_test_task("RQ-0400", "Old done", TaskStatus::Done);
     done_old.completed_at = Some(rfc3339_days_ago(45));

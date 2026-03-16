@@ -33,7 +33,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 
 ## User Preferences
 
-- **CI-first**: Run `make agent-ci` before claiming completion (dependency-surface routing decides `ci-fast` vs `macos-ci`)
+- **CI-first**: Run `make agent-ci` before claiming completion (dependency-surface routing decides `ci-docs`, `ci-fast`, or `macos-ci`)
 - **Full Rust gate**: Run `make ci` before release tagging/public launch windows
 - **Public-readiness gate**: Use `make pre-public-check` before making broad visibility changes
 - **Resource controls**: Prefer `RALPH_CI_JOBS` / `RALPH_XCODE_JOBS` caps on shared workstations

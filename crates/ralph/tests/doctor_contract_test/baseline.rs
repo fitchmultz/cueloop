@@ -1,24 +1,21 @@
 //! Baseline doctor contract tests.
+//!
+//! Responsibilities:
+//! - Verify core success, warning, and missing-queue doctor outcomes.
+//! - Keep git-only and seeded-repo setup paths explicit for failure locality.
+//!
+//! Not handled here:
+//! - JSON-format specifics or auto-fix behavior.
+//!
+//! Invariants/assumptions:
+//! - Missing-queue coverage intentionally uses a git-only repo with no seeded `.ralph/` files.
+//! - Success-path coverage uses trusted seeded fixtures rather than real init.
 
 use super::*;
 
 #[test]
 fn doctor_passes_in_clean_env() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    // Setup valid repo
-    Command::new("git")
-        .current_dir(dir.path())
-        .arg("init")
-        .status()?;
-
-    // Setup ralph
-    ralph_cmd_in_dir(dir.path())
-        .current_dir(dir.path())
-        .args(["init", "--force", "--non-interactive"])
-        .status()?;
-    // Setup Makefile
-    std::fs::write(dir.path().join("Makefile"), "ci:\n\tcargo test\n")?;
-    trust_repo(dir.path())?;
+    let dir = setup_trusted_doctor_repo()?;
 
     let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
@@ -31,7 +28,6 @@ fn doctor_passes_in_clean_env() -> Result<()> {
         println!("STDERR:\n{stderr}");
     }
 
-    // Missing upstream is now a warning, not a failure, so doctor should pass
     assert!(output.status.success());
     assert!(combined.contains("OK") && combined.contains("git binary found"));
     assert!(combined.contains("OK") && combined.contains("queue valid"));
@@ -41,13 +37,7 @@ fn doctor_passes_in_clean_env() -> Result<()> {
 
 #[test]
 fn doctor_fails_when_queue_missing() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    Command::new("git")
-        .current_dir(dir.path())
-        .arg("init")
-        .status()?;
-
-    // No ralph init
+    let dir = setup_git_repo()?;
 
     let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
@@ -61,21 +51,7 @@ fn doctor_fails_when_queue_missing() -> Result<()> {
 
 #[test]
 fn doctor_warns_on_missing_upstream() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    // Setup valid repo without upstream
-    Command::new("git")
-        .current_dir(dir.path())
-        .arg("init")
-        .status()?;
-
-    // Setup ralph
-    ralph_cmd_in_dir(dir.path())
-        .current_dir(dir.path())
-        .args(["init", "--force", "--non-interactive"])
-        .status()?;
-    // Setup Makefile
-    std::fs::write(dir.path().join("Makefile"), "ci:\n\tcargo test\n")?;
-    trust_repo(dir.path())?;
+    let dir = setup_trusted_doctor_repo()?;
 
     let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
@@ -88,7 +64,6 @@ fn doctor_warns_on_missing_upstream() -> Result<()> {
         println!("STDERR:\n{stderr}");
     }
 
-    // Should succeed with a warning about missing upstream
     assert!(output.status.success());
     assert!(combined.contains("WARN") && combined.contains("no upstream configured"));
     Ok(())

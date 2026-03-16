@@ -11,7 +11,7 @@
 //! - Exhaustive logging format assertions.
 //!
 //! Invariants/assumptions:
-//! - `ralph init --force --non-interactive` creates a usable `.ralph/` structure.
+//! - `seed_ralph_dir()` creates a usable `.ralph/` structure for fixture setup.
 //! - Archive operates on `.ralph/queue.jsonc` and `.ralph/done.jsonc`.
 
 use anyhow::Result;
@@ -23,7 +23,7 @@ mod test_support;
 fn queue_archive_moves_terminal_tasks_to_done() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     let mut t2 = test_support::make_test_task("RQ-0002", "Done", TaskStatus::Done);
@@ -65,7 +65,7 @@ fn queue_archive_moves_terminal_tasks_to_done() -> Result<()> {
 fn queue_archive_is_noop_when_no_terminal_tasks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "Doing", TaskStatus::Doing);
@@ -92,7 +92,7 @@ fn queue_archive_is_noop_when_no_terminal_tasks() -> Result<()> {
 fn queue_archive_appends_to_existing_done_file() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create an existing done task
     let mut existing_done =
@@ -125,7 +125,7 @@ fn queue_archive_appends_to_existing_done_file() -> Result<()> {
 fn queue_archive_dry_run_does_not_modify_files() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     let mut t2 = test_support::make_test_task("RQ-0002", "Done", TaskStatus::Done);
@@ -164,7 +164,7 @@ fn queue_archive_dry_run_does_not_modify_files() -> Result<()> {
 fn queue_archive_dry_run_shows_what_would_be_archived() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     let mut t2 = test_support::make_test_task("RQ-0002", "Done", TaskStatus::Done);
@@ -199,7 +199,7 @@ fn queue_archive_dry_run_shows_what_would_be_archived() -> Result<()> {
 fn queue_archive_dry_run_no_terminal_tasks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     test_support::write_queue(dir.path(), &[t1])?;

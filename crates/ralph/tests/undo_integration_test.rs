@@ -27,7 +27,7 @@ mod test_support;
 fn undo_list_empty_shows_helpful_message() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create a task so the queue is not empty
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -61,7 +61,7 @@ fn undo_list_empty_shows_helpful_message() -> Result<()> {
 fn undo_list_shows_snapshots_after_task_done() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create task in queue
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -96,7 +96,7 @@ fn undo_list_shows_snapshots_after_task_done() -> Result<()> {
 fn undo_restores_queue_after_task_done() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create initial state
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -181,7 +181,7 @@ fn undo_restores_queue_after_task_done() -> Result<()> {
 fn undo_dry_run_does_not_modify_files() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create initial state
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -243,7 +243,7 @@ fn undo_dry_run_does_not_modify_files() -> Result<()> {
 fn undo_with_specific_id_restores_correct_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create two tasks
     let task1 = test_support::make_test_task("RQ-0001", "First task", TaskStatus::Todo);
@@ -343,7 +343,7 @@ fn undo_with_specific_id_restores_correct_snapshot() -> Result<()> {
 fn undo_removes_used_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create task
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -405,7 +405,7 @@ fn undo_removes_used_snapshot() -> Result<()> {
 fn undo_no_snapshots_error() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create a task but don't perform any mutation that creates snapshots
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -436,7 +436,7 @@ fn undo_no_snapshots_error() -> Result<()> {
 fn undo_creates_snapshot_on_task_reject() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create task
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -484,7 +484,7 @@ fn undo_creates_snapshot_on_task_reject() -> Result<()> {
 fn undo_creates_snapshot_on_queue_archive() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create done task in queue (ready for archive)
     let mut task = test_support::make_test_task("RQ-0001", "Done task", TaskStatus::Done);

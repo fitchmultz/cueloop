@@ -104,11 +104,15 @@ fn test_macos_targets_gate_with_preflight_and_isolate_derived_data() -> Result<(
 }
 
 #[test]
-fn test_agent_ci_routes_between_ci_and_macos_ci() -> Result<()> {
+fn test_agent_ci_routes_between_docs_ci_fast_and_macos_ci() -> Result<()> {
     let makefile = read_repo_makefile()?;
     let agent_ci_block =
         extract_target_block(&makefile, "agent-ci").context("extract agent-ci block")?;
 
+    assert!(
+        agent_ci_block.contains("docs, Rust, and macOS ship gates"),
+        "agent-ci should advertise the three-way routing contract"
+    );
     assert!(
         agent_ci_block.contains("scripts/agent-ci-surface.sh --target"),
         "agent-ci must route through the shared dependency-surface classifier"

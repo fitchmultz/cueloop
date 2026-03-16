@@ -23,7 +23,7 @@ fn find_task<'a>(
 fn task_mutate_applies_multi_field_edit_atomically() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let task = test_support::make_test_task("RQ-0001", "Original title", TaskStatus::Todo);
     test_support::write_queue(dir.path(), &[task])?;
@@ -67,7 +67,7 @@ fn task_mutate_applies_multi_field_edit_atomically() -> Result<()> {
 fn task_mutate_conflict_leaves_task_unchanged() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let task = test_support::make_test_task("RQ-0001", "Original title", TaskStatus::Todo);
     test_support::write_queue(dir.path(), &[task])?;
@@ -106,7 +106,7 @@ fn task_mutate_conflict_leaves_task_unchanged() -> Result<()> {
 fn task_mutate_bulk_doing_sets_started_at() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let first = test_support::make_test_task("RQ-0001", "First", TaskStatus::Todo);
     let second = test_support::make_test_task("RQ-0002", "Second", TaskStatus::Todo);

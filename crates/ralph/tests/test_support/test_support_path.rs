@@ -2,15 +2,16 @@
 //!
 //! Responsibilities:
 //! - Resolve temp roots that stay outside repo markers and work across platforms.
-//! - Provide a shared environment lock for tests that mutate process-wide variables.
+//! - Provide shared locks for process-wide environment mutation and nested parallel-run contention.
 //! - Centralize path derivation used by both Rust and CLI integration fixtures.
 //!
 //! Does not handle:
-//! - Queue fixtures, command execution, or synchronization primitives.
+//! - Queue fixtures, command execution, or synchronization primitives beyond shared locks.
 //!
 //! Invariants/assumptions callers must respect:
 //! - Returned portable paths may not exist yet; callers create directories when needed.
 //! - Environment mutations must hold `env_lock()` for the full mutation scope.
+//! - Tests that spawn nested `ralph run loop --parallel ...` workers should hold `parallel_run_lock()` only for the overlapping run window.
 
 use ralph::config;
 use std::path::{Path, PathBuf};
@@ -54,6 +55,11 @@ pub fn portable_abs_path(label: impl AsRef<Path>) -> PathBuf {
 }
 
 pub fn env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+pub fn parallel_run_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
 }

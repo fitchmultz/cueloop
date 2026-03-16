@@ -22,7 +22,7 @@ mod test_support;
 fn task_relate_blocks_updates_queue() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "A", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "B", TaskStatus::Todo);
@@ -52,7 +52,7 @@ fn task_relate_blocks_updates_queue() -> Result<()> {
 fn task_relate_relates_to_updates_queue() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "A", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "B", TaskStatus::Todo);
@@ -82,7 +82,7 @@ fn task_relate_relates_to_updates_queue() -> Result<()> {
 fn task_blocks_appends_blocks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "A", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "B", TaskStatus::Todo);
@@ -111,7 +111,7 @@ fn task_blocks_appends_blocks() -> Result<()> {
 fn task_blocks_multiple_targets() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "A", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "B", TaskStatus::Todo);
@@ -143,7 +143,7 @@ fn task_blocks_multiple_targets() -> Result<()> {
 fn task_mark_duplicate_sets_duplicates() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Original", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "Dupe", TaskStatus::Todo);
@@ -173,7 +173,7 @@ fn task_mark_duplicate_sets_duplicates() -> Result<()> {
 fn task_relate_rejects_invalid_relationship() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "A", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "B", TaskStatus::Todo);
@@ -199,7 +199,7 @@ fn task_relate_rejects_invalid_relationship() -> Result<()> {
 fn task_relate_fails_on_missing_task() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "A", TaskStatus::Todo);
     test_support::write_queue(dir.path(), &[t1])?;

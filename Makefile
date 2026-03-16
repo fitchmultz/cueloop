@@ -22,9 +22,9 @@ XCODE_RESULT_BUNDLE_PATH ?=
 RALPH_UI_ARTIFACTS_ROOT ?= target/ui-artifacts
 MACOS_APP_INSTALL_DIR ?= /Applications
 XCODE_BUILD_LOCK_DIR ?= target/tmp/locks/xcodebuild.lock
-# Constrain local gate resource usage to keep machines responsive while multitasking.
-# Set to 0 to let cargo/nextest use tool defaults (max throughput).
-RALPH_CI_JOBS ?= 4
+# Default to tool-managed Rust/nextest parallelism for fastest local iteration.
+# Set an explicit cap (for example `RALPH_CI_JOBS=4`) on shared workstations.
+RALPH_CI_JOBS ?= 0
 # Cap xcodebuild parallelism for local friendliness (set 0 for xcodebuild default).
 RALPH_XCODE_JOBS ?= 4
 # Build stamp path to avoid duplicate release builds in a single make invocation.
@@ -60,16 +60,17 @@ endif
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: help install macos-install-app update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast deps \
+.PHONY: help install macos-install-app update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast ci-docs deps \
 	changelog changelog-preview changelog-check version-check version-sync publish-check release release-dry-run release-verify release-artifacts pre-commit pre-public-check release-gate \
 	agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
 	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean FORCE
 help:
 	@echo "Common targets:"
+	@echo "  make ci-docs     # Docs/community-only safety gate used by make agent-ci"
 	@echo "  make ci-fast     # Fast deterministic Rust/CLI gate for day-to-day development"
 	@echo "  make ci          # Full Rust release gate (ci-fast + build/generate/install)"
-	@echo "  make agent-ci    # Agent gate: dependency-surface routing between ci-fast and macos-ci"
+	@echo "  make agent-ci    # Agent gate: dependency-surface routing between ci-docs, ci-fast, and macos-ci"
 	@echo "  make macos-ci     # Rust gate + macOS app build+test + deterministic contract smoke (requires Xcode)"
 	@echo "  make release-gate # Canonical ship gate: macOS when available, otherwise Rust-only"
 	@echo "  make test         # Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing)"
@@ -96,7 +97,7 @@ help:
 	@echo "  make pre-public-check # Publication audit + full local CI"
 	@echo ""
 	@echo "Resource knobs (optional):"
-	@echo "  RALPH_CI_JOBS=4     # Caps cargo/nextest parallelism (0 = tool default)"
+	@echo "  RALPH_CI_JOBS=4     # Example cap for shared workstations (0 = tool default, fastest local iteration)"
 	@echo "  RALPH_XCODE_JOBS=4  # Caps xcodebuild parallelism (0 = xcodebuild default)"
 	@echo "  rust-toolchain.toml is respected automatically when rustup is available"
 	@echo "  RALPH_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (used by macos-test-ui-artifacts)"
@@ -328,6 +329,12 @@ pre-commit: check-env-safety check-backup-artifacts format-check
 	@echo "→ Pre-commit checks complete"
 	@echo "  ✓ Pre-commit checks passed"
 
+# Docs/community-only safety gate when no executable surface changed.
+ci-docs: check-env-safety check-backup-artifacts
+	@echo "→ Docs-only CI gate (no executable surface changed)..."
+	@echo ""
+	@echo "  ✓ Docs-only CI completed"
+
 # Fast deterministic Rust/CLI gate for routine development and PR-equivalent checks.
 ci-fast: check-env-safety check-backup-artifacts deps format type-check lint test
 	@echo "→ Fast CI gate (format/type/lint/test)..."
@@ -349,10 +356,10 @@ release-gate:
 		$(MAKE) --no-print-directory ci; \
 	fi
 
-# Agent CI compromise: always run Rust/CLI gate; escalate to macOS when the dependency surface touches app-facing contracts.
+# Agent CI compromise: route to the smallest valid gate and escalate only when the dependency surface demands it.
 # Set RALPH_AGENT_CI_FORCE_MACOS=1 to force the macOS app gate.
 agent-ci:
-	@echo "→ Agent CI gate (dependency-surface routing between Rust-only and macOS ship gates)..."
+	@echo "→ Agent CI gate (dependency-surface routing between docs, Rust, and macOS ship gates)..."
 	@force_macos="$${RALPH_AGENT_CI_FORCE_MACOS:-0}"; \
 	if [ "$$force_macos" = "1" ]; then \
 		echo "  → RALPH_AGENT_CI_FORCE_MACOS=1; running macOS gate"; \

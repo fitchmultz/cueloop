@@ -91,6 +91,19 @@ pub fn configure_runner(
     Ok(())
 }
 
+pub fn configure_parallel_test_runner(
+    dir: &Path,
+    runner: &str,
+    model: &str,
+    bin_path: &Path,
+    max_push_attempts: u8,
+) -> Result<()> {
+    configure_runner(dir, runner, model, Some(bin_path))?;
+    configure_parallel_for_direct_push_with_attempts(dir, max_push_attempts)?;
+    configure_ci_gate(dir, None, Some(false))?;
+    Ok(())
+}
+
 pub fn configure_ci_gate(dir: &Path, command: Option<&str>, enabled: Option<bool>) -> Result<()> {
     let config_path = dir.join(".ralph/config.jsonc");
     let mut config: serde_json::Value =
@@ -146,8 +159,11 @@ pub fn configure_parallel_disabled(dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Configure parallel mode for direct-push.
-pub fn configure_parallel_for_direct_push(dir: &Path) -> Result<()> {
+/// Configure parallel mode for direct-push with an explicit retry cap.
+pub fn configure_parallel_for_direct_push_with_attempts(
+    dir: &Path,
+    max_push_attempts: u8,
+) -> Result<()> {
     let config_path = dir.join(".ralph/config.jsonc");
     let mut config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
@@ -157,7 +173,7 @@ pub fn configure_parallel_for_direct_push(dir: &Path) -> Result<()> {
         config["parallel"] = serde_json::json!({});
     }
     config["parallel"]["workers"] = serde_json::json!(2);
-    config["parallel"]["max_push_attempts"] = serde_json::json!(5);
+    config["parallel"]["max_push_attempts"] = serde_json::json!(max_push_attempts);
 
     std::fs::write(
         &config_path,
@@ -165,4 +181,9 @@ pub fn configure_parallel_for_direct_push(dir: &Path) -> Result<()> {
     )
     .context("write config")?;
     Ok(())
+}
+
+/// Configure parallel mode for direct-push.
+pub fn configure_parallel_for_direct_push(dir: &Path) -> Result<()> {
+    configure_parallel_for_direct_push_with_attempts(dir, 5)
 }

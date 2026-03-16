@@ -21,7 +21,7 @@ fn no_warning_when_env_file_missing() {
     let temp_dir = test_support::temp_dir_outside_repo();
 
     // Initialize a minimal ralph project
-    test_support::ralph_init(temp_dir.path()).expect("init should succeed");
+    test_support::seed_ralph_dir(temp_dir.path()).expect("init should succeed");
 
     // Run ralph --help from the temp dir (no .env file exists)
     let output = Command::new(test_support::ralph_bin())
@@ -48,7 +48,7 @@ fn warning_when_env_file_invalid() {
     let temp_dir = test_support::temp_dir_outside_repo();
 
     // Initialize a minimal ralph project
-    test_support::ralph_init(temp_dir.path()).expect("init should succeed");
+    test_support::seed_ralph_dir(temp_dir.path()).expect("init should succeed");
 
     // Create an invalid .env file (bad syntax)
     let env_content = r#"INVALID LINE WITHOUT EQUALS SIGN
@@ -84,7 +84,7 @@ fn no_warning_when_env_file_empty() {
     let temp_dir = test_support::temp_dir_outside_repo();
 
     // Initialize a minimal ralph project
-    test_support::ralph_init(temp_dir.path()).expect("init should succeed");
+    test_support::seed_ralph_dir(temp_dir.path()).expect("init should succeed");
 
     // Create an empty .env file
     std::fs::write(temp_dir.path().join(".env"), "").expect("write empty .env file");
@@ -114,7 +114,7 @@ fn no_warning_when_env_file_valid() {
     let temp_dir = test_support::temp_dir_outside_repo();
 
     // Initialize a minimal ralph project
-    test_support::ralph_init(temp_dir.path()).expect("init should succeed");
+    test_support::seed_ralph_dir(temp_dir.path()).expect("init should succeed");
 
     // Create a valid .env file
     let env_content = r#"RUST_LOG=info

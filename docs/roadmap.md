@@ -54,6 +54,44 @@ Scope:
 - Preserve current coverage names, helper contracts, and `make agent-ci` / `make ci` verification behavior.
 - Keep shared test support centralized only where duplication is real; otherwise prefer adjacent grouped helpers.
 
+### 5. Remove the remaining measured Rust test-serialization bottlenecks
+
+Why fifth:
+- Headless profiling now shows the next slowest suites clearly, so remaining serialization and setup tax can be attacked with evidence instead of guesswork.
+- The cached `.ralph` fixture and faster `agent-ci` routing reduce baseline wait time, which makes the residual locked/serialized suites the next highest-impact local-iteration cost.
+- Cleaning those bottlenecks next compounds every future contributor loop without weakening coverage.
+
+Scope:
+- Use target-specific nextest profiles (`run_parallel_test`, `parallel_direct_push_test`, and adjacent parallel safety suites as needed) plus `target/profiling/nextest*.jsonl` artifacts to rank the remaining slow integration targets.
+- Re-profile each targeted suite immediately after every focused fixture/lock cutover instead of repeating whole-workspace sweeps.
+- Narrow global-environment locks to only the tests that mutate PATH or shared process env; tests using explicit runner binary overrides should not serialize on `env_lock()`.
+- Keep real `ralph init` contract tests explicit while continuing to route pure fixture setup through cached seeded scaffolding.
+- Follow the latest targeted timing order to reduce churn: re-profile `doctor_contract_test` before touching it again, and only cut it over if fresh evidence still shows a meaningful remaining bottleneck.
+
+### 6. Profile and tighten the headless macOS ship gate internals
+
+Why sixth:
+- After docs/community routing and Rust-side test speedups, `macos-ci` is the most expensive remaining default gate for app-surface changes.
+- The current `RALPH_XCODE_JOBS` cap and shared Xcode lock are intentionally conservative, but they should now be justified by measured headless build/test timings rather than habit.
+- This work should follow the Rust-side cleanup so macOS measurements are easier to isolate.
+
+Scope:
+- Measure `macos-build`, `macos-test`, and `macos-test-contracts` separately with current defaults and capped/unbounded Xcode parallelism.
+- Preserve headless defaults and keep interactive UI automation outside `macos-ci`.
+- Only relax Xcode serialization or default caps when the measured regression risk is understood and covered by contract tests.
+
+### 7. Add durable local timing regression visibility for CI/test loops
+
+Why seventh:
+- One-off profiling is useful, but the repo still needs a repeatable way to spot when `make agent-ci`, `make test`, or specific nextest targets get slower again.
+- Capturing local timing evidence keeps future optimization work honest without introducing remote CI dependencies.
+- This belongs after the main bottlenecks are reduced so new thresholds reflect the improved baseline.
+
+Scope:
+- Add a documented local profiling entrypoint that records `make agent-ci`, nextest, and doctest timings under `target/profiling/`.
+- Keep the profiling path headless and opt-in; it should not slow the default CI gate.
+- Prefer machine-readable summaries that make the slowest targets and trend deltas obvious.
+
 ## Sequencing rules
 
 - Keep completed roadmap items out of this file; replace them with the next active work only.

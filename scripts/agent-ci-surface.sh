@@ -3,7 +3,8 @@
 # Purpose: Classify the current change set into the correct CI surface for agents.
 # Responsibilities:
 # - Inspect local working-tree changes plus committed branch delta versus trunk.
-# - Route docs-only surfaces to `ci-fast`.
+# - Route docs/community-only surfaces to `ci-docs`.
+# - Route non-app executable changes to `ci-fast`.
 # - Escalate CLI/build/runtime/app contract changes to `macos-ci`.
 # Scope:
 # - Classification only; it does not execute make targets itself.
@@ -12,6 +13,7 @@
 # - scripts/agent-ci-surface.sh --reason
 # Invariants/assumptions:
 # - When no git worktree or trunk baseline is available, callers should conservatively run `macos-ci`.
+# - `ci-docs` is reserved for changes that cannot alter executable behavior.
 
 set -euo pipefail
 
@@ -29,7 +31,7 @@ Usage:
   scripts/agent-ci-surface.sh --reason
 
 Outputs:
-  --target   Print the target name (`ci-fast` or `macos-ci`)
+  --target   Print the target name (`ci-docs`, `ci-fast`, or `macos-ci`)
   --reason   Print a short routing explanation
 EOF
 }
@@ -124,7 +126,7 @@ if [ -z "$changed_paths" ]; then
     exit 0
 fi
 
-target="ci-fast"
+target="ci-docs"
 reason="docs/community metadata only"
 while IFS= read -r path; do
     [ -z "$path" ] && continue
@@ -134,9 +136,8 @@ while IFS= read -r path; do
         break
     fi
     if ! public_is_docs_only_path "$path"; then
-        target="macos-ci"
-        reason="non-doc change requires full app/CLI verification: $path"
-        break
+        target="ci-fast"
+        reason="non-app executable change requires Rust/CLI verification: $path"
     fi
 done <<< "$changed_paths"
 

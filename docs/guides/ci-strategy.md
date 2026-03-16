@@ -18,8 +18,14 @@ make agent-ci
 
 Behavior:
 
-- Always runs fast Rust/CLI gate for non-app changes.
+- Routes docs/community-only changes to `make ci-docs`.
+- Routes non-app executable changes to `make ci-fast`.
 - Auto-escalates to macOS gate when the changed dependency surface can affect the bundled app contract (CLI/runtime/config/build/app paths).
+
+Docs/community-only gate is `make ci-docs`:
+
+- `check-env-safety` (delegates to pre-public safety checks: required-files + secret/runtime/env validation)
+- `check-backup-artifacts`
 
 Fast Rust/CLI gate is `make ci-fast`:
 
@@ -113,9 +119,9 @@ RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make pre-public-check
 
 Defaults:
 
-- `RALPH_CI_JOBS=4` limits cargo/nextest concurrency.
-- `RALPH_XCODE_JOBS=4` limits xcodebuild concurrency.
-- Set either value to `0` to use tool defaults.
+- `RALPH_CI_JOBS=0` lets cargo/nextest use tool-managed parallelism for fastest local iteration.
+- `RALPH_XCODE_JOBS=4` keeps macOS app builds friendly by default.
+- Set either value explicitly (for example `RALPH_CI_JOBS=4`) on shared workstations.
 
 ## Suggested Cadence
 
@@ -124,11 +130,56 @@ Defaults:
 - For app-heavy changes: `make macos-ci`
 - Overnight/manual quality sweep: UI tests + coverage
 
+## Headless Profiling Loop
+
+When CI speed regresses, capture the same local evidence before and after changes:
+
+```bash
+time make agent-ci
+NEXTEST_EXPERIMENTAL_LIBTEST_JSON=1 cargo nextest run --workspace --all-targets --locked --show-progress none --status-level none --final-status-level none --message-format libtest-json-plus > target/profiling/nextest.jsonl
+cargo test --workspace --doc --locked -- --include-ignored
+```
+
+Prefer headless paths first; interactive UI automation remains opt-in and out of the default gate.
+
+### Targeted Suite Profiling
+
+When cutting over a known slow integration target, avoid another workspace-wide sweep. Profile the exact suite before and after each focused change:
+
+```bash
+mkdir -p target/profiling
+
+NEXTEST_EXPERIMENTAL_LIBTEST_JSON=1 \
+cargo nextest run --workspace --locked --test run_parallel_test \
+  --show-progress none \
+  --status-level none \
+  --final-status-level none \
+  --message-format libtest-json-plus \
+  > target/profiling/nextest.run_parallel_test.before.jsonl
+
+# apply one focused fixture/locking change
+
+NEXTEST_EXPERIMENTAL_LIBTEST_JSON=1 \
+cargo nextest run --workspace --locked --test run_parallel_test \
+  --show-progress none \
+  --status-level none \
+  --final-status-level none \
+  --message-format libtest-json-plus \
+  > target/profiling/nextest.run_parallel_test.after.jsonl
+```
+
+Use the same pattern for `parallel_direct_push_test` and any same-pattern follow-on suite.
+
+Optimization rules for Rust integration tests:
+- Hold `env_lock()` only when mutating `PATH` or other process-global env vars.
+- If a fake runner is configured via an explicit `*_bin` path in `.ralph/config.jsonc`, do not also mutate `PATH`.
+- Prefer `seed_ralph_dir()` over `ralph_init()` when the test only needs cached `.ralph/` scaffolding and is not asserting real init behavior.
+
 ## Expected Runtime Profile (guidance)
 
 Actual times vary by machine and cache warmth.
 
-- `make agent-ci` should be the fastest stable gate.
+- `make agent-ci` should be the fastest stable gate for the current change surface.
 - `make ci` is heavier due to release build/schema/install steps.
 - `make macos-ci` is heaviest among non-UI defaults.
 - UI suites and coverage are intentionally separated to protect everyday DX.

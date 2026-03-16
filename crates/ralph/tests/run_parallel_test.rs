@@ -10,9 +10,9 @@
 //! - Queue mutation validation (see parallel_queue_mutation_test.rs)
 //!
 //! Invariants/Assumptions:
-//! - Tests use fake runner binaries to avoid external dependencies
-//! - Tests run with env_lock to prevent PATH race conditions
-//! - Temp directories are created outside the repo
+//! - Tests use explicit fake runner binary paths to avoid external dependencies.
+//! - Nested `ralph run loop --parallel ...` invocations hold `parallel_run_lock()` only for the overlapping run window.
+//! - Temp directories are created outside the repo.
 
 use anyhow::Result;
 use std::process::Command;
@@ -55,7 +55,6 @@ fn setup_origin_remote(repo_path: &std::path::Path) -> Result<()> {
 /// Expected: 2 tasks are selected and processed, parallel state file is created
 #[test]
 fn run_parallel_selects_multiple_tasks() -> Result<()> {
-    let lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     // Setup git repo with origin remote
@@ -82,17 +81,21 @@ fn run_parallel_selects_multiple_tasks() -> Result<()> {
     ];
     test_support::write_queue(temp.path(), &tasks)?;
 
-    // Init ralph project
-    test_support::ralph_init(temp.path())?;
+    // Seed cached Ralph scaffolding
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create fake runner that exits 0 immediately
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-
-    // Configure direct-push parallel settings for test determinism
-    test_support::configure_parallel_disabled(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
     // Run parallel mode with 2 workers and max 2 tasks
+    let run_lock = test_support::parallel_run_lock().lock();
     let (status, stdout, stderr) = test_support::run_in_dir(
         temp.path(),
         &[
@@ -105,9 +108,7 @@ fn run_parallel_selects_multiple_tasks() -> Result<()> {
             "--force",
         ],
     );
-
-    // Release the lock explicitly before assertions that might panic
-    drop(lock);
+    drop(run_lock);
 
     let combined = format!("{}{}", stdout, stderr);
     eprintln!("Test output:\n{}", combined);
@@ -180,7 +181,6 @@ fn run_parallel_selects_multiple_tasks() -> Result<()> {
 /// Expected: Tasks are processed, completion is detected, queue state is updated
 #[test]
 fn run_parallel_handles_task_completion() -> Result<()> {
-    let lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     // Setup git repo with origin remote
@@ -202,17 +202,21 @@ fn run_parallel_handles_task_completion() -> Result<()> {
     ];
     test_support::write_queue(temp.path(), &tasks)?;
 
-    // Init ralph project
-    test_support::ralph_init(temp.path())?;
+    // Seed cached Ralph scaffolding
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create fake runner that simulates success
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-
-    // Configure direct-push parallel settings
-    test_support::configure_parallel_disabled(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
     // Run parallel mode
+    let run_lock = test_support::parallel_run_lock().lock();
     let (status, stdout, stderr) = test_support::run_in_dir(
         temp.path(),
         &[
@@ -225,9 +229,7 @@ fn run_parallel_handles_task_completion() -> Result<()> {
             "--force",
         ],
     );
-
-    // Release the lock explicitly before assertions that might panic
-    drop(lock);
+    drop(run_lock);
 
     let combined = format!("{}{}", stdout, stderr);
     eprintln!("Test output:\n{}", combined);
@@ -299,7 +301,6 @@ fn run_parallel_handles_task_completion() -> Result<()> {
 /// Verify path mapping correctly syncs config/prompts into workspace clones.
 #[test]
 fn parallel_path_map_workspace_sync() -> Result<()> {
-    let lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     // Setup git repo and init ralph
@@ -314,8 +315,8 @@ fn parallel_path_map_workspace_sync() -> Result<()> {
     )];
     test_support::write_queue(temp.path(), &tasks)?;
 
-    // Init ralph project
-    test_support::ralph_init(temp.path())?;
+    // Seed cached Ralph scaffolding
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create config and prompts AFTER ralph_init
     let config_path = temp.path().join(".ralph/config.jsonc");
@@ -331,9 +332,15 @@ fn parallel_path_map_workspace_sync() -> Result<()> {
 
     // Configure and run
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-    test_support::configure_parallel_disabled(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
+    let run_lock = test_support::parallel_run_lock().lock();
     test_support::run_in_dir(
         temp.path(),
         &[
@@ -346,8 +353,7 @@ fn parallel_path_map_workspace_sync() -> Result<()> {
             "--force",
         ],
     );
-
-    drop(lock);
+    drop(run_lock);
 
     // Find the workspace directory
     let workspaces_dir = temp.path().join(".ralph/workspaces");
@@ -390,7 +396,6 @@ fn parallel_path_map_workspace_sync() -> Result<()> {
 /// Verify state file creation and content on parallel run startup.
 #[test]
 fn parallel_state_initialization() -> Result<()> {
-    let lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
@@ -402,7 +407,7 @@ fn parallel_state_initialization() -> Result<()> {
     ];
     test_support::write_queue(temp.path(), &tasks)?;
 
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Verify state does NOT exist before run
     let state_path = temp.path().join(".ralph/cache/parallel/state.json");
@@ -410,9 +415,15 @@ fn parallel_state_initialization() -> Result<()> {
 
     // Configure and run
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-    test_support::configure_parallel_disabled(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
+    let run_lock = test_support::parallel_run_lock().lock();
     test_support::run_in_dir(
         temp.path(),
         &[
@@ -425,8 +436,7 @@ fn parallel_state_initialization() -> Result<()> {
             "--force",
         ],
     );
-
-    drop(lock);
+    drop(run_lock);
 
     // State file should be created after run
     if state_path.exists() {
@@ -461,7 +471,6 @@ fn parallel_state_initialization() -> Result<()> {
 /// Verify sync.rs correctly copies allowlisted files and excludes directories.
 #[test]
 fn parallel_worker_workspace_state_sync() -> Result<()> {
-    let lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
@@ -475,8 +484,8 @@ fn parallel_worker_workspace_state_sync() -> Result<()> {
     )];
     test_support::write_queue(temp.path(), &tasks)?;
 
-    // Init ralph
-    test_support::ralph_init(temp.path())?;
+    // Seed cached Ralph scaffolding
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create files that should be synced AFTER init
     std::fs::write(temp.path().join(".env"), "SECRET_KEY=test")?;
@@ -487,9 +496,15 @@ fn parallel_worker_workspace_state_sync() -> Result<()> {
     std::fs::write(temp.path().join("target/debug/app"), "binary")?;
 
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-    test_support::configure_parallel_disabled(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
+    let run_lock = test_support::parallel_run_lock().lock();
     test_support::run_in_dir(
         temp.path(),
         &[
@@ -502,8 +517,7 @@ fn parallel_worker_workspace_state_sync() -> Result<()> {
             "--force",
         ],
     );
-
-    drop(lock);
+    drop(run_lock);
 
     // Check workspace contents (if workspaces exist - they may be cleaned up immediately with noop runners)
     let workspaces_dir = temp.path().join(".ralph/workspaces");
@@ -558,7 +572,6 @@ fn parallel_worker_workspace_state_sync() -> Result<()> {
 /// Verify multiple tasks are selected and workers respect --parallel limit.
 #[test]
 fn parallel_task_selection_multiple_workers() -> Result<()> {
-    let lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     // Setup git repo with origin remote
@@ -573,12 +586,18 @@ fn parallel_task_selection_multiple_workers() -> Result<()> {
     ];
     test_support::write_queue(temp.path(), &tasks)?;
 
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-    test_support::configure_parallel_disabled(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
+    let run_lock = test_support::parallel_run_lock().lock();
     test_support::run_in_dir(
         temp.path(),
         &[
@@ -591,8 +610,7 @@ fn parallel_task_selection_multiple_workers() -> Result<()> {
             "--force",
         ],
     );
-
-    drop(lock);
+    drop(run_lock);
 
     // Read state file to verify worker count
     let state_path = temp.path().join(".ralph/cache/parallel/state.json");
@@ -641,7 +659,6 @@ fn parallel_task_selection_multiple_workers() -> Result<()> {
 /// Verify task completion updates state and workers are tracked correctly.
 #[test]
 fn parallel_handles_worker_completion() -> Result<()> {
-    let lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     // Setup git repo with origin remote
@@ -655,12 +672,18 @@ fn parallel_handles_worker_completion() -> Result<()> {
     )];
     test_support::write_queue(temp.path(), &tasks)?;
 
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-    test_support::configure_parallel_disabled(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
+    let run_lock = test_support::parallel_run_lock().lock();
     test_support::run_in_dir(
         temp.path(),
         &[
@@ -673,8 +696,7 @@ fn parallel_handles_worker_completion() -> Result<()> {
             "--force",
         ],
     );
-
-    drop(lock);
+    drop(run_lock);
 
     // Read state after run
     let state_path = temp.path().join(".ralph/cache/parallel/state.json");

@@ -1,21 +1,21 @@
 //! Doctor JSON output contract tests.
+//!
+//! Responsibilities:
+//! - Verify stable JSON structure for successful and failing doctor runs.
+//! - Keep missing-queue coverage on git-only repos while success cases use seeded fixtures.
+//!
+//! Not handled here:
+//! - Human-readable output formatting.
+//!
+//! Invariants/assumptions:
+//! - JSON payloads come from stdout while logs may still go to stderr.
+//! - Missing-queue coverage intentionally omits seeded `.ralph/` files.
 
 use super::*;
 
 #[test]
 fn doctor_json_output_format() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    Command::new("git")
-        .current_dir(dir.path())
-        .arg("init")
-        .status()?;
-
-    ralph_cmd_in_dir(dir.path())
-        .current_dir(dir.path())
-        .args(["init", "--force", "--non-interactive"])
-        .status()?;
-
-    std::fs::write(dir.path().join("Makefile"), "ci:\n\tcargo test\n")?;
+    let dir = setup_doctor_repo()?;
 
     let output = ralph_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json"])
@@ -23,11 +23,9 @@ fn doctor_json_output_format() -> Result<()> {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    // Parse JSON from stdout (log output goes to stderr)
     let json: serde_json::Value = serde_json::from_str(&stdout)
         .unwrap_or_else(|_| panic!("JSON should be valid. Got stdout: {}", stdout));
 
-    // Verify structure
     assert!(
         json.get("success").is_some(),
         "JSON should have 'success' field"
@@ -41,7 +39,6 @@ fn doctor_json_output_format() -> Result<()> {
         "JSON should have 'summary' field"
     );
 
-    // Verify summary fields
     let summary = json.get("summary").unwrap();
     assert!(
         summary.get("total").is_some(),
@@ -68,7 +65,6 @@ fn doctor_json_output_format() -> Result<()> {
         "summary should have 'fixes_failed' field"
     );
 
-    // Verify checks is an array
     let checks = json
         .get("checks")
         .unwrap()
@@ -76,7 +72,6 @@ fn doctor_json_output_format() -> Result<()> {
         .expect("checks should be an array");
     assert!(!checks.is_empty(), "should have at least one check");
 
-    // Verify check structure
     let first_check = &checks[0];
     assert!(
         first_check.get("category").is_some(),
@@ -104,24 +99,15 @@ fn doctor_json_output_format() -> Result<()> {
 
 #[test]
 fn doctor_json_output_with_failed_check() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    Command::new("git")
-        .current_dir(dir.path())
-        .arg("init")
-        .status()?;
-
-    // Don't run ralph init - so queue file will be missing
+    let dir = setup_git_repo()?;
 
     let output = ralph_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json"])
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-
-    // Parse JSON from stdout (log output goes to stderr)
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("JSON should be valid");
 
-    // Verify failure is reported
     assert_eq!(
         json["success"], false,
         "success should be false when checks fail"
@@ -131,7 +117,6 @@ fn doctor_json_output_with_failed_check() -> Result<()> {
         "should have errors"
     );
 
-    // Find the queue check error
     let checks = json["checks"].as_array().unwrap();
     let queue_error = checks
         .iter()

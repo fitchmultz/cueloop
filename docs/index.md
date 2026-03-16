@@ -70,8 +70,10 @@ Before merging documentation or code changes:
 ```bash
 make ci-fast
 make agent-ci
-# Optional shared-workstation caps: RALPH_CI_JOBS=4 make agent-ci
+# Optional shared-workstation cap: RALPH_CI_JOBS=4 make agent-ci
 ```
+
+`make agent-ci` routes docs/community-only work to `ci-docs`, non-app executable changes to `ci-fast`, and app/CLI/build/runtime surfaces to `macos-ci`.
 
 Full Rust release gate:
 

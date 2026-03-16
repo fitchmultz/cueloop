@@ -22,7 +22,7 @@ mod test_support;
 pub(super) fn setup_repo() -> Result<tempfile::TempDir> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
     Ok(dir)
 }
 

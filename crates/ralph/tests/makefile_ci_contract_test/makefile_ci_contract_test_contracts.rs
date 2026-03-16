@@ -16,7 +16,7 @@
 use anyhow::{Context, Result};
 
 use super::makefile_ci_contract_test_support::{
-    REQUIRED_CI_FAST_STEPS, REQUIRED_CI_STEPS, REQUIRED_MACOS_CI_DEPS,
+    REQUIRED_CI_DOCS_STEPS, REQUIRED_CI_FAST_STEPS, REQUIRED_CI_STEPS, REQUIRED_MACOS_CI_DEPS,
     REQUIRED_MACOS_TEST_CONTRACT_DEPS, extract_make_ci_steps, extract_target_block,
     extract_target_dependencies, read_repo_makefile, repo_root, required_ci_pipeline_text,
 };
@@ -34,6 +34,30 @@ fn test_makefile_ci_matches_required_sequence_exactly() -> Result<()> {
         actual, expected,
         "Makefile `ci` must exactly match required CI gate sequence.\nExpected: {:?}\nActual:   {:?}",
         expected, actual
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_makefile_ci_docs_matches_required_subset() -> Result<()> {
+    let makefile = read_repo_makefile()?;
+    let actual =
+        extract_target_dependencies(&makefile, "ci-docs").context("extract ci-docs deps")?;
+    let expected: Vec<String> = REQUIRED_CI_DOCS_STEPS
+        .iter()
+        .map(|step| step.to_string())
+        .collect();
+
+    assert_eq!(
+        actual, expected,
+        "`ci-docs` must exactly match required docs-only subset.\nExpected: {:?}\nActual:   {:?}",
+        expected, actual
+    );
+
+    assert!(
+        makefile.contains("make ci-docs"),
+        "Makefile help output should advertise the docs-only gate"
     );
 
     Ok(())

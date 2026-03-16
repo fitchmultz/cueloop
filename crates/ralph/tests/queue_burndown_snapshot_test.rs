@@ -19,7 +19,7 @@ mod test_support;
 fn burndown_days_2_one_open_task_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let mut t1 = test_support::make_test_task("RQ-0001", "Open task", TaskStatus::Todo);
     t1.created_at = Some("2026-01-20T00:00:00Z".to_string());
@@ -46,7 +46,7 @@ fn burndown_days_2_one_open_task_snapshot() -> Result<()> {
 fn burndown_with_done_tasks_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let mut t1 = test_support::make_test_task("RQ-0001", "Todo task", TaskStatus::Todo);
     t1.created_at = Some("2026-01-15T00:00:00Z".to_string());

@@ -20,7 +20,7 @@ use ralph::contracts::{Task, TaskStatus};
 use std::path::Path;
 use std::process::Command;
 use test_support::{
-    QueueDoneSnapshot, git_add_all_commit, git_init, make_test_task, ralph_init, run_in_dir,
+    QueueDoneSnapshot, git_add_all_commit, git_init, make_test_task, run_in_dir, seed_ralph_dir,
     snapshot_queue_done, temp_dir_outside_repo, write_done, write_queue,
 };
 
@@ -69,7 +69,7 @@ fn make_done_task() -> Task {
 fn setup_valid_repo() -> Result<tempfile::TempDir> {
     let dir = temp_dir_outside_repo();
     git_init(dir.path())?;
-    ralph_init(dir.path())?;
+    seed_ralph_dir(dir.path())?;
     write_queue(dir.path(), &[make_parent_task(), make_child_task()])?;
     write_done(dir.path(), &[make_done_task()])?;
     git_add_all_commit(dir.path(), "seed queue state")?;
@@ -79,7 +79,7 @@ fn setup_valid_repo() -> Result<tempfile::TempDir> {
 fn setup_invalid_repo_with_non_utc_timestamp() -> Result<tempfile::TempDir> {
     let dir = temp_dir_outside_repo();
     git_init(dir.path())?;
-    ralph_init(dir.path())?;
+    seed_ralph_dir(dir.path())?;
 
     let mut legacy = make_test_task("RQ-0001", "Legacy task", TaskStatus::Todo);
     legacy.created_at = Some("2026-01-18T12:00:00-05:00".to_string());

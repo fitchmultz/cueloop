@@ -46,7 +46,7 @@ make agent-ci
 # 5) Open a PR with verification notes
 ```
 
-For docs-only work, still run `make agent-ci` to ensure formatting/lint/tests stay green.
+For docs-only work, still run `make agent-ci`; it now routes to the lighter `ci-docs` safety gate when no executable surface changed.
 
 ## Development Workflow
 
@@ -77,8 +77,15 @@ make docs
 
 `make agent-ci` behavior:
 
-- Non-app changes: runs fast deterministic Rust/CLI gate (`make ci-fast`)
-- App changes under `apps/RalphMac/`: escalates to `make macos-ci`
+- Docs/community-only changes: runs docs safety gate (`make ci-docs`)
+- Non-app executable changes: runs fast deterministic Rust/CLI gate (`make ci-fast`)
+- App/CLI/build/runtime contract changes: escalates to `make macos-ci`
+
+Docs-only gate (`ci-docs`) pipeline:
+
+```
+check-env-safety → check-backup-artifacts
+```
 
 Fast gate (`ci-fast`) pipeline:
 

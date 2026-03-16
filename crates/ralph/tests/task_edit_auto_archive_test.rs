@@ -22,7 +22,7 @@ mod test_support;
 fn task_edit_lists_archived_task_ids_in_output() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
@@ -99,7 +99,7 @@ fn task_edit_lists_archived_task_ids_in_output() -> Result<()> {
 fn task_edit_no_auto_archive_flag_prevents_archiving() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
@@ -172,7 +172,7 @@ fn task_edit_no_auto_archive_flag_prevents_archiving() -> Result<()> {
 fn task_edit_no_archive_message_when_no_terminal_tasks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
@@ -214,7 +214,7 @@ fn task_edit_no_archive_message_when_no_terminal_tasks() -> Result<()> {
 fn task_edit_help_includes_no_auto_archive_flag() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "edit", "--help"]);

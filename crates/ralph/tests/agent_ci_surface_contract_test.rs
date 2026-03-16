@@ -107,7 +107,7 @@ fn init_temp_repo() -> TempDir {
 }
 
 #[test]
-fn classifier_routes_clean_docs_only_branch_delta_to_ci_fast() {
+fn classifier_routes_clean_docs_only_branch_delta_to_ci_docs() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
@@ -116,7 +116,24 @@ fn classifier_routes_clean_docs_only_branch_delta_to_ci_fast() {
     git(repo_path, &["add", "docs/guide.md"]);
     git(repo_path, &["commit", "-m", "docs only"]);
 
+    assert_eq!(run_classifier(repo_path, "--target"), "ci-docs");
+}
+
+#[test]
+fn classifier_routes_clean_non_app_branch_delta_to_ci_fast() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    git(repo_path, &["checkout", "-b", "feature/non-app"]);
+    write_file(&repo_path.join(".gitignore"), "target/\n");
+    git(repo_path, &["add", ".gitignore"]);
+    git(repo_path, &["commit", "-m", "touch non-app surface"]);
+
     assert_eq!(run_classifier(repo_path, "--target"), "ci-fast");
+    assert!(
+        run_classifier(repo_path, "--reason").contains("Rust/CLI verification"),
+        "expected Rust/CLI routing explanation"
+    );
 }
 
 #[test]

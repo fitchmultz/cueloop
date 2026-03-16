@@ -11,8 +11,8 @@
 //! - Merge-agent behavior (removed in rewrite).
 //!
 //! Invariants/assumptions:
-//! - Tests use fake runner binaries to control worker behavior.
-//! - Tests run with env_lock to prevent PATH race conditions.
+//! - Tests prefer explicit fake runner binary paths when they need local runners.
+//! - Nested `ralph run loop --parallel ...` invocations hold `parallel_run_lock()` only for the overlapping run window.
 //! - Temp directories are created outside the repo.
 
 use anyhow::{Context, Result};
@@ -53,11 +53,10 @@ fn setup_origin_remote(repo_path: &std::path::Path) -> Result<std::path::PathBuf
 /// Verify status command shows empty state when no parallel run exists.
 #[test]
 fn parallel_status_empty_state() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Run parallel status with no state
     let (status, stdout, stderr) =
@@ -80,11 +79,10 @@ fn parallel_status_empty_state() -> Result<()> {
 /// Verify status command outputs valid JSON with --json flag.
 #[test]
 fn parallel_status_json_output() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Run parallel status --json with no state
     let (status, stdout, _stderr) =
@@ -113,11 +111,10 @@ fn parallel_status_json_output() -> Result<()> {
 /// Verify retry command fails gracefully when no parallel state exists.
 #[test]
 fn parallel_retry_no_state_fails() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Try to retry with no state
     let (status, _stdout, stderr) = test_support::run_in_dir(
@@ -142,7 +139,6 @@ fn parallel_retry_no_state_fails() -> Result<()> {
 /// Verify worker lifecycle transitions are tracked correctly.
 #[test]
 fn parallel_worker_lifecycle_transitions() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
@@ -154,17 +150,20 @@ fn parallel_worker_lifecycle_transitions() -> Result<()> {
         ralph::contracts::TaskStatus::Todo,
     )];
     test_support::write_queue(temp.path(), &tasks)?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create fake runner
-    let bin_dir = temp.path().join("bin");
-    std::fs::create_dir_all(&bin_dir)?;
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-    test_support::configure_parallel_for_direct_push(temp.path())?;
-    test_support::trust_project_commands(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
     // Run parallel
+    let run_lock = test_support::parallel_run_lock().lock();
     test_support::run_in_dir(
         temp.path(),
         &[
@@ -177,6 +176,7 @@ fn parallel_worker_lifecycle_transitions() -> Result<()> {
             "--force",
         ],
     );
+    drop(run_lock);
 
     // Check state file
     let state_path = temp.path().join(".ralph/cache/parallel/state.json");
@@ -223,11 +223,10 @@ fn parallel_worker_lifecycle_transitions() -> Result<()> {
 /// Verify retry command works for blocked workers.
 #[test]
 fn parallel_retry_blocked_worker() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create state file with a blocked worker
     let state_dir = temp.path().join(".ralph/cache/parallel");
@@ -287,11 +286,10 @@ fn parallel_retry_blocked_worker() -> Result<()> {
 /// Verify retry command fails for completed workers.
 #[test]
 fn parallel_retry_completed_worker_fails() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create state file with a completed worker
     let state_dir = temp.path().join(".ralph/cache/parallel");
@@ -341,7 +339,6 @@ fn parallel_retry_completed_worker_fails() -> Result<()> {
 /// Verify state file has correct v3 schema structure.
 #[test]
 fn parallel_state_schema_v3_structure() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
@@ -353,13 +350,18 @@ fn parallel_state_schema_v3_structure() -> Result<()> {
         ralph::contracts::TaskStatus::Todo,
     )];
     test_support::write_queue(temp.path(), &tasks)?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-    test_support::trust_project_commands(temp.path())?;
-    test_support::configure_parallel_for_direct_push(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
+    let run_lock = test_support::parallel_run_lock().lock();
     test_support::run_in_dir(
         temp.path(),
         &[
@@ -372,6 +374,7 @@ fn parallel_state_schema_v3_structure() -> Result<()> {
             "--force",
         ],
     );
+    drop(run_lock);
 
     // Verify state file structure
     let state_path = temp.path().join(".ralph/cache/parallel/state.json");
@@ -417,7 +420,6 @@ fn parallel_state_schema_v3_structure() -> Result<()> {
 /// Verify worker can modify files and complete successfully.
 #[test]
 fn parallel_worker_success_with_modifications() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
@@ -439,7 +441,7 @@ fn parallel_worker_success_with_modifications() -> Result<()> {
         ralph::contracts::TaskStatus::Todo,
     )];
     test_support::write_queue(temp.path(), &tasks)?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create runner that modifies the file
     let bin_dir = temp.path().join("bin");
@@ -449,29 +451,29 @@ echo "modified by worker" > data.txt
 exit 0
 "#;
     test_support::create_executable_script(&bin_dir, "opencode", runner_script)?;
-    test_support::configure_runner(
+    test_support::configure_parallel_test_runner(
         temp.path(),
         "opencode",
         "test-model",
-        Some(&bin_dir.join("opencode")),
+        &bin_dir.join("opencode"),
+        1,
     )?;
-    test_support::configure_parallel_for_direct_push(temp.path())?;
 
     // Run parallel
-    let (_status, stdout, stderr) = test_support::with_prepend_path(&bin_dir, || {
-        test_support::run_in_dir(
-            temp.path(),
-            &[
-                "run",
-                "loop",
-                "--parallel",
-                "2",
-                "--max-tasks",
-                "1",
-                "--force",
-            ],
-        )
-    });
+    let run_lock = test_support::parallel_run_lock().lock();
+    let (_status, stdout, stderr) = test_support::run_in_dir(
+        temp.path(),
+        &[
+            "run",
+            "loop",
+            "--parallel",
+            "2",
+            "--max-tasks",
+            "1",
+            "--force",
+        ],
+    );
+    drop(run_lock);
 
     let combined = format!("{}{}", stdout, stderr);
     eprintln!("Parallel run output:\n{}", combined);
@@ -505,7 +507,6 @@ exit 0
 /// Verify parallel execution processes multiple tasks.
 #[test]
 fn parallel_multiple_tasks_execution() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
@@ -517,31 +518,33 @@ fn parallel_multiple_tasks_execution() -> Result<()> {
         test_support::make_test_task("RQ-0002", "Second task", ralph::contracts::TaskStatus::Todo),
     ];
     test_support::write_queue(temp.path(), &tasks)?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create noop runner
-    let bin_dir = temp.path().join("bin");
-    std::fs::create_dir_all(&bin_dir)?;
     let runner_path = test_support::create_noop_runner(temp.path(), "opencode")?;
-    test_support::configure_runner(temp.path(), "opencode", "test-model", Some(&runner_path))?;
-    test_support::trust_project_commands(temp.path())?;
-    test_support::configure_parallel_for_direct_push(temp.path())?;
+    test_support::configure_parallel_test_runner(
+        temp.path(),
+        "opencode",
+        "test-model",
+        &runner_path,
+        1,
+    )?;
 
     // Run parallel with 2 workers, max 2 tasks
-    let (_status, stdout, stderr) = test_support::with_prepend_path(&bin_dir, || {
-        test_support::run_in_dir(
-            temp.path(),
-            &[
-                "run",
-                "loop",
-                "--parallel",
-                "2",
-                "--max-tasks",
-                "2",
-                "--force",
-            ],
-        )
-    });
+    let run_lock = test_support::parallel_run_lock().lock();
+    let (_status, stdout, stderr) = test_support::run_in_dir(
+        temp.path(),
+        &[
+            "run",
+            "loop",
+            "--parallel",
+            "2",
+            "--max-tasks",
+            "2",
+            "--force",
+        ],
+    );
+    drop(run_lock);
 
     let combined = format!("{}{}", stdout, stderr);
 
@@ -570,11 +573,10 @@ fn parallel_multiple_tasks_execution() -> Result<()> {
 /// Verify v2 state files are migrated to v3 on load.
 #[test]
 fn parallel_state_v2_to_v3_migration() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create v2 state file
     let state_dir = temp.path().join(".ralph/cache/parallel");
@@ -624,11 +626,10 @@ fn parallel_state_v2_to_v3_migration() -> Result<()> {
 /// Verify status command shows correct worker counts by lifecycle.
 #[test]
 fn parallel_status_shows_correct_summary() -> Result<()> {
-    let _lock = test_support::env_lock().lock();
     let temp = test_support::temp_dir_outside_repo();
 
     test_support::git_init(temp.path())?;
-    test_support::ralph_init(temp.path())?;
+    test_support::seed_ralph_dir(temp.path())?;
 
     // Create state with workers in different lifecycles
     let state_dir = temp.path().join(".ralph/cache/parallel");

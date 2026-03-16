@@ -17,6 +17,8 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::process::Command;
 
+pub(super) const REQUIRED_CI_DOCS_STEPS: &[&str] = &["check-env-safety", "check-backup-artifacts"];
+
 pub(super) const REQUIRED_CI_STEPS: &[&str] = &[
     "check-env-safety",
     "check-backup-artifacts",
