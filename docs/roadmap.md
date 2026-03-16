@@ -9,12 +9,12 @@ This is the canonical near-term roadmap for active follow-up work.
 ### 1. Split the remaining oversized Rust command and CLI surfaces
 
 Why first:
-- The current Rust file scan still reports 39 files over the 500 LOC target, and the remaining command/CLI hotspots are now concentrated in large command-facing test hubs.
-- These surfaces still mix scenario routing, matrix coverage, and broad command contracts in single files.
-- Decomposing them first reduces duplicate test moves before deeper runtime helpers and shared foundations are split.
+- The current Rust file scan still reports 37 files over the 500 LOC target, and only two command/CLI hotspots remain above the line.
+- Those remaining surfaces still mix broad scenario coverage and command-facing contracts in single files.
+- Clearing them next removes the last oversized command/CLI blockers before deeper runtime helpers and shared foundations are split.
 
 Scope:
-- Decompose the remaining oversized command and CLI surfaces (`crates/ralph/src/commands/run/tests/mod.rs`, `crates/ralph/src/commands/run/tests/phase_settings_matrix.rs`, `crates/ralph/src/commands/run/parallel/sync/tests.rs`, `crates/ralph/src/cli/queue/tests/issue.rs`, and adjacent command-test helpers) into thinner facades plus focused companion files/directories.
+- Decompose the remaining oversized command and CLI surfaces (`crates/ralph/src/commands/run/parallel/sync/tests.rs`, `crates/ralph/src/cli/queue/tests/issue.rs`, and any adjacent command-test helpers they require) into thinner facades plus focused companion files/directories.
 - Preserve current CLI/help output and existing command-test contracts while moving broad scenario/matrix logic out of the root modules.
 - Keep moved test hubs thin and behavior-grouped when command splits require neighboring suite-module moves.
 
@@ -46,7 +46,7 @@ Scope:
 
 Why fourth:
 - Once production-module facades are thinner, the largest remaining non-doc maintenance debt sits in integration/unit suites and shared test-support hubs.
-- Large files such as `task_lifecycle_test.rs`, `run_parallel_test.rs`, `prompt_cli_test.rs`, `phase_settings_matrix.rs`, and queue-operation suites remain clear follow-on churn hotspots.
+- Large files such as `task_lifecycle_test.rs`, `run_parallel_test.rs`, `prompt_cli_test.rs`, and queue-operation suites remain clear follow-on churn hotspots.
 - Sequencing test-hub splits after production refactors minimizes duplicate test moves while contracts are still settling.
 
 Scope:

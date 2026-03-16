@@ -241,3 +241,79 @@ fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyho
 
     Ok(())
 }
+
+#[test]
+fn run_one_parallel_worker_acquires_queue_lock() -> anyhow::Result<()> {
+    use crate::contracts::Task;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::thread;
+
+    let temp = tempfile::TempDir::new()?;
+    let repo_root = temp.path().to_path_buf();
+    let ralph_dir = repo_root.join(".ralph");
+    std::fs::create_dir_all(&ralph_dir)?;
+
+    let queue_path = ralph_dir.join("queue.json");
+    let mut queue_file = QueueFile {
+        version: 1,
+        tasks: vec![],
+    };
+    queue_file.tasks.push(Task {
+        id: "RQ-0001".to_string(),
+        title: "Test task".to_string(),
+        description: None,
+        status: TaskStatus::Todo,
+        priority: crate::contracts::TaskPriority::Medium,
+        tags: vec![],
+        scope: vec![],
+        evidence: vec![],
+        plan: vec![],
+        notes: vec![],
+        request: None,
+        agent: None,
+        created_at: Some("2026-01-01T00:00:00Z".to_string()),
+        updated_at: Some("2026-01-01T00:00:00Z".to_string()),
+        completed_at: None,
+        started_at: None,
+        scheduled_start: None,
+        depends_on: vec![],
+        blocks: vec![],
+        relates_to: vec![],
+        duplicates: None,
+        custom_fields: std::collections::HashMap::new(),
+        estimated_minutes: None,
+        actual_minutes: None,
+        parent_id: None,
+    });
+    queue::save_queue(&queue_path, &queue_file)?;
+
+    let _test_lock = queue::acquire_queue_lock(&repo_root, "test lock", false)?;
+
+    let repo_root_clone = repo_root.clone();
+    let lock_acquired = Arc::new(AtomicBool::new(false));
+    let lock_acquired_clone = Arc::clone(&lock_acquired);
+
+    let handle = thread::spawn(move || {
+        let result = queue::acquire_queue_lock(&repo_root_clone, "parallel worker", false);
+
+        if let Err(err) = result {
+            let err_str = err.to_string();
+            if err_str.contains("Queue lock already held") || err_str.contains("already held") {
+                lock_acquired_clone.store(false, Ordering::SeqCst);
+            }
+        } else {
+            lock_acquired_clone.store(true, Ordering::SeqCst);
+            drop(result);
+        }
+    });
+
+    handle.join().expect("thread panicked");
+
+    assert!(
+        !lock_acquired.load(Ordering::SeqCst),
+        "Expected lock contention error when queue lock is already held"
+    );
+
+    Ok(())
+}
