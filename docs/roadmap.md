@@ -14,8 +14,8 @@ Why first:
 - Doing this pass first improves the production seams that future feature work and maintenance will rely on.
 
 Scope:
-- Decompose the remaining oversized operational helpers (`crates/ralph/src/queue/hierarchy.rs`, `crates/ralph/src/queue/prune.rs`, `crates/ralph/src/fsutil.rs`, `crates/ralph/src/runutil/execution/orchestration.rs`, and adjacent support modules) into focused companions.
-- Continue the runtime-oriented split pass across queue, filesystem, and runtime utility modules while keeping adjacent churn localized.
+- Decompose the remaining oversized operational helpers (`crates/ralph/src/queue/prune.rs`, `crates/ralph/src/fsutil.rs`, `crates/ralph/src/runutil/execution/orchestration.rs`, and adjacent support modules) into focused companions.
+- Continue the runtime-oriented split pass across queue, filesystem, and runtime utility modules while keeping adjacent churn localized, starting with `queue/prune.rs` to finish the queue-side split before wider utility churn.
 - Preserve queue safety behavior, managed-subprocess invariants, and operational reliability contracts while extracting helpers from the root modules.
 - Keep shared helpers centralized only where duplication is real; otherwise prefer adjacent behavior-grouped modules.
 
