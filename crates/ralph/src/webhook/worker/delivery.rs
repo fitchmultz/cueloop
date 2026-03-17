@@ -1,22 +1,24 @@
-//! Webhook delivery helpers.
+//! Purpose: Execute webhook delivery attempts and hand retry work back to the runtime scheduler.
 //!
 //! Responsibilities:
-//! - Execute webhook delivery attempts, including request serialization and signature generation.
-//! - Schedule retries by returning work to the runtime-owned retry queue.
+//! - Serialize webhook requests, sign payloads, and perform delivery attempts.
+//! - Schedule retries through the runtime-owned retry queue without sleeping on worker threads.
 //! - Render destinations safely for logs, diagnostics, and persisted failure records.
 //!
-//! Not handled here:
-//! - Dispatcher lifecycle or worker-pool sizing.
-//! - Backpressure policy selection for new messages.
-//! - Replay filtering or failure-store retention.
+//! Scope:
+//! - Delivery-attempt execution, retry handoff, redaction, and test transport injection only.
 //!
-//! Invariants/assumptions:
+//! Usage:
+//! - Called by webhook runtime workers for normal delivery and retry processing.
+//!
+//! Invariants/Assumptions:
 //! - Every user-visible destination string is redacted before logging or persistence.
 //! - Retry delays are deterministic from configured backoff and attempt number.
 //! - Test transport injection stays crate-local and fully in-process.
 
 use anyhow::Context;
 use crossbeam_channel::Sender;
+use std::sync::Weak;
 use std::time::{Duration, Instant};
 
 #[cfg(test)]
@@ -26,7 +28,10 @@ use super::super::diagnostics;
 use super::super::types::WebhookMessage;
 use super::runtime::{DeliveryTask, ScheduledRetry};
 
-pub(super) fn handle_delivery_task(task: DeliveryTask, retry_sender: &Sender<ScheduledRetry>) {
+pub(super) fn handle_delivery_task(
+    task: DeliveryTask,
+    retry_sender: &Weak<Sender<ScheduledRetry>>,
+) {
     match deliver_attempt(&task.msg) {
         Ok(()) => {
             diagnostics::note_delivery_success();
@@ -67,6 +72,19 @@ pub(super) fn handle_delivery_task(task: DeliveryTask, retry_sender: &Sender<Sch
                     ),
                     err
                 );
+
+                let Some(retry_sender) = retry_sender.upgrade() else {
+                    let scheduler_error = anyhow::anyhow!(
+                        "retry scheduler unavailable for webhook: dispatcher shutting down"
+                    );
+                    diagnostics::note_delivery_failure(
+                        &task.msg,
+                        &scheduler_error,
+                        retry_number.saturating_add(1),
+                    );
+                    log::warn!("{scheduler_error:#}");
+                    return;
+                };
 
                 if let Err(send_err) = retry_sender.send(scheduled) {
                     let scheduler_error =

@@ -1,26 +1,27 @@
-//! Webhook dispatcher runtime orchestration.
+//! Purpose: Own the reloadable webhook dispatcher runtime and its worker/scheduler lifecycle.
 //!
 //! Responsibilities:
-//! - Own the reloadable dispatcher state, worker-pool lifecycle, and retry scheduler thread.
-//! - Scale queue capacity deterministically from active mode + webhook config.
+//! - Build and rebuild dispatcher state from webhook runtime mode and config.
+//! - Start delivery workers and the retry scheduler with deterministic startup behavior.
 //! - Route ready delivery tasks to delivery helpers without blocking enqueue callers.
 //!
-//! Not handled here:
-//! - HTTP request construction or signature generation.
-//! - Queue backpressure policy decisions for new messages.
-//! - Failure-store persistence or replay filtering.
+//! Scope:
+//! - Dispatcher lifecycle, thread startup/teardown, queue sizing, and retry scheduling orchestration.
 //!
-//! Invariants/assumptions:
+//! Usage:
+//! - Called by webhook enqueue helpers and test-only runtime controls through the worker facade.
+//!
+//! Invariants/Assumptions:
 //! - Runtime settings are rebuilt when the effective mode/config changes.
 //! - Retry scheduling stays off worker threads so failing endpoints do not sleep in place.
-//! - Dispatcher shutdown is best-effort and relies on channel teardown via `Arc` drop.
+//! - Dispatcher teardown must not leak background threads or retain stale queue channels across rebuilds.
 
 use crate::contracts::WebhookConfig;
 use crossbeam_channel::{Receiver, Sender, bounded, unbounded};
 use std::cmp::Ordering as CmpOrdering;
 use std::collections::BinaryHeap;
-use std::sync::{Arc, OnceLock, RwLock};
-use std::time::Instant;
+use std::sync::{Arc, OnceLock, RwLock, Weak};
+use std::time::{Duration, Instant};
 
 use super::super::diagnostics;
 use super::super::types::WebhookMessage;
@@ -30,6 +31,7 @@ const DEFAULT_QUEUE_CAPACITY: usize = 500;
 const DEFAULT_WORKER_COUNT: usize = 4;
 const MAX_QUEUE_CAPACITY: usize = 10_000;
 const MAX_PARALLEL_MULTIPLIER: f64 = 10.0;
+const DISPATCHER_STARTUP_TIMEOUT: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct DispatcherSettings {
@@ -61,8 +63,8 @@ impl Default for DispatcherState {
 #[derive(Debug)]
 pub(super) struct WebhookDispatcher {
     pub(super) settings: DispatcherSettings,
-    pub(super) ready_sender: Sender<DeliveryTask>,
-    retry_sender: Sender<ScheduledRetry>,
+    pub(super) ready_sender: Arc<Sender<DeliveryTask>>,
+    retry_sender: Arc<Sender<ScheduledRetry>>,
 }
 
 #[derive(Debug, Clone)]
@@ -140,30 +142,51 @@ impl WebhookDispatcher {
     fn new(settings: DispatcherSettings) -> Arc<Self> {
         let (ready_sender, ready_receiver) = bounded(settings.queue_capacity);
         let (retry_sender, retry_receiver) = unbounded();
+        let startup_signals = settings.worker_count.saturating_add(1);
+        let (startup_sender, startup_receiver) = bounded(startup_signals);
 
         let dispatcher = Arc::new(Self {
             settings: settings.clone(),
-            ready_sender,
-            retry_sender,
+            ready_sender: Arc::new(ready_sender),
+            retry_sender: Arc::new(retry_sender),
         });
 
         diagnostics::set_queue_capacity(settings.queue_capacity);
 
         for worker_id in 0..settings.worker_count {
             let ready_receiver = ready_receiver.clone();
-            let retry_sender = dispatcher.retry_sender.clone();
+            let retry_sender = Arc::downgrade(&dispatcher.retry_sender);
+            let startup_sender = startup_sender.clone();
             let thread_name = format!("ralph-webhook-worker-{worker_id}");
             std::thread::Builder::new()
                 .name(thread_name)
-                .spawn(move || worker_loop(ready_receiver, retry_sender))
+                .spawn(move || {
+                    startup_sender
+                        .send(())
+                        .expect("signal webhook delivery worker startup");
+                    worker_loop(ready_receiver, retry_sender)
+                })
                 .expect("spawn webhook delivery worker");
         }
 
-        let scheduler_ready = dispatcher.ready_sender.clone();
+        let scheduler_ready = Arc::downgrade(&dispatcher.ready_sender);
+        let scheduler_startup_sender = startup_sender.clone();
         std::thread::Builder::new()
             .name("ralph-webhook-retry-scheduler".to_string())
-            .spawn(move || retry_scheduler_loop(retry_receiver, scheduler_ready))
+            .spawn(move || {
+                scheduler_startup_sender
+                    .send(())
+                    .expect("signal webhook retry scheduler startup");
+                retry_scheduler_loop(retry_receiver, scheduler_ready)
+            })
             .expect("spawn webhook retry scheduler");
+        drop(startup_sender);
+
+        for _ in 0..startup_signals {
+            startup_receiver
+                .recv_timeout(DISPATCHER_STARTUP_TIMEOUT)
+                .expect("wait for webhook dispatcher thread startup");
+        }
 
         log::debug!(
             "Webhook dispatcher started with {} workers and queue capacity {}",
@@ -223,7 +246,7 @@ pub fn init_worker_for_parallel(config: &WebhookConfig, worker_count: u8) {
     let _ = dispatcher_for_config(config);
 }
 
-fn worker_loop(ready_receiver: Receiver<DeliveryTask>, retry_sender: Sender<ScheduledRetry>) {
+fn worker_loop(ready_receiver: Receiver<DeliveryTask>, retry_sender: Weak<Sender<ScheduledRetry>>) {
     while let Ok(task) = ready_receiver.recv() {
         diagnostics::note_queue_dequeue();
         handle_delivery_task(task, &retry_sender);
@@ -232,7 +255,7 @@ fn worker_loop(ready_receiver: Receiver<DeliveryTask>, retry_sender: Sender<Sche
 
 fn retry_scheduler_loop(
     retry_receiver: Receiver<ScheduledRetry>,
-    ready_sender: Sender<DeliveryTask>,
+    ready_sender: Weak<Sender<DeliveryTask>>,
 ) {
     let mut pending = BinaryHeap::<RetryQueueEntry>::new();
 
@@ -269,6 +292,19 @@ fn retry_scheduler_loop(
             }
 
             let RetryQueueEntry(scheduled) = pending.pop().expect("pending retry exists");
+            let Some(ready_sender) = ready_sender.upgrade() else {
+                let error = anyhow::anyhow!(
+                    "webhook dispatcher shut down before retry enqueue: ready queue unavailable"
+                );
+                diagnostics::note_delivery_failure(
+                    &scheduled.task.msg,
+                    &error,
+                    scheduled.task.attempt.saturating_add(1),
+                );
+                log::warn!("{error:#}");
+                return;
+            };
+
             match ready_sender.send(scheduled.task.clone()) {
                 Ok(()) => diagnostics::note_retry_requeue(),
                 Err(send_err) => {

@@ -10,13 +10,13 @@ This is the canonical near-term roadmap for active follow-up work.
 
 Why first:
 - This is the most meaningful remaining roadmap work because it touches reliability-sensitive production paths instead of pure maintenance-only test structure.
-- Webhook, queue-maintenance, processor execution, filesystem helpers, and execution-history modules still mix orchestration, persistence, retries, and formatting in ways that increase failure risk during user-facing workflows.
+- Queue-maintenance, filesystem helpers, runtime orchestration, and adjacent operational modules still mix orchestration, persistence, retries, and formatting in ways that increase failure risk during user-facing workflows.
 - Doing this pass first improves the production seams that future feature work and maintenance will rely on.
 
 Scope:
-- Decompose the remaining oversized operational helpers (`crates/ralph/src/webhook/diagnostics.rs`, `crates/ralph/src/queue/hierarchy.rs`, `crates/ralph/src/queue/prune.rs`, `crates/ralph/src/fsutil.rs`, `crates/ralph/src/runutil/execution/orchestration.rs`, and adjacent support modules) into focused companions.
-- Finish the remaining webhook split work before moving into queue/file-system/runtime utility modules so adjacent runtime churn stays localized.
-- Preserve webhook reload/retry contracts, queue safety behavior, and managed-subprocess invariants while extracting helpers from the root modules.
+- Decompose the remaining oversized operational helpers (`crates/ralph/src/queue/hierarchy.rs`, `crates/ralph/src/queue/prune.rs`, `crates/ralph/src/fsutil.rs`, `crates/ralph/src/runutil/execution/orchestration.rs`, and adjacent support modules) into focused companions.
+- Continue the runtime-oriented split pass across queue, filesystem, and runtime utility modules while keeping adjacent churn localized.
+- Preserve queue safety behavior, managed-subprocess invariants, and operational reliability contracts while extracting helpers from the root modules.
 - Keep shared helpers centralized only where duplication is real; otherwise prefer adjacent behavior-grouped modules.
 
 ### 2. Split the remaining oversized Rust command and CLI surfaces

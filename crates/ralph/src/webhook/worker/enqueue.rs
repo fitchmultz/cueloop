@@ -1,16 +1,17 @@
-//! Webhook enqueue and backpressure helpers.
+//! Purpose: Gate webhook messages, apply backpressure policy, and enqueue delivery tasks.
 //!
 //! Responsibilities:
 //! - Apply event filtering and resolved-config gating before enqueue.
 //! - Enforce queue backpressure policy at the dispatcher boundary.
 //! - Build delivery tasks for both normal dispatch and diagnostics-driven replay.
 //!
-//! Not handled here:
-//! - Dispatcher lifecycle or runtime-mode scaling.
-//! - HTTP transport, retries, or signature generation.
-//! - Failure-store persistence and replay selection.
+//! Scope:
+//! - Enqueue-time filtering, dispatcher lookup, and bounded queue policy handling only.
 //!
-//! Invariants/assumptions:
+//! Usage:
+//! - Called by webhook notification surfaces and diagnostics replay helpers through the worker facade.
+//!
+//! Invariants/Assumptions:
 //! - Enqueue remains non-blocking except for the bounded timeout policy.
 //! - Queue drop metrics/logs are recorded centrally from the policy branch.
 //! - Replay enqueue bypasses event subscription filtering but still respects global enable/url checks.
@@ -145,5 +146,5 @@ pub(crate) fn send_webhook_payload_internal(
         attempt: 0,
     };
 
-    apply_backpressure_policy(&dispatcher.ready_sender, msg, policy)
+    apply_backpressure_policy(dispatcher.ready_sender.as_ref(), msg, policy)
 }
