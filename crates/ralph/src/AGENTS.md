@@ -341,8 +341,9 @@ See `docs/workflow.md` for more details.
 When making breaking changes to config keys or file formats, use the migration system:
 
 - **Migration registry**: `crates/ralph/src/migration/registry.rs`
+- **Migration facades**: `crates/ralph/src/migration/{config_migrations/,file_migrations/}`
 - **Migration types**: `ConfigKeyRename`, `ConfigKeyRemove`, `FileRename`, `ReadmeUpdate`
-- **History tracking**: `.ralph/cache/migrations.json` (auto-generated)
+- **History tracking**: `.ralph/cache/migrations.jsonc` (auto-generated)
 - **CLI command**: `ralph migrate` (check/list/apply)
 
 See `crates/ralph/src/migration/mod.rs` for invariants/assumptions (idempotency, JSONC comment preservation, backups).

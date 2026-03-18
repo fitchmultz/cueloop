@@ -39,7 +39,7 @@ Migrations are automated transformations that update your project's configuratio
 - **Idempotent**: Running the same migration twice is safe (no-op if already applied)
 - **JSONC-Preserving**: Comments and formatting are preserved during config migrations
 - **Backup-Capable**: Original files are kept as backups during file migrations
-- **History-Tracked**: All applied migrations are recorded in `.ralph/cache/migrations.json`
+- **History-Tracked**: All applied migrations are recorded in `.ralph/cache/migrations.jsonc`
 - **Scoped Renames**: Config key renames are scoped to their parent object (e.g., `parallel.worktree_root` only renames within `parallel` objects)
 
 ---
@@ -207,7 +207,7 @@ Migration {
 
 ## History Tracking
 
-Migration history is stored in `.ralph/cache/migrations.json`.
+Migration history is stored in `.ralph/cache/migrations.jsonc`.
 
 ### File Format
 
@@ -339,7 +339,7 @@ ralph migrate status
 Migration Status
 
 History:
-  Location: /path/to/project/.ralph/cache/migrations.json
+  Location: /path/to/project/.ralph/cache/migrations.jsonc
   Applied migrations: 1
 
 Pending migrations: None
@@ -458,7 +458,7 @@ rm .ralph/queue.jsonc
 ```bash
 # Remove the history entry for the migration
 # WARNING: Only do this if you understand the implications
-rm .ralph/cache/migrations.json
+rm .ralph/cache/migrations.jsonc
 ```
 
 ### CI Integration
@@ -537,11 +537,22 @@ MigrationType::ConfigKeyRename {
 
 ```
 crates/ralph/src/migration/
-├── mod.rs              # Core migration logic, context, apply/check functions
-├── registry.rs         # Migration definitions registry
-├── history.rs          # Migration history persistence
-├── config_migrations.rs # Config key rename implementation
-└── file_migrations.rs  # File rename/move implementation
+├── mod.rs                 # Core migration logic, context, apply/check functions
+├── registry.rs            # Migration definitions registry
+├── history.rs             # Migration history persistence
+├── config_migrations/
+│   ├── mod.rs             # Thin facade for config migrations
+│   ├── detect.rs          # Key detection and resolved-config lookup
+│   ├── keys.rs            # Key rename/remove implementation
+│   ├── ci_gate.rs         # Legacy CI gate rewrite
+│   ├── legacy.rs          # Legacy contract upgrade
+│   └── tests.rs           # Config migration regression coverage
+└── file_migrations/
+    ├── mod.rs             # Thin facade for file migrations
+    ├── rename.rs          # Generic file rename/rollback behavior
+    ├── config_refs.rs     # Config reference updates
+    ├── json_to_jsonc.rs   # JSON→JSONC migration wrappers
+    └── tests.rs           # File migration regression coverage
 ```
 
 ### Key Types

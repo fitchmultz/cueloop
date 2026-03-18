@@ -6,7 +6,7 @@
 //!
 //! Not handled here:
 //! - Migration execution logic (see `super::mod.rs`).
-//! - Individual migration implementations (see `config_migrations.rs`, `file_migrations.rs`).
+//! - Individual migration implementations (see `config_migrations/`, `file_migrations/`).
 //!
 //! Invariants/assumptions:
 //! - Migrations are ordered chronologically (oldest first).

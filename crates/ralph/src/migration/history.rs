@@ -6,7 +6,7 @@
 //!
 //! Not handled here:
 //! - Migration execution logic (see `super::mod.rs`).
-//! - Config file modifications (see `config_migrations.rs`).
+//! - Config file modifications (see `config_migrations/`).
 //!
 //! Invariants/assumptions:
 //! - History file is stored in `.ralph/cache/migrations.jsonc`.

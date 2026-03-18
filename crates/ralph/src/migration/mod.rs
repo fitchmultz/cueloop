@@ -8,8 +8,8 @@
 //!
 //! Not handled here:
 //! - Direct file I/O for migration history (see `history.rs`).
-//! - Config key rename implementation details (see `config_migrations.rs`).
-//! - File migration implementation details (see `file_migrations.rs`).
+//! - Config key rename implementation details (see `config_migrations/`).
+//! - File migration implementation details (see `file_migrations/`).
 //!
 //! Invariants/assumptions:
 //! - Migrations are idempotent: running the same migration twice is a no-op.
