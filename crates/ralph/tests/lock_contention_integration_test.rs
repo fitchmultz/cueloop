@@ -17,6 +17,7 @@ mod test_support;
 
 use anyhow::{Context, Result};
 use ralph::{lock, queue};
+use serial_test::serial;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -30,6 +31,7 @@ fn current_exe() -> PathBuf {
 }
 
 #[test]
+#[serial]
 fn lock_holder_process() -> Result<()> {
     if std::env::var("RALPH_TEST_LOCK_HOLD").ok().as_deref() != Some("1") {
         return Ok(());
@@ -62,6 +64,7 @@ fn lock_holder_process() -> Result<()> {
 }
 
 #[test]
+#[serial]
 fn lock_contention_blocks_second_process() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
     let repo_root = dir.path().to_path_buf();
@@ -133,6 +136,7 @@ fn lock_contention_blocks_second_process() -> Result<()> {
 /// This validates the concurrency contract: the queue lock is held for the
 /// entire parallel run loop duration, preventing duplicate task selection.
 #[test]
+#[serial]
 fn parallel_supervisor_prevents_second_supervisor() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
     let repo_root = dir.path().to_path_buf();
@@ -216,6 +220,7 @@ fn parallel_supervisor_prevents_second_supervisor() -> Result<()> {
 /// the run loop returns the lock error immediately rather than retrying
 /// and eventually hitting "aborting after 50 consecutive failures".
 #[test]
+#[serial]
 fn run_loop_aborts_immediately_on_queue_lock_error() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
     let repo_root = dir.path().to_path_buf();
@@ -328,6 +333,7 @@ fn run_loop_aborts_immediately_on_queue_lock_error() -> Result<()> {
 /// validation error immediately rather than retrying and eventually hitting
 /// "aborting after 50 consecutive failures".
 #[test]
+#[serial]
 fn run_loop_aborts_immediately_on_queue_validation_error() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
     let repo_root = dir.path().to_path_buf();

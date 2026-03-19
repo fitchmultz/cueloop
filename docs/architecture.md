@@ -33,7 +33,7 @@ Ralph is a local-first orchestration system for AI-assisted engineering workflow
 
 - Startup sanity checks (`crates/ralph/src/sanity/`)
 - Locking and concurrency controls (`crates/ralph/src/lock.rs`)
-- Redaction and output safety (`crates/ralph/src/redaction.rs`)
+- Redaction and output safety (`crates/ralph/src/redaction/mod.rs`)
 
 ### 5) macOS App Bridge
 

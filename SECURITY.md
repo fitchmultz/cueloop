@@ -116,7 +116,7 @@ cargo install ralph-agent-loop --force
 
 Redaction logic is implemented in:
 
-- `crates/ralph/src/redaction.rs`: Core redaction patterns and `RedactedString` wrapper.
+- `crates/ralph/src/redaction/mod.rs`: Facade for core redaction patterns and `RedactedString`/`RedactedLogger` helpers.
 - `crates/ralph/src/fsutil.rs`: Safeguard dump functions with redaction by default.
 - `crates/ralph/src/debuglog.rs`: Debug logging for raw runner output.
 

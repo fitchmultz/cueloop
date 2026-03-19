@@ -82,7 +82,7 @@ scripts/              # Maintenance + release helper scripts
 - `config.rs` - Configuration loading and resolution
 - `queue.rs` - Queue file operations
 - `lock.rs` - Queue file locking
-- `redaction.rs` - Sensitive data redaction
+- `redaction/` - Sensitive data redaction (`mod.rs` facade with companions under `redaction/`)
 - `git/` - Git operations
 - `fsutil/` - Filesystem utilities (facade in `fsutil/mod.rs`)
 - `runutil/` - Runner execution, retry/revert, CI-gate, and managed subprocess helpers (facade in `runutil.rs`)
