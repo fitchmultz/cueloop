@@ -14,7 +14,7 @@ Why first:
 - Clearing that shared-module debt next keeps the repo aligned with the <500 LOC target before new feature work expands those seams again.
 
 Scope:
-- Decompose the remaining oversized foundational modules (`crates/ralph/src/eta_calculator.rs`, `crates/ralph/src/undo.rs`, `crates/ralph/src/contracts/task.rs`, and adjacent shared helpers) into thinner facades plus focused companions.
+- Decompose the remaining oversized foundational modules (`crates/ralph/src/undo.rs`, `crates/ralph/src/contracts/task.rs`, and adjacent shared helpers) into thinner facades plus focused companions.
 - Preserve schema, normalization, redaction, and task-contract behavior exactly while moving parsing/formatting helpers out of the root files.
 - Prefer deterministic helper modules and avoid reopening stabilized command/runtime seams unless a true shared abstraction emerges.
 
@@ -55,3 +55,4 @@ Scope:
 - Preserve the recently hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, and fsutil) while refactoring adjacent modules.
 - Prefer infrastructure and fixture stabilization before broader feature churn.
 - Do not reopen the completed macOS Settings/workspace-routing or the completed git/init/app split cutovers unless a new regression appears.
+nless a new regression appears.
