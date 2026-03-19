@@ -96,11 +96,11 @@ Git operation failures with actionable error messages.
 - Actionable error messages with remediation hints
 - Classifies push errors into specific variants (NoUpstream, AuthFailed, etc.)
 
-### TemplateError (`crates/ralph/src/template/loader.rs`)
+### TemplateError (`crates/ralph/src/template/loader/types.rs`)
 
 Template loading and parsing failures.
 
-- Simple 3-variant enum for template operations
+- Simple 4-variant enum for template operations
 - Clean, user-facing error messages
 
 ### RunAbort (`crates/ralph/src/runutil.rs`)
@@ -243,4 +243,6 @@ Example from `git/error.rs`:
 //! # What this does NOT handle
 //! - Success cases or happy-path results
 //! - Non-git related errors (use anyhow for those)
+```
+)
 ```
