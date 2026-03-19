@@ -18,6 +18,9 @@ use std::path::Path;
 use std::process::Command;
 
 pub(crate) fn git_run(repo_root: &Path, args: &[&str]) -> Result<()> {
+    let _path_guard = crate::testsupport::path::path_lock()
+        .lock()
+        .expect("path lock");
     let status = Command::new("git")
         .current_dir(repo_root)
         .args(args)
@@ -27,6 +30,9 @@ pub(crate) fn git_run(repo_root: &Path, args: &[&str]) -> Result<()> {
 }
 
 pub(crate) fn git_output(repo_root: &Path, args: &[&str]) -> Result<String> {
+    let _path_guard = crate::testsupport::path::path_lock()
+        .lock()
+        .expect("path lock");
     let output = Command::new("git")
         .current_dir(repo_root)
         .args(args)
@@ -60,6 +66,9 @@ pub(crate) fn init_bare_repo(repo_root: &Path) -> Result<()> {
 
 /// Clone a repository from source to destination.
 pub(crate) fn clone_repo(source: &Path, dest: &Path) -> Result<()> {
+    let _path_guard = crate::testsupport::path::path_lock()
+        .lock()
+        .expect("path lock");
     let status = Command::new("git")
         .arg("clone")
         .arg(source)

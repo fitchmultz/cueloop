@@ -88,6 +88,7 @@ scripts/              # Maintenance + release helper scripts
 - `runutil/` - Runner execution, retry/revert, CI-gate, and managed subprocess helpers (facade in `runutil.rs`)
 - `timeutil.rs` - Time handling
 - `template/` - Prompt template loading (`loader/mod.rs` and `variables.rs` facades with companion files under `template/loader/` and `template/variables/`)
+- `agent/` - CLI agent argument parsing and override resolution (`resolve/mod.rs` facade with companions under `agent/resolve/`)
 - `prompts_internal/` - Internal prompt composition
 
 ---

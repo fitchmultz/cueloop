@@ -16,22 +16,16 @@ fn phase1_allows_arbitrary_ralph_file_changes() -> Result<()> {
     let ralph_state = temp.path().join(".ralph/state/worker.json");
     std::fs::write(&ralph_state, "{ \"v\": 1 }\n")?;
 
-    let add_status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["add", "-f", ".ralph/state/worker.json"])
-        .status()?;
-    anyhow::ensure!(
-        add_status.success(),
-        "git add .ralph/state/worker.json failed"
-    );
-    let commit_status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["commit", "--quiet", "-m", "add ralph state file"])
-        .status()?;
-    anyhow::ensure!(
-        commit_status.success(),
-        "git commit ralph state file failed"
-    );
+    git_status_ok(
+        temp.path(),
+        &["add", "-f", ".ralph/state/worker.json"],
+        "git add .ralph/state/worker.json failed",
+    )?;
+    git_status_ok(
+        temp.path(),
+        &["commit", "--quiet", "-m", "add ralph state file"],
+        "git commit ralph state file failed",
+    )?;
 
     let script = format!(
         r#"#!/bin/sh

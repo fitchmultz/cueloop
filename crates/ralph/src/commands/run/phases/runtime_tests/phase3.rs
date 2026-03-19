@@ -40,26 +40,26 @@ fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
     let temp = TempDir::new()?;
     git_init(temp.path())?;
     write_queue_and_done(temp.path(), TaskStatus::Done)?;
-    let status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["commit", "--quiet", "-m", "queue and done"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git commit failed");
+    git_status_ok(
+        temp.path(),
+        &["commit", "--quiet", "-m", "queue and done"],
+        "git commit queue and done failed",
+    )?;
 
     std::fs::write(
         temp.path().join(".ralph/config.jsonc"),
         "{ \"version\": 1 }",
     )?;
-    let status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["add", "-f", ".ralph/config.jsonc"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git add failed");
-    let status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["commit", "--quiet", "-m", "add config"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git commit failed");
+    git_status_ok(
+        temp.path(),
+        &["add", "-f", ".ralph/config.jsonc"],
+        "git add config.jsonc failed",
+    )?;
+    git_status_ok(
+        temp.path(),
+        &["commit", "--quiet", "-m", "add config"],
+        "git commit config.jsonc failed",
+    )?;
 
     std::fs::write(
         temp.path().join(".ralph/config.jsonc"),
@@ -80,26 +80,26 @@ fn ensure_phase3_completion_allows_config_jsonc_changes_when_enabled() -> Result
     let temp = TempDir::new()?;
     git_init(temp.path())?;
     write_queue_and_done(temp.path(), TaskStatus::Done)?;
-    let status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["commit", "--quiet", "-m", "queue and done"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git commit failed");
+    git_status_ok(
+        temp.path(),
+        &["commit", "--quiet", "-m", "queue and done"],
+        "git commit queue and done failed",
+    )?;
 
     std::fs::write(
         temp.path().join(".ralph/config.jsonc"),
         "{ \"version\": 1 }",
     )?;
-    let status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["add", "-f", ".ralph/config.jsonc"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git add failed");
-    let status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["commit", "--quiet", "-m", "add config jsonc"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git commit failed");
+    git_status_ok(
+        temp.path(),
+        &["add", "-f", ".ralph/config.jsonc"],
+        "git add config.jsonc failed",
+    )?;
+    git_status_ok(
+        temp.path(),
+        &["commit", "--quiet", "-m", "add config jsonc"],
+        "git commit config jsonc failed",
+    )?;
 
     std::fs::write(
         temp.path().join(".ralph/config.jsonc"),

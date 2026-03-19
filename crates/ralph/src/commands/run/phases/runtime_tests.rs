@@ -30,23 +30,26 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tempfile::TempDir;
 
+fn git_status_ok(dir: &Path, args: &[&str], description: &str) -> Result<()> {
+    let _path_guard = crate::testsupport::path::path_lock()
+        .lock()
+        .expect("path lock");
+    let status = Command::new("git").current_dir(dir).args(args).status()?;
+    anyhow::ensure!(status.success(), "{description}");
+    Ok(())
+}
+
 fn git_init(dir: &Path) -> Result<()> {
-    let status = Command::new("git")
-        .current_dir(dir)
-        .args(["init", "--quiet"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git init failed");
+    git_status_ok(dir, &["init", "--quiet"], "git init failed")?;
 
     let gitignore_path = dir.join(".gitignore");
     std::fs::write(&gitignore_path, ".ralph/lock\n.ralph/cache/\nbin/\n")?;
-    Command::new("git")
-        .current_dir(dir)
-        .args(["add", ".gitignore"])
-        .status()?;
-    Command::new("git")
-        .current_dir(dir)
-        .args(["commit", "--quiet", "-m", "add gitignore"])
-        .status()?;
+    git_status_ok(dir, &["add", ".gitignore"], "git add .gitignore failed")?;
+    git_status_ok(
+        dir,
+        &["commit", "--quiet", "-m", "add gitignore"],
+        "git commit .gitignore failed",
+    )?;
 
     Ok(())
 }
@@ -209,11 +212,11 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
             tasks: vec![task],
         },
     )?;
-    let status = Command::new("git")
-        .current_dir(repo_root)
-        .args(["add", "-f", ".ralph/queue.jsonc", ".ralph/done.jsonc"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git add failed");
+    git_status_ok(
+        repo_root,
+        &["add", "-f", ".ralph/queue.jsonc", ".ralph/done.jsonc"],
+        "git add queue bookkeeping failed",
+    )?;
     Ok(())
 }
 

@@ -105,16 +105,16 @@ fn phase1_followup_allows_preexisting_dirty_queue_refresh() -> Result<()> {
         temp.path().join(".ralph/queue.jsonc"),
         "{\n  \"version\": 1,\n  \"tasks\": []\n}\n",
     )?;
-    let add_status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["add", "-f", ".ralph/queue.jsonc"])
-        .status()?;
-    anyhow::ensure!(add_status.success(), "git add .ralph/queue.jsonc failed");
-    let commit_status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["commit", "--quiet", "-m", "add queue baseline"])
-        .status()?;
-    anyhow::ensure!(commit_status.success(), "git commit queue baseline failed");
+    git_status_ok(
+        temp.path(),
+        &["add", "-f", ".ralph/queue.jsonc"],
+        "git add .ralph/queue.jsonc failed",
+    )?;
+    git_status_ok(
+        temp.path(),
+        &["commit", "--quiet", "-m", "add queue baseline"],
+        "git commit queue baseline failed",
+    )?;
 
     let script = format!(
         r#"#!/bin/sh
@@ -217,22 +217,16 @@ fn phase1_followup_allows_preexisting_dirty_arbitrary_ralph_file() -> Result<()>
     std::fs::create_dir_all(temp.path().join(".ralph/state"))?;
     let ralph_state = temp.path().join(".ralph/state/worker.json");
     std::fs::write(&ralph_state, "{ \"v\": 1 }\n")?;
-    let add_status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["add", "-f", ".ralph/state/worker.json"])
-        .status()?;
-    anyhow::ensure!(
-        add_status.success(),
-        "git add .ralph/state/worker.json failed"
-    );
-    let commit_status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["commit", "--quiet", "-m", "add ralph state baseline"])
-        .status()?;
-    anyhow::ensure!(
-        commit_status.success(),
-        "git commit ralph state baseline failed"
-    );
+    git_status_ok(
+        temp.path(),
+        &["add", "-f", ".ralph/state/worker.json"],
+        "git add .ralph/state/worker.json failed",
+    )?;
+    git_status_ok(
+        temp.path(),
+        &["commit", "--quiet", "-m", "add ralph state baseline"],
+        "git commit ralph state baseline failed",
+    )?;
     std::fs::write(temp.path().join("impl.txt"), "prior iteration changes")?;
 
     let script = format!(

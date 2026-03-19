@@ -182,6 +182,11 @@ pub(crate) fn git_output(
     repo_root: &Path,
     args: &[&str],
 ) -> Result<std::process::Output, GitError> {
+    #[cfg(test)]
+    let _path_guard = crate::testsupport::path::path_lock()
+        .lock()
+        .expect("path lock");
+
     let mut command = git_base_command(repo_root);
     command.args(args);
     execute_managed_command(ManagedCommand::new(

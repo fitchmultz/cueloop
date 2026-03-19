@@ -315,16 +315,16 @@ fn phase1_allows_jsonc_queue_bookkeeping_changes() -> Result<()> {
     std::fs::write(&queue_jsonc, "{ \"version\": 1, \"tasks\": [] }")?;
     std::fs::write(&done_jsonc, "{ \"version\": 1, \"tasks\": [] }")?;
 
-    let status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["add", "-f", ".ralph/queue.jsonc", ".ralph/done.jsonc"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git add failed");
-    let status = Command::new("git")
-        .current_dir(temp.path())
-        .args(["commit", "--quiet", "-m", "add jsonc queue files"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git commit failed");
+    git_status_ok(
+        temp.path(),
+        &["add", "-f", ".ralph/queue.jsonc", ".ralph/done.jsonc"],
+        "git add queue bookkeeping failed",
+    )?;
+    git_status_ok(
+        temp.path(),
+        &["commit", "--quiet", "-m", "add jsonc queue files"],
+        "git commit queue bookkeeping failed",
+    )?;
 
     std::fs::write(&queue_jsonc, "{ \"version\": 2, \"tasks\": [] }")?;
     std::fs::write(&done_jsonc, "{ \"version\": 2, \"tasks\": [] }")?;

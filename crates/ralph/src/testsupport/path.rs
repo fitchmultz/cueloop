@@ -15,6 +15,14 @@ use std::sync::Mutex;
 
 static PATH_GUARD: Mutex<()> = Mutex::new(());
 
+/// Acquire the shared PATH guard used by tests that mutate or depend on PATH.
+///
+/// Tests that invoke PATH-resolved tools and must not overlap with fake-binary
+/// PATH overrides should hold this guard for their full critical section.
+pub(crate) fn path_lock() -> &'static Mutex<()> {
+    &PATH_GUARD
+}
+
 /// Run a closure with a prepended path segment.
 ///
 /// The PATH is restored after the closure completes, even if it panics or returns an error.

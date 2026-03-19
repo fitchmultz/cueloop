@@ -156,6 +156,9 @@ mod tests {
 
     #[test]
     fn sandbox_creates_files() {
+        let _path_guard = crate::testsupport::path::path_lock()
+            .lock()
+            .expect("path lock");
         let sandbox = TutorialSandbox::create().unwrap();
 
         assert!(sandbox.path.join("Cargo.toml").exists());
@@ -196,6 +199,9 @@ exit 0
 
     #[test]
     fn sandbox_preserve_prevents_cleanup() {
+        let _path_guard = crate::testsupport::path::path_lock()
+            .lock()
+            .expect("path lock");
         let sandbox = TutorialSandbox::create().unwrap();
         let path = sandbox.preserve();
 
