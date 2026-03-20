@@ -398,91 +398,109 @@ fn timeout_stdout_capture_survives_mutex_poison() {
     assert!(err_msg.contains("timeout occurred"), "got: {}", err_msg);
 }
 
-#[test]
-fn pi_continue_falls_back_to_fresh_run_when_resume_session_lookup_fails() {
-    #[derive(Default)]
-    struct MockPiFallbackBackend {
-        run_calls: usize,
-        resume_calls: usize,
-    }
+fn success_status() -> std::process::ExitStatus {
+    std::process::Command::new("sh")
+        .arg("-c")
+        .arg("exit 0")
+        .status()
+        .expect("status")
+}
 
-    impl RunnerBackend for MockPiFallbackBackend {
-        fn run_prompt<'a>(
-            &mut self,
-            _runner_kind: Runner,
-            _work_dir: &Path,
-            _bins: runner::RunnerBinaries<'a>,
-            _model: Model,
-            _reasoning_effort: Option<ReasoningEffort>,
-            _runner_cli: runner::ResolvedRunnerCliOptions,
-            _prompt: &str,
-            _timeout: Option<Duration>,
-            _permission_mode: Option<ClaudePermissionMode>,
-            _output_handler: Option<runner::OutputHandler>,
-            _output_stream: runner::OutputStream,
-            _phase_type: PhaseType,
-            _session_id: Option<String>,
-            _plugins: Option<&crate::plugins::registry::PluginRegistry>,
-        ) -> anyhow::Result<runner::RunnerOutput, runner::RunnerError> {
-            self.run_calls += 1;
-            if self.run_calls == 1 {
-                Err(runner::RunnerError::TerminatedBySignal {
-                    signal: Some(15),
-                    stdout: RedactedString::from(""),
-                    stderr: RedactedString::from(""),
-                    session_id: Some("pi-session-123".to_string()),
-                })
-            } else {
-                Ok(runner::RunnerOutput {
-                    status: std::process::Command::new("sh")
-                        .arg("-c")
-                        .arg("exit 0")
-                        .status()
-                        .expect("status"),
-                    stdout: "fresh rerun output".to_string(),
-                    stderr: String::new(),
-                    session_id: Some("fresh-session".to_string()),
-                })
-            }
+struct MockKnownInvalidResumeFallbackBackend {
+    run_calls: usize,
+    resume_calls: usize,
+    resume_error: Option<runner::RunnerError>,
+}
+
+impl MockKnownInvalidResumeFallbackBackend {
+    fn new(resume_error: runner::RunnerError) -> Self {
+        Self {
+            run_calls: 0,
+            resume_calls: 0,
+            resume_error: Some(resume_error),
         }
+    }
+}
 
-        fn resume_session<'a>(
-            &mut self,
-            _runner_kind: Runner,
-            _work_dir: &Path,
-            _bins: runner::RunnerBinaries<'a>,
-            _model: Model,
-            _reasoning_effort: Option<ReasoningEffort>,
-            _runner_cli: runner::ResolvedRunnerCliOptions,
-            _session_id: &str,
-            _message: &str,
-            _permission_mode: Option<ClaudePermissionMode>,
-            _timeout: Option<Duration>,
-            _output_handler: Option<runner::OutputHandler>,
-            _output_stream: runner::OutputStream,
-            _phase_type: PhaseType,
-            _plugins: Option<&crate::plugins::registry::PluginRegistry>,
-        ) -> anyhow::Result<runner::RunnerOutput, runner::RunnerError> {
-            self.resume_calls += 1;
-            Err(runner::RunnerError::Other(anyhow::anyhow!(
-                "pi session file not found"
-            )))
+impl RunnerBackend for MockKnownInvalidResumeFallbackBackend {
+    fn run_prompt<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _runner_cli: runner::ResolvedRunnerCliOptions,
+        _prompt: &str,
+        _timeout: Option<Duration>,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+        _phase_type: PhaseType,
+        _session_id: Option<String>,
+        _plugins: Option<&crate::plugins::registry::PluginRegistry>,
+    ) -> anyhow::Result<runner::RunnerOutput, runner::RunnerError> {
+        self.run_calls += 1;
+        if self.run_calls == 1 {
+            Err(runner::RunnerError::TerminatedBySignal {
+                signal: Some(15),
+                stdout: RedactedString::from(""),
+                stderr: RedactedString::from(""),
+                session_id: Some("resume-session".to_string()),
+            })
+        } else {
+            Ok(runner::RunnerOutput {
+                status: success_status(),
+                stdout: "fresh rerun output".to_string(),
+                stderr: String::new(),
+                session_id: Some("fresh-session".to_string()),
+            })
         }
     }
 
+    fn resume_session<'a>(
+        &mut self,
+        _runner_kind: Runner,
+        _work_dir: &Path,
+        _bins: runner::RunnerBinaries<'a>,
+        _model: Model,
+        _reasoning_effort: Option<ReasoningEffort>,
+        _runner_cli: runner::ResolvedRunnerCliOptions,
+        _session_id: &str,
+        _message: &str,
+        _permission_mode: Option<ClaudePermissionMode>,
+        _timeout: Option<Duration>,
+        _output_handler: Option<runner::OutputHandler>,
+        _output_stream: runner::OutputStream,
+        _phase_type: PhaseType,
+        _plugins: Option<&crate::plugins::registry::PluginRegistry>,
+    ) -> anyhow::Result<runner::RunnerOutput, runner::RunnerError> {
+        self.resume_calls += 1;
+        Err(self
+            .resume_error
+            .take()
+            .expect("resume error should be present"))
+    }
+}
+
+fn assert_known_invalid_resume_falls_back(
+    runner_kind: Runner,
+    model: Model,
+    resume_error: runner::RunnerError,
+) {
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let invocation = test_invocation(
         temp_dir.path(),
-        Runner::Pi,
-        Model::Gpt53,
+        runner_kind,
+        model,
         "resume task",
         None,
         false,
-        Some("pi-session-123".to_string()),
+        Some("resume-session".to_string()),
     );
 
     let messages = RunnerErrorMessages {
-        log_label: "pi-fallback",
+        log_label: "known-invalid-resume-fallback",
         interrupted_msg: "interrupted",
         timeout_msg: "timeout",
         terminated_msg: "terminated",
@@ -490,7 +508,7 @@ fn pi_continue_falls_back_to_fresh_run_when_resume_session_lookup_fails() {
         other_msg: other_message,
     };
 
-    let mut backend = MockPiFallbackBackend::default();
+    let mut backend = MockKnownInvalidResumeFallbackBackend::new(resume_error);
     let output = run_prompt_with_handling_backend(invocation, messages, &mut backend)
         .expect("fallback should rerun fresh");
 
@@ -501,4 +519,56 @@ fn pi_continue_falls_back_to_fresh_run_when_resume_session_lookup_fails() {
     );
     assert_eq!(output.stdout, "fresh rerun output");
     assert_eq!(output.session_id.as_deref(), Some("fresh-session"));
+}
+
+#[test]
+fn pi_continue_falls_back_to_fresh_run_when_resume_session_lookup_fails() {
+    assert_known_invalid_resume_falls_back(
+        Runner::Pi,
+        Model::Gpt53,
+        runner::RunnerError::Other(anyhow::anyhow!("pi session file not found")),
+    );
+}
+
+#[test]
+fn gemini_continue_falls_back_to_fresh_run_on_invalid_resume_session() {
+    assert_known_invalid_resume_falls_back(
+        Runner::Gemini,
+        Model::Gpt53,
+        runner::RunnerError::NonZeroExit {
+            code: 42,
+            stdout: RedactedString::from(""),
+            stderr: RedactedString::from(
+                "Error resuming session: Invalid session identifier \"does-not-exist\".\nUse --list-sessions to see available sessions.",
+            ),
+            session_id: Some("does-not-exist".to_string()),
+        },
+    );
+}
+
+#[test]
+fn claude_continue_falls_back_to_fresh_run_on_invalid_resume_session() {
+    assert_known_invalid_resume_falls_back(
+        Runner::Claude,
+        Model::Gpt53,
+        runner::RunnerError::NonZeroExit {
+            code: 1,
+            stdout: RedactedString::from(
+                r#"{"type":"result","is_error":true,"errors":["--resume requires a valid session ID"]}"#,
+            ),
+            stderr: RedactedString::from(""),
+            session_id: Some("not-a-uuid".to_string()),
+        },
+    );
+}
+
+#[test]
+fn opencode_continue_falls_back_to_fresh_run_on_known_session_validation_failure() {
+    assert_known_invalid_resume_falls_back(
+        Runner::Opencode,
+        Model::Gpt53,
+        runner::RunnerError::Other(anyhow::anyhow!(
+            "semantic failure with zero exit status for opencode resume: ZodError invalid_format sessionID Invalid string: must start with \"ses\""
+        )),
+    );
 }

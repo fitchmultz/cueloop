@@ -22,6 +22,7 @@ mod retry_policy;
 #[cfg(test)]
 pub(crate) use backend::RunnerBackend;
 pub(crate) use backend::{RunnerErrorMessages, RunnerInvocation};
+pub(crate) use continue_session::should_fallback_to_fresh_continue;
 pub(crate) use orchestration::run_prompt_with_handling;
 #[cfg(test)]
 pub(crate) use orchestration::run_prompt_with_handling_backend;

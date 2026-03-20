@@ -17,6 +17,7 @@
 use crate::commands::run::PhaseType;
 use crate::commands::run::phases::generate_phase_session_id;
 use crate::contracts::Runner;
+use crate::runutil::should_fallback_to_fresh_continue;
 use anyhow::{Context, Result};
 
 /// Session state for continuing an interrupted task.
@@ -62,45 +63,6 @@ fn phase_number(phase_type: PhaseType) -> u8 {
         PhaseType::Implementation => 2,
         PhaseType::Review => 3,
         PhaseType::SinglePhase => 0,
-    }
-}
-
-fn should_fallback_to_fresh_continue(
-    session: &ContinueSession,
-    err: &crate::runner::RunnerError,
-) -> bool {
-    let text = match err {
-        crate::runner::RunnerError::NonZeroExit { stdout, stderr, .. }
-        | crate::runner::RunnerError::TerminatedBySignal { stdout, stderr, .. } => {
-            format!("{} {}", stdout, stderr).to_lowercase()
-        }
-        _ => format!("{:#}", err).to_lowercase(),
-    };
-
-    match session.runner {
-        Runner::Pi => {
-            // Pi resume requires the session file to exist on disk. If the file cannot be
-            // resolved yet, continue via a fresh invocation with the same message.
-            text.contains("pi session file not found")
-                || text.contains("no session found matching")
-                || text.contains("read pi session dir")
-        }
-        Runner::Gemini => {
-            text.contains("error resuming session")
-                && (text.contains("invalid session identifier") || text.contains("--list-sessions"))
-        }
-        Runner::Claude => {
-            text.contains("--resume requires a valid session id")
-                || text.contains("not a valid uuid")
-        }
-        Runner::Opencode => {
-            (text.contains("zoderror")
-                && text.contains("sessionid")
-                && text.contains("must start with \"ses\""))
-                || (text.contains("semantic failure with zero exit status")
-                    && text.contains("opencode"))
-        }
-        _ => false,
     }
 }
 
@@ -185,7 +147,7 @@ pub(crate) fn resume_continue_session(
                 plugins,
             ) {
                 Ok(output) => output,
-                Err(err) if should_fallback_to_fresh_continue(session, &err) => {
+                Err(err) if should_fallback_to_fresh_continue(&session.runner, &err) => {
                     log::warn!(
                         "Continue session unavailable for runner {}; retrying as fresh invocation: {:#}",
                         session.runner,

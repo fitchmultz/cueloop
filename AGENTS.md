@@ -171,8 +171,9 @@ Every source file MUST start with `//!` docs covering:
 
 ### Continue Session Recovery
 - Continue paths should prefer same-session resume, but fall back to a fresh invocation when no session ID is available.
-- Pi resume should fall back to fresh invocation when session file lookup fails (`no session found`, missing session dir/file), since Pi may defer session-file persistence until after first assistant output.
-- Resume fallback should also cover known invalid-session resume failures for Gemini (`invalid session identifier`), Claude (`--resume requires a valid session ID` / invalid UUID), and Opencode (`ZodError` sessionID validation), not just Pi file lookup failures.
+- Known-invalid resume fallback classification is centralized in `runutil::execution::should_fallback_to_fresh_continue`; do not fork runner-specific resume heuristics across execution paths.
+- Safe fresh fallback applies to Pi session-file lookup failures (`no session found`, missing session dir/file), Gemini invalid session identifiers, Claude invalid resume IDs / invalid UUID cases, and Opencode session validation failures.
+- Unknown resume failures must hard-fail rather than silently rerun fresh.
 
 ### Runner Output Edge Cases
 - Opencode may emit fatal session validation errors on stderr while still exiting with code `0`; treat this as semantic failure rather than success.

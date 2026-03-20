@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Select a resume session ID.
-//! - Decide when to fall back from resume to a fresh invocation.
+//! - Centralize known-invalid continue-session fallback classification.
 //! - Execute continue-session or rerun flows through the backend.
 //!
 //! Not handled here:
@@ -10,7 +10,8 @@
 //! - Error shaping after runner failures.
 //!
 //! Invariants/assumptions:
-//! - Continue-session fallbacks stay conservative and runner-specific.
+//! - Fresh continue fallbacks stay conservative and runner-specific.
+//! - Unknown resume failures must still hard-fail instead of silently rerunning.
 
 use std::path::Path;
 use std::time::Duration;
@@ -21,15 +22,45 @@ use crate::runner;
 
 use super::backend::RunnerBackend;
 
-fn should_fallback_to_fresh_continue(runner_kind: &Runner, err: &runner::RunnerError) -> bool {
-    if runner_kind != &Runner::Pi {
-        return false;
+fn continue_session_error_text(err: &runner::RunnerError) -> String {
+    match err {
+        runner::RunnerError::NonZeroExit { stdout, stderr, .. }
+        | runner::RunnerError::TerminatedBySignal { stdout, stderr, .. } => {
+            format!("{} {}", stdout, stderr).to_lowercase()
+        }
+        _ => format!("{:#}", err).to_lowercase(),
     }
+}
 
-    let text = format!("{:#}", err).to_lowercase();
-    text.contains("pi session file not found")
-        || text.contains("no session found matching")
-        || text.contains("read pi session dir")
+pub(crate) fn should_fallback_to_fresh_continue(
+    runner_kind: &Runner,
+    err: &runner::RunnerError,
+) -> bool {
+    let text = continue_session_error_text(err);
+
+    match runner_kind {
+        Runner::Pi => {
+            text.contains("pi session file not found")
+                || text.contains("no session found matching")
+                || text.contains("read pi session dir")
+        }
+        Runner::Gemini => {
+            text.contains("error resuming session")
+                && (text.contains("invalid session identifier") || text.contains("--list-sessions"))
+        }
+        Runner::Claude => {
+            text.contains("--resume requires a valid session id")
+                || text.contains("not a valid uuid")
+        }
+        Runner::Opencode => {
+            (text.contains("zoderror")
+                && text.contains("sessionid")
+                && text.contains("must start with \"ses\""))
+                || (text.contains("semantic failure with zero exit status")
+                    && text.contains("opencode"))
+        }
+        _ => false,
+    }
 }
 
 fn choose_continue_session_id<'a>(

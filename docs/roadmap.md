@@ -9,9 +9,9 @@ This is the canonical near-term roadmap for active follow-up work.
 ### 1. Relax brittle AI-workflow assumptions while keeping strict handoff contracts
 
 Why first:
-- The clearest avoidable agent failures now come from over-constraining the stochastic middle of the workflow: exact tool/path assumptions, uneven resume fallback behavior, and prompt/test contracts that freeze wording instead of outcomes.
+- The clearest remaining avoidable agent failures come from over-constraining the stochastic middle of the workflow: exact tool/path assumptions and prompt/test contracts that freeze wording instead of outcomes.
 - Fixing these assumptions improves reliability across runners before more operator-facing polish lands.
-- This work has a clean low-churn sequence: shared recovery logic first, then prompt assets, then tests/docs.
+- The remaining work still has a clean low-churn sequence: prompt assets first, then prompt tests, then docs.
 - Prompt, runner, and supervision behavior are tightly coupled today; if we do the UX work first, we will just polish brittle contracts that should be loosened.
 
 Primary outcome:
@@ -19,33 +19,7 @@ Primary outcome:
 
 Detailed execution plan:
 
-#### 1.1 Unify resume/retry fallback policy across all execution paths
-Goal:
-- A recoverable invalid-session failure should degrade to a fresh invocation consistently, regardless of whether the call came through shared execution orchestration or post-run supervision.
-
-Work:
-- Centralize runner-specific “resume is invalid but rerun is safe” classification in one shared helper.
-- Use the same helper in:
-  - `runutil/execution/continue_session.rs`
-  - `commands/run/supervision/continue_session.rs`
-  - any adjacent orchestration paths that currently duplicate session-recovery policy.
-- Preserve known recoverable cases already handled in supervision for:
-  - Pi missing session files
-  - Gemini invalid session identifiers
-  - Claude invalid UUID / invalid resume ID cases
-  - OpenCode semantic resume-validation failures.
-- Keep unknown resume failures hard-failing instead of silently falling back.
-
-Validation:
-- Expand shared execution tests so the non-supervision path has parity with supervision resume-fallback coverage.
-- Keep runner-specific fixtures explicit so future model/CLI behavior changes can be added without another policy fork.
-
-Why this comes first:
-- It directly reduces avoidable run aborts.
-- It touches fewer files than prompt/test rewrites.
-- It creates a stable runtime substrate for the prompt loosenings below.
-
-#### 1.2 Replace hard-coded prompt assumptions with capability-aware guidance
+#### 1.1 Replace hard-coded prompt assumptions with capability-aware guidance
 Goal:
 - Prompts should prefer useful paths without assuming one exact environment, one exact home-directory file, or one exact tool inventory.
 
@@ -69,7 +43,7 @@ Validation:
 - Prompt rendering should still preserve required placeholders and queue/config interpolation.
 - Missing optional tools/files should no longer imply failure in prompt guidance unless a real downstream invariant requires them.
 
-#### 1.3 Narrow “must” language to real machine-enforced boundaries
+#### 1.2 Narrow “must” language to real machine-enforced boundaries
 Goal:
 - Keep mandatory language only where Ralph or downstream systems actually depend on it.
 
@@ -100,7 +74,7 @@ Validation:
 - Any remaining hard requirement should map to an actual parser, validator, or runtime invariant.
 - If the system cannot detect violation of a prompt instruction, it should usually not be expressed as a brittle exact-format contract.
 
-#### 1.4 Decouple prompt tests from exact prose
+#### 1.3 Decouple prompt tests from exact prose
 Goal:
 - Prompt tests should protect behaviorally important contracts, not freeze cosmetic wording.
 
@@ -126,7 +100,7 @@ Validation:
 - Prompt changes should stop causing broad CI churn when only wording changes.
 - Tests should still fail when required artifacts, placeholders, or boundary instructions disappear.
 
-#### 1.5 Align docs with the relaxed-core / strict-edge model
+#### 1.4 Align docs with the relaxed-core / strict-edge model
 Goal:
 - Docs should stop teaching rigid internal scripts unless Ralph truly depends on them.
 
@@ -146,8 +120,8 @@ Primary files:
 - `docs/workflow.md`
 
 Exit criteria for item 1:
-- Shared execution and supervision use one recovery policy for known invalid-session fallbacks.
 - Default prompts no longer hard-code environment-specific optional paths or tactics as universal requirements.
+- Mandatory prompt language maps to real machine-enforced boundaries.
 - Prompt tests validate invariants instead of large exact text fragments.
 - Docs clearly distinguish hard contracts from preferred workflows.
 

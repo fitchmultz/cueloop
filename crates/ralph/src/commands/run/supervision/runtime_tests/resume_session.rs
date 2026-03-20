@@ -14,11 +14,21 @@ use super::support::{PI_ENV_MUTEX, continue_session_with, resolved_for_repo};
 use crate::commands::run::supervision::resume_continue_session;
 use crate::contracts::Runner;
 use crate::testsupport::runner::create_fake_runner;
+use crate::testsupport::{INTERRUPT_TEST_MUTEX, reset_ctrlc_interrupt_flag};
+use std::sync::{Mutex, MutexGuard};
 use tempfile::TempDir;
+
+fn interrupt_guard() -> MutexGuard<'static, ()> {
+    let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    let guard = interrupt_mutex.lock().expect("interrupt mutex poisoned");
+    reset_ctrlc_interrupt_flag();
+    guard
+}
 
 #[test]
 fn resume_continue_session_falls_back_to_fresh_invocation_without_session_id() -> anyhow::Result<()>
 {
+    let _interrupt_guard = interrupt_guard();
     let temp_dir = TempDir::new()?;
     let args_path = temp_dir.path().join("runner-args.txt");
     let runner_script = format!(
@@ -53,6 +63,7 @@ echo '{{"sessionID":"sess-fresh"}}'
 
 #[test]
 fn resume_continue_session_pi_falls_back_to_fresh_when_resume_lookup_fails() -> anyhow::Result<()> {
+    let _interrupt_guard = interrupt_guard();
     let _env_guard = PI_ENV_MUTEX.lock().expect("pi env mutex poisoned");
     let temp_dir = TempDir::new()?;
     let args_path = temp_dir.path().join("pi-runner-args.txt");
@@ -99,6 +110,7 @@ echo '{{"sessionID":"sess-pi-fresh"}}'
 
 #[test]
 fn resume_continue_session_gemini_falls_back_to_fresh_on_invalid_resume() -> anyhow::Result<()> {
+    let _interrupt_guard = interrupt_guard();
     let temp_dir = TempDir::new()?;
     let args_path = temp_dir.path().join("gemini-runner-args.txt");
     let runner_script = format!(
@@ -137,6 +149,7 @@ echo '{{"session_id":"sess-gemini-fresh"}}'
 
 #[test]
 fn resume_continue_session_claude_falls_back_to_fresh_on_invalid_uuid() -> anyhow::Result<()> {
+    let _interrupt_guard = interrupt_guard();
     let temp_dir = TempDir::new()?;
     let args_path = temp_dir.path().join("claude-runner-args.txt");
     let runner_script = format!(
@@ -174,6 +187,7 @@ echo '{{"type":"assistant","session_id":"sess-claude-fresh","message":{{"content
 #[test]
 fn resume_continue_session_opencode_falls_back_when_resume_errors_with_exit_zero()
 -> anyhow::Result<()> {
+    let _interrupt_guard = interrupt_guard();
     let temp_dir = TempDir::new()?;
     let args_path = temp_dir.path().join("opencode-runner-args.txt");
     let runner_script = format!(
