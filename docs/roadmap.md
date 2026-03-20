@@ -6,56 +6,53 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Prioritize user-facing UI/UX so Ralph clearly solves an operator problem, not just an agent-wrapper problem
+### 1. Make Ralph feel like an operator console for nondeterministic agent runs, not a generic agent wrapper
 
 Why first:
-- Ralph has enough structural foundation now that the biggest product risk is being perceived as a generic wrapper around model CLIs instead of a tool that helps users reliably manage nondeterministic agent work.
-- AI agents are not deterministic tools, so the product experience must make uncertainty, progress, recovery, and operator control first-class instead of assuming repeatable single-shot execution.
-- Improving the app and CLI experience around the real operator loop is higher leverage than continuing maintenance-first cleanup in isolation.
+- Ralph's biggest product risk is not missing another model integration; it is leaving operators unsure what happened, what Ralph is doing now, and what the safest next action is after a nondeterministic run goes sideways.
+- The highest-traffic product surfaces are already the run, recover, inspect, and repair loops: `ralph run one`, `ralph run loop`, `ralph run resume`, queue inspection commands, `ralph undo`, and the app's Queue, Run Control, Quick Actions, and task-detail flows.
+- First run, resume, retry, and fresh re-invocation can diverge; Ralph has to narrate state, confidence, and operator choices explicitly instead of acting like a deterministic build tool.
 
 Scope:
-- Prioritize workflows that help users understand what Ralph is doing, what happened, what is likely to happen next, and what they should do when an agent run stalls, drifts, fails, or produces partial value.
-- Improve the highest-traffic user surfaces first: core CLI flows (`init`, `run`, `run --loop`, task selection, task mutation, resume/retry, status inspection) and the corresponding macOS app surfaces that expose queue state, run state, failures, and recovery.
-- Treat agent nondeterminism as a product constraint: prefer explicit state, observable checkpoints, durable session/history context, actionable error and retry messaging, and clear recovery paths over implicit "it should just work" assumptions.
-- Favor end-to-end user scenarios and smokeable operator workflows over infrastructure-only churn when choosing between similarly sized tasks.
-- Validate UX changes with realistic local workflows, including interrupted runs, resume paths, partial failures, blocked tasks, CI-gate failures, and multi-step operator recovery.
+- First, make interrupted-run state obvious in both CLI and app surfaces: when `.ralph/cache/session.json` says there was an interrupted run, `ralph run one`, `ralph run loop`, `ralph run resume`, `--resume`, `--force`, and the Run Control surface should clearly say whether Ralph is resuming, falling back to a fresh invocation, or stopping for operator confirmation because session safety is unclear.
+- Next, make blocked, waiting, and partial-progress states legible: `ralph run loop --wait-when-blocked`, `ralph queue stats`, `ralph queue aging`, `ralph queue burndown`, and the app's Queue, List, Kanban, and Dependency Graph views should help the operator see whether the system is waiting on dependencies, schedule, lock cleanup, CI fallout, or a genuinely stalled run.
+- Then, make supervision failures actionable instead of noisy: when CI retried twice, when `git_revert_mode` starts to matter, or when runner/session capability problems are the real issue, the CLI, `ralph doctor`, `ralph runner list`, `ralph runner capabilities`, completion checklists, and the app's Run Control / Quick Actions surfaces should make the decision path explicit.
+- After that, make recovery tools part of the normal workflow instead of a last-resort escape hatch: operators should be able to keep partial value and recover cleanly with `ralph task mutate`, `ralph task decompose`, `ralph queue validate`, `ralph queue repair`, `ralph undo`, and the app's task-detail editing / command-palette flows without dropping into manual JSON surgery.
+- Only after that, tighten the experimental parallel path: `ralph run parallel`, lock/stale-lock handling, and post-run bookkeeping visibility should improve only after the serial run/resume/recovery path is boring and trustworthy.
 
-### 2. Keep maintenance and structural hygiene active, but in service of the user-facing roadmap
+### 2. Keep maintenance and structural hygiene active, but only when it helps the operator-facing roadmap move faster
 
 Why second:
-- Structural cleanup is still valuable, but it should support product clarity, iteration speed, and reduced UX churn rather than becoming the default priority.
-- The remaining production-facing foundational split work is complete, so additional cleanup should now be more selective and evidence-driven.
-- Keeping a small, explicit maintenance lane prevents test and fixture debt from compounding while preserving focus on user-visible improvements.
+- Cleanup matters when it makes the run/recover/supervise surfaces safer to change, easier to validate, and easier to explain.
+- Ralph already has the baseline architecture it needs; additional hygiene work should now be selective, evidence-driven, and tied to product-facing iteration speed.
+- A small maintenance lane keeps test and fixture debt from slowing the UX work above without letting maintenance become the default priority again.
 
 Scope:
-- Break remaining oversized Rust test and fixture files into thin suite roots plus behavior-grouped companions/directories when that cleanup is worthwhile on its own or unblocks near-term product work.
-- Current highest-value remaining structural suite candidate is `task_template_commands_test.rs`; revisit subsequent structural targets only if fresh profiling or nearby product work points there.
-- Keep shared test support centralized only where duplication is real; otherwise prefer adjacent grouped helpers.
-- Use target-specific nextest profiles and `target/profiling/nextest*.jsonl` artifacts as the source of truth before reopening any test-speed pass.
-- Re-profile a candidate suite immediately before editing it and again immediately after any focused fixture/lock cutover instead of repeating whole-workspace sweeps.
-- Narrow global-environment locks to only the tests that mutate PATH or shared process env; tests using explicit runner binary overrides should not serialize on `env_lock()`.
-- Keep real `ralph init` contract tests explicit while continuing to route pure fixture setup through cached seeded scaffolding.
-- Do not reopen `run_parallel_test`, `parallel_direct_push_test`, `parallel_done_json_safety_test`, or `doctor_contract_test` unless fresh measurements show they have re-emerged as worthwhile optimization targets.
+- Split or reorganize oversized suites and fixtures only when that improves failure locality or iteration speed for operator-critical paths such as run/resume, supervision, undo/recovery, queue repair, task editing, or app run-control flows; `task_template_commands_test.rs` remains the clearest currently-known structural candidate, not the default next task.
+- Re-profile before and after focused test work; use target-specific nextest runs and `target/profiling/nextest*.jsonl` artifacts instead of reopening broad "test speed" churn without evidence.
+- Keep environment locking narrow: tests that mutate shared PATH or shared process environment should serialize on `env_lock()`, but isolated tests using explicit runner overrides should not.
+- Keep real contract coverage for operator-critical semantics explicit: use real `ralph init`, queue/undo/recovery coverage, and real supervision behavior where correctness matters; keep cached scaffolding limited to pure setup speed.
+- Keep CLI, app, and machine surfaces behaviorally aligned when operator UX changes land, especially around `ralph machine queue read`, `ralph machine task mutate`, and `ralph machine run one`.
 
-### 3. Add durable local timing visibility, then use it to tighten the headless macOS ship gate
+### 3. Add durable local timing visibility, then use it to tune the headless ship gate with evidence
 
 Why third:
-- One-off profiling is still useful, but the repo needs a repeatable way to spot when `make agent-ci`, `make test`, or specific nextest/macOS targets get slower again.
-- Adding that measurement path makes later maintenance and gate tuning easier to justify, repeat, and roll back.
-- After the completed foundational split work, `macos-ci` remains the most expensive default gate for app-surface changes and should be tuned only with durable evidence.
+- Operator-facing improvements are easier to sustain when local validation speed regressions are visible instead of discovered by feel.
+- Durable measurement keeps maintenance work and macOS gate tuning grounded in evidence instead of vibes.
+- `macos-ci` is still expensive enough that any relaxation of serialization or job caps should be justified with data and protected by contract coverage.
 
 Scope:
-- Add a documented local profiling entrypoint that records `make agent-ci`, nextest, doctest, and macOS gate timings under `target/profiling/`.
-- Keep the profiling path headless and opt-in; it should not slow the default CI gate.
-- Prefer machine-readable summaries that make the slowest targets and trend deltas obvious.
-- Measure `macos-build`, `macos-test`, and `macos-test-contracts` separately with current defaults and capped/unbounded Xcode parallelism.
-- Preserve headless defaults and keep interactive UI automation outside `macos-ci`.
-- Only relax Xcode serialization or default caps when the measured regression risk is understood and covered by contract tests.
+- Add or document an opt-in local profiling entrypoint that writes timing artifacts under `target/profiling/`.
+- Capture timings for `make agent-ci`, targeted nextest suites that cover run/resume/supervision/undo/operator flows, doctests, `macos-build`, `macos-test`, and `macos-test-contracts`.
+- Keep outputs machine-readable so the slowest targets and trend deltas are obvious.
+- Measure Xcode targets separately under current defaults and under capped vs unbounded `RALPH_XCODE_JOBS`.
+- Keep the profiling path headless and opt-in; do not widen `macos-ci` to include interactive UI automation.
+- Only relax Xcode serialization or default caps after measurement and contract coverage support the change.
 
 ## Sequencing rules
 
 - Keep completed roadmap items out of this file; replace them with the next active work only.
-- Prefer user-facing workflow clarity and operator control over maintenance-only churn when both are plausible next steps.
+- Prefer run/resume/recovery clarity and operator control over maintenance-only churn when both are plausible next steps.
 - Preserve the recently hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, fsutil, eta_calculator, undo, and contracts/task) while refactoring adjacent modules.
-- Prefer infrastructure and fixture stabilization before broader feature churn only when that stabilization clearly supports the active UX roadmap.
+- Prefer infrastructure and fixture stabilization before broader feature churn only when that stabilization clearly supports the active operator UX roadmap.
 - Do not reopen the completed macOS Settings/workspace-routing or the completed git/init/app split cutovers unless a new regression appears.
