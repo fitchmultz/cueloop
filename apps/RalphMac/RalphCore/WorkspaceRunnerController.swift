@@ -23,7 +23,7 @@ import Foundation
 
 @MainActor
 final class WorkspaceRunnerController {
-    nonisolated static let supportedMachineConfigResolveVersion = 2
+    nonisolated static let supportedMachineConfigResolveVersion = 3
 
     weak var workspace: Workspace?
     var activeRun: RalphCLIRun?
@@ -55,6 +55,7 @@ final class WorkspaceRunnerController {
             },
             handleMissingClient: { [runState = workspace.runState] in
                 runState.currentRunnerConfig = nil
+                runState.resumeState = nil
                 runState.runnerConfigErrorMessage = "CLI client not available."
             },
             load: { client, workingDirectoryURL, retryConfiguration, onRetry in
@@ -88,10 +89,12 @@ final class WorkspaceRunnerController {
                         interactiveApprovalSupported: safety.interactiveApprovalSupported
                     )
                 )
+                runState.resumeState = decoded.resumePreview?.asWorkspaceResumeState()
                 runState.runnerConfigErrorMessage = nil
             },
             handleFailure: { [runState = workspace.runState] recoveryError in
                 runState.currentRunnerConfig = nil
+                runState.resumeState = nil
                 runState.runnerConfigErrorMessage = "Failed to load resolved runner configuration."
                 RalphLogger.shared.error(
                     "Failed to load runner configuration: \(recoveryError.fullErrorDetails)",
@@ -178,7 +181,7 @@ final class WorkspaceRunnerController {
 
             workspace.runState.currentTaskID = resolvedTaskID
 
-            var arguments = ["--no-color", "machine", "run", "one"]
+            var arguments = ["--no-color", "machine", "run", "one", "--resume"]
             if forceDirtyRepo {
                 arguments.append("--force")
             }

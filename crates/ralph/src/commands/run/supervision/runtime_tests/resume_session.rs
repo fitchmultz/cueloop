@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Verify invalid or missing session identifiers fall back to fresh runner invocations.
 //! - Cover runner-specific resume semantics for Opencode, Pi, Gemini, and Claude.
+//! - Assert the explicit resume decision model matches the fallback path that executed.
 //!
 //! Not handled here:
 //! - Post-run supervision or git/queue mutations.
@@ -50,12 +51,16 @@ echo '{{"sessionID":"sess-fresh"}}'
         None,
         crate::commands::run::PhaseType::Implementation,
     );
-    let (_output, _elapsed) = resume_continue_session(&resolved, &mut session, "hello", None)?;
+    let resumed = resume_continue_session(&resolved, &mut session, "hello", None)?;
 
     let args = std::fs::read_to_string(&args_path)?;
     assert!(
         !args.split_whitespace().any(|arg| arg == "-s"),
         "fresh invocation should not include resume session args, got: {args}"
+    );
+    assert_eq!(
+        resumed.decision.reason,
+        crate::session::ResumeReason::MissingRunnerSessionId
     );
     assert_eq!(session.session_id.as_deref(), Some("sess-fresh"));
     Ok(())
@@ -98,11 +103,15 @@ echo '{{"sessionID":"sess-pi-fresh"}}'
         None => unsafe { std::env::remove_var("PI_CODING_AGENT_DIR") },
     }
 
-    let (_output, _elapsed) = result?;
+    let resumed = result?;
     let args = std::fs::read_to_string(&args_path)?;
     assert!(
         !args.split_whitespace().any(|arg| arg == "--session"),
         "fresh invocation should not include --session args, got: {args}"
+    );
+    assert_eq!(
+        resumed.decision.reason,
+        crate::session::ResumeReason::RunnerSessionInvalid
     );
     assert_eq!(session.session_id.as_deref(), Some("sess-pi-fresh"));
     Ok(())
@@ -137,11 +146,15 @@ echo '{{"session_id":"sess-gemini-fresh"}}'
         crate::commands::run::PhaseType::Implementation,
     );
 
-    let (_output, _elapsed) = resume_continue_session(&resolved, &mut session, "hello", None)?;
+    let resumed = resume_continue_session(&resolved, &mut session, "hello", None)?;
     let args = std::fs::read_to_string(&args_path)?;
     assert!(
         !args.split_whitespace().any(|arg| arg == "--resume"),
         "fresh invocation should not include --resume args, got: {args}"
+    );
+    assert_eq!(
+        resumed.decision.reason,
+        crate::session::ResumeReason::RunnerSessionInvalid
     );
     assert_eq!(session.session_id.as_deref(), Some("sess-gemini-fresh"));
     Ok(())
@@ -174,11 +187,15 @@ echo '{{"type":"assistant","session_id":"sess-claude-fresh","message":{{"content
         crate::commands::run::PhaseType::Implementation,
     );
 
-    let (_output, _elapsed) = resume_continue_session(&resolved, &mut session, "hello", None)?;
+    let resumed = resume_continue_session(&resolved, &mut session, "hello", None)?;
     let args = std::fs::read_to_string(&args_path)?;
     assert!(
         !args.split_whitespace().any(|arg| arg == "--resume"),
         "fresh invocation should not include --resume args, got: {args}"
+    );
+    assert_eq!(
+        resumed.decision.reason,
+        crate::session::ResumeReason::RunnerSessionInvalid
     );
     assert_eq!(session.session_id.as_deref(), Some("sess-claude-fresh"));
     Ok(())
@@ -216,11 +233,15 @@ echo '{{"sessionID":"sess-opencode-fresh"}}'
         crate::commands::run::PhaseType::Implementation,
     );
 
-    let (_output, _elapsed) = resume_continue_session(&resolved, &mut session, "hello", None)?;
+    let resumed = resume_continue_session(&resolved, &mut session, "hello", None)?;
     let args = std::fs::read_to_string(&args_path)?;
     assert!(
         !args.split_whitespace().any(|arg| arg == "-s"),
         "fresh invocation should not include -s args, got: {args}"
+    );
+    assert_eq!(
+        resumed.decision.reason,
+        crate::session::ResumeReason::RunnerSessionInvalid
     );
     assert_eq!(session.session_id.as_deref(), Some("sess-opencode-fresh"));
     Ok(())

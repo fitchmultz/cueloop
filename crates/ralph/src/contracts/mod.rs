@@ -42,9 +42,9 @@ pub use machine::{
     MACHINE_TASK_MUTATION_VERSION, MachineCliSpecDocument, MachineConfigResolveDocument,
     MachineConfigSafetySummary, MachineDashboardReadDocument, MachineDecomposeDocument,
     MachineDoctorReportDocument, MachineGraphReadDocument, MachineParallelStatusDocument,
-    MachineQueuePaths, MachineQueueReadDocument, MachineRunEventEnvelope, MachineRunEventKind,
-    MachineRunSummaryDocument, MachineSystemInfoDocument, MachineTaskCreateDocument,
-    MachineTaskCreateRequest, MachineTaskMutationDocument,
+    MachineQueuePaths, MachineQueueReadDocument, MachineResumeDecision, MachineRunEventEnvelope,
+    MachineRunEventKind, MachineRunSummaryDocument, MachineSystemInfoDocument,
+    MachineTaskCreateDocument, MachineTaskCreateRequest, MachineTaskMutationDocument,
 };
 
 // Re-exports from cli_spec module (versioned; suitable for tooling consumption)

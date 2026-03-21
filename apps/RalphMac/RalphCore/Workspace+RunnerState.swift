@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Start, cancel, and loop Ralph CLI executions for a workspace.
-//! - Track per-workspace runner lifecycle fields such as active run, phase, and history.
+//! - Track per-workspace runner lifecycle fields such as active run, phase, history, and resume state.
 //! - Resolve the next runnable task, runner configuration, and execution phase state.
 //! - Apply incremental stream parsing to runner output instead of reparsing the full buffer.
 //!
@@ -13,7 +13,7 @@
 //!
 //! Invariants/assumptions callers must respect:
 //! - Runner state remains window/workspace scoped and must not leak across workspaces.
-//! - Only one active run may execute per workspace at a time.
+//! - Only one active run may execute per workspace.
 //! - Cancellation must target the active subprocess owned by this workspace.
 //! - Runner configuration is resolved by the CLI itself, not reconstructed in-app.
 
@@ -38,6 +38,7 @@ public final class WorkspaceRunState: ObservableObject {
     @Published public var runnerConfigErrorMessage: String?
     @Published public var runControlSelectedTaskID: String?
     @Published public var runControlForceDirtyRepo = false
+    @Published public var resumeState: Workspace.ResumeState?
     @Published public var attributedOutput: [Workspace.ANSISegment] = []
     @Published public var outputBuffer: ConsoleOutputBuffer
     @Published public var maxANSISegments = 1_000 {
@@ -71,10 +72,42 @@ public final class WorkspaceRunState: ObservableObject {
         isRunning = true
         executionStartTime = Date()
         currentPhase = nil
+        resumeState = nil
     }
 }
 
 public extension Workspace {
+    struct ResumeState: Equatable, Sendable {
+        public enum Status: String, Codable, Sendable {
+            case resumingSameSession = "resuming_same_session"
+            case fallingBackToFreshInvocation = "falling_back_to_fresh_invocation"
+            case refusingToResume = "refusing_to_resume"
+        }
+
+        public let status: Status
+        public let scope: String
+        public let reason: String
+        public let taskID: String?
+        public let message: String
+        public let detail: String
+
+        public init(
+            status: Status,
+            scope: String,
+            reason: String,
+            taskID: String?,
+            message: String,
+            detail: String
+        ) {
+            self.status = status
+            self.scope = scope
+            self.reason = reason
+            self.taskID = taskID
+            self.message = message
+            self.detail = detail
+        }
+    }
+
     enum ExecutionPhase: Int, CaseIterable, Sendable {
         case plan = 1
         case implement = 2

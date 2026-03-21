@@ -905,6 +905,40 @@
         ],
         "type": "object"
       },
+      "MachineResumeDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "scope",
+          "reason",
+          "message",
+          "detail"
+        ],
+        "type": "object"
+      },
       "Model": {
         "oneOf": [
           {
@@ -1805,6 +1839,16 @@
       "paths": {
         "$ref": "#/$defs/MachineQueuePaths"
       },
+      "resume_preview": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/MachineResumeDecision"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "safety": {
         "$ref": "#/$defs/MachineConfigSafetySummary"
       },
@@ -2593,6 +2637,7 @@
           "run_started",
           "queue_snapshot",
           "config_resolved",
+          "resume_decision",
           "task_selected",
           "phase_entered",
           "phase_completed",

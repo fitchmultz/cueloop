@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Provide public entrypoints (`run_one*`) used by the CLI and interactive flows.
 //! - Own lock-acquisition policy for run-one execution.
+//! - Define resume-resolution options for direct and loop-driven run-one calls.
 //!
 //! Not handled here:
 //! - Run loop orchestration (see `run_loop`).
@@ -37,6 +38,38 @@ pub enum QueueLockMode {
     AcquireAllowUpstream,
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RunOneResumeOptions {
+    pub auto_resume: bool,
+    pub non_interactive: bool,
+    pub resume_task_id: Option<String>,
+    pub detect_session: bool,
+}
+
+impl RunOneResumeOptions {
+    pub fn detect(auto_resume: bool, non_interactive: bool) -> Self {
+        Self {
+            auto_resume,
+            non_interactive,
+            resume_task_id: None,
+            detect_session: true,
+        }
+    }
+
+    pub fn resolved(resume_task_id: Option<String>) -> Self {
+        Self {
+            auto_resume: false,
+            non_interactive: false,
+            resume_task_id,
+            detect_session: false,
+        }
+    }
+
+    pub fn disabled() -> Self {
+        Self::default()
+    }
+}
+
 /// Outcome of a single task run.
 #[derive(Debug)]
 pub enum RunOutcome {
@@ -52,11 +85,13 @@ pub enum RunOutcome {
 }
 
 /// Run a specific task by ID.
+#[allow(clippy::too_many_arguments)]
 pub fn run_one_with_id(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
     force: bool,
     task_id: &str,
+    resume_options: RunOneResumeOptions,
     output_handler: Option<runner::OutputHandler>,
     run_event_handler: Option<RunEventHandler>,
     revert_prompt: Option<runutil::RevertPromptHandler>,
@@ -67,7 +102,7 @@ pub fn run_one_with_id(
         force,
         QueueLockMode::Acquire,
         Some(task_id),
-        None,
+        resume_options,
         output_handler,
         run_event_handler,
         revert_prompt,
@@ -90,7 +125,7 @@ pub fn run_one_parallel_worker(
         force,
         QueueLockMode::AcquireAllowUpstream,
         Some(task_id),
-        None,
+        RunOneResumeOptions::disabled(),
         None,
         None,
         None,
@@ -100,11 +135,13 @@ pub fn run_one_parallel_worker(
 }
 
 /// Run a specific task when the queue lock is already held by the caller.
+#[allow(clippy::too_many_arguments)]
 pub fn run_one_with_id_locked(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
     force: bool,
     task_id: &str,
+    resume_options: RunOneResumeOptions,
     output_handler: Option<runner::OutputHandler>,
     run_event_handler: Option<RunEventHandler>,
     revert_prompt: Option<runutil::RevertPromptHandler>,
@@ -115,7 +152,7 @@ pub fn run_one_with_id_locked(
         force,
         QueueLockMode::Held,
         Some(task_id),
-        None,
+        resume_options,
         output_handler,
         run_event_handler,
         revert_prompt,
@@ -129,7 +166,7 @@ pub fn run_one(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
     force: bool,
-    resume_task_id: Option<&str>,
+    resume_options: RunOneResumeOptions,
 ) -> Result<RunOutcome> {
     orchestration::run_one_impl(
         resolved,
@@ -137,7 +174,7 @@ pub fn run_one(
         force,
         QueueLockMode::Acquire,
         None,
-        resume_task_id,
+        resume_options,
         None,
         None,
         None,
@@ -150,6 +187,7 @@ pub fn run_one_with_handlers(
     resolved: &config::Resolved,
     agent_overrides: &AgentOverrides,
     force: bool,
+    resume_options: RunOneResumeOptions,
     output_handler: Option<runner::OutputHandler>,
     run_event_handler: Option<RunEventHandler>,
 ) -> Result<RunOutcome> {
@@ -159,7 +197,7 @@ pub fn run_one_with_handlers(
         force,
         QueueLockMode::Acquire,
         None,
-        None,
+        resume_options,
         output_handler,
         run_event_handler,
         None,

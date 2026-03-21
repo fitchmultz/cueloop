@@ -23,13 +23,13 @@ use super::{CliSpec, Config, GitPublishMode, GitRevertMode, QueueFile, RunnerApp
 
 pub const MACHINE_SYSTEM_INFO_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_READ_VERSION: u32 = 1;
-pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 2;
+pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 3;
 pub const MACHINE_TASK_CREATE_VERSION: u32 = 1;
 pub const MACHINE_TASK_MUTATION_VERSION: u32 = 1;
 pub const MACHINE_GRAPH_READ_VERSION: u32 = 1;
 pub const MACHINE_DASHBOARD_READ_VERSION: u32 = 1;
 pub const MACHINE_DECOMPOSE_VERSION: u32 = 1;
-pub const MACHINE_RUN_EVENT_VERSION: u32 = 1;
+pub const MACHINE_RUN_EVENT_VERSION: u32 = 2;
 pub const MACHINE_RUN_SUMMARY_VERSION: u32 = 1;
 pub const MACHINE_DOCTOR_REPORT_VERSION: u32 = 1;
 pub const MACHINE_PARALLEL_STATUS_VERSION: u32 = 1;
@@ -69,11 +69,25 @@ pub struct MachineQueueReadDocument {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct MachineResumeDecision {
+    pub status: String,
+    pub scope: String,
+    pub reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
+    pub message: String,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct MachineConfigResolveDocument {
     pub version: u32,
     pub paths: MachineQueuePaths,
     pub safety: MachineConfigSafetySummary,
     pub config: Config,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resume_preview: Option<MachineResumeDecision>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -177,6 +191,7 @@ pub enum MachineRunEventKind {
     RunStarted,
     QueueSnapshot,
     ConfigResolved,
+    ResumeDecision,
     TaskSelected,
     PhaseEntered,
     PhaseCompleted,

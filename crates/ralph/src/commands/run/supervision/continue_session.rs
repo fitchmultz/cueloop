@@ -3,7 +3,7 @@
 //! Responsibilities:
 //! - Define ContinueSession struct for resuming runner sessions.
 //! - Define CiContinueContext for CI gate resume callbacks.
-//! - Implement resume_continue_session to resume a runner with a message.
+//! - Implement resume_continue_session with explicit operator-facing resume decisions.
 //!
 //! Not handled here:
 //! - CI gate logic (see ci.rs).
@@ -57,6 +57,14 @@ pub(crate) struct CiContinueContext<'a> {
         &'a mut dyn FnMut(&crate::runner::RunnerOutput, std::time::Duration) -> Result<()>,
 }
 
+#[derive(Debug)]
+pub(crate) struct ContinuedRun {
+    pub output: crate::runner::RunnerOutput,
+    pub elapsed: std::time::Duration,
+    #[allow(dead_code)]
+    pub decision: crate::session::ResumeDecision,
+}
+
 fn phase_number(phase_type: PhaseType) -> u8 {
     match phase_type {
         PhaseType::Planning => 1,
@@ -104,17 +112,14 @@ fn run_fresh_continue(
 
 /// Resume a continue session with a message.
 ///
-/// Returns the runner output along with the wall-clock duration of the session.
-/// The duration is measured from the start of the function to when the runner
-/// output is received.
-///
+/// Returns the runner output, elapsed duration, and the explicit decision that was taken.
 /// Invokes post_run processor hooks after successful resume if plugins are provided.
 pub(crate) fn resume_continue_session(
     resolved: &crate::config::Resolved,
     session: &mut ContinueSession,
     message: &str,
     plugins: Option<&crate::plugins::registry::PluginRegistry>,
-) -> Result<(crate::runner::RunnerOutput, std::time::Duration)> {
+) -> Result<ContinuedRun> {
     let start = std::time::Instant::now();
     let bins = crate::runner::resolve_binaries(&resolved.config.agent);
     let mut fallback_session_id: Option<String> = None;
@@ -122,14 +127,12 @@ pub(crate) fn resume_continue_session(
 
     // Prefer same-session continuation. If session resumption is unavailable, fall back
     // to a fresh invocation with the same continue message.
-    let output = match session
+    let (output, decision) = match session
         .session_id
         .as_deref()
         .filter(|id| !id.trim().is_empty())
     {
         Some(session_id) => {
-            // Use the stored runner_cli and phase_type from the session to preserve
-            // CLI overrides and ensure phase-correct behavior for phase-aware runners.
             match crate::runner::resume_session(
                 session.runner.clone(),
                 &resolved.repo_root,
@@ -146,35 +149,76 @@ pub(crate) fn resume_continue_session(
                 session.phase_type,
                 plugins,
             ) {
-                Ok(output) => output,
+                Ok(output) => (
+                    output,
+                    crate::session::ResumeDecision {
+                        status: crate::session::ResumeStatus::ResumingSameSession,
+                        scope: crate::session::ResumeScope::ContinueSession,
+                        reason: crate::session::ResumeReason::SessionValid,
+                        task_id: Some(session.task_id.clone()),
+                        message: format!(
+                            "Resume: continuing the same runner session for task {}.",
+                            session.task_id
+                        ),
+                        detail: format!(
+                            "Runner {} accepted existing session identifier {}.",
+                            session.runner, session_id
+                        ),
+                    },
+                ),
                 Err(err) if should_fallback_to_fresh_continue(&session.runner, &err) => {
-                    log::warn!(
-                        "Continue session unavailable for runner {}; retrying as fresh invocation: {:#}",
-                        session.runner,
-                        err
-                    );
                     let (output, generated_id) =
                         run_fresh_continue(resolved, session, message, plugins)?;
                     used_fresh_fallback = true;
                     fallback_session_id = generated_id;
-                    output
+                    (
+                        output,
+                        crate::session::ResumeDecision {
+                            status: crate::session::ResumeStatus::FallingBackToFreshInvocation,
+                            scope: crate::session::ResumeScope::ContinueSession,
+                            reason: crate::session::ResumeReason::RunnerSessionInvalid,
+                            task_id: Some(session.task_id.clone()),
+                            message: format!(
+                                "Resume: runner session for task {} could not be reused; starting a fresh continuation.",
+                                session.task_id
+                            ),
+                            detail: format!("{}", err),
+                        },
+                    )
                 }
                 Err(err) => return Err(err.into()),
             }
         }
         None => {
-            log::warn!(
-                "Continue requested without session id for runner {}; starting a fresh invocation.",
-                session.runner
-            );
             let (output, generated_id) = run_fresh_continue(resolved, session, message, plugins)?;
             used_fresh_fallback = true;
             fallback_session_id = generated_id;
-            output
+            (
+                output,
+                crate::session::ResumeDecision {
+                    status: crate::session::ResumeStatus::FallingBackToFreshInvocation,
+                    scope: crate::session::ResumeScope::ContinueSession,
+                    reason: crate::session::ResumeReason::MissingRunnerSessionId,
+                    task_id: Some(session.task_id.clone()),
+                    message: format!(
+                        "Resume: no runner session id was available for task {}; starting a fresh continuation.",
+                        session.task_id
+                    ),
+                    detail: format!(
+                        "Runner {} had no resumable session identifier stored.",
+                        session.runner
+                    ),
+                },
+            )
         }
     };
 
     let elapsed = start.elapsed();
+    eprintln!("{}", decision.message);
+    if !decision.detail.trim().is_empty() {
+        eprintln!("  {}", decision.detail);
+    }
+
     if let Some(new_id) = output.session_id.as_ref() {
         session.session_id = Some(new_id.clone());
     } else if let Some(generated_id) = fallback_session_id {
@@ -197,5 +241,9 @@ pub(crate) fn resume_continue_session(
             .with_context(|| "processor post_run hook failed after resume")?;
     }
 
-    Ok((output, elapsed))
+    Ok(ContinuedRun {
+        output,
+        elapsed,
+        decision,
+    })
 }

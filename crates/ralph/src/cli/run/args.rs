@@ -61,6 +61,8 @@ pub struct ResumeArgs {
 pub struct RunOneArgs {
     #[arg(long)]
     pub debug: bool,
+    #[arg(long)]
+    pub resume: bool,
     #[arg(long, value_name = "TASK_ID")]
     pub id: Option<String>,
     #[arg(long)]
@@ -70,6 +72,7 @@ pub struct RunOneArgs {
     #[arg(
         long,
         hide = true,
+        conflicts_with = "resume",
         requires_all = ["id", "coordinator_queue_path", "coordinator_done_path", "parallel_target_branch"]
     )]
     pub parallel_worker: bool,

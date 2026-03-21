@@ -63,7 +63,7 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
               cat "\(queueReadURL.path)"
               exit 0
               ;;
-              *"--no-color machine run one --id RQ-4242"*)
+              *"--no-color machine run one --resume --id RQ-4242"*)
               echo '{"version":1,"kind":"run_started","task_id":"RQ-4242","phase":null,"message":null,"payload":null}'
               echo '{"version":1,"kind":"phase_entered","task_id":"RQ-4242","phase":"plan","message":null,"payload":null}'
               echo '{"version":1,"kind":"runner_output","task_id":"RQ-4242","phase":"plan","message":null,"payload":{"text":"planning started\\n"}}'
@@ -139,7 +139,7 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
               cat "\(configResolveURL.path)"
               exit 0
               ;;
-              *"--no-color machine run one --force --id RQ-5555"*)
+              *"--no-color machine run one --resume --force --id RQ-5555"*)
               echo '{"version":1,"kind":"run_started","task_id":"RQ-5555","phase":null,"message":null,"payload":null}'
               echo '{"version":1,"kind":"runner_output","task_id":"RQ-5555","phase":null,"message":null,"payload":{"text":"running explicit\\n"}}'
               echo '{"version":1,"task_id":"RQ-5555","exit_code":0,"outcome":"success"}'
@@ -173,6 +173,78 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
         XCTAssertEqual(workspace.lastExitStatus?.code, 0)
         XCTAssertEqual(workspace.executionHistory.first?.taskID, "RQ-5555")
         XCTAssertTrue(workspace.output.contains("running explicit"))
+    }
+
+    func test_loadRunnerConfiguration_appliesResumePreview() async throws {
+        var workspace: Workspace!
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-resume-preview",
+            scriptName: "mock-ralph-resume-preview"
+        )
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "model-test", iterations: 1),
+                resumePreview: MachineResumeDecision(
+                    status: "refusing_to_resume",
+                    scope: "run_session",
+                    reason: "session_timed_out_requires_confirmation",
+                    taskID: "RQ-9000",
+                    message: "Resume: refusing to continue timed-out session RQ-9000 without explicit confirmation.",
+                    detail: "The saved session is older than the configured safety threshold."
+                )
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
+
+        let script = """
+            #!/bin/sh
+            if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "config" ] && [ "$4" = "resolve" ]; then
+              cat "\(configResolveURL.path)"
+              exit 0
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = Workspace(workingDirectoryURL: fixture.workspaceURL, client: client)
+
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+
+        XCTAssertEqual(workspace.runState.resumeState?.status, .refusingToResume)
+        XCTAssertEqual(workspace.runState.resumeState?.taskID, "RQ-9000")
+        XCTAssertEqual(
+            workspace.runState.resumeState?.message,
+            "Resume: refusing to continue timed-out session RQ-9000 without explicit confirmation."
+        )
+    }
+
+    func test_runNextTask_appliesResumeDecisionEvent() {
+        let workspace = Workspace(
+            workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "resume-decision-event")
+        )
+        var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
+        let items = decoder.append(
+            "{\"version\":2,\"kind\":\"resume_decision\",\"task_id\":\"RQ-7777\",\"phase\":null,\"message\":\"Resume: continuing the interrupted session for task RQ-7777.\",\"payload\":{\"status\":\"resuming_same_session\",\"scope\":\"run_session\",\"reason\":\"session_valid\",\"task_id\":\"RQ-7777\",\"message\":\"Resume: continuing the interrupted session for task RQ-7777.\",\"detail\":\"Saved session is current and will resume from phase 2.\"}}\n"
+        )
+
+        guard case .event(let event) = items.first else {
+            return XCTFail("expected decoded run event")
+        }
+
+        workspace.runnerController.applyMachineRunOutputItem(.event(event), workspace: workspace)
+
+        XCTAssertEqual(workspace.runState.resumeState?.status, .resumingSameSession)
+        XCTAssertEqual(workspace.runState.resumeState?.taskID, "RQ-7777")
+        XCTAssertTrue(workspace.output.contains("Resume: continuing the interrupted session for task RQ-7777."))
     }
 
     func test_runControlPreviewTask_prefersSelectedTodoTask() {
@@ -316,14 +388,14 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
               fi
               exit 0
               ;;
-              *"--no-color machine run one --id RQ-LOOP-1"*)
+              *"--no-color machine run one --resume --id RQ-LOOP-1"*)
               echo '{"version":1,"kind":"run_started","task_id":"RQ-LOOP-1","phase":null,"message":null,"payload":null}'
               echo '{"version":1,"kind":"runner_output","task_id":"RQ-LOOP-1","phase":null,"message":null,"payload":{"text":"running first\\n"}}'
               echo '{"version":1,"task_id":"RQ-LOOP-1","exit_code":0,"outcome":"success"}'
               echo "done" > "$state_file"
               exit 0
               ;;
-              *"--no-color machine run one --id RQ-LOOP-2"*)
+              *"--no-color machine run one --resume --id RQ-LOOP-2"*)
               echo '{"version":1,"kind":"run_started","task_id":"RQ-LOOP-2","phase":null,"message":null,"payload":null}'
               echo '{"version":1,"kind":"runner_output","task_id":"RQ-LOOP-2","phase":null,"message":null,"payload":{"text":"running second\\n"}}'
               echo '{"version":1,"task_id":"RQ-LOOP-2","exit_code":64,"outcome":"failure"}'

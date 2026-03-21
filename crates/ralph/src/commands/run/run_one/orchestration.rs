@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Implement `run_one_impl`: coordinate context preparation, task selection,
-//!   execution setup, phase execution, and completion handling.
+//!   execution setup, explicit resume-state narration, phase execution, and completion handling.
 //! - Define shared types used by run-one submodules.
 //!
 //! Not handled here:
@@ -17,18 +17,21 @@
 //!
 //! Invariants/assumptions:
 //! - Callers pass the correct `QueueLockMode` for their context.
-//! - Selection and resume behavior must remain behavior-identical.
+//! - Resume decisions are emitted before task selection so operators can see why Ralph chose a path.
 
 use crate::agent::AgentOverrides;
+use crate::commands::run::run_one::RunOneResumeOptions;
+use crate::commands::run::{
+    RunOutcome, context::task_context_for_prompt, emit_resume_decision, phases::PostRunMode,
+};
 use crate::config;
 use crate::contracts::Task;
 use crate::prompts;
-use anyhow::Result;
-
-use crate::commands::run::{RunOutcome, context::task_context_for_prompt, phases::PostRunMode};
 use crate::runner::OutputHandler;
 use crate::runutil::RevertPromptHandler;
+use crate::session::{ResumeBehavior, ResumeDecisionMode, ResumeStatus};
 use crate::{commands::run::RunEvent, commands::run::RunEventHandler};
+use anyhow::{Result, bail};
 
 // Import from sibling modules
 use super::{
@@ -104,7 +107,7 @@ pub fn run_one_impl(
     force: bool,
     lock_mode: super::QueueLockMode,
     target_task_id: Option<&str>,
-    resume_task_id: Option<&str>,
+    resume_options: RunOneResumeOptions,
     output_handler: Option<OutputHandler>,
     run_event_handler: Option<RunEventHandler>,
     revert_prompt: Option<RevertPromptHandler>,
@@ -119,15 +122,46 @@ pub fn run_one_impl(
         parallel_target_branch,
     )?;
 
+    let resolved_resume_task_id = if resume_options.detect_session {
+        let resolution = crate::session::resolve_run_session_decision(
+            &resolved.repo_root.join(".ralph/cache"),
+            &ctx.queue_file,
+            crate::session::RunSessionDecisionOptions {
+                timeout_hours: resolved.config.agent.session_timeout_hours,
+                behavior: if resume_options.auto_resume {
+                    ResumeBehavior::AutoResume
+                } else {
+                    ResumeBehavior::Prompt
+                },
+                non_interactive: resume_options.non_interactive,
+                explicit_task_id: target_task_id,
+                announce_missing_session: resume_options.auto_resume,
+                mode: ResumeDecisionMode::Execute,
+            },
+        )?;
+
+        if let Some(decision) = resolution.decision.as_ref() {
+            emit_resume_decision(decision, run_event_handler.as_ref());
+            if matches!(decision.status, ResumeStatus::RefusingToResume) {
+                bail!("{}", decision.message);
+            }
+        }
+
+        resolution.resume_task_id
+    } else {
+        resume_options.resume_task_id.clone()
+    };
+
     // 2. Select task
     let include_draft = agent_overrides.include_draft.unwrap_or(false);
     let selection = select_task_for_run(
         &ctx.queue_file,
         Some(&ctx.done),
         target_task_id,
-        resume_task_id,
+        resolved_resume_task_id.as_deref(),
         &resolved.repo_root,
         include_draft,
+        run_event_handler.as_ref(),
     )?;
 
     let task = match selection {

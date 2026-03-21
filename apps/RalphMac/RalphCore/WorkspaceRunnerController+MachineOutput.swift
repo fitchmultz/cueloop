@@ -29,6 +29,7 @@ extension WorkspaceRunnerController {
                 workspace.runState.currentTaskID = event.taskID ?? workspace.runState.currentTaskID
                 if let document = event.payload?.decode(MachineConfigResolveDocument.self, for: "config") {
                     workspace.updateResolvedPaths(document.paths)
+                    workspace.runState.resumeState = document.resumePreview?.asWorkspaceResumeState()
                 }
             case .taskSelected:
                 workspace.runState.currentTaskID = event.taskID ?? workspace.runState.currentTaskID
@@ -37,6 +38,13 @@ extension WorkspaceRunnerController {
             case .phaseCompleted:
                 if workspace.runState.currentPhase == Workspace.ExecutionPhase(machineValue: event.phase) {
                     workspace.runState.currentPhase = nil
+                }
+            case .resumeDecision:
+                if let decision = decodeResumeDecision(from: event.payload) {
+                    workspace.runState.resumeState = decision.asWorkspaceResumeState()
+                    appendResumeDecision(decision, workspace: workspace)
+                } else if let message = event.message, !message.isEmpty {
+                    appendConsoleText("\(message)\n", workspace: workspace)
                 }
             case .runnerOutput:
                 if let text = event.payload?.string(for: "text") {
@@ -49,6 +57,7 @@ extension WorkspaceRunnerController {
             case .configResolved:
                 if let document = event.payload?.decode(MachineConfigResolveDocument.self, for: "config") {
                     workspace.updateResolvedPaths(document.paths)
+                    workspace.runState.resumeState = document.resumePreview?.asWorkspaceResumeState()
                 }
             case .warning:
                 if let message = event.message, !message.isEmpty {
@@ -65,6 +74,22 @@ extension WorkspaceRunnerController {
             appendConsoleText(text, workspace: workspace)
         }
     }
+
+    private func decodeResumeDecision(from payload: RalphJSONValue?) -> MachineResumeDecision? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let payload else { return nil }
+        guard let data = try? JSONEncoder().encode(payload) else { return nil }
+        return try? decoder.decode(MachineResumeDecision.self, from: data)
+    }
+
+    private func appendResumeDecision(_ decision: MachineResumeDecision, workspace: Workspace) {
+        var lines = [decision.message]
+        if !decision.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("  \(decision.detail)")
+        }
+        appendConsoleText(lines.joined(separator: "\n") + "\n", workspace: workspace)
+    }
 }
 
 extension WorkspaceRunnerController {
@@ -80,6 +105,7 @@ extension WorkspaceRunnerController {
             case runStarted = "run_started"
             case queueSnapshot = "queue_snapshot"
             case configResolved = "config_resolved"
+            case resumeDecision = "resume_decision"
             case taskSelected = "task_selected"
             case phaseEntered = "phase_entered"
             case phaseCompleted = "phase_completed"

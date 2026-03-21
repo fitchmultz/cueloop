@@ -25,7 +25,7 @@ use super::wait::{WaitExit, WaitMode, wait_for_work};
 use crate::commands::run::queue_lock::{
     clear_stale_queue_lock_for_resume, is_queue_lock_already_held_error,
 };
-use crate::commands::run::run_one::{RunOutcome, run_one};
+use crate::commands::run::run_one::{RunOneResumeOptions, RunOutcome, run_one};
 
 pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()> {
     if let Some(result) = maybe_run_parallel(resolved, &opts)? {
@@ -117,6 +117,7 @@ fn run_loop_state_machine(
     resume_task_id: Option<&str>,
     lifecycle: &mut LoopLifecycle,
 ) -> Result<()> {
+    let mut pending_resume_task_id = resume_task_id.map(str::to_string);
     loop {
         if lifecycle.max_tasks_reached(opts) {
             log::info!(
@@ -132,7 +133,12 @@ fn run_loop_state_machine(
             return Ok(());
         }
 
-        match run_one(resolved, &opts.agent_overrides, opts.force, resume_task_id) {
+        match run_one(
+            resolved,
+            &opts.agent_overrides,
+            opts.force,
+            RunOneResumeOptions::resolved(pending_resume_task_id.take()),
+        ) {
             Ok(RunOutcome::NoCandidates) => {
                 if !opts.wait_when_empty {
                     log::info!("RunLoop: end (no more todo tasks remaining)");

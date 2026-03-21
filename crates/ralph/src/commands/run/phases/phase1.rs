@@ -142,12 +142,13 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
                     )?;
                     match outcome {
                         runutil::RevertOutcome::Continue { message } => {
-                            let (_output, elapsed) = supervision::resume_continue_session(
+                            let resumed = supervision::resume_continue_session(
                                 ctx.resolved,
                                 &mut continue_session,
                                 &message,
                                 ctx.plugins,
                             )?;
+                            let elapsed = resumed.elapsed;
                             // Record resume duration for Phase 1
                             if let Some(timings) = ctx.execution_timings {
                                 timings.borrow_mut().record_runner_duration(

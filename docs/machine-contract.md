@@ -11,6 +11,7 @@ This surface exists for the macOS app and any other automation that needs stable
 - Human CLI output and flags may change without preserving app compatibility.
 - Machine run streams emit NDJSON on stdout.
 - Machine run terminal summaries are single-line JSON documents so stream consumers can parse them deterministically.
+- Machine clients should consume structured resume payloads instead of scraping prose from stderr/stdout.
 
 ## Current Machine Areas
 
@@ -29,6 +30,44 @@ This surface exists for the macOS app and any other automation that needs stable
 - `ralph machine doctor report`
 - `ralph machine cli-spec`
 - `ralph machine schema`
+
+## Important versioned documents
+
+### `machine config resolve` (`version: 3`)
+
+Includes:
+- resolved queue/config paths
+- safety summary
+- resolved config
+- optional `resume_preview`
+
+`resume_preview` is the app/automation preflight signal for whether the next run would:
+- resume the same session
+- fall back to a fresh invocation
+- refuse to resume
+
+### `machine run` events (`version: 2`)
+
+The NDJSON stream can emit `kind: "resume_decision"` events with a structured payload:
+
+```json
+{
+  "version": 2,
+  "kind": "resume_decision",
+  "task_id": "RQ-0001",
+  "message": "Resume: continuing the interrupted session for task RQ-0001.",
+  "payload": {
+    "status": "resuming_same_session",
+    "scope": "run_session",
+    "reason": "session_valid",
+    "task_id": "RQ-0001",
+    "message": "Resume: continuing the interrupted session for task RQ-0001.",
+    "detail": "Saved session is current and will resume from phase 2 with 1 completed loop task(s)."
+  }
+}
+```
+
+That payload is the source of truth for live resume-state UI.
 
 ## Schemas
 
@@ -51,5 +90,6 @@ The macOS app should consume only machine surfaces for:
 - diagnostics consumed by the app
 - run status and event streaming
 - CLI spec loading
+- resume preview / resume decision state
 
 It should not infer app state from human CLI text, hidden commands, or direct queue-file decoding.

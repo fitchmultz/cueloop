@@ -100,6 +100,7 @@ pub fn serve(resolved: &Resolved, args: DaemonServeArgs) -> Result<()> {
             notify_when_unblocked: args.notify_when_unblocked,
             wait_when_empty: true,
             empty_poll_ms: args.empty_poll_ms,
+            run_event_handler: None,
         },
     );
 

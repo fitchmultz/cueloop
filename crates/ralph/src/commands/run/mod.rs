@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Define the public `commands::run` API used by CLI and UI clients.
 //! - Re-export stable types used across the crate (e.g., `PhaseType`).
+//! - Centralize shared operator-facing run-event types.
 //!
 //! Not handled here:
 //! - Actual run loop implementation (see `run_loop`).
@@ -13,7 +14,7 @@
 //!
 //! Invariants/assumptions:
 //! - Public entrypoint signatures must remain stable for CLI and interactive flows.
-//! - All orchestration logic lives in submodules; this file is a thin facade.
+//! - All orchestration logic lives in submodules; this file is a thin facade plus shared event helpers.
 
 mod context;
 mod dry_run;
@@ -52,8 +53,8 @@ pub use run_loop::{RunLoopOptions, run_loop};
 
 // Re-export run-one entrypoints
 pub use run_one::{
-    RunOutcome, run_one, run_one_parallel_worker, run_one_with_handlers, run_one_with_id,
-    run_one_with_id_locked,
+    RunOneResumeOptions, RunOutcome, run_one, run_one_parallel_worker, run_one_with_handlers,
+    run_one_with_id, run_one_with_id_locked,
 };
 
 // Re-export dry-run functions
@@ -64,12 +65,39 @@ pub use parallel_ops::{parallel_retry, parallel_status};
 
 #[derive(Debug, Clone)]
 pub enum RunEvent {
-    TaskSelected { task_id: String, title: String },
-    PhaseEntered { phase: ExecutionPhase },
-    PhaseCompleted { phase: ExecutionPhase },
+    ResumeDecision {
+        decision: crate::session::ResumeDecision,
+    },
+    TaskSelected {
+        task_id: String,
+        title: String,
+    },
+    PhaseEntered {
+        phase: ExecutionPhase,
+    },
+    PhaseCompleted {
+        phase: ExecutionPhase,
+    },
 }
 
 pub type RunEventHandler = Arc<Box<dyn Fn(RunEvent) + Send + Sync>>;
+
+pub(crate) fn emit_resume_decision(
+    decision: &crate::session::ResumeDecision,
+    handler: Option<&RunEventHandler>,
+) {
+    if let Some(handler) = handler {
+        handler(RunEvent::ResumeDecision {
+            decision: decision.clone(),
+        });
+        return;
+    }
+
+    eprintln!("{}", decision.message);
+    if !decision.detail.trim().is_empty() {
+        eprintln!("  {}", decision.detail);
+    }
+}
 
 #[cfg(test)]
 fn resolve_run_agent_settings(

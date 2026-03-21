@@ -4,6 +4,7 @@
  Responsibilities:
  - Render runner-configuration and execution-control cards for Run Control.
  - Keep execution actions and status presentation out of progress/history/safety sections.
+ - Surface resume-state decisions from machine config preview and live run events.
 
  Does not handle:
  - Task-summary cards.
@@ -51,6 +52,10 @@ struct RunControlExecutionControlsSection: View {
     var body: some View {
         RunControlGlassSection("Controls") {
             VStack(spacing: 12) {
+                if let resumeState = workspace.runState.resumeState {
+                    resumeStateView(resumeState)
+                }
+
                 let previewTask = workspace.runControlPreviewTask
                 let hasSelectedTask = workspace.selectedRunControlTask != nil
 
@@ -126,6 +131,58 @@ struct RunControlExecutionControlsSection: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func resumeStateView(_ state: Workspace.ResumeState) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: resumeIcon(for: state.status))
+                .foregroundStyle(resumeColor(for: state.status))
+                .font(.headline)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(state.message)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Text(state.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(resumeColor(for: state.status).opacity(0.09))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(resumeColor(for: state.status).opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private func resumeIcon(for status: Workspace.ResumeState.Status) -> String {
+        switch status {
+        case .resumingSameSession:
+            return "arrow.clockwise.circle.fill"
+        case .fallingBackToFreshInvocation:
+            return "arrow.trianglehead.clockwise"
+        case .refusingToResume:
+            return "exclamationmark.octagon.fill"
+        }
+    }
+
+    private func resumeColor(for status: Workspace.ResumeState.Status) -> Color {
+        switch status {
+        case .resumingSameSession:
+            return .blue
+        case .fallingBackToFreshInvocation:
+            return .orange
+        case .refusingToResume:
+            return .red
         }
     }
 }

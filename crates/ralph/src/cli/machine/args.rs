@@ -147,6 +147,8 @@ pub struct MachineRunOneArgs {
     pub id: Option<String>,
     #[arg(long)]
     pub force: bool,
+    #[arg(long)]
+    pub resume: bool,
     #[command(flatten)]
     pub agent: agent::RunAgentArgs,
 }
@@ -157,6 +159,8 @@ pub struct MachineRunLoopArgs {
     pub max_tasks: u32,
     #[arg(long)]
     pub force: bool,
+    #[arg(long)]
+    pub resume: bool,
     #[command(flatten)]
     pub agent: agent::RunAgentArgs,
 }

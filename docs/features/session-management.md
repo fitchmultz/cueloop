@@ -1,6 +1,6 @@
 # Session Management
 
-Ralph's session management system provides **crash recovery** and **resume capability** for long-running agent tasks. When a task is interrupted—whether by system crash, network failure, or manual termination—session state is persisted to enable seamless resumption without losing progress.
+Ralph's session management system provides crash recovery, explicit resume decisions, and runner-level continue support for long-running agent work.
 
 ---
 
@@ -8,34 +8,50 @@ Ralph's session management system provides **crash recovery** and **resume capab
 
 ### Purpose
 
-Session management serves two primary purposes:
+Session management serves two related purposes:
 
-1. **Crash Recovery**: Automatically detect and resume interrupted tasks after unexpected failures
-2. **CI Gate Retry**: Continue a runner session when CI failures require additional iterations
+1. **Run-session recovery**: detect interrupted `run one` / `run loop` work and decide whether to resume, start fresh, or refuse to guess.
+2. **Continue-session recovery**: keep runner sessions alive across CI-fix / revert-and-continue loops when the underlying runner supports reuse.
 
-### Key Features
+### Operator-visible decision model
+
+Ralph now narrates resume behavior with one of three states:
+
+| State | Meaning |
+|-------|---------|
+| `resuming_same_session` | Ralph is continuing the interrupted run or runner session. |
+| `falling_back_to_fresh_invocation` | Ralph decided the saved state should not be reused and is starting fresh. |
+| `refusing_to_resume` | Ralph cannot safely choose resume vs fresh without operator confirmation. |
+
+Those decisions appear across:
+- `ralph run one`
+- `ralph run loop`
+- `ralph run resume`
+- `ralph machine config resolve`
+- `ralph machine run ...` event streams
+- RalphMac Run Control
+
+### Key features
 
 | Feature | Description |
 |---------|-------------|
-| **Automatic Recovery** | Detect incomplete sessions on startup and offer to resume |
-| **Per-Phase Isolation** | Each phase gets its own session ID to prevent context leakage |
-| **Configurable Timeout** | Sessions older than `session_timeout_hours` require explicit confirmation |
-| **Runner Integration** | Native session support for Kimi via explicit `--session` flags |
-| **Atomic Persistence** | Session state is written atomically to prevent corruption |
+| **Explicit recovery narration** | Ralph says whether it is resuming, starting fresh, or refusing. |
+| **Configurable timeout** | Sessions older than `session_timeout_hours` require explicit confirmation. |
+| **Read-only previews** | Machine/app config preview can show resume state without mutating cache. |
+| **Per-phase runner isolation** | Continue sessions stay phase-scoped, including deterministic Kimi session IDs. |
+| **Atomic persistence** | Session state is written atomically to prevent corruption. |
 
 ---
 
 ## Session State File
 
-### Location
-
 Session state is persisted to:
 
-```
-.ralph/cache/session.json
+```text
+.ralph/cache/session.jsonc
 ```
 
-This file is created when a task starts and cleared when it completes successfully or is explicitly rejected.
+This file is created when a task starts and is normally cleared when the run completes successfully or when Ralph explicitly abandons an invalid saved session during execution.
 
 ### Structure
 
@@ -61,7 +77,7 @@ This file is created when a task starts and cleared when it completes successful
   },
   "phase2_settings": {
     "runner": "codex",
-    "model": "o3-mini",
+    "model": "gpt-5.4",
     "reasoning_effort": "high"
   },
   "phase3_settings": {
@@ -72,364 +88,144 @@ This file is created when a task starts and cleared when it completes successful
 }
 ```
 
-### Field Descriptions
+### Field notes
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `version` | `u32` | Schema version for forward compatibility |
-| `session_id` | `string` | Unique UUID v4 for this run session |
-| `task_id` | `string` | The task being executed (e.g., `RQ-0001`) |
-| `run_started_at` | `string` | When the session began (RFC3339 UTC) |
-| `last_updated_at` | `string` | When the session was last updated (RFC3339 UTC) |
-| `iterations_planned` | `u8` | Total iterations configured for the task |
-| `iterations_completed` | `u8` | Iterations finished so far |
-| `current_phase` | `u8` | Active phase (1, 2, or 3) |
-| `runner` | `string` | Primary runner for this session |
-| `model` | `string` | Primary model for this session |
-| `tasks_completed_in_loop` | `u32` | Tasks finished in current loop session |
-| `max_tasks` | `u32` | Maximum tasks to run (0 = unlimited) |
-| `git_head_commit` | `string?` | Git HEAD at session start (for validation) |
-| `phase1_settings` | `object?` | Phase 1 runner/model (display/logging only) |
-| `phase2_settings` | `object?` | Phase 2 runner/model (display/logging only) |
-| `phase3_settings` | `object?` | Phase 3 runner/model (display/logging only) |
-
-> **Note**: Per-phase settings are **informational only**. Crash recovery recomputes settings from CLI flags, config, and task overrides to ensure consistency.
+- `task_id`, `current_phase`, and `tasks_completed_in_loop` drive crash-recovery routing.
+- `phase*_settings` are display-only; Ralph recomputes effective settings from config + task + CLI overrides.
+- `git_head_commit` is advisory context, not a hard resume gate.
 
 ---
 
-## Session ID Format
+## Run-session recovery flow
 
-### Run Session ID
+### Validation outcomes
 
-The main session state uses a UUID v4 for uniqueness:
+When Ralph starts a run, it classifies saved session state into one of these buckets:
 
+| Validation result | Meaning |
+|------------------|---------|
+| `NoSession` | No interrupted run exists. |
+| `Valid(session)` | Session still targets a live runnable task. |
+| `Stale` | Task disappeared or entered a terminal / incompatible state. |
+| `Timeout` | Session is older than the configured safety threshold. |
+
+### Decision rules
+
+#### `ralph run resume`
+- Behaves like `run loop --resume`.
+- Valid sessions resume immediately.
+- Timed-out sessions still require confirmation.
+- If no saved session exists, Ralph explicitly says it is starting fresh.
+
+#### `ralph run one`
+- Always inspects interrupted-session state first.
+- `--resume` auto-resumes when safe.
+- Without `--resume`, Ralph prompts when confirmation is required and available.
+- If you explicitly pass `--id <TASK_ID>`, that selection overrides an unrelated interrupted session and Ralph says so.
+
+#### `ralph run loop`
+- Supports the same session decision model as `run one`.
+- A resumed task is used only for the first loop iteration, then normal queue selection resumes.
+
+### Timeout behavior
+
+Sessions older than `session_timeout_hours` are not auto-resumed just because `--resume` is present.
+Timed-out sessions require an explicit operator confirmation unless Ralph is in a non-interactive context, in which case it refuses instead of guessing.
+
+### Non-interactive behavior
+
+If a saved session requires a decision and Ralph cannot ask safely:
+
+| Situation | Result |
+|----------|--------|
+| Valid session + no `--resume` | `refusing_to_resume` |
+| Timed-out session | `refusing_to_resume` |
+| No saved session | start fresh |
+| Stale session | start fresh |
+
+This prevents headless automation from silently discarding or duplicating interrupted work.
+
+---
+
+## Machine + app surfaces
+
+### Config preview
+
+`ralph machine config resolve` now includes an optional `resume_preview` payload:
+
+```json
+{
+  "version": 3,
+  "paths": { "repo_root": "/repo", "queue_path": "/repo/.ralph/queue.jsonc", "done_path": "/repo/.ralph/done.jsonc" },
+  "safety": { "repo_trusted": true, "dirty_repo": false, "git_publish_mode": "off", "ci_gate_enabled": true, "git_revert_mode": "ask", "parallel_configured": false, "execution_interactivity": "noninteractive_streaming", "interactive_approval_supported": false },
+  "config": { "agent": { "model": "gpt-5.4" } },
+  "resume_preview": {
+    "status": "refusing_to_resume",
+    "scope": "run_session",
+    "reason": "session_timed_out_requires_confirmation",
+    "task_id": "RQ-0001",
+    "message": "Resume: refusing to continue timed-out session RQ-0001 without explicit confirmation.",
+    "detail": "The saved session is 48 hour(s) old, exceeding the configured 24-hour safety threshold."
+  }
+}
 ```
-550e8400-e29b-41d4-a716-446655440000
+
+This preview is **read-only**: it must not clear or rewrite saved session state.
+
+### Machine run events
+
+`ralph machine run ...` streams can emit:
+
+```json
+{"version":2,"kind":"resume_decision","task_id":"RQ-0001","message":"Resume: continuing the interrupted session for task RQ-0001.","payload":{"status":"resuming_same_session","scope":"run_session","reason":"session_valid","task_id":"RQ-0001","message":"Resume: continuing the interrupted session for task RQ-0001.","detail":"Saved session is current and will resume from phase 2 with 1 completed loop task(s)."}}
 ```
 
-### Runner Session ID (Per-Phase)
+RalphMac consumes both `resume_preview` and `resume_decision` so Run Control can show the expected action before the run starts and the actual action once the run begins.
 
-For runners that support session resumption (notably **Kimi**), Ralph generates deterministic session IDs:
+---
 
-**Format:**
-```
+## Continue-session recovery
+
+Run-session recovery decides whether Ralph resumes a task. Continue-session recovery decides whether Ralph can reuse the **runner's** own session during CI-fix / supervision loops.
+
+### Continue behavior
+
+- Ralph prefers same-session reuse when a runner session identifier exists.
+- If the session identifier is missing or known-invalid, Ralph says it is falling back to a fresh invocation.
+- Unknown resume failures still hard-fail.
+
+### Known safe fallback cases
+
+| Runner | Safe fresh fallback cases |
+|--------|---------------------------|
+| Pi | missing session file / lookup failures |
+| Gemini | invalid session identifier resume failures |
+| Claude | invalid `--resume` / invalid UUID failures |
+| OpenCode | session validation failures, including semantic zero-exit failures |
+
+---
+
+## Kimi per-phase session IDs
+
+For runners that support explicit session IDs (notably **Kimi**), Ralph uses deterministic per-phase identifiers:
+
+```text
 {task_id}-p{phase}-{timestamp}
 ```
 
-**Example:**
-```
+Example:
+
+```text
 RQ-0001-p2-1704153600
 ```
 
-| Component | Description |
-|-----------|-------------|
-| `task_id` | Task identifier (e.g., `RQ-0001`) |
-| `p{phase}` | Phase number (`p1`, `p2`, `p3`) |
-| `timestamp` | Unix epoch seconds at phase start |
-
-> **Design Note**: The timestamp ensures uniqueness even if the same task is run multiple times, while the human-readable prefix makes debugging easier.
+This keeps planning / implementation / review recovery isolated from each other.
 
 ---
 
-## Per-Phase Sessions
+## Configuration
 
-### Why Each Phase Gets Its Own Session
-
-Ralph generates a new session ID for each phase to ensure **context isolation**:
-
-| Phase | Purpose | Session Isolation Benefit |
-|-------|---------|---------------------------|
-| **Phase 1** | Planning | Prevents implementation details from polluting plan context |
-| **Phase 2** | Implementation | Fresh context for code changes, CI feedback loop |
-| **Phase 3** | Review | Clean slate for objective code review |
-
-### Benefits
-
-1. **Deterministic**: Same ID always resumes the same session
-2. **Reliable**: No dependency on parsing JSON output or runner-specific `last_session_id` tracking
-3. **Debuggable**: Human-readable IDs make it easy to trace session lifecycle
-4. **Isolated**: Context from one phase cannot leak into another
-
-### Example Session IDs for a Task
-
-```
-# Phase 1 (Planning)
-RQ-0001-p1-1704153600
-
-# Phase 2 (Implementation)  
-RQ-0001-p2-1704157200
-
-# Phase 3 (Review)
-RQ-0001-p3-1704160800
-```
-
----
-
-## Crash Recovery Flow
-
-### 1. Session Detection
-
-When Ralph starts (`ralph run loop` or `ralph run one`), it checks for an existing session:
-
-```rust
-match session::check_session(&cache_dir, &queue_file, session_timeout_hours)? {
-    SessionValidationResult::NoSession => // Start fresh
-    SessionValidationResult::Valid(session) => // Offer to resume
-    SessionValidationResult::Stale { reason } => // Clear and start fresh
-    SessionValidationResult::Timeout { hours, session } => // Warn and prompt
-}
-```
-
-### 2. Validation Checks
-
-Before offering to resume, Ralph validates the session:
-
-| Check | Failure Result |
-|-------|----------------|
-| Task exists in queue | `Stale` - Task no longer exists |
-| Task status is `Doing` | `Stale` - Task not in progress |
-| Session age < timeout | `Timeout` - Session too old |
-
-### 3. Recovery Prompt
-
-For valid sessions, Ralph displays:
-
-```
-╔══════════════════════════════════════════════════════════════╗
-║  Incomplete session detected                                 ║
-╠══════════════════════════════════════════════════════════════╣
-║  Task:        RQ-0001                                        ║
-║  Started:     2026-02-07T10:00:00.000000000Z                ║
-║  Iterations:  1/2                                            ║
-║  Phase:       2                                              ║
-╠══════════════════════════════════════════════════════════════╣
-║  Phase Settings:                                             ║
-║    Phase 1:   Claude/sonnet                                  ║
-║    Phase 2:   Codex/gpt-5.3-codex, effort=High               ║
-║    Phase 3:   Claude/sonnet                                  ║
-╚══════════════════════════════════════════════════════════════╝
-
-Resume this session? [Y/n]:
-```
-
-### 4. Resume Execution
-
-If confirmed:
-
-1. **Lock Handling**: Clear any stale queue lock from previous crash
-2. **Task Restoration**: Resume from saved `task_id` and `current_phase`
-3. **Progress Continuation**: Maintain `tasks_completed_in_loop` counter
-4. **Runner Resumption**: Use saved session ID for runner continue operations
-
----
-
-## Session Timeout
-
-### Default Behavior
-
-Sessions older than **24 hours** are considered stale by default and require explicit confirmation to resume.
-
-### Configuration
-
-Configure the timeout in `.ralph/config.jsonc`:
-
-```json
-{
-  "agent": {
-    "session_timeout_hours": 72
-  }
-}
-```
-
-Or use the default (24 hours) by omitting the field or setting to `null`.
-
-### Timeout Warning
-
-When a session exceeds the timeout threshold:
-
-```
-╔══════════════════════════════════════════════════════════════╗
-║  STALE session detected (48 hours old)                       ║
-╠══════════════════════════════════════════════════════════════╣
-║  Task:        RQ-0001                                        ║
-║  Started:     2026-02-05T10:00:00.000000000Z                ║
-║  Last update: 2026-02-05T10:30:00.000000000Z                ║
-║  Iterations:  1/2                                            ║
-╚══════════════════════════════════════════════════════════════╝
-
-Warning: This session is older than 24 hours.
-Resume anyway? [y/N]:
-```
-
-> **Safety Note**: The default `N` (no) protects against accidentally resuming very old sessions where repository state may have changed significantly.
-
-### Disabling Timeout
-
-To disable timeout checking (not recommended for production):
-
-```json
-{
-  "agent": {
-    "session_timeout_hours": null
-  }
-}
-```
-
----
-
-## Resume Behavior
-
-### Automatic Resume
-
-Use the `--resume` flag to auto-resume without prompting:
-
-```bash
-# Auto-resume interrupted session
-ralph run loop --resume
-
-# Resume and target a specific task
-ralph run one --id RQ-0001 --resume
-```
-
-When `--resume` is specified:
-- Valid sessions are resumed immediately
-- Stale/timeout sessions are still cleared (safety measure)
-
-### Manual Resume
-
-Without `--resume`, Ralph prompts interactively:
-
-| Session State | Behavior |
-|---------------|----------|
-| **Valid** | Prompt: "Resume this session? [Y/n]" |
-| **Stale** | Log info and clear session; start fresh |
-| **Timeout** | Prompt: "Resume anyway? [y/N]" |
-
-### Lock Handling During Resume
-
-When resuming a session, Ralph preemptively clears stale queue locks:
-
-```rust
-if resume_task_id.is_some() {
-    clear_stale_queue_lock_for_resume(&resolved.repo_root)?;
-}
-```
-
-This handles cases where a previous Ralph process crashed and left behind a lock file.
-
----
-
-## Non-Interactive Mode
-
-### Behavior
-
-In CI environments or when `--non-interactive` is specified:
-
-| Session State | Result |
-|---------------|--------|
-| **Valid** | Returns `false` (do not resume) - safe default |
-| **Timeout** | Returns `false` (do not resume) - safe default |
-
-This prevents CI jobs from hanging on interactive prompts.
-
-### Recommended CI Patterns
-
-```bash
-# Option 1: Don't resume in CI (safest)
-ralph run loop --non-interactive
-
-# Option 2: Auto-resume with explicit flag
-ralph run loop --non-interactive --resume
-
-# Option 3: Force fresh start
-ralph run loop --non-interactive --force
-```
-
-### Scripting
-
-For scripts that need to handle sessions:
-
-```bash
-# Check for existing session without prompting
-if ralph run loop --non-interactive 2>&1 | grep -q "Incomplete session"; then
-    echo "Previous session detected - handling manually"
-    # Custom logic here
-fi
-```
-
----
-
-## Runner-Specific Handling
-
-### Kimi Session Support
-
-Ralph provides first-class session support for **Kimi** via explicit `--session` flags:
-
-**Initial Invocation:**
-```bash
-kimi --print --output-format stream-json --model kimi-for-coding \
-  --session RQ-0001-p2-1704153600 \
-  --prompt "Implement the plan..."
-```
-
-**Continue (CI Failure Retry):**
-```bash
-kimi --print --output-format stream-json --model kimi-for-coding \
-  --session RQ-0001-p2-1704153600 \
-  --prompt "Fix the CI errors..."
-```
-
-### Runner Support Matrix
-
-| Runner | Session Support | Mechanism |
-|--------|----------------|-----------|
-| **Kimi** | ✅ Full | `--session {id}` flag |
-| **Claude** | ❌ None | N/A |
-| **Codex** | ❌ None | N/A |
-| **OpenCode** | ❌ None | N/A |
-| **Gemini** | ❌ None | N/A |
-| **Cursor** | ❌ None | N/A |
-
-### Implementation Details
-
-Kimi session IDs are generated in `crates/ralph/src/commands/run/phases/mod.rs`:
-
-```rust
-pub(crate) fn generate_phase_session_id(task_id: &str, phase: u8) -> String {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    format!("{}-p{}-{}", task_id, phase, timestamp)
-}
-```
-
-The session ID is:
-1. Generated at phase start
-2. Reused for all continue operations within that phase
-3. Stored in `ContinueSession` for CI gate retry loops
-
-### Risk Acknowledgment
-
-> **Important**: If Kimi crashes and the session becomes corrupted, Ralph will attempt to resume with the same ID. The user accepts this risk by confirming session resumption.
-
----
-
-## Best Practices
-
-### For Interactive Use
-
-1. **Review before resuming**: Always check the session details before confirming
-2. **Consider timeout**: For long-running tasks, increase `session_timeout_hours`
-3. **Check git state**: Ensure the repository is in a reasonable state before resuming
-
-### For CI/CD
-
-1. **Use `--non-interactive`**: Prevent hanging on prompts
-2. **Decide resume policy**: Either always use `--resume` or never resume in CI
-3. **Clean workspace**: Ensure fresh state for CI runs
-
-### Configuration Recommendations
+Configure timeout behavior in `.ralph/config.jsonc`:
 
 ```json
 {
@@ -439,64 +235,64 @@ The session ID is:
 }
 ```
 
-| Use Case | Recommended Timeout |
-|----------|---------------------|
-| Daily development | 24 hours (default) |
-| Weekend tasks | 72 hours |
-| Long-running analysis | 168 hours (1 week) |
-| CI/CD environments | 1 hour or disable |
+Guidance:
+- daily development: `24`
+- long weekend work: `72`
+- extended analysis: `168`
+- CI/headless automation: keep low and pair with an explicit `--resume` policy
+
+---
+
+## Best practices
+
+### Interactive use
+- Review the resume message before continuing old work.
+- Use `ralph run one --resume` or `ralph run resume` when you want an explicit auto-continue path.
+- Treat `refusing_to_resume` as a prompt to choose deliberately, not as an error to suppress blindly.
+
+### Automation / app integrations
+- Read `resume_preview` for preflight UI.
+- Consume `resume_decision` run events for live state.
+- Do not infer resume behavior from plain text when machine payloads exist.
+
+### CI / headless usage
+- Prefer an explicit policy:
+
+```bash
+# Explicitly continue when safe
+ralph run loop --resume --non-interactive
+
+# Or require fresh orchestration with no recovery
+ralph run loop --non-interactive
+```
 
 ---
 
 ## Troubleshooting
 
-### Session Not Resuming
+### Ralph started fresh instead of resuming
+Common causes:
+- the task no longer exists
+- the task is already terminal (`done`, `rejected`)
+- you explicitly selected a different task
+- the saved session was stale
 
-**Symptom**: Session is detected but not offered for resume
+### Ralph refused to resume
+Common causes:
+- non-interactive mode prevented a required confirmation
+- the saved session timed out and needed operator approval
 
-**Causes**:
-1. Task status changed from `Doing` to `Todo` or `Done`
-2. Session timed out and wasn't confirmed
-3. Non-interactive mode defaults to not resuming
-
-**Solutions**:
-```bash
-# Check task status
-ralph queue list
-
-# Force start fresh
-ralph run loop --force
-
-# Or clear session manually
-rm .ralph/cache/session.json
-```
-
-### Stale Session Warning
-
-**Symptom**: "Stale session cleared: Task RQ-0001 is not in Doing status"
-
-**Cause**: The task was marked done/rejected while Ralph wasn't running
-
-**Solution**: This is normal behavior. Start fresh with the task in `Todo` status if needed.
-
-### Session Timeout in CI
-
-**Symptom**: CI jobs fail with timeout warnings
-
-**Solution**:
-```bash
-# Either auto-resume
-ralph run loop --non-interactive --resume
-
-# Or use shorter timeout
-ralph run loop --non-interactive  # with session_timeout_hours: 1 in config
-```
+### Runner continue fell back to fresh
+Common causes:
+- the runner rejected the saved session id
+- no runner session id was available to reuse
 
 ---
 
-## See Also
+## See also
 
-- [Workflow](../workflow.md) - High-level execution flow
-- [Configuration](../configuration.md) - Session timeout configuration
-- [Phases](./phases.md) - Phase execution details
-- [Runners](./runners.md) - Runner-specific behavior
+- [Workflow](../workflow.md)
+- [Configuration](../configuration.md)
+- [Phases](./phases.md)
+- [Runners](./runners.md)
+- [Machine Contract](../machine-contract.md)

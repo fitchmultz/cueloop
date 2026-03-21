@@ -63,6 +63,7 @@ fn run_one_with_id_locked_skips_reacquiring_queue_lock() -> anyhow::Result<()> {
         &crate::commands::run::AgentOverrides::default(),
         false,
         "RQ-0001",
+        crate::commands::run::RunOneResumeOptions::disabled(),
         None,
         None,
         None,
@@ -229,6 +230,7 @@ fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyho
             notify_when_unblocked: false,
             wait_when_empty: false,
             empty_poll_ms: 30_000,
+            run_event_handler: None,
         },
     );
     drop(guard);

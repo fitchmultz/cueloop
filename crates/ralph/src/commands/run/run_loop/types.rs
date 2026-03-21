@@ -11,6 +11,7 @@
 //! - `max_tasks == 0` means unbounded execution.
 
 use crate::agent::AgentOverrides;
+use crate::commands::run::RunEventHandler;
 
 pub struct RunLoopOptions {
     pub max_tasks: u32,
@@ -26,6 +27,7 @@ pub struct RunLoopOptions {
     pub notify_when_unblocked: bool,
     pub wait_when_empty: bool,
     pub empty_poll_ms: u64,
+    pub run_event_handler: Option<RunEventHandler>,
 }
 
 #[derive(Debug, Default, Clone, Copy)]

@@ -4,6 +4,7 @@
 //! - Select a resume session ID.
 //! - Centralize known-invalid continue-session fallback classification.
 //! - Execute continue-session or rerun flows through the backend.
+//! - Narrate when Ralph is resuming, rerunning fresh, or lacking a reusable session id.
 //!
 //! Not handled here:
 //! - Retry policy.
@@ -114,21 +115,23 @@ pub(super) fn continue_or_rerun(
             phase_type,
             None,
         ) {
-            Ok(output) => return Ok(output),
-            Err(err) if should_fallback_to_fresh_continue(runner_kind, &err) => {
-                log::warn!(
-                    "Continue session unavailable for runner {}; rerunning as fresh invocation: {:#}",
-                    runner_kind,
-                    err
+            Ok(output) => {
+                eprintln!(
+                    "Resume: continuing the existing runner session for phase {:?}.",
+                    phase_type
                 );
+                return Ok(output);
+            }
+            Err(err) if should_fallback_to_fresh_continue(runner_kind, &err) => {
+                eprintln!(
+                    "Resume: existing runner session could not be reused; starting a fresh invocation."
+                );
+                eprintln!("  {}", err);
             }
             Err(err) => return Err(err),
         }
     } else {
-        log::warn!(
-            "Continue requested without session id for runner {}; rerunning as fresh invocation.",
-            runner_kind
-        );
+        eprintln!("Resume: no runner session id was available; starting a fresh invocation.");
     }
 
     backend.run_prompt(

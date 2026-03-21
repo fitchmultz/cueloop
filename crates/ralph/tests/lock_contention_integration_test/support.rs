@@ -202,5 +202,6 @@ fn run_loop_options() -> run::RunLoopOptions {
         notify_when_unblocked: false,
         wait_when_empty: false,
         empty_poll_ms: 30_000,
+        run_event_handler: None,
     }
 }

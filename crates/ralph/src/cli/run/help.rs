@@ -15,6 +15,11 @@ pub(super) const RUN_AFTER_LONG_HELP: &str = "Runner selection:\n\
   2) task's `agent` override (runner/model plus `model_effort` if set)\n\
   3) otherwise: resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\
  \n\
+ Resume behavior:\n\
+  - Ralph now narrates whether it is resuming the same session, starting fresh, or refusing to guess.\n\
+  - `ralph run one` inspects interrupted-session state too; add `--resume` to auto-continue when safe.\n\
+  - Timed-out sessions still require explicit confirmation and are refused in non-interactive mode.\n\
+ \n\
  Notes:\n\
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
   - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
@@ -47,6 +52,7 @@ Phase-specific overrides:\n\
  \n\
 Examples:\n\
  ralph run one\n\
+ ralph run one --resume\n\
  ralph run one --phases 2\n\
  ralph run one --phases 1\n\
  ralph run one --runner opencode --model gpt-5.3\n\
@@ -71,9 +77,15 @@ Examples:\n\
  ralph run resume --force\n\
  ralph run loop --resume --max-tasks 5";
 
-pub(super) const RESUME_AFTER_LONG_HELP: &str = "Examples:
- ralph run resume
- ralph run resume --force";
+pub(super) const RESUME_AFTER_LONG_HELP: &str = "Resume behavior:\n\
+ - If the saved session is still valid, Ralph resumes the same interrupted task.\n\
+ - If the saved session is stale or no longer safe, Ralph says so and starts fresh.\n\
+ - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of guessing.\n\
+\n\
+Examples:\n\
+ ralph run resume\n\
+ ralph run resume --force\n\
+ ralph run resume --non-interactive";
 
 pub(super) const RUN_ONE_AFTER_LONG_HELP: &str = "Runner selection (precedence):\n\
  1) CLI overrides (--runner/--model/--effort)\n\
@@ -81,9 +93,17 @@ pub(super) const RUN_ONE_AFTER_LONG_HELP: &str = "Runner selection (precedence):
  3) selected profile (if --profile specified)\n\
  4) config defaults (.ralph/config.jsonc then ~/.config/ralph/config.jsonc)\n\
 \n\
+Resume behavior:\n\
+ - `ralph run one` inspects interrupted-session state before selecting work.\n\
+ - `ralph run one --resume` auto-resumes the interrupted session when Ralph can do so safely.\n\
+ - Explicit `--id <TASK_ID>` beats an unrelated interrupted session, and Ralph says so.\n\
+ - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of silently guessing.\n\
+\n\
 Examples:\n\
  ralph run one\n\
+ ralph run one --resume\n\
  ralph run one --id RQ-0001\n\
+ ralph run one --id RQ-0001 --resume\n\
  ralph run one --debug\n\
  ralph run one --profile fast-local\n\
  ralph run one --profile deep-review\n\
@@ -108,10 +128,16 @@ Examples:\n\
  ralph run one --dry-run --include-draft\n\
  ralph run one --dry-run --id RQ-0001";
 
-pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Examples:\n\
+pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Resume behavior:\n\
+ - `ralph run loop --resume` auto-resumes the interrupted session when safe.\n\
+ - Without `--resume`, Ralph still narrates stale/fresh/refusal cases instead of hiding them.\n\
+ - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of silently guessing.\n\
+\n\
+Examples:\n\
  ralph run loop --max-tasks 0\n\
  ralph run loop --profile fast-local --max-tasks 5\n\
  ralph run loop --profile deep-review --max-tasks 5\n\
+ ralph run loop --resume --max-tasks 5\n\
  ralph run loop --phases 3 --max-tasks 0 (plan/implement+CI/review+complete)\n\
  ralph run loop --phases 2 --max-tasks 0 (plan/implement)\n\
  ralph run loop --phases 1 --max-tasks 1 (single-pass)\n\

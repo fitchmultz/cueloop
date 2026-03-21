@@ -11,7 +11,7 @@
 //!
 //! Invariants/assumptions:
 //! - Queue files are already loaded and validated before selection.
-//! - Resume task validation checks if the task still exists in the queue.
+//! - Invalid resume targets produce explicit fresh-start narration instead of silent fallthrough.
 
 use crate::contracts::{QueueFile, Task, TaskStatus};
 use anyhow::Result;
@@ -19,7 +19,9 @@ use std::path::Path;
 
 use super::orchestration::SelectTaskResult;
 use crate::commands::run::{
-    run_session::validate_resumed_task, selection::select_run_one_task_index,
+    RunEventHandler, emit_resume_decision,
+    run_session::{ResumeTaskValidation, validate_resumed_task},
+    selection::select_run_one_task_index,
 };
 use crate::queue::{RunnableSelectionOptions, operations::QueueRunnabilitySummary};
 
@@ -31,14 +33,15 @@ pub(crate) fn select_task_for_run(
     resume_task_id: Option<&str>,
     repo_root: &Path,
     include_draft: bool,
+    run_event_handler: Option<&RunEventHandler>,
 ) -> Result<SelectTaskResult> {
     let effective_target = if target_task_id.is_some() {
         target_task_id
     } else if let Some(resume_id) = resume_task_id {
-        match validate_resumed_task(queue_file, resume_id, repo_root) {
-            Ok(()) => Some(resume_id),
-            Err(e) => {
-                log::info!("Session resume failed: {e}");
+        match validate_resumed_task(queue_file, resume_id, repo_root)? {
+            ResumeTaskValidation::Resumable => Some(resume_id),
+            ResumeTaskValidation::FreshStart(decision) => {
+                emit_resume_decision(&decision, run_event_handler);
                 None
             }
         }

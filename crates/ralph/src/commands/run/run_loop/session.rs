@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Resolve whether the loop should resume a prior task session.
-//! - Centralize stale/timeout recovery prompts and progress carry-over.
+//! - Centralize operator-facing resume/fresh/refusal decisions before task selection.
 //!
 //! Not handled here:
 //! - Queue waiting or task execution.
@@ -10,11 +10,12 @@
 //!
 //! Invariants/assumptions:
 //! - Session timeout uses configured hours (defaulting to the shared constant).
-//! - Clearing stale/timed-out sessions is best-effort but failures are surfaced.
+//! - Prompt-required non-interactive cases refuse instead of guessing.
 
+use crate::commands::run::emit_resume_decision;
 use crate::config;
-use crate::session::{self, SessionValidationResult};
-use anyhow::Result;
+use crate::session::{self, ResumeBehavior, ResumeDecisionMode, ResumeStatus};
+use anyhow::{Result, bail};
 
 use super::RunLoopOptions;
 
@@ -29,50 +30,38 @@ pub(super) fn resolve_resume_state(
 ) -> Result<ResumeState> {
     let cache_dir = resolved.repo_root.join(".ralph/cache");
     let queue_file = crate::queue::load_queue(&resolved.queue_path)?;
-    let session_timeout_hours = resolved.config.agent.session_timeout_hours;
+    let resolution = session::resolve_run_session_decision(
+        &cache_dir,
+        &queue_file,
+        session::RunSessionDecisionOptions {
+            timeout_hours: resolved.config.agent.session_timeout_hours,
+            behavior: if opts.auto_resume {
+                ResumeBehavior::AutoResume
+            } else {
+                ResumeBehavior::Prompt
+            },
+            non_interactive: opts.non_interactive,
+            explicit_task_id: None,
+            announce_missing_session: opts.auto_resume,
+            mode: ResumeDecisionMode::Execute,
+        },
+    )?;
 
-    let (resume_task_id, completed_count) =
-        match session::check_session(&cache_dir, &queue_file, session_timeout_hours)? {
-            SessionValidationResult::NoSession => (None, opts.starting_completed),
-            SessionValidationResult::Valid(session) => {
-                if opts.auto_resume {
-                    log::info!("Auto-resuming session for task {}", session.task_id);
-                    (Some(session.task_id), session.tasks_completed_in_loop)
-                } else {
-                    match session::prompt_session_recovery(&session, opts.non_interactive)? {
-                        true => (Some(session.task_id), session.tasks_completed_in_loop),
-                        false => {
-                            session::clear_session(&cache_dir)?;
-                            (None, opts.starting_completed)
-                        }
-                    }
-                }
-            }
-            SessionValidationResult::Stale { reason } => {
-                log::info!("Stale session cleared: {}", reason);
-                session::clear_session(&cache_dir)?;
-                (None, opts.starting_completed)
-            }
-            SessionValidationResult::Timeout { hours, session } => {
-                let threshold = session_timeout_hours
-                    .unwrap_or(crate::constants::timeouts::DEFAULT_SESSION_TIMEOUT_HOURS);
-                match session::prompt_session_recovery_timeout(
-                    &session,
-                    hours,
-                    threshold,
-                    opts.non_interactive,
-                )? {
-                    true => (Some(session.task_id), session.tasks_completed_in_loop),
-                    false => {
-                        session::clear_session(&cache_dir)?;
-                        (None, opts.starting_completed)
-                    }
-                }
-            }
-        };
+    if let Some(decision) = resolution.decision.as_ref() {
+        emit_resume_decision(decision, opts.run_event_handler.as_ref());
+        if matches!(decision.status, ResumeStatus::RefusingToResume) {
+            bail!("{}", decision.message);
+        }
+    }
+
+    let completed_count = if resolution.resume_task_id.is_some() {
+        resolution.completed_count
+    } else {
+        opts.starting_completed
+    };
 
     Ok(ResumeState {
-        resume_task_id,
+        resume_task_id: resolution.resume_task_id,
         completed_count,
     })
 }

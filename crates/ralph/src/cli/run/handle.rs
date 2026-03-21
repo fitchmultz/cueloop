@@ -42,6 +42,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                     notify_when_unblocked: false,
                     wait_when_empty: false,
                     empty_poll_ms: 30_000,
+                    run_event_handler: None,
                 },
             )
         }
@@ -89,10 +90,20 @@ fn handle_run_one(args: RunOneArgs, force: bool, resolved: &config::Resolved) ->
         return handle_parallel_worker_run_one(args, force, resolved, overrides);
     }
 
+    let resume_options = run_cmd::RunOneResumeOptions::detect(args.resume, args.non_interactive);
     if let Some(task_id) = args.id.as_deref() {
-        run_cmd::run_one_with_id(resolved, &overrides, force, task_id, None, None, None)?;
+        run_cmd::run_one_with_id(
+            resolved,
+            &overrides,
+            force,
+            task_id,
+            resume_options,
+            None,
+            None,
+            None,
+        )?;
     } else {
-        run_cmd::run_one(resolved, &overrides, force, None)?;
+        run_cmd::run_one(resolved, &overrides, force, resume_options)?;
     }
 
     Ok(())
@@ -158,6 +169,7 @@ fn handle_run_loop(args: RunLoopArgs, force: bool, resolved: &config::Resolved) 
             notify_when_unblocked: args.notify_when_unblocked,
             wait_when_empty: args.wait_when_empty,
             empty_poll_ms: args.empty_poll_ms,
+            run_event_handler: None,
         },
     )
 }

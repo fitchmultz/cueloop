@@ -4,6 +4,7 @@
  Responsibilities:
  - Provide Codable models for Ralph configuration parsing and serialization.
  - Mirror the machine-resolved config and path documents used by the app.
+ - Decode structured resume preview state from machine config and run-event payloads.
 
  Does not handle:
  - CLI operations (see RalphCLIClient).
@@ -128,11 +129,52 @@ public struct MachineSystemInfoDocument: Codable, Sendable, Equatable {
     }
 }
 
+public struct MachineResumeDecision: Codable, Sendable, Equatable {
+    public let status: String
+    public let scope: String
+    public let reason: String
+    public let taskID: String?
+    public let message: String
+    public let detail: String
+
+    private enum CodingKeys: String, CodingKey {
+        case status
+        case scope
+        case reason
+        case taskID = "task_id"
+        case message
+        case detail
+    }
+
+    public func asWorkspaceResumeState() -> Workspace.ResumeState? {
+        guard let status = Workspace.ResumeState.Status(rawValue: self.status) else {
+            return nil
+        }
+        return Workspace.ResumeState(
+            status: status,
+            scope: scope,
+            reason: reason,
+            taskID: taskID,
+            message: message,
+            detail: detail
+        )
+    }
+}
+
 public struct MachineConfigResolveDocument: Codable, Sendable, Equatable {
     public let version: Int
     public let paths: MachineQueuePaths
     public let safety: MachineConfigSafetySummary
     public let config: RalphConfig
+    public let resumePreview: MachineResumeDecision?
+
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case paths
+        case safety
+        case config
+        case resumePreview = "resume_preview"
+    }
 }
 
 public struct MachineConfigSafetySummary: Codable, Sendable, Equatable {

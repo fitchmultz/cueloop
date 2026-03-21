@@ -1,7 +1,7 @@
 //! Auto-resume session tests for run command.
 
 use super::task_with_id_and_status;
-use crate::commands::run::run_session::validate_resumed_task;
+use crate::commands::run::run_session::{ResumeTaskValidation, validate_resumed_task};
 use crate::contracts::{QueueFile, TaskStatus};
 use crate::session;
 
@@ -15,14 +15,16 @@ fn validate_resumed_task_succeeds_when_task_exists_and_doing() -> anyhow::Result
         tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Doing)],
     };
 
-    // Should succeed when task exists and is Doing
-    validate_resumed_task(&queue_file, "RQ-0001", &repo_root)?;
+    match validate_resumed_task(&queue_file, "RQ-0001", &repo_root)? {
+        ResumeTaskValidation::Resumable => {}
+        ResumeTaskValidation::FreshStart(_) => panic!("expected resumable task"),
+    }
 
     Ok(())
 }
 
 #[test]
-fn validate_resumed_task_fails_when_task_missing() -> anyhow::Result<()> {
+fn validate_resumed_task_falls_back_when_task_missing() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
 
@@ -31,9 +33,17 @@ fn validate_resumed_task_fails_when_task_missing() -> anyhow::Result<()> {
         tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Doing)],
     };
 
-    // Should fail when task doesn't exist
-    let err = validate_resumed_task(&queue_file, "RQ-9999", &repo_root).unwrap_err();
-    assert!(err.to_string().contains("no longer exists"));
+    let validation = validate_resumed_task(&queue_file, "RQ-9999", &repo_root)?;
+    match validation {
+        ResumeTaskValidation::Resumable => panic!("expected fresh-start decision"),
+        ResumeTaskValidation::FreshStart(decision) => {
+            assert_eq!(
+                decision.reason,
+                crate::session::ResumeReason::ResumeTargetMissing
+            );
+            assert!(decision.message.contains("RQ-9999"));
+        }
+    }
 
     Ok(())
 }
@@ -48,15 +58,16 @@ fn validate_resumed_task_succeeds_when_task_todo() -> anyhow::Result<()> {
         tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Todo)],
     };
 
-    // Should succeed for Todo tasks - they are valid for resumption
-    // (task was marked doing but failed before any work was done)
-    validate_resumed_task(&queue_file, "RQ-0001", &repo_root)?;
+    match validate_resumed_task(&queue_file, "RQ-0001", &repo_root)? {
+        ResumeTaskValidation::Resumable => {}
+        ResumeTaskValidation::FreshStart(_) => panic!("expected resumable task"),
+    }
 
     Ok(())
 }
 
 #[test]
-fn validate_resumed_task_fails_when_task_done() -> anyhow::Result<()> {
+fn validate_resumed_task_falls_back_when_task_done() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
 
@@ -65,15 +76,23 @@ fn validate_resumed_task_fails_when_task_done() -> anyhow::Result<()> {
         tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Done)],
     };
 
-    // Should fail for Done tasks (terminal state)
-    let err = validate_resumed_task(&queue_file, "RQ-0001", &repo_root).unwrap_err();
-    assert!(err.to_string().contains("already done"));
+    let validation = validate_resumed_task(&queue_file, "RQ-0001", &repo_root)?;
+    match validation {
+        ResumeTaskValidation::Resumable => panic!("expected fresh-start decision"),
+        ResumeTaskValidation::FreshStart(decision) => {
+            assert_eq!(
+                decision.reason,
+                crate::session::ResumeReason::ResumeTargetTerminal
+            );
+            assert!(decision.message.contains("already done"));
+        }
+    }
 
     Ok(())
 }
 
 #[test]
-fn validate_resumed_task_fails_when_task_rejected() -> anyhow::Result<()> {
+fn validate_resumed_task_falls_back_when_task_rejected() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
 
@@ -82,9 +101,17 @@ fn validate_resumed_task_fails_when_task_rejected() -> anyhow::Result<()> {
         tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Rejected)],
     };
 
-    // Should fail for Rejected tasks (terminal state)
-    let err = validate_resumed_task(&queue_file, "RQ-0001", &repo_root).unwrap_err();
-    assert!(err.to_string().contains("already rejected"));
+    let validation = validate_resumed_task(&queue_file, "RQ-0001", &repo_root)?;
+    match validation {
+        ResumeTaskValidation::Resumable => panic!("expected fresh-start decision"),
+        ResumeTaskValidation::FreshStart(decision) => {
+            assert_eq!(
+                decision.reason,
+                crate::session::ResumeReason::ResumeTargetTerminal
+            );
+            assert!(decision.message.contains("already rejected"));
+        }
+    }
 
     Ok(())
 }
@@ -116,10 +143,8 @@ fn validate_resumed_task_clears_session_when_invalid() -> anyhow::Result<()> {
         tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Doing)],
     };
 
-    // Validation should fail and clear the session
-    let _ = validate_resumed_task(&queue_file, "RQ-9999", &repo_root);
+    let _ = validate_resumed_task(&queue_file, "RQ-9999", &repo_root)?;
 
-    // Session should be cleared
     assert!(!session::session_exists(&cache_dir));
 
     Ok(())
@@ -153,10 +178,8 @@ fn validate_resumed_task_clears_session_when_terminal() -> anyhow::Result<()> {
         tasks: vec![task_with_id_and_status("RQ-0001", TaskStatus::Done)],
     };
 
-    // Validation should fail and clear the session
-    let _ = validate_resumed_task(&queue_file, "RQ-0001", &repo_root);
+    let _ = validate_resumed_task(&queue_file, "RQ-0001", &repo_root)?;
 
-    // Session should be cleared
     assert!(!session::session_exists(&cache_dir));
 
     Ok(())

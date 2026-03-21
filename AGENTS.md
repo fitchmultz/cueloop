@@ -170,6 +170,9 @@ Every source file MUST start with `//!` docs covering:
 - Worker subprocesses should run in isolated process groups (`setpgid`) to avoid signaling the coordinator group.
 
 ### Continue Session Recovery
+- Run/session recovery surfaces should narrate one of three operator-visible states: `resuming_same_session`, `falling_back_to_fresh_invocation`, or `refusing_to_resume`.
+- Sequential run decisions are centralized in `session::resolve_run_session_decision`; use preview mode for read-only machine/app surfaces and execute mode for real run entrypoints.
+- `ralph run one`, `ralph run loop`, `ralph run resume`, machine run events, and RalphMac Run Control should stay semantically aligned on those resume decisions.
 - Continue paths should prefer same-session resume, but fall back to a fresh invocation when no session ID is available.
 - Known-invalid resume fallback classification is centralized in `runutil::execution::should_fallback_to_fresh_continue`; do not fork runner-specific resume heuristics across execution paths.
 - Safe fresh fallback applies to Pi session-file lookup failures (`no session found`, missing session dir/file), Gemini invalid session identifiers, Claude invalid resume IDs / invalid UUID cases, and Opencode session validation failures.

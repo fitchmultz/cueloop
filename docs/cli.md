@@ -63,8 +63,33 @@ ralph init --non-interactive
 ```bash
 ralph task "Stabilize flaky CI test"
 ralph run one --profile safe
+ralph run one --resume
 ralph run one --debug
 ralph run loop --max-tasks 5
+ralph run resume
+```
+
+### Resume-aware execution
+
+Ralph now explicitly narrates whether it is:
+- resuming the same session
+- falling back to a fresh invocation
+- refusing to resume because confirmation is required
+
+Useful commands:
+
+```bash
+# Inspect interrupted work and choose interactively when needed
+ralph run one
+
+# Auto-resume when Ralph can do so safely
+ralph run one --resume
+ralph run loop --resume --max-tasks 5
+ralph run resume
+
+# Headless use: explicit policy only
+ralph run one --resume --non-interactive
+ralph run loop --non-interactive
 ```
 
 ### Execution Shape
@@ -129,7 +154,8 @@ ralph machine system info
 ralph machine queue read
 ralph machine config resolve
 ralph machine task mutate --input request.json
-ralph machine run one --id RQ-0001
+ralph machine run one --resume --id RQ-0001
+ralph machine run loop --resume --max-tasks 5
 ralph machine schema
 ```
 

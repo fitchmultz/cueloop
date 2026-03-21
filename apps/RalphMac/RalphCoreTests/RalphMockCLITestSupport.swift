@@ -136,13 +136,15 @@ enum RalphMockCLITestSupport {
     static func configResolveDocument(
         workspaceURL: URL,
         safety: MachineConfigSafetySummary = defaultSafetySummary,
-        agent: AgentConfig = AgentConfig()
+        agent: AgentConfig = AgentConfig(),
+        resumePreview: MachineResumeDecision? = nil
     ) -> MachineConfigResolveDocument {
         MachineConfigResolveDocument(
-            version: 2,
+            version: 3,
             paths: resolvedPaths(for: workspaceURL),
             safety: safety,
-            config: RalphConfig(agent: agent)
+            config: RalphConfig(agent: agent),
+            resumePreview: resumePreview
         )
     }
 

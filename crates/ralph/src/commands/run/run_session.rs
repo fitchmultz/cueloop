@@ -3,10 +3,11 @@
 //! Responsibilities:
 //! - Create session state for crash recovery.
 //! - Validate resumed tasks before continuing execution.
+//! - Convert invalid resume targets into explicit fresh-start decisions.
 //!
 //! Not handled here:
-//! - Session persistence (handled by `crate::session`).
-//! - Session loading and clearing (handled by `crate::session`).
+//! - Session loading and clearing orchestration beyond invalid-target cleanup.
+//! - Session prompt handling.
 //!
 //! Invariants/assumptions:
 //! - Session IDs are unique and include timestamp + task_id.
@@ -19,6 +20,11 @@ use crate::runner::PhaseSettingsMatrix;
 use crate::session;
 use crate::timeutil;
 use anyhow::Result;
+
+pub(crate) enum ResumeTaskValidation {
+    Resumable,
+    FreshStart(crate::session::ResumeDecision),
+}
 
 /// Create a session state for the current task.
 pub(crate) fn create_session_for_task(
@@ -101,40 +107,58 @@ pub(crate) fn create_session_for_task(
 }
 
 /// Validate that a resumed task exists and is in a runnable state.
-/// Returns Ok(()) if valid, Err with message if not.
-/// On validation failure (task missing or in terminal state), clears the session file.
+/// On validation failure (task missing or terminal), clears the session file and returns
+/// an explicit fresh-start decision.
 pub(crate) fn validate_resumed_task(
     queue_file: &crate::contracts::QueueFile,
     task_id: &str,
     repo_root: &std::path::Path,
-) -> Result<()> {
-    let task = queue_file
-        .tasks
-        .iter()
-        .find(|t| t.id.trim() == task_id)
-        .ok_or_else(|| {
-            let cache_dir = repo_root.join(".ralph/cache");
-            if let Err(e) = session::clear_session(&cache_dir) {
-                log::debug!("Failed to clear invalid session: {}", e);
-            }
-            anyhow::anyhow!("{}", crate::error_messages::task_no_longer_exists(task_id))
-        })?;
+) -> Result<ResumeTaskValidation> {
+    let cache_dir = repo_root.join(".ralph/cache");
+    let Some(task) = queue_file.tasks.iter().find(|t| t.id.trim() == task_id) else {
+        if let Err(err) = session::clear_session(&cache_dir) {
+            log::debug!("Failed to clear invalid session: {}", err);
+        }
+        return Ok(ResumeTaskValidation::FreshStart(
+            crate::session::ResumeDecision {
+                status: crate::session::ResumeStatus::FallingBackToFreshInvocation,
+                scope: crate::session::ResumeScope::RunSession,
+                reason: crate::session::ResumeReason::ResumeTargetMissing,
+                task_id: Some(task_id.to_string()),
+                message: format!(
+                    "Resume: starting fresh because interrupted task {} no longer exists.",
+                    task_id
+                ),
+                detail: crate::error_messages::task_no_longer_exists(task_id),
+            },
+        ));
+    };
 
     // Only invalidate the session for terminal states (Done, Rejected).
     // Todo and Doing are both valid states for resumption:
     // - Doing: task was interrupted mid-execution (classic crash recovery)
     // - Todo: task was marked doing but failed before any work was done
     if task.status == TaskStatus::Done || task.status == TaskStatus::Rejected {
-        let cache_dir = repo_root.join(".ralph/cache");
-        if let Err(e) = session::clear_session(&cache_dir) {
-            log::debug!("Failed to clear invalid session: {}", e);
+        if let Err(err) = session::clear_session(&cache_dir) {
+            log::debug!("Failed to clear invalid session: {}", err);
         }
-        return Err(anyhow::anyhow!(
-            "Task {} is already {} (cannot resume)",
-            task_id,
-            task.status
+        return Ok(ResumeTaskValidation::FreshStart(
+            crate::session::ResumeDecision {
+                status: crate::session::ResumeStatus::FallingBackToFreshInvocation,
+                scope: crate::session::ResumeScope::RunSession,
+                reason: crate::session::ResumeReason::ResumeTargetTerminal,
+                task_id: Some(task_id.to_string()),
+                message: format!(
+                    "Resume: starting fresh because task {} is already {}.",
+                    task_id, task.status
+                ),
+                detail: format!(
+                    "Interrupted session cannot continue because the task is already {}.",
+                    task.status
+                ),
+            },
         ));
     }
 
-    Ok(())
+    Ok(ResumeTaskValidation::Resumable)
 }

@@ -62,30 +62,29 @@ pub(crate) fn run_integration_loop(
             previous_failure.as_deref(),
         );
 
-        let (output, elapsed) =
-            match resume_continue_session(resolved, continue_session, &prompt, plugins) {
-                Ok(resume) => resume,
-                Err(err) => {
-                    let reason = format!("integration continuation failed: {:#}", err);
-                    if attempt >= config.max_attempts {
-                        if let Err(marker_err) = write_blocked_push_marker(
-                            repo_root,
-                            task_id,
-                            &reason,
-                            attempt,
-                            config.max_attempts,
-                        ) {
-                            log::warn!("Failed to write blocked marker: {}", marker_err);
-                        }
-                        return Ok(IntegrationOutcome::BlockedPush { reason });
+        let resumed = match resume_continue_session(resolved, continue_session, &prompt, plugins) {
+            Ok(resume) => resume,
+            Err(err) => {
+                let reason = format!("integration continuation failed: {:#}", err);
+                if attempt >= config.max_attempts {
+                    if let Err(marker_err) = write_blocked_push_marker(
+                        repo_root,
+                        task_id,
+                        &reason,
+                        attempt,
+                        config.max_attempts,
+                    ) {
+                        log::warn!("Failed to write blocked marker: {}", marker_err);
                     }
-                    previous_failure = Some(reason);
-                    wait_before_retry(config, attempt_index as usize, task_id)?;
-                    continue;
+                    return Ok(IntegrationOutcome::BlockedPush { reason });
                 }
-            };
+                previous_failure = Some(reason);
+                wait_before_retry(config, attempt_index as usize, task_id)?;
+                continue;
+            }
+        };
 
-        on_resume(&output, elapsed)?;
+        on_resume(&resumed.output, resumed.elapsed)?;
 
         let compliance = run_compliance_checks(repo_root, resolved, task_id, config.ci_enabled)?;
         let (pushed, push_check_error) =

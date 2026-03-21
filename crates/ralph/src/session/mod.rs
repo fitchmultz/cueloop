@@ -1,7 +1,7 @@
 //! Session persistence and recovery facade.
 //!
 //! Responsibilities:
-//! - Re-export session persistence, validation, recovery UI, and progress helpers.
+//! - Re-export session persistence, validation, recovery UI, decision modeling, and progress helpers.
 //! - Keep the public `crate::session::*` surface stable while implementation stays split.
 //!
 //! Not handled here:
@@ -9,9 +9,10 @@
 //! - Session state schema definitions.
 //!
 //! Invariants/assumptions:
-//! - Persistence, validation, progress mutation, and interactive recovery remain separate.
+//! - Persistence, validation, recovery prompts, decision shaping, and progress mutation remain separate.
 //! - Re-exports preserve existing caller paths.
 
+mod decision;
 mod persistence;
 mod progress;
 mod recovery;
@@ -19,6 +20,10 @@ mod recovery;
 mod tests;
 mod validation;
 
+pub use decision::{
+    ResumeBehavior, ResumeDecision, ResumeDecisionMode, ResumeReason, ResumeResolution,
+    ResumeScope, ResumeStatus, RunSessionDecisionOptions, resolve_run_session_decision,
+};
 pub use persistence::{
     clear_session, get_git_head_commit, load_session, save_session, session_exists, session_path,
 };

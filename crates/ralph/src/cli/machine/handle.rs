@@ -51,10 +51,14 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
                 let dirty_repo = crate::git::status_porcelain(&resolved.repo_root)
                     .map(|status| !status.trim().is_empty())
                     .unwrap_or(false);
+                let resume_preview = crate::cli::machine::common::build_resume_preview(
+                    &resolved, None, true, true, false,
+                )?;
                 print_json(&build_config_resolve_document(
                     &resolved,
                     repo_trust.is_trusted(),
                     dirty_repo,
+                    resume_preview,
                 ))
             }
         },

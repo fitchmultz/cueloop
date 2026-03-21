@@ -255,9 +255,8 @@ fn send_continue_message<F>(
 where
     F: FnMut(&crate::runner::RunnerOutput, std::time::Duration) -> Result<()>,
 {
-    let (output, elapsed) =
-        super::resume_continue_session(resolved, continue_session, message, plugins)?;
-    on_resume(&output, elapsed)
+    let resumed = super::resume_continue_session(resolved, continue_session, message, plugins)?;
+    on_resume(&resumed.output, resumed.elapsed)
 }
 
 /// Executes CI gate with auto-retry and Continue support via a runner session.
