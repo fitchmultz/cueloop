@@ -3,8 +3,8 @@
 
  Responsibilities:
  - Render recovery guidance and category-specific actions for workspace failures.
- - Trigger diagnostics/log loading via shared services instead of inline view logic.
- - Present diagnostic/log sheets for operators without coupling to task-conflict UI.
+ - Trigger diagnostics, queue-recovery previews, and log loading through shared services.
+ - Present diagnostic and recovery sheets for operators without coupling to task-conflict UI.
 
  Does not handle:
  - Error classification.
@@ -14,12 +14,12 @@
  Invariants/assumptions callers must respect:
  - The supplied `RecoveryError` is already classified.
  - The surrounding view owns retry/dismiss callbacks.
- - Diagnostic operations target the provided workspace when one is available.
+ - Recovery operations target the provided workspace when one is available.
  */
 
 import AppKit
-import SwiftUI
 import RalphCore
+import SwiftUI
 
 private extension ErrorCategory {
     var offlineGuidance: String? {
@@ -84,9 +84,11 @@ struct ErrorRecoveryView: View {
     let onRetry: () -> Void
     let onDismiss: () -> Void
 
-    @State private var showingDiagnoseSheet = false
-    @State private var diagnoseOutput = ""
-    @State private var isDiagnosing = false
+    @State private var showingActionSheet = false
+    @State private var actionSheetTitle = "Diagnostic Results"
+    @State private var actionSheetOutput = ""
+    @State private var actionSheetLoadingTitle = "Running diagnostics..."
+    @State private var isRunningAction = false
     @State private var showingLogsSheet = false
     @State private var logsContent = ""
     @State private var isLoadingLogs = false
@@ -127,12 +129,12 @@ struct ErrorRecoveryView: View {
         .frame(maxWidth: 400)
         .background(.ultraThinMaterial)
         .clipShape(.rect(cornerRadius: 12))
-        .sheet(isPresented: $showingDiagnoseSheet) {
+        .sheet(isPresented: $showingActionSheet) {
             DiagnosticsTextSheet(
-                title: "Diagnostic Results",
-                text: diagnoseOutput,
-                isLoading: isDiagnosing,
-                loadingTitle: "Running diagnostics..."
+                title: actionSheetTitle,
+                text: actionSheetOutput,
+                isLoading: isRunningAction,
+                loadingTitle: actionSheetLoadingTitle
             )
         }
         .sheet(isPresented: $showingLogsSheet) {
@@ -156,13 +158,37 @@ struct ErrorRecoveryView: View {
             }
             .buttonStyle(.borderedProminent)
 
-        case .diagnose, .validateQueue:
+        case .diagnose:
             Button(action: performDiagnosis) {
-                Label(action == .diagnose ? "Diagnose" : "Validate Queue", systemImage: action == .diagnose ? "stethoscope" : "checkmark.shield")
+                Label("Diagnose", systemImage: "stethoscope")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(isDiagnosing)
+            .disabled(isRunningAction)
+
+        case .validateQueue:
+            Button(action: performQueueValidation) {
+                Label("Validate Queue", systemImage: "checkmark.shield")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isRunningAction)
+
+        case .repairQueue:
+            Button(action: performQueueRepairPreview) {
+                Label("Preview Queue Repair", systemImage: "wrench.and.screwdriver")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isRunningAction)
+
+        case .restoreLastCheckpoint:
+            Button(action: performRestorePreview) {
+                Label("Preview Restore", systemImage: "clock.arrow.circlepath")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isRunningAction)
 
         case .copyErrorDetails:
             Button(action: copyErrorDetails) {
@@ -207,20 +233,68 @@ struct ErrorRecoveryView: View {
     }
 
     private func performDiagnosis() {
-        showingDiagnoseSheet = true
-        isDiagnosing = true
-
-        Task { @MainActor in
-            diagnoseOutput = await diagnosticsOutput()
-            isDiagnosing = false
+        runActionSheet(
+            title: "Diagnostic Results",
+            loadingTitle: "Running diagnostics..."
+        ) {
+            guard let workspace else {
+                return "No workspace is available for diagnostics."
+            }
+            return await WorkspaceDiagnosticsService.queueValidationOutput(for: workspace)
         }
     }
 
-    private func diagnosticsOutput() async -> String {
-        guard let workspace else {
-            return "No workspace is available for diagnostics."
+    private func performQueueValidation() {
+        runActionSheet(
+            title: "Queue Validation",
+            loadingTitle: "Validating queue..."
+        ) {
+            guard let workspace else {
+                return "No workspace is available for queue validation."
+            }
+            return await WorkspaceDiagnosticsService.queueValidationOutput(for: workspace)
         }
-        return await WorkspaceDiagnosticsService.queueValidationOutput(for: workspace)
+    }
+
+    private func performQueueRepairPreview() {
+        runActionSheet(
+            title: "Queue Repair Preview",
+            loadingTitle: "Previewing queue repair..."
+        ) {
+            guard let workspace else {
+                return "No workspace is available for queue repair preview."
+            }
+            return await WorkspaceDiagnosticsService.queueRepairPreviewOutput(for: workspace)
+        }
+    }
+
+    private func performRestorePreview() {
+        runActionSheet(
+            title: "Restore Preview",
+            loadingTitle: "Previewing continuation restore..."
+        ) {
+            guard let workspace else {
+                return "No workspace is available for restore preview."
+            }
+            return await WorkspaceDiagnosticsService.queueRestorePreviewOutput(for: workspace)
+        }
+    }
+
+    private func runActionSheet(
+        title: String,
+        loadingTitle: String,
+        action: @escaping @MainActor () async -> String
+    ) {
+        actionSheetTitle = title
+        actionSheetLoadingTitle = loadingTitle
+        actionSheetOutput = ""
+        showingActionSheet = true
+        isRunningAction = true
+
+        Task { @MainActor in
+            actionSheetOutput = await action()
+            isRunningAction = false
+        }
     }
 
     private func openLogs() {
@@ -305,18 +379,18 @@ struct ErrorRecoverySheet: View {
             )
         }
         .padding()
-        .frame(minWidth: 450, minHeight: 400)
+        .frame(minWidth: 450, minHeight: 420)
     }
 }
 
 #Preview("Error Recovery") {
     ErrorRecoveryView(
         error: RecoveryError(
-            category: .cliUnavailable,
-            message: "Failed to load tasks",
-            underlyingError: "Executable not found at expected path",
+            category: .queueCorrupted,
+            message: "Queue data appears corrupted",
+            underlyingError: "queue validation failed: duplicate id RQ-0001",
             operation: "loadTasks",
-            suggestions: ["Check installation", "Verify permissions"]
+            suggestions: ["Run `ralph queue validate`", "Preview `ralph queue repair --dry-run`"]
         ),
         workspace: nil,
         onRetry: {},

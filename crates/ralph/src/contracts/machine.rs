@@ -26,12 +26,15 @@ use super::{
 
 pub const MACHINE_SYSTEM_INFO_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_READ_VERSION: u32 = 1;
+pub const MACHINE_QUEUE_VALIDATE_VERSION: u32 = 1;
+pub const MACHINE_QUEUE_REPAIR_VERSION: u32 = 1;
+pub const MACHINE_QUEUE_UNDO_VERSION: u32 = 1;
 pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 3;
 pub const MACHINE_TASK_CREATE_VERSION: u32 = 1;
-pub const MACHINE_TASK_MUTATION_VERSION: u32 = 1;
+pub const MACHINE_TASK_MUTATION_VERSION: u32 = 2;
 pub const MACHINE_GRAPH_READ_VERSION: u32 = 1;
 pub const MACHINE_DASHBOARD_READ_VERSION: u32 = 1;
-pub const MACHINE_DECOMPOSE_VERSION: u32 = 1;
+pub const MACHINE_DECOMPOSE_VERSION: u32 = 2;
 pub const MACHINE_RUN_EVENT_VERSION: u32 = 3;
 pub const MACHINE_RUN_SUMMARY_VERSION: u32 = 2;
 pub const MACHINE_DOCTOR_REPORT_VERSION: u32 = 2;
@@ -68,6 +71,71 @@ pub struct MachineQueueReadDocument {
     pub next_runnable_task_id: Option<String>,
     #[schemars(schema_with = "json_value_schema")]
     pub runnability: JsonValue,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineContinuationAction {
+    pub title: String,
+    pub command: String,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineContinuationSummary {
+    pub headline: String,
+    pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
+    #[serde(default)]
+    pub next_steps: Vec<MachineContinuationAction>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineValidationWarning {
+    pub task_id: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineQueueValidateDocument {
+    pub version: u32,
+    pub valid: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
+    #[serde(default)]
+    pub warnings: Vec<MachineValidationWarning>,
+    pub continuation: MachineContinuationSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineQueueRepairDocument {
+    pub version: u32,
+    pub dry_run: bool,
+    pub changed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
+    #[schemars(schema_with = "json_value_schema")]
+    pub report: JsonValue,
+    pub continuation: MachineContinuationSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineQueueUndoDocument {
+    pub version: u32,
+    pub dry_run: bool,
+    pub restored: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
+    #[schemars(schema_with = "option_json_value_schema")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<JsonValue>,
+    pub continuation: MachineContinuationSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -144,8 +212,11 @@ pub struct MachineTaskCreateDocument {
 #[serde(deny_unknown_fields)]
 pub struct MachineTaskMutationDocument {
     pub version: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
     #[schemars(schema_with = "json_value_schema")]
     pub report: JsonValue,
+    pub continuation: MachineContinuationSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -168,8 +239,11 @@ pub struct MachineDashboardReadDocument {
 #[serde(deny_unknown_fields)]
 pub struct MachineDecomposeDocument {
     pub version: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
     #[schemars(schema_with = "json_value_schema")]
     pub result: JsonValue,
+    pub continuation: MachineContinuationSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

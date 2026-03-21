@@ -165,13 +165,34 @@ ralph runner capabilities claude
 ralph config show --format json
 ```
 
-When Ralph is not making progress, `ralph doctor` now uses the same canonical `BlockingState` vocabulary as the live run surfaces: `waiting`, `blocked`, or `stalled`, with reasons such as `dependency_blocked`, `schedule_blocked`, `lock_blocked`, `ci_blocked`, and `runner_recovery`.
+When Ralph is not making progress, `ralph doctor` now uses the same canonical `BlockingState` vocabulary as the live run surfaces: `waiting`, `blocked`, or `stalled`, with reasons such as `dependency_blocked`, `schedule_blocked`, `lock_blocked`, `ci_blocked`, `runner_recovery`, and `operator_recovery`.
+
+### Recovery and continuation
+
+```bash
+ralph queue validate
+ralph queue repair --dry-run
+ralph queue repair
+ralph task mutate --dry-run --input request.json
+ralph task mutate --format json --input request.json
+ralph task decompose --format json "Improve webhook reliability"
+ralph task decompose --write "Improve webhook reliability"
+ralph undo --list
+ralph undo --dry-run
+```
+
+These commands are now first-class continuation tools. They explain whether Ralph is ready, waiting, blocked, or stalled, preserve partial value where safe, and point to the next recovery step instead of treating queue repair or undo as emergency-only workflows.
+
+`ralph task mutate --format json` and `ralph task decompose --format json` now emit the same shared versioned continuation documents used by `ralph machine ...`.
 
 ### Machine API
 
 ```bash
 ralph machine system info
 ralph machine queue read
+ralph machine queue validate
+ralph machine queue repair --dry-run
+ralph machine queue undo --dry-run
 ralph machine config resolve
 ralph machine doctor report
 ralph machine task mutate --input request.json

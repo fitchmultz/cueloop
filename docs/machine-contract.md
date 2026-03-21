@@ -20,6 +20,8 @@ This surface exists for the macOS app and any other automation that needs stable
 - `ralph machine queue graph`
 - `ralph machine queue dashboard`
 - `ralph machine queue validate`
+- `ralph machine queue repair`
+- `ralph machine queue undo`
 - `ralph machine config resolve`
 - `ralph machine task create`
 - `ralph machine task mutate`
@@ -98,6 +100,50 @@ Terminal summaries now include optional `blocking` state for `no_candidates`, `b
 ### `machine queue read`
 
 `runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, or mixed.
+
+### `machine queue validate` (`version: 1`)
+
+Queue validation is now a continuation-oriented document instead of a bare validity boolean. It always includes:
+- `valid`
+- optional top-level `blocking`
+- `warnings`
+- `continuation` with a headline, detail, optional blocking payload, and explicit next-step commands.
+
+When the queue is structurally valid but not immediately runnable, `blocking` may still be populated from queue runnability so app and automation surfaces can explain whether Ralph is waiting or blocked.
+
+### `machine queue repair` (`version: 1`)
+
+Queue repair returns a continuation document for both preview and apply modes:
+- `dry_run`
+- `changed`
+- optional top-level `blocking`
+- opaque `report`
+- `continuation`
+
+When present, the document-level `blocking` mirrors `continuation.blocking` so app and automation clients can consume a single canonical field.
+
+Preview mode narrates whether recoverable fixes are available; apply mode confirms normalization and points to validation/undo follow-up steps.
+
+### `machine queue undo` (`version: 1`)
+
+Queue undo returns a continuation document for list, preview, and restore flows:
+- `dry_run`
+- `restored`
+- optional top-level `blocking`
+- optional `result`
+- `continuation`
+
+When present, the document-level `blocking` mirrors `continuation.blocking` so app and automation clients can consume a single canonical field.
+
+This is the machine-safe counterpart to `ralph undo`, which now treats checkpoints as a normal continuation workflow rather than an emergency command.
+
+### `machine task mutate` (`version: 2`) and `machine task decompose` (`version: 2`)
+
+Task mutation and decomposition documents now include:
+- optional top-level `blocking`
+- a shared `continuation` object with `headline`, `detail`, optional `blocking`, and `next_steps`
+
+When present, the document-level `blocking` mirrors `continuation.blocking` so app and automation surfaces can consume a single canonical field after preview, write, and write-blocked flows.
 
 ### `machine doctor report` (`version: 2`)
 

@@ -134,6 +134,38 @@ fn run_one_help_mentions_flags_and_examples() {
 }
 
 #[test]
+fn queue_recovery_help_mentions_continuation_workflows() {
+    let (validate_status, validate_stdout, validate_stderr) = run(&["queue", "validate", "--help"]);
+    assert!(
+        validate_status.success(),
+        "expected `ralph queue validate --help` to succeed\nstdout:\n{validate_stdout}\nstderr:\n{validate_stderr}"
+    );
+    let validate_combined = format!("{validate_stdout}\n{validate_stderr}");
+    assert_contains(&validate_combined, "Continuation workflow");
+    assert_contains(&validate_combined, "ralph queue repair --dry-run");
+    assert_contains(&validate_combined, "ralph undo --dry-run");
+
+    let (repair_status, repair_stdout, repair_stderr) = run(&["queue", "repair", "--help"]);
+    assert!(
+        repair_status.success(),
+        "expected `ralph queue repair --help` to succeed\nstdout:\n{repair_stdout}\nstderr:\n{repair_stderr}"
+    );
+    let repair_combined = format!("{repair_stdout}\n{repair_stderr}");
+    assert_contains(&repair_combined, "Continuation workflow");
+    assert_contains(&repair_combined, "ralph undo --dry-run");
+
+    let (undo_status, undo_stdout, undo_stderr) = run(&["undo", "--help"]);
+    assert!(
+        undo_status.success(),
+        "expected `ralph undo --help` to succeed\nstdout:\n{undo_stdout}\nstderr:\n{undo_stderr}"
+    );
+    let undo_combined = format!("{undo_stdout}\n{undo_stderr}");
+    assert_contains(&undo_combined, "Continuation workflow");
+    assert_contains(&undo_combined, "ralph undo --list");
+    assert_contains(&undo_combined, "ralph queue validate");
+}
+
+#[test]
 fn run_loop_help_mentions_blocking_state_diagnosis() {
     let (status, stdout, stderr) = run(&["run", "loop", "--help"]);
     assert!(
@@ -146,6 +178,20 @@ fn run_loop_help_mentions_blocking_state_diagnosis() {
     assert_contains(&combined, "Blocking-state diagnosis");
     assert_contains(&combined, "ralph doctor");
     assert_contains(&combined, "wait-when-blocked");
+}
+
+#[test]
+fn task_mutate_help_mentions_continuation_and_format() {
+    let (status, stdout, stderr) = run(&["task", "mutate", "--help"]);
+    assert!(
+        status.success(),
+        "expected `ralph task mutate --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+    assert_contains(&combined, "Continuation workflow");
+    assert_contains(&combined, "--format");
+    assert_contains(&combined, "ralph undo --dry-run");
 }
 
 #[test]

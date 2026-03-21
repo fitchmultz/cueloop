@@ -58,7 +58,8 @@ fn task_mutate_applies_multi_field_edit_atomically() -> Result<()> {
     assert_eq!(task.title, "Updated title");
     assert_eq!(task.priority, ralph::contracts::TaskPriority::High);
     assert_eq!(task.description.as_deref(), Some("Updated description"));
-    assert!(stdout.contains("\"applied_edits\": 3"));
+    assert!(stdout.contains("Task mutation has been applied."));
+    assert!(stdout.contains("RQ-0001: 3 edit(s)"));
 
     Ok(())
 }

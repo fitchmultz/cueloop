@@ -115,9 +115,9 @@ pub struct QueueArgs {
 
 #[derive(Subcommand)]
 pub enum QueueCommand {
-    /// Validate the active queue (and done archive if present).
+    /// Inspect whether Ralph can safely continue from the current queue state.
     #[command(
-        after_long_help = "Examples:\n ralph queue validate\n ralph --verbose queue validate"
+        after_long_help = "Continuation workflow:\n - This command is read-only.\n - If the queue is valid, Ralph tells you whether continuation is ready, waiting, or blocked.\n - If recoverable issues are present, Ralph explains the blocking state and the next repair/undo steps.\n - Warnings are preserved as partial value; they do not force manual queue surgery.\n\nExamples:\n ralph queue validate\n ralph --verbose queue validate\n ralph queue repair --dry-run\n ralph queue repair\n ralph undo --dry-run"
     )]
     Validate,
 
@@ -157,8 +157,10 @@ pub enum QueueCommand {
     )]
     Archive(QueueArchiveArgs),
 
-    /// Repair the queue and done files (fix missing fields, duplicates, timestamps).
-    #[command(after_long_help = "Example:\n ralph queue repair\n ralph queue repair --dry-run")]
+    /// Normalize recoverable queue issues so Ralph can continue safely.
+    #[command(
+        after_long_help = "Continuation workflow:\n - Use --dry-run first to preview recoverable fixes.\n - Applying the repair creates an undo checkpoint before queue files are rewritten.\n - This command is for normal continuation, not manual emergency surgery.\n\nExamples:\n ralph queue repair --dry-run\n ralph queue repair\n ralph undo --dry-run"
+    )]
     Repair(RepairArgs),
 
     /// Safely remove the queue lock file with process detection.

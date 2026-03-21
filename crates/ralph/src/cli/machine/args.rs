@@ -14,7 +14,8 @@
 //! - Machine commands stay non-human-facing and versioned.
 //! - Subcommand shapes remain stable unless machine contract versions change.
 
-use clap::{Args, Subcommand};
+use clap::Args;
+use clap::Subcommand;
 
 use crate::agent;
 
@@ -59,12 +60,30 @@ pub enum MachineQueueCommand {
     Graph,
     Dashboard(MachineDashboardArgs),
     Validate,
+    Repair(MachineQueueRepairArgs),
+    Undo(MachineQueueUndoArgs),
 }
 
 #[derive(Args)]
 pub struct MachineDashboardArgs {
     #[arg(long, default_value_t = 30)]
     pub days: u32,
+}
+
+#[derive(Args)]
+pub struct MachineQueueRepairArgs {
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Args)]
+pub struct MachineQueueUndoArgs {
+    #[arg(long, short)]
+    pub id: Option<String>,
+    #[arg(long)]
+    pub list: bool,
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Args)]

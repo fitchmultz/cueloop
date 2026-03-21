@@ -58,8 +58,8 @@ fn undo_restores_queue_after_task_done() -> Result<()> {
     anyhow::ensure!(status.success(), "undo failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("Restored from snapshot"),
-        "expected 'Restored from snapshot' in output, got:\n{stdout}"
+        stdout.contains("Continuation has been restored"),
+        "expected restore continuation message in output, got:\n{stdout}"
     );
 
     let restored_queue = read_queue(dir.path())?;

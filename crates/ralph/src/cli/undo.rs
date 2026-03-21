@@ -1,18 +1,16 @@
 //! CLI handler for `ralph undo` command.
 //!
 //! Responsibilities:
-//! - Handle `ralph undo` to restore the most recent snapshot.
-//! - Handle `ralph undo --list` to show available snapshots.
-//! - Handle `ralph undo --dry-run` to preview restores.
-//! - Handle `ralph undo --id <id>` to restore a specific snapshot.
+//! - List, preview, or restore continuation checkpoints.
+//! - Keep undo visible as a normal queue continuation workflow.
+//! - Align wording with the canonical blocked/waiting/stalled vocabulary.
 //!
 //! Not handled here:
 //! - Core undo logic (see `crate::undo`).
-//! - Queue lock management (delegated to queue module).
+//! - Queue lock management details beyond invoking the shared machine builders.
 
+use crate::cli::machine::MachineQueueUndoArgs;
 use crate::config;
-use crate::queue;
-use crate::undo;
 use anyhow::Result;
 use clap::Args;
 
@@ -38,57 +36,77 @@ pub struct UndoArgs {
 /// Handle the `ralph undo` command.
 pub fn handle(args: UndoArgs, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
+    let document = crate::cli::machine::build_queue_undo_document(
+        &resolved,
+        force,
+        &MachineQueueUndoArgs {
+            id: args.id.clone(),
+            list: args.list,
+            dry_run: args.dry_run,
+        },
+    )?;
 
-    if args.list {
-        return handle_list(&resolved);
+    println!("{}", document.continuation.headline);
+    println!("{}", document.continuation.detail);
+
+    if let Some(blocking) = document
+        .blocking
+        .as_ref()
+        .or(document.continuation.blocking.as_ref())
+    {
+        println!();
+        println!(
+            "Operator state: {}",
+            format!("{:?}", blocking.status).to_lowercase()
+        );
+        println!("{}", blocking.message);
+        if !blocking.detail.is_empty() {
+            println!("{}", blocking.detail);
+        }
     }
 
-    let _lock = queue::acquire_queue_lock(&resolved.repo_root, "undo", force)?;
-
-    let result = undo::restore_from_snapshot(&resolved, args.id.as_deref(), args.dry_run)?;
-
-    if args.dry_run {
-        println!("Dry run - would restore from snapshot:");
-    } else {
-        println!("Restored from snapshot:");
+    if let Some(result) = &document.result {
+        println!();
+        if args.list {
+            let snapshots =
+                serde_json::from_value::<Vec<crate::undo::UndoSnapshotMeta>>(result.clone())?;
+            if snapshots.is_empty() {
+                println!(
+                    "Ralph will create new checkpoints automatically before future queue writes."
+                );
+            } else {
+                println!("Available continuation checkpoints (newest first):");
+                println!();
+                for (index, snapshot) in snapshots.iter().enumerate() {
+                    println!(
+                        "  {}. {} [{}]",
+                        index + 1,
+                        snapshot.operation,
+                        snapshot.timestamp
+                    );
+                    println!("     ID: {}", snapshot.id);
+                }
+            }
+        } else {
+            let restore = serde_json::from_value::<crate::undo::RestoreResult>(result.clone())?;
+            println!("Checkpoint: {}", restore.snapshot_id);
+            println!("Operation: {}", restore.operation);
+            println!("Timestamp: {}", restore.timestamp);
+            println!("Tasks affected: {}", restore.tasks_affected);
+            if args.verbose && !args.dry_run {
+                println!();
+                println!("Run `ralph queue list` to inspect the restored queue state in detail.");
+            }
+        }
     }
 
-    println!("  Operation: {}", result.operation);
-    println!("  Timestamp: {}", result.timestamp);
-    println!("  Tasks affected: {}", result.tasks_affected);
-
-    if args.verbose && !args.dry_run {
-        println!("\nRun `ralph queue list` to see the restored queue state.");
+    if !document.continuation.next_steps.is_empty() {
+        println!();
+        println!("Next:");
+        for (index, step) in document.continuation.next_steps.iter().enumerate() {
+            println!("  {}. {} — {}", index + 1, step.command, step.detail);
+        }
     }
-
-    Ok(())
-}
-
-fn handle_list(resolved: &config::Resolved) -> Result<()> {
-    let list = undo::list_undo_snapshots(&resolved.repo_root)?;
-
-    if list.snapshots.is_empty() {
-        println!("No undo snapshots available.");
-        println!("\nSnapshots are created automatically before queue mutations such as:");
-        println!("  - ralph task done/reject");
-        println!("  - ralph queue archive");
-        println!("  - ralph queue prune");
-        println!("  - ralph task batch operations");
-        println!("  - ralph task edit");
-        return Ok(());
-    }
-
-    println!("Available undo snapshots (newest first):\n");
-
-    for (i, snap) in list.snapshots.iter().enumerate() {
-        let num = i + 1;
-        println!("  {}. {} [{}]", num, snap.operation, snap.timestamp);
-        println!("     ID: {}", snap.id);
-    }
-
-    println!("\nTo restore the most recent: ralph undo");
-    println!("To restore a specific one:  ralph undo --id <ID>");
-    println!("To preview without applying: ralph undo --dry-run");
 
     Ok(())
 }
@@ -108,7 +126,6 @@ mod tests {
         let queue_path = ralph_dir.join("queue.json");
         let done_path = ralph_dir.join("done.json");
 
-        // Create initial queue with one task
         let queue = QueueFile {
             version: 1,
             tasks: vec![Task {
@@ -140,7 +157,7 @@ mod tests {
             }],
         };
 
-        queue::save_queue(&queue_path, &queue).unwrap();
+        crate::queue::save_queue(&queue_path, &queue).unwrap();
 
         config::Resolved {
             config: crate::contracts::Config::default(),
@@ -155,25 +172,40 @@ mod tests {
     }
 
     #[test]
-    fn handle_list_shows_snapshots() {
+    fn build_undo_list_document_shows_snapshots() {
         let temp = TempDir::new().unwrap();
         let resolved = create_test_resolved(&temp);
 
-        // Create a snapshot
-        undo::create_undo_snapshot(&resolved, "test operation").unwrap();
+        crate::undo::create_undo_snapshot(&resolved, "test operation").unwrap();
 
-        // Test handle_list
-        let result = handle_list(&resolved);
-        assert!(result.is_ok());
+        let document = crate::cli::machine::build_queue_undo_document(
+            &resolved,
+            false,
+            &MachineQueueUndoArgs {
+                id: None,
+                list: true,
+                dry_run: false,
+            },
+        )
+        .expect("undo list document");
+        assert!(document.result.is_some());
     }
 
     #[test]
-    fn handle_list_empty_shows_helpful_message() {
+    fn build_undo_list_document_handles_empty_snapshots() {
         let temp = TempDir::new().unwrap();
         let resolved = create_test_resolved(&temp);
 
-        // Test handle_list with no snapshots
-        let result = handle_list(&resolved);
-        assert!(result.is_ok());
+        let document = crate::cli::machine::build_queue_undo_document(
+            &resolved,
+            false,
+            &MachineQueueUndoArgs {
+                id: None,
+                list: true,
+                dry_run: false,
+            },
+        )
+        .expect("undo list document");
+        assert!(document.result.is_some());
     }
 }

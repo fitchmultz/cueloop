@@ -165,7 +165,7 @@ extension WorkspaceRunnerController {
         }
     }
 
-    struct MachineBlockingState: Decodable, Sendable {
+    struct MachineBlockingState: Decodable, Sendable, Equatable {
         let status: Workspace.BlockingStatus
         let reason: MachineBlockingReason
         let taskID: String?
@@ -191,7 +191,7 @@ extension WorkspaceRunnerController {
         }
     }
 
-    struct MachineBlockingReason: Decodable, Sendable {
+    struct MachineBlockingReason: Decodable, Sendable, Equatable {
         let kind: String
         let includeDraft: Bool?
         let blockedTasks: Int?
@@ -205,6 +205,7 @@ extension WorkspaceRunnerController {
         let scope: String?
         let reason: String?
         let taskID: String?
+        let suggestedCommand: String?
         let dependencyBlocked: Int?
         let scheduleBlocked: Int?
         let statusFiltered: Int?
@@ -223,6 +224,7 @@ extension WorkspaceRunnerController {
             case scope
             case reason
             case taskID = "task_id"
+            case suggestedCommand = "suggested_command"
             case dependencyBlocked = "dependency_blocked"
             case scheduleBlocked = "schedule_blocked"
             case statusFiltered = "status_filtered"
@@ -246,6 +248,12 @@ extension WorkspaceRunnerController {
                 return .ciBlocked(pattern: pattern, exitCode: exitCode)
             case "runner_recovery":
                 return .runnerRecovery(scope: scope ?? "unknown", reason: reason ?? "unknown", taskID: taskID)
+            case "operator_recovery":
+                return .operatorRecovery(
+                    scope: scope ?? "unknown",
+                    reason: reason ?? "unknown",
+                    suggestedCommand: suggestedCommand
+                )
             default:
                 return .mixedQueue(
                     dependencyBlocked: dependencyBlocked ?? 0,

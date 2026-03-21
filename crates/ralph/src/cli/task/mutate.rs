@@ -3,7 +3,7 @@
 //! Responsibilities:
 //! - Read a JSON task-mutation request from stdin or a file.
 //! - Apply the request atomically through the shared queue transaction helper.
-//! - Persist queue changes and print a machine-readable mutation report.
+//! - Persist queue changes and print continuation-first mutation output from the shared machine document.
 //!
 //! Not handled here:
 //! - Legacy field-by-field edit UX.
@@ -13,8 +13,9 @@
 //! - Input JSON matches `TaskMutationRequest`.
 //! - Queue mutations are lock-protected and use the shared queue operation layer.
 
-use crate::cli::task::args::TaskMutateArgs;
+use crate::cli::task::args::{TaskMutateArgs, TaskMutateFormatArg};
 use crate::config;
+use crate::contracts::MachineTaskMutationDocument;
 use crate::queue;
 use crate::queue::operations::{
     TaskMutationReport, TaskMutationRequest, apply_task_mutation_request,
@@ -51,17 +52,16 @@ pub fn handle(args: &TaskMutateArgs, force: bool, resolved: &config::Resolved) -
         resolved.config.queue.max_dependency_depth.unwrap_or(10),
     )?;
 
-    if args.dry_run {
-        print_report(&report)?;
-        return Ok(());
+    if !args.dry_run {
+        crate::undo::create_undo_snapshot(
+            resolved,
+            &format!("task mutate [{} task(s)]", report.tasks.len()),
+        )?;
+        queue::save_queue(&resolved.queue_path, &working)?;
     }
 
-    crate::undo::create_undo_snapshot(
-        resolved,
-        &format!("task mutate [{} task(s)]", report.tasks.len()),
-    )?;
-    queue::save_queue(&resolved.queue_path, &working)?;
-    print_report(&report)?;
+    let document = crate::cli::machine::build_task_mutation_document(&report, args.dry_run)?;
+    print_report(&report, &document, args.format)?;
     Ok(())
 }
 
@@ -86,10 +86,49 @@ fn read_request(args: &TaskMutateArgs) -> Result<String> {
     Ok(raw)
 }
 
-fn print_report(report: &TaskMutationReport) -> Result<()> {
-    println!(
-        "{}",
-        serde_json::to_string_pretty(report).context("serialize task mutation report")?
-    );
+fn print_report(
+    report: &TaskMutationReport,
+    document: &MachineTaskMutationDocument,
+    format: TaskMutateFormatArg,
+) -> Result<()> {
+    match format {
+        TaskMutateFormatArg::Text => {
+            println!("{}", document.continuation.headline);
+            println!("{}", document.continuation.detail);
+
+            if let Some(blocking) = document
+                .blocking
+                .as_ref()
+                .or(document.continuation.blocking.as_ref())
+            {
+                println!();
+                println!(
+                    "Operator state: {}",
+                    format!("{:?}", blocking.status).to_lowercase()
+                );
+                println!("{}", blocking.message);
+                if !blocking.detail.is_empty() {
+                    println!("{}", blocking.detail);
+                }
+            }
+
+            println!();
+            println!("Applied edits:");
+            for task in &report.tasks {
+                println!("  - {}: {} edit(s)", task.task_id, task.applied_edits);
+            }
+
+            if !document.continuation.next_steps.is_empty() {
+                println!();
+                println!("Next:");
+                for (index, step) in document.continuation.next_steps.iter().enumerate() {
+                    println!("  {}. {} — {}", index + 1, step.command, step.detail);
+                }
+            }
+        }
+        TaskMutateFormatArg::Json => {
+            println!("{}", serde_json::to_string_pretty(document)?);
+        }
+    }
     Ok(())
 }

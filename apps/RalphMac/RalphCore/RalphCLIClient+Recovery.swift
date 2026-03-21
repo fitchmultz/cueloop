@@ -72,6 +72,8 @@ public enum RecoveryAction: String, CaseIterable, Sendable {
     case checkPermissions
     case reinstallCLI
     case validateQueue
+    case repairQueue
+    case restoreLastCheckpoint
 }
 
 extension ErrorCategory {
@@ -84,9 +86,9 @@ extension ErrorCategory {
         case .configIncompatible:
             return [.retry, .openLogs, .copyErrorDetails, .dismiss]
         case .parseError:
-            return [.retry, .validateQueue, .diagnose, .openLogs, .copyErrorDetails, .dismiss]
+            return [.retry, .validateQueue, .repairQueue, .diagnose, .openLogs, .copyErrorDetails, .dismiss]
         case .queueCorrupted:
-            return [.validateQueue, .diagnose, .openLogs, .copyErrorDetails, .dismiss]
+            return [.validateQueue, .repairQueue, .restoreLastCheckpoint, .diagnose, .openLogs, .copyErrorDetails, .dismiss]
         case .resourceBusy:
             return [.retry, .diagnose, .openLogs, .copyErrorDetails, .dismiss]
         case .networkError, .versionMismatch, .unknown:
@@ -103,11 +105,11 @@ extension ErrorCategory {
         case .configIncompatible:
             return "The workspace config is using an older or unsupported Ralph contract. Run `ralph migrate --apply` in the repository, then retry."
         case .parseError:
-            return "The CLI returned data that couldn't be parsed. The queue file may be corrupted or incompatible."
+            return "Ralph could not decode a continuation payload. Validate the queue state first, then preview repair if the queue itself is inconsistent."
         case .networkError:
             return "A network operation failed. Check your connection and try again."
         case .queueCorrupted:
-            return "The queue file appears to be corrupted. Try validating or restoring from backup."
+            return "Ralph is stalled on queue consistency. Validate first, preview repair next, and restore the last continuation checkpoint if a recent write introduced the problem."
         case .resourceBusy:
             return "A required resource is temporarily unavailable. This usually resolves on retry."
         case .versionMismatch:

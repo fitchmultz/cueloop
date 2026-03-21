@@ -8,7 +8,7 @@
 //! - Data modeling only; file IO, restore, and pruning live in sibling modules.
 //!
 //! Usage:
-//! - Used through `crate::undo` by CLI and queue-mutation paths.
+//! - Used through `crate::undo` by CLI and core flows.
 //!
 //! Invariants/Assumptions:
 //! - Snapshot payloads serialize both queue and done files together.
@@ -44,14 +44,15 @@ pub struct UndoSnapshot {
 }
 
 /// Result of listing snapshots.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SnapshotList {
     pub snapshots: Vec<UndoSnapshotMeta>,
 }
 
 /// Result of a restore operation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RestoreResult {
+    pub snapshot_id: String,
     pub operation: String,
     pub timestamp: String,
     pub tasks_affected: usize,

@@ -31,10 +31,11 @@ fn undo_no_snapshots_error() -> Result<()> {
     );
 
     anyhow::ensure!(
-        stderr.contains("No undo snapshots available")
-            || stderr.contains("no undo snapshots")
+        stderr.contains("No continuation checkpoints are available")
+            || stderr.contains("No undo snapshots available")
+            || stderr.contains("no continuation checkpoints")
             || stderr.contains("No snapshots"),
-        "expected 'No undo snapshots available' error, got stderr:\n{stderr}"
+        "expected continuation checkpoint error, got stderr:\n{stderr}"
     );
 
     Ok(())

@@ -228,6 +228,14 @@ public struct TaskConflictResolutionModel: Sendable, Equatable {
     public let sections: [TaskConflictSectionPresentation]
     public let initialSelections: [TaskConflictField: TaskConflictMergeChoice]
 
+    public var continuationHeadline: String {
+        "Task continuation is blocked on a conflict."
+    }
+
+    public var continuationDetail: String {
+        "Review the changed fields, choose local or external values, then continue by saving the merged task."
+    }
+
     public init(localTask: RalphTask, externalTask: RalphTask) {
         self.localTask = localTask
         self.externalTask = externalTask

@@ -146,6 +146,7 @@ fn blocking_priority(blocking: &BlockingState) -> u8 {
         BlockingReason::LockBlocked { .. } => 70,
         BlockingReason::CiBlocked { .. } => 60,
         BlockingReason::RunnerRecovery { .. } => 50,
+        BlockingReason::OperatorRecovery { .. } => 45,
         BlockingReason::MixedQueue { .. } => 40,
         BlockingReason::DependencyBlocked { .. } => 30,
         BlockingReason::ScheduleBlocked { .. } => 20,

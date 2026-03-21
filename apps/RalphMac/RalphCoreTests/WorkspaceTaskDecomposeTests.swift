@@ -188,7 +188,8 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
 
     private static let previewJSON = """
     {
-      "version": 1,
+      "version": 2,
+      "blocking": null,
       "result": {
         "version": 1,
         "mode": "preview",
@@ -243,13 +244,26 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
           "with_dependencies": true
         },
         "write": null
+      },
+      "continuation": {
+        "headline": "Decomposition preview is ready.",
+        "detail": "Ralph planned a task tree that can be written when you are ready.",
+        "blocking": null,
+        "next_steps": [
+          {
+            "title": "Write the preview",
+            "command": "ralph task decompose --write ...",
+            "detail": "Persist the planned tree into the queue."
+          }
+        ]
       }
     }
     """
 
     private static let writeJSON = """
     {
-      "version": 1,
+      "version": 2,
+      "blocking": null,
       "result": {
         "version": 1,
         "mode": "write",
@@ -284,6 +298,23 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
           "replaced_ids": [],
           "parent_annotated": true
         }
+      },
+      "continuation": {
+        "headline": "Decomposition has been written.",
+        "detail": "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue.",
+        "blocking": null,
+        "next_steps": [
+          {
+            "title": "Inspect the tree",
+            "command": "ralph queue tree",
+            "detail": "Review the written parent/child structure."
+          },
+          {
+            "title": "Restore if needed",
+            "command": "ralph undo --dry-run",
+            "detail": "Preview the rollback path for this decomposition."
+          }
+        ]
       }
     }
     """

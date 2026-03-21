@@ -21,7 +21,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
         let fixture = try Self.makeMutationFixture(
             prefix: "ralph-workspace-agent-edit",
             scriptName: "mock-ralph-task-mutate-agent",
-            mutationReportJSON: #"{"version":1,"report":{"version":1,"atomic":true,"tasks":[{"task_id":"RQ-9001","applied_edits":1}]}}"#
+            mutationReportJSON: #"{"version":2,"blocking":null,"report":{"version":1,"atomic":true,"tasks":[{"task_id":"RQ-9001","applied_edits":1}]},"continuation":{"headline":"Task mutation has been applied.","detail":"Ralph wrote 1 task mutation(s) atomically and created an undo checkpoint first.","blocking":null,"next_steps":[{"title":"Continue work","command":"ralph run resume","detail":"Proceed from the updated task state."}]}}"#
         )
         var workspace: Workspace!
         defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
@@ -73,7 +73,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
         let fixture = try Self.makeMutationFixture(
             prefix: "ralph-workspace-agent-clear",
             scriptName: "mock-ralph-task-mutate-agent-clear",
-            mutationReportJSON: #"{"version":1,"report":{"version":1,"atomic":true,"tasks":[{"task_id":"RQ-9002","applied_edits":1}]}}"#
+            mutationReportJSON: #"{"version":2,"blocking":null,"report":{"version":1,"atomic":true,"tasks":[{"task_id":"RQ-9002","applied_edits":1}]},"continuation":{"headline":"Task mutation has been applied.","detail":"Ralph wrote 1 task mutation(s) atomically and created an undo checkpoint first.","blocking":null,"next_steps":[{"title":"Continue work","command":"ralph run resume","detail":"Proceed from the updated task state."}]}}"#
         )
         var workspace: Workspace!
         defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
@@ -108,7 +108,7 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
         let fixture = try Self.makeMutationFixture(
             prefix: "ralph-workspace-agent-noop",
             scriptName: "mock-ralph-task-mutate-agent-noop",
-            mutationReportJSON: #"{"version":1,"report":{"version":1,"atomic":true,"tasks":[]}}"#
+            mutationReportJSON: #"{"version":2,"blocking":null,"report":{"version":1,"atomic":true,"tasks":[]},"continuation":{"headline":"Task mutation has been applied.","detail":"Ralph wrote 0 task mutation(s) atomically and created an undo checkpoint first.","blocking":null,"next_steps":[{"title":"Continue work","command":"ralph run resume","detail":"Proceed from the updated task state."}]}}"#
         )
         var workspace: Workspace!
         defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }

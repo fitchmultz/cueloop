@@ -111,11 +111,12 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
     println!("Stdout: {stdout}");
     println!("Stderr: {stderr}");
 
-    // Check stderr for report (log::info! goes to stderr)
-    assert!(stderr.contains("Fixed missing fields"));
-    assert!(stderr.contains("Fixed invalid timestamps")); // RQ-0001 missing timestamps
-    assert!(stderr.contains("Remapped"));
-    assert!(stderr.contains("Repaired queue written to disk"));
+    // Queue repair now narrates continuation guidance on stdout.
+    assert!(stdout.contains("Queue continuation has been normalized."));
+    assert!(stdout.contains("\"fixed_tasks\": 3"));
+    assert!(stdout.contains("\"fixed_timestamps\": 2"));
+    assert!(stdout.contains("\"remapped_ids\""));
+    assert!(stdout.contains("ralph queue validate"));
 
     // Verify file content
     let queue_path = dir.path().join(".ralph/queue.jsonc");

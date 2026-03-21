@@ -100,6 +100,9 @@ fn schema_alignment_machine_bundle_contains_expected_documents() {
     for key in [
         "system_info",
         "queue_read",
+        "queue_validate",
+        "queue_repair",
+        "queue_undo",
         "config_resolve",
         "task_create_request",
         "task_create",

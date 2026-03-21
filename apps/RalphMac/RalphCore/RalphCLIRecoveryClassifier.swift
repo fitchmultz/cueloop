@@ -141,7 +141,13 @@ enum RalphCLIRecoveryClassifier {
             )
         }
 
-        if normalized.contains("queue") && (normalized.contains("corrupt") || normalized.contains("invalid")) {
+        if normalized.contains("queue validation failed")
+            || normalized.contains("done archive validation failed")
+            || (normalized.contains("queue") && (normalized.contains("corrupt") || normalized.contains("invalid")))
+            || normalized.contains("duplicate id")
+            || normalized.contains("invalid timestamp")
+            || normalized.contains("task mutation conflict for")
+        {
             return makeRecovery(
                 category: .queueCorrupted,
                 message: "Queue data appears corrupted",
@@ -265,7 +271,8 @@ enum RalphCLIRecoveryClassifier {
             ]
         case .parseError:
             return [
-                "Validate the queue file",
+                "Run `ralph queue validate` to inspect continuation readiness",
+                "Preview `ralph queue repair --dry-run` if the queue looks inconsistent",
                 "Check whether the CLI and app versions match",
             ]
         case .networkError:
@@ -276,9 +283,9 @@ enum RalphCLIRecoveryClassifier {
             ]
         case .queueCorrupted:
             return [
-                "Run `ralph init --non-interactive` to create or repair queue files",
-                "Inspect recent manual edits to queue files",
-                "Restore the queue from backup if needed",
+                "Run `ralph queue validate` to inspect the current continuation state",
+                "Preview `ralph queue repair --dry-run` before applying repair",
+                "Preview `ralph undo --dry-run` if a recent queue write introduced the issue",
             ]
         case .resourceBusy:
             return [

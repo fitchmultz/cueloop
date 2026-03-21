@@ -48,6 +48,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
 
         let parseActions = ErrorCategory.parseError.suggestedActions
         XCTAssertTrue(parseActions.contains(.validateQueue))
+        XCTAssertTrue(parseActions.contains(.repairQueue))
         XCTAssertTrue(parseActions.contains(.diagnose))
 
         let configActions = ErrorCategory.configIncompatible.suggestedActions
@@ -56,6 +57,8 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
 
         let queueActions = ErrorCategory.queueCorrupted.suggestedActions
         XCTAssertEqual(queueActions.first, .validateQueue)
+        XCTAssertTrue(queueActions.contains(.repairQueue))
+        XCTAssertTrue(queueActions.contains(.restoreLastCheckpoint))
     }
 
     func testErrorCategoryGuidanceMessages() {
@@ -229,7 +232,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
         let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
         XCTAssertEqual(recoveryError.category, .queueCorrupted)
         XCTAssertTrue(recoveryError.message.contains("No Ralph queue file found"))
-        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("ralph init --non-interactive") })
+        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("ralph queue validate") })
     }
 
     func testClassifyRetryableProcessErrorWithoutStderrIncludesExitCode() {
@@ -257,7 +260,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
 
         let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
         XCTAssertEqual(recoveryError.category, .queueCorrupted)
-        XCTAssertTrue(recoveryError.suggestions.contains { $0.localizedCaseInsensitiveContains("backup") })
+        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("ralph queue repair --dry-run") })
     }
 
     func testClassifyNetworkError() {
@@ -338,6 +341,8 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
         XCTAssertEqual(RecoveryAction.checkPermissions.rawValue, "checkPermissions")
         XCTAssertEqual(RecoveryAction.reinstallCLI.rawValue, "reinstallCLI")
         XCTAssertEqual(RecoveryAction.validateQueue.rawValue, "validateQueue")
+        XCTAssertEqual(RecoveryAction.repairQueue.rawValue, "repairQueue")
+        XCTAssertEqual(RecoveryAction.restoreLastCheckpoint.rawValue, "restoreLastCheckpoint")
     }
 
     func testAllCategoriesHaveSuggestedActions() {
@@ -358,6 +363,8 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
 
         let corruptionActions = ErrorCategory.queueCorrupted.suggestedActions
         XCTAssertTrue(corruptionActions.contains(.validateQueue))
+        XCTAssertTrue(corruptionActions.contains(.repairQueue))
+        XCTAssertTrue(corruptionActions.contains(.restoreLastCheckpoint))
     }
 
     func testOfflineGuidanceForCLIUnavailable() {

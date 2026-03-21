@@ -31,15 +31,15 @@ fn undo_list_empty_shows_helpful_message() -> Result<()> {
     );
 
     anyhow::ensure!(
-        stdout.contains("No undo snapshots available"),
-        "expected 'No undo snapshots available' message, got:\n{stdout}"
+        stdout.contains("No continuation checkpoints are available"),
+        "expected continuation checkpoint message, got:\n{stdout}"
     );
 
     anyhow::ensure!(
-        stdout.contains("ralph task done")
-            || stdout.contains("ralph queue")
-            || stdout.contains("mutation"),
-        "expected helpful message about mutation operations, got:\n{stdout}"
+        stdout.contains("ralph task mutate --dry-run")
+            || stdout.contains("checkpoint")
+            || stdout.contains("queue writes"),
+        "expected helpful continuation guidance, got:\n{stdout}"
     );
 
     Ok(())
@@ -61,8 +61,8 @@ fn undo_list_shows_snapshots_after_task_done() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("Available undo snapshots"),
-        "expected 'Available undo snapshots' header, got:\n{stdout}"
+        stdout.contains("Available continuation checkpoints"),
+        "expected continuation checkpoint header, got:\n{stdout}"
     );
 
     anyhow::ensure!(

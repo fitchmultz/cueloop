@@ -38,7 +38,7 @@ pub use lifecycle::{
     TaskDoneArgs, TaskReadyArgs, TaskRejectArgs, TaskScheduleArgs, TaskShowArgs, TaskStartArgs,
     TaskStatusArgs,
 };
-pub use mutate::TaskMutateArgs;
+pub use mutate::{TaskMutateArgs, TaskMutateFormatArg};
 pub use relations::{
     TaskBlocksArgs, TaskChildrenArgs, TaskCloneArgs, TaskMarkDuplicateArgs, TaskParentArgs,
     TaskRelateArgs, TaskRelationFormat, TaskSplitArgs,
@@ -77,7 +77,7 @@ pub enum TaskCommand {
     /// Recursively decompose a goal or existing task into a task tree.
     #[command(
         next_help_heading = "Create and build",
-        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nPlanner behavior:\n - Preview is the default; use --write to mutate queue state.\n - Existing tasks are preserved as parents unless --attach-to is used for a freeform request.\n - Existing parents with children are blocked by default; use --child-policy append|replace to proceed.\n - Use --with-dependencies to infer sibling depends_on edges.\n - Use --format json for stable machine-readable output.\n\nExamples:\n ralph task decompose \"Build OAuth login with GitHub and Google\"\n ralph task decompose \"Improve webhook reliability\" --write\n ralph task decompose RQ-0123 --max-depth 3 --preview\n ralph task decompose RQ-0123 --child-policy append --with-dependencies --write\n ralph task decompose --attach-to RQ-0042 \"Plan webhook reliability work\" --write\n ralph task decompose --attach-to RQ-0042 --child-policy replace --format json \"Rebuild the auth subtree\"\n ralph task decompose --runner codex --model gpt-5.4 --effort high \"Plan queue migration\""
+        after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nContinuation workflow:\n - Preview is the default; use --write to mutate queue state.\n - Existing tasks are preserved as parents unless --attach-to is used for a freeform request.\n - Existing parents with children are blocked by default; use --child-policy append|replace to continue safely.\n - Successful writes create an undo checkpoint before queue mutation.\n - Use --with-dependencies to infer sibling depends_on edges.\n - Use --format json to emit the same versioned continuation document used by `ralph machine task decompose`.\n\nExamples:\n ralph task decompose \"Build OAuth login with GitHub and Google\"\n ralph task decompose \"Improve webhook reliability\" --write\n ralph task decompose RQ-0123 --max-depth 3 --preview\n ralph task decompose RQ-0123 --child-policy append --with-dependencies --write\n ralph task decompose --attach-to RQ-0042 \"Plan webhook reliability work\" --write\n ralph task decompose --attach-to RQ-0042 --child-policy replace --format json \"Rebuild the auth subtree\"\n ralph task decompose --runner codex --model gpt-5.4 --effort high \"Plan queue migration\"\n ralph undo --dry-run"
     )]
     Decompose(TaskDecomposeArgs),
 
@@ -155,10 +155,10 @@ pub enum TaskCommand {
     )]
     Edit(TaskEditArgs),
 
-    /// Apply a structured multi-field task mutation transaction.
+    /// Continue from a stale or partially edited task snapshot with one atomic mutation.
     #[command(
         next_help_heading = "Edit",
-        after_long_help = "Examples:\n echo '{\"version\":1,\"atomic\":true,\"tasks\":[{\"task_id\":\"RQ-0001\",\"edits\":[{\"field\":\"title\",\"value\":\"Clarified title\"},{\"field\":\"priority\",\"value\":\"high\"}]}]}' | ralph task mutate\n ralph task mutate --input /tmp/task-mutation.json\n ralph task mutate --dry-run --input /tmp/task-mutation.json"
+        after_long_help = "Continuation workflow:\n - Use --dry-run to validate the transaction without writing queue changes.\n - Ralph applies all requested edits atomically or not at all.\n - Successful writes create an undo checkpoint, so operators do not need manual queue surgery.\n - If the queue moved underneath you, Ralph reports the conflict instead of partially applying edits.\n - Use --format json to emit the same versioned continuation document used by `ralph machine task mutate`.\n\nExamples:\n echo '{\"version\":1,\"atomic\":true,\"tasks\":[{\"task_id\":\"RQ-0001\",\"edits\":[{\"field\":\"title\",\"value\":\"Clarified title\"},{\"field\":\"priority\",\"value\":\"high\"}]}]}' | ralph task mutate\n ralph task mutate --input /tmp/task-mutation.json\n ralph task mutate --dry-run --input /tmp/task-mutation.json\n ralph task mutate --format json --input /tmp/task-mutation.json\n ralph undo --dry-run"
     )]
     Mutate(TaskMutateArgs),
 

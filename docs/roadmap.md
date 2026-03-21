@@ -18,12 +18,7 @@ Primary outcome:
 
 Detailed execution plan:
 
-#### 1.1 Normalize recovery tooling into the happy path
-- Make `task mutate`, `task decompose`, `queue validate`, `queue repair`, and `undo` feel like normal continuation tools, not emergency escape hatches.
-- Preserve partial value wherever safe instead of forcing operators into manual queue surgery.
-- Keep recovery-entrypoint language aligned with the new resume/blocking-state terminology.
-
-#### 1.2 Tighten parallel only after serial recovery is boring
+#### 1.1 Tighten parallel only after serial recovery is boring
 - Do not spend major churn on `run parallel` UX until serial run/resume/supervision behavior is calm and legible.
 - When parallel work resumes, focus on bookkeeping visibility, stale lock handling, and post-run integration clarity.
 - Reuse the same operator-state vocabulary for worker stalls, merge retries, and blocked pushes.
@@ -59,12 +54,6 @@ Detailed execution plan:
 #### 2.4 Preserve real contract coverage on core operator paths
 - Keep real `ralph init`, queue/undo/recovery, and supervision coverage where behavior correctness matters.
 - Use cached or synthetic scaffolding only when the contract under test is not runtime fidelity.
-
-#### 2.5 Maintain CLI / machine / app semantic parity
-- Whenever operator-facing workflow changes land, verify equivalent semantics across:
-  - human CLI
-  - machine CLI
-  - app integrations.
 
 Exit criteria for item 2:
 - Structural cleanup measurably reduces iteration pain on active roadmap paths.

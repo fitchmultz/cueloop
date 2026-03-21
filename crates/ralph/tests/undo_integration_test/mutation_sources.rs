@@ -32,7 +32,7 @@ fn undo_creates_snapshot_on_task_reject() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("Available undo snapshots"),
+        stdout.contains("Available continuation checkpoints"),
         "expected snapshot after task reject, got:\n{stdout}"
     );
 
@@ -73,7 +73,7 @@ fn undo_creates_snapshot_on_queue_archive() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("Available undo snapshots"),
+        stdout.contains("Available continuation checkpoints"),
         "expected snapshot after queue archive, got:\n{stdout}"
     );
 

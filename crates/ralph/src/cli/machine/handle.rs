@@ -30,7 +30,8 @@ use crate::contracts::{
     MACHINE_CLI_SPEC_VERSION, MACHINE_DOCTOR_REPORT_VERSION, MACHINE_SYSTEM_INFO_VERSION,
     MachineCliSpecDocument, MachineConfigResolveDocument, MachineDashboardReadDocument,
     MachineDecomposeDocument, MachineDoctorReportDocument, MachineGraphReadDocument,
-    MachineParallelStatusDocument, MachineQueueReadDocument, MachineRunEventEnvelope,
+    MachineParallelStatusDocument, MachineQueueReadDocument, MachineQueueRepairDocument,
+    MachineQueueUndoDocument, MachineQueueValidateDocument, MachineRunEventEnvelope,
     MachineRunSummaryDocument, MachineSystemInfoDocument, MachineTaskCreateDocument,
     MachineTaskCreateRequest, MachineTaskMutationDocument,
 };
@@ -43,7 +44,7 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
                 cli_version: env!("CARGO_PKG_VERSION").to_string(),
             }),
         },
-        MachineCommand::Queue(args) => queue::handle_queue(args),
+        MachineCommand::Queue(args) => queue::handle_queue(args, force),
         MachineCommand::Config(args) => match args.command {
             MachineConfigCommand::Resolve => {
                 let resolved = config::resolve_from_cwd()?;
@@ -82,6 +83,9 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
         MachineCommand::Schema => print_json(&json!({
             "system_info": schema_for!(MachineSystemInfoDocument),
             "queue_read": schema_for!(MachineQueueReadDocument),
+            "queue_validate": schema_for!(MachineQueueValidateDocument),
+            "queue_repair": schema_for!(MachineQueueRepairDocument),
+            "queue_undo": schema_for!(MachineQueueUndoDocument),
             "config_resolve": schema_for!(MachineConfigResolveDocument),
             "task_create_request": schema_for!(MachineTaskCreateRequest),
             "task_create": schema_for!(MachineTaskCreateDocument),

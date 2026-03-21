@@ -96,6 +96,7 @@ public extension Workspace {
         case lockBlocked(lockPath: String?, owner: String?, ownerPID: Int?)
         case ciBlocked(pattern: String?, exitCode: Int?)
         case runnerRecovery(scope: String, reason: String, taskID: String?)
+        case operatorRecovery(scope: String, reason: String, suggestedCommand: String?)
         case mixedQueue(dependencyBlocked: Int, scheduleBlocked: Int, statusFiltered: Int)
     }
 

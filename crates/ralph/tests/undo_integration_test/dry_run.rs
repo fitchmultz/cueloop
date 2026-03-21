@@ -34,8 +34,8 @@ fn undo_dry_run_does_not_modify_files() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --dry-run failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("Dry run") || stdout.contains("dry run"),
-        "expected 'Dry run' in output, got:\n{stdout}"
+        stdout.contains("Restore preview is ready") || stdout.contains("preview"),
+        "expected restore preview messaging in output, got:\n{stdout}"
     );
 
     let queue_after = read_queue(dir.path())?;

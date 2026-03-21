@@ -2,9 +2,9 @@
  WorkspaceTaskMutationModels
 
  Responsibilities:
- - Define the app-side machine JSON contracts for task create and task mutate.
- - Provide Codable request/response models used by workspace task mutation flows.
- - Keep mutation payload encoding centralized and consistent across single-task and bulk edits.
+ - Define app-side machine JSON contracts for task mutation and queue continuation workflows.
+ - Provide Codable request/response models used by workspace task mutation and recovery flows.
+ - Keep continuation payload encoding and decoding centralized for app integrations.
 
  Does not handle:
  - Executing CLI processes.
@@ -14,10 +14,96 @@
  Invariants/assumptions callers must respect:
  - Field names must match the CLI's `TaskEditKey` snake_case values.
  - `expectedUpdatedAt` is encoded as RFC3339/ISO8601 for optimistic locking.
- - Mutation requests target active-queue tasks only.
+ - Unknown machine payload bodies remain in `RalphJSONValue` instead of being dropped.
  */
 
 import Foundation
+
+struct WorkspaceContinuationAction: Codable, Sendable, Equatable {
+    let title: String
+    let command: String
+    let detail: String
+}
+
+struct WorkspaceContinuationSummary: Decodable, Sendable, Equatable {
+    let headline: String
+    let detail: String
+    let blocking: WorkspaceRunnerController.MachineBlockingState?
+    let nextSteps: [WorkspaceContinuationAction]
+
+    enum CodingKeys: String, CodingKey {
+        case headline
+        case detail
+        case blocking
+        case nextSteps = "next_steps"
+    }
+}
+
+struct WorkspaceValidationWarning: Decodable, Sendable, Equatable {
+    let taskID: String
+    let message: String
+
+    enum CodingKeys: String, CodingKey {
+        case taskID = "task_id"
+        case message
+    }
+}
+
+struct MachineQueueValidateDocument: Decodable, Sendable, Equatable {
+    let version: Int
+    let valid: Bool
+    let blocking: WorkspaceRunnerController.MachineBlockingState?
+    let warnings: [WorkspaceValidationWarning]
+    let continuation: WorkspaceContinuationSummary
+
+    var effectiveBlocking: WorkspaceRunnerController.MachineBlockingState? {
+        blocking ?? continuation.blocking
+    }
+}
+
+struct MachineQueueRepairDocument: Decodable, Sendable, Equatable {
+    let version: Int
+    let dryRun: Bool
+    let changed: Bool
+    let blocking: WorkspaceRunnerController.MachineBlockingState?
+    let report: RalphJSONValue
+    let continuation: WorkspaceContinuationSummary
+
+    enum CodingKeys: String, CodingKey {
+        case version
+        case dryRun = "dry_run"
+        case changed
+        case blocking
+        case report
+        case continuation
+    }
+
+    var effectiveBlocking: WorkspaceRunnerController.MachineBlockingState? {
+        blocking ?? continuation.blocking
+    }
+}
+
+struct MachineQueueUndoDocument: Decodable, Sendable, Equatable {
+    let version: Int
+    let dryRun: Bool
+    let restored: Bool
+    let blocking: WorkspaceRunnerController.MachineBlockingState?
+    let result: RalphJSONValue?
+    let continuation: WorkspaceContinuationSummary
+
+    enum CodingKeys: String, CodingKey {
+        case version
+        case dryRun = "dry_run"
+        case restored
+        case blocking
+        case result
+        case continuation
+    }
+
+    var effectiveBlocking: WorkspaceRunnerController.MachineBlockingState? {
+        blocking ?? continuation.blocking
+    }
+}
 
 struct WorkspaceTaskMutationRequest: Codable, Sendable {
     let version: Int
@@ -90,9 +176,15 @@ struct WorkspaceTaskMutationReport: Codable, Sendable {
     let tasks: [WorkspaceTaskMutationTaskReport]
 }
 
-struct MachineTaskMutationDocument: Codable, Sendable {
+struct MachineTaskMutationDocument: Decodable, Sendable {
     let version: Int
+    let blocking: WorkspaceRunnerController.MachineBlockingState?
     let report: WorkspaceTaskMutationReport
+    let continuation: WorkspaceContinuationSummary
+
+    var effectiveBlocking: WorkspaceRunnerController.MachineBlockingState? {
+        blocking ?? continuation.blocking
+    }
 }
 
 struct WorkspaceTaskMutationTaskReport: Codable, Sendable {

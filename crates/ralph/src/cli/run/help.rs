@@ -22,7 +22,8 @@ pub(super) const RUN_AFTER_LONG_HELP: &str = "Runner selection:\n\
  \n\
  Blocking-state diagnosis:\n\
   - Ralph uses one canonical BlockingState vocabulary everywhere: waiting, blocked, stalled.\n\
-  - Canonical reasons are: idle, dependency_blocked, schedule_blocked, lock_blocked, ci_blocked, runner_recovery, mixed_queue.\n\
+  - Recovery-entry commands (`task mutate`, `task decompose`, `queue validate`, `queue repair`, `undo`) use the same waiting/blocked/stalled narration when Ralph needs operator guidance.\n\
+  - Canonical reasons are: idle, dependency_blocked, schedule_blocked, lock_blocked, ci_blocked, runner_recovery, operator_recovery, mixed_queue.\n\
   - Use `ralph doctor` for human-readable diagnosis when Ralph is not making progress.\n\
   - Use `ralph doctor --format json` or `ralph machine doctor report` for machine-readable blocking diagnosis.\n\
  \n\

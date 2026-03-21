@@ -1,52 +1,69 @@
 //! Queue repair subcommand.
+//!
+//! Responsibilities:
+//! - Preview or apply recoverable queue normalization.
+//! - Ensure mutating repairs are undoable.
+//! - Narrate the operator continuation state instead of emergency-only repair wording.
+//!
+//! Not handled here:
+//! - Arbitrary manual queue surgery.
+//! - Non-queue recovery workflows.
+//!
+//! Invariants/assumptions:
+//! - `--dry-run` is read-only.
+//! - Mutating repairs create an undo checkpoint before queue files change.
 
 use anyhow::Result;
 use clap::Args;
 
+use crate::cli::machine::MachineQueueRepairArgs;
 use crate::config::Resolved;
-use crate::queue;
 
 /// Arguments for `ralph queue repair`.
 #[derive(Args)]
 pub struct RepairArgs {
-    /// Show what would be changed without writing to disk.
+    /// Show what Ralph would normalize without writing queue files.
     #[arg(long)]
     pub dry_run: bool,
 }
 
 pub(crate) fn handle(resolved: &Resolved, force: bool, args: RepairArgs) -> Result<()> {
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "queue repair", force)?;
-    let report = queue::repair_queue(
-        &resolved.queue_path,
-        &resolved.done_path,
-        &resolved.id_prefix,
-        resolved.id_width,
-        args.dry_run,
+    let document = crate::cli::machine::build_queue_repair_document(
+        resolved,
+        force,
+        &MachineQueueRepairArgs {
+            dry_run: args.dry_run,
+        },
     )?;
 
-    if report.is_empty() {
-        log::info!("No issues found. Queue is healthy.");
-    } else {
-        log::info!("Repair report:");
-        if report.fixed_tasks > 0 {
-            log::info!("  Fixed missing fields in {} task(s)", report.fixed_tasks);
+    println!("{}", document.continuation.headline);
+    println!("{}", document.continuation.detail);
+
+    if let Some(blocking) = document
+        .blocking
+        .as_ref()
+        .or(document.continuation.blocking.as_ref())
+    {
+        println!();
+        println!(
+            "Operator state: {}",
+            format!("{:?}", blocking.status).to_lowercase()
+        );
+        println!("{}", blocking.message);
+        if !blocking.detail.is_empty() {
+            println!("{}", blocking.detail);
         }
-        if report.fixed_timestamps > 0 {
-            log::info!(
-                "  Fixed invalid timestamps in {} task(s)",
-                report.fixed_timestamps
-            );
-        }
-        if !report.remapped_ids.is_empty() {
-            log::info!("  Remapped {} duplicate ID(s):", report.remapped_ids.len());
-            for (old, new) in &report.remapped_ids {
-                log::info!("    {} -> {}", old, new);
-            }
-        }
-        if args.dry_run {
-            log::info!("Dry run: no changes written to disk.");
-        } else {
-            log::info!("Repaired queue written to disk.");
+    }
+
+    println!();
+    println!("Repair report:");
+    println!("{}", serde_json::to_string_pretty(&document.report)?);
+
+    if !document.continuation.next_steps.is_empty() {
+        println!();
+        println!("Next:");
+        for (index, step) in document.continuation.next_steps.iter().enumerate() {
+            println!("  {}. {} — {}", index + 1, step.command, step.detail);
         }
     }
 

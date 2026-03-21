@@ -37,6 +37,11 @@ final class TaskConflictResolutionTests: RalphCoreTestCase {
 
         let model = TaskConflictResolutionModel(localTask: local, externalTask: external)
 
+        XCTAssertEqual(model.continuationHeadline, "Task continuation is blocked on a conflict.")
+        XCTAssertEqual(
+            model.continuationDetail,
+            "Review the changed fields, choose local or external values, then continue by saving the merged task."
+        )
         XCTAssertEqual(
             Set(model.sections.map { $0.section }),
             Set<TaskConflictFieldSection>([.basicInformation, .tags, .relationships])

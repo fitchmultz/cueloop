@@ -51,7 +51,7 @@ fn queue_import_malformed_json_no_snapshot() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("No undo snapshots available"),
+        stdout.contains("No continuation checkpoints are available"),
         "expected no snapshots after failed import, got:\n{stdout}"
     );
 
@@ -97,7 +97,7 @@ fn queue_import_valid_json_creates_snapshot() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("Available undo snapshots"),
+        stdout.contains("Available continuation checkpoints"),
         "expected snapshot after successful import, got:\n{stdout}"
     );
     anyhow::ensure!(
@@ -146,7 +146,7 @@ fn queue_import_malformed_csv_no_snapshot() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("No undo snapshots available"),
+        stdout.contains("No continuation checkpoints are available"),
         "expected no snapshots after failed import, got:\n{stdout}"
     );
 
@@ -193,7 +193,7 @@ fn queue_import_dry_run_no_snapshot() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("No undo snapshots available"),
+        stdout.contains("No continuation checkpoints are available"),
         "expected no snapshots after dry-run import, got:\n{stdout}"
     );
 
@@ -236,7 +236,7 @@ fn queue_import_duplicate_fail_no_snapshot() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("No undo snapshots available"),
+        stdout.contains("No continuation checkpoints are available"),
         "expected no snapshots after failed duplicate import, got:\n{stdout}"
     );
 
@@ -275,7 +275,7 @@ fn queue_import_missing_file_no_snapshot() -> Result<()> {
     anyhow::ensure!(status.success(), "undo --list failed\nstderr:\n{stderr}");
 
     anyhow::ensure!(
-        stdout.contains("No undo snapshots available"),
+        stdout.contains("No continuation checkpoints are available"),
         "expected no snapshots after failed import with missing file, got:\n{stdout}"
     );
 

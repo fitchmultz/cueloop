@@ -8,11 +8,12 @@ use super::{format_id, load_queue_or_default, normalize_prefix, save_queue, vali
 use crate::contracts::{QueueFile, Task, TaskStatus};
 use crate::timeutil;
 use anyhow::Result;
+use serde::Serialize;
 use std::collections::HashSet;
 use std::path::Path;
 use time::UtcOffset;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct RepairReport {
     pub fixed_tasks: usize,
     pub remapped_ids: Vec<(String, String)>,

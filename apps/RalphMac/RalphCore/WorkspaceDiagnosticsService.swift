@@ -4,7 +4,8 @@
  Responsibilities:
  - Execute workspace-scoped diagnostics commands used by recovery UI.
  - Load recent Ralph logs through the shared logger using async-friendly APIs.
- - Keep diagnostics/recovery command orchestration out of SwiftUI views.
+ - Keep diagnostics and recovery command orchestration out of SwiftUI views.
+ - Format continuation documents into human-readable recovery summaries.
 
  Does not handle:
  - SwiftUI sheet presentation or button state.
@@ -27,35 +28,41 @@ public enum WorkspaceDiagnosticsService {
         }
 
         do {
-            let client: RalphCLIClient
-            if let managerClient = WorkspaceManager.shared.client {
-                client = managerClient
-            } else {
-                client = try RalphCLIClient.bundled()
-            }
-
-            let result = try await client.runAndCollect(
-                arguments: ["--no-color", "machine", "queue", "validate"],
-                currentDirectoryURL: workspace.identityState.workingDirectoryURL
-            )
-
-            if result.status.code == 0 {
-                let decoder = JSONDecoder()
-                let document = try decoder.decode(MachineQueueValidationDocument.self, from: Data(result.stdout.utf8))
-                if document.warnings.isEmpty {
-                    return "Queue validation passed."
-                }
-                let warningLines = document.warnings.map { "- [\($0.taskID)] \($0.message)" }.joined(separator: "\n")
-                return "Queue validation passed with warnings.\n\n\(warningLines)"
-            }
-
-            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-            if stderr.isEmpty {
-                return "Queue validation failed.\n\nExit code: \(result.status.code)"
-            }
-            return "Queue validation failed.\n\nExit code: \(result.status.code)\n\(stderr)"
+            let document = try await workspace.validateQueueContinuation()
+            return formatQueueValidation(document)
         } catch {
             return "Failed to run queue validation: \(error.localizedDescription)"
+        }
+    }
+
+    public static func queueRepairPreviewOutput(for workspace: Workspace) async -> String {
+        do {
+            let document = try await workspace.repairQueueContinuation(dryRun: true)
+            return formatContinuationDocument(
+                headline: document.continuation.headline,
+                detail: document.continuation.detail,
+                blocking: document.effectiveBlocking,
+                nextSteps: document.continuation.nextSteps,
+                body: document.report.prettyPrintedString ?? "No repair report payload was returned."
+            )
+        } catch {
+            return "Failed to preview queue repair: \(error.localizedDescription)"
+        }
+    }
+
+    public static func queueRestorePreviewOutput(for workspace: Workspace) async -> String {
+        do {
+            let document = try await workspace.restoreQueueContinuation(dryRun: true)
+            let body = document.result?.prettyPrintedString ?? "No restore preview payload was returned."
+            return formatContinuationDocument(
+                headline: document.continuation.headline,
+                detail: document.continuation.detail,
+                blocking: document.effectiveBlocking,
+                nextSteps: document.continuation.nextSteps,
+                body: body
+            )
+        } catch {
+            return "Failed to preview queue restore: \(error.localizedDescription)"
         }
     }
 
@@ -70,20 +77,84 @@ public enum WorkspaceDiagnosticsService {
             return "Failed to export logs: \(error.localizedDescription)"
         }
     }
+
+    private static func formatQueueValidation(_ document: MachineQueueValidateDocument) -> String {
+        var sections: [String] = [document.continuation.headline, "", document.continuation.detail]
+
+        if let blocking = document.effectiveBlocking {
+            sections.append("")
+            sections.append("Operator state: \(blocking.status.rawValue)")
+            sections.append(blocking.message)
+            if !blocking.detail.isEmpty {
+                sections.append(blocking.detail)
+            }
+        }
+
+        if !document.warnings.isEmpty {
+            sections.append("")
+            sections.append("Warnings:")
+            sections.append(contentsOf: document.warnings.map { "- [\($0.taskID)] \($0.message)" })
+        }
+
+        if !document.continuation.nextSteps.isEmpty {
+            sections.append("")
+            sections.append("Next:")
+            sections.append(
+                contentsOf: document.continuation.nextSteps.enumerated().map { index, step in
+                    "\(index + 1). \(step.command) — \(step.detail)"
+                }
+            )
+        }
+
+        return sections.joined(separator: "\n")
+    }
+
+    private static func formatContinuationDocument(
+        headline: String,
+        detail: String,
+        blocking: WorkspaceRunnerController.MachineBlockingState?,
+        nextSteps: [WorkspaceContinuationAction],
+        body: String
+    ) -> String {
+        var sections: [String] = [headline, "", detail]
+
+        if let blocking {
+            sections.append("")
+            sections.append("Operator state: \(blocking.status.rawValue)")
+            sections.append(blocking.message)
+            if !blocking.detail.isEmpty {
+                sections.append(blocking.detail)
+            }
+        }
+
+        if !body.isEmpty {
+            sections.append("")
+            sections.append(body)
+        }
+
+        if !nextSteps.isEmpty {
+            sections.append("")
+            sections.append("Next:")
+            sections.append(
+                contentsOf: nextSteps.enumerated().map { index, step in
+                    "\(index + 1). \(step.command) — \(step.detail)"
+                }
+            )
+        }
+
+        return sections.joined(separator: "\n")
+    }
 }
 
-private struct MachineQueueValidationDocument: Decodable {
-    let version: Int
-    let valid: Bool
-    let warnings: [Warning]
-
-    struct Warning: Decodable {
-        let taskID: String
-        let message: String
-
-        enum CodingKeys: String, CodingKey {
-            case taskID = "task_id"
-            case message
+private extension RalphJSONValue {
+    var prettyPrintedString: String? {
+        guard let data = try? JSONEncoder().encode(self),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let prettyData = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted]),
+              let string = String(data: prettyData, encoding: .utf8)
+        else {
+            return nil
         }
+        return string
     }
 }

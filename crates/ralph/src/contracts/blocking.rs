@@ -9,8 +9,8 @@
 //! - Stable serde/schemars contracts and small constructor helpers.
 //!
 //! Usage:
-//! - Construct `BlockingState` values when queue analysis, lock contention, CI, or
-//!   runner/session recovery explains the current lack of progress.
+//! - Construct `BlockingState` values when queue analysis, lock contention, CI, runner/session
+//!   recovery, or operator-guided continuation explains the current lack of progress.
 //!
 //! Invariants/Assumptions:
 //! - `BlockingReason` is coarse system-level classification, not a per-task blocker dump.
@@ -63,6 +63,12 @@ pub enum BlockingReason {
         reason: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         task_id: Option<String>,
+    },
+    OperatorRecovery {
+        scope: String,
+        reason: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        suggested_command: Option<String>,
     },
     MixedQueue {
         dependency_blocked: usize,
@@ -241,6 +247,28 @@ impl BlockingState {
                 scope: scope.into(),
                 reason: reason.into(),
                 task_id: task_id.clone(),
+            },
+            task_id,
+            message,
+            detail,
+        )
+    }
+
+    pub fn operator_recovery(
+        status: BlockingStatus,
+        scope: impl Into<String>,
+        reason: impl Into<String>,
+        task_id: Option<String>,
+        message: impl Into<String>,
+        detail: impl Into<String>,
+        suggested_command: Option<String>,
+    ) -> Self {
+        Self::new(
+            status,
+            BlockingReason::OperatorRecovery {
+                scope: scope.into(),
+                reason: reason.into(),
+                suggested_command,
             },
             task_id,
             message,

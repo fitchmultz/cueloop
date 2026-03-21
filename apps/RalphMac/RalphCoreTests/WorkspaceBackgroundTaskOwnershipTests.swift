@@ -260,6 +260,13 @@ final class WorkspaceBackgroundTaskOwnershipTests: RalphCoreTestCase {
             activeTasks: [],
             nextRunnableTaskID: "RQ-A"
         )
+        let queueBURL = try WorkspaceRunnerConfigurationTestSupport.writeQueueReadDocument(
+            in: rootDir,
+            name: "queue-b.json",
+            workspaceURL: workspaceBURL,
+            activeTasks: [],
+            nextRunnableTaskID: nil
+        )
         let systemInfoURL = rootDir.appendingPathComponent("system-info.json", isDirectory: false)
         try Data("{\"version\":1,\"cli_version\":\"1.0.0\"}\n".utf8).write(to: systemInfoURL)
 
@@ -281,7 +288,7 @@ final class WorkspaceBackgroundTaskOwnershipTests: RalphCoreTestCase {
                 exit 0
                 ;;
                 *)
-                printf '{"version":1,"paths":{"queue_path":"%s/.ralph/queue.jsonc","done_path":"%s/.ralph/done.jsonc","project_config_path":"%s/.ralph/config.jsonc"},"active":{"tasks":[]},"done":{"tasks":[]},"stats":{"total":0,"todo":0,"in_progress":0,"done":0},"next_runnable_task_id":null}\n' "$PWD" "$PWD" "$PWD"
+                cat "\(queueBURL.path)"
                 exit 0
                 ;;
               esac

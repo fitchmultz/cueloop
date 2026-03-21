@@ -215,7 +215,13 @@ public struct TaskDecomposeEnvelope: Decodable, Sendable, Equatable {
     public let write: TaskDecomposeWriteResult?
 }
 
-public struct MachineDecomposeDocument: Decodable, Sendable, Equatable {
-    public let version: Int
-    public let result: TaskDecomposeEnvelope
+struct MachineDecomposeDocument: Decodable, Sendable, Equatable {
+    let version: Int
+    let blocking: WorkspaceRunnerController.MachineBlockingState?
+    let result: TaskDecomposeEnvelope
+    let continuation: WorkspaceContinuationSummary
+
+    var effectiveBlocking: WorkspaceRunnerController.MachineBlockingState? {
+        blocking ?? continuation.blocking
+    }
 }

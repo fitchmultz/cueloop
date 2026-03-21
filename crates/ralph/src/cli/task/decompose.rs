@@ -4,6 +4,7 @@
 //! - Read source text from CLI args or stdin.
 //! - Resolve runner overrides and delegate planning/materialization to command helpers.
 //! - Render deterministic preview and write summaries for users or JSON consumers.
+//! - Narrate decomposition as a continuation workflow with explicit next steps from the shared machine document.
 //!
 //! Not handled here:
 //! - Planner prompt rendering or runner execution details.
@@ -14,7 +15,6 @@
 //! - `--write` is the only mutating mode.
 
 use anyhow::Result;
-use serde::Serialize;
 
 use crate::agent;
 use crate::cli::task::args::{
@@ -22,6 +22,7 @@ use crate::cli::task::args::{
 };
 use crate::commands::task as task_cmd;
 use crate::config;
+use crate::contracts::MachineDecomposeDocument;
 
 pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
     let source_input = task_cmd::read_request_from_args_or_stdin(&args.source)?;
@@ -59,10 +60,14 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
     } else {
         None
     };
+    let document =
+        crate::cli::machine::build_task_decompose_document(&preview, write_result.as_ref());
 
     match args.format {
-        TaskDecomposeFormatArg::Text => print_text_output(&preview, write_result.as_ref()),
-        TaskDecomposeFormatArg::Json => print_json_output(&preview, write_result.as_ref())?,
+        TaskDecomposeFormatArg::Text => {
+            print_text_output(&preview, write_result.as_ref(), &document)
+        }
+        TaskDecomposeFormatArg::Json => println!("{}", serde_json::to_string_pretty(&document)?),
     }
 
     Ok(())
@@ -79,6 +84,7 @@ fn child_policy(value: TaskDecomposeChildPolicyArg) -> task_cmd::DecompositionCh
 fn print_text_output(
     preview: &task_cmd::DecompositionPreview,
     write_result: Option<&task_cmd::TaskDecomposeWriteResult>,
+    document: &MachineDecomposeDocument,
 ) {
     match &preview.source {
         task_cmd::DecompositionSource::Freeform { request } => {
@@ -133,14 +139,6 @@ fn print_text_output(
             println!("  - {}", warning);
         }
     }
-    if !preview.write_blockers.is_empty() {
-        println!("Write blockers:");
-        for blocker in &preview.write_blockers {
-            println!("  - {}", blocker);
-        }
-    } else if write_result.is_none() {
-        println!("Write status: preview only. Re-run with `--write` to persist this tree.");
-    }
 
     if let Some(result) = write_result {
         println!();
@@ -171,6 +169,32 @@ fn print_text_output(
             );
         }
     }
+
+    println!();
+    println!("{}", document.continuation.headline);
+    println!("{}", document.continuation.detail);
+    if let Some(blocking) = document
+        .blocking
+        .as_ref()
+        .or(document.continuation.blocking.as_ref())
+    {
+        println!();
+        println!(
+            "Operator state: {}",
+            format!("{:?}", blocking.status).to_lowercase()
+        );
+        println!("{}", blocking.message);
+        if !blocking.detail.is_empty() {
+            println!("{}", blocking.detail);
+        }
+    }
+    if !document.continuation.next_steps.is_empty() {
+        println!();
+        println!("Next:");
+        for (index, step) in document.continuation.next_steps.iter().enumerate() {
+            println!("  {}. {} — {}", index + 1, step.command, step.detail);
+        }
+    }
 }
 
 fn print_node(node: &task_cmd::PlannedNode, depth: usize) {
@@ -189,30 +213,4 @@ fn print_node(node: &task_cmd::PlannedNode, depth: usize) {
     for child in &node.children {
         print_node(child, depth + 1);
     }
-}
-
-#[derive(Serialize)]
-struct TaskDecomposeJsonOutput<'a> {
-    version: u8,
-    mode: &'static str,
-    preview: &'a task_cmd::DecompositionPreview,
-    write: Option<&'a task_cmd::TaskDecomposeWriteResult>,
-}
-
-fn print_json_output(
-    preview: &task_cmd::DecompositionPreview,
-    write_result: Option<&task_cmd::TaskDecomposeWriteResult>,
-) -> Result<()> {
-    let output = TaskDecomposeJsonOutput {
-        version: 1,
-        mode: if write_result.is_some() {
-            "write"
-        } else {
-            "preview"
-        },
-        preview,
-        write: write_result,
-    };
-    println!("{}", serde_json::to_string_pretty(&output)?);
-    Ok(())
 }

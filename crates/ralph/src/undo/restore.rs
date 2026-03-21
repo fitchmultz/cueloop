@@ -49,6 +49,7 @@ pub fn restore_from_snapshot(
 
     if dry_run {
         return Ok(RestoreResult {
+            snapshot_id: target_id,
             operation: snapshot.operation,
             timestamp: snapshot.timestamp,
             tasks_affected,
@@ -72,6 +73,7 @@ pub fn restore_from_snapshot(
     );
 
     Ok(RestoreResult {
+        snapshot_id: target_id,
         operation: snapshot.operation,
         timestamp: snapshot.timestamp,
         tasks_affected,

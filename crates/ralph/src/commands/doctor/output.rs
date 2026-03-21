@@ -116,6 +116,7 @@ fn blocking_reason_name(reason: &BlockingReason) -> &'static str {
         BlockingReason::LockBlocked { .. } => "lock_blocked",
         BlockingReason::CiBlocked { .. } => "ci_blocked",
         BlockingReason::RunnerRecovery { .. } => "runner_recovery",
+        BlockingReason::OperatorRecovery { .. } => "operator_recovery",
         BlockingReason::MixedQueue { .. } => "mixed_queue",
     }
 }

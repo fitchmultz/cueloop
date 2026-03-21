@@ -41,14 +41,18 @@ pub use blocking::{BlockingReason, BlockingState, BlockingStatus};
 pub use machine::{
     MACHINE_CLI_SPEC_VERSION, MACHINE_CONFIG_RESOLVE_VERSION, MACHINE_DASHBOARD_READ_VERSION,
     MACHINE_DECOMPOSE_VERSION, MACHINE_DOCTOR_REPORT_VERSION, MACHINE_GRAPH_READ_VERSION,
-    MACHINE_PARALLEL_STATUS_VERSION, MACHINE_QUEUE_READ_VERSION, MACHINE_RUN_EVENT_VERSION,
+    MACHINE_PARALLEL_STATUS_VERSION, MACHINE_QUEUE_READ_VERSION, MACHINE_QUEUE_REPAIR_VERSION,
+    MACHINE_QUEUE_UNDO_VERSION, MACHINE_QUEUE_VALIDATE_VERSION, MACHINE_RUN_EVENT_VERSION,
     MACHINE_RUN_SUMMARY_VERSION, MACHINE_SYSTEM_INFO_VERSION, MACHINE_TASK_CREATE_VERSION,
     MACHINE_TASK_MUTATION_VERSION, MachineCliSpecDocument, MachineConfigResolveDocument,
-    MachineConfigSafetySummary, MachineDashboardReadDocument, MachineDecomposeDocument,
-    MachineDoctorReportDocument, MachineGraphReadDocument, MachineParallelStatusDocument,
-    MachineQueuePaths, MachineQueueReadDocument, MachineResumeDecision, MachineRunEventEnvelope,
+    MachineConfigSafetySummary, MachineContinuationAction, MachineContinuationSummary,
+    MachineDashboardReadDocument, MachineDecomposeDocument, MachineDoctorReportDocument,
+    MachineGraphReadDocument, MachineParallelStatusDocument, MachineQueuePaths,
+    MachineQueueReadDocument, MachineQueueRepairDocument, MachineQueueUndoDocument,
+    MachineQueueValidateDocument, MachineResumeDecision, MachineRunEventEnvelope,
     MachineRunEventKind, MachineRunSummaryDocument, MachineSystemInfoDocument,
     MachineTaskCreateDocument, MachineTaskCreateRequest, MachineTaskMutationDocument,
+    MachineValidationWarning,
 };
 
 // Re-exports from cli_spec module (versioned; suitable for tooling consumption)

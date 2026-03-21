@@ -185,6 +185,16 @@ Every source file MUST start with `//!` docs covering:
 - `DoctorReport.blocking` is the doctor-side source of truth for human CLI, `ralph doctor --format json`, and `ralph machine doctor report` diagnosis.
 - Resume-refusal and invalid-runner-session stalls should surface through `ResumeDecision::blocking_state()` instead of bespoke app/CLI wording.
 
+### Recovery Tooling Continuations
+- `ralph task mutate`, `ralph task decompose`, `ralph queue validate`, `ralph queue repair`, and `ralph undo` are normal continuation tools, not emergency-only escape hatches.
+- Recovery surfaces should narrate operator state with the canonical `BlockingState` vocabulary (`waiting`, `blocked`, `stalled`) whenever Ralph needs operator intervention.
+- Read-only recovery flows must provide explicit next-step guidance; do not rely on warnings or logs alone.
+- Any recovery flow that rewrites queue/done must create an undo checkpoint first. `queue repair` is not exempt.
+- Machine/app integrations must use versioned machine recovery documents and continuation summaries rather than parsing human CLI output.
+- `ralph task mutate --format json` and `ralph task decompose --format json` must be emitted from the same shared document builders used by `ralph machine task ...`; do not maintain parallel JSON envelopes.
+- Recovery documents that expose top-level `blocking` must keep it semantically identical to `continuation.blocking`.
+- Prefer preserving partial value with safe normalization plus undoable writes over forcing manual queue surgery.
+
 ### Runner Output Edge Cases
 - Opencode may emit fatal session validation errors on stderr while still exiting with code `0`; treat this as semantic failure rather than success.
 - Gemini `stream-json` assistant messages may arrive as delta chunks (`"delta": true`); final-response parsing must accumulate deltas rather than overwriting with the latest chunk.
