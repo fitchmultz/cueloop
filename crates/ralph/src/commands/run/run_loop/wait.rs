@@ -14,6 +14,7 @@
 //! - File watching is best-effort; deadline scheduling remains the fallback when watch setup fails.
 
 use crate::config;
+use crate::contracts::BlockingState;
 use crate::{queue, runutil, signal};
 use anyhow::Result;
 
@@ -27,9 +28,15 @@ pub(super) enum WaitExit {
     RunnableAvailable {
         summary: crate::queue::operations::QueueRunnabilitySummary,
     },
-    NoCandidates,
-    TimedOut,
-    StopRequested,
+    QueueStillIdle {
+        state: BlockingState,
+    },
+    TimedOut {
+        state: BlockingState,
+    },
+    StopRequested {
+        state: Option<BlockingState>,
+    },
 }
 
 struct QueueFileWatcher {
@@ -112,17 +119,24 @@ pub(super) fn wait_for_work(
 
     let mut last_eval = Instant::now();
     let mut pending_event = true;
+    let mut last_state: Option<BlockingState> = None;
 
     loop {
         if timeout_seconds != 0 && start.elapsed().as_secs() >= timeout_seconds {
-            return Ok(WaitExit::TimedOut);
+            return Ok(WaitExit::TimedOut {
+                state: last_state
+                    .clone()
+                    .unwrap_or_else(|| BlockingState::idle(include_draft)),
+            });
         }
 
         if signal::stop_signal_exists(&cache_dir) {
             if let Err(e) = signal::clear_stop_signal(&cache_dir) {
                 log::warn!("Failed to clear stop signal: {}", e);
             }
-            return Ok(WaitExit::StopRequested);
+            return Ok(WaitExit::StopRequested {
+                state: last_state.clone(),
+            });
         }
 
         if ctrlc
@@ -188,10 +202,17 @@ pub(super) fn wait_for_work(
                     continue;
                 }
             };
+            last_state = report.summary.blocking.clone();
 
             if report.summary.candidates_total == 0 {
                 match mode {
-                    WaitMode::BlockedOnly => return Ok(WaitExit::NoCandidates),
+                    WaitMode::BlockedOnly => {
+                        return Ok(WaitExit::QueueStillIdle {
+                            state: last_state
+                                .clone()
+                                .unwrap_or_else(|| BlockingState::idle(include_draft)),
+                        });
+                    }
                     WaitMode::EmptyAllowed => continue,
                 }
             }

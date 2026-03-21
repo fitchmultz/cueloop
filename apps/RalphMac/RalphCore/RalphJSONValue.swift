@@ -105,4 +105,24 @@ public enum RalphJSONValue: Codable, Equatable, Sendable {
         guard case .number(let d) = self else { return nil }
         return d
     }
+
+    public func value(at path: [String]) -> RalphJSONValue? {
+        var current: RalphJSONValue? = self
+        for component in path {
+            current = current?.objectValue?[component]
+        }
+        return current
+    }
+
+    public func decode<T: Decodable>(_ type: T.Type) -> T? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let data = try? JSONEncoder().encode(self) else { return nil }
+        return try? decoder.decode(type, from: data)
+    }
+
+    public func decode<T: Decodable>(_ type: T.Type, at path: [String]) -> T? {
+        guard let value = value(at: path) else { return nil }
+        return value.decode(type)
+    }
 }

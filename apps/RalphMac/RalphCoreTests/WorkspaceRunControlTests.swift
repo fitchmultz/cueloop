@@ -227,13 +227,89 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
         )
     }
 
+    func test_loadTasks_appliesPreflightBlockingStateAndClearsNextTask() async throws {
+        var workspace: Workspace!
+        let blockedTask = RalphMockCLITestSupport.task(
+            id: "RQ-9001",
+            status: .todo,
+            title: "Blocked until future schedule",
+            priority: .medium,
+            createdAt: "2026-03-10T00:00:00Z",
+            updatedAt: "2026-03-10T00:00:00Z"
+        )
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-blocking-preflight",
+            scriptName: "mock-ralph-blocking-preflight",
+            seedQueueTasks: [blockedTask]
+        )
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        let runnability = RalphJSONValue.object([
+            "summary": .object([
+                "blocking": .object([
+                    "status": .string("waiting"),
+                    "reason": .object([
+                        "kind": .string("schedule_blocked"),
+                        "blocked_tasks": .number(1),
+                        "next_runnable_at": .string("2026-12-31T00:00:00Z"),
+                        "seconds_until_next_runnable": .number(86400)
+                    ]),
+                    "task_id": .null,
+                    "message": .string("Ralph is waiting for scheduled work to become runnable."),
+                    "detail": .string("1 candidate task(s) are scheduled for the future. The next one becomes runnable at 2026-12-31T00:00:00Z (86400s remaining).")
+                ])
+            ])
+        ])
+        let queueReadURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.queueReadDocument(
+                workspaceURL: fixture.workspaceURL,
+                activeTasks: [blockedTask],
+                nextRunnableTaskID: nil,
+                runnability: runnability
+            ),
+            in: fixture.rootURL,
+            name: "queue-read.json"
+        )
+
+        let script = """
+            #!/bin/sh
+            if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "queue" ] && [ "$4" = "read" ]; then
+              cat "\(queueReadURL.path)"
+              exit 0
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = Workspace(workingDirectoryURL: fixture.workspaceURL, client: client)
+
+        await workspace.loadTasks(retryConfiguration: .minimal)
+
+        XCTAssertNil(workspace.taskState.nextRunnableTaskID)
+        XCTAssertNil(workspace.nextTask())
+        XCTAssertEqual(workspace.runState.blockingState?.status, .waiting)
+        XCTAssertEqual(
+            workspace.runState.blockingState?.reason,
+            .scheduleBlocked(
+                blockedTasks: 1,
+                nextRunnableAt: "2026-12-31T00:00:00Z",
+                secondsUntilNextRunnable: 86400
+            )
+        )
+    }
+
     func test_runNextTask_appliesResumeDecisionEvent() {
         let workspace = Workspace(
             workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "resume-decision-event")
         )
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
         let items = decoder.append(
-            "{\"version\":2,\"kind\":\"resume_decision\",\"task_id\":\"RQ-7777\",\"phase\":null,\"message\":\"Resume: continuing the interrupted session for task RQ-7777.\",\"payload\":{\"status\":\"resuming_same_session\",\"scope\":\"run_session\",\"reason\":\"session_valid\",\"task_id\":\"RQ-7777\",\"message\":\"Resume: continuing the interrupted session for task RQ-7777.\",\"detail\":\"Saved session is current and will resume from phase 2.\"}}\n"
+            "{\"version\":3,\"kind\":\"resume_decision\",\"task_id\":\"RQ-7777\",\"phase\":null,\"message\":\"Resume: continuing the interrupted session for task RQ-7777.\",\"payload\":{\"status\":\"resuming_same_session\",\"scope\":\"run_session\",\"reason\":\"session_valid\",\"task_id\":\"RQ-7777\",\"message\":\"Resume: continuing the interrupted session for task RQ-7777.\",\"detail\":\"Saved session is current and will resume from phase 2.\"}}\n"
         )
 
         guard case .event(let event) = items.first else {
@@ -247,12 +323,63 @@ final class WorkspaceRunControlTests: WorkspacePerformanceTestCase {
         XCTAssertTrue(workspace.output.contains("Resume: continuing the interrupted session for task RQ-7777."))
     }
 
+    func test_runNextTask_appliesBlockingStateEvent() {
+        let workspace = Workspace(
+            workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "blocking-state-event")
+        )
+        var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
+        let items = decoder.append(
+            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
+        )
+
+        guard case .event(let event) = items.first else {
+            return XCTFail("expected decoded blocked-state event")
+        }
+
+        workspace.runnerController.applyMachineRunOutputItem(.event(event), workspace: workspace)
+
+        XCTAssertEqual(workspace.runState.blockingState?.status, .blocked)
+        XCTAssertEqual(
+            workspace.runState.blockingState?.reason,
+            .dependencyBlocked(blockedTasks: 2)
+        )
+        XCTAssertTrue(workspace.output.contains("Ralph is blocked by unfinished dependencies."))
+    }
+
+    func test_runSummary_appliesBlockingState() {
+        let workspace = Workspace(
+            workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "blocking-state-summary")
+        )
+        var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
+        let items = decoder.append(
+            "{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"blocked\",\"blocking\":{\"status\":\"waiting\",\"reason\":{\"kind\":\"schedule_blocked\",\"blocked_tasks\":1,\"next_runnable_at\":\"2026-12-31T00:00:00Z\",\"seconds_until_next_runnable\":86400},\"task_id\":null,\"message\":\"Ralph is waiting for scheduled work to become runnable.\",\"detail\":\"1 candidate task(s) are scheduled for the future. The next one becomes runnable at 2026-12-31T00:00:00Z (86400s remaining).\"}}\n"
+        )
+
+        guard case .summary(let summary) = items.first else {
+            return XCTFail("expected decoded run summary")
+        }
+
+        workspace.runnerController.applyMachineRunOutputItem(.summary(summary), workspace: workspace)
+
+        XCTAssertEqual(workspace.runState.blockingState?.status, .waiting)
+        XCTAssertEqual(
+            workspace.runState.blockingState?.reason,
+            .scheduleBlocked(
+                blockedTasks: 1,
+                nextRunnableAt: "2026-12-31T00:00:00Z",
+                secondsUntilNextRunnable: 86400
+            )
+        )
+    }
+
     func test_runControlPreviewTask_prefersSelectedTodoTask() {
         let workspace = Workspace(workingDirectoryURL: RalphCoreTestSupport.workspaceURL(label: "run-control-preview"))
         workspace.tasks = [
             RalphTask(id: "RQ-1001", status: .todo, title: "First", priority: .medium),
             RalphTask(id: "RQ-1002", status: .todo, title: "Second", priority: .high)
         ]
+
+        workspace.taskState.nextRunnableTaskID = "RQ-1001"
 
         workspace.runControlSelectedTaskID = "RQ-1002"
         XCTAssertEqual(workspace.runControlPreviewTask?.id, "RQ-1002")

@@ -23,9 +23,10 @@ use super::session::resolve_resume_state;
 use super::types::RunLoopOptions;
 use super::wait::{WaitExit, WaitMode, wait_for_work};
 use crate::commands::run::queue_lock::{
-    clear_stale_queue_lock_for_resume, is_queue_lock_already_held_error,
+    clear_stale_queue_lock_for_resume, is_queue_lock_already_held_error, queue_lock_blocking_state,
 };
-use crate::commands::run::run_one::{RunOneResumeOptions, RunOutcome, run_one};
+use crate::commands::run::run_one::{RunOneResumeOptions, RunOutcome, run_one_with_handlers};
+use crate::commands::run::{emit_blocked_state_changed, emit_blocked_state_cleared};
 
 pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()> {
     if let Some(result) = maybe_run_parallel(resolved, &opts)? {
@@ -118,6 +119,8 @@ fn run_loop_state_machine(
     lifecycle: &mut LoopLifecycle,
 ) -> Result<()> {
     let mut pending_resume_task_id = resume_task_id.map(str::to_string);
+    let mut active_blocking = None;
+
     loop {
         if lifecycle.max_tasks_reached(opts) {
             log::info!(
@@ -133,15 +136,21 @@ fn run_loop_state_machine(
             return Ok(());
         }
 
-        match run_one(
+        match run_one_with_handlers(
             resolved,
             &opts.agent_overrides,
             opts.force,
             RunOneResumeOptions::resolved(pending_resume_task_id.take()),
+            None,
+            opts.run_event_handler.clone(),
         ) {
             Ok(RunOutcome::NoCandidates) => {
+                let idle_state = crate::contracts::BlockingState::idle(include_draft);
+                active_blocking = Some(idle_state.clone());
+                emit_blocked_state_changed(&idle_state, opts.run_event_handler.as_ref());
+
                 if !opts.wait_when_empty {
-                    log::info!("RunLoop: end (no more todo tasks remaining)");
+                    log::info!("{}", idle_state.message);
                     return Ok(());
                 }
                 match wait_for_work(
@@ -156,22 +165,41 @@ fn run_loop_state_machine(
                 )? {
                     WaitExit::RunnableAvailable { .. } => {
                         log::info!("RunLoop: new runnable tasks detected; continuing");
+                        if active_blocking.take().is_some() {
+                            emit_blocked_state_cleared(opts.run_event_handler.as_ref());
+                        }
                     }
-                    WaitExit::NoCandidates => {}
-                    WaitExit::TimedOut => {
-                        log::info!("RunLoop: end (wait timeout reached)");
+                    WaitExit::QueueStillIdle { state } => {
+                        log::info!("{}", state.message);
                         return Ok(());
                     }
-                    WaitExit::StopRequested => {
-                        log::info!("RunLoop: end (stop signal received)");
+                    WaitExit::TimedOut { state } => {
+                        log::info!(
+                            "RunLoop: end (wait timeout reached while {})",
+                            state.message
+                        );
+                        return Ok(());
+                    }
+                    WaitExit::StopRequested { state } => {
+                        if let Some(state) = state {
+                            log::info!(
+                                "RunLoop: end (stop signal received while {})",
+                                state.message
+                            );
+                        } else {
+                            log::info!("RunLoop: end (stop signal received)");
+                        }
                         return Ok(());
                     }
                 }
             }
-            Ok(RunOutcome::Blocked { summary }) => {
+            Ok(RunOutcome::Blocked { summary, state }) => {
+                active_blocking = Some((*state).clone());
+
                 if !(opts.wait_when_blocked || opts.wait_when_empty) {
                     log::info!(
-                        "RunLoop: end (blocked: ready={} deps={} sched={}). Use --wait-when-blocked to wait for dependencies/schedules.",
+                        "{} (ready={} deps={} sched={})",
+                        state.message,
                         summary.runnable_candidates,
                         summary.blocked_by_dependencies,
                         summary.blocked_by_schedule
@@ -204,22 +232,40 @@ fn run_loop_state_machine(
                             new_summary.blocked_by_dependencies,
                             new_summary.blocked_by_schedule
                         );
+                        if active_blocking.take().is_some() {
+                            emit_blocked_state_cleared(opts.run_event_handler.as_ref());
+                        }
                     }
-                    WaitExit::NoCandidates => {
-                        log::info!("RunLoop: end (queue became empty while waiting)");
+                    WaitExit::QueueStillIdle { state } => {
+                        log::info!("{}", state.message);
                         return Ok(());
                     }
-                    WaitExit::TimedOut => {
-                        log::info!("RunLoop: end (wait timeout reached)");
+                    WaitExit::TimedOut { state } => {
+                        log::info!(
+                            "RunLoop: end (wait timeout reached while {})",
+                            state.message
+                        );
                         return Ok(());
                     }
-                    WaitExit::StopRequested => {
-                        log::info!("RunLoop: end (stop signal received)");
+                    WaitExit::StopRequested { state } => {
+                        if let Some(state) = state {
+                            log::info!(
+                                "RunLoop: end (stop signal received while {})",
+                                state.message
+                            );
+                        } else {
+                            log::info!("RunLoop: end (stop signal received)");
+                        }
                         return Ok(());
                     }
                 }
             }
-            Ok(RunOutcome::Ran { .. }) => lifecycle.record_success(),
+            Ok(RunOutcome::Ran { .. }) => {
+                if active_blocking.take().is_some() {
+                    emit_blocked_state_cleared(opts.run_event_handler.as_ref());
+                }
+                lifecycle.record_success()
+            }
             Err(err) => {
                 if let Some(reason) = runutil::abort_reason(&err) {
                     match reason {
@@ -234,6 +280,9 @@ fn run_loop_state_machine(
                 }
 
                 if is_queue_lock_already_held_error(&err) {
+                    if let Some(state) = queue_lock_blocking_state(&resolved.repo_root, &err) {
+                        emit_blocked_state_changed(&state, opts.run_event_handler.as_ref());
+                    }
                     log::error!("RunLoop: aborting due to queue lock contention");
                     return Err(err);
                 }
@@ -244,6 +293,14 @@ fn run_loop_state_machine(
                 if runutil::is_queue_validation_error(&err) {
                     log::error!("RunLoop: aborting due to queue validation error");
                     return Err(err);
+                }
+                if let Some(ci_failure) =
+                    err.downcast_ref::<crate::commands::run::supervision::CiFailure>()
+                {
+                    emit_blocked_state_changed(
+                        &ci_failure.blocking_state(),
+                        opts.run_event_handler.as_ref(),
+                    );
                 }
 
                 lifecycle.record_failure(&err)?;

@@ -69,6 +69,15 @@ pub(crate) struct CiFailure {
     pub error_pattern: Option<&'static str>,
 }
 
+impl CiFailure {
+    pub(crate) fn blocking_state(&self) -> crate::contracts::BlockingState {
+        crate::contracts::BlockingState::ci_blocked(
+            self.exit_code,
+            self.error_pattern.map(str::to_string),
+        )
+    }
+}
+
 impl std::fmt::Display for CiFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let exit_code = self.exit_code.unwrap_or(-1);

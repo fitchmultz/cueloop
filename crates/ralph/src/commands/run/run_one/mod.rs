@@ -77,7 +77,8 @@ pub enum RunOutcome {
     NoCandidates,
     /// Candidates exist, but none are currently runnable (deps/schedule/status flags).
     Blocked {
-        summary: crate::queue::operations::QueueRunnabilitySummary,
+        summary: Box<crate::queue::operations::QueueRunnabilitySummary>,
+        state: Box<crate::contracts::BlockingState>,
     },
     Ran {
         task_id: String,

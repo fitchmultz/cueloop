@@ -34,12 +34,14 @@ mod supervision;
 
 // Re-export types that are used by other modules via crate::commands::run::* paths.
 // These are used by phase modules.
-pub(crate) use supervision::post_run_supervise;
+pub(crate) use queue_lock::queue_lock_blocking_state;
+pub(crate) use supervision::{CiFailure, post_run_supervise};
 
 // Re-export PhaseType for use by runner module.
 pub(crate) use phases::PhaseType;
 
 pub use crate::agent::AgentOverrides;
+use crate::contracts::BlockingState;
 use crate::progress::ExecutionPhase;
 use std::sync::Arc;
 
@@ -78,6 +80,10 @@ pub enum RunEvent {
     PhaseCompleted {
         phase: ExecutionPhase,
     },
+    BlockedStateChanged {
+        state: BlockingState,
+    },
+    BlockedStateCleared,
 }
 
 pub type RunEventHandler = Arc<Box<dyn Fn(RunEvent) + Send + Sync>>;
@@ -96,6 +102,26 @@ pub(crate) fn emit_resume_decision(
     eprintln!("{}", decision.message);
     if !decision.detail.trim().is_empty() {
         eprintln!("  {}", decision.detail);
+    }
+}
+
+pub(crate) fn emit_blocked_state_changed(state: &BlockingState, handler: Option<&RunEventHandler>) {
+    if let Some(handler) = handler {
+        handler(RunEvent::BlockedStateChanged {
+            state: state.clone(),
+        });
+        return;
+    }
+
+    eprintln!("{}", state.message);
+    if !state.detail.trim().is_empty() {
+        eprintln!("  {}", state.detail);
+    }
+}
+
+pub(crate) fn emit_blocked_state_cleared(handler: Option<&RunEventHandler>) {
+    if let Some(handler) = handler {
+        handler(RunEvent::BlockedStateCleared);
     }
 }
 

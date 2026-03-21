@@ -16,6 +16,8 @@
 use anyhow::Result;
 use std::path::Path;
 
+use crate::contracts::BlockingState;
+
 const QUEUE_LOCK_ALREADY_HELD_PREFIX: &str = "Queue lock already held at:";
 
 /// Clear stale queue lock when resuming a session.
@@ -60,4 +62,19 @@ pub fn is_queue_lock_already_held_error(err: &anyhow::Error) -> bool {
             .to_string()
             .starts_with(QUEUE_LOCK_ALREADY_HELD_PREFIX)
     })
+}
+
+pub fn queue_lock_blocking_state(repo_root: &Path, err: &anyhow::Error) -> Option<BlockingState> {
+    if !is_queue_lock_already_held_error(err) {
+        return None;
+    }
+
+    let lock_dir = crate::lock::queue_lock_dir(repo_root);
+    let owner = crate::lock::read_lock_owner(&lock_dir).ok().flatten();
+
+    Some(BlockingState::lock_blocked(
+        Some(lock_dir.display().to_string()),
+        owner.as_ref().map(|owner| owner.label.clone()),
+        owner.as_ref().map(|owner| owner.pid),
+    ))
 }

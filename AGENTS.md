@@ -178,6 +178,12 @@ Every source file MUST start with `//!` docs covering:
 - Safe fresh fallback applies to Pi session-file lookup failures (`no session found`, missing session dir/file), Gemini invalid session identifiers, Claude invalid resume IDs / invalid UUID cases, and Opencode session validation failures.
 - Unknown resume failures must hard-fail rather than silently rerun fresh.
 
+### Operator Blocking State Contract
+- `contracts/blocking.rs` is the canonical operator-facing stalled/waiting model shared across CLI, machine NDJSON, queue runnability summaries, and RalphMac Run Control.
+- Use `BlockingState` for coarse "why is Ralph not making progress right now?" narration; keep per-task blocker detail in queue runnability reasons.
+- `blocked_state_changed` / `blocked_state_cleared` machine events and `MachineRunSummaryDocument.blocking` must stay semantically aligned with `runnability.summary.blocking`.
+- Resume-refusal and invalid-runner-session stalls should surface through `ResumeDecision::blocking_state()` instead of bespoke app/CLI wording.
+
 ### Runner Output Edge Cases
 - Opencode may emit fatal session validation errors on stderr while still exiting with code `0`; treat this as semantic failure rather than success.
 - Gemini `stream-json` assistant messages may arrive as delta chunks (`"delta": true`); final-response parsing must accumulate deltas rather than overwriting with the latest chunk.

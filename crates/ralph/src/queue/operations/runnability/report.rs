@@ -15,7 +15,7 @@
 
 use anyhow::Result;
 
-use crate::contracts::{QueueFile, Task, TaskStatus};
+use crate::contracts::{BlockingState, QueueFile, Task, TaskStatus};
 use crate::queue::operations::RunnableSelectionOptions;
 
 use super::analysis::analyze_task_runnability;
@@ -48,7 +48,8 @@ pub fn queue_runnability_report_at(
         .map(|task| analyze_task_runnability(task, active, done, now_rfc3339, now_dt, options))
         .collect::<Vec<_>>();
 
-    let summary = summarize_rows(active.tasks.len(), &tasks, options);
+    let mut summary = summarize_rows(active.tasks.len(), &tasks, options);
+    summary.blocking = derive_queue_blocking_state(&tasks, &summary, options.include_draft);
     let selection = build_selection(active, &tasks, options);
 
     Ok(QueueRunnabilityReport {
@@ -110,6 +111,54 @@ fn summarize_rows(
         blocked_by_dependencies,
         blocked_by_schedule,
         blocked_by_status_or_flags,
+        blocking: None,
+    }
+}
+
+fn derive_queue_blocking_state(
+    rows: &[super::model::TaskRunnabilityRow],
+    summary: &QueueRunnabilitySummary,
+    include_draft: bool,
+) -> Option<BlockingState> {
+    if summary.runnable_candidates > 0 {
+        return None;
+    }
+
+    if summary.candidates_total == 0 {
+        return Some(BlockingState::idle(include_draft));
+    }
+
+    let next_schedule = rows
+        .iter()
+        .flat_map(|row| row.reasons.iter())
+        .filter_map(|reason| match reason {
+            NotRunnableReason::ScheduledStartInFuture {
+                scheduled_start,
+                seconds_until_runnable,
+                ..
+            } => Some((scheduled_start.clone(), *seconds_until_runnable)),
+            _ => None,
+        })
+        .min_by_key(|(_, seconds)| *seconds);
+
+    match (
+        summary.blocked_by_dependencies > 0,
+        summary.blocked_by_schedule > 0,
+    ) {
+        (true, false) => Some(BlockingState::dependency_blocked(
+            summary.blocked_by_dependencies,
+        )),
+        (false, true) => Some(BlockingState::schedule_blocked(
+            summary.blocked_by_schedule,
+            next_schedule.as_ref().map(|(at, _)| at.clone()),
+            next_schedule.as_ref().map(|(_, seconds)| *seconds),
+        )),
+        (true, true) => Some(BlockingState::mixed_queue(
+            summary.blocked_by_dependencies,
+            summary.blocked_by_schedule,
+            summary.blocked_by_status_or_flags,
+        )),
+        (false, false) => Some(BlockingState::idle(include_draft)),
     }
 }
 

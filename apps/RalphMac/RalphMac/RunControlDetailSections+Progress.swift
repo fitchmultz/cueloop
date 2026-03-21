@@ -87,9 +87,13 @@ struct RunControlRunTargetSection: View {
                         PriorityBadge(priority: previewTask.priority)
                     }
                 } else {
-                    Text("No todo tasks in this workspace queue.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        workspace.runControlTodoTasks.isEmpty
+                            ? "No todo tasks in this workspace queue."
+                            : "No runnable task is currently available."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 12) {

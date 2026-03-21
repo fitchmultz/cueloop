@@ -13,7 +13,7 @@
 //! - Types are serialized in `snake_case` for CLI/JSON consumers.
 //! - `RUNNABILITY_REPORT_VERSION` changes only on intentional schema updates.
 
-use crate::contracts::TaskStatus;
+use crate::contracts::{BlockingState, TaskStatus};
 use serde::Serialize;
 
 /// Report version for JSON stability.
@@ -50,6 +50,8 @@ pub struct QueueRunnabilitySummary {
     pub blocked_by_dependencies: usize,
     pub blocked_by_schedule: usize,
     pub blocked_by_status_or_flags: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
 }
 
 /// Per-task runnability row.

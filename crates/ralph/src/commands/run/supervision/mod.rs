@@ -40,7 +40,8 @@ mod tests;
 
 // Re-export items needed by run/mod.rs and other modules
 pub(crate) use ci::{
-    capture_ci_gate_result, ci_gate_command_label, run_ci_gate, run_ci_gate_with_continue_session,
+    CiFailure, capture_ci_gate_result, ci_gate_command_label, run_ci_gate,
+    run_ci_gate_with_continue_session,
 };
 use git_ops::{finalize_git_state, push_if_ahead, warn_if_modified_lfs};
 use notify::build_notification_config;

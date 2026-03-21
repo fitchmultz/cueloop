@@ -52,6 +52,10 @@ struct RunControlExecutionControlsSection: View {
     var body: some View {
         RunControlGlassSection("Controls") {
             VStack(spacing: 12) {
+                if let blockingState = workspace.runState.blockingState {
+                    blockingStateView(blockingState)
+                }
+
                 if let resumeState = workspace.runState.resumeState {
                     resumeStateView(resumeState)
                 }
@@ -162,6 +166,58 @@ struct RunControlExecutionControlsSection: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(resumeColor(for: state.status).opacity(0.2), lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private func blockingStateView(_ state: Workspace.BlockingState) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: blockingIcon(for: state.status))
+                .foregroundStyle(blockingColor(for: state.status))
+                .font(.headline)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(state.message)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Text(state.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(blockingColor(for: state.status).opacity(0.09))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(blockingColor(for: state.status).opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private func blockingIcon(for status: Workspace.BlockingStatus) -> String {
+        switch status {
+        case .waiting:
+            return "hourglass"
+        case .blocked:
+            return "pause.circle.fill"
+        case .stalled:
+            return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private func blockingColor(for status: Workspace.BlockingStatus) -> Color {
+        switch status {
+        case .waiting:
+            return .blue
+        case .blocked:
+            return .orange
+        case .stalled:
+            return .red
+        }
     }
 
     private func resumeIcon(for status: Workspace.ResumeState.Status) -> String {

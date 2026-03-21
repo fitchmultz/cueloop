@@ -92,6 +92,23 @@ ralph run one --resume --non-interactive
 ralph run loop --non-interactive
 ```
 
+### Blocked / waiting / stalled narration
+
+When Ralph cannot make progress, it now classifies the current state instead of only printing generic wait prose. Operator-facing run surfaces distinguish:
+
+- true idle waiting (no todo work)
+- dependency blocking
+- schedule blocking
+- queue lock contention
+- CI-gate stalls
+- runner/session recovery stalls
+
+For automation, the same model is exposed through:
+
+- `ralph machine run ...` NDJSON `blocked_state_changed` / `blocked_state_cleared` events
+- `ralph machine run ...` terminal summaries via `blocking`
+- `ralph machine queue read` via `runnability.summary.blocking`
+
 ### Execution Shape
 
 ```bash

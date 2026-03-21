@@ -23,6 +23,7 @@ public final class WorkspaceTaskState: ObservableObject {
     @Published public var tasksLoading = false
     @Published public var tasksErrorMessage: String?
     @Published public var lastQueueRefreshEvent: Workspace.QueueRefreshEvent?
+    @Published public var nextRunnableTaskID: String?
     @Published public var taskFilterText = ""
     @Published public var taskStatusFilter: RalphTaskStatus?
     @Published public var taskPriorityFilter: RalphTaskPriority?
@@ -78,6 +79,8 @@ public extension Workspace {
         guard client != nil else {
             guard isCurrentRepositoryContext(repositoryContext) else { return }
             taskState.tasksErrorMessage = "CLI client not available."
+            taskState.nextRunnableTaskID = nil
+            runState.setBlockingState(nil)
             return
         }
 
@@ -85,6 +88,8 @@ public extension Workspace {
             guard isCurrentRepositoryContext(repositoryContext) else { return }
             stopFileWatching()
             taskState.tasks = []
+            taskState.nextRunnableTaskID = nil
+            runState.setBlockingState(nil)
             taskState.tasksErrorMessage = """
             No Ralph queue found in this directory. Run `ralph init --non-interactive` in \(identityState.workingDirectoryURL.path).
             """
@@ -105,6 +110,7 @@ public extension Workspace {
             },
             handleMissingClient: { [taskState] in
                 taskState.tasksErrorMessage = "CLI client not available."
+                taskState.nextRunnableTaskID = nil
             },
             retryMessage: { attempt, maxAttempts in
                 "Retrying load tasks (attempt \(attempt)/\(maxAttempts))..."
@@ -119,17 +125,28 @@ public extension Workspace {
                     onRetry: onRetry
                 )
             },
-            apply: { [self, taskState] snapshot in
+            apply: { [self, taskState, runState = self.runState] snapshot in
                 self.updateResolvedPaths(snapshot.paths)
                 taskState.tasks = snapshot.active.tasks
+                taskState.nextRunnableTaskID = snapshot.nextRunnableTaskID
+                if !runState.isRunning {
+                    runState.setBlockingState(
+                        snapshot.runnability.decode(
+                            WorkspaceRunnerController.MachineBlockingState.self,
+                            at: ["summary", "blocking"]
+                        )?.asWorkspaceBlockingState()
+                    )
+                }
                 self.sanitizeRunControlSelection()
                 taskState.tasksErrorMessage = nil
             },
             handleRetryMessage: { [taskState] in
                 taskState.tasksErrorMessage = $0
             },
-            handleFailure: { [taskState] recoveryError in
+            handleFailure: { [taskState, runState = self.runState] recoveryError in
                 taskState.tasksErrorMessage = recoveryError.message
+                taskState.nextRunnableTaskID = nil
+                runState.setBlockingState(nil)
             }
         )
     }

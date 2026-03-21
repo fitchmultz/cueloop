@@ -18,28 +18,20 @@ Primary outcome:
 
 Detailed execution plan:
 
-#### 1.1 Improve blocked / waiting / stalled-state visibility
-- Differentiate:
-  - dependency blocking
-  - schedule blocking
-  - lock contention
-  - CI fallout
-  - runner/session issues
-  - true idle waiting.
-- Keep queue/status/aging/burndown/app views consistent so they describe the same state model.
-
-#### 1.2 Turn supervision errors into decision support
+#### 1.1 Turn supervision errors into decision support
 - Present detected CI patterns, retry state, and current escalation reason clearly.
 - Make it obvious when `git_revert_mode` or runner/session capability is the real cause of the stop.
-- Use the same decision language in CLI help, doctor output, and app messaging where practical.
+- Extend the newly unified blocking-state model into doctor/help/escalation surfaces so operators get the same explanation everywhere.
 
-#### 1.3 Normalize recovery tooling into the happy path
+#### 1.2 Normalize recovery tooling into the happy path
 - Make `task mutate`, `task decompose`, `queue validate`, `queue repair`, and `undo` feel like normal continuation tools, not emergency escape hatches.
 - Preserve partial value wherever safe instead of forcing operators into manual queue surgery.
+- Keep recovery-entrypoint language aligned with the new resume/blocking-state terminology.
 
-#### 1.4 Tighten parallel only after serial recovery is boring
+#### 1.3 Tighten parallel only after serial recovery is boring
 - Do not spend major churn on `run parallel` UX until serial run/resume/supervision behavior is calm and legible.
 - When parallel work resumes, focus on bookkeeping visibility, stale lock handling, and post-run integration clarity.
+- Reuse the same operator-state vocabulary for worker stalls, merge retries, and blocked pushes.
 
 Exit criteria for item 1:
 - Operators can explain what Ralph is doing now and why, without reading source code.

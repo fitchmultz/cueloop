@@ -39,6 +39,7 @@ public final class WorkspaceRunState: ObservableObject {
     @Published public var runControlSelectedTaskID: String?
     @Published public var runControlForceDirtyRepo = false
     @Published public var resumeState: Workspace.ResumeState?
+    @Published public var blockingState: Workspace.BlockingState?
     @Published public var attributedOutput: [Workspace.ANSISegment] = []
     @Published public var outputBuffer: ConsoleOutputBuffer
     @Published public var maxANSISegments = 1_000 {
@@ -73,10 +74,53 @@ public final class WorkspaceRunState: ObservableObject {
         executionStartTime = Date()
         currentPhase = nil
         resumeState = nil
+        blockingState = nil
+    }
+
+    func setBlockingState(_ state: Workspace.BlockingState?) {
+        blockingState = state
     }
 }
 
 public extension Workspace {
+    enum BlockingStatus: String, Codable, Sendable {
+        case waiting
+        case blocked
+        case stalled
+    }
+
+    enum BlockingReason: Equatable, Sendable {
+        case idle(includeDraft: Bool)
+        case dependencyBlocked(blockedTasks: Int)
+        case scheduleBlocked(blockedTasks: Int, nextRunnableAt: String?, secondsUntilNextRunnable: Int?)
+        case lockBlocked(lockPath: String?, owner: String?, ownerPID: Int?)
+        case ciBlocked(pattern: String?, exitCode: Int?)
+        case runnerRecovery(scope: String, reason: String, taskID: String?)
+        case mixedQueue(dependencyBlocked: Int, scheduleBlocked: Int, statusFiltered: Int)
+    }
+
+    struct BlockingState: Equatable, Sendable {
+        public let status: BlockingStatus
+        public let reason: BlockingReason
+        public let taskID: String?
+        public let message: String
+        public let detail: String
+
+        public init(
+            status: BlockingStatus,
+            reason: BlockingReason,
+            taskID: String?,
+            message: String,
+            detail: String
+        ) {
+            self.status = status
+            self.reason = reason
+            self.taskID = taskID
+            self.message = message
+            self.detail = detail
+        }
+    }
+
     struct ResumeState: Equatable, Sendable {
         public enum Status: String, Codable, Sendable {
             case resumingSameSession = "resuming_same_session"
@@ -266,6 +310,7 @@ extension Workspace {
         runState.currentPhase = nil
         runState.executionStartTime = nil
         runState.currentTaskID = nil
+        runState.blockingState = nil
         resetStreamProcessingState()
     }
 

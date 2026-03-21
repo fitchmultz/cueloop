@@ -19,7 +19,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use super::{CliSpec, Config, GitPublishMode, GitRevertMode, QueueFile, RunnerApprovalMode, Task};
+use super::{
+    BlockingState, CliSpec, Config, GitPublishMode, GitRevertMode, QueueFile, RunnerApprovalMode,
+    Task,
+};
 
 pub const MACHINE_SYSTEM_INFO_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_READ_VERSION: u32 = 1;
@@ -29,8 +32,8 @@ pub const MACHINE_TASK_MUTATION_VERSION: u32 = 1;
 pub const MACHINE_GRAPH_READ_VERSION: u32 = 1;
 pub const MACHINE_DASHBOARD_READ_VERSION: u32 = 1;
 pub const MACHINE_DECOMPOSE_VERSION: u32 = 1;
-pub const MACHINE_RUN_EVENT_VERSION: u32 = 2;
-pub const MACHINE_RUN_SUMMARY_VERSION: u32 = 1;
+pub const MACHINE_RUN_EVENT_VERSION: u32 = 3;
+pub const MACHINE_RUN_SUMMARY_VERSION: u32 = 2;
 pub const MACHINE_DOCTOR_REPORT_VERSION: u32 = 1;
 pub const MACHINE_PARALLEL_STATUS_VERSION: u32 = 1;
 pub const MACHINE_CLI_SPEC_VERSION: u32 = 2;
@@ -196,6 +199,8 @@ pub enum MachineRunEventKind {
     PhaseEntered,
     PhaseCompleted,
     RunnerOutput,
+    BlockedStateChanged,
+    BlockedStateCleared,
     Warning,
     RunFinished,
 }
@@ -230,6 +235,8 @@ pub struct MachineRunSummaryDocument {
     pub task_id: Option<String>,
     pub exit_code: i32,
     pub outcome: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
 }
 
 fn json_value_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {

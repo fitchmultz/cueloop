@@ -13,7 +13,7 @@
 //! - Queue files are already loaded and validated before selection.
 //! - Invalid resume targets produce explicit fresh-start narration instead of silent fallthrough.
 
-use crate::contracts::{QueueFile, Task, TaskStatus};
+use crate::contracts::{BlockingState, QueueFile, Task, TaskStatus};
 use anyhow::Result;
 use std::path::Path;
 
@@ -74,7 +74,14 @@ pub(crate) fn select_task_for_run(
 
                 let summary =
                     build_blocked_summary(queue_file, done_ref, &candidates, include_draft);
-                return Ok(SelectTaskResult::Blocked { summary });
+                let state = summary
+                    .blocking
+                    .clone()
+                    .unwrap_or_else(|| BlockingState::idle(include_draft));
+                return Ok(SelectTaskResult::Blocked {
+                    summary: Box::new(summary),
+                    state: Box::new(state),
+                });
             }
         };
 
@@ -94,28 +101,11 @@ fn build_blocked_summary(
     let options = RunnableSelectionOptions::new(include_draft, true);
     match crate::queue::operations::queue_runnability_report(queue_file, done_ref, options) {
         Ok(report) => {
-            if report.summary.blocked_by_schedule > 0 && report.summary.blocked_by_dependencies > 0
-            {
-                log::info!(
-                    "All runnable tasks are blocked by unmet dependencies and future schedule ({} deps, {} scheduled).",
-                    report.summary.blocked_by_dependencies,
-                    report.summary.blocked_by_schedule
-                );
-            } else if report.summary.blocked_by_schedule > 0 {
-                log::info!(
-                    "All runnable tasks are blocked by future schedule ({} scheduled).",
-                    report.summary.blocked_by_schedule
-                );
-            } else if report.summary.blocked_by_dependencies > 0 {
-                log::info!(
-                    "All runnable tasks are blocked by unmet dependencies ({} blocked).",
-                    report.summary.blocked_by_dependencies
-                );
-            } else if report.summary.blocked_by_status_or_flags > 0 {
-                log::info!(
-                    "All tasks are blocked by status or flags ({} blocked).",
-                    report.summary.blocked_by_status_or_flags
-                );
+            if let Some(blocking) = report.summary.blocking.as_ref() {
+                log::info!("{}", blocking.message);
+                if !blocking.detail.trim().is_empty() {
+                    log::info!("  {}", blocking.detail);
+                }
             } else {
                 log::info!("All runnable tasks are blocked.");
             }
@@ -135,6 +125,7 @@ fn build_blocked_summary(
                 blocked_by_dependencies: candidates.len(),
                 blocked_by_schedule: 0,
                 blocked_by_status_or_flags: 0,
+                blocking: Some(BlockingState::dependency_blocked(candidates.len())),
             }
         }
     }

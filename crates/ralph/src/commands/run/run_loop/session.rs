@@ -12,7 +12,7 @@
 //! - Session timeout uses configured hours (defaulting to the shared constant).
 //! - Prompt-required non-interactive cases refuse instead of guessing.
 
-use crate::commands::run::emit_resume_decision;
+use crate::commands::run::{emit_blocked_state_changed, emit_resume_decision};
 use crate::config;
 use crate::session::{self, ResumeBehavior, ResumeDecisionMode, ResumeStatus};
 use anyhow::{Result, bail};
@@ -49,6 +49,9 @@ pub(super) fn resolve_resume_state(
 
     if let Some(decision) = resolution.decision.as_ref() {
         emit_resume_decision(decision, opts.run_event_handler.as_ref());
+        if let Some(blocking_state) = decision.blocking_state() {
+            emit_blocked_state_changed(&blocking_state, opts.run_event_handler.as_ref());
+        }
         if matches!(decision.status, ResumeStatus::RefusingToResume) {
             bail!("{}", decision.message);
         }

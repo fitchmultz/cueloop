@@ -46,13 +46,15 @@ Includes:
 - fall back to a fresh invocation
 - refuse to resume
 
-### `machine run` events (`version: 2`)
+### `machine run` events (`version: 3`)
 
-The NDJSON stream can emit `kind: "resume_decision"` events with a structured payload:
+The NDJSON stream can emit both resume and progress-blocking state transitions.
+
+Resume decisions remain structured:
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "kind": "resume_decision",
   "task_id": "RQ-0001",
   "message": "Resume: continuing the interrupted session for task RQ-0001.",
@@ -67,7 +69,37 @@ The NDJSON stream can emit `kind: "resume_decision"` events with a structured pa
 }
 ```
 
-That payload is the source of truth for live resume-state UI.
+Blocking-state transitions are also structured:
+
+```json
+{
+  "version": 3,
+  "kind": "blocked_state_changed",
+  "message": "Ralph is blocked by unfinished dependencies.",
+  "payload": {
+    "status": "blocked",
+    "reason": {
+      "kind": "dependency_blocked",
+      "blocked_tasks": 2
+    },
+    "task_id": null,
+    "message": "Ralph is blocked by unfinished dependencies.",
+    "detail": "2 candidate task(s) are waiting on dependency completion."
+  }
+}
+```
+
+`kind: "blocked_state_cleared"` indicates that Ralph resumed forward progress.
+
+### `machine run` summaries (`version: 2`)
+
+Terminal summaries now include optional `blocking` state for `no_candidates`, `blocked`, and classified stalled failures.
+
+### `machine queue read`
+
+`runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, or mixed.
+
+Together, those payloads are the source of truth for live operator-state UI.
 
 ## Schemas
 

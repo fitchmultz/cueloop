@@ -97,7 +97,7 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
                     Some(event_handler),
                 )
             };
-            emit_run_summary("one", result)
+            emit_run_summary(&resolved, "one", result)
         }
         MachineRunCommand::Loop(args) => {
             let event_handler = build_run_event_handler("loop");
@@ -142,6 +142,7 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
                 task_id: None,
                 exit_code: 0,
                 outcome: "completed".to_string(),
+                blocking: None,
             })
         }
         MachineRunCommand::ParallelStatus => {
@@ -222,30 +223,82 @@ fn machine_event_envelope(run_mode: &'static str, event: RunEvent) -> MachineRun
             stream: None,
             payload: None,
         },
+        RunEvent::BlockedStateChanged { state } => MachineRunEventEnvelope {
+            version: MACHINE_RUN_EVENT_VERSION,
+            kind: MachineRunEventKind::BlockedStateChanged,
+            timestamp: timeutil::now_utc_rfc3339_or_fallback(),
+            run_mode: Some(run_mode.to_string()),
+            task_id: state.task_id.clone(),
+            phase: None,
+            exit_code: None,
+            message: Some(state.message.clone()),
+            stream: None,
+            payload: Some(serde_json::to_value(state).expect("blocking state serializes")),
+        },
+        RunEvent::BlockedStateCleared => MachineRunEventEnvelope {
+            version: MACHINE_RUN_EVENT_VERSION,
+            kind: MachineRunEventKind::BlockedStateCleared,
+            timestamp: timeutil::now_utc_rfc3339_or_fallback(),
+            run_mode: Some(run_mode.to_string()),
+            task_id: None,
+            phase: None,
+            exit_code: None,
+            message: Some("blocking state cleared".to_string()),
+            stream: None,
+            payload: None,
+        },
     }
 }
 
-fn emit_run_summary(run_mode: &'static str, result: Result<RunOutcome>) -> Result<()> {
+fn emit_run_summary(
+    resolved: &crate::config::Resolved,
+    run_mode: &'static str,
+    result: Result<RunOutcome>,
+) -> Result<()> {
     match result {
         Ok(RunOutcome::Ran { task_id }) => print_json_line(&MachineRunSummaryDocument {
             version: MACHINE_RUN_SUMMARY_VERSION,
             task_id: Some(task_id),
             exit_code: 0,
             outcome: "ran".to_string(),
+            blocking: None,
         }),
         Ok(RunOutcome::NoCandidates) => print_json_line(&MachineRunSummaryDocument {
             version: MACHINE_RUN_SUMMARY_VERSION,
             task_id: None,
             exit_code: 0,
             outcome: "no_candidates".to_string(),
+            blocking: Some(crate::contracts::BlockingState::idle(false)),
         }),
-        Ok(RunOutcome::Blocked { .. }) => print_json_line(&MachineRunSummaryDocument {
+        Ok(RunOutcome::Blocked { state, .. }) => print_json_line(&MachineRunSummaryDocument {
             version: MACHINE_RUN_SUMMARY_VERSION,
             task_id: None,
             exit_code: 0,
             outcome: "blocked".to_string(),
+            blocking: Some(*state),
         }),
         Err(error) => {
+            let blocking =
+                crate::commands::run::queue_lock_blocking_state(&resolved.repo_root, &error)
+                    .or_else(|| {
+                        error
+                            .downcast_ref::<crate::commands::run::CiFailure>()
+                            .map(|failure| failure.blocking_state())
+                    });
+            if let Some(state) = blocking.as_ref() {
+                emit_run_event(MachineRunEventEnvelope {
+                    version: MACHINE_RUN_EVENT_VERSION,
+                    kind: MachineRunEventKind::BlockedStateChanged,
+                    timestamp: timeutil::now_utc_rfc3339_or_fallback(),
+                    run_mode: Some(run_mode.to_string()),
+                    task_id: state.task_id.clone(),
+                    phase: None,
+                    exit_code: Some(1),
+                    message: Some(state.message.clone()),
+                    stream: None,
+                    payload: Some(serde_json::to_value(state)?),
+                })?;
+            }
             emit_run_event(MachineRunEventEnvelope {
                 version: MACHINE_RUN_EVENT_VERSION,
                 kind: MachineRunEventKind::Warning,
@@ -257,6 +310,17 @@ fn emit_run_summary(run_mode: &'static str, result: Result<RunOutcome>) -> Resul
                 message: Some(format!("{error:#}")),
                 stream: None,
                 payload: None,
+            })?;
+            print_json_line(&MachineRunSummaryDocument {
+                version: MACHINE_RUN_SUMMARY_VERSION,
+                task_id: None,
+                exit_code: 1,
+                outcome: if blocking.is_some() {
+                    "stalled".to_string()
+                } else {
+                    "failed".to_string()
+                },
+                blocking,
             })?;
             bail!("{error:#}")
         }

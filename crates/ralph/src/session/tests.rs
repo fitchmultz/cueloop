@@ -501,3 +501,36 @@ fn increment_session_progress_handles_missing_session() {
     std::fs::create_dir_all(&cache_dir).unwrap();
     increment_session_progress(&cache_dir).unwrap();
 }
+
+#[test]
+fn resume_decision_blocking_state_for_confirmation_required() {
+    let decision = ResumeDecision {
+        status: ResumeStatus::RefusingToResume,
+        scope: ResumeScope::RunSession,
+        reason: ResumeReason::ResumeConfirmationRequired,
+        task_id: Some("RQ-0007".to_string()),
+        message: "Resume: refusing to guess.".to_string(),
+        detail: "Confirmation is unavailable.".to_string(),
+    };
+
+    let blocking = decision.blocking_state().expect("blocking state");
+    assert_eq!(blocking.task_id.as_deref(), Some("RQ-0007"));
+    assert!(matches!(
+        blocking.reason,
+        crate::contracts::BlockingReason::RunnerRecovery { .. }
+    ));
+}
+
+#[test]
+fn resume_decision_without_recovery_blocker_has_no_blocking_state() {
+    let decision = ResumeDecision {
+        status: ResumeStatus::FallingBackToFreshInvocation,
+        scope: ResumeScope::RunSession,
+        reason: ResumeReason::SessionStale,
+        task_id: None,
+        message: "Resume: starting fresh because the saved session is stale.".to_string(),
+        detail: "The session no longer matches the queue.".to_string(),
+    };
+
+    assert!(decision.blocking_state().is_none());
+}

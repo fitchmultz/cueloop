@@ -22,7 +22,8 @@
 use crate::agent::AgentOverrides;
 use crate::commands::run::run_one::RunOneResumeOptions;
 use crate::commands::run::{
-    RunOutcome, context::task_context_for_prompt, emit_resume_decision, phases::PostRunMode,
+    RunOutcome, context::task_context_for_prompt, emit_blocked_state_changed, emit_resume_decision,
+    phases::PostRunMode,
 };
 use crate::config;
 use crate::contracts::Task;
@@ -77,7 +78,9 @@ pub(crate) enum SelectTaskResult {
     /// Tasks exist but all are blocked by dependencies or schedule.
     Blocked {
         /// Summary of why tasks are blocked.
-        summary: crate::queue::operations::QueueRunnabilitySummary,
+        summary: Box<crate::queue::operations::QueueRunnabilitySummary>,
+        /// Operator-facing blocking state.
+        state: Box<crate::contracts::BlockingState>,
     },
 }
 
@@ -142,6 +145,9 @@ pub fn run_one_impl(
 
         if let Some(decision) = resolution.decision.as_ref() {
             emit_resume_decision(decision, run_event_handler.as_ref());
+            if let Some(blocking_state) = decision.blocking_state() {
+                emit_blocked_state_changed(&blocking_state, run_event_handler.as_ref());
+            }
             if matches!(decision.status, ResumeStatus::RefusingToResume) {
                 bail!("{}", decision.message);
             }
@@ -166,7 +172,10 @@ pub fn run_one_impl(
 
     let task = match selection {
         SelectTaskResult::NoCandidates => return Ok(RunOutcome::NoCandidates),
-        SelectTaskResult::Blocked { summary } => return Ok(RunOutcome::Blocked { summary }),
+        SelectTaskResult::Blocked { summary, state } => {
+            emit_blocked_state_changed(&state, run_event_handler.as_ref());
+            return Ok(RunOutcome::Blocked { summary, state });
+        }
         SelectTaskResult::Selected { task } => *task,
     };
     let task_id = task.id.trim().to_string();

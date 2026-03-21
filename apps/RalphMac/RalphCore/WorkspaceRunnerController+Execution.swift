@@ -240,9 +240,7 @@ extension WorkspaceRunnerController {
                 return nil
             }
             workspace.updateResolvedPaths(snapshot.paths)
-            if let id = snapshot.nextRunnableTaskID {
-                return id
-            }
+            return snapshot.nextRunnableTaskID
         } catch is CancellationError {
             return nil
         } catch {

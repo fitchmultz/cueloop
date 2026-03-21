@@ -27,14 +27,17 @@ extension WorkspaceRunnerController {
             switch event.kind {
             case .runStarted:
                 workspace.runState.currentTaskID = event.taskID ?? workspace.runState.currentTaskID
-                if let document = event.payload?.decode(MachineConfigResolveDocument.self, for: "config") {
+                workspace.runState.setBlockingState(nil)
+                if let document = event.payload?.decode(MachineConfigResolveDocument.self, at: ["config"]) {
                     workspace.updateResolvedPaths(document.paths)
                     workspace.runState.resumeState = document.resumePreview?.asWorkspaceResumeState()
                 }
             case .taskSelected:
                 workspace.runState.currentTaskID = event.taskID ?? workspace.runState.currentTaskID
+                workspace.runState.setBlockingState(nil)
             case .phaseEntered:
                 workspace.runState.currentPhase = Workspace.ExecutionPhase(machineValue: event.phase)
+                workspace.runState.setBlockingState(nil)
             case .phaseCompleted:
                 if workspace.runState.currentPhase == Workspace.ExecutionPhase(machineValue: event.phase) {
                     workspace.runState.currentPhase = nil
@@ -47,15 +50,24 @@ extension WorkspaceRunnerController {
                     appendConsoleText("\(message)\n", workspace: workspace)
                 }
             case .runnerOutput:
-                if let text = event.payload?.string(for: "text") {
+                if let text = event.payload?.value(at: ["text"])?.stringValue {
                     appendConsoleText(text, workspace: workspace)
                 }
+            case .blockedStateChanged:
+                if let state = decodeBlockingState(from: event.payload) {
+                    workspace.runState.setBlockingState(state.asWorkspaceBlockingState())
+                    appendBlockingState(state, workspace: workspace)
+                } else if let message = event.message, !message.isEmpty {
+                    appendConsoleText("\(message)\n", workspace: workspace)
+                }
+            case .blockedStateCleared:
+                workspace.runState.setBlockingState(nil)
             case .queueSnapshot:
-                if let paths = event.payload?.decode(MachineQueuePaths.self, for: "paths") {
+                if let paths = event.payload?.decode(MachineQueuePaths.self, at: ["paths"]) {
                     workspace.updateResolvedPaths(paths)
                 }
             case .configResolved:
-                if let document = event.payload?.decode(MachineConfigResolveDocument.self, for: "config") {
+                if let document = event.payload?.decode(MachineConfigResolveDocument.self, at: ["config"]) {
                     workspace.updateResolvedPaths(document.paths)
                     workspace.runState.resumeState = document.resumePreview?.asWorkspaceResumeState()
                 }
@@ -70,23 +82,34 @@ extension WorkspaceRunnerController {
             if let taskID = summary.taskID {
                 workspace.runState.currentTaskID = taskID
             }
+            if let blocking = summary.blocking {
+                workspace.runState.setBlockingState(blocking.asWorkspaceBlockingState())
+            }
         case .rawText(let text):
             appendConsoleText(text, workspace: workspace)
         }
     }
 
     private func decodeResumeDecision(from payload: RalphJSONValue?) -> MachineResumeDecision? {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let payload else { return nil }
-        guard let data = try? JSONEncoder().encode(payload) else { return nil }
-        return try? decoder.decode(MachineResumeDecision.self, from: data)
+        payload?.decode(MachineResumeDecision.self)
+    }
+
+    private func decodeBlockingState(from payload: RalphJSONValue?) -> MachineBlockingState? {
+        payload?.decode(MachineBlockingState.self)
     }
 
     private func appendResumeDecision(_ decision: MachineResumeDecision, workspace: Workspace) {
         var lines = [decision.message]
         if !decision.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             lines.append("  \(decision.detail)")
+        }
+        appendConsoleText(lines.joined(separator: "\n") + "\n", workspace: workspace)
+    }
+
+    private func appendBlockingState(_ state: MachineBlockingState, workspace: Workspace) {
+        var lines = ["[\(state.status.rawValue)] \(state.message)"]
+        if !state.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("  \(state.detail)")
         }
         appendConsoleText(lines.joined(separator: "\n") + "\n", workspace: workspace)
     }
@@ -110,6 +133,8 @@ extension WorkspaceRunnerController {
             case phaseEntered = "phase_entered"
             case phaseCompleted = "phase_completed"
             case runnerOutput = "runner_output"
+            case blockedStateChanged = "blocked_state_changed"
+            case blockedStateCleared = "blocked_state_cleared"
             case warning
             case runFinished = "run_finished"
         }
@@ -129,12 +154,105 @@ extension WorkspaceRunnerController {
         let taskID: String?
         let exitCode: Int
         let outcome: String
+        let blocking: MachineBlockingState?
 
         enum CodingKeys: String, CodingKey {
             case version
             case taskID = "task_id"
             case exitCode = "exit_code"
             case outcome
+            case blocking
+        }
+    }
+
+    struct MachineBlockingState: Decodable, Sendable {
+        let status: Workspace.BlockingStatus
+        let reason: MachineBlockingReason
+        let taskID: String?
+        let message: String
+        let detail: String
+
+        enum CodingKeys: String, CodingKey {
+            case status
+            case reason
+            case taskID = "task_id"
+            case message
+            case detail
+        }
+
+        func asWorkspaceBlockingState() -> Workspace.BlockingState {
+            Workspace.BlockingState(
+                status: status,
+                reason: reason.asWorkspaceBlockingReason(),
+                taskID: taskID,
+                message: message,
+                detail: detail
+            )
+        }
+    }
+
+    struct MachineBlockingReason: Decodable, Sendable {
+        let kind: String
+        let includeDraft: Bool?
+        let blockedTasks: Int?
+        let nextRunnableAt: String?
+        let secondsUntilNextRunnable: Int?
+        let lockPath: String?
+        let owner: String?
+        let ownerPID: Int?
+        let pattern: String?
+        let exitCode: Int?
+        let scope: String?
+        let reason: String?
+        let taskID: String?
+        let dependencyBlocked: Int?
+        let scheduleBlocked: Int?
+        let statusFiltered: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case kind
+            case includeDraft = "include_draft"
+            case blockedTasks = "blocked_tasks"
+            case nextRunnableAt = "next_runnable_at"
+            case secondsUntilNextRunnable = "seconds_until_next_runnable"
+            case lockPath = "lock_path"
+            case owner
+            case ownerPID = "owner_pid"
+            case pattern
+            case exitCode = "exit_code"
+            case scope
+            case reason
+            case taskID = "task_id"
+            case dependencyBlocked = "dependency_blocked"
+            case scheduleBlocked = "schedule_blocked"
+            case statusFiltered = "status_filtered"
+        }
+
+        func asWorkspaceBlockingReason() -> Workspace.BlockingReason {
+            switch kind {
+            case "idle":
+                return .idle(includeDraft: includeDraft ?? false)
+            case "dependency_blocked":
+                return .dependencyBlocked(blockedTasks: blockedTasks ?? 0)
+            case "schedule_blocked":
+                return .scheduleBlocked(
+                    blockedTasks: blockedTasks ?? 0,
+                    nextRunnableAt: nextRunnableAt,
+                    secondsUntilNextRunnable: secondsUntilNextRunnable
+                )
+            case "lock_blocked":
+                return .lockBlocked(lockPath: lockPath, owner: owner, ownerPID: ownerPID)
+            case "ci_blocked":
+                return .ciBlocked(pattern: pattern, exitCode: exitCode)
+            case "runner_recovery":
+                return .runnerRecovery(scope: scope ?? "unknown", reason: reason ?? "unknown", taskID: taskID)
+            default:
+                return .mixedQueue(
+                    dependencyBlocked: dependencyBlocked ?? 0,
+                    scheduleBlocked: scheduleBlocked ?? 0,
+                    statusFiltered: statusFiltered ?? 0
+                )
+            }
         }
     }
 
@@ -197,20 +315,5 @@ private extension Workspace.ExecutionPhase {
         default:
             return nil
         }
-    }
-}
-
-private extension RalphJSONValue {
-    func string(for key: String) -> String? {
-        guard case .object(let object) = self, let value = object[key] else { return nil }
-        return value.stringValue
-    }
-
-    func decode<T: Decodable>(_ type: T.Type, for key: String) -> T? {
-        guard case .object(let object) = self, let value = object[key] else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let data = try? JSONEncoder().encode(value) else { return nil }
-        return try? decoder.decode(type, from: data)
     }
 }

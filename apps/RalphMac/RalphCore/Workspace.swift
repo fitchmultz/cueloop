@@ -129,7 +129,8 @@ public final class Workspace: ObservableObject, Identifiable {
     }
 
     public func nextTask() -> RalphTask? {
-        taskState.tasks.first { $0.status == .todo }
+        guard let nextRunnableTaskID = taskState.nextRunnableTaskID else { return nil }
+        return taskState.tasks.first { $0.id == nextRunnableTaskID }
     }
 
     public var runControlTodoTasks: [RalphTask] {

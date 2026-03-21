@@ -14,6 +14,7 @@
 
 #![allow(clippy::struct_excessive_bools)]
 
+mod blocking;
 mod cli_spec;
 mod config;
 mod machine;
@@ -32,6 +33,9 @@ pub use config::{
     ScanPromptVersion, WebhookConfig, WebhookEventSubscription, WebhookQueuePolicy,
 };
 pub(crate) use config::{builtin_profile, builtin_profile_names, is_reserved_profile_name};
+
+// Re-exports from blocking module (operator-facing stalled/waiting state)
+pub use blocking::{BlockingReason, BlockingState, BlockingStatus};
 
 // Re-exports from machine module (versioned app/CLI machine surfaces)
 pub use machine::{
