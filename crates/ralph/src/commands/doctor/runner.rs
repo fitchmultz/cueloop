@@ -15,11 +15,20 @@
 
 use crate::commands::doctor::types::{CheckResult, DoctorReport};
 use crate::config;
-use crate::contracts::Runner;
+use crate::contracts::{BlockingState, Runner};
 use crate::prompts;
 use crate::runner;
 use crate::runutil::{ManagedCommand, TimeoutClass, execute_managed_command};
 use std::process::Command;
+
+fn runner_blocking_state(
+    scope: &str,
+    reason: &str,
+    message: impl Into<String>,
+    detail: impl Into<String>,
+) -> BlockingState {
+    BlockingState::runner_recovery(scope, reason, None, message, detail)
+}
 
 pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolved) {
     let runner = resolved.config.agent.runner.clone().unwrap_or_default();
@@ -73,13 +82,21 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
             "Move agent.{config_key} to trusted global config or create .ralph/trust.jsonc before running doctor checks that execute runner binaries. Config file: {}",
             config_path.display()
         );
-        report.add(CheckResult::error(
-            "runner",
-            "runner_binary",
-            &message,
-            false,
-            Some(&guidance),
-        ));
+        report.add(
+            CheckResult::error(
+                "runner",
+                "runner_binary",
+                &message,
+                false,
+                Some(&guidance),
+            )
+            .with_blocking(runner_blocking_state(
+                "runner",
+                "project_runner_override_untrusted",
+                "Ralph is stalled because project runner overrides are blocked until the repo is trusted.",
+                guidance.clone(),
+            )),
+        );
         log::error!("{message}");
         log::error!("{guidance}");
         return;
@@ -92,50 +109,39 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
             bin_name, runner, e
         );
 
-        if runner_configured {
-            let result = CheckResult::error(
-                "runner",
-                "runner_binary",
-                &message,
-                false,
-                Some(&format!(
-                    "Install the runner binary, or configure a custom path in .ralph/config.jsonc: {{ \"agent\": {{ \"{}\": \"/path/to/{}\" }} }}",
-                    config_key, bin_name
-                )),
-            );
-            report.add(result);
-            log::error!("");
-            log::error!("To fix this issue:");
-            log::error!("  1. Install the runner binary, or");
-            log::error!("  2. Configure a custom path in .ralph/config.jsonc:");
-            log::error!("     {{");
-            log::error!("       \"agent\": {{");
-            log::error!("         \"{}\": \"/path/to/{}\"", config_key, bin_name);
-            log::error!("       }}");
-            log::error!("     }}");
-            log::error!("  3. Run 'ralph doctor' to verify the fix");
+        let guidance = if runner_configured {
+            format!(
+                "Install the runner binary, or configure a custom path in .ralph/config.jsonc: {{ \"agent\": {{ \"{}\": \"/path/to/{}\" }} }}",
+                config_key, bin_name
+            )
         } else {
-            let result = CheckResult::warning(
-                "runner",
-                "runner_binary",
-                &message,
-                false,
-                Some(
-                    "Install the runner binary, or configure a custom path in .ralph/config.jsonc",
-                ),
-            );
-            report.add(result);
-            log::warn!("");
-            log::warn!("To fix this issue:");
-            log::warn!("  1. Install the runner binary, or");
-            log::warn!("  2. Configure a custom path in .ralph/config.jsonc:");
-            log::warn!("     {{");
-            log::warn!("       \"agent\": {{");
-            log::warn!("         \"{}\": \"/path/to/{}\"", config_key, bin_name);
-            log::warn!("       }}");
-            log::warn!("     }}");
-            log::warn!("  3. Run 'ralph doctor' to verify the fix");
-        }
+            format!(
+                "Install the default runner binary, or configure agent.runner plus agent.{config_key} in .ralph/config.jsonc before running Ralph."
+            )
+        };
+        let blocking = runner_blocking_state(
+            "runner",
+            "runner_binary_missing",
+            format!("Ralph is stalled because runner binary '{bin_name}' is unavailable."),
+            format!(
+                "Configured/default runner {:?} cannot execute because '{}' is not on PATH or not executable.",
+                runner, bin_name
+            ),
+        );
+        let result =
+            CheckResult::error("runner", "runner_binary", &message, false, Some(&guidance))
+                .with_blocking(blocking);
+        report.add(result);
+        log::error!("");
+        log::error!("To fix this issue:");
+        log::error!("  1. Install the runner binary, or");
+        log::error!("  2. Configure a custom path in .ralph/config.jsonc:");
+        log::error!("     {{");
+        log::error!("       \"agent\": {{");
+        log::error!("         \"{}\": \"/path/to/{}\"", config_key, bin_name);
+        log::error!("       }}");
+        log::error!("     }}");
+        log::error!("  3. Run 'ralph doctor' to verify the fix");
     } else {
         report.add(CheckResult::success(
             "runner",
@@ -153,13 +159,21 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
         false,
     );
     if let Err(e) = runner::validate_model_for_runner(&runner, &model) {
-        report.add(CheckResult::error(
-            "runner",
-            "model_compatibility",
-            &format!("config model/runner mismatch: {}", e),
-            false,
-            Some("Check the model is compatible with the selected runner in config"),
-        ));
+        report.add(
+            CheckResult::error(
+                "runner",
+                "model_compatibility",
+                &format!("config model/runner mismatch: {}", e),
+                false,
+                Some("Check the model is compatible with the selected runner in config"),
+            )
+            .with_blocking(runner_blocking_state(
+                "runner",
+                "model_incompatible",
+                "Ralph is stalled because the selected runner/model combination is invalid.",
+                e.to_string(),
+            )),
+        );
     } else {
         report.add(CheckResult::success(
             "runner",

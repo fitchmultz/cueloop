@@ -153,3 +153,23 @@ fn machine_system_info_reports_cli_version() -> Result<()> {
     assert!(document["cli_version"].as_str().is_some());
     Ok(())
 }
+
+#[test]
+fn machine_doctor_report_returns_versioned_blocking_document() -> Result<()> {
+    let dir = tempdir()?;
+    git_init(dir.path())?;
+    ralph_init(dir.path())?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "doctor", "report"]);
+    assert!(
+        status.success(),
+        "machine doctor report failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["version"], 2);
+    assert!(document["blocking"].is_object());
+    assert_eq!(document["blocking"], document["report"]["blocking"]);
+    assert!(document["report"]["checks"].is_array());
+    Ok(())
+}

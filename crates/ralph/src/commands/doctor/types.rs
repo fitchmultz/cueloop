@@ -1,17 +1,19 @@
 //! Types for doctor checks and reports.
 //!
 //! Responsibilities:
-//! - Define severity levels, check results, and report structures
-//! - Provide factory methods for creating check results
+//! - Define severity levels, check results, and report structures.
+//! - Carry canonical blocking-state diagnostics alongside doctor results.
 //!
 //! Not handled here:
-//! - Actual check implementations (see submodules)
-//! - Output formatting (see output.rs)
+//! - Actual check implementations (see submodules).
+//! - Output formatting (see output.rs).
 //!
 //! Invariants/assumptions:
-//! - CheckResult factories are pure functions with no side effects
-//! - DoctorReport maintains consistent summary statistics
+//! - CheckResult factories are pure functions with no side effects.
+//! - DoctorReport maintains consistent summary statistics.
+//! - BlockingState, when present, uses the canonical operator-facing contract.
 
+use crate::contracts::BlockingState;
 use serde::Serialize;
 
 /// Severity level for a doctor check.
@@ -45,6 +47,9 @@ pub struct CheckResult {
     /// Suggested fix or action for the user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suggested_fix: Option<String>,
+    /// Canonical operator-facing blocking diagnosis for this check.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
 }
 
 impl CheckResult {
@@ -58,6 +63,7 @@ impl CheckResult {
             fix_available: false,
             fix_applied: None,
             suggested_fix: None,
+            blocking: None,
         }
     }
 
@@ -77,6 +83,7 @@ impl CheckResult {
             fix_available,
             fix_applied: None,
             suggested_fix: suggested_fix.map(|s| s.to_string()),
+            blocking: None,
         }
     }
 
@@ -96,12 +103,19 @@ impl CheckResult {
             fix_available,
             fix_applied: None,
             suggested_fix: suggested_fix.map(|s| s.to_string()),
+            blocking: None,
         }
     }
 
     /// Mark that a fix was applied to this check.
     pub fn with_fix_applied(mut self, applied: bool) -> Self {
         self.fix_applied = Some(applied);
+        self
+    }
+
+    /// Attach the canonical blocking-state explanation for this check.
+    pub fn with_blocking(mut self, blocking: BlockingState) -> Self {
+        self.blocking = Some(blocking);
         self
     }
 }
@@ -128,6 +142,9 @@ pub struct Summary {
 pub struct DoctorReport {
     /// Overall success status (true if no errors).
     pub success: bool,
+    /// Canonical operator-facing blocking diagnosis for the current repo state.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
     /// Individual check results.
     pub checks: Vec<CheckResult>,
     /// Summary statistics.
@@ -139,6 +156,7 @@ impl DoctorReport {
     pub fn new() -> Self {
         Self {
             success: true,
+            blocking: None,
             checks: Vec::new(),
             summary: Summary {
                 total: 0,

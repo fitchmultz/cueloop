@@ -38,6 +38,10 @@ fn doctor_json_output_format() -> Result<()> {
         json.get("summary").is_some(),
         "JSON should have 'summary' field"
     );
+    assert!(
+        json.get("blocking").is_none() || json.get("blocking").unwrap().is_object(),
+        "JSON blocking field should be absent or an object"
+    );
 
     let summary = json.get("summary").unwrap();
     assert!(
@@ -122,6 +126,53 @@ fn doctor_json_output_with_failed_check() -> Result<()> {
         .iter()
         .find(|c| c["category"] == "queue" && c["severity"] == "Error");
     assert!(queue_error.is_some(), "should have a queue error check");
+    assert!(
+        json["blocking"].is_object(),
+        "should include top-level blocking state"
+    );
+    assert_eq!(json["blocking"]["reason"]["kind"], "ci_blocked");
+    assert_eq!(json["blocking"]["reason"]["pattern"], "makefile_missing");
+
+    Ok(())
+}
+
+#[test]
+fn doctor_json_output_reports_idle_blocking_when_environment_is_healthy() -> Result<()> {
+    let dir = setup_trusted_doctor_repo()?;
+    let runner_path = super::test_support::create_fake_runner(
+        dir.path(),
+        "test-runner-idle",
+        r#"#!/bin/bash
+case "$1" in
+  --version) echo "test-runner 1.0.0"; exit 0 ;;
+  *) exit 1 ;;
+esac
+"#,
+    )?;
+
+    write_repo_config(
+        dir.path(),
+        &format!(
+            r#"{{"version":2,"agent":{{"runner":"opencode","opencode_bin":"{}","ci_gate":{{"enabled":false}}}}}}"#,
+            runner_path.display()
+        ),
+    )?;
+    std::fs::write(dir.path().join(".gitignore"), ".ralph/logs/\n")?;
+
+    let output = ralph_cmd_in_dir(dir.path())
+        .args(["doctor", "--format", "json"])
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("JSON should be valid");
+
+    assert_eq!(json["success"], true, "healthy doctor fixture should pass");
+    assert!(
+        json["blocking"].is_object(),
+        "doctor report should expose blocking state"
+    );
+    assert_eq!(json["blocking"]["status"], "waiting");
+    assert_eq!(json["blocking"]["reason"]["kind"], "idle");
 
     Ok(())
 }

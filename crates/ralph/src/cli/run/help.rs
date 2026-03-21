@@ -20,6 +20,12 @@ pub(super) const RUN_AFTER_LONG_HELP: &str = "Runner selection:\n\
   - `ralph run one` inspects interrupted-session state too; add `--resume` to auto-continue when safe.\n\
   - Timed-out sessions still require explicit confirmation and are refused in non-interactive mode.\n\
  \n\
+ Blocking-state diagnosis:\n\
+  - Ralph uses one canonical BlockingState vocabulary everywhere: waiting, blocked, stalled.\n\
+  - Canonical reasons are: idle, dependency_blocked, schedule_blocked, lock_blocked, ci_blocked, runner_recovery, mixed_queue.\n\
+  - Use `ralph doctor` for human-readable diagnosis when Ralph is not making progress.\n\
+  - Use `ralph doctor --format json` or `ralph machine doctor report` for machine-readable blocking diagnosis.\n\
+ \n\
  Notes:\n\
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
   - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
@@ -99,6 +105,10 @@ Resume behavior:\n\
  - Explicit `--id <TASK_ID>` beats an unrelated interrupted session, and Ralph says so.\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of silently guessing.\n\
 \n\
+Blocking-state diagnosis:\n\
+ - If Ralph refuses to continue, stalls, or appears blocked, run `ralph doctor`.\n\
+ - `ralph doctor` uses the same BlockingState explanation shown by run, machine, and app surfaces.\n\
+\n\
 Examples:\n\
  ralph run one\n\
  ralph run one --resume\n\
@@ -132,6 +142,10 @@ pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - `ralph run loop --resume` auto-resumes the interrupted session when safe.\n\
  - Without `--resume`, Ralph still narrates stale/fresh/refusal cases instead of hiding them.\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of silently guessing.\n\
+\n\
+Blocking-state diagnosis:\n\
+ - `ralph run loop` emits canonical blocking states during waiting and stall transitions.\n\
+ - Use `ralph doctor` to diagnose the same state outside the live run loop.\n\
 \n\
 Examples:\n\
  ralph run loop --max-tasks 0\n\

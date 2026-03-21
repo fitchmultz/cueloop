@@ -98,6 +98,9 @@ fn run_help_mentions_precedence_and_overrides_exist() {
     assert_contains(&combined, "CLI overrides");
     assert_contains(&combined, "task");
     assert_contains(&combined, "config");
+    assert_contains(&combined, "Blocking-state diagnosis");
+    assert_contains(&combined, "ralph doctor");
+    assert_contains(&combined, "ralph machine doctor report");
     assert_contains(&combined, "Examples:");
     assert_contains(&combined, "ralph run one");
     assert_contains(&combined, "ralph run loop");
@@ -126,6 +129,23 @@ fn run_one_help_mentions_flags_and_examples() {
     assert_contains(&combined, "ralph run one");
     assert_contains(&combined, "--runner");
     assert_contains(&combined, "ralph run one --id");
+    assert_contains(&combined, "Blocking-state diagnosis");
+    assert_contains(&combined, "ralph doctor");
+}
+
+#[test]
+fn run_loop_help_mentions_blocking_state_diagnosis() {
+    let (status, stdout, stderr) = run(&["run", "loop", "--help"]);
+    assert!(
+        status.success(),
+        "expected `ralph run loop --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+
+    assert_contains(&combined, "Blocking-state diagnosis");
+    assert_contains(&combined, "ralph doctor");
+    assert_contains(&combined, "wait-when-blocked");
 }
 
 #[test]

@@ -70,6 +70,7 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
                 let report = doctor::run_doctor(&resolved, false)?;
                 print_json(&MachineDoctorReportDocument {
                     version: MACHINE_DOCTOR_REPORT_VERSION,
+                    blocking: report.blocking.clone(),
                     report: serde_json::to_value(report)?,
                 })
             }

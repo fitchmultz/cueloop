@@ -1,6 +1,6 @@
 # Ralph Roadmap
 
-Last updated: 2026-03-20
+Last updated: 2026-03-21
 
 This is the canonical near-term roadmap for active follow-up work.
 
@@ -18,17 +18,12 @@ Primary outcome:
 
 Detailed execution plan:
 
-#### 1.1 Turn supervision errors into decision support
-- Present detected CI patterns, retry state, and current escalation reason clearly.
-- Make it obvious when `git_revert_mode` or runner/session capability is the real cause of the stop.
-- Extend the newly unified blocking-state model into doctor/help/escalation surfaces so operators get the same explanation everywhere.
-
-#### 1.2 Normalize recovery tooling into the happy path
+#### 1.1 Normalize recovery tooling into the happy path
 - Make `task mutate`, `task decompose`, `queue validate`, `queue repair`, and `undo` feel like normal continuation tools, not emergency escape hatches.
 - Preserve partial value wherever safe instead of forcing operators into manual queue surgery.
 - Keep recovery-entrypoint language aligned with the new resume/blocking-state terminology.
 
-#### 1.3 Tighten parallel only after serial recovery is boring
+#### 1.2 Tighten parallel only after serial recovery is boring
 - Do not spend major churn on `run parallel` UX until serial run/resume/supervision behavior is calm and legible.
 - When parallel work resumes, focus on bookkeeping visibility, stale lock handling, and post-run integration clarity.
 - Reuse the same operator-state vocabulary for worker stalls, merge retries, and blocked pushes.

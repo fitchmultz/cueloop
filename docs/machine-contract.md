@@ -99,6 +99,44 @@ Terminal summaries now include optional `blocking` state for `no_candidates`, `b
 
 `runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, or mixed.
 
+### `machine doctor report` (`version: 2`)
+
+Doctor reports now include a typed top-level `blocking` field so app and automation clients can consume the canonical operator-facing blocking model without decoding the untyped `report` payload first.
+
+```json
+{
+  "version": 2,
+  "blocking": {
+    "status": "stalled",
+    "reason": {
+      "kind": "runner_recovery",
+      "scope": "runner",
+      "reason": "runner_binary_missing"
+    },
+    "task_id": null,
+    "message": "Ralph is stalled because runner binary 'codex' is unavailable.",
+    "detail": "Configured/default runner Codex cannot execute because 'codex' is not on PATH or not executable."
+  },
+  "report": {
+    "success": false,
+    "blocking": {
+      "status": "stalled",
+      "reason": {
+        "kind": "runner_recovery",
+        "scope": "runner",
+        "reason": "runner_binary_missing"
+      },
+      "task_id": null,
+      "message": "Ralph is stalled because runner binary 'codex' is unavailable.",
+      "detail": "Configured/default runner Codex cannot execute because 'codex' is not on PATH or not executable."
+    },
+    "checks": []
+  }
+}
+```
+
+`blocking` is the doctor-side counterpart to run-event `blocked_state_changed`, run-summary `blocking`, and queue/read `runnability.summary.blocking`.
+
 Together, those payloads are the source of truth for live operator-state UI.
 
 ## Schemas

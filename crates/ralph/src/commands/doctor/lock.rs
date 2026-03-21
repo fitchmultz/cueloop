@@ -15,7 +15,8 @@
 
 use crate::commands::doctor::types::{CheckResult, DoctorReport};
 use crate::config;
-use crate::lock::{is_task_owner_file, pid_liveness, queue_lock_dir};
+use crate::contracts::BlockingState;
+use crate::lock::{is_task_owner_file, pid_liveness, queue_lock_dir, read_lock_owner};
 use std::fs;
 use std::path::Path;
 
@@ -24,6 +25,22 @@ pub(crate) fn check_lock_health(
     resolved: &config::Resolved,
     auto_fix: bool,
 ) {
+    let active_queue_lock = active_queue_lock_blocking_state(&resolved.repo_root);
+    if let Some(blocking) = active_queue_lock.clone() {
+        report.add(
+            CheckResult::error(
+                "lock",
+                "queue_lock_held",
+                &blocking.message,
+                false,
+                Some(
+                    "Wait for the owning Ralph process to finish, or clear a verified stale lock.",
+                ),
+            )
+            .with_blocking(blocking),
+        );
+    }
+
     match check_lock_directory_health(&resolved.repo_root) {
         Ok((orphaned_count, total_count)) => {
             if orphaned_count > 0 {
@@ -56,15 +73,17 @@ pub(crate) fn check_lock_health(
 
                 report.add(result);
             } else if total_count > 0 {
-                report.add(CheckResult::success(
-                    "lock",
-                    "lock_health",
-                    &format!(
-                        "all {} lock director{} healthy",
-                        total_count,
-                        if total_count == 1 { "y" } else { "ies" }
-                    ),
-                ));
+                if active_queue_lock.is_none() {
+                    report.add(CheckResult::success(
+                        "lock",
+                        "lock_health",
+                        &format!(
+                            "all {} lock director{} healthy",
+                            total_count,
+                            if total_count == 1 { "y" } else { "ies" }
+                        ),
+                    ));
+                }
             } else {
                 log::info!("no lock directories found");
             }
@@ -79,6 +98,20 @@ pub(crate) fn check_lock_health(
             ));
         }
     }
+}
+
+pub(crate) fn active_queue_lock_blocking_state(repo_root: &Path) -> Option<BlockingState> {
+    let lock_dir = queue_lock_dir(repo_root);
+    let owner = read_lock_owner(&lock_dir).ok().flatten()?;
+    if !pid_liveness(owner.pid).is_running_or_indeterminate() {
+        return None;
+    }
+
+    Some(BlockingState::lock_blocked(
+        Some(lock_dir.display().to_string()),
+        Some(owner.label),
+        Some(owner.pid),
+    ))
 }
 
 /// Check the health of lock directories in .ralph/lock/

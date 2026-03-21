@@ -1,24 +1,25 @@
 //! Doctor checks for Git, queue, and runner configuration health.
 //!
 //! Responsibilities:
-//! - Verify Git environment and repository health
-//! - Validate queue and done archive files
-//! - Check runner binary availability and configuration
-//! - Detect orphaned lock directories that may accumulate over time
-//! - Check project git hygiene (e.g., sensitive debug logs in `.ralph/logs/` are gitignored)
-//! - Apply safe auto-fixes when requested (--auto-fix flag)
+//! - Verify Git environment and repository health.
+//! - Validate queue and done archive files.
+//! - Check runner binary availability and configuration.
+//! - Detect orphaned lock directories that may accumulate over time.
+//! - Check project git hygiene (e.g., sensitive debug logs in `.ralph/logs/` are gitignored).
+//! - Apply safe auto-fixes when requested (`--auto-fix` flag).
+//! - Derive canonical operator-facing blocking-state diagnostics for doctor surfaces.
 //!
 //! Not handled here:
-//! - Complex repairs requiring user input (prompts go to CLI layer)
-//! - Performance benchmarking
-//! - Network connectivity checks
+//! - Complex repairs requiring user input (prompts go to CLI layer).
+//! - Performance benchmarking.
+//! - Network connectivity checks.
 //!
 //! Invariants/assumptions:
-//! - All checks are independent; failures in one don't prevent others
-//! - Output uses outpututil for consistent formatting in text mode
-//! - JSON output is machine-readable and stable for scripting
-//! - Auto-fixes are conservative and safe (migrations, queue repair, stale locks, gitignore updates)
-//! - Returns Ok only when all critical checks pass
+//! - All checks are independent; failures in one don't prevent others.
+//! - Output uses outpututil for consistent formatting in text mode.
+//! - JSON output is machine-readable and stable for scripting.
+//! - Auto-fixes are conservative and safe (migrations, queue repair, stale locks, gitignore updates).
+//! - Returns Ok even when blocking is present so callers can inspect the structured report.
 
 pub mod types;
 
@@ -33,17 +34,20 @@ mod runner;
 mod tests;
 
 use crate::config;
+use crate::contracts::{BlockingReason, BlockingState};
+use crate::queue::operations::RunnableSelectionOptions;
 use types::DoctorReport;
 
 pub use output::print_doctor_report_text;
-pub use types::{CheckResult, CheckSeverity};
+pub use types::CheckResult;
+pub use types::CheckSeverity;
 
 /// Run doctor checks and return a structured report.
 ///
 /// When `auto_fix` is true, attempt to fix safe issues:
-/// - Run pending config migrations
-/// - Run queue repair for missing fields/invalid timestamps
-/// - Remove orphaned lock directories
+/// - Run pending config migrations.
+/// - Run queue repair for missing fields/invalid timestamps.
+/// - Remove orphaned lock directories.
 pub fn run_doctor(resolved: &config::Resolved, auto_fix: bool) -> anyhow::Result<DoctorReport> {
     log::info!("Running doctor check...");
     let mut report = DoctorReport::new();
@@ -72,11 +76,11 @@ pub fn run_doctor(resolved: &config::Resolved, auto_fix: bool) -> anyhow::Result
     log::info!("Checking project environment...");
     project::check_project(&mut report, resolved, auto_fix);
 
-    // Update overall success status
+    report.blocking = derive_doctor_blocking_state(&report, resolved);
     report.success = report
         .checks
         .iter()
-        .all(|c| c.severity != types::CheckSeverity::Error);
+        .all(|check| check.severity != CheckSeverity::Error);
 
     log::info!(
         "Doctor check complete: {} passed, {} warnings, {} errors",
@@ -86,4 +90,65 @@ pub fn run_doctor(resolved: &config::Resolved, auto_fix: bool) -> anyhow::Result
     );
 
     Ok(report)
+}
+
+pub(crate) fn derive_doctor_blocking_state(
+    report: &DoctorReport,
+    resolved: &config::Resolved,
+) -> Option<BlockingState> {
+    if let Some(blocking) = derive_check_blocking_state(&report.checks) {
+        return Some(blocking);
+    }
+
+    if report.checks.iter().any(check_prevents_queue_fallback) {
+        return None;
+    }
+
+    let active = crate::queue::load_queue(&resolved.queue_path).ok()?;
+    let done = if resolved.done_path.exists() {
+        Some(crate::queue::load_queue(&resolved.done_path).ok()?)
+    } else {
+        None
+    };
+
+    crate::queue::operations::queue_runnability_report(
+        &active,
+        done.as_ref(),
+        RunnableSelectionOptions::new(false, false),
+    )
+    .ok()?
+    .summary
+    .blocking
+}
+
+pub(crate) fn derive_check_blocking_state(checks: &[CheckResult]) -> Option<BlockingState> {
+    checks
+        .iter()
+        .filter_map(|check| check.blocking.as_ref())
+        .max_by_key(|blocking| blocking_priority(blocking))
+        .cloned()
+}
+
+fn check_prevents_queue_fallback(check: &CheckResult) -> bool {
+    check.severity == CheckSeverity::Error
+        && matches!(
+            (check.category.as_str(), check.check.as_str()),
+            ("queue", "queue_exists")
+                | ("queue", "queue_load")
+                | ("queue", "queue_valid")
+                | ("queue", "done_archive_load")
+                | ("queue", "done_archive_valid")
+        )
+}
+
+fn blocking_priority(blocking: &BlockingState) -> u8 {
+    match &blocking.reason {
+        BlockingReason::LockBlocked { .. } => 70,
+        BlockingReason::CiBlocked { .. } => 60,
+        BlockingReason::RunnerRecovery { .. } => 50,
+        BlockingReason::MixedQueue { .. } => 40,
+        BlockingReason::DependencyBlocked { .. } => 30,
+        BlockingReason::ScheduleBlocked { .. } => 20,
+        BlockingReason::Idle { .. } => 10,
+    }
 }

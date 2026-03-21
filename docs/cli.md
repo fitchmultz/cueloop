@@ -159,10 +159,13 @@ On macOS, the app exposes the same workflow through `Decompose Task...` in the T
 
 ```bash
 ralph doctor
+ralph doctor --format json
 ralph runner list
 ralph runner capabilities claude
 ralph config show --format json
 ```
+
+When Ralph is not making progress, `ralph doctor` now uses the same canonical `BlockingState` vocabulary as the live run surfaces: `waiting`, `blocked`, or `stalled`, with reasons such as `dependency_blocked`, `schedule_blocked`, `lock_blocked`, `ci_blocked`, and `runner_recovery`.
 
 ### Machine API
 
@@ -170,6 +173,7 @@ ralph config show --format json
 ralph machine system info
 ralph machine queue read
 ralph machine config resolve
+ralph machine doctor report
 ralph machine task mutate --input request.json
 ralph machine run one --resume --id RQ-0001
 ralph machine run loop --resume --max-tasks 5
