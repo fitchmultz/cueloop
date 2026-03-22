@@ -20,8 +20,8 @@ Detailed execution plan:
 
 #### 1.1 Tighten parallel only after serial recovery is boring
 - Do not spend major churn on `run parallel` UX until serial run/resume/supervision behavior is calm and legible.
-- Keep the new shared operator-state contract for parallel status and retry flows stable; do not fork bespoke blocked-push wording again.
-- When parallel work resumes, focus on the remaining gaps: stale lock handling, retained-workspace/bookkeeping visibility, and post-run integration clarity.
+- When parallel work resumes, focus on the remaining gaps in this order: stale lock handling, retained-workspace/bookkeeping visibility, then post-run integration clarity.
+- Prefer shared operator-state builders and continuation documents over new parallel-only wording paths.
 
 Exit criteria for item 1:
 - Operators can explain what Ralph is doing now and why, without reading source code.

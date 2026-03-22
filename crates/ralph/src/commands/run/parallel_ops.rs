@@ -330,24 +330,15 @@ fn print_worker_groups(state: &ParallelStateFile) {
             .push(worker);
     }
 
+    let counts = lifecycle_counts(state);
     println!(
         "Total: {} | Running: {} | Integrating: {} | Completed: {} | Failed: {} | Blocked: {}",
-        state.workers.len(),
-        by_lifecycle
-            .get(&WorkerLifecycle::Running)
-            .map_or(0, |workers| workers.len()),
-        by_lifecycle
-            .get(&WorkerLifecycle::Integrating)
-            .map_or(0, |workers| workers.len()),
-        by_lifecycle
-            .get(&WorkerLifecycle::Completed)
-            .map_or(0, |workers| workers.len()),
-        by_lifecycle
-            .get(&WorkerLifecycle::Failed)
-            .map_or(0, |workers| workers.len()),
-        by_lifecycle
-            .get(&WorkerLifecycle::BlockedPush)
-            .map_or(0, |workers| workers.len()),
+        counts.total,
+        counts.running,
+        counts.integrating,
+        counts.completed,
+        counts.failed,
+        counts.blocked,
     );
     println!();
 
@@ -414,11 +405,7 @@ fn print_worker_groups(state: &ParallelStateFile) {
 ///
 /// This resumes the integration loop for a worker that is in a terminal
 /// state (BlockedPush or Failed).
-pub fn parallel_retry(
-    resolved: &crate::config::Resolved,
-    task_id: &str,
-    _force: bool,
-) -> Result<()> {
+pub fn parallel_retry(resolved: &crate::config::Resolved, task_id: &str) -> Result<()> {
     let state_path = state_file_path(&resolved.repo_root);
 
     let mut state = match load_state(&state_path).with_context(|| {

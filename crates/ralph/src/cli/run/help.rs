@@ -181,18 +181,11 @@ Examples:\n\
  ralph run parallel status --json\n\
  ralph run parallel retry --task RQ-0001";
 
-pub(super) const PARALLEL_STATUS_AFTER_LONG_HELP: &str = "Operator-state diagnosis:\n\
- blocked workers retain their reason and stay skipped until retried\n\
- failed workers require review before retrying\n\
-\n\
-Examples:\n\
+pub(super) const PARALLEL_STATUS_AFTER_LONG_HELP: &str = "Examples:\n\
  ralph run parallel status\n\
  ralph run parallel status --json\n\
  ralph run parallel retry --task RQ-0001";
 
 pub(super) const PARALLEL_RETRY_AFTER_LONG_HELP: &str = "Examples:\n\
  ralph run parallel retry --task RQ-0001\n\
-\n\
-Follow-up:\n\
- ralph run parallel status\n\
  ralph run loop --parallel <N>";

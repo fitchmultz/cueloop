@@ -53,7 +53,7 @@ pub fn handle_run(cmd: RunCommand, force: bool) -> Result<()> {
                 run_cmd::parallel_status(&resolved, status_args.json)
             }
             ParallelSubcommand::Retry(retry_args) => {
-                run_cmd::parallel_retry(&resolved, &retry_args.task, force)
+                run_cmd::parallel_retry(&resolved, &retry_args.task)
             }
         },
     }
