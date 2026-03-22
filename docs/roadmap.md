@@ -9,26 +9,25 @@ This is the canonical near-term roadmap for active follow-up work.
 ### 1. Finish the remaining parallel operator-state gaps through shared runtime surfaces
 
 Why first:
-- The serial run/resume/recovery path is aligned enough for now; the biggest remaining operator confusion is in post-run parallel integration outcomes and app-side status parity.
-- The remaining parallel gaps are post-run integration summaries and app consumption of the shared parallel status model.
-- These fixes should stay on shared operator-state builders and continuation documents instead of creating more parallel-only wording paths.
+- The serial run/resume/recovery path is aligned enough for now; the remaining operator gap is that RalphMac still lacks a shared parallel-status data path.
+- The next work is app-side load-and-render adoption of `MachineParallelStatusDocument`.
+- These fixes should keep using shared operator-state builders and continuation documents instead of creating more parallel-only wording paths.
 
 Primary outcome:
-- Parallel runs should explain integration outcomes and next steps from one shared operator-state model across CLI, machine, and app surfaces.
+- RalphMac should load and render the same shared parallel operator-state model already used by CLI and machine surfaces.
 
 Detailed execution plan:
 
-#### 1.1 Clarify post-run integration outcomes
-- Turn merge/rebase/push/integration results into operator summaries instead of internal plumbing.
-- Keep success, retryable failure, and operator-action-required cases structurally distinct.
+#### 1.1 Add app-side loading for shared parallel status
+- Add the RalphMac client/load path for `machine run parallel-status` and decode `MachineParallelStatusDocument` into app-side models.
+- Reuse existing continuation/blocking projections instead of inventing a parallel-only app contract.
 
-#### 1.2 Project shared parallel status into app surfaces
-- Feed the app from `MachineParallelStatusDocument` and shared continuation state instead of parallel-only app wording.
+#### 1.2 Render shared parallel status in app surfaces
+- Feed Run Control and recovery/diagnostics views from the loaded shared parallel status instead of parallel-only app wording.
 - Keep CLI, machine, and app status/recovery narration aligned from the same source.
 
 Exit criteria for item 1:
-- Parallel mode narrates integration outcomes consistently across CLI, machine, and app surfaces.
-- The app consumes the same shared parallel-status model already used by CLI and machine output.
+- RalphMac loads and renders the same shared parallel-status model already used by CLI and machine output.
 - New wording paths are shared-first, not parallel-only forks.
 
 ### 2. Capture real local timing baselines, then tune the ship gate only if the data justifies it
@@ -62,7 +61,8 @@ Exit criteria for item 2:
 
 - Keep completed roadmap items out of this file; replace them with the next active work only.
 - Prefer low-churn shared-runtime fixes before broader prompt, doc, or suite churn.
-- Finish shared Rust/machine operator-state builders before app-only presentation follow-ups on the same path.
+- Finish shared Rust/machine operator-state builders before app-only follow-ups on the same path.
+- For app adoption of shared machine documents, land load/decode paths before view-level rendering changes.
 - Prefer operator-state clarity over maintenance-only cleanup when both are plausible next steps.
 - Preserve the hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, fsutil, eta_calculator, undo, and contracts/task) while refactoring adjacent modules.
 - Do not reopen completed serial recovery alignment, queue-lock recovery alignment, macOS test-defaults isolation, macOS Settings/workspace-routing cutovers, or git/init/app split work unless a new regression appears.

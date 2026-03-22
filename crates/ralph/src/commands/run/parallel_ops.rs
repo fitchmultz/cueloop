@@ -28,7 +28,7 @@ use crate::contracts::{
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy)]
 struct ParallelLifecycleCounts {
@@ -87,6 +87,62 @@ impl ParallelArtifactSummary {
         }
         if let Some(drift) = self.cleanup_drift_sentence() {
             parts.push(drift);
+        }
+        parts.join(" ")
+    }
+}
+
+#[derive(Debug, Default)]
+struct ParallelOutcomeSummary {
+    integrated_successfully: Vec<String>,
+    retryable_failures: Vec<String>,
+    operator_action_required: Vec<String>,
+}
+
+impl ParallelOutcomeSummary {
+    fn integrated_sentence(&self) -> Option<String> {
+        if self.integrated_successfully.is_empty() {
+            return None;
+        }
+
+        Some(format!(
+            "Integrated successfully: {}.",
+            self.integrated_successfully.join("; ")
+        ))
+    }
+
+    fn retryable_failure_sentence(&self) -> Option<String> {
+        if self.retryable_failures.is_empty() {
+            return None;
+        }
+
+        Some(format!(
+            "Retryable failures: {}.",
+            self.retryable_failures.join("; ")
+        ))
+    }
+
+    fn operator_action_sentence(&self) -> Option<String> {
+        if self.operator_action_required.is_empty() {
+            return None;
+        }
+
+        Some(format!(
+            "Operator action required: {}.",
+            self.operator_action_required.join("; ")
+        ))
+    }
+
+    fn append_to_detail(&self, base: impl Into<String>) -> String {
+        let mut parts = vec![base.into()];
+        if let Some(successes) = self.integrated_sentence() {
+            parts.push(successes);
+        }
+        if let Some(failures) = self.retryable_failure_sentence() {
+            parts.push(failures);
+        }
+        if let Some(actions) = self.operator_action_sentence() {
+            parts.push(actions);
         }
         parts.join(" ")
     }
@@ -176,9 +232,9 @@ fn build_parallel_status_guidance(
         ),
         Some(state) => {
             let counts = lifecycle_counts(state);
-            let artifacts = inspect_parallel_artifacts(state);
+            let (artifacts, outcomes) = inspect_parallel_summaries(state);
             if counts.has_active() {
-                let detail = artifacts.append_to_detail(format!(
+                let detail = outcomes.append_to_detail(artifacts.append_to_detail(format!(
                     "Parallel workers are active on target branch {}. running={}, integrating={}, completed={}, failed={}, blocked={}.",
                     state.target_branch,
                     counts.running,
@@ -186,7 +242,7 @@ fn build_parallel_status_guidance(
                     counts.completed,
                     counts.failed,
                     counts.blocked,
-                ));
+                )));
                 (
                     None,
                     MachineContinuationSummary {
@@ -196,21 +252,21 @@ fn build_parallel_status_guidance(
                         next_steps: vec![step(
                             "Inspect the structured worker snapshot",
                             "ralph run parallel status --json",
-                            "Review lifecycle counts and retained worker details without scraping logs.",
+                            "Review lifecycle counts, integration outcomes, and retained worker details without scraping logs.",
                         )],
                     },
                 )
             } else if counts.blocked > 0 {
-                let detail = artifacts.append_to_detail(format!(
+                let detail = outcomes.append_to_detail(artifacts.append_to_detail(format!(
                     "{} blocked worker(s) are being skipped until you retry them. completed={}, failed={}.",
                     counts.blocked, counts.completed, counts.failed,
-                ));
+                )));
                 let blocking = BlockingState::operator_recovery(
                     BlockingStatus::Blocked,
                     "parallel",
                     "blocked_push",
                     None,
-                    "Parallel execution is blocked on retained worker pushes.",
+                    "Parallel execution is blocked on worker integration outcomes that need operator action.",
                     detail.clone(),
                     Some("ralph run parallel retry --task <TASK_ID>".to_string()),
                 );
@@ -218,11 +274,11 @@ fn build_parallel_status_guidance(
                     Some(blocking.clone()),
                     MachineContinuationSummary {
                         headline: "Parallel execution is blocked on worker integration.".to_string(),
-                        detail: artifacts.append_to_detail("No workers are actively progressing. Retry each blocked worker after resolving the underlying push, conflict, or CI issue."),
+                        detail: outcomes.append_to_detail(artifacts.append_to_detail("No workers are actively progressing. Retry each blocked worker after resolving the underlying push, conflict, CI, or validation issue.")),
                         blocking: Some(blocking),
                         next_steps: vec![
                             step(
-                                "Inspect blocked workers",
+                                "Inspect blocked integration outcomes",
                                 "ralph run parallel status --json",
                                 "Check the retained worker reasons, workspace paths, and attempt counts.",
                             ),
@@ -240,16 +296,16 @@ fn build_parallel_status_guidance(
                     },
                 )
             } else if counts.failed > 0 {
-                let detail = artifacts.append_to_detail(format!(
+                let detail = outcomes.append_to_detail(artifacts.append_to_detail(format!(
                     "{} worker(s) failed without active progress. completed={}. Inspect the failure reason before retrying.",
                     counts.failed, counts.completed,
-                ));
+                )));
                 let blocking = BlockingState::operator_recovery(
                     BlockingStatus::Stalled,
                     "parallel",
                     "worker_failed",
                     None,
-                    "Parallel execution is stalled on worker failure.",
+                    "Parallel execution is stalled on retryable worker failures.",
                     detail.clone(),
                     Some("ralph run parallel retry --task <TASK_ID>".to_string()),
                 );
@@ -257,11 +313,11 @@ fn build_parallel_status_guidance(
                     Some(blocking.clone()),
                     MachineContinuationSummary {
                         headline: "Parallel execution needs operator attention.".to_string(),
-                        detail: artifacts.append_to_detail("No workers are currently running. Review the failed worker state, then retry the affected task when the underlying issue is fixed."),
+                        detail: outcomes.append_to_detail(artifacts.append_to_detail("No workers are currently running. Review the retryable worker failures, then retry the affected task when the underlying issue is fixed.")),
                         blocking: Some(blocking),
                         next_steps: vec![
                             step(
-                                "Inspect failed workers",
+                                "Inspect retryable failures",
                                 "ralph run parallel status --json",
                                 "Review the stored failure reasons and any unexpected retained artifacts before retrying.",
                             ),
@@ -278,9 +334,9 @@ fn build_parallel_status_guidance(
                     None,
                     MachineContinuationSummary {
                         headline: "Parallel execution is idle with cleanup drift.".to_string(),
-                        detail: artifacts.append_to_detail(
+                        detail: outcomes.append_to_detail(artifacts.append_to_detail(
                             "No workers are active, blocked, or failed, but terminal-worker cleanup drift remains in the retained runtime artifacts.",
-                        ),
+                        )),
                         blocking: None,
                         next_steps: vec![
                             step(
@@ -301,10 +357,10 @@ fn build_parallel_status_guidance(
                     None,
                     MachineContinuationSummary {
                         headline: "Parallel execution is idle.".to_string(),
-                        detail: artifacts.append_to_detail(format!(
+                        detail: outcomes.append_to_detail(artifacts.append_to_detail(format!(
                             "No workers are active, blocked, or failed. tracked workers: total={}, completed={}. Start another coordinator run if the queue still has pending work.",
                             counts.total, counts.completed,
-                        )),
+                        ))),
                         blocking: None,
                         next_steps: vec![step(
                             "Resume the coordinator",
@@ -423,75 +479,186 @@ fn lifecycle_counts(state: &ParallelStateFile) -> ParallelLifecycleCounts {
     }
 }
 
-fn inspect_parallel_artifacts(state: &ParallelStateFile) -> ParallelArtifactSummary {
-    let mut summary = ParallelArtifactSummary::default();
+enum WorkerBlockedMarker {
+    Missing,
+    Parsed {
+        attempt: u32,
+        max_attempts: u32,
+        reason: String,
+    },
+    Unreadable {
+        error: String,
+    },
+}
+
+struct WorkerStatusInspection<'a> {
+    worker: &'a WorkerRecord,
+    workspace_exists: bool,
+    marker_path: PathBuf,
+    marker: WorkerBlockedMarker,
+}
+
+fn inspect_parallel_summaries(
+    state: &ParallelStateFile,
+) -> (ParallelArtifactSummary, ParallelOutcomeSummary) {
+    let mut artifacts = ParallelArtifactSummary::default();
+    let mut outcomes = ParallelOutcomeSummary::default();
 
     for worker in &state.workers {
-        let workspace_exists = worker.workspace_path.exists();
-        let marker_path = worker.workspace_path.join(BLOCKED_PUSH_MARKER_FILE);
-        let marker_exists = marker_path.exists();
-        let marker = match read_blocked_push_marker(&worker.workspace_path) {
-            Ok(marker) => marker,
-            Err(err) => {
-                summary.cleanup_drift.push(format!(
-                    "{} has an unreadable blocked marker at {} ({err})",
-                    worker.task_id,
-                    marker_path.display(),
-                ));
-                None
-            }
-        };
+        let inspected = inspect_worker_status(worker);
 
-        match worker.lifecycle {
+        match inspected.worker.lifecycle {
+            WorkerLifecycle::Completed => {
+                outcomes.integrated_successfully.push(format!(
+                    "{} reached {} at {}",
+                    inspected.worker.task_id,
+                    state.target_branch,
+                    inspected
+                        .worker
+                        .completed_at
+                        .as_deref()
+                        .unwrap_or("unknown completion time"),
+                ));
+                if inspected.workspace_exists {
+                    artifacts.cleanup_drift.push(format!(
+                        "{} is {} but workspace cleanup left {} behind",
+                        inspected.worker.task_id,
+                        lifecycle_label(&inspected.worker.lifecycle),
+                        inspected.worker.workspace_path.display(),
+                    ));
+                }
+                if !matches!(inspected.marker, WorkerBlockedMarker::Missing) {
+                    artifacts.cleanup_drift.push(format!(
+                        "{} is {} but blocked marker cleanup left {} behind",
+                        inspected.worker.task_id,
+                        lifecycle_label(&inspected.worker.lifecycle),
+                        inspected.marker_path.display(),
+                    ));
+                }
+            }
+            WorkerLifecycle::Failed => {
+                outcomes.retryable_failures.push(format!(
+                    "{} stopped with {}",
+                    inspected.worker.task_id,
+                    inspected
+                        .worker
+                        .last_error
+                        .as_deref()
+                        .unwrap_or("no recorded failure reason"),
+                ));
+                if inspected.workspace_exists {
+                    artifacts.cleanup_drift.push(format!(
+                        "{} is {} but workspace cleanup left {} behind",
+                        inspected.worker.task_id,
+                        lifecycle_label(&inspected.worker.lifecycle),
+                        inspected.worker.workspace_path.display(),
+                    ));
+                }
+                if !matches!(inspected.marker, WorkerBlockedMarker::Missing) {
+                    artifacts.cleanup_drift.push(format!(
+                        "{} is {} but blocked marker cleanup left {} behind",
+                        inspected.worker.task_id,
+                        lifecycle_label(&inspected.worker.lifecycle),
+                        inspected.marker_path.display(),
+                    ));
+                }
+            }
             WorkerLifecycle::BlockedPush => {
-                if workspace_exists {
+                if inspected.workspace_exists {
                     let mut retained = format!(
                         "{} keeps {}",
-                        worker.task_id,
-                        worker.workspace_path.display(),
+                        inspected.worker.task_id,
+                        inspected.worker.workspace_path.display(),
                     );
-                    if let Some(marker) = marker.as_ref() {
-                        retained.push_str(&format!(
-                            " with blocked marker {}/{}",
-                            marker.attempt, marker.max_attempts,
-                        ));
-                    } else if marker_exists {
-                        retained.push_str(" with unreadable blocked marker");
-                    } else {
-                        retained.push_str(" without a blocked marker file");
+                    match &inspected.marker {
+                        WorkerBlockedMarker::Parsed {
+                            attempt,
+                            max_attempts,
+                            ..
+                        } => {
+                            retained.push_str(&format!(
+                                " with blocked marker {}/{}",
+                                attempt, max_attempts,
+                            ));
+                        }
+                        WorkerBlockedMarker::Unreadable { .. } => {
+                            retained.push_str(" with unreadable blocked marker");
+                        }
+                        WorkerBlockedMarker::Missing => {
+                            retained.push_str(" without a blocked marker file");
+                        }
                     }
-                    summary.retained_for_recovery.push(retained);
+                    artifacts.retained_for_recovery.push(retained);
                 } else {
-                    summary.cleanup_drift.push(format!(
+                    artifacts.cleanup_drift.push(format!(
                         "{} is blocked for retry but its workspace is missing ({})",
-                        worker.task_id,
-                        worker.workspace_path.display(),
+                        inspected.worker.task_id,
+                        inspected.worker.workspace_path.display(),
                     ));
                 }
-            }
-            WorkerLifecycle::Completed | WorkerLifecycle::Failed => {
-                if workspace_exists {
-                    summary.cleanup_drift.push(format!(
-                        "{} is {} but workspace cleanup left {} behind",
-                        worker.task_id,
-                        lifecycle_label(&worker.lifecycle),
-                        worker.workspace_path.display(),
-                    ));
-                }
-                if marker_exists {
-                    summary.cleanup_drift.push(format!(
-                        "{} is {} but blocked marker cleanup left {} behind",
-                        worker.task_id,
-                        lifecycle_label(&worker.lifecycle),
-                        marker_path.display(),
-                    ));
+
+                match &inspected.marker {
+                    WorkerBlockedMarker::Parsed {
+                        attempt,
+                        max_attempts,
+                        reason,
+                    } => {
+                        outcomes.operator_action_required.push(format!(
+                            "{} blocked after {}/{} attempts ({})",
+                            inspected.worker.task_id, attempt, max_attempts, reason,
+                        ));
+                    }
+                    WorkerBlockedMarker::Missing => {
+                        outcomes.operator_action_required.push(format!(
+                            "{} is retained for operator recovery ({})",
+                            inspected.worker.task_id,
+                            inspected
+                                .worker
+                                .last_error
+                                .as_deref()
+                                .unwrap_or("no recorded block reason"),
+                        ));
+                    }
+                    WorkerBlockedMarker::Unreadable { error } => {
+                        artifacts.cleanup_drift.push(format!(
+                            "{} has an unreadable blocked marker at {} ({error})",
+                            inspected.worker.task_id,
+                            inspected.marker_path.display(),
+                        ));
+                        outcomes.operator_action_required.push(format!(
+                            "{} is retained for operator recovery but its blocked marker is unreadable ({error})",
+                            inspected.worker.task_id,
+                        ));
+                    }
                 }
             }
             WorkerLifecycle::Running | WorkerLifecycle::Integrating => {}
         }
     }
 
-    summary
+    (artifacts, outcomes)
+}
+
+fn inspect_worker_status(worker: &WorkerRecord) -> WorkerStatusInspection<'_> {
+    let marker_path = worker.workspace_path.join(BLOCKED_PUSH_MARKER_FILE);
+    let marker = match read_blocked_push_marker(&worker.workspace_path) {
+        Ok(Some(marker)) => WorkerBlockedMarker::Parsed {
+            attempt: marker.attempt,
+            max_attempts: marker.max_attempts,
+            reason: marker.reason,
+        },
+        Ok(None) => WorkerBlockedMarker::Missing,
+        Err(err) => WorkerBlockedMarker::Unreadable {
+            error: err.to_string(),
+        },
+    };
+
+    WorkerStatusInspection {
+        worker,
+        workspace_exists: worker.workspace_path.exists(),
+        marker_path,
+        marker,
+    }
 }
 
 fn lifecycle_label(lifecycle: &WorkerLifecycle) -> &'static str {
@@ -558,7 +725,8 @@ fn print_status_table(
                 println!("No workers tracked.");
             } else {
                 print_worker_groups(state);
-                print_artifact_summary(&inspect_parallel_artifacts(state));
+                let (artifacts, _) = inspect_parallel_summaries(state);
+                print_artifact_summary(&artifacts);
             }
         }
     }
@@ -643,11 +811,12 @@ fn print_worker_groups(state: &ParallelStateFile) {
     }
 
     if let Some(completed) = by_lifecycle.get(&WorkerLifecycle::Completed) {
-        println!("Completed Workers:");
+        println!("Integrated Successfully:");
         for worker in completed {
             println!(
-                "  {} - completed {}",
+                "  {} - reached {} at {}",
                 worker.task_id,
+                state.target_branch,
                 worker.completed_at.as_deref().unwrap_or("unknown")
             );
         }
@@ -655,24 +824,30 @@ fn print_worker_groups(state: &ParallelStateFile) {
     }
 
     if let Some(failed) = by_lifecycle.get(&WorkerLifecycle::Failed) {
-        println!("Failed Workers:");
+        println!("Retryable Failures:");
         for worker in failed {
             println!(
                 "  {} - {}",
                 worker.task_id,
-                worker.last_error.as_deref().unwrap_or("no error")
+                worker
+                    .last_error
+                    .as_deref()
+                    .unwrap_or("no recorded failure reason")
             );
         }
         println!();
     }
 
     if let Some(blocked) = by_lifecycle.get(&WorkerLifecycle::BlockedPush) {
-        println!("Blocked Workers:");
+        println!("Operator Action Required:");
         for worker in blocked {
             println!(
                 "  {} - {} ({} attempts)",
                 worker.task_id,
-                worker.last_error.as_deref().unwrap_or("blocked"),
+                worker
+                    .last_error
+                    .as_deref()
+                    .unwrap_or("no recorded block reason"),
                 worker.push_attempts
             );
         }
@@ -802,9 +977,81 @@ mod tests {
             document
                 .continuation
                 .detail
+                .contains("Operator action required:")
+        );
+        assert!(
+            document
+                .continuation
+                .detail
                 .contains(&workspace_path.display().to_string())
         );
         assert!(document.continuation.detail.contains("blocked marker 3/5"));
+        assert!(
+            document
+                .continuation
+                .detail
+                .contains("push rejected after conflict review")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_status_distinguishes_success_failure_and_action_required() -> Result<()> {
+        let temp = TempDir::new()?;
+        let blocked_workspace = temp.path().join(".ralph/workspaces/RQ-3003");
+        std::fs::create_dir_all(blocked_workspace.join(".ralph/cache/parallel"))?;
+        std::fs::write(
+            blocked_workspace.join(BLOCKED_PUSH_MARKER_FILE),
+            blocked_marker_json("RQ-3003", 2, 5),
+        )?;
+
+        let mut state = ParallelStateFile::new("2026-03-21T12:00:00Z", "main");
+
+        let mut completed = WorkerRecord::new(
+            "RQ-3001",
+            temp.path().join(".ralph/workspaces/RQ-3001"),
+            "2026-03-21T12:00:00Z".to_string(),
+        );
+        completed.mark_completed("2026-03-21T12:10:00Z".to_string());
+        state.upsert_worker(completed);
+
+        let mut failed = WorkerRecord::new(
+            "RQ-3002",
+            temp.path().join(".ralph/workspaces/RQ-3002"),
+            "2026-03-21T12:00:00Z".to_string(),
+        );
+        failed.mark_failed(
+            "2026-03-21T12:08:00Z".to_string(),
+            "worker exited with status: 1",
+        );
+        state.upsert_worker(failed);
+
+        let mut blocked = WorkerRecord::new(
+            "RQ-3003",
+            blocked_workspace,
+            "2026-03-21T12:00:00Z".to_string(),
+        );
+        blocked.mark_blocked(
+            "2026-03-21T12:09:00Z".to_string(),
+            "push rejected after conflict review",
+        );
+        blocked.push_attempts = 2;
+        state.upsert_worker(blocked);
+
+        let document = build_parallel_status_document(temp.path(), Some(&state))?;
+        assert!(
+            document
+                .continuation
+                .detail
+                .contains("Integrated successfully:")
+        );
+        assert!(document.continuation.detail.contains("Retryable failures:"));
+        assert!(
+            document
+                .continuation
+                .detail
+                .contains("Operator action required:")
+        );
         Ok(())
     }
 

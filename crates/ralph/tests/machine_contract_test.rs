@@ -448,6 +448,11 @@ fn machine_parallel_status_surfaces_blocked_worker_operator_state() -> Result<()
             .as_str()
             .is_some_and(|detail| detail.contains("Retained for recovery:"))
     );
+    assert!(
+        document["continuation"]["detail"]
+            .as_str()
+            .is_some_and(|detail| detail.contains("Operator action required:"))
+    );
     assert_eq!(
         document["continuation"]["next_steps"][1]["command"],
         "ralph run parallel retry --task <TASK_ID>"
