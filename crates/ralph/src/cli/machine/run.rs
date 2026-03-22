@@ -147,7 +147,10 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
         MachineRunCommand::ParallelStatus => {
             let state_path = crate::commands::run::state_file_path(&resolved.repo_root);
             let state = crate::commands::run::load_state(&state_path)?;
-            let document = crate::commands::run::build_parallel_status_document(state.as_ref())?;
+            let document = crate::commands::run::build_parallel_status_document(
+                &resolved.repo_root,
+                state.as_ref(),
+            )?;
             crate::cli::machine::io::print_json(&document)
         }
     }

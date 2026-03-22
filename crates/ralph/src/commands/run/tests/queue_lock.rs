@@ -143,6 +143,50 @@ fn clear_stale_queue_lock_for_resume_does_not_remove_live_lock() -> anyhow::Resu
 }
 
 #[test]
+fn inspect_queue_lock_reports_stale_lock_as_stale_operator_state() -> anyhow::Result<()> {
+    let temp = tempfile::TempDir::new()?;
+    let repo_root = temp.path().to_path_buf();
+    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+
+    let lock_dir = crate::lock::queue_lock_dir(&repo_root);
+    std::fs::create_dir_all(&lock_dir)?;
+    let stale_pid = find_definitely_dead_pid();
+    std::fs::write(
+        lock_dir.join("owner"),
+        format!(
+            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --parallel 4\nlabel: run loop\n"
+        ),
+    )?;
+
+    let inspection = crate::commands::run::queue_lock::inspect_queue_lock(&repo_root)
+        .expect("expected queue lock inspection");
+
+    assert_eq!(
+        inspection.condition,
+        crate::commands::run::queue_lock::QueueLockCondition::Stale
+    );
+    assert!(matches!(
+        &inspection.blocking_state.reason,
+        crate::contracts::BlockingReason::LockBlocked { .. }
+    ));
+    assert!(
+        inspection
+            .blocking_state
+            .message
+            .contains("stale queue lock"),
+        "expected stale-specific message, got: {}",
+        inspection.blocking_state.message
+    );
+    assert!(
+        inspection.blocking_state.detail.contains("--force"),
+        "expected stale-specific recovery detail, got: {}",
+        inspection.blocking_state.detail
+    );
+
+    Ok(())
+}
+
+#[test]
 fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyhow::Result<()> {
     use std::sync::atomic::Ordering;
 

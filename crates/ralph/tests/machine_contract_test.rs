@@ -355,6 +355,43 @@ fn machine_parallel_status_returns_versioned_continuation_document() -> Result<(
 }
 
 #[test]
+fn machine_parallel_status_surfaces_stale_queue_lock_operator_state() -> Result<()> {
+    let dir = tempdir()?;
+    git_init(dir.path())?;
+    ralph_init(dir.path())?;
+
+    let lock_dir = dir.path().join(".ralph/lock");
+    std::fs::create_dir_all(&lock_dir)?;
+    let stale_pid = 999_999;
+    std::fs::write(
+        lock_dir.join("owner"),
+        format!(
+            "pid: {stale_pid}\nstarted_at: 2026-03-21T12:00:00Z\ncommand: ralph run loop --parallel 4\nlabel: run loop\n"
+        ),
+    )?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "parallel-status"]);
+    assert!(
+        status.success(),
+        "machine run parallel-status failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["version"], 2);
+    assert_eq!(document["blocking"]["status"], "stalled");
+    assert_eq!(document["blocking"]["reason"]["kind"], "lock_blocked");
+    assert_eq!(
+        document["continuation"]["headline"],
+        "Parallel execution is stalled on queue lock recovery."
+    );
+    assert_eq!(
+        document["continuation"]["next_steps"][0]["command"],
+        "ralph queue unlock"
+    );
+    Ok(())
+}
+
+#[test]
 fn machine_parallel_status_surfaces_blocked_worker_operator_state() -> Result<()> {
     let dir = tempdir()?;
     git_init(dir.path())?;

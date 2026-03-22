@@ -15,6 +15,9 @@
 use crate::commands::run::parallel::state::{
     ParallelStateFile, WorkerLifecycle, WorkerRecord, load_state, save_state, state_file_path,
 };
+use crate::commands::run::queue_lock::{
+    QueueLockCondition, QueueLockInspection, inspect_queue_lock,
+};
 use crate::contracts::{
     BlockingState, BlockingStatus, MACHINE_PARALLEL_STATUS_VERSION, MachineContinuationAction,
     MachineContinuationSummary, MachineParallelStatusDocument,
@@ -22,6 +25,7 @@ use crate::contracts::{
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashMap;
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy)]
 struct ParallelLifecycleCounts {
@@ -52,7 +56,7 @@ pub fn parallel_status(resolved: &crate::config::Resolved, json: bool) -> Result
         )
     })?;
 
-    let document = build_parallel_status_document(state_opt.as_ref())?;
+    let document = build_parallel_status_document(&resolved.repo_root, state_opt.as_ref())?;
 
     if json {
         let json_str = serde_json::to_string_pretty(&document)
@@ -70,6 +74,7 @@ pub fn parallel_status(resolved: &crate::config::Resolved, json: bool) -> Result
 }
 
 pub(crate) fn build_parallel_status_document(
+    repo_root: &Path,
     state: Option<&ParallelStateFile>,
 ) -> Result<MachineParallelStatusDocument> {
     let status = match state {
@@ -80,7 +85,8 @@ pub(crate) fn build_parallel_status_document(
             "message": "No parallel state found",
         }),
     };
-    let (blocking, continuation) = build_parallel_status_guidance(state);
+    let queue_lock = inspect_queue_lock(repo_root);
+    let (blocking, continuation) = build_parallel_status_guidance(state, queue_lock.as_ref());
 
     Ok(MachineParallelStatusDocument {
         version: MACHINE_PARALLEL_STATUS_VERSION,
@@ -92,7 +98,12 @@ pub(crate) fn build_parallel_status_document(
 
 fn build_parallel_status_guidance(
     state: Option<&ParallelStateFile>,
+    queue_lock: Option<&QueueLockInspection>,
 ) -> (Option<BlockingState>, MachineContinuationSummary) {
+    if let Some(lock) = queue_lock.filter(|lock| should_surface_parallel_queue_lock(lock, state)) {
+        return build_parallel_queue_lock_guidance(lock);
+    }
+
     match state {
         None => (
             None,
@@ -230,6 +241,94 @@ fn build_parallel_status_guidance(
             }
         }
     }
+}
+
+fn should_surface_parallel_queue_lock(
+    lock: &QueueLockInspection,
+    state: Option<&ParallelStateFile>,
+) -> bool {
+    if lock.is_stale_or_unclear() {
+        return true;
+    }
+
+    !state.is_some_and(|state| lifecycle_counts(state).has_active())
+}
+
+fn build_parallel_queue_lock_guidance(
+    lock: &QueueLockInspection,
+) -> (Option<BlockingState>, MachineContinuationSummary) {
+    let blocking = lock.blocking_state.clone();
+
+    let (headline, detail, next_steps) = match lock.condition {
+        QueueLockCondition::Live => (
+            "Parallel execution is stalled on queue lock contention.",
+            "Another Ralph process currently owns the coordinator queue lock. Wait for it to finish, or clear a verified stale lock before restarting the coordinator.",
+            vec![
+                step(
+                    "Inspect the current lock owner",
+                    "ralph doctor report",
+                    "Confirm which Ralph process owns the queue lock and whether it is still healthy.",
+                ),
+                step(
+                    "Resume the coordinator after the lock clears",
+                    "ralph run loop --parallel <N>",
+                    "Retry the coordinator once the other Ralph process has finished.",
+                ),
+            ],
+        ),
+        QueueLockCondition::Stale => (
+            "Parallel execution is stalled on queue lock recovery.",
+            "A dead Ralph process left the coordinator queue lock behind. Clear the stale lock before restarting the coordinator.",
+            vec![
+                step(
+                    "Clear the verified stale lock",
+                    "ralph queue unlock",
+                    "Remove the stale queue lock after confirming the recorded PID is no longer running.",
+                ),
+                step(
+                    "Resume and auto-clear stale ownership",
+                    "ralph run loop --parallel <N> --force",
+                    "Let the coordinator clear a dead-PID lock and continue in one step.",
+                ),
+                step(
+                    "Confirm the lock state is gone",
+                    "ralph run parallel status --json",
+                    "Re-check the blocking state before continuing other recovery work.",
+                ),
+            ],
+        ),
+        QueueLockCondition::OwnerMissing | QueueLockCondition::OwnerUnreadable => (
+            "Parallel execution is stalled on queue lock metadata recovery.",
+            "The coordinator queue lock exists, but its owner metadata is incomplete. Verify no other Ralph process is active before clearing it.",
+            vec![
+                step(
+                    "Inspect lock health",
+                    "ralph doctor report",
+                    "Check whether doctor also sees the queue lock as active or orphaned.",
+                ),
+                step(
+                    "Clear the broken lock record",
+                    "ralph queue unlock",
+                    "Remove the queue lock after confirming no other Ralph process is running.",
+                ),
+                step(
+                    "Resume the coordinator",
+                    "ralph run loop --parallel <N>",
+                    "Restart parallel execution after the lock record is cleaned up.",
+                ),
+            ],
+        ),
+    };
+
+    (
+        Some(blocking.clone()),
+        MachineContinuationSummary {
+            headline: headline.to_string(),
+            detail: detail.to_string(),
+            blocking: Some(blocking),
+            next_steps,
+        },
+    )
 }
 
 fn lifecycle_counts(state: &ParallelStateFile) -> ParallelLifecycleCounts {

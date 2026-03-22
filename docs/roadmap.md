@@ -6,98 +6,85 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Make Ralph feel like an operator console for nondeterministic agent runs, not a generic agent wrapper
+### 1. Finish the remaining parallel operator-state gaps through shared runtime surfaces
 
 Why first:
-- Ralph's biggest product risk is not missing another model integration; it is leaving operators unsure what happened, what Ralph is doing now, and what the safest next action is after a nondeterministic run goes sideways.
-- The highest-traffic product surfaces are already the run, recover, inspect, and repair loops: `ralph run one`, `ralph run loop`, `ralph run resume`, queue inspection commands, `ralph undo`, and the app's Queue, Run Control, Quick Actions, and task-detail flows.
-- First run, resume, retry, and fresh re-invocation can diverge; Ralph has to narrate state, confidence, and operator choices explicitly instead of acting like a deterministic build tool.
+- The serial run/resume/recovery path is aligned enough for now; the biggest remaining operator confusion is in parallel-mode recovery and bookkeeping.
+- The remaining parallel gaps are retained workspaces/bookkeeping and post-run integration outcomes.
+- These fixes should stay on shared operator-state builders and continuation documents instead of creating more parallel-only wording paths.
 
 Primary outcome:
-- Operators should be able to tell, from the CLI or app, whether Ralph is resuming, rerunning fresh, waiting safely, blocked on a real invariant, or asking for a decision.
+- Parallel runs should explain what was retained, what was integrated, and what the operator should do next without source diving.
 
 Detailed execution plan:
 
-#### 1.1 Close the remaining parallel operator gaps with the lowest-churn shared paths first
-- Serial run/resume/recovery wording is aligned enough for now; only reopen it for regressions or shared-runtime cutovers.
-- Focus the remaining parallel gaps in this order: stale lock handling, retained-workspace/bookkeeping visibility, then post-run integration clarity.
-- Prefer shared operator-state builders and continuation documents over new parallel-only wording paths.
+#### 1.1 Expose retained workspace and bookkeeping state explicitly
+- Show when a worker workspace or bookkeeping artifact was intentionally retained.
+- Distinguish retained-for-inspection from failed-to-clean-up states.
+
+#### 1.2 Clarify post-run integration outcomes
+- Make merge/rebase/push/integration outcomes read like operator summaries, not internal plumbing.
+- Keep success, retryable failure, and operator-action-required cases structurally distinct.
 
 Exit criteria for item 1:
-- Operators can explain what Ralph is doing now and why, without reading source code.
-- Session, waiting, and escalation messages are aligned across CLI and app surfaces.
+- Parallel mode narrates retained-workspace and integration outcomes clearly across CLI, machine, and app surfaces.
+- New wording paths are shared-first, not parallel-only forks.
 
-### 2. Add durable local timing visibility, then use it to tune the headless ship gate with evidence
+### 2. Remove macOS test-state pollution that is now showing up in the ship gate
 
 Why second:
-- Operator-facing improvements are easier to sustain when local validation speed regressions are visible instead of discovered by feel.
-- Durable measurement keeps macOS gate tuning grounded in evidence instead of vibes.
-- `macos-ci` is still expensive enough that any relaxation of serialization or job caps should be justified with data and protected by contract coverage.
+- `make agent-ci` currently surfaces CFPreferences/NSUserDefaults bloat warnings from accumulated app defaults during Xcode test runs.
+- This is noisy validation debt on the active ship gate, not hypothetical cleanup.
+- Fixing it is narrower and lower-churn than broader profiling or suite reshaping.
 
 Primary outcome:
-- Validation performance should be observable locally, reproducible, and trendable before any CI-gate simplification decisions are made.
+- macOS validation should run without app-defaults growth warnings or runaway test-owned persisted state.
 
 Detailed execution plan:
 
-#### 2.1 Provide one clear local profiling entrypoint
-- Add or document an opt-in command that writes machine-readable timing artifacts under `target/profiling/`.
-- Keep the entrypoint headless and local-first.
+#### 2.1 Prune test-owned defaults aggressively
+- Ensure test and contract runs do not leave production-domain workspace snapshots and restoration state behind.
+- Keep cleanup deterministic and test-owned rather than relying on incidental process teardown.
 
-#### 2.2 Measure the gates that actually influence iteration speed
-- Capture timings for:
-  - `make agent-ci`
-  - targeted nextest suites for run/resume/supervision/undo/operator flows
-  - doctests
-  - `macos-build`
-  - `macos-test`
-  - `macos-test-contracts`.
-
-#### 2.3 Separate Rust and Xcode timing stories
-- Measure Xcode targets separately from Rust/CLI targets.
-- Compare capped vs uncapped `RALPH_XCODE_JOBS` before changing defaults.
-
-#### 2.4 Use evidence before changing serialization or job caps
-- Do not relax xcodebuild serialization or default concurrency until profiling plus contract coverage show the tradeoff is safe.
+#### 2.2 Keep UI/app persistence isolation explicit
+- Preserve the existing separation between production defaults and UI-test/contract defaults.
+- Close any remaining paths that still accumulate state in the production domain during automated runs.
 
 Exit criteria for item 2:
-- Timing artifacts exist and are easy to compare locally.
-- Gate-tuning discussions can reference data instead of anecdote.
+- `make agent-ci` and `macos-ci` no longer emit CFPreferences size warnings from Ralph-owned defaults.
+- Repeated local app-test runs do not grow persistent defaults unboundedly.
 
-### 3. Keep maintenance and structural hygiene active, but only when it helps the operator-facing roadmap move faster
+### 3. Capture real local timing baselines, then tune the ship gate only if the data justifies it
 
 Why third:
-- Cleanup matters when it makes the run/recover/supervise surfaces safer to change, easier to validate, and easier to explain.
-- Ralph already has the baseline architecture it needs; additional hygiene work should now be selective, evidence-driven, and tied to product-facing iteration speed.
-- A small maintenance lane keeps test and fixture debt from slowing the UX work above without letting maintenance become the default priority again.
+- The profiling workflow is already documented; the missing step is collecting fresh baseline artifacts and using them to make decisions.
+- Gate tuning without current measurements would create churn without confidence.
+- Timing work is safer after the active validation-noise issue above is removed.
 
 Primary outcome:
-- Keep the repo easy to change in the areas the roadmap is actively using, without reopening broad cleanup churn.
+- Ship-gate tuning discussions should point to current local artifacts, not anecdotes.
 
 Detailed execution plan:
 
-#### 3.1 Split only where it improves failure locality or iteration speed
-- Prioritize large suites and fixtures that slow operator-critical work.
-- Keep `task_template_commands_test.rs` as the main known candidate, not an automatic next task.
+#### 3.1 Record fresh baseline artifacts under `target/profiling/`
+- Capture current timings for `make agent-ci`, targeted operator-path nextest suites, doctests, `macos-build`, `macos-test`, and `macos-test-contracts`.
+- Keep the workflow headless and local-first.
 
-#### 3.2 Keep environment isolation narrow and intentional
-- Serialize tests that mutate shared PATH or process-global env.
-- Avoid over-serializing tests that already use explicit runner overrides or isolated temp roots.
+#### 3.2 Compare Rust and Xcode costs separately
+- Measure Rust/CLI and Xcode surfaces independently.
+- Compare capped versus uncapped `RALPH_XCODE_JOBS` before changing defaults.
 
-#### 3.3 Preserve real contract coverage on core operator paths
-- Keep real `ralph init`, queue/undo/recovery, and supervision coverage where behavior correctness matters.
-- Use cached or synthetic scaffolding only when the contract under test is not runtime fidelity.
+#### 3.3 Change concurrency or serialization only with evidence
+- Do not relax xcodebuild serialization or default job caps unless profiling plus contract coverage show the tradeoff is safe.
 
 Exit criteria for item 3:
-- Structural cleanup measurably reduces iteration pain on active roadmap paths.
-- Maintenance work stays in service of product-facing clarity and reliability.
+- Timing artifacts exist for the gates that drive iteration speed.
+- Any proposed ship-gate tuning is backed by fresh local data.
 
 ## Sequencing rules
 
 - Keep completed roadmap items out of this file; replace them with the next active work only.
-- Prefer removing avoidable stochastic-core brittleness before layering on more operator UX around the same brittle flows.
-- Keep strict validation at deterministic boundaries and flexible process guidance inside agent reasoning loops.
-- Prefer low-churn shared-runtime fixes before large prompt-asset churn, and prompt-asset churn before broad test/doc rewrites.
-- Prefer run/resume/recovery clarity and operator control over maintenance-only churn when both are plausible next steps.
-- Preserve the recently hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, fsutil, eta_calculator, undo, and contracts/task) while refactoring adjacent modules.
-- Prefer infrastructure and fixture stabilization before broader feature churn only when that stabilization clearly supports the active operator UX roadmap.
-- Do not reopen the completed macOS Settings/workspace-routing or the completed git/init/app split cutovers unless a new regression appears.
+- Prefer low-churn shared-runtime fixes before broader prompt, doc, or suite churn.
+- Prefer operator-state clarity over maintenance-only cleanup when both are plausible next steps.
+- Preserve the hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, fsutil, eta_calculator, undo, and contracts/task) while refactoring adjacent modules.
+- Do not reopen completed serial recovery alignment, macOS Settings/workspace-routing cutovers, or git/init/app split work unless a new regression appears.

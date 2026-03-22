@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Clear stale queue locks when resuming a session.
 //! - Detect queue lock contention errors that should not be retried.
+//! - Build operator-facing lock-blocked state from current lock metadata.
 //!
 //! Not handled here:
 //! - Lock acquisition logic (see `crate::queue`).
@@ -16,21 +17,42 @@
 use anyhow::Result;
 use std::path::Path;
 
-use crate::contracts::BlockingState;
+use crate::contracts::{BlockingReason, BlockingState, BlockingStatus};
+use crate::lock::{pid_liveness, queue_lock_dir, read_lock_owner};
 
 const QUEUE_LOCK_ALREADY_HELD_PREFIX: &str = "Queue lock already held at:";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum QueueLockCondition {
+    Live,
+    Stale,
+    OwnerMissing,
+    OwnerUnreadable,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct QueueLockInspection {
+    pub(crate) condition: QueueLockCondition,
+    pub(crate) blocking_state: BlockingState,
+}
+
+impl QueueLockInspection {
+    pub(crate) fn is_stale_or_unclear(&self) -> bool {
+        !matches!(self.condition, QueueLockCondition::Live)
+    }
+}
 
 /// Clear stale queue lock when resuming a session.
 ///
 /// This helper is called during resume to preemptively clean up stale locks
 /// left behind by a crashed or killed ralph process. It uses `force=true`
-/// which only clears the lock if the owning PID is confirmed dead (see lock.rs).
+/// which only clears the lock if the owning PID is confirmed stale (see lock.rs).
 ///
 /// Returns Ok(()) if no lock exists, lock was cleared, or lock is held by
 /// a live process/unreadable metadata (those cases are handled later during
 /// normal acquisition with a single actionable error).
 pub fn clear_stale_queue_lock_for_resume(repo_root: &Path) -> Result<()> {
-    let lock_dir = crate::lock::queue_lock_dir(repo_root);
+    let lock_dir = queue_lock_dir(repo_root);
     if !lock_dir.exists() {
         return Ok(());
     }
@@ -64,17 +86,85 @@ pub fn is_queue_lock_already_held_error(err: &anyhow::Error) -> bool {
     })
 }
 
+pub(crate) fn inspect_queue_lock(repo_root: &Path) -> Option<QueueLockInspection> {
+    let lock_dir = queue_lock_dir(repo_root);
+    if !lock_dir.exists() {
+        return None;
+    }
+
+    let lock_path = Some(lock_dir.display().to_string());
+    match read_lock_owner(&lock_dir) {
+        Ok(Some(owner)) => {
+            let owner_label = Some(owner.label.clone());
+            let owner_pid = Some(owner.pid);
+            if pid_liveness(owner.pid).is_definitely_not_running() {
+                Some(QueueLockInspection {
+                    condition: QueueLockCondition::Stale,
+                    blocking_state: BlockingState::new(
+                        BlockingStatus::Stalled,
+                        BlockingReason::LockBlocked {
+                            lock_path,
+                            owner: owner_label,
+                            owner_pid,
+                        },
+                        None,
+                        "Ralph is stalled on a stale queue lock.",
+                        format!(
+                            "The queue lock at {} was left behind by Ralph process {} (pid {}). Clear the stale lock or rerun with --force before resuming execution.",
+                            lock_dir.display(),
+                            owner.label,
+                            owner.pid
+                        ),
+                    ),
+                })
+            } else {
+                Some(QueueLockInspection {
+                    condition: QueueLockCondition::Live,
+                    blocking_state: BlockingState::lock_blocked(lock_path, owner_label, owner_pid),
+                })
+            }
+        }
+        Ok(None) => Some(QueueLockInspection {
+            condition: QueueLockCondition::OwnerMissing,
+            blocking_state: BlockingState::new(
+                BlockingStatus::Stalled,
+                BlockingReason::LockBlocked {
+                    lock_path,
+                    owner: None,
+                    owner_pid: None,
+                },
+                None,
+                "Ralph is stalled on queue lock metadata cleanup.",
+                format!(
+                    "The queue lock at {} exists, but its owner metadata is missing. Confirm no other Ralph process is running, then clear the lock before resuming execution.",
+                    lock_dir.display()
+                ),
+            ),
+        }),
+        Err(_) => Some(QueueLockInspection {
+            condition: QueueLockCondition::OwnerUnreadable,
+            blocking_state: BlockingState::new(
+                BlockingStatus::Stalled,
+                BlockingReason::LockBlocked {
+                    lock_path,
+                    owner: None,
+                    owner_pid: None,
+                },
+                None,
+                "Ralph is stalled on unreadable queue lock metadata.",
+                format!(
+                    "The queue lock at {} exists, but Ralph could not read its owner metadata. Confirm no other Ralph process is running, then clear the lock before resuming execution.",
+                    lock_dir.display()
+                ),
+            ),
+        }),
+    }
+}
+
 pub fn queue_lock_blocking_state(repo_root: &Path, err: &anyhow::Error) -> Option<BlockingState> {
     if !is_queue_lock_already_held_error(err) {
         return None;
     }
 
-    let lock_dir = crate::lock::queue_lock_dir(repo_root);
-    let owner = crate::lock::read_lock_owner(&lock_dir).ok().flatten();
-
-    Some(BlockingState::lock_blocked(
-        Some(lock_dir.display().to_string()),
-        owner.as_ref().map(|owner| owner.label.clone()),
-        owner.as_ref().map(|owner| owner.pid),
-    ))
+    inspect_queue_lock(repo_root).map(|inspection| inspection.blocking_state)
 }
