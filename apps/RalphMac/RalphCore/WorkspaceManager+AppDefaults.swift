@@ -13,7 +13,7 @@
  Invariants/assumptions callers must respect:
  - UI-testing defaults use a dedicated suite and are reset on launch.
  - Noninteractive macOS contract runs use a dedicated suite and are reset on launch.
- - Unit-test defaults use a dedicated suite so test persistence cannot pollute production defaults.
+ - Unit-test defaults use a dedicated suite and clear stray Ralph-owned state from the xctest process defaults.
  - Production defaults prune stale UI-testing state before the app boots.
  */
 
@@ -111,6 +111,7 @@ public enum RalphAppDefaults {
         let environment = ProcessInfo.processInfo.environment
         return environment["XCTestConfigurationFilePath"] != nil
             || environment["XCTestBundlePath"] != nil
+            || NSClassFromString("XCTestCase") != nil
     }
 
     public static var userDefaults: UserDefaults {
@@ -129,6 +130,8 @@ public enum RalphAppDefaults {
 
     @MainActor
     public static func prepareForLaunch() -> RalphAppLaunchPreparationResult {
+        clearAppWindowFrameState()
+
         if isUITesting {
             resetUITestingDefaults()
             return RalphAppLaunchPreparationResult(persistenceIssue: nil)
@@ -139,7 +142,10 @@ public enum RalphAppDefaults {
             return RalphAppLaunchPreparationResult(persistenceIssue: nil)
         }
 
-        clearAppWindowFrameState()
+        if isUnitTesting {
+            resetUnitTestingDefaults()
+            return RalphAppLaunchPreparationResult(persistenceIssue: nil)
+        }
 
         return RalphAppLaunchPreparationResult(
             persistenceIssue: pruneUITestingStateFromProductionDefaults()
@@ -159,17 +165,11 @@ public enum RalphAppDefaults {
     static func resetUnitTestingDefaults() {
         guard let suiteDefaults = UserDefaults(suiteName: unitTestingDomainIdentifier) else { return }
         suiteDefaults.removePersistentDomain(forName: unitTestingDomainIdentifier)
+        clearRalphOwnedState(from: .standard)
     }
 
     private static func clearAppWindowFrameState() {
-        let defaults = UserDefaults.standard
-        let frameKeys = defaults.dictionaryRepresentation().keys.filter { key in
-            key.hasPrefix("NSWindow Frame ") && key.contains("AppWindow")
-        }
-
-        for key in frameKeys {
-            defaults.removeObject(forKey: key)
-        }
+        removeAppWindowFrameState(from: .standard)
     }
 
     private static func pruneUITestingStateFromProductionDefaults() -> PersistenceIssue? {
@@ -229,6 +229,24 @@ public enum RalphAppDefaults {
         }
 
         defaults.removeObject(forKey: navigationKeyPrefix + workspaceID.uuidString)
+    }
+
+    private static func clearRalphOwnedState(from defaults: UserDefaults) {
+        let productionKeyPrefix = productionDomainIdentifier + "."
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(productionKeyPrefix) {
+            defaults.removeObject(forKey: key)
+        }
+        removeAppWindowFrameState(from: defaults)
+    }
+
+    private static func removeAppWindowFrameState(from defaults: UserDefaults) {
+        let frameKeys = defaults.dictionaryRepresentation().keys.filter { key in
+            key.hasPrefix("NSWindow Frame ") && key.contains("AppWindow")
+        }
+
+        for key in frameKeys {
+            defaults.removeObject(forKey: key)
+        }
     }
 
     private static func workspaceID(fromWorkspaceKey key: String) -> UUID? {

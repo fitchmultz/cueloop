@@ -9,12 +9,12 @@ This is the canonical near-term roadmap for active follow-up work.
 ### 1. Finish the remaining parallel operator-state gaps through shared runtime surfaces
 
 Why first:
-- The serial run/resume/recovery path is aligned enough for now; the biggest remaining operator confusion is in parallel-mode recovery and bookkeeping.
-- The remaining parallel gaps are retained workspaces/bookkeeping and post-run integration outcomes.
+- The serial run/resume/recovery path is aligned enough for now; the biggest remaining operator confusion is in retained parallel state and integration outcomes.
+- The remaining parallel gaps are retained workspaces/bookkeeping and post-run integration summaries.
 - These fixes should stay on shared operator-state builders and continuation documents instead of creating more parallel-only wording paths.
 
 Primary outcome:
-- Parallel runs should explain what was retained, what was integrated, and what the operator should do next without source diving.
+- Parallel runs should explain what was retained, what completed, what failed, and what the operator should do next without source diving.
 
 Detailed execution plan:
 
@@ -30,54 +30,30 @@ Exit criteria for item 1:
 - Parallel mode narrates retained-workspace and integration outcomes clearly across CLI, machine, and app surfaces.
 - New wording paths are shared-first, not parallel-only forks.
 
-### 2. Remove macOS test-state pollution that is now showing up in the ship gate
+### 2. Capture real local timing baselines, then tune the ship gate only if the data justifies it
 
 Why second:
-- `make agent-ci` currently surfaces CFPreferences/NSUserDefaults bloat warnings from accumulated app defaults during Xcode test runs.
-- This is noisy validation debt on the active ship gate, not hypothetical cleanup.
-- Fixing it is narrower and lower-churn than broader profiling or suite reshaping.
-
-Primary outcome:
-- macOS validation should run without app-defaults growth warnings or runaway test-owned persisted state.
-
-Detailed execution plan:
-
-#### 2.1 Prune test-owned defaults aggressively
-- Ensure test and contract runs do not leave production-domain workspace snapshots and restoration state behind.
-- Keep cleanup deterministic and test-owned rather than relying on incidental process teardown.
-
-#### 2.2 Keep UI/app persistence isolation explicit
-- Preserve the existing separation between production defaults and UI-test/contract defaults.
-- Close any remaining paths that still accumulate state in the production domain during automated runs.
-
-Exit criteria for item 2:
-- `make agent-ci` and `macos-ci` no longer emit CFPreferences size warnings from Ralph-owned defaults.
-- Repeated local app-test runs do not grow persistent defaults unboundedly.
-
-### 3. Capture real local timing baselines, then tune the ship gate only if the data justifies it
-
-Why third:
 - The profiling workflow is already documented; the missing step is collecting fresh baseline artifacts and using them to make decisions.
 - Gate tuning without current measurements would create churn without confidence.
-- Timing work is safer after the active validation-noise issue above is removed.
+- Timing work is safer after the ship-gate defaults noise is gone.
 
 Primary outcome:
 - Ship-gate tuning discussions should point to current local artifacts, not anecdotes.
 
 Detailed execution plan:
 
-#### 3.1 Record fresh baseline artifacts under `target/profiling/`
+#### 2.1 Record fresh baseline artifacts under `target/profiling/`
 - Capture current timings for `make agent-ci`, targeted operator-path nextest suites, doctests, `macos-build`, `macos-test`, and `macos-test-contracts`.
 - Keep the workflow headless and local-first.
 
-#### 3.2 Compare Rust and Xcode costs separately
+#### 2.2 Compare Rust and Xcode costs separately
 - Measure Rust/CLI and Xcode surfaces independently.
 - Compare capped versus uncapped `RALPH_XCODE_JOBS` before changing defaults.
 
-#### 3.3 Change concurrency or serialization only with evidence
+#### 2.3 Change concurrency or serialization only with evidence
 - Do not relax xcodebuild serialization or default job caps unless profiling plus contract coverage show the tradeoff is safe.
 
-Exit criteria for item 3:
+Exit criteria for item 2:
 - Timing artifacts exist for the gates that drive iteration speed.
 - Any proposed ship-gate tuning is backed by fresh local data.
 
@@ -87,4 +63,4 @@ Exit criteria for item 3:
 - Prefer low-churn shared-runtime fixes before broader prompt, doc, or suite churn.
 - Prefer operator-state clarity over maintenance-only cleanup when both are plausible next steps.
 - Preserve the hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, fsutil, eta_calculator, undo, and contracts/task) while refactoring adjacent modules.
-- Do not reopen completed serial recovery alignment, macOS Settings/workspace-routing cutovers, or git/init/app split work unless a new regression appears.
+- Do not reopen completed serial recovery alignment, queue-lock recovery alignment, macOS test-defaults isolation, macOS Settings/workspace-routing cutovers, or git/init/app split work unless a new regression appears.

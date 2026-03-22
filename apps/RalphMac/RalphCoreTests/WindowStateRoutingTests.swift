@@ -49,6 +49,40 @@ final class WindowStateRoutingTests: WindowStateTestCase {
         XCTAssertTrue(manager.loadAllWindowStates().isEmpty)
     }
 
+    func test_prepareForLaunch_unitTestingClearsStrayCurrentProcessDefaults() throws {
+        let defaults = UserDefaults.standard
+        let workspaceID = UUID()
+        let snapshotKey = workspaceSnapshotKey(for: workspaceID)
+        let cachedTasksKey = "com.mitchfultz.ralph.workspace.\(workspaceID.uuidString).cachedTasks"
+        let navigationKey = "com.mitchfultz.ralph.navigationState.\(workspaceID.uuidString)"
+        let versionCacheKey = "com.mitchfultz.ralph.versionCheckCache"
+        let workspacePath = try makeWorkspaceDirectory(prefix: "unit-test-defaults-prune")
+        defer { RalphCoreTestSupport.assertRemoved(workspacePath) }
+
+        let snapshot = RalphWorkspaceDefaultsSnapshot(
+            name: "Unit Test Workspace",
+            workingDirectoryURL: workspacePath,
+            recentWorkingDirectories: [workspacePath]
+        )
+
+        defaults.set(try JSONEncoder().encode(snapshot), forKey: snapshotKey)
+        defaults.set(Data("cached".utf8), forKey: cachedTasksKey)
+        defaults.set(Data("navigation".utf8), forKey: navigationKey)
+        defaults.set(Data("version".utf8), forKey: versionCacheKey)
+        defaults.set(
+            try JSONEncoder().encode([WindowState(workspaceIDs: [workspaceID])]),
+            forKey: testRestorationKey
+        )
+
+        _ = RalphAppDefaults.prepareForLaunch()
+
+        XCTAssertNil(defaults.object(forKey: snapshotKey))
+        XCTAssertNil(defaults.object(forKey: cachedTasksKey))
+        XCTAssertNil(defaults.object(forKey: navigationKey))
+        XCTAssertNil(defaults.object(forKey: versionCacheKey))
+        XCTAssertNil(defaults.object(forKey: testRestorationKey))
+    }
+
     func test_route_toWorkspace_focusesContainingWindowAndExecutesSceneAction() {
         let workspace = manager.createWorkspace()
         let windowID = UUID()
