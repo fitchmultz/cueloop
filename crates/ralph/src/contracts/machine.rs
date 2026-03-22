@@ -38,7 +38,7 @@ pub const MACHINE_DECOMPOSE_VERSION: u32 = 2;
 pub const MACHINE_RUN_EVENT_VERSION: u32 = 3;
 pub const MACHINE_RUN_SUMMARY_VERSION: u32 = 2;
 pub const MACHINE_DOCTOR_REPORT_VERSION: u32 = 2;
-pub const MACHINE_PARALLEL_STATUS_VERSION: u32 = 1;
+pub const MACHINE_PARALLEL_STATUS_VERSION: u32 = 2;
 pub const MACHINE_CLI_SPEC_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -260,6 +260,9 @@ pub struct MachineDoctorReportDocument {
 #[serde(deny_unknown_fields)]
 pub struct MachineParallelStatusDocument {
     pub version: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocking: Option<BlockingState>,
+    pub continuation: MachineContinuationSummary,
     #[schemars(schema_with = "json_value_schema")]
     pub status: JsonValue,
 }

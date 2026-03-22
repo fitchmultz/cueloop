@@ -46,11 +46,19 @@ fn parallel_status_json_output() -> Result<()> {
     let json: serde_json::Value =
         serde_json::from_str(&stdout).context("Status output should be valid JSON")?;
     assert_eq!(
-        json["schema_version"].as_u64(),
+        json["version"].as_u64(),
+        Some(2),
+        "Should report document version 2"
+    );
+    assert_eq!(
+        json["status"]["schema_version"].as_u64(),
         Some(3),
         "Should report schema version 3"
     );
-    assert!(json["workers"].is_array(), "Should have workers array");
+    assert!(
+        json["status"]["workers"].is_array(),
+        "Should have workers array"
+    );
 
     Ok(())
 }
@@ -290,7 +298,12 @@ fn parallel_state_v2_to_v3_migration() -> Result<()> {
 
     let state: serde_json::Value = serde_json::from_str(&stdout)?;
     assert_eq!(
-        state["schema_version"].as_u64(),
+        state["version"].as_u64(),
+        Some(2),
+        "Should be wrapped in document v2"
+    );
+    assert_eq!(
+        state["status"]["schema_version"].as_u64(),
         Some(3),
         "Should be migrated to v3"
     );

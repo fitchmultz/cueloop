@@ -1,6 +1,6 @@
 # Ralph Roadmap
 
-Last updated: 2026-03-21
+Last updated: 2026-03-22
 
 This is the canonical near-term roadmap for active follow-up work.
 
@@ -20,8 +20,8 @@ Detailed execution plan:
 
 #### 1.1 Tighten parallel only after serial recovery is boring
 - Do not spend major churn on `run parallel` UX until serial run/resume/supervision behavior is calm and legible.
-- When parallel work resumes, focus on bookkeeping visibility, stale lock handling, and post-run integration clarity.
-- Reuse the same operator-state vocabulary for worker stalls, merge retries, and blocked pushes.
+- Keep the new shared operator-state contract for parallel status and retry flows stable; do not fork bespoke blocked-push wording again.
+- When parallel work resumes, focus on the remaining gaps: stale lock handling, retained-workspace/bookkeeping visibility, and post-run integration clarity.
 
 Exit criteria for item 1:
 - Operators can explain what Ralph is doing now and why, without reading source code.

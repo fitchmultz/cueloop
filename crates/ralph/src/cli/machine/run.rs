@@ -28,9 +28,8 @@ use crate::cli::machine::common::{
 use crate::cli::machine::io::print_json_line;
 use crate::commands::run::{RunEvent, RunEventHandler, RunOneResumeOptions, RunOutcome};
 use crate::contracts::{
-    MACHINE_PARALLEL_STATUS_VERSION, MACHINE_RUN_EVENT_VERSION, MACHINE_RUN_SUMMARY_VERSION,
-    MachineParallelStatusDocument, MachineRunEventEnvelope, MachineRunEventKind,
-    MachineRunSummaryDocument,
+    MACHINE_RUN_EVENT_VERSION, MACHINE_RUN_SUMMARY_VERSION, MachineRunEventEnvelope,
+    MachineRunEventKind, MachineRunSummaryDocument,
 };
 use crate::runner::OutputHandler;
 use crate::timeutil;
@@ -147,18 +146,9 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
         }
         MachineRunCommand::ParallelStatus => {
             let state_path = crate::commands::run::state_file_path(&resolved.repo_root);
-            let status = match crate::commands::run::load_state(&state_path)? {
-                Some(state) => serde_json::to_value(state)?,
-                None => json!({
-                    "schema_version": 3,
-                    "workers": [],
-                    "message": "No parallel state found",
-                }),
-            };
-            crate::cli::machine::io::print_json(&MachineParallelStatusDocument {
-                version: MACHINE_PARALLEL_STATUS_VERSION,
-                status,
-            })
+            let state = crate::commands::run::load_state(&state_path)?;
+            let document = crate::commands::run::build_parallel_status_document(state.as_ref())?;
+            crate::cli::machine::io::print_json(&document)
         }
     }
 }

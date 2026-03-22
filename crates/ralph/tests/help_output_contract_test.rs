@@ -181,6 +181,30 @@ fn run_loop_help_mentions_blocking_state_diagnosis() {
 }
 
 #[test]
+fn run_parallel_help_mentions_operator_recovery_workflow() {
+    let (status, stdout, stderr) = run(&["run", "parallel", "status", "--help"]);
+    assert!(
+        status.success(),
+        "expected `ralph run parallel status --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+    assert_contains(&combined, "Operator-state diagnosis");
+    assert_contains(&combined, "ralph run parallel status --json");
+    assert_contains(&combined, "ralph run parallel retry --task RQ-0001");
+
+    let (retry_status, retry_stdout, retry_stderr) = run(&["run", "parallel", "retry", "--help"]);
+    assert!(
+        retry_status.success(),
+        "expected `ralph run parallel retry --help` to succeed\nstdout:\n{retry_stdout}\nstderr:\n{retry_stderr}"
+    );
+
+    let retry_combined = format!("{retry_stdout}\n{retry_stderr}");
+    assert_contains(&retry_combined, "ralph run parallel status");
+    assert_contains(&retry_combined, "ralph run loop --parallel <N>");
+}
+
+#[test]
 fn task_mutate_help_mentions_continuation_and_format() {
     let (status, stdout, stderr) = run(&["task", "mutate", "--help"]);
     assert!(

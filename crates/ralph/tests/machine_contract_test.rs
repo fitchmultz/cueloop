@@ -332,6 +332,74 @@ fn machine_queue_recovery_documents_are_versioned() -> Result<()> {
 }
 
 #[test]
+fn machine_parallel_status_returns_versioned_continuation_document() -> Result<()> {
+    let dir = tempdir()?;
+    git_init(dir.path())?;
+    ralph_init(dir.path())?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "parallel-status"]);
+    assert!(
+        status.success(),
+        "machine run parallel-status failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["version"], 2);
+    assert_eq!(document["blocking"], Value::Null);
+    assert_eq!(
+        document["continuation"]["headline"],
+        "Parallel execution has not started."
+    );
+    assert_eq!(document["status"]["message"], "No parallel state found");
+    Ok(())
+}
+
+#[test]
+fn machine_parallel_status_surfaces_blocked_worker_operator_state() -> Result<()> {
+    let dir = tempdir()?;
+    git_init(dir.path())?;
+    ralph_init(dir.path())?;
+
+    let state_dir = dir.path().join(".ralph/cache/parallel");
+    std::fs::create_dir_all(&state_dir)?;
+    let state_path = state_dir.join("state.json");
+    let state = serde_json::json!({
+        "schema_version": 3,
+        "started_at": "2026-03-21T12:00:00Z",
+        "target_branch": "main",
+        "workers": [{
+            "task_id": "RQ-1001",
+            "workspace_path": dir.path().join(".ralph/workspaces/RQ-1001").display().to_string(),
+            "lifecycle": "blocked_push",
+            "started_at": "2026-03-21T12:00:00Z",
+            "completed_at": "2026-03-21T12:05:00Z",
+            "push_attempts": 3,
+            "last_error": "push rejected after conflict review"
+        }]
+    });
+    std::fs::write(&state_path, serde_json::to_string_pretty(&state)?)?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "parallel-status"]);
+    assert!(
+        status.success(),
+        "machine run parallel-status failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["version"], 2);
+    assert_eq!(document["blocking"]["status"], "blocked");
+    assert_eq!(document["blocking"]["reason"]["kind"], "operator_recovery");
+    assert_eq!(document["blocking"]["reason"]["scope"], "parallel");
+    assert_eq!(document["blocking"]["reason"]["reason"], "blocked_push");
+    assert_eq!(document["continuation"]["blocking"], document["blocking"]);
+    assert_eq!(
+        document["continuation"]["next_steps"][1]["command"],
+        "ralph run parallel retry --task <TASK_ID>"
+    );
+    Ok(())
+}
+
+#[test]
 fn machine_system_info_reports_cli_version() -> Result<()> {
     let dir = tempdir()?;
     git_init(dir.path())?;

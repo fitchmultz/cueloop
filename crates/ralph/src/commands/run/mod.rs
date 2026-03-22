@@ -63,7 +63,7 @@ pub use run_one::{
 pub use dry_run::{dry_run_loop, dry_run_one};
 
 // Re-export parallel operation commands
-pub use parallel_ops::{parallel_retry, parallel_status};
+pub(crate) use parallel_ops::{build_parallel_status_document, parallel_retry, parallel_status};
 
 #[derive(Debug, Clone)]
 pub enum RunEvent {

@@ -145,6 +145,15 @@ Task mutation and decomposition documents now include:
 
 When present, the document-level `blocking` mirrors `continuation.blocking` so app and automation surfaces can consume a single canonical field after preview, write, and write-blocked flows.
 
+### `machine run parallel-status` (`version: 2`)
+
+Parallel status now returns a continuation-oriented document instead of a raw state blob alone:
+- optional top-level `blocking`
+- `continuation` with a headline, detail, optional blocking payload, and explicit next-step commands
+- raw `status` payload with the persisted worker snapshot
+
+When present, the document-level `blocking` mirrors `continuation.blocking` so automation can consume the canonical operator-state field directly while still inspecting worker details from `status`.
+
 ### `machine doctor report` (`version: 2`)
 
 Doctor reports now include a typed top-level `blocking` field so app and automation clients can consume the canonical operator-facing blocking model without decoding the untyped `report` payload first.
