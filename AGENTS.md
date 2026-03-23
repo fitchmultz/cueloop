@@ -255,6 +255,7 @@ Every source file MUST start with `//!` docs covering:
 - macOS test fixtures should use `RalphCoreTestSupport` for temp workspaces, readiness polling, and cleanup assertions; do not add per-file sleep/poll helpers.
 - SwiftUI previews that need workspace URLs should derive them from `PreviewWorkspaceSupport`, not hardcoded temp paths.
 - Test cleanup must fail loudly: avoid `try?` for fixture setup/teardown in tests unless the assertion explicitly expects cleanup best-effort behavior.
+- Agent-started servers and automation tools (`playwright`, agent-browser, Peekaboo, XCTest/UI harnesses, `ralph daemon serve`, opened RalphMac instances) must be shut down before ending the session; verify no lingering processes, windows, or temp automation profiles remain.
 
 ### Task Decompose
 - `ralph task decompose` is preview-first; queue mutation requires `--write`.

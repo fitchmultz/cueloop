@@ -519,7 +519,14 @@ macos-ui-retest:
 	mkdir -p "$$(dirname "$$lock_dir")"; \
 	acquired=0; \
 	wait_notified=0; \
-	cleanup() { if [ "$$acquired" = "1" ]; then rmdir "$$lock_dir" 2>/dev/null || true; fi; }; \
+	derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui"; \
+	app_binary="$$derived_data_path/Build/Products/Debug/RalphMac.app/Contents/MacOS/RalphMac"; \
+	runner_binary="$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app/Contents/MacOS/RalphMacUITests-Runner"; \
+	cleanup() { \
+		if pgrep -f "$$runner_binary" >/dev/null 2>&1; then pkill -TERM -f "$$runner_binary" >/dev/null 2>&1 || true; sleep 1; pgrep -f "$$runner_binary" >/dev/null 2>&1 && pkill -KILL -f "$$runner_binary" >/dev/null 2>&1 || true; fi; \
+		if pgrep -f "$$app_binary" >/dev/null 2>&1; then pkill -TERM -f "$$app_binary" >/dev/null 2>&1 || true; sleep 1; pgrep -f "$$app_binary" >/dev/null 2>&1 && pkill -KILL -f "$$app_binary" >/dev/null 2>&1 || true; fi; \
+		if [ "$$acquired" = "1" ]; then rmdir "$$lock_dir" 2>/dev/null || true; fi; \
+	}; \
 	trap cleanup EXIT INT TERM; \
 	while ! mkdir "$$lock_dir" 2>/dev/null; do \
 		if [ "$$wait_notified" = "0" ]; then \
@@ -561,7 +568,12 @@ macos-ui-retest:
 		$(XCODE_JOBS_FLAG) \
 		"$${result_bundle_args[@]}" \
 		"$${test_scope_args[@]}" \
-		test-without-building
+		test-without-building; \
+	if pgrep -f "$$runner_binary" >/dev/null 2>&1 || pgrep -f "$$app_binary" >/dev/null 2>&1; then \
+		echo "ERROR: macos-ui-retest left a lingering UI test app or runner process" >&2; \
+		ps -axo pid=,command= | grep -E "$$runner_binary|$$app_binary" | grep -v grep >&2 || true; \
+		exit 1; \
+	fi
 
 # Run macOS UI tests (interactive - will take over mouse/keyboard)
 macos-test-ui:
@@ -681,7 +693,14 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	mkdir -p "$$(dirname "$$lock_dir")"; \
 	acquired=0; \
 	wait_notified=0; \
-	cleanup() { if [ "$$acquired" = "1" ]; then rmdir "$$lock_dir" 2>/dev/null || true; fi; }; \
+	derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui-shortcuts"; \
+	app_binary="$$derived_data_path/Build/Products/Debug/RalphMac.app/Contents/MacOS/RalphMac"; \
+	runner_binary="$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app/Contents/MacOS/RalphMacUITests-Runner"; \
+	cleanup() { \
+		if pgrep -f "$$runner_binary" >/dev/null 2>&1; then pkill -TERM -f "$$runner_binary" >/dev/null 2>&1 || true; sleep 1; pgrep -f "$$runner_binary" >/dev/null 2>&1 && pkill -KILL -f "$$runner_binary" >/dev/null 2>&1 || true; fi; \
+		if pgrep -f "$$app_binary" >/dev/null 2>&1; then pkill -TERM -f "$$app_binary" >/dev/null 2>&1 || true; sleep 1; pgrep -f "$$app_binary" >/dev/null 2>&1 && pkill -KILL -f "$$app_binary" >/dev/null 2>&1 || true; fi; \
+		if [ "$$acquired" = "1" ]; then rmdir "$$lock_dir" 2>/dev/null || true; fi; \
+	}; \
 	trap cleanup EXIT INT TERM; \
 	while ! mkdir "$$lock_dir" 2>/dev/null; do \
 		if [ "$$wait_notified" = "0" ]; then \
@@ -703,8 +722,8 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		$(XCODE_JOBS_FLAG) \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
-		-only-testing:RalphMacUITests/RalphMacUITests/test_windowShortcuts_affectOnlyFocusedWindow \
-		-only-testing:RalphMacUITests/RalphMacUITests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
+		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow \
+		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
 		build-for-testing; \
 	echo "→ Clearing quarantine metadata on UI test bundles..."; \
 	xattr -dr com.apple.quarantine "$$derived_data_path/Build/Products/Debug/RalphMac.app" "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app" 2>/dev/null || true; \
@@ -718,9 +737,14 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
 		$(XCODE_JOBS_FLAG) \
-		-only-testing:RalphMacUITests/RalphMacUITests/test_windowShortcuts_affectOnlyFocusedWindow \
-		-only-testing:RalphMacUITests/RalphMacUITests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
-		test-without-building
+		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow \
+		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
+		test-without-building; \
+	if pgrep -f "$$runner_binary" >/dev/null 2>&1 || pgrep -f "$$app_binary" >/dev/null 2>&1; then \
+		echo "ERROR: macos-test-window-shortcuts left a lingering UI test app or runner process" >&2; \
+		ps -axo pid=,command= | grep -E "$$runner_binary|$$app_binary" | grep -v grep >&2 || true; \
+		exit 1; \
+	fi
 
 macos-ci: macos-preflight ci macos-build macos-test macos-test-contracts
 	@echo "→ macOS ship gate (Rust CI + macOS app build+test + deterministic contract smoke)..."

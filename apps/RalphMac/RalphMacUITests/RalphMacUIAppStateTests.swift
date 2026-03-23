@@ -103,8 +103,7 @@ final class RalphMacUIAppStateTests: RalphMacUITestCase {
             currentDirectoryURL: targetWorkspaceURL
         )
 
-        stopTimelineCapture()
-        app.terminate()
+        terminateLaunchedApp()
         let relaunchedApp = XCUIApplication()
         relaunchedApp.launchArguments = ["--uitesting"]
         relaunchedApp.launchEnvironment[LaunchEnvironment.uiTestWorkspacePath] =

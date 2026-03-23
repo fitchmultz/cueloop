@@ -173,9 +173,33 @@ extension RalphMacUITestCase {
         )
     }
 
-    func relaunchApp() {
+    func waitForAppToTerminate(_ application: XCUIApplication, timeout: TimeInterval = 10) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if application.state == .notRunning {
+                return true
+            }
+            RunLoop.current.run(
+                mode: .default,
+                before: min(deadline, Date().addingTimeInterval(0.1))
+            )
+        }
+        return application.state == .notRunning
+    }
+
+    func terminateLaunchedApp(timeout: TimeInterval = 10) {
         stopTimelineCapture()
+        guard let app else { return }
+        guard app.state != .notRunning else { return }
         app.terminate()
+        XCTAssertTrue(
+            waitForAppToTerminate(app, timeout: timeout),
+            "UI-test app should terminate during cleanup"
+        )
+    }
+
+    func relaunchApp() {
+        terminateLaunchedApp()
         app.launch()
         app.activate()
         startTimelineCaptureIfNeeded()

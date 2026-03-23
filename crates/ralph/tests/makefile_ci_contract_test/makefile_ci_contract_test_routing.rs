@@ -100,6 +100,42 @@ fn test_macos_targets_gate_with_preflight_and_isolate_derived_data() -> Result<(
         );
     }
 
+    for target in ["macos-ui-retest", "macos-test-window-shortcuts"] {
+        let block = extract_target_block(&makefile, target)
+            .with_context(|| format!("extract {target} cleanup block"))?;
+        assert!(
+            block.contains("app_binary="),
+            "{target} should track the launched RalphMac test app binary for cleanup"
+        );
+        assert!(
+            block.contains("runner_binary="),
+            "{target} should track the launched UI test runner binary for cleanup"
+        );
+        assert!(
+            block.contains("pkill -TERM -f \"$$runner_binary\""),
+            "{target} should terminate any lingering UI test runner before exiting"
+        );
+        assert!(
+            block.contains("pkill -TERM -f \"$$app_binary\""),
+            "{target} should terminate any lingering RalphMac UI test app before exiting"
+        );
+        assert!(
+            block.contains("left a lingering UI test app or runner process"),
+            "{target} should fail loudly if UI test processes survive the run"
+        );
+    }
+
+    let shortcuts_block = extract_target_block(&makefile, "macos-test-window-shortcuts")
+        .context("extract macos-test-window-shortcuts selectors")?;
+    assert!(
+        shortcuts_block.contains("RalphMacUITests/RalphMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow"),
+        "macos-test-window-shortcuts should target the focused-window routing suite"
+    );
+    assert!(
+        shortcuts_block.contains("RalphMacUITests/RalphMacUIWindowRoutingTests/test_commandPaletteNewTab_affectsOnlyFocusedWindow"),
+        "macos-test-window-shortcuts should target the focused-window command-palette routing suite"
+    );
+
     Ok(())
 }
 

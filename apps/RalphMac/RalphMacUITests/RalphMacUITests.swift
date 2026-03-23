@@ -122,7 +122,7 @@ class RalphMacUITestCase: XCTestCase {
             capturedFailureScreenshot = true
         }
         captureScreenshot(named: "teardown")
-        app.terminate()
+        terminateLaunchedApp()
         app = nil
         if let uiTestWorkspaceURL {
             XCTAssertNoThrow(try removeItemIfExists(uiTestWorkspaceURL))

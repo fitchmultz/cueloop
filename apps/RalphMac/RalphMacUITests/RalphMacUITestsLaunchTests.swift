@@ -13,6 +13,20 @@ import XCTest
 
 @MainActor
 final class RalphMacUITestsLaunchTests: XCTestCase {
+    private func waitForTermination(of app: XCUIApplication, timeout: TimeInterval = 10) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if app.state == .notRunning {
+                return
+            }
+            RunLoop.current.run(
+                mode: .default,
+                before: min(deadline, Date().addingTimeInterval(0.1))
+            )
+        }
+        XCTAssertEqual(app.state, .notRunning, "Launch test app should terminate during cleanup")
+    }
+
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
@@ -25,6 +39,10 @@ final class RalphMacUITestsLaunchTests: XCTestCase {
     func testLaunch() throws {
         let app = XCUIApplication()
         app.launch()
+        addTeardownBlock {
+            app.terminate()
+            self.waitForTermination(of: app)
+        }
 
         // Verify window appears after launch
         let window = app.windows.firstMatch
@@ -45,8 +63,11 @@ final class RalphMacUITestsLaunchTests: XCTestCase {
 
     func testLaunchPerformance() throws {
         if #available(macOS 14.0, *) {
+            let app = XCUIApplication()
             measure(metrics: [XCTApplicationLaunchMetric()]) {
-                XCUIApplication().launch()
+                app.launch()
+                app.terminate()
+                self.waitForTermination(of: app)
             }
         }
     }

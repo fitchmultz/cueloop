@@ -86,11 +86,20 @@ REPORT_PATH="$TEMP_ROOT/settings-contract-report.json"
 APP_LOG="$TEMP_ROOT/settings-contract.log"
 APP_PID=""
 
-cleanup() {
+terminate_contract_app() {
     if [ -n "$APP_PID" ] && kill -0 "$APP_PID" >/dev/null 2>&1; then
         kill "$APP_PID" >/dev/null 2>&1 || true
         wait "$APP_PID" >/dev/null 2>&1 || true
     fi
+    if pgrep -f "$APP_EXECUTABLE" >/dev/null 2>&1; then
+        pkill -TERM -f "$APP_EXECUTABLE" >/dev/null 2>&1 || true
+        sleep 1
+        pgrep -f "$APP_EXECUTABLE" >/dev/null 2>&1 && pkill -KILL -f "$APP_EXECUTABLE" >/dev/null 2>&1 || true
+    fi
+}
+
+cleanup() {
+    terminate_contract_app
     rm -rf "$TEMP_ROOT"
 }
 trap cleanup EXIT INT TERM
@@ -184,6 +193,12 @@ fi
 wait "$APP_PID" || app_exit="$?"
 app_exit="${app_exit:-0}"
 APP_PID=""
+
+if pgrep -f "$APP_EXECUTABLE" >/dev/null 2>&1; then
+    echo "ERROR: settings smoke left a lingering app process: $APP_EXECUTABLE" >&2
+    ps -axo pid=,command= | grep "$APP_EXECUTABLE" | grep -v grep >&2 || true
+    exit 1
+fi
 
 if [ ! -f "$REPORT_PATH" ]; then
     echo "ERROR: Settings smoke contract did not write report: $REPORT_PATH" >&2
