@@ -6,66 +6,50 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Refresh local ship-gate timing baselines
+### 1. Refresh ship-gate baselines and settle local concurrency defaults
 
 Why first:
-- `target/profiling/` still reflects pre-stabilization measurements from 2026-03-16/17.
-- Timing data is only worth refreshing after teardown leaks stop polluting local runs.
+- `target/profiling/` still reflects pre-stabilization runs from 2026-03-16/17.
+- `RALPH_XCODE_JOBS` should only move after one fresh local baseline pass.
 
 Primary outcome:
-- Fresh local timing artifacts exist for the current CLI + RalphMac ship gate.
+- One current profiling set exists for the CLI + RalphMac ship gate, and local concurrency defaults are either updated from that data or explicitly kept.
 
 Implementation steps:
-- Re-run `make agent-ci`, doctests, targeted operator-path nextest suites, `macos-build`, `macos-test`, and `macos-test-contracts`.
-- Record wall-clock outputs under `target/profiling/` with current timestamps and command labels.
-- Keep the workflow local and headless.
+- Re-run `make agent-ci`, doctests, targeted operator-path nextest suites, `macos-build`, `macos-test`, and `macos-test-contracts` under comparable local conditions.
+- Replace stale timing outputs in `target/profiling/` with one current naming scheme and a short summary of the slowest surfaces.
+- Compare capped versus uncapped `RALPH_XCODE_JOBS` runs and change defaults only if the win is material and contract coverage stays stable.
 
 Exit criteria:
-- Current artifacts replace stale baselines.
-- A short measurement summary names the slowest surfaces and their current cost.
+- `target/profiling/` contains one current baseline set instead of mixed cutover history.
+- Any default change is justified by fresh measurements, or the current defaults are explicitly reaffirmed.
 
-### 2. Decide ship-gate concurrency defaults from evidence
+### 2. Make macOS local-validation cleanup resilient to hard interruption
 
 Why second:
-- `RALPH_XCODE_JOBS` and related gate choices should move only after fresh numbers exist.
-- This is the only worthwhile follow-up that can affect day-to-day churn after measurement refresh.
+- Normal success/failure cleanup is hardened, but interrupted runs can still strand `target/tmp/locks/xcodebuild.lock` and related project-owned artifacts.
+- This is the remaining local-churn source for macOS validation.
 
 Primary outcome:
-- Either the current defaults are reaffirmed or one evidence-backed cutover lands.
+- Interrupted macOS validation recovers cleanly without manual lock/temp cleanup.
 
 Implementation steps:
-- Compare Rust-only versus Xcode-heavy costs from the refreshed baseline set.
-- Measure capped versus uncapped `RALPH_XCODE_JOBS` runs on the same workstation conditions.
-- Change defaults only if the win is material and contract coverage stays stable.
+- Audit project-owned lock, temp, and derived-data artifacts created by Makefile macOS targets and contract scripts.
+- Add stale-lock detection and recovery for `target/tmp/locks/xcodebuild.lock` before wait paths block indefinitely.
+- Keep cleanup scoped to clearly project-owned artifacts and preserve the existing loud-failure contract for lingering app processes.
+- Add deterministic contract coverage for interrupted-run cleanup and stale-lock recovery.
 
 Exit criteria:
-- Any default change cites the measured win and the guardrail.
-- If no safe win exists, the current defaults are explicitly kept.
-
-### 3. Prune profiling clutter after the timing refresh
-
-Why third:
-- `target/profiling/` currently mixes old cutover before/after files with the baselines that should guide future tuning.
-- Cleanup is lowest value until the new baseline set is written.
-
-Primary outcome:
-- Profiling artifacts are easy to read and only the current useful set remains prominent.
-
-Implementation steps:
-- Remove or archive superseded before/after timing files that no longer inform active decisions.
-- Keep one current naming scheme for baseline outputs and one short summary note.
-- Avoid doc churn unless the measurement workflow itself changes.
-
-Exit criteria:
-- `target/profiling/` highlights the current baseline set without stale cutover noise.
-- Documentation remains minimal and matches the retained workflow.
+- Manual deletion of stranded macOS validation artifacts is no longer needed after interrupted local runs.
+- Contract coverage catches regressions in stale-lock handling and cleanup recovery.
 
 ## Sequencing rules
 
 - Keep completed work out of this file.
-- Measure first; tune defaults second; prune profiling clutter last.
+- Roadmap items must be chunky, dependency-aware work packages; combine adjacent evidence, cleanup, and tuning work instead of splitting follow-ups into trivial single-step tasks.
+- Refresh measurements before revisiting local concurrency defaults.
 - Keep shared `machine run parallel-status` decoding and version checks in RalphCore; keep Run Control presentation-only.
 - Keep Run Control's initial `.task` refresh on the status-only path; use full refresh only when queue or task data must change.
 - Prefer current measurement artifacts over anecdotal gate-tuning claims.
 - Preserve the hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, fsutil, eta_calculator, undo, and contracts/task) while refactoring adjacent modules.
-- Do not reopen completed serial recovery alignment, queue-lock recovery alignment, macOS test-defaults isolation, macOS Settings/workspace-routing cutovers, or git/init/app split work unless a new regression appears.
+- Do not reopen completed serial recovery alignment, queue-lock recovery alignment, macOS test-defaults isolation, macOS Settings/workspace-routing cutovers, git/init/app split work, macOS test-cleanup hardening, or the removed xcresult-attachment export path unless a new regression appears.

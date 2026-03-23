@@ -85,16 +85,15 @@ make macos-test-ui-artifacts
 For targeted visual debugging without another rebuild:
 
 ```bash
-RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUITests/test_createNewTask_viaQuickCreate make macos-ui-retest
+RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate make macos-ui-retest
 ```
 
 This writes timestamped evidence under `target/ui-artifacts/<timestamp>/`:
 
 - `RalphMacUITests.xcresult`
-- exported attachments (`attachments/`)
-- `summary.txt` with attachment counts and image paths
+- `summary.txt` with the preserved bundle path and test scope
 
-After review, clean all exported visual artifacts:
+After review, clean captured UI artifacts:
 
 ```bash
 make macos-ui-artifacts-clean

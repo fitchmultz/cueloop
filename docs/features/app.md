@@ -124,7 +124,7 @@ Re-run UI tests without rebuilding bundles:
 make macos-ui-retest
 # Shared workstation: RALPH_XCODE_JOBS=4 make macos-ui-retest
 # Focus one test:
-RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUITests/test_createNewTask_viaQuickCreate make macos-ui-retest
+RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate make macos-ui-retest
 ```
 
 Run all UI tests end-to-end in one command:
@@ -135,12 +135,12 @@ make macos-test-ui
 # macOS/Homebrew GNU Make users: gmake macos-test-ui
 ```
 
-Run UI tests with full visual artifact capture (timeline screenshots + exported attachments):
+Run UI tests with preserved `.xcresult` output for later inspection:
 
 ```bash
 make macos-test-ui-artifacts
 # writes timestamped artifacts under target/ui-artifacts/
-# includes .xcresult bundle, exported attachments, and summary.txt
+# includes .xcresult bundle and summary.txt
 # internally uses build-once + retest-only flow to reduce repeated approval prompts
 ```
 

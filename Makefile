@@ -82,8 +82,8 @@ help:
 	@echo "  make macos-test-workspace-routing-contract # Run noninteractive workspace routing contract coverage"
 	@echo "  make macos-ui-build-for-testing # Build/sign UI test bundles once for local iteration"
 	@echo "  make macos-ui-retest         # Re-run UI tests without rebuilding bundles"
-	@echo "  make macos-test-ui-artifacts # Run UI suite with screenshot artifacts + export summary"
-	@echo "  make macos-ui-artifacts-clean # Remove exported UI visual artifacts"
+	@echo "  make macos-test-ui-artifacts # Run UI suite with xcresult capture + summary"
+	@echo "  make macos-ui-artifacts-clean # Remove captured UI visual artifacts"
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
 	@echo "  make update       # Update Rust deps to latest stable; use macos-ci to verify the bundled Swift app toolchain"
@@ -100,8 +100,8 @@ help:
 	@echo "  RALPH_CI_JOBS=4     # Example cap for shared workstations (0 = tool default, fastest local iteration)"
 	@echo "  RALPH_XCODE_JOBS=4  # Caps xcodebuild parallelism (0 = xcodebuild default)"
 	@echo "  rust-toolchain.toml is respected automatically when rustup is available"
-	@echo "  RALPH_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (used by macos-test-ui-artifacts)"
-	@echo "  RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUITests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
+	@echo "  RALPH_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (for macos-ui-retest debugging)"
+	@echo "  RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
 	@echo "  RALPH_UI_ARTIFACTS_ROOT=target/ui-artifacts # Export root for visual artifacts"
 
 FORCE:
@@ -580,97 +580,41 @@ macos-test-ui:
 	@$(MAKE) --no-print-directory macos-ui-build-for-testing
 	@$(MAKE) --no-print-directory macos-ui-retest
 
-# Run macOS UI tests with visual artifact capture/export (interactive).
+# Run macOS UI tests with preserved xcresult output (interactive).
 # Stores timestamped artifacts under $(RALPH_UI_ARTIFACTS_ROOT)/<timestamp>/.
 macos-test-ui-artifacts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	@timestamp="$$(date +%Y%m%d-%H%M%S)"; \
 	artifact_dir="$(RALPH_UI_ARTIFACTS_ROOT)/$$timestamp"; \
 	result_bundle_path="$$artifact_dir/RalphMacUITests.xcresult"; \
-	attachments_dir="$$artifact_dir/attachments"; \
 	summary_path="$$artifact_dir/summary.txt"; \
 	mkdir -p "$$artifact_dir"; \
-	echo "→ macOS UI tests with screenshot artifact capture..."; \
+	echo "→ macOS UI tests with xcresult capture..."; \
 	set +e; \
 	$(MAKE) --no-print-directory macos-ui-build-for-testing; \
 	$(MAKE) --no-print-directory macos-ui-retest \
-		RALPH_UI_SCREENSHOTS=1 \
-		RALPH_UI_SCREENSHOT_MODE=timeline \
 		XCODE_RESULT_BUNDLE_PATH="$$result_bundle_path"; \
 	test_exit="$$?"; \
 	set -e; \
+	final_exit="$$test_exit"; \
 	if [ -d "$$result_bundle_path" ]; then \
-		mkdir -p "$$attachments_dir"; \
-		echo "→ Exporting xcresult attachments..."; \
-		xcrun xcresulttool export attachments --path "$$result_bundle_path" --output-path "$$attachments_dir" > "$$artifact_dir/attachments-export.log" 2>&1 || true; \
-		python3 - "$$attachments_dir/manifest.json" "$$summary_path" "$$timestamp" "$$result_bundle_path" "$$attachments_dir" "$$artifact_dir/attachments-export.log" <<-'PY'; \
-		import json
-		import pathlib
-		import sys
-		
-		manifest_path = pathlib.Path(sys.argv[1])
-		summary_path = pathlib.Path(sys.argv[2])
-		timestamp = sys.argv[3]
-		result_bundle = sys.argv[4]
-		attachments_dir = sys.argv[5]
-		export_log = sys.argv[6]
-		
-		entries = []
-		if manifest_path.exists():
-			entries = json.loads(manifest_path.read_text())
-		
-		total_attachments = 0
-		video_attachments = 0
-		ui_snapshot_attachments = 0
-		attachment_lines = []
-		
-		for entry in entries:
-			test_identifier = entry.get("testIdentifier", "<unknown-test>")
-			attachments = entry.get("attachments", [])
-			if not attachments:
-				continue
-			attachment_lines.append(f"- {test_identifier}")
-			for attachment in attachments:
-				total_attachments += 1
-				suggested_name = attachment.get("suggestedHumanReadableName", "<unnamed-attachment>")
-				exported_name = attachment.get("exportedFileName", "<missing-file>")
-				if suggested_name.lower().endswith(".mp4"):
-					video_attachments += 1
-				if "UI Snapshot" in suggested_name:
-					ui_snapshot_attachments += 1
-				attachment_lines.append(f"  - {suggested_name} -> attachments/{exported_name}")
-		
-		summary_lines = [
-			"Ralph macOS UI visual artifact summary",
-			f"timestamp: {timestamp}",
-			f"result_bundle: {result_bundle}",
-			f"attachments_dir: {attachments_dir}",
-			f"attachments_export_log: {export_log}",
-			f"attachment_files: {total_attachments}",
-			f"video_files_mp4: {video_attachments}",
-			f"ui_snapshot_attachments: {ui_snapshot_attachments}",
-			"",
-			"attachments_by_test:",
-		]
-		
-		if attachment_lines:
-			summary_lines.extend(attachment_lines)
-		else:
-			summary_lines.append("- none")
-		
-		summary_path.write_text("\n".join(summary_lines) + "\n")
-		PY
+		{ \
+			echo "Ralph macOS UI artifact summary"; \
+			echo "timestamp: $$timestamp"; \
+			echo "result_bundle: $$result_bundle_path"; \
+			echo "targeted_test: $${RALPH_UI_ONLY_TESTING:-all}"; \
+		} > "$$summary_path"; \
 		echo "  ✓ Result bundle: $$result_bundle_path"; \
-		echo "  ✓ Attachment export: $$attachments_dir"; \
 		echo "  ✓ Summary: $$summary_path"; \
 	else \
 		echo "  ⚠ No xcresult bundle found at $$result_bundle_path"; \
+		if [ "$$test_exit" = "0" ]; then final_exit=1; fi; \
 	fi; \
 	echo "  ℹ Cleanup after review: make macos-ui-artifacts-clean"; \
-	exit "$$test_exit"
+	exit "$$final_exit"
 
-# Remove exported UI visual artifacts after review.
+# Remove captured UI visual artifacts after review.
 macos-ui-artifacts-clean:
-	@echo "→ Removing exported UI visual artifacts..."
+	@echo "→ Removing captured UI visual artifacts..."
 	@rm -rf "$(RALPH_UI_ARTIFACTS_ROOT)"
 	@echo "  ✓ UI visual artifacts removed"
 

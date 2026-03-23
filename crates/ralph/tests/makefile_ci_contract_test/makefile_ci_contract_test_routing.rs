@@ -140,6 +140,32 @@ fn test_macos_targets_gate_with_preflight_and_isolate_derived_data() -> Result<(
 }
 
 #[test]
+fn test_macos_ui_artifact_target_preserves_result_bundle_and_summary() -> Result<()> {
+    let makefile = read_repo_makefile()?;
+    let block = extract_target_block(&makefile, "macos-test-ui-artifacts")
+        .context("extract macos-test-ui-artifacts block")?;
+
+    assert!(
+        block.contains("result_bundle_path=\"$$artifact_dir/RalphMacUITests.xcresult\""),
+        "macos-test-ui-artifacts should preserve the xcresult bundle"
+    );
+    assert!(
+        block.contains("targeted_test: $${RALPH_UI_ONLY_TESTING:-all}"),
+        "macos-test-ui-artifacts summary should record whether the run was targeted"
+    );
+    assert!(
+        !block.contains("xcresulttool export attachments"),
+        "macos-test-ui-artifacts should not depend on empty xcresult attachment export"
+    );
+    assert!(
+        !block.contains("screenshots_dir="),
+        "macos-test-ui-artifacts should not carry dead screenshot-export plumbing"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn test_agent_ci_routes_between_docs_ci_fast_and_macos_ci() -> Result<()> {
     let makefile = read_repo_makefile()?;
     let agent_ci_block =

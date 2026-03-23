@@ -41,6 +41,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 - **Small files**: Target <500 LOC; hard limit at 1,000 LOC (must split)
 - **Explicit over implicit**: Prefer explicit, minimal usage patterns
 - **Verify before done**: Test coverage required for all new/changed behavior
+- **Roadmap quality**: Use chunky, dependency-aware roadmap items; combine adjacent evidence/cleanup/tuning work instead of splitting follow-ups into tiny tasks
 - **No remote CI**: Local `make ci` is the gate; avoid GitHub Actions
 
 ---
