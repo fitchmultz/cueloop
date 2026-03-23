@@ -4,7 +4,7 @@
  Responsibilities:
  - Provide Codable models for Ralph configuration parsing and serialization.
  - Mirror the machine-resolved config and path documents used by the app.
- - Decode structured resume preview state from machine config and run-event payloads.
+ - Decode structured resume preview and shared parallel-status payloads from machine surfaces.
 
  Does not handle:
  - CLI operations (see RalphCLIClient).
@@ -216,6 +216,85 @@ public struct MachineConfigSafetySummary: Codable, Sendable, Equatable {
         case parallelConfigured = "parallel_configured"
         case executionInteractivity = "execution_interactivity"
         case interactiveApprovalSupported = "interactive_approval_supported"
+    }
+}
+
+public enum ParallelWorkerLifecycle: String, Codable, Sendable, Equatable {
+    case running
+    case integrating
+    case completed
+    case failed
+    case blockedPush = "blocked_push"
+}
+
+public struct ParallelWorkerStatus: Codable, Sendable, Equatable, Identifiable {
+    public let taskID: String
+    public let lifecycle: ParallelWorkerLifecycle
+
+    public var id: String { taskID }
+
+    enum CodingKeys: String, CodingKey {
+        case taskID = "task_id"
+        case lifecycle
+    }
+}
+
+public struct ParallelLifecycleCounts: Sendable, Equatable {
+    public let running: Int
+    public let integrating: Int
+    public let completed: Int
+    public let failed: Int
+    public let blocked: Int
+
+    init(workers: [ParallelWorkerStatus]) {
+        running = workers.filter { $0.lifecycle == .running }.count
+        integrating = workers.filter { $0.lifecycle == .integrating }.count
+        completed = workers.filter { $0.lifecycle == .completed }.count
+        failed = workers.filter { $0.lifecycle == .failed }.count
+        blocked = workers.filter { $0.lifecycle == .blockedPush }.count
+    }
+
+    public var total: Int { running + integrating + completed + failed + blocked }
+    public var hasActive: Bool { running > 0 || integrating > 0 }
+}
+
+public struct ParallelStatusSnapshot: Codable, Sendable, Equatable {
+    public let schemaVersion: Int?
+    public let targetBranch: String?
+    public let workers: [ParallelWorkerStatus]
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case targetBranch = "target_branch"
+        case workers
+    }
+
+    public var lifecycleCounts: ParallelLifecycleCounts { ParallelLifecycleCounts(workers: workers) }
+}
+
+public struct ParallelStatusStep: Sendable, Equatable {
+    public let command: String
+    public let detail: String
+}
+
+struct MachineParallelStatusDocument: Decodable, Sendable, Equatable {
+    let version: Int
+    let blocking: WorkspaceRunnerController.MachineBlockingState?
+    let continuation: WorkspaceContinuationSummary
+    let status: ParallelStatusSnapshot
+
+    var effectiveBlocking: WorkspaceRunnerController.MachineBlockingState? {
+        blocking ?? continuation.blocking
+    }
+
+    func asWorkspaceParallelStatus() -> Workspace.ParallelStatus {
+        Workspace.ParallelStatus(
+            headline: continuation.headline,
+            detail: continuation.detail,
+            blocking: effectiveBlocking?.asWorkspaceBlockingState(),
+            nextSteps: continuation.nextSteps.map { ParallelStatusStep(command: $0.command, detail: $0.detail) },
+            snapshot: status
+        )
     }
 }
 

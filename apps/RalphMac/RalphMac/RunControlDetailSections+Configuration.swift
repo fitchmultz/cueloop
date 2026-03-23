@@ -49,29 +49,19 @@ struct RunControlRunnerConfigurationSection: View {
 struct RunControlExecutionControlsSection: View {
     @ObservedObject var workspace: Workspace
 
-    private var displayBlockingState: Workspace.BlockingState? {
-        guard let blockingState = workspace.runState.blockingState else {
-            return nil
-        }
-        guard case let .runnerRecovery(scope, reason, taskID) = blockingState.reason,
-              let resumeState = workspace.runState.resumeState,
-              resumeState.scope == scope,
-              resumeState.reason == reason,
-              resumeState.taskID == taskID else {
-            return blockingState
-        }
-        return nil
-    }
-
     var body: some View {
         RunControlGlassSection("Controls") {
             VStack(spacing: 12) {
-                if let blockingState = displayBlockingState {
+                if let blockingState = workspace.runState.runControlDisplayBlockingState {
                     blockingStateView(blockingState)
                 }
 
                 if let resumeState = workspace.runState.resumeState {
                     resumeStateView(resumeState)
+                }
+
+                if workspace.runState.shouldShowRunControlParallelStatus {
+                    parallelStatusView
                 }
 
                 let previewTask = workspace.runControlPreviewTask
@@ -154,62 +144,123 @@ struct RunControlExecutionControlsSection: View {
 
     @ViewBuilder
     private func resumeStateView(_ state: Workspace.ResumeState) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: resumeIcon(for: state.status))
-                .foregroundStyle(resumeColor(for: state.status))
-                .font(.headline)
-                .padding(.top, 1)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(state.message)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Text(state.detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 0)
+        RunControlTintedStatusCard(
+            icon: resumeIcon(for: state.status),
+            tint: resumeColor(for: state.status)
+        ) {
+            RunControlStatusText(title: state.message, detail: state.detail)
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(resumeColor(for: state.status).opacity(0.09))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(resumeColor(for: state.status).opacity(0.2), lineWidth: 1)
-        )
     }
 
     @ViewBuilder
     private func blockingStateView(_ state: Workspace.BlockingState) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: blockingIcon(for: state.status))
-                .foregroundStyle(blockingColor(for: state.status))
-                .font(.headline)
-                .padding(.top, 1)
+        RunControlTintedStatusCard(
+            icon: blockingIcon(for: state.status),
+            tint: blockingColor(for: state.status)
+        ) {
+            RunControlStatusText(title: state.message, detail: state.detail)
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(state.message)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Text(state.detail)
+    @ViewBuilder
+    private var parallelStatusView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Shared Parallel Status", systemImage: "square.stack.3d.up.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if workspace.runState.parallelStatusLoading {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Loading shared worker status...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let error = workspace.runState.parallelStatusErrorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if let parallelStatus = workspace.runState.parallelStatus {
+                RunControlTintedStatusCard(
+                    icon: parallelStatusIcon(for: parallelStatus),
+                    tint: parallelStatusColor(for: parallelStatus)
+                ) {
+                    RunControlStatusText(title: parallelStatus.headline, detail: parallelStatus.detail)
+
+                    if let targetBranch = parallelStatus.snapshot.targetBranch, !targetBranch.isEmpty {
+                        RunControlConfigRow(icon: "arrow.triangle.branch", label: "Target Branch", value: targetBranch)
+                    }
+
+                    if parallelStatus.snapshot.lifecycleCounts.total > 0 {
+                        RunControlConfigRow(
+                            icon: "square.stack.3d.up",
+                            label: "Workers",
+                            value: parallelCountSummary(for: parallelStatus.snapshot.lifecycleCounts)
+                        )
+                    }
+
+                    if !parallelStatus.nextSteps.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Next")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            ForEach(parallelStatus.nextSteps.prefix(2), id: \.command) { step in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(step.command)
+                                        .font(.system(.caption, design: .monospaced))
+                                    Text(step.detail)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("Load shared worker status to inspect the current parallel operator state.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(blockingColor(for: state.status).opacity(0.09))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(blockingColor(for: state.status).opacity(0.2), lineWidth: 1)
-        )
+    }
+
+    private func parallelStatusIcon(for status: Workspace.ParallelStatus) -> String {
+        if let blocking = status.blocking {
+            return blockingIcon(for: blocking.status)
+        }
+        if status.snapshot.lifecycleCounts.hasActive {
+            return "bolt.horizontal.circle.fill"
+        }
+        if status.snapshot.lifecycleCounts.failed > 0 {
+            return "xmark.circle.fill"
+        }
+        return "checkmark.circle.fill"
+    }
+
+    private func parallelStatusColor(for status: Workspace.ParallelStatus) -> Color {
+        if let blocking = status.blocking {
+            return blockingColor(for: blocking.status)
+        }
+        if status.snapshot.lifecycleCounts.hasActive {
+            return .blue
+        }
+        if status.snapshot.lifecycleCounts.failed > 0 {
+            return .red
+        }
+        return .green
+    }
+
+    private func parallelCountSummary(for counts: ParallelLifecycleCounts) -> String {
+        [
+            counts.running > 0 ? "R \(counts.running)" : nil,
+            counts.integrating > 0 ? "I \(counts.integrating)" : nil,
+            counts.completed > 0 ? "C \(counts.completed)" : nil,
+            counts.failed > 0 ? "F \(counts.failed)" : nil,
+            counts.blocked > 0 ? "B \(counts.blocked)" : nil,
+        ]
+        .compactMap { $0 }
+        .joined(separator: " · ")
     }
 
     private func blockingIcon(for status: Workspace.BlockingStatus) -> String {

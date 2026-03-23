@@ -167,8 +167,21 @@ public final class Workspace: ObservableObject, Identifiable {
     }
 
     public func refreshRunControlData() async {
+        await awaitPendingRepositoryActivityIfNeeded()
+        guard !isShutDown, !Task.isCancelled else { return }
         await loadTasks(retryConfiguration: .minimal)
+        guard !isShutDown, !Task.isCancelled else { return }
         await loadRunnerConfiguration(retryConfiguration: .minimal)
+        guard !isShutDown, !Task.isCancelled else { return }
+        await refreshParallelStatusIfNeeded(retryConfiguration: .minimal)
+    }
+
+    public func refreshRunControlStatusData() async {
+        await awaitPendingRepositoryActivityIfNeeded()
+        guard !isShutDown, !Task.isCancelled else { return }
+        await loadRunnerConfiguration(retryConfiguration: .minimal)
+        guard !isShutDown, !Task.isCancelled else { return }
+        await refreshParallelStatusIfNeeded(retryConfiguration: .minimal)
     }
 
     public func refreshRepositoryState(
@@ -185,6 +198,8 @@ public final class Workspace: ObservableObject, Identifiable {
                 guard !isShutDown, !Task.isCancelled else { return }
             }
             await loadRunnerConfiguration(retryConfiguration: retryConfiguration)
+            guard !isShutDown, !Task.isCancelled else { return }
+            await refreshParallelStatusIfNeeded(retryConfiguration: retryConfiguration)
             return
         }
 
@@ -199,6 +214,23 @@ public final class Workspace: ObservableObject, Identifiable {
         }
 
         await loadRunnerConfiguration(retryConfiguration: retryConfiguration)
+        guard !isShutDown, !Task.isCancelled else { return }
+        await refreshParallelStatusIfNeeded(retryConfiguration: retryConfiguration)
+    }
+
+    func awaitPendingRepositoryActivityIfNeeded() async {
+        if let repositoryActivityTask {
+            await repositoryActivityTask.value
+        }
+    }
+
+    func refreshParallelStatusIfNeeded(retryConfiguration: RetryConfiguration) async {
+        guard !isShutDown, !Task.isCancelled else { return }
+        guard runState.currentRunnerConfig?.safety?.parallelConfigured == true || runState.hasMeaningfulParallelStatus else {
+            runState.clearParallelStatus()
+            return
+        }
+        await loadParallelStatus(retryConfiguration: retryConfiguration)
     }
 
     public func isTaskBlocked(_ task: RalphTask) -> Bool {
@@ -243,6 +275,7 @@ public final class Workspace: ObservableObject, Identifiable {
 
     func beginRepositoryRetarget(to url: URL) -> RepositoryContext {
         let standardizedURL = Self.normalizedWorkingDirectoryURL(url)
+        runState.clearParallelStatus()
         identityState.repositoryGeneration &+= 1
         identityState.retargetRevision &+= 1
         identityState.workingDirectoryURL = standardizedURL

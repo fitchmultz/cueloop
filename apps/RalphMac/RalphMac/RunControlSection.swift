@@ -65,7 +65,7 @@ struct RunControlDetailColumn: View {
         .background(.clear)
         .navigationTitle(navTitle("Run Control"))
         .task(id: workspace.identityState.workingDirectoryURL.path) {
-            await workspace.refreshRunControlData()
+            await workspace.refreshRunControlStatusData()
         }
     }
 }

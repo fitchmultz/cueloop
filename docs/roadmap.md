@@ -6,65 +6,38 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Finish the remaining RalphMac shared parallel-status surface audit
+### 1. Refresh ship-gate timing baselines after RalphMac stabilization
 
 Why first:
-- Run Control now renders the shared contract, but the rest of the app should either reuse that same operator-state summary or intentionally stay silent.
-- Doing this before broader docs or performance work avoids another round of parallel-status wording churn.
+- Current profiling artifacts predate the latest Run Control and parallel-status cutover.
+- Timing decisions are only useful after app verification stops moving.
 
 Primary outcome:
-- RalphMac should have one deliberate answer for where shared parallel operator state appears outside Run Control.
+- Ship-gate tuning decisions cite fresh local timings and a short written summary.
 
 Detailed execution plan:
 
-#### 1.1 Audit recovery and diagnostics surfaces
-- Review `ErrorRecoveryView`, workspace diagnostics, and any operator-facing run summaries for overlapping parallel-state messaging.
-- Identify places that should consume the shared contract versus places that should defer to Run Control.
+#### 1.1 Refresh current baselines under `target/profiling/`
+- Re-run `make agent-ci`, doctests, targeted operator-path nextest suites, `macos-build`, `macos-test`, and `macos-test-contracts`.
+- Keep the workflow local and headless.
 
-#### 1.2 Reuse the shared model or remove duplicate wording
-- Where parallel status belongs, render the existing shared continuation/blocking summary.
-- Where it does not belong, remove ad hoc or duplicate parallel wording instead of inventing another app-local status model.
+#### 1.2 Split Rust and Xcode costs
+- Measure Rust and macOS surfaces independently.
+- Compare capped versus uncapped `RALPH_XCODE_JOBS` before proposing default changes.
 
-#### 1.3 Add only the minimum confirming coverage
-- Add focused app/state coverage for any retained surface.
-- Skip broad UI churn if the audit concludes Run Control is the sole canonical surface.
+#### 1.3 Change defaults only with evidence
+- Do not relax xcodebuild serialization or job caps unless refreshed timings and contract coverage show a safe win.
 
 Exit criteria for item 1:
-- Remaining operator-facing RalphMac surfaces have an explicit, consistent parallel-status policy.
-- No duplicate app-local parallel-state narration remains in touched surfaces.
-
-### 2. Capture real local timing baselines, then tune the ship gate only if the data justifies it
-
-Why second:
-- The profiling workflow is already documented; the missing step is collecting fresh baseline artifacts and using them to make decisions.
-- Gate tuning without current measurements would create churn without confidence.
-- Timing data is more useful after the immediate RalphMac follow-up noise is removed.
-
-Primary outcome:
-- Ship-gate tuning discussions should point to current local artifacts, not anecdotes.
-
-Detailed execution plan:
-
-#### 2.1 Record fresh baseline artifacts under `target/profiling/`
-- Capture current timings for `make agent-ci`, targeted operator-path nextest suites, doctests, `macos-build`, `macos-test`, and `macos-test-contracts`.
-- Keep the workflow headless and local-first.
-
-#### 2.2 Compare Rust and Xcode costs separately
-- Measure Rust/CLI and Xcode surfaces independently.
-- Compare capped versus uncapped `RALPH_XCODE_JOBS` before changing defaults.
-
-#### 2.3 Change concurrency or serialization only with evidence
-- Do not relax xcodebuild serialization or default job caps unless profiling plus contract coverage show the tradeoff is safe.
-
-Exit criteria for item 2:
-- Timing artifacts exist for the gates that drive iteration speed.
-- Any proposed ship-gate tuning is backed by fresh local data.
+- Fresh artifacts replace stale timing baselines.
+- Any tuning proposal names the measured win and its guardrail.
 
 ## Sequencing rules
 
 - Keep completed roadmap items out of this file; replace them with the next active work only.
-- Prefer low-churn shared-runtime and app-contract cleanup before broader prompt, doc, or suite churn.
-- Keep RalphMac parallel-status follow-up work anchored to the shared `machine run parallel-status` contract; do not fork app-local status logic.
+- Keep shared `machine run parallel-status` decoding and version checks in RalphCore; keep Run Control presentation-only.
+- Keep Run Control's initial `.task` refresh on the status-only path; use full refresh only when queue or task data must change.
+- Refresh ship-gate timings only after RalphMac verification stops moving.
 - Prefer current measurement artifacts over anecdotal gate-tuning claims.
 - Preserve the hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, fsutil, eta_calculator, undo, and contracts/task) while refactoring adjacent modules.
 - Do not reopen completed serial recovery alignment, queue-lock recovery alignment, macOS test-defaults isolation, macOS Settings/workspace-routing cutovers, or git/init/app split work unless a new regression appears.

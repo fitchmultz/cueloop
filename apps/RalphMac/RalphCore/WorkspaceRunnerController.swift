@@ -24,6 +24,7 @@ import Foundation
 @MainActor
 final class WorkspaceRunnerController {
     nonisolated static let supportedMachineConfigResolveVersion = 3
+    nonisolated static let supportedMachineParallelStatusVersion = 2
 
     weak var workspace: Workspace?
     var activeRun: RalphCLIRun?
@@ -58,6 +59,46 @@ final class WorkspaceRunnerController {
         runState.currentRunnerConfig = nil
         runState.resumeState = nil
         runState.setBlockingState(nil)
+    }
+
+    func loadParallelStatus(retryConfiguration: RetryConfiguration = .minimal) async {
+        guard let workspace, !workspace.isShutDown else { return }
+        await workspace.performRepositoryLoad(
+            operation: "loadParallelStatus",
+            retryConfiguration: retryConfiguration,
+            setLoading: { [runState = workspace.runState] in runState.parallelStatusLoading = $0 },
+            clearFailure: { [runState = workspace.runState] in
+                runState.parallelStatusErrorMessage = nil
+            },
+            handleMissingClient: { [runState = workspace.runState] in
+                runState.clearParallelStatus()
+                runState.parallelStatusErrorMessage = "CLI client not available."
+            },
+            load: { client, workingDirectoryURL, retryConfiguration, onRetry in
+                let document = try await workspace.decodeMachineRepositoryJSON(
+                    MachineParallelStatusDocument.self,
+                    client: client,
+                    machineArguments: ["run", "parallel-status"],
+                    currentDirectoryURL: workingDirectoryURL,
+                    retryConfiguration: retryConfiguration,
+                    onRetry: onRetry
+                )
+                try Self.validateMachineParallelStatusVersion(document.version)
+                return document
+            },
+            apply: { [runState = workspace.runState] decoded in
+                runState.parallelStatus = decoded.asWorkspaceParallelStatus()
+                runState.parallelStatusErrorMessage = nil
+            },
+            handleFailure: { [runState = workspace.runState] recoveryError in
+                runState.clearParallelStatus()
+                runState.parallelStatusErrorMessage = "Failed to load shared parallel status."
+                RalphLogger.shared.error(
+                    "Failed to load shared parallel status: \(recoveryError.fullErrorDetails)",
+                    category: .workspace
+                )
+            }
+        )
     }
 
     func loadRunnerConfiguration(retryConfiguration: RetryConfiguration = .minimal) async {
@@ -222,6 +263,19 @@ final class WorkspaceRunnerController {
 
         if activeRun == nil {
             cancelPendingRunTask()
+        }
+    }
+
+    nonisolated static func validateMachineParallelStatusVersion(_ version: Int) throws {
+        guard version == supportedMachineParallelStatusVersion else {
+            throw NSError(
+                domain: "RalphMachineContract",
+                code: 3,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Unsupported machine parallel status version \(version). RalphMac requires version \(supportedMachineParallelStatusVersion)."
+                ]
+            )
         }
     }
 }

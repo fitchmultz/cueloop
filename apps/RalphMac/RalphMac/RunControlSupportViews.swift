@@ -96,6 +96,62 @@ struct RunControlConfigRow: View {
 }
 
 @MainActor
+struct RunControlStatusText: View {
+    let title: String
+    let detail: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+            if !detail.isEmpty {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+@MainActor
+struct RunControlTintedStatusCard<Content: View>: View {
+    let icon: String
+    let tint: Color
+    @ViewBuilder let content: Content
+
+    init(icon: String, tint: Color, @ViewBuilder content: () -> Content) {
+        self.icon = icon
+        self.tint = tint
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+                .font(.headline)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 6) {
+                content
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(tint.opacity(0.09))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(tint.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
+
+@MainActor
 struct RunControlExecutionHistoryRow: View {
     let record: Workspace.ExecutionRecord
 

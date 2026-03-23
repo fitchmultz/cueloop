@@ -36,6 +36,9 @@ public final class WorkspaceRunState: ObservableObject {
     @Published public var currentRunnerConfig: Workspace.RunnerConfig?
     @Published public var runnerConfigLoading = false
     @Published public var runnerConfigErrorMessage: String?
+    @Published public var parallelStatus: Workspace.ParallelStatus?
+    @Published public var parallelStatusLoading = false
+    @Published public var parallelStatusErrorMessage: String?
     @Published public var runControlSelectedTaskID: String?
     @Published public var runControlForceDirtyRepo = false
     @Published public var resumeState: Workspace.ResumeState?
@@ -51,6 +54,34 @@ public final class WorkspaceRunState: ObservableObject {
     }
 
     let streamProcessor = WorkspaceStreamProcessor()
+
+    var hasMeaningfulParallelStatus: Bool {
+        parallelStatus?.isMeaningful == true
+    }
+
+    public var shouldShowRunControlParallelStatus: Bool {
+        parallelStatusLoading
+            || parallelStatusErrorMessage != nil
+            || currentRunnerConfig?.safety?.parallelConfigured == true
+            || hasMeaningfulParallelStatus
+    }
+
+    public var runControlDisplayBlockingState: Workspace.BlockingState? {
+        guard let blockingState else {
+            return nil
+        }
+        if parallelStatus?.blocking == blockingState {
+            return nil
+        }
+        guard case let .runnerRecovery(scope, reason, taskID) = blockingState.reason,
+              let resumeState,
+              resumeState.scope == scope,
+              resumeState.reason == reason,
+              resumeState.taskID == taskID else {
+            return blockingState
+        }
+        return nil
+    }
 
     public init(outputBuffer: ConsoleOutputBuffer) {
         self.outputBuffer = outputBuffer
@@ -80,9 +111,27 @@ public final class WorkspaceRunState: ObservableObject {
     func setBlockingState(_ state: Workspace.BlockingState?) {
         blockingState = state
     }
+
+    func clearParallelStatus() {
+        parallelStatus = nil
+        parallelStatusLoading = false
+        parallelStatusErrorMessage = nil
+    }
 }
 
 public extension Workspace {
+    struct ParallelStatus: Sendable, Equatable {
+        public let headline: String
+        public let detail: String
+        public let blocking: BlockingState?
+        public let nextSteps: [ParallelStatusStep]
+        public let snapshot: ParallelStatusSnapshot
+
+        public var isMeaningful: Bool {
+            blocking != nil || !snapshot.workers.isEmpty
+        }
+    }
+
     enum BlockingStatus: String, Codable, Sendable {
         case waiting
         case blocked
@@ -275,6 +324,10 @@ public extension Workspace {
 public extension Workspace {
     func loadRunnerConfiguration(retryConfiguration: RetryConfiguration = .minimal) async {
         await runnerController.loadRunnerConfiguration(retryConfiguration: retryConfiguration)
+    }
+
+    func loadParallelStatus(retryConfiguration: RetryConfiguration = .minimal) async {
+        await runnerController.loadParallelStatus(retryConfiguration: retryConfiguration)
     }
 
     func run(arguments: [String], preservingConsole: Bool = false) {
