@@ -51,7 +51,30 @@ release_sync_github_release_state() {
 }
 
 release_crate_is_published() {
-    cargo info --quiet "${CRATE_PACKAGE_NAME}@${VERSION}" >/dev/null 2>&1
+    local probe_dir
+    local base_tmp
+    base_tmp="${TMPDIR:-/tmp}"
+    base_tmp="${base_tmp%/}"
+    probe_dir=$(mktemp -d "${base_tmp}/ralph-crate-probe.XXXXXX")
+
+    if (
+        cd "$probe_dir"
+        cargo info --quiet "${CRATE_PACKAGE_NAME}@${VERSION}" >/dev/null 2>&1
+    ); then
+        rm -rf "$probe_dir"
+        return 0
+    fi
+
+    rm -rf "$probe_dir"
+    return 1
+}
+
+release_sync_crate_publication_state() {
+    if release_crate_is_published; then
+        CRATE_PUBLISHED=1
+    else
+        CRATE_PUBLISHED=0
+    fi
 }
 
 release_upload_github_release_artifacts() {
@@ -179,13 +202,8 @@ release_create_or_update_github_release_draft() {
 }
 
 release_publish_crate() {
+    release_sync_crate_publication_state
     if [ "$CRATE_PUBLISHED" = "1" ]; then
-        ralph_log_info "crates.io publication already recorded for v$VERSION"
-        return 0
-    fi
-
-    if release_crate_is_published; then
-        CRATE_PUBLISHED=1
         RELEASE_STATUS="crate_published"
         release_state_write
         ralph_log_info "$CRATE_PACKAGE_NAME v$VERSION already exists on crates.io"
