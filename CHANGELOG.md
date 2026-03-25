@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Release automation now treats missing GitHub releases as `missing` without leaking JSON parser tracebacks during draft/publish state probing.
+
 ## [0.3.0] - 2026-03-24
 
 ### Added

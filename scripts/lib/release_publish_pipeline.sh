@@ -19,23 +19,20 @@ fi
 RALPH_RELEASE_PUBLISH_PIPELINE_SOURCED=1
 
 release_query_github_release_state() {
-    local state
-    state=$(
-        gh release view "v$VERSION" --json isDraft 2>/dev/null | python3 -c '
-import json
-import sys
+    local draft_state
+    draft_state=$(gh release view "v$VERSION" --json isDraft --jq '.isDraft' 2>/dev/null | tr -d '[:space:]' || true)
 
-payload = json.load(sys.stdin)
-print("draft" if payload.get("isDraft") else "published")
-' || true
-    )
-
-    if [ -z "$state" ]; then
-        echo "missing"
-        return 0
-    fi
-
-    echo "$state"
+    case "$draft_state" in
+        true)
+            echo "draft"
+            ;;
+        false)
+            echo "published"
+            ;;
+        *)
+            echo "missing"
+            ;;
+    esac
 }
 
 release_sync_github_release_state() {
