@@ -223,6 +223,8 @@ release_publish_crate() {
 
 release_publish_github_release() {
     if [ "$GITHUB_RELEASE_PUBLISHED" = "1" ]; then
+        RELEASE_STATUS="completed"
+        release_state_write
         ralph_log_info "GitHub release already finalized for v$VERSION"
         return 0
     fi

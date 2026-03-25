@@ -318,3 +318,69 @@ fn release_publish_crate_rechecks_remote_state_before_skipping() {
         "expected persisted crate-published state\n{state_contents}"
     );
 }
+
+#[test]
+fn release_publish_github_release_restores_completed_status_when_already_public() {
+    let temp_dir = TempDir::new().expect("create temp dir");
+    let repo_root = repo_root();
+    let scripts_dir = repo_root.join("scripts");
+    let release_state_path = repo_root.join("scripts/lib/release_state.sh");
+    let release_publish_path = repo_root.join("scripts/lib/release_publish_pipeline.sh");
+    let shell_path = repo_root.join("scripts/lib/ralph-shell.sh");
+    let scratch_dir = temp_dir.path().join("scratch");
+    fs::create_dir(&scratch_dir).expect("create scratch dir");
+    let state_file = scratch_dir.join("state.env");
+    let release_notes = scratch_dir.join("notes.md");
+    fs::write(&release_notes, "notes\n").expect("write release notes");
+
+    let command = format!(
+        "SCRIPT_DIR='{scripts_dir}' \
+         source '{shell_path}' && \
+         source '{release_state_path}' && \
+         source '{release_publish_path}' && \
+         VERSION=0.3.0 && \
+         REPO_ROOT='{repo_root}' && \
+         TRANSACTION_DIR='{transaction_dir}' && \
+         STATE_FILE='{state_file}' && \
+         RELEASE_NOTES_FILE='{release_notes}' && \
+         STARTED_AT=2026-03-25T00:00:00Z && \
+         RELEASE_STATUS=crate_published && \
+         GITHUB_RELEASE_PUBLISHED=1 && \
+         release_publish_github_release && \
+         printf 'status=%s github=%s\n' \"$RELEASE_STATUS\" \"$GITHUB_RELEASE_PUBLISHED\"",
+        scripts_dir = scripts_dir.display(),
+        shell_path = shell_path.display(),
+        release_state_path = release_state_path.display(),
+        release_publish_path = release_publish_path.display(),
+        repo_root = repo_root.display(),
+        transaction_dir = scratch_dir.display(),
+        state_file = state_file.display(),
+        release_notes = release_notes.display(),
+    );
+
+    let output = Command::new("bash")
+        .arg("-c")
+        .arg(command)
+        .output()
+        .expect("run release_publish_github_release");
+
+    assert!(
+        output.status.success(),
+        "release_publish_github_release should normalize completed state\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("status=completed github=1"),
+        "expected completed status when GitHub release is already public\nstdout:\n{stdout}"
+    );
+
+    let state_contents = fs::read_to_string(&state_file).expect("read release state file");
+    assert!(
+        state_contents.contains("RELEASE_STATUS=completed")
+            && state_contents.contains("GITHUB_RELEASE_PUBLISHED=1"),
+        "expected persisted completed state\n{state_contents}"
+    );
+}
