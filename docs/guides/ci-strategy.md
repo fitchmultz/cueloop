@@ -6,7 +6,7 @@ Purpose: document which checks are required vs optional, and how Ralph controls 
 
 - Keep default contributor checks fast and deterministic.
 - Keep heavy/interactive checks opt-in and clearly labeled.
-- Bound parallelism by default so local checks do not monopolize developer machines.
+- Keep shared-workstation resource caps explicit and opt-in.
 
 ## Required for Day-to-Day Development (PR-equivalent)
 
@@ -128,32 +128,26 @@ Defaults:
 
 ## Headless Profiling Loop
 
-When CI speed regresses, capture evidence under one timestamped directory so timings, summary notes, and per-suite JSONL stay together:
+When CI speed regresses, use the supported profiling entrypoint:
 
 ```bash
-STAMP="$(date +%Y%m%d-%H%M%S)"
-PROFILE_DIR="target/profiling/${STAMP}-ship-gate"
-mkdir -p "$PROFILE_DIR"
-
-time make agent-ci
-cargo test --workspace --doc --locked -- --include-ignored
-NEXTEST_EXPERIMENTAL_LIBTEST_JSON=1 \
-cargo nextest run --workspace --locked --test run_parallel_test \
-  --show-progress none \
-  --status-level none \
-  --final-status-level none \
-  --message-format libtest-json-plus \
-  > "$PROFILE_DIR/nextest.run_parallel_test.jsonl"
-NEXTEST_EXPERIMENTAL_LIBTEST_JSON=1 \
-cargo nextest run --workspace --locked --test parallel_direct_push_test \
-  --show-progress none \
-  --status-level none \
-  --final-status-level none \
-  --message-format libtest-json-plus \
-  > "$PROFILE_DIR/nextest.parallel_direct_push_test.jsonl"
+make profile-ship-gate
 ```
 
-Add a short `summary.md` and `timings.tsv` beside those JSONL files for the final comparison. Prefer headless paths first; interactive UI automation remains opt-in and out of the default gate.
+This writes one timestamped bundle under `target/profiling/<timestamp>-ship-gate/` with:
+
+- `timings.tsv`
+- `summary.md`
+- `nextest.run_parallel_test.jsonl`
+- `nextest.parallel_direct_push_test.jsonl`
+
+Timestamped bundles are retained until explicit cleanup:
+
+```bash
+make profile-ship-gate-clean
+```
+
+Prefer headless paths first; interactive UI automation remains opt-in and out of the default gate.
 
 Optimization rules for Rust integration tests:
 - Hold `env_lock()` only when mutating `PATH` or other process-global env vars.

@@ -331,6 +331,54 @@ fn test_macos_ui_artifact_target_preserves_result_bundle_and_summary() -> Result
 }
 
 #[test]
+fn test_profile_ship_gate_targets_define_canonical_bundle_and_cleanup() -> Result<()> {
+    let makefile = read_repo_makefile()?;
+    let profile_block = extract_target_block(&makefile, "profile-ship-gate")
+        .context("extract profile-ship-gate block")?;
+    let clean_block = extract_target_block(&makefile, "profile-ship-gate-clean")
+        .context("extract profile-ship-gate-clean block")?;
+
+    assert!(
+        makefile.contains("make profile-ship-gate # Capture canonical local ship-gate profiling bundle (requires Xcode)"),
+        "Makefile help should advertise the profiling entrypoint"
+    );
+    assert!(
+        makefile.contains("make profile-ship-gate-clean # Remove ship-gate profiling bundles"),
+        "Makefile help should advertise the profiling cleanup entrypoint"
+    );
+    assert!(
+        profile_block.contains("profile_dir=\"target/profiling/$$timestamp-ship-gate\""),
+        "profile-ship-gate should write timestamped profiling bundles under target/profiling"
+    );
+    assert!(
+        profile_block.contains("timings_path=\"$$profile_dir/timings.tsv\""),
+        "profile-ship-gate should capture timings.tsv"
+    );
+    assert!(
+        profile_block.contains("summary_path=\"$$profile_dir/summary.md\""),
+        "profile-ship-gate should capture summary.md"
+    );
+    assert!(
+        profile_block.contains("nextest.run_parallel_test.jsonl"),
+        "profile-ship-gate should capture the run_parallel_test JSONL profile"
+    );
+    assert!(
+        profile_block.contains("nextest.parallel_direct_push_test.jsonl"),
+        "profile-ship-gate should capture the parallel_direct_push_test JSONL profile"
+    );
+    assert!(
+        profile_block.contains("make profile-ship-gate-clean"),
+        "profile-ship-gate should narrate the explicit cleanup path"
+    );
+    assert!(
+        clean_block.contains("rm -rf target/profiling"),
+        "profile-ship-gate-clean should only remove profiling artifacts"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn test_agent_ci_routes_between_docs_ci_fast_and_macos_ci() -> Result<()> {
     let makefile = read_repo_makefile()?;
     let agent_ci_block =

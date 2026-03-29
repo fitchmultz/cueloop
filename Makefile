@@ -63,7 +63,7 @@ MAKEFLAGS += --no-builtin-rules
 
 .PHONY: help install macos-install-app update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast ci-docs deps \
 	changelog changelog-preview changelog-check version-check version-sync publish-check release release-dry-run release-verify release-artifacts pre-commit pre-public-check release-gate \
-	agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
+	profile-ship-gate profile-ship-gate-clean agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
 	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean FORCE
 help:
@@ -85,6 +85,8 @@ help:
 	@echo "  make macos-ui-retest         # Re-run UI tests without rebuilding bundles"
 	@echo "  make macos-test-ui-artifacts # Run UI suite with xcresult capture + summary"
 	@echo "  make macos-ui-artifacts-clean # Remove captured UI visual artifacts"
+	@echo "  make profile-ship-gate # Capture canonical local ship-gate profiling bundle (requires Xcode)"
+	@echo "  make profile-ship-gate-clean # Remove ship-gate profiling bundles"
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
 	@echo "  make update       # Update Rust deps to latest stable; use macos-ci to verify the bundled Swift app toolchain"
@@ -356,6 +358,69 @@ release-gate:
 		echo "  → Running Rust release gate"; \
 		$(MAKE) --no-print-directory ci; \
 	fi
+
+profile-ship-gate: macos-preflight
+	@timestamp="$$(date +%Y%m%d-%H%M%S)"; \
+	profile_dir="target/profiling/$$timestamp-ship-gate"; \
+	timings_path="$$profile_dir/timings.tsv"; \
+	summary_path="$$profile_dir/summary.md"; \
+	mkdir -p "$$profile_dir"; \
+	printf 'label\tseconds\tstatus\n' > "$$timings_path"; \
+	run_timed_shell() { \
+		label="$$1"; \
+		command="$$2"; \
+		start="$$(date +%s)"; \
+		set +e; \
+		bash -c "$$command"; \
+		status="$$?"; \
+		set -e; \
+		end="$$(date +%s)"; \
+		duration="$$((end - start))"; \
+		printf '%s\t%s\t%s\n' "$$label" "$$duration" "$$status" >> "$$timings_path"; \
+		return "$$status"; \
+	}; \
+	write_summary() { \
+		{ \
+			echo '# Ship-gate profiling baseline'; \
+			echo; \
+			echo "- date: $$(date -u +%Y-%m-%dT%H:%M:%SZ)"; \
+			echo "- profile_dir: $$profile_dir"; \
+			echo '- retention: timestamped bundles are retained until explicit cleanup'; \
+			echo '- cleanup: make profile-ship-gate-clean'; \
+			echo; \
+			echo '## Environment'; \
+			echo; \
+			echo "- uname: $$(uname -a)"; \
+			echo "- xcodebuild: $$(xcodebuild -version | tr '\n' ' ' | sed 's/  */ /g')"; \
+			echo "- RALPH_CI_JOBS: $(RALPH_CI_JOBS)"; \
+			echo "- RALPH_XCODE_JOBS: $(RALPH_XCODE_JOBS)"; \
+			echo; \
+			echo '## Timings'; \
+			echo; \
+			awk 'NR == 1 { next } { printf "- %s: %ss (exit %s)\n", $$1, $$2, $$3 }' "$$timings_path"; \
+			echo; \
+			echo '## Slowest surfaces'; \
+			echo; \
+			tail -n +2 "$$timings_path" | sort -k2,2nr | head -3 | awk '{ printf "- %s: %ss\n", $$1, $$2 }'; \
+		} > "$$summary_path"; \
+	}; \
+	echo "→ Capturing ship-gate profiling bundle under $$profile_dir..."; \
+	run_timed_shell make_agent_ci "$(MAKE) --no-print-directory agent-ci" || { write_summary; exit 1; }; \
+	run_timed_shell cargo_doctests "$(RALPH_ENV_RESET); cargo test --workspace --doc --locked $(CARGO_JOBS_FLAG) -- --include-ignored" || { write_summary; exit 1; }; \
+	run_timed_shell nextest_run_parallel_test "$(RALPH_ENV_RESET); NEXTEST_EXPERIMENTAL_LIBTEST_JSON=1 cargo nextest run --workspace --locked --test run_parallel_test --show-progress none --status-level none --final-status-level none --message-format libtest-json-plus > '$$profile_dir/nextest.run_parallel_test.jsonl'" || { write_summary; exit 1; }; \
+	run_timed_shell nextest_parallel_direct_push_test "$(RALPH_ENV_RESET); NEXTEST_EXPERIMENTAL_LIBTEST_JSON=1 cargo nextest run --workspace --locked --test parallel_direct_push_test --show-progress none --status-level none --final-status-level none --message-format libtest-json-plus > '$$profile_dir/nextest.parallel_direct_push_test.jsonl'" || { write_summary; exit 1; }; \
+	run_timed_shell macos_build "$(MAKE) --no-print-directory macos-build" || { write_summary; exit 1; }; \
+	run_timed_shell macos_test "$(MAKE) --no-print-directory macos-test" || { write_summary; exit 1; }; \
+	run_timed_shell macos_test_contracts "$(MAKE) --no-print-directory macos-test-contracts" || { write_summary; exit 1; }; \
+	write_summary; \
+	echo "  ✓ Profiling bundle: $$profile_dir"; \
+	echo "  ✓ Summary: $$summary_path"; \
+	echo "  ℹ Retained until: make profile-ship-gate-clean"
+
+profile-ship-gate-clean:
+	@echo "→ Removing ship-gate profiling bundles..."
+	@rm -rf target/profiling
+	@echo "  ✓ Ship-gate profiling bundles removed"
 
 # Agent CI compromise: route to the smallest valid gate and escalate only when the dependency surface demands it.
 # Set RALPH_AGENT_CI_FORCE_MACOS=1 to force the macOS app gate.
