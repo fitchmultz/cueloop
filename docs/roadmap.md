@@ -6,41 +6,24 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Finish collapsing macOS operator guidance onto one canonical doc path
+### 1. Thin the profiling implementation behind the Makefile entrypoints
 
 Why next:
-- `Makefile` help, `docs/index.md`, `docs/features/app.md`, `docs/troubleshooting.md`, and `docs/guides/ci-strategy.md` still overlap on macOS validation, profiling, and UI-evidence guidance.
-- The profiling semantics are now stable enough that the remaining work is doc-surface cleanup only.
-
-Primary outcome:
-- The macOS CI/profile/UI-artifact workflow has one primary home, with short pointers elsewhere.
-
-Implementation steps:
-- Choose the canonical operator doc for macOS validation, profiling, and UI evidence capture.
-- Trim secondary surfaces to one-line pointers or short examples only.
-- Remove wording that duplicates the shipped profiling and cleanup contract.
-
-Exit criteria:
-- The same macOS workflow is no longer described in multiple places with different levels of detail.
-- Secondary docs stay short and non-conflicting.
-
-### 2. Thin the profiling implementation behind the Makefile entrypoints
-
-Why second:
 - `profile-ship-gate` is still one of the densest shell blocks in the `Makefile`.
-- With the profiling semantics fixed, the remaining churn is now pure maintainability cleanup.
+- The current Makefile contract test still asserts profiling internals that will fight a clean helper extraction.
 
 Primary outcome:
-- The Makefile keeps thin profiling entrypoints while the orchestration lives in one focused helper.
+- The Makefile keeps thin profiling entrypoints while one focused helper owns orchestration, and tests assert the public contract instead of inline shell details.
 
 Implementation steps:
 - Move profiling orchestration into one dedicated helper while keeping `make profile-ship-gate` and `make profile-ship-gate-clean` as the operator-facing entrypoints.
 - Preserve the artifact layout and exit behavior unless there is a strong reason to change them.
-- Keep test coverage focused on the public entrypoints and artifact contract, not duplicated implementation details.
+- Trim profiling contract coverage so it checks entrypoints, artifact paths, and cleanup behavior rather than helper implementation details.
 
 Exit criteria:
 - The Makefile profiling targets are thin wrappers.
 - Profiling behavior stays unchanged from the operator’s point of view.
+- Contract tests no longer pin inline Makefile shell implementation.
 
 ## Sequencing rules
 

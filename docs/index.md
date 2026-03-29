@@ -65,15 +65,13 @@ Use these when you want to validate a clone, understand the operational model, o
 
 > GNU Make >= 4 is required for project targets. On macOS, install with `brew install make` and use `gmake` unless your PATH already exposes GNU Make as `make`.
 
-Before merging documentation or code changes:
+Use [`docs/guides/ci-strategy.md`](guides/ci-strategy.md) as the canonical validation guide.
+
+Routine branch gate:
 
 ```bash
-make ci-fast
 make agent-ci
-# Optional shared-workstation cap: RALPH_CI_JOBS=4 make agent-ci
 ```
-
-`make agent-ci` routes docs/community-only work to `ci-docs`, non-app executable changes to `ci-fast`, and app/CLI/build/runtime surfaces to `macos-ci`.
 
 Full Rust release gate:
 
@@ -81,10 +79,8 @@ Full Rust release gate:
 make ci
 ```
 
-Ship gate (when macOS app changes are in scope):
+macOS ship gate:
 
 ```bash
 make macos-ci
-# Includes deterministic noninteractive Settings + workspace-routing contract coverage in addition to the app build/tests.
-# Optional caps: RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make macos-ci
 ```

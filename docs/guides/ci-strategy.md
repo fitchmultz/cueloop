@@ -1,6 +1,6 @@
 # CI and Test Strategy
 
-Purpose: document which checks are required vs optional, and how Ralph controls runtime/resource usage during validation.
+Purpose: canonical operator guide for local validation gates, profiling, and macOS UI evidence capture.
 
 ## Principles
 

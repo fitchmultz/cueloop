@@ -148,7 +148,5 @@ Local-CI-first workflow:
 
 ## Operational Expectations
 
-- Use `make agent-ci` for routine PR-equivalent checks
-- Use `make ci` for full Rust release gate
-- Use `make macos-ci` when app changes are in scope
-- Use `make pre-public-check` before public release windows
+- Validation gate definitions and macOS-specific verification behavior live in [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
+- Use `make pre-public-check` before public release windows.

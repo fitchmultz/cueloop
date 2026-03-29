@@ -68,14 +68,10 @@ If macOS prompts for password/Touch ID before a UI run, that is the system appro
 
 If an interrupted run strands `target/tmp/locks/xcodebuild.lock`, rerun the same target. Ralph now removes stale project-owned Xcode build locks automatically once the recorded owner PID is gone, and it keeps waiting only for live holders.
 
-If running on shared workstation, cap parallelism:
-
-```bash
-RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make macos-ci
-```
+For gate choice, shared-workstation caps, and preserved UI evidence capture, use [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
 
 ## Need Visual Evidence from UI Tests
 
 Symptom: UI run appears noisy/flaky but tests still pass, and you need inspectable visuals.
 
-Use `make macos-test-ui-artifacts` for preserved `.xcresult` output, and use `RALPH_UI_ONLY_TESTING=... make macos-ui-retest` for focused reruns. Keep the full artifact workflow in `docs/guides/ci-strategy.md`.
+Use `make macos-test-ui-artifacts` for preserved `.xcresult` output, or use `RALPH_UI_ONLY_TESTING=... make macos-ui-retest` for focused reruns. Keep the full workflow in [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).

@@ -31,6 +31,8 @@ ralph doctor
 make agent-ci
 ```
 
+For gate selection, macOS escalation, and resource-cap guidance, use [ci-strategy.md](ci-strategy.md).
+
 If you want a shorter reviewer-oriented version of this flow, use [evaluator-path.md](evaluator-path.md).
 
 ## Expected Results
@@ -38,7 +40,7 @@ If you want a shorter reviewer-oriented version of this flow, use [evaluator-pat
 - help commands succeed
 - queue validation/list commands succeed
 - `ralph doctor` completes without critical failures in repo root
-- `make agent-ci` passes (Rust/CLI gate; macOS app gate auto-runs when the dependency surface can affect the app bundle)
+- `make agent-ci` passes
 
 ## Troubleshooting
 

@@ -108,9 +108,7 @@ Practical implications:
 
 ## Automated UI Testing
 
-UI automation exists and is intentionally separated from the default macOS CI path because UI tests are headed and can take over mouse/keyboard.
-The Makefile clears quarantine metadata and re-signs UI test bundles ad-hoc to avoid macOS Gatekeeper flagging `RalphMacUITests-Runner.app` as damaged.
-Because macOS may require a one-time password/Touch ID approval when a rebuilt bundle first requests UI automation, the local workflow is split into build-once and retest-only targets.
+UI tests are headed and stay out of the default macOS CI path. Use [`docs/guides/ci-strategy.md`](../guides/ci-strategy.md) for validation cadence, shared-workstation caps, preserved `.xcresult` capture, and profiling.
 
 Build/sign UI bundles once for an interactive debugging session:
 
@@ -139,8 +137,6 @@ Run the focused window/tab shortcut regression suite:
 make macos-test-window-shortcuts
 ```
 
-For shared-workstation caps and preserved `.xcresult` capture with `make macos-test-ui-artifacts`, use `docs/guides/ci-strategy.md`.
-
 Test sources live in `apps/RalphMac/RalphMacUITests/`.
 
 ## Troubleshooting
@@ -164,4 +160,4 @@ Test sources live in `apps/RalphMac/RalphMacUITests/`.
 ## Notes
 
 - For complete command coverage and automation, use the CLI reference: `docs/cli.md`.
-- For release-quality verification, run `make macos-ci` when app changes are in scope; it now includes deterministic noninteractive Settings + workspace-routing contract coverage alongside the standard app build/tests.
+- For release-quality app validation, use [`docs/guides/ci-strategy.md`](../guides/ci-strategy.md).

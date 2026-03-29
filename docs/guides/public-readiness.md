@@ -50,8 +50,9 @@ scripts/pre-public-check.sh --skip-ci --release-context
 3. `make release-verify VERSION=<x.y.z>`
 4. `make release VERSION=<x.y.z>`
 
+For validation gate definitions and macOS-specific verification behavior, use [ci-strategy.md](ci-strategy.md).
+
 ## Notes
 
-- `agent-ci` now routes by dependency surface, not just `apps/RalphMac/` path prefixes.
 - `make release-verify` is the canonical preflight for real releases and now prepares the exact local snapshot that `make release` publishes.
 - Public-readiness scans the repo working tree, excluding explicit local/runtime/build directories only; do not rely on a short doc allowlist anymore.
