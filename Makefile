@@ -68,7 +68,7 @@ MAKEFLAGS += --no-builtin-rules
 	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean FORCE
 help:
 	@echo "Common targets:"
-	@echo "  make ci-docs     # Docs/community-only safety gate used by make agent-ci"
+	@echo "  make ci-docs     # Docs/community-only gate with markdown link checks"
 	@echo "  make ci-fast     # Fast deterministic Rust/CLI gate for day-to-day development"
 	@echo "  make ci          # Full Rust release gate (ci-fast + build/generate/install)"
 	@echo "  make agent-ci    # Agent gate: dependency-surface routing between ci-docs, ci-fast, and macos-ci"
@@ -335,6 +335,7 @@ pre-commit: check-env-safety check-backup-artifacts format-check
 # Docs/community-only safety gate when no executable surface changed.
 ci-docs: check-env-safety check-backup-artifacts
 	@echo "→ Docs-only CI gate (no executable surface changed)..."
+	@./scripts/pre-public-check.sh --skip-ci --skip-clean --skip-secrets
 	@echo ""
 	@echo "  ✓ Docs-only CI completed"
 

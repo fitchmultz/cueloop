@@ -2,6 +2,7 @@
 **/*.env.*
 !.env.example
 .venv/
+.pi/
 **/__pycache__/
 **/.ruff_cache/
 **/.pytest_cache/

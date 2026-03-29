@@ -26,6 +26,7 @@ Docs/community-only gate is `make ci-docs`:
 
 - `check-env-safety` (delegates to pre-public safety checks: required-files + secret/runtime/env validation)
 - `check-backup-artifacts`
+- repo-wide markdown link scan
 
 Fast Rust/CLI gate is `make ci-fast`:
 

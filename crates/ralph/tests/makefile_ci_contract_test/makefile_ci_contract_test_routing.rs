@@ -387,6 +387,25 @@ fn test_profile_ship_gate_targets_define_canonical_bundle_and_cleanup() -> Resul
 }
 
 #[test]
+fn test_ci_docs_runs_markdown_link_scan() -> Result<()> {
+    let makefile = read_repo_makefile()?;
+    let ci_docs_block =
+        extract_target_block(&makefile, "ci-docs").context("extract ci-docs block")?;
+
+    assert!(
+        makefile.contains("make ci-docs     # Docs/community-only gate with markdown link checks"),
+        "Makefile help should advertise the markdown-link behavior of ci-docs"
+    );
+    assert!(
+        ci_docs_block
+            .contains("./scripts/pre-public-check.sh --skip-ci --skip-clean --skip-secrets"),
+        "ci-docs should run the existing markdown link scan path"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn test_agent_ci_routes_between_docs_ci_fast_and_macos_ci() -> Result<()> {
     let makefile = read_repo_makefile()?;
     let agent_ci_block =
