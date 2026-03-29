@@ -28,4 +28,5 @@ mod tests;
 pub use ci_gate::apply_ci_gate_rewrite;
 pub use detect::{config_has_key, get_config_value};
 pub use keys::{apply_key_remove, apply_key_rename};
+pub(crate) use keys::{remove_key_in_file, rename_key_in_file};
 pub use legacy::{apply_legacy_contract_upgrade, config_needs_legacy_contract_upgrade};

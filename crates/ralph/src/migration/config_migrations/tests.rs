@@ -138,6 +138,13 @@ fn rename_key_in_text_handles_whitespace() {
 }
 
 #[test]
+fn rename_key_in_text_escapes_single_quoted_replacement() {
+    let raw = "{ 'old_key': 1 }";
+    let result = rename_key_in_text(raw, "old_key", "new'key").unwrap();
+    assert_eq!(result, "{ 'new\\'key': 1 }");
+}
+
+#[test]
 fn rename_key_in_file_uses_leaf_of_dot_path_keys() {
     let dir = TempDir::new().unwrap();
     let config_path = dir.path().join("config.json");
@@ -155,6 +162,54 @@ fn rename_key_in_file_uses_leaf_of_dot_path_keys() {
     assert!(content.contains("\"workspace_root\""));
     assert!(!content.contains("\"worktree_root\""));
     assert!(!content.contains("\"parallel.workspace_root\""));
+}
+
+#[test]
+fn rename_key_in_file_rejects_parent_path_changes() {
+    let dir = TempDir::new().unwrap();
+    let config_path = dir.path().join("config.json");
+
+    fs::write(&config_path, r#"{"parallel":{"worktree_root":"x"}}"#).unwrap();
+
+    let err = rename_key_in_file(
+        &config_path,
+        "parallel.worktree_root",
+        "agent.workspace_root",
+    )
+    .unwrap_err();
+
+    assert!(err.to_string().contains("must keep the same parent path"));
+    let content = fs::read_to_string(&config_path).unwrap();
+    assert!(content.contains("\"worktree_root\""));
+    assert!(!content.contains("\"workspace_root\""));
+}
+
+#[test]
+fn rename_key_in_file_handles_bare_top_level_key_and_quotes_new_name() {
+    let dir = TempDir::new().unwrap();
+    let config_path = dir.path().join("config.json");
+
+    fs::write(&config_path, "{ old_key: 1 }").unwrap();
+
+    rename_key_in_file(&config_path, "old_key", "new-key").unwrap();
+
+    let content = fs::read_to_string(&config_path).unwrap();
+    assert!(content.contains("\"new-key\": 1"));
+    assert!(!content.contains("old_key"));
+}
+
+#[test]
+fn rename_key_in_file_preserves_single_quoted_top_level_key() {
+    let dir = TempDir::new().unwrap();
+    let config_path = dir.path().join("config.json");
+
+    fs::write(&config_path, "{ 'old_key': 1 }").unwrap();
+
+    rename_key_in_file(&config_path, "old_key", "new'key").unwrap();
+
+    let content = fs::read_to_string(&config_path).unwrap();
+    assert!(content.contains("'new\\'key': 1"));
+    assert!(!content.contains("old_key"));
 }
 
 #[test]
@@ -200,9 +255,9 @@ fn rename_key_scoped_with_comments() {
     fs::write(
         &config_path,
         r#"{
-                // Parallel execution settings
+                // Parallel execution settings { keep }
                 "parallel": {
-                    /* old setting name */
+                    /* old setting name { keep } */
                     "worktree_root": "/tmp/worktrees"
                 }
             }"#,
@@ -219,8 +274,73 @@ fn rename_key_scoped_with_comments() {
     let content = fs::read_to_string(&config_path).unwrap();
     assert!(content.contains("\"workspace_root\": \"/tmp/worktrees\""));
     assert!(!content.contains("\"worktree_root\""));
-    assert!(content.contains("// Parallel execution settings"));
-    assert!(content.contains("/* old setting name */"));
+    assert!(content.contains("// Parallel execution settings { keep }"));
+    assert!(content.contains("/* old setting name { keep } */"));
+}
+
+#[test]
+fn rename_key_scoped_to_nested_parent_path() {
+    let dir = TempDir::new().unwrap();
+    let config_path = dir.path().join("config.json");
+
+    fs::write(
+        &config_path,
+        r#"{
+                "agent": {
+                    "notification": {
+                        "sound_file": "nested",
+                        "notification": {
+                            "sound_file": "deeper"
+                        }
+                    },
+                    "other": {
+                        "sound_file": "sibling"
+                    }
+                },
+                "notification": {
+                    "sound_file": "top-level"
+                }
+            }"#,
+    )
+    .unwrap();
+
+    rename_key_in_file(
+        &config_path,
+        "agent.notification.sound_file",
+        "agent.notification.sound_path",
+    )
+    .unwrap();
+
+    let value = jsonc_parser::parse_to_serde_value::<serde_json::Value>(
+        &fs::read_to_string(&config_path).unwrap(),
+        &Default::default(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        value
+            .pointer("/agent/notification/sound_path")
+            .and_then(|v| v.as_str()),
+        Some("nested")
+    );
+    assert_eq!(
+        value
+            .pointer("/agent/notification/notification/sound_file")
+            .and_then(|v| v.as_str()),
+        Some("deeper")
+    );
+    assert_eq!(
+        value
+            .pointer("/agent/other/sound_file")
+            .and_then(|v| v.as_str()),
+        Some("sibling")
+    );
+    assert_eq!(
+        value
+            .pointer("/notification/sound_file")
+            .and_then(|v| v.as_str()),
+        Some("top-level")
+    );
 }
 
 #[test]
@@ -250,6 +370,18 @@ fn remove_key_in_file_removes_nested_key() {
     let agent = value.get("agent").unwrap();
     assert!(agent.get("update_task_before_run").is_none());
     assert_eq!(agent.get("runner").and_then(|v| v.as_str()), Some("claude"));
+}
+
+#[test]
+fn remove_key_in_file_leaves_empty_file_unchanged() {
+    let dir = TempDir::new().unwrap();
+    let config_path = dir.path().join("config.json");
+
+    fs::write(&config_path, "").unwrap();
+
+    remove_key_in_file(&config_path, "agent.update_task_before_run").unwrap();
+
+    assert_eq!(fs::read_to_string(&config_path).unwrap(), "");
 }
 
 #[test]

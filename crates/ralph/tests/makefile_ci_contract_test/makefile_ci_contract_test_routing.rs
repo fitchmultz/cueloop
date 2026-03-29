@@ -21,6 +21,7 @@ use std::time::{Duration, Instant};
 use super::makefile_ci_contract_test_support::{
     extract_target_block, extract_target_dependencies, read_repo_makefile, repo_root,
 };
+use std::os::unix::fs::PermissionsExt;
 
 fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
@@ -331,13 +332,15 @@ fn test_macos_ui_artifact_target_preserves_result_bundle_and_summary() -> Result
 }
 
 #[test]
-fn test_profile_ship_gate_targets_define_canonical_bundle_and_cleanup() -> Result<()> {
+fn test_profile_ship_gate_targets_delegate_to_script() -> Result<()> {
     let makefile = read_repo_makefile()?;
+    let repo = repo_root()?;
     let profile_block = extract_target_block(&makefile, "profile-ship-gate")
         .context("extract profile-ship-gate block")?;
     let clean_block = extract_target_block(&makefile, "profile-ship-gate-clean")
         .context("extract profile-ship-gate-clean block")?;
 
+    // Help text is the public contract — keep these strict.
     assert!(
         makefile.contains("make profile-ship-gate # Capture canonical local ship-gate profiling bundle (requires Xcode)"),
         "Makefile help should advertise the profiling entrypoint"
@@ -346,41 +349,38 @@ fn test_profile_ship_gate_targets_define_canonical_bundle_and_cleanup() -> Resul
         makefile.contains("make profile-ship-gate-clean # Remove ship-gate profiling bundles"),
         "Makefile help should advertise the profiling cleanup entrypoint"
     );
+
+    // Targets delegate to the script — verify the script exists and is executable.
+    let script_path = repo.join("scripts/profile-ship-gate.sh");
     assert!(
-        profile_block.contains("profile_dir=\"target/profiling/$$timestamp-ship-gate\""),
-        "profile-ship-gate should write timestamped profiling bundles under target/profiling"
+        script_path.exists(),
+        "profile-ship-gate script should exist at scripts/profile-ship-gate.sh"
+    );
+    let mode = std::fs::metadata(&script_path)
+        .context("stat profile-ship-gate.sh")?
+        .permissions()
+        .mode();
+    assert!(
+        mode & 0o111 != 0,
+        "profile-ship-gate.sh should be executable"
+    );
+
+    // Makefile targets delegate to the script.
+    assert!(
+        profile_block.contains("scripts/profile-ship-gate.sh run"),
+        "profile-ship-gate target should delegate to script run subcommand"
     );
     assert!(
-        profile_block.contains("run_timed_shell ci \"$(MAKE) --no-print-directory ci\""),
-        "profile-ship-gate should time the deterministic ci gate instead of diff-sensitive routing"
+        clean_block.contains("scripts/profile-ship-gate.sh clean"),
+        "profile-ship-gate-clean target should delegate to script clean subcommand"
     );
+
+    // profile-ship-gate preserves the macos-preflight dependency at the Makefile level.
+    let deps = extract_target_dependencies(&makefile, "profile-ship-gate")
+        .context("extract profile-ship-gate dependencies")?;
     assert!(
-        !profile_block.contains("agent-ci"),
-        "profile-ship-gate should not depend on diff-sensitive agent-ci routing"
-    );
-    assert!(
-        profile_block.contains("timings_path=\"$$profile_dir/timings.tsv\""),
-        "profile-ship-gate should capture timings.tsv"
-    );
-    assert!(
-        profile_block.contains("summary_path=\"$$profile_dir/summary.md\""),
-        "profile-ship-gate should capture summary.md"
-    );
-    assert!(
-        profile_block.contains("nextest.run_parallel_test.jsonl"),
-        "profile-ship-gate should capture the run_parallel_test JSONL profile"
-    );
-    assert!(
-        profile_block.contains("nextest.parallel_direct_push_test.jsonl"),
-        "profile-ship-gate should capture the parallel_direct_push_test JSONL profile"
-    );
-    assert!(
-        profile_block.contains("make profile-ship-gate-clean"),
-        "profile-ship-gate should narrate the explicit cleanup path"
-    );
-    assert!(
-        clean_block.contains("rm -rf target/profiling"),
-        "profile-ship-gate-clean should only remove profiling artifacts"
+        deps.contains(&"macos-preflight".to_string()),
+        "profile-ship-gate should depend on macos-preflight"
     );
 
     Ok(())

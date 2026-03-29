@@ -3,7 +3,7 @@
 //! Responsibilities:
 //! - Rename config keys in project/global config files.
 //! - Remove deprecated config keys from parsed JSON values.
-//! - Preserve JSONC comments for text-based rename flows.
+//! - Preserve JSONC comments while renaming keys.
 //! - Scope leaf-key renames to the intended parent object.
 //!
 //! Scope:
@@ -16,9 +16,12 @@
 //! Invariants/Assumptions:
 //! - Dot-path keys use object navigation only.
 //! - Scoped rename behavior must remain exactly compatible with the prior module.
+//! - Leaf renames only support changing the final key within the same parent path.
 //! - Removal rewrites parsed JSON and may normalize formatting/comments.
 
 use anyhow::{Context, Result};
+use jsonc_parser::ast::{ObjectPropName, Value as JsoncAstValue};
+use jsonc_parser::common::Ranged;
 use serde_json::Value;
 use std::{fs, path::Path};
 
@@ -26,7 +29,7 @@ use super::super::MigrationContext;
 use super::detect::config_file_has_key;
 
 /// Apply a key rename to both project and global configs.
-/// Uses text-based replacement to preserve comments.
+/// Uses JSONC-aware text replacement to preserve comments.
 pub fn apply_key_rename(ctx: &MigrationContext, old_key: &str, new_key: &str) -> Result<()> {
     if config_file_has_key(&ctx.project_config_path, old_key)? {
         rename_key_in_file(&ctx.project_config_path, old_key, new_key)
@@ -61,34 +64,45 @@ pub fn apply_key_remove(ctx: &MigrationContext, key: &str) -> Result<()> {
 }
 
 /// Rename a key in a specific config file while preserving comments.
-/// Uses scoped text-based replacement to only rename within the specified parent object.
+/// Uses JSONC AST-guided text replacement to only rename within the specified parent object.
 /// For "parallel.worktree_root", only renames "worktree_root" inside "parallel" objects.
-pub(super) fn rename_key_in_file(path: &Path, old_key: &str, new_key: &str) -> Result<()> {
+pub(crate) fn rename_key_in_file(path: &Path, old_key: &str, new_key: &str) -> Result<()> {
     let raw =
         fs::read_to_string(path).with_context(|| format!("read config file {}", path.display()))?;
 
     let old_parts: Vec<&str> = old_key.split('.').collect();
     let new_parts: Vec<&str> = new_key.split('.').collect();
 
-    if old_parts.is_empty() || new_parts.is_empty() {
-        return Err(anyhow::anyhow!("Empty key"));
+    if old_parts.iter().any(|part| part.is_empty()) || new_parts.iter().any(|part| part.is_empty())
+    {
+        return Err(anyhow::anyhow!("Empty key segment"));
+    }
+
+    let empty_parent_path: &[&str] = &[];
+    let old_parent_path: &[&str] = if old_parts.len() > 1 {
+        &old_parts[..old_parts.len() - 1]
+    } else {
+        empty_parent_path
+    };
+    let new_parent_path: &[&str] = if new_parts.len() > 1 {
+        &new_parts[..new_parts.len() - 1]
+    } else {
+        empty_parent_path
+    };
+
+    if old_parent_path != new_parent_path {
+        return Err(anyhow::anyhow!(
+            "rename key {} to {} must keep the same parent path",
+            old_key,
+            new_key
+        ));
     }
 
     let old_leaf = old_parts[old_parts.len() - 1];
     let new_leaf = new_parts[new_parts.len() - 1];
 
-    let parent_path = if old_parts.len() > 1 {
-        old_parts[..old_parts.len() - 1].to_vec()
-    } else {
-        Vec::new()
-    };
-
-    let modified = if parent_path.is_empty() {
-        rename_key_in_text(&raw, old_leaf, new_leaf)
-    } else {
-        rename_key_in_text_scoped(&raw, &parent_path, old_leaf, new_leaf)
-    }
-    .with_context(|| format!("rename key {} to {} in text", old_key, new_key))?;
+    let modified = rename_key_in_text_scoped(&raw, old_parent_path, old_leaf, new_leaf)
+        .with_context(|| format!("rename key {} to {} in text", old_key, new_key))?;
 
     crate::fsutil::write_atomic(path, modified.as_bytes())
         .with_context(|| format!("write modified config to {}", path.display()))?;
@@ -104,11 +118,15 @@ pub(super) fn rename_key_in_file(path: &Path, old_key: &str, new_key: &str) -> R
 }
 
 /// Remove a key from a specific config file.
-pub(super) fn remove_key_in_file(path: &Path, key: &str) -> Result<()> {
+pub(crate) fn remove_key_in_file(path: &Path, key: &str) -> Result<()> {
     let raw =
         fs::read_to_string(path).with_context(|| format!("read config file {}", path.display()))?;
 
     let mut value: Value = jsonc_parser::parse_to_serde_value::<Value>(&raw, &Default::default())?;
+
+    if !value.is_object() {
+        return Ok(());
+    }
 
     remove_key_from_value(&mut value, key);
 
@@ -128,19 +146,14 @@ pub(super) fn rename_key_in_text(raw: &str, old_key: &str, new_key: &str) -> Res
     let double_quoted = format!(r#""{}""#, old_key);
     let single_quoted = format!("'{}'", old_key);
 
-    result = replace_key_pattern(&result, &double_quoted, old_key, new_key);
-    result = replace_key_pattern(&result, &single_quoted, old_key, new_key);
+    result = replace_key_pattern(&result, &double_quoted, '"', new_key);
+    result = replace_key_pattern(&result, &single_quoted, '\'', new_key);
 
     Ok(result)
 }
 
 /// Replace key patterns that appear to be JSON object keys.
-pub(super) fn replace_key_pattern(
-    text: &str,
-    pattern: &str,
-    old_key: &str,
-    new_key: &str,
-) -> String {
+pub(super) fn replace_key_pattern(text: &str, pattern: &str, quote: char, new_key: &str) -> String {
     let mut result = String::with_capacity(text.len());
     let mut last_end = 0;
 
@@ -149,12 +162,10 @@ pub(super) fn replace_key_pattern(
         let rest = &text[after_pattern..];
 
         let trimmed = rest.trim_start();
-        let _whitespace_len = rest.len() - trimmed.len();
 
         if trimmed.starts_with(':') {
-            result.push_str(&text[last_end..start + 1]);
-            result.push_str(new_key);
-            result.push_str(&text[start + 1 + old_key.len()..after_pattern]);
+            result.push_str(&text[last_end..start]);
+            result.push_str(&render_quoted_object_key(new_key, quote));
             last_end = after_pattern;
         }
     }
@@ -173,120 +184,130 @@ pub(super) fn rename_key_in_text_scoped(
     old_key: &str,
     new_key: &str,
 ) -> Result<String> {
-    let value = match jsonc_parser::parse_to_serde_value::<Value>(raw, &Default::default()) {
-        Ok(v) => v,
-        Err(_) => {
-            return rename_key_in_text(raw, old_key, new_key);
-        }
+    let collect_options = jsonc_parser::CollectOptions::default();
+    let parse_options = jsonc_parser::ParseOptions::default();
+    let parse_result = match jsonc_parser::parse_to_ast(raw, &collect_options, &parse_options) {
+        Ok(result) => result,
+        Err(_) => return rename_key_in_text(raw, old_key, new_key),
     };
 
-    if !key_exists_at_path(&value, parent_path, old_key) {
+    let Some(root) = parse_result.value.as_ref() else {
+        return Ok(raw.to_string());
+    };
+
+    let mut replacements = Vec::new();
+    collect_scoped_key_renames(root, parent_path, old_key, new_key, raw, &mut replacements);
+
+    if replacements.is_empty() {
         return Ok(raw.to_string());
     }
 
-    let parent_key = parent_path[0];
-    rename_key_in_object_scope(raw, parent_key, old_key, new_key)
+    Ok(apply_text_replacements(raw, replacements))
 }
 
-/// Check if a key exists at a specific nested path in the JSON value.
-pub(super) fn key_exists_at_path(value: &Value, path: &[&str], key: &str) -> bool {
-    let mut current = value;
-
-    for part in path {
-        match current {
-            Value::Object(map) => {
-                if let Some(v) = map.get(*part) {
-                    current = v;
-                } else {
-                    return false;
-                }
-            }
-            _ => return false,
-        }
-    }
-
-    match current {
-        Value::Object(map) => map.contains_key(key),
-        _ => false,
-    }
-}
-
-/// Rename a key within a specific object scope in the raw text.
-/// Finds the object by its key and renames the target key only within that object's scope.
-pub(super) fn rename_key_in_object_scope(
-    raw: &str,
-    object_key: &str,
+fn collect_scoped_key_renames<'a>(
+    value: &'a JsoncAstValue<'a>,
+    path: &[&str],
     old_key: &str,
     new_key: &str,
-) -> Result<String> {
-    let object_pattern = format!(r#""{}""#, object_key);
+    raw: &str,
+    replacements: &mut Vec<(usize, usize, String)>,
+) {
+    let JsoncAstValue::Object(object) = value else {
+        return;
+    };
 
-    let mut result = String::with_capacity(raw.len());
-    let mut last_end = 0;
-
-    for (start, _) in raw.match_indices(&object_pattern) {
-        let after_pattern = start + object_pattern.len();
-        let rest = &raw[after_pattern..];
-
-        let rest_trimmed = rest.trim_start();
-        let whitespace_before_colon = rest.len() - rest_trimmed.len();
-
-        if !rest_trimmed.starts_with(':') {
-            continue;
-        }
-
-        let after_colon = &rest_trimmed[1..];
-        let after_colon_trimmed = after_colon.trim_start();
-        let whitespace_after_colon = after_colon.len() - after_colon_trimmed.len();
-
-        if !after_colon_trimmed.starts_with('{') {
-            continue;
-        }
-
-        let object_content_start =
-            after_pattern + whitespace_before_colon + 1 + whitespace_after_colon;
-
-        let after_brace = object_content_start + 1;
-        let mut pos = after_brace;
-        let mut depth = 1;
-
-        while pos < raw.len() && depth > 0 {
-            match raw.as_bytes().get(pos) {
-                Some(b'{') => depth += 1,
-                Some(b'}') => depth -= 1,
-                Some(b'"') => {
-                    pos += 1;
-                    while pos < raw.len() {
-                        match raw.as_bytes().get(pos) {
-                            Some(b'\\') => pos += 2,
-                            Some(b'"') => {
-                                pos += 1;
-                                break;
-                            }
-                            _ => pos += 1,
-                        }
-                    }
-                    continue;
-                }
-                _ => {}
+    let Some((path_head, path_tail)) = path.split_first() else {
+        for prop in &object.properties {
+            if prop.name.as_str() == old_key {
+                replacements.push((
+                    prop.name.range().start,
+                    prop.name.range().end,
+                    render_object_prop_name_replacement(raw, &prop.name, new_key),
+                ));
             }
-            pos += 1;
+        }
+        return;
+    };
+
+    for prop in &object.properties {
+        if prop.name.as_str() != *path_head {
+            continue;
         }
 
-        let object_content_end = pos;
+        collect_scoped_key_renames(&prop.value, path_tail, old_key, new_key, raw, replacements);
+    }
+}
 
-        result.push_str(&raw[last_end..object_content_start]);
+fn render_object_prop_name_replacement(
+    raw: &str,
+    name: &ObjectPropName<'_>,
+    new_key: &str,
+) -> String {
+    match name {
+        ObjectPropName::String(lit) => {
+            let quote = raw[lit.range.start..lit.range.end]
+                .chars()
+                .next()
+                .unwrap_or('"');
+            render_quoted_object_key(new_key, quote)
+        }
+        ObjectPropName::Word(_) => {
+            if is_bare_object_key(new_key) {
+                new_key.to_string()
+            } else {
+                serde_json::to_string(new_key).unwrap_or_else(|_| format!(r#""{}""#, new_key))
+            }
+        }
+    }
+}
 
-        let inner_content = &raw[object_content_start..object_content_end];
-        let modified_inner = rename_key_in_text(inner_content, old_key, new_key)?;
-        result.push_str(&modified_inner);
+fn render_quoted_object_key(key: &str, quote: char) -> String {
+    if quote == '\'' {
+        let mut escaped = String::with_capacity(key.len() + 2);
+        escaped.push(quote);
+        for ch in key.chars() {
+            match ch {
+                '\\' => escaped.push_str("\\\\"),
+                '\'' => escaped.push_str("\\'"),
+                '\n' => escaped.push_str("\\n"),
+                '\r' => escaped.push_str("\\r"),
+                '\t' => escaped.push_str("\\t"),
+                '\u{08}' => escaped.push_str("\\b"),
+                '\u{0C}' => escaped.push_str("\\f"),
+                c if c.is_control() => escaped.push_str(&format!("\\u{:04x}", c as u32)),
+                _ => escaped.push(ch),
+            }
+        }
+        escaped.push(quote);
+        escaped
+    } else {
+        serde_json::to_string(key).unwrap_or_else(|_| format!(r#""{}""#, key))
+    }
+}
 
-        last_end = object_content_end;
+fn is_bare_object_key(key: &str) -> bool {
+    let mut chars = key.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
+    if !(first.is_ascii_alphabetic() || first == '_') {
+        return false;
     }
 
-    result.push_str(&raw[last_end..]);
+    chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+}
 
-    Ok(result)
+fn apply_text_replacements(raw: &str, mut replacements: Vec<(usize, usize, String)>) -> String {
+    replacements.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| b.1.cmp(&a.1)));
+
+    let mut result = raw.to_string();
+    for (start, end, replacement) in replacements {
+        result.replace_range(start..end, &replacement);
+    }
+
+    result
 }
 
 /// Remove a key from a serde_json value using dot notation (e.g., "agent.runner").

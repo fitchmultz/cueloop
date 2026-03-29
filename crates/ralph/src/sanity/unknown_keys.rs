@@ -17,6 +17,7 @@
 //! - Non-interactive mode without auto-fix keeps keys with warning
 
 use crate::config::Resolved;
+use crate::migration::config_migrations::{remove_key_in_file, rename_key_in_file};
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 use std::io::{self, Write};
@@ -57,7 +58,6 @@ pub(crate) fn check_unknown_keys(
                         auto_fix,
                         non_interactive,
                         &can_prompt,
-                        project_path,
                     )?;
                     actions.extend(apply_key_action(
                         project_path,
@@ -86,7 +86,6 @@ pub(crate) fn check_unknown_keys(
                         auto_fix,
                         non_interactive,
                         &can_prompt,
-                        global_path,
                     )?;
                     actions.extend(apply_key_action(
                         global_path,
@@ -111,17 +110,12 @@ fn determine_key_action(
     auto_fix: bool,
     non_interactive: bool,
     can_prompt: &impl Fn() -> bool,
-    path: &std::path::Path,
 ) -> Result<UnknownKeyAction> {
     if auto_fix {
-        match remove_key_from_config_file(path, key) {
-            Ok(()) => Ok(UnknownKeyAction::Remove),
-            Err(e) => {
-                log::warn!("Failed to remove key '{}': {}", key, e);
-                Ok(UnknownKeyAction::Keep)
-            }
-        }
-    } else if !non_interactive && can_prompt() {
+        return Ok(UnknownKeyAction::Remove);
+    }
+
+    if !non_interactive && can_prompt() {
         prompt_unknown_key(key, config_file)
     } else {
         log::warn!(
@@ -141,7 +135,7 @@ fn apply_key_action(
 ) -> Result<Vec<String>> {
     let mut actions = Vec::new();
     match action {
-        UnknownKeyAction::Remove => match remove_key_from_config_file(path, key) {
+        UnknownKeyAction::Remove => match remove_key_in_file(path, key) {
             Ok(()) => {
                 actions.push(format!(
                     "Removed unknown key '{}' from {}",
@@ -155,7 +149,7 @@ fn apply_key_action(
         UnknownKeyAction::Keep => {
             log::info!("Kept unknown key '{}' in {}", key, config_file);
         }
-        UnknownKeyAction::Rename(new_key) => match rename_key_in_config_file(path, key, &new_key) {
+        UnknownKeyAction::Rename(new_key) => match rename_key_in_file(path, key, &new_key) {
             Ok(()) => {
                 actions.push(format!(
                     "Renamed key '{}' to '{}' in {}",
@@ -180,16 +174,19 @@ fn prompt_unknown_key(key: &str, config_file: &str) -> Result<UnknownKeyAction> 
 
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
-    let trimmed = input.trim().to_lowercase();
+    Ok(parse_unknown_key_action(&input))
+}
 
-    if trimmed.is_empty() || trimmed == "k" || trimmed == "keep" {
-        Ok(UnknownKeyAction::Keep)
-    } else if trimmed == "r" || trimmed == "remove" {
-        Ok(UnknownKeyAction::Remove)
-    } else if !trimmed.is_empty() {
-        Ok(UnknownKeyAction::Rename(trimmed))
+fn parse_unknown_key_action(input: &str) -> UnknownKeyAction {
+    let trimmed = input.trim();
+    let command = trimmed.to_ascii_lowercase();
+
+    if trimmed.is_empty() || command == "k" || command == "keep" {
+        UnknownKeyAction::Keep
+    } else if command == "r" || command == "remove" {
+        UnknownKeyAction::Remove
     } else {
-        Ok(UnknownKeyAction::Keep)
+        UnknownKeyAction::Rename(trimmed.to_string())
     }
 }
 
@@ -317,118 +314,6 @@ fn is_known_parent_key(key: &str, known_keys: &HashSet<String>) -> bool {
     false
 }
 
-/// Remove a key from a config file.
-fn remove_key_from_config_file(path: &std::path::Path, key: &str) -> Result<()> {
-    use std::fs;
-
-    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-
-    let mut value: serde_json::Value =
-        jsonc_parser::parse_to_serde_value::<serde_json::Value>(&raw, &Default::default())
-            .context("parse config")?;
-
-    remove_key_from_value(&mut value, key);
-
-    let modified = serde_json::to_string_pretty(&value).context("serialize config")?;
-    crate::fsutil::write_atomic(path, modified.as_bytes())
-        .with_context(|| format!("write {}", path.display()))?;
-
-    log::info!("Removed key '{}' from {}", key, path.display());
-    Ok(())
-}
-
-/// Remove a key from a JSON value using dot notation.
-fn remove_key_from_value(value: &mut serde_json::Value, key: &str) {
-    let parts: Vec<&str> = key.split('.').collect();
-    if parts.is_empty() {
-        return;
-    }
-
-    if parts.len() == 1 {
-        if let serde_json::Value::Object(map) = value {
-            map.remove(parts[0]);
-        }
-    } else {
-        let parent_key = parts[..parts.len() - 1].join(".");
-        let child_key = parts[parts.len() - 1];
-
-        if let Some(serde_json::Value::Object(map)) = get_nested_value_mut(value, &parent_key) {
-            map.remove(child_key);
-        }
-    }
-}
-
-/// Get a mutable reference to a nested value.
-fn get_nested_value_mut<'a>(
-    value: &'a mut serde_json::Value,
-    key: &str,
-) -> Option<&'a mut serde_json::Value> {
-    let parts: Vec<&str> = key.split('.').collect();
-    let mut current = value;
-
-    for part in parts {
-        match current {
-            serde_json::Value::Object(map) => {
-                current = map.get_mut(part)?;
-            }
-            _ => return None,
-        }
-    }
-
-    Some(current)
-}
-
-/// Rename a key in a config file.
-fn rename_key_in_config_file(path: &std::path::Path, old_key: &str, new_key: &str) -> Result<()> {
-    use std::fs;
-
-    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-
-    let mut value: serde_json::Value =
-        jsonc_parser::parse_to_serde_value::<serde_json::Value>(&raw, &Default::default())
-            .context("parse config")?;
-
-    rename_key_in_value(&mut value, old_key, new_key);
-
-    let modified = serde_json::to_string_pretty(&value).context("serialize config")?;
-    crate::fsutil::write_atomic(path, modified.as_bytes())
-        .with_context(|| format!("write {}", path.display()))?;
-
-    log::info!(
-        "Renamed key '{}' to '{}' in {}",
-        old_key,
-        new_key,
-        path.display()
-    );
-    Ok(())
-}
-
-/// Rename a key in a JSON value using dot notation.
-fn rename_key_in_value(value: &mut serde_json::Value, old_key: &str, new_key: &str) {
-    let parts: Vec<&str> = old_key.split('.').collect();
-    if parts.is_empty() {
-        return;
-    }
-
-    if parts.len() == 1 {
-        if let serde_json::Value::Object(map) = value
-            && let Some(v) = map.remove(parts[0])
-        {
-            map.insert(new_key.to_string(), v);
-        }
-    } else {
-        let parent_key = parts[..parts.len() - 1].join(".");
-        let child_key = parts[parts.len() - 1];
-        let new_key_name = new_key.split('.').next_back().unwrap_or(new_key);
-
-        if let Some(serde_json::Value::Object(map)) = get_nested_value_mut(value, &parent_key)
-            && let Some(v) = map.remove(child_key)
-        {
-            map.insert(new_key_name.to_string(), v);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -497,38 +382,19 @@ mod tests {
     }
 
     #[test]
-    fn remove_key_from_value_works() {
-        let mut value: serde_json::Value = serde_json::json!({
-            "version": 1,
-            "agent": {
-                "runner": "claude",
-                "model": "sonnet"
-            }
-        });
-
-        remove_key_from_value(&mut value, "version");
-        assert!(value.get("version").is_none());
-        assert!(value.get("agent").is_some());
-
-        remove_key_from_value(&mut value, "agent.runner");
-        let agent = value.get("agent").unwrap();
-        assert!(agent.get("runner").is_none());
-        assert!(agent.get("model").is_some());
-    }
-
-    #[test]
-    fn rename_key_in_value_works() {
-        let mut value: serde_json::Value = serde_json::json!({
-            "version": 1,
-            "agent": {
-                "runner": "claude"
-            }
-        });
-
-        rename_key_in_value(&mut value, "agent.runner", "agent.runner_cli");
-        let agent = value.get("agent").unwrap();
-        assert!(agent.get("runner").is_none());
-        assert_eq!(agent.get("runner_cli").unwrap(), "claude");
+    fn parse_unknown_key_action_preserves_rename_case() {
+        assert!(matches!(
+            parse_unknown_key_action(" Agent.Runner_CLI  "),
+            UnknownKeyAction::Rename(rename) if rename == "Agent.Runner_CLI"
+        ));
+        assert!(matches!(
+            parse_unknown_key_action("KEEP"),
+            UnknownKeyAction::Keep
+        ));
+        assert!(matches!(
+            parse_unknown_key_action("Remove"),
+            UnknownKeyAction::Remove
+        ));
     }
 
     #[test]
@@ -537,5 +403,82 @@ mod tests {
         assert!(is_known_parent_key("agent", &keys));
         assert!(is_known_parent_key("queue", &keys));
         assert!(!is_known_parent_key("unknown", &keys));
+    }
+
+    #[test]
+    fn remove_key_from_config_file_leaves_empty_file_unchanged() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let config_path = dir.path().join("config.json");
+        std::fs::write(&config_path, "").unwrap();
+
+        remove_key_in_file(&config_path, "agent.runner").unwrap();
+
+        assert_eq!(std::fs::read_to_string(&config_path).unwrap(), "");
+    }
+
+    #[test]
+    fn rename_key_in_config_file_leaves_empty_file_unchanged() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let config_path = dir.path().join("config.json");
+        std::fs::write(&config_path, "").unwrap();
+
+        rename_key_in_file(&config_path, "agent.runner", "agent.runner_cli").unwrap();
+
+        assert_eq!(std::fs::read_to_string(&config_path).unwrap(), "");
+    }
+
+    #[test]
+    fn rename_key_in_config_file_rejects_parent_path_changes() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let config_path = dir.path().join("config.json");
+        std::fs::write(&config_path, r#"{ "parallel": { "worktree_root": "x" } }"#).unwrap();
+
+        let err = rename_key_in_file(
+            &config_path,
+            "parallel.worktree_root",
+            "agent.workspace_root",
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("must keep the same parent path"));
+        let content = std::fs::read_to_string(&config_path).unwrap();
+        assert!(content.contains("worktree_root"));
+        assert!(!content.contains("workspace_root"));
+    }
+
+    #[test]
+    fn check_unknown_keys_auto_fix_removes_unknown_key() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let config_path = dir.path().join("config.json");
+        std::fs::write(
+            &config_path,
+            r#"{
+                "version": 2,
+                "unknown_key": "value"
+            }"#,
+        )
+        .unwrap();
+
+        let resolved = Resolved {
+            config: crate::contracts::Config::default(),
+            repo_root: dir.path().to_path_buf(),
+            queue_path: dir.path().join("queue.json"),
+            done_path: dir.path().join("done.json"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: Some(config_path.clone()),
+        };
+
+        let actions = check_unknown_keys(&resolved, true, true, || false).unwrap();
+        assert!(
+            actions
+                .iter()
+                .any(|action| action.contains("Removed unknown key 'unknown_key'"))
+        );
+
+        let content = std::fs::read_to_string(&config_path).unwrap();
+        assert!(!content.contains("unknown_key"));
+        assert!(content.contains("\"version\": 2"));
     }
 }
