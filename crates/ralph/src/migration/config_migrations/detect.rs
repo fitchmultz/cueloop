@@ -45,10 +45,11 @@ pub(super) fn config_file_has_key(path: &Path, key: &str) -> Result<bool> {
     let raw =
         fs::read_to_string(path).with_context(|| format!("read config file {}", path.display()))?;
 
-    let value = match jsonc_parser::parse_to_serde_value(&raw, &Default::default()) {
-        Ok(Some(v)) => v,
-        _ => return Ok(false),
-    };
+    let value =
+        match jsonc_parser::parse_to_serde_value::<serde_json::Value>(&raw, &Default::default()) {
+            Ok(v) => v,
+            Err(_) => return Ok(false),
+        };
 
     let parts: Vec<&str> = key.split('.').collect();
     let mut current = &value;

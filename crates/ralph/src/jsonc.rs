@@ -20,14 +20,9 @@ use serde::de::DeserializeOwned;
 /// Falls back to standard JSON parsing for backward compatibility.
 pub fn parse_jsonc<T: DeserializeOwned>(raw: &str, context: &str) -> Result<T> {
     // Try JSONC parsing first (handles comments and trailing commas)
-    match jsonc_parser::parse_to_serde_value(raw, &Default::default()) {
-        Ok(Some(value)) => {
+    match jsonc_parser::parse_to_serde_value::<serde_json::Value>(raw, &Default::default()) {
+        Ok(value) => {
             serde_json::from_value(value).with_context(|| format!("parse {} from JSONC", context))
-        }
-        Ok(None) => {
-            // Empty file case - try parsing as empty JSON (will likely fail, but gives proper error)
-            serde_json::from_str::<T>(raw)
-                .with_context(|| format!("parse {} as JSON (empty file)", context))
         }
         Err(jsonc_err) => {
             // Fall back to standard JSON for backward compatibility

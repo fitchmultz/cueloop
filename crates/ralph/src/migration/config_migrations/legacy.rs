@@ -52,9 +52,10 @@ pub(super) fn config_file_needs_legacy_contract_upgrade(path: &Path) -> Result<b
 
     let raw =
         fs::read_to_string(path).with_context(|| format!("read config file {}", path.display()))?;
-    let value = match jsonc_parser::parse_to_serde_value(&raw, &Default::default()) {
-        Ok(Some(v)) => v,
-        _ => return Ok(false),
+    let value: Value = match jsonc_parser::parse_to_serde_value::<Value>(&raw, &Default::default())
+    {
+        Ok(v) => v,
+        Err(_) => return Ok(false),
     };
 
     let has_legacy_version = value.get("version").and_then(Value::as_u64) == Some(1);
@@ -73,10 +74,7 @@ pub(super) fn upgrade_legacy_contract_in_file(path: &Path) -> Result<()> {
 
     let raw =
         fs::read_to_string(path).with_context(|| format!("read config file {}", path.display()))?;
-    let mut value = match jsonc_parser::parse_to_serde_value(&raw, &Default::default())? {
-        Some(value) => value,
-        None => return Ok(()),
-    };
+    let mut value: Value = jsonc_parser::parse_to_serde_value::<Value>(&raw, &Default::default())?;
 
     let Some(root) = value.as_object_mut() else {
         return Ok(());

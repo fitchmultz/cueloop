@@ -235,7 +235,7 @@ fn normalize_path_str(path: &str) -> String {
 fn hash16(value: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(value.as_bytes());
-    format!("{:x}", hasher.finalize())[..16].to_string()
+    hex::encode(hasher.finalize())[..16].to_string()
 }
 
 #[cfg(test)]

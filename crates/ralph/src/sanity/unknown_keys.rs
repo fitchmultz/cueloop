@@ -268,10 +268,11 @@ fn check_config_file_unknown_keys(
 
     let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
 
-    let value = match jsonc_parser::parse_to_serde_value(&raw, &Default::default()) {
-        Ok(Some(v)) => v,
-        _ => return Ok(Vec::new()),
-    };
+    let value =
+        match jsonc_parser::parse_to_serde_value::<serde_json::Value>(&raw, &Default::default()) {
+            Ok(v) => v,
+            Err(_) => return Ok(Vec::new()),
+        };
 
     let mut unknown_keys = Vec::new();
     collect_unknown_keys(&value, known_keys, "", &mut unknown_keys);
@@ -323,9 +324,8 @@ fn remove_key_from_config_file(path: &std::path::Path, key: &str) -> Result<()> 
     let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
 
     let mut value: serde_json::Value =
-        jsonc_parser::parse_to_serde_value(&raw, &Default::default())
-            .context("parse config")?
-            .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+        jsonc_parser::parse_to_serde_value::<serde_json::Value>(&raw, &Default::default())
+            .context("parse config")?;
 
     remove_key_from_value(&mut value, key);
 
@@ -385,9 +385,8 @@ fn rename_key_in_config_file(path: &std::path::Path, old_key: &str, new_key: &st
     let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
 
     let mut value: serde_json::Value =
-        jsonc_parser::parse_to_serde_value(&raw, &Default::default())
-            .context("parse config")?
-            .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+        jsonc_parser::parse_to_serde_value::<serde_json::Value>(&raw, &Default::default())
+            .context("parse config")?;
 
     rename_key_in_value(&mut value, old_key, new_key);
 

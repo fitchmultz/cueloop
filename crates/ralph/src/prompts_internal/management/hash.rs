@@ -16,5 +16,5 @@ pub(crate) fn compute_hash(content: &str) -> String {
     let normalized = content.trim_end();
     let mut hasher = Sha256::new();
     hasher.update(normalized.as_bytes());
-    format!("sha256:{:x}", hasher.finalize())
+    format!("sha256:{}", hex::encode(hasher.finalize()))
 }

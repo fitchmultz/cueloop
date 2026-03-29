@@ -108,8 +108,7 @@ pub(super) fn remove_key_in_file(path: &Path, key: &str) -> Result<()> {
     let raw =
         fs::read_to_string(path).with_context(|| format!("read config file {}", path.display()))?;
 
-    let mut value = jsonc_parser::parse_to_serde_value(&raw, &Default::default())?
-        .ok_or_else(|| anyhow::anyhow!("parse config file {}", path.display()))?;
+    let mut value: Value = jsonc_parser::parse_to_serde_value::<Value>(&raw, &Default::default())?;
 
     remove_key_from_value(&mut value, key);
 
@@ -174,9 +173,9 @@ pub(super) fn rename_key_in_text_scoped(
     old_key: &str,
     new_key: &str,
 ) -> Result<String> {
-    let value = match jsonc_parser::parse_to_serde_value(raw, &Default::default()) {
-        Ok(Some(v)) => v,
-        _ => {
+    let value = match jsonc_parser::parse_to_serde_value::<Value>(raw, &Default::default()) {
+        Ok(v) => v,
+        Err(_) => {
             return rename_key_in_text(raw, old_key, new_key);
         }
     };

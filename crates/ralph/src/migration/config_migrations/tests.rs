@@ -242,11 +242,10 @@ fn remove_key_in_file_removes_nested_key() {
 
     remove_key_in_file(&config_path, "agent.update_task_before_run").unwrap();
 
-    let value = jsonc_parser::parse_to_serde_value(
+    let value = jsonc_parser::parse_to_serde_value::<serde_json::Value>(
         &fs::read_to_string(&config_path).unwrap(),
         &Default::default(),
     )
-    .unwrap()
     .unwrap();
     let agent = value.get("agent").unwrap();
     assert!(agent.get("update_task_before_run").is_none());
@@ -274,11 +273,10 @@ fn legacy_contract_upgrade_rewrites_publish_flag_to_git_publish_mode() {
 
     upgrade_legacy_contract_in_file(&config_path).unwrap();
 
-    let value = jsonc_parser::parse_to_serde_value(
+    let value = jsonc_parser::parse_to_serde_value::<serde_json::Value>(
         &fs::read_to_string(&config_path).unwrap(),
         &Default::default(),
     )
-    .unwrap()
     .unwrap();
     let agent = value.get("agent").unwrap();
     assert_eq!(value.get("version").and_then(|v| v.as_u64()), Some(2));
@@ -301,11 +299,10 @@ fn legacy_contract_upgrade_preserves_existing_git_publish_mode() {
 
     upgrade_legacy_contract_in_file(&config_path).unwrap();
 
-    let value = jsonc_parser::parse_to_serde_value(
+    let value = jsonc_parser::parse_to_serde_value::<serde_json::Value>(
         &fs::read_to_string(&config_path).unwrap(),
         &Default::default(),
     )
-    .unwrap()
     .unwrap();
     let agent = value.get("agent").unwrap();
     assert_eq!(value.get("version").and_then(|v| v.as_u64()), Some(2));
