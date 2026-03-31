@@ -30,6 +30,9 @@ pub(crate) fn build_worker_command(
     let mut cmd = Command::new(exe);
 
     #[cfg(unix)]
+    // SAFETY: `pre_exec` runs in the forked child before `exec`; this closure
+    // only makes the async-signal-safe `setpgid(0, 0)` call and does not touch
+    // shared Rust state.
     unsafe {
         cmd.pre_exec(|| {
             let _ = libc::setpgid(0, 0);

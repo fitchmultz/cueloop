@@ -44,6 +44,9 @@ fn pid_exists_via_toolhelp(pid: u32) -> Option<bool> {
         CreateToolhelp32Snapshot, PROCESSENTRY32, Process32First, Process32Next, TH32CS_SNAPPROCESS,
     };
 
+    // SAFETY: The ToolHelp snapshot APIs return OS-owned handles; we initialize
+    // the documented structure size, check each return value, and close the
+    // snapshot handle before returning.
     unsafe {
         let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if snapshot == INVALID_HANDLE_VALUE {
@@ -87,6 +90,8 @@ fn pid_exists_via_toolhelp(pid: u32) -> Option<bool> {
 pub fn pid_is_running(pid: u32) -> Option<bool> {
     #[cfg(unix)]
     {
+        // SAFETY: `kill(pid, 0)` is a read-only liveness probe that does not
+        // dereference pointers or mutate Rust-managed memory.
         let result = unsafe { libc::kill(pid as i32, 0) };
         if result == 0 {
             return Some(true);
@@ -105,6 +110,8 @@ pub fn pid_is_running(pid: u32) -> Option<bool> {
         };
         use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION};
 
+        // SAFETY: `OpenProcess` returns an OS handle for the queried PID; we
+        // check the handle for zero and close it immediately on success.
         unsafe {
             let handle = OpenProcess(PROCESS_QUERY_INFORMATION, 0, pid);
             if handle != 0 {

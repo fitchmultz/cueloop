@@ -72,6 +72,9 @@ pub(crate) fn execute_managed_command(
         .stderr(Stdio::piped());
 
     #[cfg(unix)]
+    // SAFETY: `pre_exec` runs in the forked child before `exec`; this closure
+    // only makes the async-signal-safe `setpgid(0, 0)` call and does not touch
+    // shared Rust state.
     unsafe {
         managed.command.pre_exec(|| {
             let _ = libc::setpgid(0, 0);
